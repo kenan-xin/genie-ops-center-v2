@@ -1,0 +1,80 @@
+{
+  "_meta": {
+    "models": {
+      "branding": "The published tenant branding row: identity, the one primary color, theme, typography, sign-in page, email, links, and locale values.",
+      "brandingImage": "An uploaded image referenced by the branding row, with its scan status and dimensions.",
+      "approvedFont": "A font the tenant administrator can choose. No uploads.",
+      "localeOption": "A language, time zone, or format the administrator can pick.",
+      "lastPublish": "The last publish event: who, when, and which fields changed.",
+      "uploadPolicy": "Limits shown in every drop zone.",
+      "contrastTargets": "The light and dark surfaces every contrast check runs against."
+    },
+    "relationships": [
+      "branding references brandingImage by id for logos, mark, favicon, and sign-in background",
+      "lastPublish belongs to the branding row"
+    ]
+  },
+  "branding": {
+    "companyName": "Meridian Health",
+    "productName": "Genie Ops Center",
+    "logoLightImageId": "img_logo_light",
+    "logoDarkImageId": null,
+    "logoMarkImageId": "img_mark",
+    "faviconImageId": "img_favicon",
+    "primaryColor": "#2563eb",
+    "defaultTheme": "system",
+    "fontFamily": "plus-jakarta-sans",
+    "fontSize": "default",
+    "textColor": "#111827",
+    "loginBackgroundImageId": null,
+    "loginBackgroundColor": "#f2f4f7",
+    "loginWelcomeText": "Sign in with your Meridian Health account to open your assigned solutions.",
+    "loginNoticeText": "This system is for authorized Meridian Health staff only. Activity on this system is logged and monitored in line with the Information Security Policy. Do not enter patient-identifiable data into a solution unless it is approved for clinical use. By continuing you accept these conditions.",
+    "loginNoticeRequiresAcknowledgement": true,
+    "emailSenderName": "Meridian Health Genie",
+    "emailReplyTo": "it-service-desk@meridianhealth.example",
+    "emailFooterText": "Meridian Health Pte Ltd, 12 Harbourfront Avenue, Singapore 098585. You receive this email because you have a Genie account.",
+    "supportUrl": null,
+    "supportEmail": "it-service-desk@meridianhealth.example",
+    "termsUrl": "https://meridianhealth.example/terms",
+    "privacyUrl": "https://meridianhealth.example/privacy",
+    "defaultLocale": "en",
+    "defaultTimeZone": "Asia/Singapore",
+    "dateFormat": "d MMM yyyy",
+    "numberFormat": "1,234,567.89"
+  },
+  "images": [
+    { "id": "img_logo_light", "kind": "logoLight", "fileName": "meridian-logo.svg", "mimeType": "image/svg+xml", "sizeBytes": 18432, "width": 480, "height": 96, "url": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 96'><rect x='8' y='8' width='80' height='80' rx='18' fill='%232563eb'/><path d='M28 68V32l20 20 20-20v36' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><text x='112' y='62' font-family='Plus Jakarta Sans, system-ui, sans-serif' font-size='40' font-weight='700' fill='%23111827'>Meridian Health</text></svg>", "scanStatus": "skipped", "uploadedAt": "2026-06-03T02:10:00Z" },
+    { "id": "img_mark", "kind": "logoMark", "fileName": "meridian-mark.svg", "mimeType": "image/svg+xml", "sizeBytes": 1204, "width": 512, "height": 512, "url": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232563eb'/><path d='M16 46V18l16 16 16-16v28' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>", "scanStatus": "clean", "uploadedAt": "2026-06-03T02:12:00Z" },
+    { "id": "img_favicon", "kind": "favicon", "fileName": "favicon.svg", "mimeType": "image/svg+xml", "sizeBytes": 1204, "width": 48, "height": 48, "url": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232563eb'/><path d='M16 46V18l16 16 16-16v28' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>", "scanStatus": "pending", "uploadedAt": "2026-09-16T01:58:00Z" }
+  ],
+  "uploadPolicy": {
+    "maxBytes": 15728640,
+    "imageTypes": ["image/png", "image/svg+xml", "image/jpeg", "image/webp"],
+    "faviconTypes": ["image/png", "image/svg+xml", "image/x-icon"],
+    "recommended": {
+      "logoLight": "SVG or PNG, at least 480 by 96 px, transparent background",
+      "logoDark": "SVG or PNG, at least 480 by 96 px, light artwork for dark surfaces",
+      "logoMark": "Square, at least 512 by 512 px",
+      "favicon": "Square, 48 by 48 px, ICO, PNG, or SVG",
+      "loginBackground": "JPEG or WebP, at least 1920 by 1080 px, under 2 MB for fast loads"
+    }
+  },
+  "approvedFonts": [
+    { "id": "plus-jakarta-sans", "label": "Plus Jakarta Sans" },
+    { "id": "ibm-plex-sans", "label": "IBM Plex Sans" },
+    { "id": "manrope", "label": "Manrope" },
+    { "id": "source-serif-4", "label": "Source Serif 4" }
+  ],
+  "localeOptions": {
+    "languages": [{ "code": "en", "label": "English" }],
+    "timeZones": ["Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Jakarta", "Asia/Bangkok", "Asia/Manila", "Asia/Tokyo", "Australia/Sydney", "Europe/London", "UTC"],
+    "dateFormats": ["d MMM yyyy", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"],
+    "numberFormats": ["1,234,567.89", "1.234.567,89", "1 234 567,89"]
+  },
+  "lastPublish": { "by": "Priya Nair", "at": "2026-09-16T01:58:30Z", "changedFields": ["faviconImageId", "emailFooterText"] },
+  "contrastTargets": {
+    "light": { "surface": "#ffffff", "subtleSurface": "#f9fafb" },
+    "dark": { "surface": "#030712", "subtleSurface": "#111827" }
+  }
+}
