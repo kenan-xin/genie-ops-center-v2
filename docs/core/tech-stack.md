@@ -1,0 +1,107 @@
+# Genie Ops Center: Tech Stack
+
+Status: draft for review, versions checked against npm on 2026-09-17. Versions are major lines; the lockfile pins exact versions. Every entry states why it is here, so a future replacement argues against a reason, not a habit.
+
+Four packages below 1.0 sit in load-bearing places: drizzle-orm and drizzle-kit (1.0 is a release candidate), TanStack Pacer, TanStack Devtools, and oxfmt. Each is pinned to an exact version and upgraded in its own pull request with the changelog read. The migration tool is the serious one, because a migration history is hard to regenerate, so drizzle-kit moves to 1.0 only after its release notes name the migration format as unchanged.
+
+## Runtime and language
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Runtime | Node.js | 26 | Enters long-term support in October 2026, before Section 0 ships, and Node 24 drops to maintenance in the same month. Native TypeScript stripping and stable fetch. The Dockerfile base image and the `engines` field pin the same major. |
+| Language | TypeScript, strict | 7.x | One language across app, modules, scripts, and tests. Version 7 is the native compiler, so type checks across the monorepo stay fast. |
+| Package manager | pnpm | 12.x | Workspaces for the monorepo, strict dependency isolation, fast installs. |
+| Monorepo | pnpm workspaces with Nx | current release | pnpm links the packages. Nx owns the task graph: `nx affected -t build test lint typecheck` runs only what a change touches, with local and remote caching and dependency-ordered execution. Tasks are inferred from each package's scripts, so packages stay plain pnpm packages. Project tags mirror the layers (`app`, `core`, `ui`, `module`). Nx's boundary rule can run on oxlint through `@nx/oxlint`, but that bridge is experimental and depends on an oxlint plugin API outside its semantic versioning, so the import direction is enforced by the plain oxlint `no-restricted-imports` rule instead. That rule matches import strings, not the project graph, which is enough for four fixed layers. Revisit when `@nx/oxlint` is stable. |
+
+## Web application
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Framework | Next.js, App Router | 16.x | Server components for per-tenant data, route handlers for auth and streaming, one deployable. |
+| UI library | React | 19.x | Required by Next.js 16. |
+| Styling | Tailwind CSS | 4.x | Token-driven utilities. CSS variables carry the fixed and tenant token layers. |
+| Components | shadcn on Base UI (`@base-ui/react`) | shadcn 4.x, Base UI 1.x | Stable since 1.0; the old `@base-ui-components/react` scope is deprecated. Accessible headless primitives with owned source, so `packages/ui` can carry the design tokens without wrapping a third-party theme. Base UI rather than Radix. |
+| Data fetching | tRPC with TanStack Query, through `@trpc/tanstack-react-query` | tRPC 11.x, Query 5.x | End-to-end types from module routers to module screens. tRPC is the transport and the type source. TanStack Query owns all server state on the client, so tRPC does not replace it: the tRPC package only builds `queryOptions` for TanStack Query. The App Router setup and its rules are in the paragraph below the table. |
+| Validation | zod | 4.x | One schema per form and procedure, shared by client and server. |
+| Forms | TanStack Form | 1.x | Typed field state, async validation, and the same zod schema the tRPC procedure validates, passed directly as a validator through Standard Schema (zod 4 implements it, so no adapter package). Chosen over react-hook-form so forms, tables, queries, and devtools share one ecosystem. Module configuration cards on Tenant Settings are rendered by a small `ConfigForm` on the same stack from the module's zod schema (five field kinds, DEC-28); no form-engine library. |
+| Rate control | TanStack Pacer | current release, pinned | Debounce, throttle, rate limit, and queue, with a framework-agnostic core and React hooks that expose state (pending, executions left). Used for search boxes, autosave, chat send, and API-call pacing in the browser, and the core throttles the chat lease heartbeat on the server. Plain, stateless helpers still come from es-toolkit. |
+| Client state | zustand (github.com/pmndrs/zustand) | 5.x | Complex client state only, for example shell layout, multi-step forms, and module editors. Version 5 targets React 18 and 19 through `useSyncExternalStore`. Every store uses the `devtools` middleware in development. Server state stays in TanStack Query; trivial local state stays in `useState`. |
+| Tables | TanStack Table | 9.x | Headless tables for admin and module lists. Sorting, filtering, pagination, column visibility, and row selection in one API. |
+| Developer tools | TanStack Devtools | 0.x, pinned | One in-app panel in development, mounted once in `apps/genie`, with the Query, Form, and Pacer panels and a Genie Ops Center panel that shows the current tenant, user, groups, and effective permissions. Only the Vite plugin strips it at build time, and this project builds with Next.js, so the mount lives in one file that is imported through `next/dynamic` behind a `process.env.NODE_ENV === "development"` check, and the packages are development dependencies. |
+| Chat rendering | AI SDK with Streamdown | ai 7.x | Streaming UI for the solutions module and phase-two contract chat. |
+| Logging | pino | 10.x | JSON lines with request, tenant, and user ids; level from `LOG_LEVEL`; redaction list for secrets and tokens (`DEC-31`). Shipped by the platform, not by the app. |
+| Internationalization | next-intl | current release | One English message catalog from the first screen so a second language is a translation task, not a refactor (`DEC-13`). |
+| Utilities | es-toolkit | 1.x | Typed, tree-shakeable helpers (groupBy, pick, chunk, and the rest). Replaces lodash and ad hoc helpers in `lib/`. Reach for the standard library first, es-toolkit second, a hand-written helper last. Timing helpers that need React state use TanStack Pacer instead. |
+
+The tRPC and TanStack Query setup follows the tRPC App Router guide and the TanStack advanced server rendering guide, and these rules come from them. The integration package is `@trpc/tanstack-react-query` with `createTRPCContext` on the client and `createTRPCOptionsProxy` on the server, not the older `@trpc/react-query` hooks. The route handler is `app/api/trpc/[trpc]/route.ts` on the fetch adapter, and its context comes from the `TenantContext` and the current session (`DEC-34`). One `makeQueryClient()` factory sets a `staleTime` above zero and dehydrates pending queries. On the server, `getQueryClient` is wrapped in React `cache()` so one request shares one client, and a new client is created per request. In the browser, the client is a module singleton created outside `useState`, so a suspended first render does not discard it. A server component only prefetches with `prefetch(trpc.x.queryOptions())` inside `HydrateClient`, and the client component reads with `useQuery` or `useSuspenseQuery`, so the server never renders data that the client will refetch. When a server component needs the value itself, it uses the server caller from `createCaller`, and that value never reaches the query cache. Server Actions are never a `queryFn`, because they run one at a time and leave queries pending. Mutations go through tRPC procedures as well, one place for validation and audit.
+
+## Data
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Database | PostgreSQL | 16 | One database per deployment, and a deployment serves one customer (ADR 0007). Row-level security is not used; isolation is by deployment and database. |
+| ORM and migrations | Drizzle ORM with drizzle-kit | 0.45.x, 0.31.x | Typed schema per module, each with its own migration history and migrations table, core with another (`DEC-33`). Histories apply at container start under one advisory lock, core first. |
+| Driver | node-postgres (`pg`) | 8.x | One pool per deployment, built at startup inside the tenant context and never exported (`DEC-34`). |
+| File storage | Postgres `file_blob` behind a `FileStorage` interface | own code | Default adapter: bytes in the database, so isolation and backups come with the database and no storage service is run. Optional object-store adapter per deployment when volume grows, built on FlyDrive (`DEC-20`). |
+| SVG sanitizer | DOMPurify on jsdom | current release, pinned | Every uploaded SVG passes through it in core before the bytes are stored, with the SVG profile only, `foreignObject` and `style` forbidden, and only same-document references allowed, so scripts, event handlers, external references, and foreign objects are stripped (`DEC-20`). jsdom is the DOM that DOMPurify needs on the server and must stay current. |
+| Object storage | FlyDrive | later, current release | One API over S3 and S3-compatible services, Google Cloud Storage, and Azure Blob Storage through a community driver, so the object-store adapter is written once. Added with that adapter, after the core sections (`DEC-20`). |
+| Job queue | pg-boss | current release | Postgres-backed queue and scheduler in the deployment's database. Reminders, syncs, retries, deletion holds, and later scanning and extraction. Its `key_strict_fifo` queue policy backs the `serializeBy` option on an event subscription, so one record's events run one at a time in order. No new infrastructure (`DEC-12`). |
+| Vector search | pgvector | when a module needs it | Inside the tenant database when the customer's Postgres allows the extension. Otherwise an external index. |
+
+## Identity and access
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Session and account library | Better Auth | 1.7.x | One instance per deployment, built inside the tenant context, database-backed sessions, 15-minute idle timeout, account linking. Two-factor plugin for the break-glass administrator (`DEC-15`). |
+| Identity broker | Keycloak | 26.x | One realm per tenant. Brokers any OpenID Connect or SAML 2.0 provider and federates LDAP or Active Directory. Holds local accounts, passwords, and second factors for a tenant without a provider. Normalizes groups into one claim. The app speaks only OIDC to Keycloak, and uses a per-realm admin service client to create accounts for local-account tenants. |
+| App to Keycloak | Better Auth `genericOAuth` Keycloak provider | bundled | Authorization code with PKCE. Callback `/api/auth/callback/keycloak`, the core callback route since Better Auth 1.7. Sign-in is `signIn.social({ provider: "keycloak" })` with no client plugin. The realm template registers the same path as the client redirect URI. |
+| Customer identity providers | Microsoft Entra ID, Okta, Ping, ADFS, Google Workspace, LDAP or Active Directory | customer's | Configured in Keycloak per realm. Entra is an example, not a requirement. |
+| Authorization | In-application scoped role-based access | own code | `role`, `role_assignment`, one `can()` seam. Keycloak authorization services are not used. |
+| Provisioning | SCIM | later | Not in Keycloak core. An extension or an app endpoint when a customer requires push-based joiners and leavers. |
+
+## Communication
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Email templates | React Email (`@react-email/components`, `react-email` for preview) | components 1.x, preview tool 6.x | Every email Genie Ops Center initiates, rendered with the tenant's branding values. |
+| Email, Genie-hosted deployment | Resend (`resend` package) | 6.x | Hosted delivery behind the core mailer interface. |
+| Email, customer-hosted deployment | SMTP | any | Government and healthcare deployments will not allow a hosted mail provider. One mailer interface, two adapters. |
+| Credential emails, local-account tenants | Keycloak built-in email templates | none | Set password, reset password, verify email carry Keycloak action tokens, so Keycloak sends them, unstyled, with the realm display name (`DEC-40`). Brokered tenants never receive these. |
+| AI chat backend | External Genie chat API | external | Server-side streaming proxy. Secrets never reach the browser. |
+
+## Quality
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Unit tests | Vitest | 5.x | Fast, TypeScript-native. Pure logic in core and modules: permission resolution, tenant routing, schema validation, branding color math. |
+| Integration tests | Vitest with Testcontainers | 5.x, Testcontainers 12.x | Each test file gets a disposable Postgres container with the real migration history applied. No database mocks. Covers Drizzle queries, tRPC procedures, and the two-context isolation test across two databases in one process (`DEC-34`). |
+| Accessibility checks | axe-core through Playwright | current release | WCAG 2.1 AA checks on every end-to-end screen (`DEC-21`). |
+| End-to-end tests | Playwright | 1.x | Real browser against one seeded deployment and a Keycloak test realm with a local test identity provider. Covers sign-in, role enforcement, branding, and each module's main path. Runs in CI on every merge to `develop`. |
+| Component tests | Vitest browser mode | 5.x | UI primitives and module screens in a real browser engine without a full app. Used where an end-to-end test is too slow for the feedback loop. |
+| Test data | Factories in `packages/core/testing` | own code | One factory per core table and per module table, so tests build a tenant, a user, a role, and a record in a few lines. Modules add factories for their own tables. |
+| Lint | oxlint | 1.x | Fast lint. Its `no-restricted-imports` configuration per package layer is what enforces the import direction between app, core, ui, and modules. |
+| Migration lint | Squawk (`squawk-cli`) | current release | Runs in the pull request pipeline over changed migration files and fails on a drop, a rename, a type change, or a new required column. A contract migration carries `-- squawk-ignore <rule>`. `drizzle-kit check` runs beside it (`DEC-43`). |
+| Format | oxfmt | 0.x, pinned | One formatter, enforced in the pre-commit hook. |
+| Git hooks | lefthook | 2.x | Format and lint on staged files. |
+| Type check | tsc | 7.x | `--noEmit` per package. |
+
+## Delivery
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| Container | Docker, one Dockerfile | current | Every customer's image comes from the same Dockerfile; `MODULE_INCLUDE` as a build argument decides which modules are compiled in (`DEC-33`). One image runs the app, the worker, and `genie-ops` through entrypoint flags. |
+| Image registry | GitHub Container Registry | current | One private image per customer, read with a token scoped to that image. Free for container storage and bandwidth as of 2026-09-17. Fallback: a `docker save` file on a private release (`DEC-33`). |
+| Startup | Bundled entrypoint (esbuild) | current | Validate env, connect to the database, migrate, serve. |
+| Deployment host | Coolify today | current | Runs every Genie-hosted stack and every Genie-managed customer host as a remote server over SSH, and can build a customer image from the repository with its build argument (`DEC-33`). Kubernetes with one namespace per customer and a rollout tool is the path when the count of stacks makes Coolify slow (ADR 0007). |
+| Stack shape | Docker Compose or Helm | per customer | Generated from `deploy/stack/`: the app, the worker, Keycloak unless the customer runs one, with the host's Postgres and SMTP, object storage optional (`DEC-33`). |
+| Secrets | Environment from the host's secret store | per host | `.env` is never committed; the database stores secret names for integrations, never values. |
+| Operator tooling | `genie-ops` command line inside the image | own code | Setup, identity provider, administrators, modules, break-glass, migrate, retire. No operator console (`DEC-14`). |
+| Customer configuration files | zod strict schemas, `yaml` parser, `z.toJSONSchema()` | zod 4.x, yaml 2.x | One strict schema each for `tenant.yaml` and `branding.seed.json`, read by the generator and by `genie-ops setup`, so no value can live in both files. The JSON Schema for editors is emitted from the same zod schema and committed under `deploy/schemas/` (`DEC-35`). `yaml` parses the YAML file; no second validation library. |
+| Malware scanning | ClamAV in a job enqueued after upload | later | Flips `file.scan_status`; added without a migration (`DEC-20`). |
+| Observability | Structured logs, health endpoint, OpenTelemetry | planned | One customer per deployment, so the stack name is the tenant field. Traces added when a customer's load needs them. |
+
+## Explicitly not used
+
+- A `tenant_id` column with row-level security. Rejected for the isolation requirements of government, healthcare, and finance customers.
+- Keycloak Organizations as the tenancy unit. Kept as an option if realm count ever passes the hundreds.
+- An authorization policy language or external policy engine in the foundation. The `can()` seam is the upgrade point.
