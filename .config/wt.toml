@@ -1,0 +1,9 @@
+# Worktrunk project config — https://worktrunk.dev
+
+[step.copy-ignored]
+# bd resolves linked worktrees to the main repo's .beads workspace on its own;
+# copying the embedded Dolt DB into worktrees only forks stale state (locks,
+# sockets, push-state) and ~2MB of dead weight per worktree.
+# Note: patterns here are anchored; ".beads/**" is what matches the ignored
+# children inside .beads/ (".beads" alone does not).
+exclude = [".beads/**"]
