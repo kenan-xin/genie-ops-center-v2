@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Genie Ops Center: One Customer's Deployment",
+    "quality_profile": "showcase",
+    "viewBox": [1280, 680],
+    "views": [
+      { "id": "one-image", "label": "One image, three entrypoints", "focus": ["app", "worker", "ops"], "note": "The app, the job worker, and genie-ops start from the same image. The worker reads its pg-boss jobs from the one database." },
+      { "id": "identity-chain", "label": "Identity chain", "focus": ["app", "keycloak", "idp"], "note": "The realm brokers the customer's own identity provider. The app speaks only OIDC to the realm." },
+      { "id": "host-supplies", "label": "What the host supplies", "focus": ["proxy", "db", "mail"], "note": "Postgres, the mail server, and the reverse proxy with the certificate come from the host, not from the stack." }
+    ]
+  },
+  "components": [
+    { "id": "idp", "type": "external", "label": "Customer identity provider", "sublabel": "OIDC, SAML, or LDAP", "pos": [900, 60], "size": [190, 62] },
+    { "id": "users", "type": "external", "label": "Employees", "sublabel": "PUBLIC_URL in the browser", "pos": [40, 390], "size": [190, 62] },
+    { "id": "proxy", "type": "security", "label": "Reverse proxy", "sublabel": "owns the certificate", "pos": [330, 390], "size": [180, 62], "tag": "host" },
+    { "id": "mail", "type": "external", "label": "Mail server", "sublabel": "SMTP or provider", "pos": [330, 550], "size": [180, 62], "tag": "host" },
+    { "id": "worker", "type": "backend", "label": "Job worker", "sublabel": "same image, pg-boss jobs", "pos": [620, 230], "size": [190, 62], "tag": "image" },
+    { "id": "app", "type": "backend", "label": "Genie Ops Center app", "sublabel": "core + this customer's modules", "pos": [620, 390], "size": [190, 62], "tag": "image" },
+    { "id": "ops", "type": "backend", "label": "genie-ops", "sublabel": "same image, docker exec", "pos": [620, 550], "size": [190, 62], "tag": "image" },
+    { "id": "keycloak", "type": "security", "label": "Keycloak realm", "sublabel": "from the template", "pos": [900, 230], "size": [190, 62], "tag": "stack or existing server" },
+    { "id": "db", "type": "database", "label": "Postgres database", "sublabel": "the one database", "pos": [900, 390], "size": [190, 62], "tag": "host" }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Compose stack: one image, three entrypoints, plus Keycloak", "wraps": ["app", "worker", "ops", "keycloak"], "pad": 14 },
+    { "kind": "region", "label": "One customer's host: Genie's servers or the customer's", "wraps": ["proxy", "mail", "app", "worker", "ops", "keycloak", "db"], "pad": 24 }
+  ],
+  "connections": [
+    { "from": "users", "to": "proxy", "label": "HTTPS", "variant": "emphasis" },
+    { "from": "proxy", "to": "app", "label": "HTTP on PORT", "variant": "emphasis" },
+    { "from": "app", "to": "keycloak", "label": "OIDC", "variant": "security", "fromSide": "top", "toSide": "bottom" },
+    { "from": "keycloak", "to": "idp", "label": "brokered sign-in", "variant": "security" },
+    { "from": "app", "to": "db", "label": "SQL, tenant context", "labelDy": -25 },
+    { "from": "ops", "to": "db", "label": "setup, migrate", "fromSide": "right", "toSide": "left" },
+    { "from": "app", "to": "mail", "label": "invitation emails", "variant": "dashed", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "The database is the tenant", "items": ["One deployment, one customer, one database, one realm (ADR 0007)", "No tenant column, no tenant registry, no hostname routing"] },
+    { "dot": "rose", "title": "Identity chain", "items": ["The customer's identity provider decides who can enter", "Keycloak brokers it in this customer's realm; Better Auth owns the session"] },
+    { "dot": "emerald", "title": "One image per customer", "items": ["Built from the one Dockerfile with this customer's module list (DEC-33)", "Pulled from a private registry; holds no secret, every secret comes from .env"] }
+  ]
+}

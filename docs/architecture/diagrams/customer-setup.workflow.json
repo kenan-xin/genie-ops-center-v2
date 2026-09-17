@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Genie Ops Center: Set Up a New Customer",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "prepare", "label": "Prepare in the repository", "focus": ["generate", "fill", "build"], "note": "A developer creates the customer folder, fills tenant.yaml, and builds the image with that customer's modules." },
+      { "id": "run", "label": "Run on the host", "focus": ["start", "setup", "idp"], "note": "The operator writes .env, starts the stack, runs setup, and adds the identity provider." },
+      { "id": "stop-conditions", "label": "Where it stops", "focus": ["start", "unhealthy", "setup", "setup_failed"], "note": "A failed migration keeps the previous version serving. A failed setup step is fixed and rerun." }
+    ]
+  },
+  "lanes": [
+    { "id": "repo", "label": "Repository (developer)" },
+    { "id": "host", "label": "Customer host (operator)" },
+    { "id": "signin", "label": "Sign-in check" },
+    { "id": "exceptions", "label": "Failures", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "prepare_phase", "label": "Prepare", "fromCol": 0, "toCol": 2 },
+    { "id": "run_phase", "label": "Run", "fromCol": 3, "toCol": 4, "variant": "emphasis" },
+    { "id": "handover_phase", "label": "Hand over", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["generate", "fill", "build", "start", "setup", "idp", "first_signin"],
+  "nodes": [
+    { "id": "generate", "lane": "repo", "col": 0, "type": "frontend", "label": "Generate folder", "sublabel": "nx g tenant:new", "width": 140 },
+    { "id": "fill", "lane": "repo", "col": 1, "type": "frontend", "label": "Fill tenant.yaml", "sublabel": "modules, admins", "width": 140 },
+    { "id": "build", "lane": "repo", "col": 2, "type": "backend", "label": "Build, push image", "sublabel": "build script", "tag": "no secret inside", "width": 140 },
+    { "id": "start", "lane": "host", "col": 3, "type": "cloud", "label": ".env, compose up", "sublabel": "migrates at start", "width": 140 },
+    { "id": "setup", "lane": "host", "col": 4, "type": "security", "label": "genie-ops setup", "sublabel": "realm, roles, admin", "tag": "resumable", "width": 140 },
+    { "id": "idp", "lane": "host", "col": 5, "type": "security", "label": "genie-ops idp set", "sublabel": "customer's provider", "width": 140 },
+    { "id": "first_signin", "lane": "signin", "col": 5, "type": "external", "label": "First sign-in", "sublabel": "break-glass, then admin", "width": 140 },
+    { "id": "unhealthy", "lane": "exceptions", "col": 3, "type": "security", "label": "Unhealthy", "sublabel": "old version serves", "width": 140 },
+    { "id": "setup_failed", "lane": "exceptions", "col": 4, "type": "security", "label": "Step failed", "sublabel": "fix, rerun setup", "width": 140 }
+  ],
+  "edges": [
+    { "from": "generate", "to": "fill" },
+    { "from": "fill", "to": "build", "label": "module list" },
+    { "from": "build", "to": "start", "label": "docker compose pull", "variant": "emphasis" },
+    { "from": "start", "to": "setup", "label": "not-set-up page" },
+    { "from": "setup", "to": "idp", "label": "password printed once", "variant": "security" },
+    { "from": "idp", "to": "first_signin", "variant": "emphasis" },
+    { "from": "start", "to": "unhealthy", "label": "migration failed", "variant": "security", "role": "error" },
+    { "from": "setup", "to": "setup_failed", "label": "step failed", "variant": "security", "role": "error" },
+    { "from": "setup_failed", "to": "setup", "label": "rerun", "variant": "dashed", "role": "return" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "One path for every hosting mode", "items": ["The same steps run on Genie's servers or the customer's", "The hosting mode only changes who runs them (DEC-35)"] },
+    { "dot": "rose", "title": "Secrets", "items": ["The image holds none; .env holds every secret and is never committed", "The break-glass password goes to the secret store of whoever operates the stack"] },
+    { "dot": "cyan", "title": "Stop conditions", "items": ["A failed migration keeps the container unhealthy and the previous version serving", "Setup continues from the failed step when rerun"] }
+  ]
+}

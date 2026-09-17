@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Sign-in through Keycloak and the customer's identity provider",
+    "quality_profile": "showcase",
+    "viewBox": [1000, 544],
+    "column_fit": "spread",
+    "views": [
+      { "id": "authenticate", "label": "Authenticate", "focus": ["user", "app", "keycloak", "entra"], "note": "The browser is redirected from the app to the tenant's Keycloak realm and on to the customer's identity provider." },
+      { "id": "exchange", "label": "Exchange and provision", "focus": ["app", "keycloak", "db"], "note": "The app exchanges the code, then creates or links the user and opens a session." }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "Employee", "sublabel": "browser" },
+    { "id": "app", "type": "frontend", "label": "Customer app", "sublabel": "Next.js + Better Auth" },
+    { "id": "keycloak", "type": "security", "label": "Keycloak", "sublabel": "customer realm" },
+    { "id": "entra", "type": "external", "label": "Identity provider", "sublabel": "customer's: Entra, Okta, SAML, LDAP" },
+    { "id": "db", "type": "database", "label": "Postgres", "sublabel": "user, account, session" }
+  ],
+  "segments": [
+    { "from": 150, "to": 290, "label": "Authenticate" },
+    { "from": 298, "to": 436, "label": "Exchange and provision" },
+    { "from": 444, "to": 472, "label": "Session" }
+  ],
+  "messages": [
+    { "id": "open-login", "from": "user", "to": "app", "y": 163, "label": "open /login, click Sign in", "variant": "default" },
+    { "id": "authorize", "from": "app", "to": "keycloak", "y": 191, "label": "302 authorize (PKCE, state)", "variant": "emphasis" },
+    { "id": "broker", "from": "keycloak", "to": "entra", "y": 219, "label": "redirect to the realm's default identity provider", "variant": "security" },
+    { "id": "ms-login", "from": "user", "to": "entra", "y": 247, "label": "company sign-in: credentials + MFA", "variant": "security" },
+    { "id": "entra-token", "from": "entra", "to": "keycloak", "y": 275, "label": "id_token or SAML assertion (email, groups)", "variant": "return" },
+    { "id": "callback", "from": "keycloak", "to": "app", "y": 310, "label": "302 /api/auth/callback/keycloak?code", "variant": "return" },
+    { "id": "exchange", "from": "app", "to": "keycloak", "y": 338, "label": "exchange code for tokens", "variant": "emphasis" },
+    { "id": "tokens", "from": "keycloak", "to": "app", "y": 366, "label": "id_token + access_token", "variant": "return" },
+    { "id": "provision", "from": "app", "to": "db", "y": 394, "label": "upsert user, link keycloak account, insert session", "variant": "default" },
+    { "id": "session-row", "from": "db", "to": "app", "y": 422, "label": "session row", "variant": "return" },
+    { "id": "cookie", "from": "app", "to": "user", "y": 456, "label": "set session cookie, 302 to workspace", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "app", "from": 186, "to": 198, "type": "frontend" },
+    { "participant": "keycloak", "from": 186, "to": 226, "type": "security" },
+    { "participant": "entra", "from": 214, "to": 281, "type": "external" },
+    { "participant": "keycloak", "from": 270, "to": 316, "type": "security" },
+    { "participant": "app", "from": 305, "to": 462, "type": "frontend" },
+    { "participant": "keycloak", "from": 333, "to": 372, "type": "security" },
+    { "participant": "db", "from": 389, "to": 428, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Who decides entry", "items": ["The customer's identity provider: only people it assigns can sign in", "Keycloak brokers it per realm and stores no employee password"] },
+    { "dot": "emerald", "title": "Provisioning", "items": ["Invite mode: pre-added person activated, unknown email refused. JIT mode: unknown email created", "The break-glass admin is the only account with a password"] },
+    { "dot": "amber", "title": "Offboarding", "items": ["Removal in the identity provider blocks the next authorize step", "The live session dies within the 15 minute idle window"] }
+  ]
+}
