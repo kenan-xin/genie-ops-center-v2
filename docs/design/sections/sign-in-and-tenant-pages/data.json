@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "models": {
+      "tenantBranding": "The tenant's sign-in page branding: identity, colors, welcome text, notice, support contact, and links, as saved in the Branding admin pages.",
+      "signInState": "The reason banner shown at the top of the sign-in card, if any.",
+      "breakGlassAdmin": "The break-glass administrator account state that drives the admin door steps and the rate-limit refusal.",
+      "tenantSettings": "The tenant settings that change the sign-in page: local accounts and the idle timeout.",
+      "setupSteps": "Progress of the eight `genie-ops setup` steps. Until all are done every route renders the not-set-up page and the health endpoint reports degraded."
+    },
+    "relationships": [
+      "tenantBranding belongs to the one tenant this deployment serves and is read by every auth page; the app never inspects the hostname",
+      "signInState is one of several variants of the same sign-in page",
+      "breakGlassAdmin belongs to one tenant and has no relation to members; mustChangePassword and mustEnrollAuthenticator decide the door steps and gate the limited-session page",
+      "setupSteps are written by the operator CLI, not by the app; the not-set-up page only reads them"
+    ]
+  },
+  "tenantBranding": {
+    "companyName": "Meridian Health",
+    "productName": "Genie Ops Center",
+    "logoLightUrl": null,
+    "logoDarkUrl": null,
+    "primaryColor": "#2563eb",
+    "defaultTheme": "system",
+    "loginBackgroundColor": "#f2f4f7",
+    "loginBackgroundUrl": null,
+    "loginWelcomeText": "Sign in with your Meridian Health account to open your assigned solutions.",
+    "loginNoticeText": "This system is for authorized Meridian Health staff only. Activity on this system is logged and monitored in line with the Information Security Policy. Do not enter patient-identifiable data into a solution unless it is approved for clinical use. By continuing you accept these conditions.",
+    "loginNoticeRequiresAcknowledgement": true,
+    "supportEmail": "it-service-desk@meridianhealth.example",
+    "supportUrl": null,
+    "termsUrl": "https://meridianhealth.example/terms",
+    "privacyUrl": "https://meridianhealth.example/privacy"
+  },
+  "tenantSettings": {
+    "localAccountsEnabled": false,
+    "sessionIdleMinutes": 15,
+    "forgotPasswordUrl": null
+  },
+  "signInStates": [
+    { "id": "default", "banner": null },
+    { "id": "signed-out", "banner": { "tone": "neutral", "text": "You are signed out." } },
+    { "id": "session-expired", "banner": { "tone": "neutral", "text": "Your session expired after a period of inactivity. Sign in again to continue." } },
+    { "id": "not-registered", "banner": { "tone": "warning", "text": "Your company account is not registered for this workspace. Ask your administrator to add you, then sign in again." } },
+    { "id": "account-disabled", "banner": { "tone": "warning", "text": "Your access to this workspace is disabled. Contact your administrator." } }
+  ],
+  "breakGlassAdmin": {
+    "email": "breakglass@meridianhealth.example",
+    "mustChangePassword": true,
+    "mustEnrollAuthenticator": true,
+    "enrollment": {
+      "otpauthUri": "otpauth://totp/Genie%20Ops%20Center:breakglass%40meridianhealth.example?secret=JBSWY3DPEHPK3PXP&issuer=Genie%20Ops%20Center",
+      "manualKey": "JBSW Y3DP EHPK 3PXP",
+      "issuer": "Genie Ops Center"
+    },
+    "retryAfterMinutes": 15,
+    "errors": {
+      "credentials": "That email and password did not match.",
+      "code": "That code is not valid. Codes change every 30 seconds.",
+      "notAdmin": "This sign-in is not available for your account."
+    },
+    "passwordPolicy": {
+      "minLength": 14,
+      "rules": ["At least 14 characters", "Three of four: uppercase, lowercase, digit, symbol", "Not your email", "Not the password you were given at provisioning"]
+    }
+  },
+  "setupSteps": [
+    { "step": "migrations", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:11Z" },
+    { "step": "realm", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:19Z" },
+    { "step": "identity_provider", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:24Z" },
+    { "step": "clients", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:27Z" },
+    { "step": "roles", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:29Z" },
+    { "step": "admin_seed", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:33Z" },
+    { "step": "break_glass", "state": "failed", "detail": "Keycloak refused the user create call (409 Conflict): a user with this email already exists in the realm.", "updatedAt": "2026-09-16T08:02:35Z" },
+    { "step": "settings", "state": "pending", "detail": null, "updatedAt": "2026-09-16T08:02:35Z" }
+  ]
+}
