@@ -1,0 +1,130 @@
+# Deployment guide
+
+Status: 2026-09-17. This guide tells an operator how to run Genie Ops Center for one customer, which hosting mode to choose, and what changes when the count of customers grows. It uses only Docker, Docker Compose, and the tools inside the image. A deployment panel can wrap these steps, but the steps do not depend on one. Decisions behind this guide: ADR 0007, `DEC-33`, `DEC-35`, `DEC-36`.
+
+## The shape of one deployment
+
+Diagram: `../architecture/diagrams/platform-architecture.html` (source `platform-architecture.architecture.json`). The setup steps below are drawn in `../architecture/diagrams/customer-setup.html` (source `customer-setup.workflow.json`).
+
+The steps in this guide are the reference and the fallback. Normal operation will be automated later, and the automation runs the same script, compose file, and commands as this guide with no step of its own (`DEC-38`, `OPEN-7`). Every customer runs its own deployment. A deployment is one image, one Postgres database, and one Keycloak realm. The image carries core plus that customer's modules and nothing else. The image holds no secret. Every secret and every host value comes from `.env` at run time (`../architecture/environment-contract.md`).
+
+A stack is three containers from the same image plus Keycloak:
+
+- The application, on `PORT` behind the reverse proxy.
+- The job worker, started with the worker entrypoint flag.
+- `genie-ops`, run on demand with `docker compose exec` (`DEC-14`).
+- Keycloak, from the stack template, unless the customer already runs a Keycloak server.
+
+Postgres, the mail server, and the reverse proxy with the certificate are supplied by the host. They are not part of the stack.
+
+## Choose the hosting mode
+
+The hosting mode changes no code, no command, and no configuration file. It decides who does the operator work. Record it in the customer's runbook, never in `tenant.yaml` (`DEC-35`).
+
+| Mode | Where the stack runs | Who upgrades | Who holds the break-glass password | Who backs up | Choose it when |
+| --- | --- | --- | --- | --- | --- |
+| Genie-hosted | Genie's servers | Genie | Genie | Genie | The customer has no infrastructure requirement. |
+| Customer-hosted, Genie-managed | The customer's infrastructure | Genie, over SSH access that the customer grants | Genie | The customer's platform team, by agreement | The customer requires its own region or premises but wants Genie to operate the product. This is the mode for the first customer. |
+| Customer-hosted, customer-managed | The customer's infrastructure | The customer, by pulling the next tag | The customer | The customer | The customer does not grant Genie access. Support is by this guide and release notes. |
+
+## What the count of customers changes
+
+Up to about twenty customers, every stack is set up and upgraded by hand with the steps in this guide. One host can run several Genie-hosted stacks side by side, each with its own database, realm, and `.env`. Upgrade work grows with the count of stacks, so keep a list of every stack and its current version in the runbooks folder.
+
+Around a hundred customers, upgrade work by hand becomes the bottleneck. ADR 0007 records two paths, and neither is started before the count demands it:
+
+1. Keep one deployment per customer and add a rollout tool. Kubernetes with one namespace per customer applies the same image tag to every namespace in one command. The Helm values file in `customers/<slug>/deploy/` exists for this path.
+2. Return to many customers in one process. Every read of the database, settings, branding, and files goes through the tenant context (`DEC-34`), so this path changes how the context is built and nothing else. It needs a new ADR, because it brings back the shared database server and the isolation tests it requires.
+
+## Before you start
+
+Make sure that the target host has the following. The customer's platform team supplies them in a customer-hosted mode.
+
+- Docker with the Compose plugin.
+- A Postgres database and a role that owns it. The image creates every table.
+- A mail server or a mail provider account, for the invitation and notification emails. Setup and the first administrator's sign-in send no email, so this can arrive after setup, but it must be configured before the first "Add person" in `invite` mode. A local-accounts realm sends its set-password email through the realm's own SMTP settings, not through this mailer.
+- A public hostname with a certificate at the reverse proxy. This hostname is `PUBLIC_URL` (`DEC-19`). The proxy must let a streamed response stay open for hours with no read or idle timeout on `/api/m/solutions/chat`, because a chat solution can run a workflow for that long.
+- A Keycloak server, if the customer already runs one. If not, the stack template starts one.
+- A decision on file storage. The default keeps file bytes in the database. A customer who wants their own bucket, or files above 15 MB, sets `FILE_STORAGE_ADAPTER=s3` and the `S3_*` variables in `.env` before setup, and can then raise `FILE_MAX_BYTES` (`DEC-44`). Choose before go-live, because a later switch needs `genie-ops files migrate`, which is not built yet (`DEC-20`).
+- A read-only token for the customer's image on the registry, or the image file for a host without internet access.
+
+## Set up a new customer
+
+1. In the repository, run `nx g @genie/tenant:new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, `.env.example`, and `values.yaml`.
+2. Fill `tenant.yaml`: the module list, the onboarding mode, `local_accounts`, the first administrators, and the break-glass email. Every field is read by the generator or by setup (`DEC-35`, `DEC-36`). Keep the onboarding mode at `invite` unless the customer asked for `jit`. In `jit` mode the identity provider is the only gate: every person the provider lets sign in gets an active account. Before a customer switches to `jit`, make sure that the customer restricted the application assignment in their provider to the people who must have access (`DEC-7`).
+3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
+4. Copy `compose.yaml` to the host. It is committed and holds no secret and no host value.
+5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only.
+6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`.
+7. Open `PUBLIC_URL`. The application migrates the database at start and shows the not-set-up page until setup runs.
+8. Run setup with a Keycloak server administrator credential in the environment of that one command:
+
+   ```sh
+   docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD='...' app genie-ops setup
+   ```
+
+   Setup uses the credential for the realm step only and never writes it anywhere (`DEC-37`). Do not put these two variables in `.env`. In a customer-hosted mode, the customer's platform team types the credential, so Genie never holds it. Setup creates the realm from the template, the clients, the system roles, the first administrators as pending people, one `tenant_module` row per module, the branding seed, and the break-glass account.
+9. Setup prints the break-glass password once. Store it in the secret store of whoever holds it in the chosen hosting mode. Do not write it anywhere else.
+10. If the customer has an identity provider, add it with `genie-ops idp set` (next section). If `local_accounts` is on, skip this step.
+11. Sign in at `PUBLIC_URL/admin/login` with the break-glass account. Change the password and enroll the authenticator app.
+12. Ask one first administrator to sign in through the identity provider. Setup pre-added them as a pending person and sent no invitation, and this first sign-in activates them. Make sure that they land in the workspace and that the admin switch shows in their menu.
+13. Record the host, the database, the mail server, the Keycloak server, the hosting mode, and the image version in the customer's runbook.
+
+Setup is resumable. If a step fails, fix the cause and run the same command again. It continues from the failed step (`setup_step` in `../architecture/data-shape.md`). A rerun after the realm step does not need the bootstrap credential.
+
+## Add the identity provider
+
+The protocol and the credentials of the customer's identity provider are not in any file in the repository. Run `docker compose exec app genie-ops idp set` with the protocol (OIDC, SAML, or LDAP), the issuer or metadata URL, the client id, and the client secret as arguments. The command writes the provider into the realm, sets it as the default redirector, and maps the group claim. The customer must register `PUBLIC_URL/api/auth/callback/keycloak` and the realm's broker endpoint on their side. The runbook for the realm lists the exact values per protocol. Ask the customer to emit only the groups assigned to the application in the token. Microsoft Entra ID sends no `groups` claim for a person in more than 200 groups, and Genie Ops Center then keeps that person's previous memberships and writes an audit event (`DEC-41`).
+
+## Upgrade
+
+1. Build and push the new version with the build script, or hand over the new image file.
+2. On the host, change `IMAGE_TAG` in `.env` to the new version.
+3. Run `docker compose pull` and `docker compose up -d`.
+4. The new container applies the migration histories under one lock before it serves. If a migration fails, the container stays unhealthy and the previous version keeps serving. Read the container log, fix the cause, and repeat step 3.
+
+Every release upgrades from the last three releases (`DEC-9`). A customer-managed stack that is more than three releases behind must upgrade through an intermediate release. Release notes name the oldest release that each version upgrades from. The migrator logs the count of pending migrations at start, so read that line after an upgrade of a stack that was behind (`DEC-43`).
+
+## Recovery by scenario
+
+Three accounts exist with different jobs. A tenant administrator is a normal person with the `Tenant administrator` role, who signs in through the identity provider and passes every permission check. The break-glass account is one emergency account per deployment, with a password and an authenticator app, reachable only at `PUBLIC_URL/admin/login`, that never uses the identity provider and bypasses every permission check. The `genie-ops` commands run on the host and need no sign-in at all.
+
+| Problem | What to do | Why this one |
+| --- | --- | --- |
+| The last administrator left the company or was disabled at the identity provider. Other people still sign in. | `genie-ops admin add <email>` (next section). | One scoped action, audited, no unchecked session. |
+| Same problem, but you cannot reach the host command line. | Break-glass sign-in, then People, then give the role. | The only path left that does not need the host. |
+| Nobody can sign in, administrators included. The identity provider is down, misconfigured, or the realm is broken. | Break-glass sign-in to reach the admin screens, and `genie-ops idp set` on the host to fix the provider. | Only the break-glass account signs in without the provider. |
+| The person who holds the break-glass password left. | `genie-ops break-glass rotate` (`DEC-24`). | New password, authenticator cleared, sessions ended. |
+| The break-glass authenticator is lost. | `genie-ops break-glass rotate`. | Same command, same result. |
+| A setup step failed. | Fix the cause and run `genie-ops setup` again. | Setup resumes from the failed step. |
+| The worker log shows a job moved to a dead-letter queue. | Read the error, fix the cause, then retry the job from the dead-letter queue or delete it. | A failed job on a serialized key blocks every later job for that key until it is retried or deleted. |
+
+Use the break-glass account only for the rows that name it, and sign out as soon as the fix is done. Every action in that session bypasses the permission checks (`DEC-15`).
+
+## Recover a customer with no administrator
+
+This happens when the last person with the `Tenant administrator` role left the company or was disabled at the identity provider. Act only on a written request from the customer that names the new administrator.
+
+Recommended: on the host, run the following command. It adds the person to `Genie Administrators`, and their next sign-in through the identity provider gives them the role.
+
+```sh
+docker compose exec app genie-ops admin add alice@example.com
+```
+
+Alternative, only when you cannot reach the host command line: the holder of the break-glass password signs in at `PUBLIC_URL/admin/login`, opens People, and gives the person the `Tenant administrator` role. Sign out of the break-glass account as soon as this is done. Every action in that session bypasses the permission checks (`DEC-15`).
+
+Both paths write an audit event. Record the request and the date in the customer's runbook. In a customer-managed mode the customer's platform team does this, because Genie has no access. If the person who holds the break-glass password leaves, run `genie-ops break-glass rotate` instead (`DEC-24`).
+
+## A customer who already runs Keycloak
+
+Supported. Point `KEYCLOAK_URL` at the customer's server and run setup as usual. Setup creates a fresh Genie realm there from the template. The customer's existing identity provider is then added to that realm with `genie-ops idp set`, so their people still sign in once with the account they already have.
+
+Not supported: setup against an existing realm with its own users and clients (`DEC-36`). The realm template gives the two clients, the admin service client with rights in this realm only, the group mapper, PKCE, trust email, and brute-force protection. In an existing realm each of these becomes a manual check. If a contract requires it, `DEC-36` names the change.
+
+## Backups
+
+Back up the database and `.env`. The image is rebuilt from the repository, and the realm is recreated by setup from the template plus `realm.overrides.json`, so neither needs a backup, but a realm export after setup shortens a restore. A Genie-hosted database gets a nightly logical backup kept for 30 days (`DEC-31`). A customer-managed stack backs up on its own schedule. Test a restore on a second host before go-live, and every quarter after that.
+
+## Retire a customer
+
+Stop the stack with `docker compose down`. Keep the database, the realm, and the last backup for 90 days. After the hold, run `genie-ops retire --confirm` against the database to delete what Genie holds (`DEC-17`). A customer-managed stack retires itself. Genie deletes only what Genie holds, such as the image on the registry.
