@@ -1,0 +1,96 @@
+{
+  "_meta": {
+    "models": {
+      "solution": "A solution in the catalogue, of type chat (external bot, endpoint, theme, welcome text, starter prompts, feedback toggle) or embedded (public HTTPS iframe URL, allow fullscreen), with identity, category, and status with reason.",
+      "category": "An ordered grouping of solutions. One category per solution. Solutions without one show under Other.",
+      "chatTheme": "Styling for the chat surface: header color, bubble colors, radius, font, placeholder. The tenant branding is the undeletable default.",
+      "favorite": "A member's pinned solution with a position.",
+      "recent": "A solution the member opened recently, with the opened time.",
+      "conversation": "The member's single current conversation with one solution: the streamed messages of this session only. Genie stores only a session handle; `resumed` is true when the viewer reopened an existing bot-side conversation, and earlier messages are not shown.",
+      "accessGrant": "Effective access to a solution: a role assignment with the solutions:use permission, scoped to the solution or tenant-wide, direct or via a group.",
+      "viewer": "The signed-in person with the permission keys they hold. solutions:admin unlocks the admin views. The sample viewer is a member (Alex Morgan); admin screens are previewed as Priya Nair.",
+      "approvedFont": "A font a chat theme may pick, by id and label. The list is fixed by the platform.",
+      "person": "A person summary for the Access overview picker: name, email, and group names used to resolve grants via groups.",
+      "chatEnabled": "Deployment flag: false when GENIE_CHAT_API_ALLOWED_ORIGINS is empty and chat streaming is off (DEC-30)."
+    },
+    "relationships": [
+      "solution belongs to zero or one category and to one chatTheme (null means the tenant branding default)",
+      "favorite and recent belong to the viewer and to one solution",
+      "conversation belongs to the viewer and one solution",
+      "accessGrant points at one solution (or all, when scope is tenant) and at a person or group",
+      "solution.apiEndpoint is a public HTTPS URL entered per solution; there is no tenant-level list"
+    ]
+  },
+  "chatEnabled": true,
+  "viewer": { "id": "usr_alex", "name": "Alex Morgan", "permissions": ["solutions:use"], "grantedSolutionIds": ["sol_claims", "sol_discharge", "sol_referral", "sol_policy", "sol_invoice", "sol_general", "sol_portal"] },
+  "categories": [
+    { "id": "cat_health", "name": "Healthcare", "position": 1 },
+    { "id": "cat_finance", "name": "Finance", "position": 2 },
+    { "id": "cat_hr", "name": "People and HR", "position": 3 },
+    { "id": "cat_empty", "name": "Legal", "position": 4 }
+  ],
+  "chatThemes": [
+    { "id": "default", "name": "Tenant branding", "isDefault": true, "headerColor": "#2563eb", "headerForeground": "#ffffff", "userBubbleColor": "#2563eb", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#f3f4f6", "assistantBubbleForeground": "#111827", "radius": 16, "font": "plus-jakarta-sans", "placeholder": "Ask a question" },
+    { "id": "theme_clinical", "name": "Clinical calm", "isDefault": false, "headerColor": "#0f766e", "headerForeground": "#ffffff", "userBubbleColor": "#0f766e", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#ecfdf5", "assistantBubbleForeground": "#064e3b", "radius": 20, "font": "plus-jakarta-sans", "placeholder": "Describe the case or paste the note" },
+    { "id": "theme_finance", "name": "Ledger", "isDefault": false, "headerColor": "#1f2937", "headerForeground": "#ffffff", "userBubbleColor": "#1f2937", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#f9fafb", "assistantBubbleForeground": "#111827", "radius": 8, "font": "ibm-plex-sans", "placeholder": "Ask about a policy or invoice" },
+    { "id": "theme_unused", "name": "Sunrise (unused)", "isDefault": false, "headerColor": "#c2410c", "headerForeground": "#ffffff", "userBubbleColor": "#c2410c", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#fff7ed", "assistantBubbleForeground": "#431407", "radius": 24, "font": "manrope", "placeholder": "Say hello" }
+  ],
+  "approvedFonts": [
+    { "id": "plus-jakarta-sans", "label": "Plus Jakarta Sans" },
+    { "id": "ibm-plex-sans", "label": "IBM Plex Sans" },
+    { "id": "manrope", "label": "Manrope" },
+    { "id": "source-serif-4", "label": "Source Serif 4" }
+  ],
+  "solutions": [
+    { "id": "sol_claims", "slug": "claims-triage", "type": "chat", "feedbackEnabled": true, "name": "Claims Triage Assistant", "description": "Sorts incoming insurance claims by urgency and flags missing documents before a reviewer opens the file.", "categoryId": "cat_health", "monogram": "CT", "accentColor": "#0f766e", "status": "ready", "statusReason": null, "chatThemeId": "theme_clinical", "welcomeText": "Paste a claim summary or ask how a claim should be triaged.", "starterPrompts": ["Triage this claim summary", "What documents are missing for a day-surgery claim?", "Explain the urgency levels"], "externalBotId": "bot_7f3a9c", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-09-14T03:12:00Z" },
+    { "id": "sol_discharge", "slug": "discharge-summary", "type": "chat", "feedbackEnabled": false, "name": "Discharge Summary Drafting", "description": "Drafts a discharge summary from ward notes for a clinician to review and sign.", "categoryId": "cat_health", "monogram": "DS", "accentColor": "#2563eb", "status": "ready", "statusReason": null, "chatThemeId": "theme_clinical", "welcomeText": "Paste the ward notes. I draft, you decide.", "starterPrompts": ["Draft a summary from these notes", "List follow-up actions", "Rewrite for the patient in plain language"], "externalBotId": "bot_1c88e2", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-09-10T08:40:00Z" },
+    { "id": "sol_referral", "slug": "referral-review", "type": "chat", "feedbackEnabled": true, "name": "Referral Letter Review", "description": "Checks outgoing referral letters for completeness against the receiving specialty's requirements.", "categoryId": "cat_health", "monogram": "RL", "accentColor": "#7c3aed", "status": "maintenance", "statusReason": "Model endpoint upgrade in progress. Expected back by 14:00 SGT.", "chatThemeId": "theme_clinical", "welcomeText": "Paste a referral letter to check it.", "starterPrompts": ["Check this referral letter", "What does cardiology require?"], "externalBotId": "bot_9d02b1", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-09-16T07:02:00Z" },
+    { "id": "sol_policy", "slug": "policy-qa", "type": "chat", "feedbackEnabled": true, "name": "Policy Q&A", "description": "Answers questions about internal finance and procurement policies with citations to the policy document.", "categoryId": "cat_finance", "monogram": "PQ", "accentColor": "#1f2937", "status": "ready", "statusReason": null, "chatThemeId": "theme_finance", "welcomeText": "Ask about any finance or procurement policy.", "starterPrompts": ["What is the approval limit for a department head?", "How do I raise a purchase order above 50k?"], "externalBotId": "bot_44aa10", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-08-30T02:00:00Z" },
+    { "id": "sol_invoice", "slug": "invoice-checker", "type": "chat", "feedbackEnabled": false, "name": "Vendor Invoice Checker", "description": "Compares a vendor invoice against its purchase order and flags mismatches.", "categoryId": "cat_finance", "monogram": "VI", "accentColor": "#b45309", "status": "down", "statusReason": "The vendor data feed is unavailable. The finance systems team is working on it.", "chatThemeId": "theme_finance", "welcomeText": "Paste the invoice lines and the PO number.", "starterPrompts": ["Check this invoice against PO 48812"], "externalBotId": "bot_e1f0c3", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-09-16T01:15:00Z" },
+    { "id": "sol_general", "slug": "general-assistant", "type": "chat", "feedbackEnabled": true, "name": "General Assistant", "description": "A general-purpose assistant for drafting, summarizing, and answering everyday questions. No access to internal systems.", "categoryId": null, "monogram": "GA", "accentColor": "#2563eb", "status": "ready", "statusReason": null, "chatThemeId": null, "welcomeText": "How can I help today?", "starterPrompts": ["Summarize this text", "Draft an email", "Explain a term"], "externalBotId": "bot_000gen", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-07-01T00:00:00Z" },
+    { "id": "sol_onboarding", "slug": "hr-onboarding", "type": "chat", "feedbackEnabled": false, "name": "Onboarding Buddy", "description": "Answers new-joiner questions about leave, benefits, and the first weeks.", "categoryId": "cat_hr", "monogram": "OB", "accentColor": "#db2777", "status": "draft", "statusReason": "Awaiting HR sign-off on the benefits answers.", "chatThemeId": null, "welcomeText": "Welcome aboard. Ask me anything about your first weeks.", "starterPrompts": ["How much annual leave do I get?", "When is my first payday?"], "externalBotId": "bot_hr2026", "apiEndpoint": "https://chat-staging.genie.example/public-api/v2/workflow/chatbot/chats", "archived": false, "updatedAt": "2026-09-15T09:30:00Z" },
+    { "id": "sol_portal", "slug": "benefits-portal", "type": "embedded", "name": "Benefits Portal", "description": "The HR benefits self-service portal, opened inside Genie.", "categoryId": "cat_hr", "monogram": "BP", "accentColor": "#0369a1", "status": "ready", "statusReason": null, "chatThemeId": null, "welcomeText": "", "starterPrompts": [], "externalBotId": "", "apiEndpoint": "", "iframeUrl": "https://benefits.meridianhealth.example/portal", "allowFullscreen": true, "archived": false, "updatedAt": "2026-09-12T06:00:00Z" },
+    { "id": "sol_radiology", "slug": "radiology-trial", "type": "chat", "feedbackEnabled": false, "name": "Radiology Report Helper", "description": "Trial ended in May 2026.", "categoryId": "cat_health", "monogram": "RR", "accentColor": "#64748b", "status": "ready", "statusReason": null, "chatThemeId": null, "welcomeText": "", "starterPrompts": [], "externalBotId": "bot_rad001", "apiEndpoint": "https://chat.genie.example/public-api/v2/workflow/chatbot/chats", "archived": true, "updatedAt": "2026-05-02T09:00:00Z" }
+  ],
+  "favorites": [
+    { "solutionId": "sol_claims", "position": 1 },
+    { "solutionId": "sol_policy", "position": 2 }
+  ],
+  "recents": [
+    { "solutionId": "sol_claims", "openedAt": "2026-09-16T09:20:00Z" },
+    { "solutionId": "sol_discharge", "openedAt": "2026-09-16T08:05:00Z" },
+    { "solutionId": "sol_policy", "openedAt": "2026-09-15T14:30:00Z" }
+  ],
+  "conversation": {
+    "solutionId": "sol_claims",
+    "startedAt": "2026-09-16T09:20:00Z",
+    "streaming": false,
+    "resumed": false,
+    "error": null,
+    "messages": [
+      { "id": "m1", "role": "user", "text": "Triage this claim: 54F, day surgery for cataract, invoice SGD 4,200, discharge letter attached, no pre-authorisation form.", "at": "2026-09-16T09:21:10Z" },
+      { "id": "m2", "role": "assistant", "reasoning": "Elective procedure, amount above the day-surgery threshold, pre-authorisation missing. Routine urgency; list the missing documents.", "feedback": "up", "text": "**Urgency: Routine.**\n\nCataract day surgery is an elective procedure, so this claim does not need same-day review.\n\n**Missing documents**\n\n1. Pre-authorisation form (required for day surgery above SGD 3,000)\n2. Itemised hospital bill\n\n**Suggested next step:** request both from the policyholder before assigning a reviewer.", "at": "2026-09-16T09:21:18Z" },
+      { "id": "m3", "role": "user", "text": "Is the pre-authorisation form still required if the surgery was an emergency?", "at": "2026-09-16T09:23:02Z" },
+      { "id": "m4", "role": "assistant", "text": "No. For emergency admissions the pre-authorisation form is waived, but the claim must include the emergency department note showing the admission time. Cataract surgery is almost never an emergency, so in this case the form is still required.", "at": "2026-09-16T09:23:09Z" },
+      { "id": "m5", "role": "user", "text": "Show me the triage decision as a flow.", "at": "2026-09-16T09:24:40Z" },
+      { "id": "m6", "role": "assistant", "reasoning": "A small decision flow: elective versus emergency, then the amount threshold, then the missing-document check.", "text": "Here is the decision flow for this claim type:\n\n```mermaid\nflowchart TD\n  A[Claim received] --> B{Emergency admission?}\n  B -- No --> C{Amount above SGD 3,000?}\n  B -- Yes --> D[Attach ED note]\n  C -- Yes --> E[Pre-authorisation form required]\n  C -- No --> F[Itemised bill only]\n  E --> G[Routine review]\n  F --> G\n  D --> G\n```\n\nThe cataract claim follows the **No, Yes** path, so the form is required.", "at": "2026-09-16T09:24:52Z", "interrupted": true }
+    ]
+  },
+  "accessGrants": [
+    { "id": "ag_1", "solutionId": "sol_claims", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Claims Review", "memberCount": 17, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_2", "solutionId": null, "roleName": "Solutions user", "scope": "tenant", "principalType": "group", "principalName": "AI Pilot Cohort", "memberCount": 5, "via": null, "addedBy": "Leila Haddad" },
+    { "id": "ag_3", "solutionId": "sol_discharge", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Clinical Operations", "memberCount": 42, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_4", "solutionId": "sol_referral", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Clinical Operations", "memberCount": 42, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_5", "solutionId": "sol_policy", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Finance", "memberCount": 9, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_6", "solutionId": "sol_invoice", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Finance", "memberCount": 9, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_7", "solutionId": null, "roleName": "Solutions administrator", "scope": "tenant", "principalType": "user", "principalName": "Priya Nair", "memberCount": null, "via": null, "addedBy": "Leila Haddad" },
+    { "id": "ag_8", "solutionId": "sol_general", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Pilot Wave 1 (2025)", "memberCount": 6, "via": null, "addedBy": "Priya Nair" },
+    { "id": "ag_9", "solutionId": "sol_portal", "roleName": "Solutions user", "scope": "solution", "principalType": "group", "principalName": "Clinical Operations", "memberCount": 42, "via": null, "addedBy": "Priya Nair" }
+  ],
+  "people": [
+    { "id": "usr_alex", "name": "Alex Morgan", "email": "alex.morgan@meridianhealth.example", "groupNames": ["Clinical Operations", "Claims Review", "AI Pilot Cohort"] },
+    { "id": "usr_priya", "name": "Priya Nair", "email": "priya.nair@meridianhealth.example", "groupNames": ["Genie Administrators", "Clinical Operations"] },
+    { "id": "usr_wei", "name": "Wei Ling Tan", "email": "weiling.tan@meridianhealth.example", "groupNames": ["Finance"] },
+    { "id": "usr_daniel", "name": "Daniel Okafor", "email": "daniel.okafor@meridianhealth.example", "groupNames": [] }
+  ]
+}
