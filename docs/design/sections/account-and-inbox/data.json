@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "models": {
+      "user": "The signed-in person, as synced from the tenant's identity provider on the last sign-in.",
+      "breakGlassUser": "The tenant's break-glass administrator account. Its account page shows Change password and Authenticator blocks instead of Preferences and roles.",
+      "passwordPolicy": "The shared password rule shown on the break-glass Change password block. Rule 4 is checked only when saving.",
+      "authenticatorEnrolledAt": "Break-glass only: when the current authenticator app was enrolled.",
+      "group": "A group the person belongs to, from the directory or created locally by an administrator.",
+      "session": "An active browser session of the person. One is the current one.",
+      "preference": "The person's overrides of the tenant defaults for language, time zone, and theme, with the tenant defaults alongside.",
+      "roleGrant": "A role the person holds, with the scope it applies to.",
+      "notification": "An inbox item written by a module event. Read when readAt is set.",
+      "idleTimeout": "The idle-timeout state that drives the countdown modal.",
+      "tenantSupport": "The tenant's support contact shown in empty states."
+    },
+    "relationships": [
+      "user has many groups",
+      "user has many sessions, exactly one with isCurrent true",
+      "user has one preference",
+      "user has many roleGrants, each scoped to the whole tenant or to one record",
+      "user has many notifications",
+      "idleTimeout applies to the current session"
+    ]
+  },
+  "user": {
+    "id": "usr_01j9x3",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@meridianhealth.example",
+    "avatarUrl": null,
+    "identitySource": "Microsoft Entra ID",
+    "lastSyncedAt": "2026-09-16T08:12:44Z",
+    "isBreakGlass": false
+  },
+  "breakGlassUser": {
+    "id": "usr_breakglass",
+    "name": "Break-glass administrator",
+    "email": "breakglass@meridianhealth.example",
+    "avatarUrl": null,
+    "identitySource": "Genie (local password and authenticator)",
+    "lastSyncedAt": "2026-09-16T01:30:00Z",
+    "isBreakGlass": true
+  },
+  "passwordPolicy": {
+    "minLength": 14,
+    "rules": ["At least 14 characters", "Three of four: uppercase, lowercase, digit, symbol", "Not your email", "Not the password you were given at provisioning"]
+  },
+  "authenticatorEnrolledAt": "2026-06-03T02:10:00Z",
+  "groups": [
+    { "id": "grp_clinops", "name": "Clinical Operations", "source": "idp" },
+    { "id": "grp_claims", "name": "Claims Review", "source": "idp" },
+    { "id": "grp_pilot", "name": "AI Pilot Cohort", "source": "local" }
+  ],
+  "sessions": [
+    { "id": "ses_a1", "device": "Windows 11", "browser": "Edge 129", "ipAddress": "203.0.113.24", "signedInAt": "2026-09-16T08:12:44Z", "lastActiveAt": "2026-09-16T09:41:03Z", "isCurrent": true },
+    { "id": "ses_b2", "device": "iPhone", "browser": "Safari 18", "ipAddress": "198.51.100.7", "signedInAt": "2026-09-15T22:03:10Z", "lastActiveAt": "2026-09-16T07:55:20Z", "isCurrent": false },
+    { "id": "ses_c3", "device": "macOS", "browser": "Chrome 130", "ipAddress": "192.0.2.88", "signedInAt": "2026-09-14T13:20:00Z", "lastActiveAt": "2026-09-14T13:34:51Z", "isCurrent": false }
+  ],
+  "preference": {
+    "locale": null,
+    "timeZone": "Asia/Singapore",
+    "theme": "dark",
+    "tenantDefaults": { "locale": "en", "timeZone": "Asia/Singapore", "theme": "system" },
+    "availableLocales": [{ "code": "en", "label": "English" }],
+    "availableTimeZones": ["Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Jakarta", "Asia/Bangkok", "Asia/Manila", "Asia/Tokyo", "Australia/Sydney", "Europe/London", "UTC"]
+  },
+  "roleGrants": [
+    { "id": "rg_1", "roleName": "Solutions user", "moduleName": "Solutions", "permissionCount": 1, "scopeType": "solution", "scopeLabel": "Claims Triage Assistant", "via": "Claims Review" },
+    { "id": "rg_2", "roleName": "Solutions user", "moduleName": "Solutions", "permissionCount": 1, "scopeType": "solution", "scopeLabel": "Discharge Summary Drafting", "via": "Clinical Operations" },
+    { "id": "rg_3", "roleName": "Solutions user", "moduleName": "Solutions", "permissionCount": 1, "scopeType": null, "scopeLabel": "Whole tenant", "via": "AI Pilot Cohort" },
+    { "id": "rg_4", "roleName": "Solutions user", "moduleName": "Solutions", "permissionCount": 1, "scopeType": "solution", "scopeLabel": "Referral Letter Review", "via": "Clinical Operations" }
+  ],
+  "notifications": [
+    { "id": "ntf_1", "kind": "solutions:access-granted", "title": "You now have access to Referral Letter Review", "body": "Priya Nair granted the Solutions user role for Referral Letter Review to the Clinical Operations group.", "link": "/s/referral-review", "createdAt": "2026-09-16T09:20:11Z", "readAt": null },
+    { "id": "ntf_2", "kind": "solutions:status", "title": "Claims Triage Assistant is in maintenance", "body": "The solution is paused while the model endpoint is updated. Expected back by 14:00 SGT. Your conversation resumes when it returns.", "link": "/s/claims-triage", "createdAt": "2026-09-16T07:02:00Z", "readAt": null },
+    { "id": "ntf_3", "kind": "core:session:new", "title": "New sign-in on macOS, Chrome 130", "body": "A new session started from 192.0.2.88. If this was not you, sign it out from your account page and tell the IT service desk.", "link": "/account#sessions", "createdAt": "2026-09-14T13:20:05Z", "readAt": null },
+    { "id": "ntf_4", "kind": "solutions:access-granted", "title": "You now have access to Discharge Summary Drafting", "body": "Granted through the Clinical Operations group.", "link": "/s/discharge-summary", "createdAt": "2026-09-11T10:45:00Z", "readAt": "2026-09-11T11:02:13Z" },
+    { "id": "ntf_5", "kind": "core:role-changed", "title": "Your role in Solutions changed", "body": "You were added to the AI Pilot Cohort group, which holds the Solutions user role for the whole tenant.", "link": "/account#roles", "createdAt": "2026-09-08T16:30:00Z", "readAt": "2026-09-08T16:31:40Z" },
+    { "id": "ntf_6", "kind": "solutions:new-solution", "title": "New in Healthcare: Referral Letter Review", "body": "A new solution was added to the Healthcare category.", "link": "/s/referral-review", "createdAt": "2026-09-05T09:00:00Z", "readAt": "2026-09-05T09:10:00Z" }
+  ],
+  "idleTimeout": {
+    "idleMinutes": 15,
+    "warnAtSecondsLeft": 120,
+    "secondsLeft": 97,
+    "isWarning": true
+  },
+  "tenantSupport": {
+    "companyName": "Meridian Health",
+    "supportEmail": "it-service-desk@meridianhealth.example",
+    "supportUrl": null,
+    "accountManagementUrl": "https://id.genie.example/realms/meridian/account/#/security/signingin",
+    "grantedBy": "your tenant administrator"
+  },
+  "emptyStates": {
+    "inbox": { "heading": "Nothing in your inbox", "body": "Access changes and solution updates will show up here." },
+    "noSolutions": { "heading": "No solutions yet", "body": "Ask your administrator to grant you access to a solution." }
+  }
+}
