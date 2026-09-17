@@ -1,0 +1,268 @@
+{
+  "_meta": {
+    "models": {
+      "tenant": "The branding values an email reads: names, publicHost (links only), Keycloak base URL and realm, account type, logo mark, primary color and its stored foreground, font key, sender name, reply-to, footer, support, and legal links. Under ADR 0007 one deployment serves one customer; the two entries are two sample deployments shown side by side to prove that templates follow branding, not two tenants of one deployment.",
+      "template": "One email template with subject, preheader, heading, paragraphs, details rows, button, note, closing, and reason. Sender is genie (React Email) or keycloak (Keycloak's built-in template, unstyled: paragraphs[0], then the link, then the remaining paragraphs).",
+      "sampleValues": "Values for the tokens in template text so previews read like real mail. Recipients are keyed by sample deployment.",
+      "reviewerEmail": "Where Send test to me delivers."
+    },
+    "relationships": [
+      "Every template renders against any sample deployment; nothing in a template is deployment-specific",
+      "Keycloak templates are Keycloak's built-in templates (DEC-40): unstyled, printing the realm display name (the company name) only; sent through the realm SMTP settings (sender name and reply-to), only to local-account deployments",
+      "The From address is the deployment MAIL_FROM (no-reply@genie.example); the tenant sets the display name and reply-to"
+    ]
+  },
+  "reviewerEmail": "priya.nair@meridianhealth.example",
+  "tenants": [
+    { "id": "meridian", "companyName": "Meridian Health", "productName": "Genie Ops Center", "publicHost": "meridian.genie.example", "keycloakUrl": "https://id.genie.example", "realm": "meridian", "accountType": "brokered", "logoMarkUrl": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232563eb'/><path d='M16 46V18l16 16 16-16v28' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>", "logoMarkText": "M", "primaryColor": "#2563eb", "primaryForeground": "#ffffff", "fontFamily": "plus-jakarta-sans", "emailSenderName": "Meridian Health Genie", "emailReplyTo": "it-service-desk@meridianhealth.example", "emailFooterText": "Meridian Health Pte Ltd, 12 Harbourfront Avenue, Singapore 098585. You receive this email because you have a Genie account.", "supportEmail": "it-service-desk@meridianhealth.example", "supportUrl": null, "termsUrl": "https://meridianhealth.example/terms", "privacyUrl": "https://meridianhealth.example/privacy" },
+    { "id": "northwind", "companyName": "Northwind Logistics", "productName": "Northwind Hub", "publicHost": "northwind.genie.example", "keycloakUrl": "https://id.genie.example", "realm": "northwind", "accountType": "local", "logoMarkUrl": null, "logoMarkText": "NW", "primaryColor": "#0f766e", "primaryForeground": "#ffffff", "fontFamily": "ibm-plex-sans", "emailSenderName": "Northwind Hub", "emailReplyTo": "helpdesk@northwind.example", "emailFooterText": "Northwind Logistics Pte Ltd, 8 Changi Business Park Avenue 1, Singapore 486018.", "supportEmail": "helpdesk@northwind.example", "supportUrl": "https://help.northwind.example", "termsUrl": null, "privacyUrl": "https://northwind.example/privacy" }
+  ],
+  "sampleValues": {
+    "recipients": {
+      "meridian": { "name": "Daniel Okafor", "email": "daniel.okafor@meridianhealth.example" },
+      "northwind": { "name": "Farah Ismail", "email": "farah.ismail@northwind.example" }
+    },
+    "inviterName": "Priya Nair",
+    "roleName": "Chat user",
+    "scopeLabel": "Claims Triage Assistant",
+    "removedBy": "Leila Haddad",
+    "remainingSolutions": "General Assistant and Policy Q&A",
+    "moduleName": "Contracts",
+    "notificationTitle": "Supplier contract with Apex Medical Supplies renews in 30 days",
+    "notificationBody": "The contract CTR-2024-118 renews automatically on 16 October 2026 unless it is cancelled before then. Review the terms and confirm the renewal or start the cancellation.",
+    "actionLabel": "Review contract",
+    "recordLabel": "CTR-2024-118",
+    "deviceLabel": "Chrome 130 on macOS",
+    "ipAddress": "203.0.113.42",
+    "signedInAt": "16 Sept 2026, 17:20 (Asia/Singapore)",
+    "sentAt": "2026-09-16T09:41:00Z"
+  },
+  "templates": [
+    {
+      "id": "invitation-brokered",
+      "name": "Invitation (brokered)",
+      "sender": "genie",
+      "trigger": "An administrator adds a person in a tenant that signs in through its identity provider.",
+      "subject": "{inviterName} added you to {productName}",
+      "preheader": "Sign in with your {companyName} account to open your assigned solutions.",
+      "eyebrow": null,
+      "heading": "You have been added to {productName}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{inviterName} added you to {productName} at {companyName}. Sign in with your usual {companyName} account. There is no separate password.",
+        "After you sign in, you see the solutions your roles allow. If something you expect is missing, ask {inviterName}."
+      ],
+      "details": [
+        { "label": "Account", "value": "{recipientEmail}" },
+        { "label": "Added by", "value": "{inviterName}" }
+      ],
+      "button": { "label": "Open {productName}", "url": "https://{publicHost}/" },
+      "buttonNote": "If the button does not work, copy the address into your browser.",
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because an administrator added you to {productName}."
+    },
+    {
+      "id": "invitation-local",
+      "name": "Invitation (local account)",
+      "sender": "genie",
+      "trigger": "An administrator adds a person in a tenant with local accounts on. Keycloak sends the set-password email separately.",
+      "subject": "{inviterName} added you to {productName}",
+      "preheader": "A separate email lets you set your password.",
+      "eyebrow": null,
+      "heading": "You have been added to {productName}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{inviterName} added you to {productName} at {companyName}. Your account uses its own password.",
+        "A second email with the subject \"Set your {companyName} password\" arrives within a few minutes. Set your password from that email first, then sign in here."
+      ],
+      "details": [
+        { "label": "Account", "value": "{recipientEmail}" },
+        { "label": "Added by", "value": "{inviterName}" }
+      ],
+      "button": { "label": "Open {productName}", "url": "https://{publicHost}/" },
+      "buttonNote": "Set your password before you use this link. If the button does not work, copy the address into your browser.",
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because an administrator added you to {productName}."
+    },
+    {
+      "id": "role-granted",
+      "name": "Role granted",
+      "sender": "genie",
+      "trigger": "A role is assigned to the person directly, or the person joins a group that holds a role.",
+      "subject": "You can now use {scopeLabel}",
+      "preheader": "{inviterName} granted you {roleName}.",
+      "eyebrow": null,
+      "heading": "New access: {roleName}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{inviterName} granted you the role {roleName} for {scopeLabel}. It is available the next time you open {productName}."
+      ],
+      "details": [
+        { "label": "Role", "value": "{roleName}" },
+        { "label": "Scope", "value": "{scopeLabel}" },
+        { "label": "Granted by", "value": "{inviterName}" }
+      ],
+      "button": { "label": "Open {scopeLabel}", "url": "https://{publicHost}/s/claims-triage" },
+      "buttonNote": null,
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because your access in {productName} changed."
+    },
+    {
+      "id": "role-removed",
+      "name": "Role removed",
+      "sender": "genie",
+      "variantLabel": "Has other access",
+      "trigger": "A role is revoked from the person, or the person leaves a group that held it.",
+      "subject": "Your access to {scopeLabel} was removed",
+      "preheader": "{removedBy} removed {roleName}.",
+      "eyebrow": null,
+      "heading": "Access removed: {roleName}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{removedBy} removed the role {roleName} for {scopeLabel}. You can no longer open it.",
+        "You can still open {remainingSolutions}. If you think this is a mistake, contact {removedBy}."
+      ],
+      "details": [
+        { "label": "Role", "value": "{roleName}" },
+        { "label": "Scope", "value": "{scopeLabel}" },
+        { "label": "Removed by", "value": "{removedBy}" }
+      ],
+      "button": { "label": "Open {productName}", "url": "https://{publicHost}/" },
+      "buttonNote": null,
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because your access in {productName} changed."
+    },
+    {
+      "id": "role-removed-last",
+      "name": "Role removed (nothing left)",
+      "sender": "genie",
+      "variantOf": "role-removed",
+      "variantLabel": "Nothing left",
+      "trigger": "The same event when the removed role was the person's last grant. No button: there is nothing to open.",
+      "subject": "Your access to {scopeLabel} was removed",
+      "preheader": "{removedBy} removed {roleName}.",
+      "eyebrow": null,
+      "heading": "Access removed: {roleName}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{removedBy} removed the role {roleName} for {scopeLabel}. You can no longer open it.",
+        "You have no solutions left in {productName}. Your account stays active, and you see them again when a role is granted. If you think this is a mistake, contact {removedBy}."
+      ],
+      "details": [
+        { "label": "Role", "value": "{roleName}" },
+        { "label": "Scope", "value": "{scopeLabel}" },
+        { "label": "Removed by", "value": "{removedBy}" }
+      ],
+      "button": null,
+      "buttonNote": null,
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because your access in {productName} changed."
+    },
+    {
+      "id": "new-device-sign-in",
+      "name": "New-device sign-in",
+      "sender": "genie",
+      "trigger": "Core emits core:session:new when a person signs in from a device not seen before.",
+      "subject": "New sign-in to {productName} from a new device",
+      "preheader": "A new session started from {deviceLabel} at {ipAddress}.",
+      "eyebrow": null,
+      "heading": "New sign-in from a new device",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "Your {productName} account was signed in from {deviceLabel} at {ipAddress} on {signedInAt}.",
+        "If this was you, no action is needed. If not, revoke the session from your account page and tell your administrator."
+      ],
+      "details": [
+        { "label": "Device", "value": "{deviceLabel}" },
+        { "label": "IP address", "value": "{ipAddress}" },
+        { "label": "Time", "value": "{signedInAt}" }
+      ],
+      "button": { "label": "Review sessions", "url": "https://{publicHost}/account#sessions" },
+      "buttonNote": "If the button does not work, copy the address into your browser.",
+      "closing": "The {companyName} IT team",
+      "reason": "You receive this email because a new device signed in to your {productName} account."
+    },
+    {
+      "id": "module-notification",
+      "name": "Module notification",
+      "sender": "genie",
+      "trigger": "A module emits a notification event for the person and the person's email preference allows it.",
+      "subject": "{notificationTitle}",
+      "preheader": "{moduleName} in {productName}",
+      "eyebrow": "{moduleName}",
+      "heading": "{notificationTitle}",
+      "paragraphs": [
+        "Hello {recipientName},",
+        "{notificationBody}"
+      ],
+      "details": [
+        { "label": "Record", "value": "{recordLabel}" },
+        { "label": "Module", "value": "{moduleName}" }
+      ],
+      "button": { "label": "{actionLabel}", "url": "https://{publicHost}/m/contracts/ctr-2024-118" },
+      "buttonNote": "You need to sign in to {productName} to open the record.",
+      "closing": "{productName}",
+      "reason": "You receive this email because {moduleName} notifications are turned on in your account preferences."
+    },
+    {
+      "id": "kc-set-password",
+      "name": "Set password",
+      "sender": "keycloak",
+      "trigger": "Keycloak sends it when an administrator adds a local-account person or resends the set-password email.",
+      "subject": "Update Your Account",
+      "preheader": "Your administrator has just requested that you update your {companyName} account by performing the following action(s): Update Password.",
+      "eyebrow": null,
+      "heading": "{companyName}",
+      "paragraphs": [
+        "Your administrator has just requested that you update your {companyName} account by performing the following action(s): Update Password. Click on the link below to start this process.",
+        "This link will expire within 12 hours.",
+        "If you are unaware that your administrator has requested this, just ignore this message and nothing will be changed."
+      ],
+      "details": [],
+      "button": { "label": "Link to account update", "url": "{keycloakUrl}/realms/{realm}/login-actions/action-token?key=eyJhbGciOiJIUzI1NiJ9" },
+      "buttonNote": null,
+      "closing": "",
+      "reason": ""
+    },
+    {
+      "id": "kc-reset-password",
+      "name": "Reset password",
+      "sender": "keycloak",
+      "trigger": "Keycloak sends it when a local-account person uses Forgot password on the sign-in page.",
+      "subject": "Reset password",
+      "preheader": "Someone has requested to reset the credentials for your {companyName} account.",
+      "eyebrow": null,
+      "heading": "{companyName}",
+      "paragraphs": [
+        "Someone has requested to reset the credentials for your {companyName} account. If this was you, click on the link below to reset them.",
+        "This link will expire within 30 minutes.",
+        "If you don't want to reset your credentials, just ignore this message and nothing will be changed."
+      ],
+      "details": [],
+      "button": { "label": "Link to reset credentials", "url": "{keycloakUrl}/realms/{realm}/login-actions/action-token?key=eyJhbGciOiJIUzI1NiJ9" },
+      "buttonNote": null,
+      "closing": "",
+      "reason": ""
+    },
+    {
+      "id": "kc-verify-email",
+      "name": "Verify email",
+      "sender": "keycloak",
+      "trigger": "Keycloak sends it when an administrator changes a local-account person's email address.",
+      "subject": "Verify email",
+      "preheader": "Someone has created a {companyName} account with this email address.",
+      "eyebrow": null,
+      "heading": "{companyName}",
+      "paragraphs": [
+        "Someone has created a {companyName} account with this email address. If this was you, click the link below to verify your email address.",
+        "This link will expire within 24 hours.",
+        "If you didn't create this account, just ignore this message."
+      ],
+      "details": [],
+      "button": { "label": "Link to e-mail address verification", "url": "{keycloakUrl}/realms/{realm}/login-actions/action-token?key=eyJhbGciOiJIUzI1NiJ9" },
+      "buttonNote": null,
+      "closing": "",
+      "reason": ""
+    }
+  ]
+}
