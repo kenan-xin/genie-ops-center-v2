@@ -1,0 +1,908 @@
+{
+  "_meta": {
+    "models": {
+      "auditEvent": "An append-only record of who did what, when, on which target, with a summary and structured metadata. Kept for the tenant's lifetime. Actor is null for system events.",
+      "auditFilterOptions": "The actors, action keys, and target types that appear in this tenant, used to fill the filter selects.",
+      "tenantSettings": "One row per tenant for the non-branding settings the administrator owns: onboarding mode, local accounts, session idle minutes.",
+      "realm": "What the tenant's Keycloak realm supports; brokered-only realms cannot enable local accounts.",
+      "moduleConfig": "Per-tenant configuration of one entitled module: the schema converted from the module's zod object (five field kinds, DEC-28) plus the stored values.",
+      "viewer": "The signed-in administrator with permission keys and time zone.",
+      "category": "A core category row (id, name, position) that groups navigation entries across modules (DEC-51). Counts are server-derived: solutions from solution_category, modules from tenant_module.category_id.",
+      "module": "One module compiled into the image with its tenant_module row: enabled, category_id, the <id>:use key, the seeded <Display name> user role, and who holds a role carrying that key, read from role_assignment (DEC-50)."
+    },
+    "relationships": [
+      "auditEvent.actor is a person (or null for System); erased people appear anonymized",
+      "auditEvent target is referenced by type and id; targetExists is false when the record was removed",
+      "moduleConfig belongs to one entitled module; Solutions declares no schema and has no card (DEC-30)",
+      "module.categoryId references a category or is null; Solutions carries none because its entries carry their own",
+      "module.holders is read only here; role assignment happens on the Roles screen (DEC-39)",
+      "category ids match the solutions section data so both trees show the same headings"
+    ]
+  },
+  "viewer": {
+    "id": "usr_priya",
+    "name": "Priya Nair",
+    "permissions": [
+      "core:people:manage",
+      "core:groups:manage",
+      "core:roles:manage",
+      "core:branding:manage",
+      "core:settings:manage",
+      "core:audit:read",
+      "solutions:admin"
+    ],
+    "timeZone": "Asia/Singapore"
+  },
+  "auditTotal": 1284,
+  "auditFilterOptions": {
+    "actors": [
+      {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      {
+        "id": "usr_alex",
+        "name": "Alex Morgan",
+        "email": "alex.morgan@meridianhealth.example"
+      },
+      {
+        "id": "usr_wei",
+        "name": "Wei Ling Tan",
+        "email": "weiling.tan@meridianhealth.example"
+      },
+      {
+        "id": "usr_daniel",
+        "name": "Daniel Okafor",
+        "email": "daniel.okafor@meridianhealth.example"
+      },
+      {
+        "id": "usr_bg",
+        "name": "Break-glass administrator",
+        "email": "breakglass@meridianhealth.example"
+      },
+      {
+        "id": "usr_erased_01",
+        "name": "Removed person",
+        "email": "",
+        "anonymized": true
+      }
+    ],
+    "actions": [
+      "core:sign-in",
+      "core:sign-in:failed",
+      "core:sign-out",
+      "core:session:revoked",
+      "core:person:added",
+      "core:person:disabled",
+      "core:person:enabled",
+      "core:person:removed",
+      "core:person:set-password-resent",
+      "core:group:created",
+      "core:group:members-changed",
+      "core:role:created",
+      "core:role:assigned",
+      "core:role:revoked",
+      "core:branding:published",
+      "core:settings:changed",
+      "core:module-config:changed",
+      "core:entitlement:enabled",
+      "core:break-glass:sign-in",
+      "core:break-glass:password-changed",
+      "solutions:solution:registered",
+      "solutions:solution:configured",
+      "solutions:status:changed",
+      "solutions:preview",
+      "solutions:feedback",
+      "solutions:solution:deleted"
+    ],
+    "targetTypes": [
+      "user",
+      "session",
+      "group",
+      "role",
+      "role_assignment",
+      "tenant_branding",
+      "tenant_settings",
+      "tenant_module",
+      "solution",
+      "message"
+    ]
+  },
+  "auditEvents": [
+    {
+      "id": "evt_01J9ZC6A1K0N7Q3M9V2R8T4X5B",
+      "occurredAt": "2026-09-16T09:41:12Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "solutions:status:changed",
+      "targetType": "solution",
+      "targetId": "sol_referral",
+      "targetLabel": "Referral Letter Review",
+      "targetExists": true,
+      "summary": "Set Referral Letter Review to Maintenance: Model endpoint upgrade in progress. Expected back by 14:00 SGT.",
+      "metadata": {
+        "from": "ready",
+        "to": "maintenance",
+        "reason": "Model endpoint upgrade in progress. Expected back by 14:00 SGT."
+      }
+    },
+    {
+      "id": "evt_01J9ZC5T7H2P4R6S8U0W1Y3Z5C",
+      "occurredAt": "2026-09-16T09:38:40Z",
+      "actor": {
+        "id": "usr_alex",
+        "name": "Alex Morgan",
+        "email": "alex.morgan@meridianhealth.example"
+      },
+      "action": "solutions:feedback",
+      "targetType": "message",
+      "targetId": "m2",
+      "targetLabel": "Reply in Claims Triage Assistant",
+      "targetExists": false,
+      "summary": "Thumbs up on a reply from Claims Triage Assistant.",
+      "metadata": {
+        "solutionId": "sol_claims",
+        "vote": "up",
+        "conversationHandle": "conv_8f1c…"
+      }
+    },
+    {
+      "id": "evt_01J9ZC5A9J4Q6S8T0V2X4Z6A8D",
+      "occurredAt": "2026-09-16T09:20:03Z",
+      "actor": {
+        "id": "usr_alex",
+        "name": "Alex Morgan",
+        "email": "alex.morgan@meridianhealth.example"
+      },
+      "action": "core:sign-in",
+      "targetType": "session",
+      "targetId": "ses_4b7e2c",
+      "targetLabel": "Session on Chrome, macOS",
+      "targetExists": true,
+      "summary": "Signed in through Microsoft Entra ID from 203.0.113.42.",
+      "metadata": {
+        "ipAddress": "203.0.113.42",
+        "userAgent": "Chrome 130 on macOS",
+        "identityProvider": "entra-id",
+        "newDevice": false
+      }
+    },
+    {
+      "id": "evt_01J9ZC4K2L6R8T0U2W4Y6A8B0E",
+      "occurredAt": "2026-09-16T08:55:27Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "solutions:preview",
+      "targetType": "solution",
+      "targetId": "sol_onboarding",
+      "targetLabel": "Onboarding Buddy",
+      "targetExists": true,
+      "summary": "Previewed Onboarding Buddy (Draft) as a member. Not counted as access.",
+      "metadata": {
+        "status": "draft",
+        "countedAsAccess": false
+      }
+    },
+    {
+      "id": "evt_01J9ZC3Z5M8S0U2V4X6Z8B0C2F",
+      "occurredAt": "2026-09-16T08:12:50Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:settings:changed",
+      "targetType": "tenant_settings",
+      "targetId": "tenant",
+      "targetLabel": "Tenant settings",
+      "targetExists": true,
+      "summary": "Changed session idle timeout from 20 to 15 minutes.",
+      "metadata": {
+        "field": "sessionIdleMinutes",
+        "from": 20,
+        "to": 15
+      }
+    },
+    {
+      "id": "evt_01J9ZC3H8N0T2V4W6Y8A0C2D4G",
+      "occurredAt": "2026-09-16T07:48:11Z",
+      "actor": null,
+      "action": "core:session:revoked",
+      "targetType": "session",
+      "targetId": "ses_91ad03",
+      "targetLabel": "Session on Safari, iPhone",
+      "targetExists": false,
+      "summary": "Session for Wei Ling Tan expired after 15 minutes without activity.",
+      "metadata": {
+        "userId": "usr_wei",
+        "reason": "idle-timeout",
+        "idleMinutes": 15
+      }
+    },
+    {
+      "id": "evt_01J9ZC2W1P2U4X6Y8A0C2E4F6H",
+      "occurredAt": "2026-09-16T07:02:34Z",
+      "actor": {
+        "id": "usr_wei",
+        "name": "Wei Ling Tan",
+        "email": "weiling.tan@meridianhealth.example"
+      },
+      "action": "core:sign-in:failed",
+      "targetType": "user",
+      "targetId": "usr_wei",
+      "targetLabel": "Wei Ling Tan",
+      "targetExists": true,
+      "summary": "Sign-in refused: the identity provider returned no groups claim.",
+      "metadata": {
+        "ipAddress": "198.51.100.7",
+        "identityProvider": "entra-id",
+        "error": "missing_groups_claim"
+      }
+    },
+    {
+      "id": "evt_01J9ZC2C4Q4V6Z8A0C2E4G6H8J",
+      "occurredAt": "2026-09-16T06:30:00Z",
+      "actor": null,
+      "action": "core:entitlement:enabled",
+      "targetType": "tenant_module",
+      "targetId": "contracts",
+      "targetLabel": "Contracts",
+      "targetExists": true,
+      "summary": "Module Contracts entitled by the operator. Default roles seeded; contracts:admin appended to Tenant administrator.",
+      "metadata": {
+        "moduleId": "contracts",
+        "operator": "genie-ops",
+        "rolesSeeded": [
+          "Contracts manager",
+          "Contracts reader"
+        ],
+        "permissions": [
+          "contracts:read",
+          "contracts:write",
+          "contracts:admin"
+        ],
+        "recordType": "contract",
+        "adminPermissionAppendedTo": "Tenant administrator"
+      }
+    },
+    {
+      "id": "evt_01J9ZC1S7R6W8B0C2E4G6J8K0L",
+      "occurredAt": "2026-09-15T15:21:09Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:role:assigned",
+      "targetType": "role_assignment",
+      "targetId": "ra_2201",
+      "targetLabel": "Solutions user to Claims Review",
+      "targetExists": true,
+      "summary": "Assigned Solutions user to group Claims Review, scoped to Claims Triage Assistant.",
+      "metadata": {
+        "roleId": "role_chat_user",
+        "roleName": "Solutions user",
+        "principalType": "group",
+        "principalId": "grp_claims",
+        "principalName": "Claims Review",
+        "scopeType": "solution",
+        "scopeId": "sol_claims"
+      }
+    },
+    {
+      "id": "evt_01J9ZC1F0S8X0D2E4G6J8L0M2N",
+      "occurredAt": "2026-09-15T14:58:42Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:person:added",
+      "targetType": "user",
+      "targetId": "usr_daniel",
+      "targetLabel": "Daniel Okafor",
+      "targetExists": true,
+      "summary": "Added Daniel Okafor (daniel.okafor@meridianhealth.example) as Pending with no roles.",
+      "metadata": {
+        "email": "daniel.okafor@meridianhealth.example",
+        "status": "pending",
+        "roleIds": [],
+        "localAccountCreated": false
+      }
+    },
+    {
+      "id": "evt_01J9ZC0Y3T0Y2F4G6J8L0N2P4Q",
+      "occurredAt": "2026-09-15T11:05:17Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:branding:published",
+      "targetType": "tenant_branding",
+      "targetId": "tenant",
+      "targetLabel": "Branding",
+      "targetExists": true,
+      "summary": "Published branding: primary color, sign-in welcome text, and support email changed. Realm attributes updated for Keycloak emails.",
+      "metadata": {
+        "changedFields": [
+          "primaryColor",
+          "signInWelcomeText",
+          "supportEmail"
+        ],
+        "realmAttributesUpdated": true,
+        "previousPrimaryColor": "#1d4ed8",
+        "primaryColor": "#2563eb"
+      }
+    },
+    {
+      "id": "evt_01J9ZC0H6U2Z4G6J8L0N2Q4R6S",
+      "occurredAt": "2026-09-15T09:30:55Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "solutions:solution:configured",
+      "targetType": "solution",
+      "targetId": "sol_onboarding",
+      "targetLabel": "Onboarding Buddy",
+      "targetExists": true,
+      "summary": "Changed the API endpoint of Onboarding Buddy. Every member's conversation handle was invalidated.",
+      "metadata": {
+        "tab": "connection",
+        "changedFields": [
+          "apiEndpoint"
+        ],
+        "chatConfigVersion": {
+          "from": 3,
+          "to": 4
+        },
+        "handlesInvalidated": 12
+      }
+    },
+    {
+      "id": "evt_01J9ZBZW9V4A6H8L0N2Q4S6T8U",
+      "occurredAt": "2026-09-14T16:40:02Z",
+      "actor": {
+        "id": "usr_bg",
+        "name": "Break-glass administrator",
+        "email": "breakglass@meridianhealth.example"
+      },
+      "action": "core:break-glass:password-changed",
+      "targetType": "user",
+      "targetId": "usr_bg",
+      "targetLabel": "Break-glass administrator",
+      "targetExists": true,
+      "summary": "Break-glass password changed and authenticator enrolled. Other sessions of the account revoked.",
+      "metadata": {
+        "authenticatorEnrolled": true,
+        "sessionsRevoked": 1
+      }
+    },
+    {
+      "id": "evt_01J9ZBZJ2W6B8J0M2P4S6U8V0W",
+      "occurredAt": "2026-09-14T16:31:48Z",
+      "actor": {
+        "id": "usr_bg",
+        "name": "Break-glass administrator",
+        "email": "breakglass@meridianhealth.example"
+      },
+      "action": "core:break-glass:sign-in",
+      "targetType": "session",
+      "targetId": "ses_bg0001",
+      "targetLabel": "Break-glass session",
+      "targetExists": false,
+      "summary": "Break-glass sign-in at /admin/login from 192.0.2.10. Session limited until password change and enrollment.",
+      "metadata": {
+        "ipAddress": "192.0.2.10",
+        "limited": true
+      }
+    },
+    {
+      "id": "evt_01J9ZBZ45X8C0K2N4Q6T8W0X2Y",
+      "occurredAt": "2026-09-14T10:12:30Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:person:disabled",
+      "targetType": "user",
+      "targetId": "usr_marcus",
+      "targetLabel": "Marcus Lee",
+      "targetExists": true,
+      "summary": "Disabled Marcus Lee. Active sessions ended.",
+      "metadata": {
+        "sessionsEnded": 2,
+        "reason": "Left the Claims team"
+      }
+    },
+    {
+      "id": "evt_01J9ZBYQ8Y0D2L4P6S8V0Y2Z4A",
+      "occurredAt": "2026-09-13T13:44:19Z",
+      "actor": {
+        "id": "usr_erased_01",
+        "name": "Removed person",
+        "email": "",
+        "anonymized": true
+      },
+      "action": "core:sign-in",
+      "targetType": "session",
+      "targetId": "ses_e7719a",
+      "targetLabel": "Session on Edge, Windows",
+      "targetExists": false,
+      "summary": "Signed in through Microsoft Entra ID from 203.0.113.88.",
+      "metadata": {
+        "ipAddress": "203.0.113.88",
+        "userAgent": "Edge 129 on Windows",
+        "identityProvider": "entra-id",
+        "newDevice": true
+      }
+    },
+    {
+      "id": "evt_01J9ZBYB1Z2E4M6Q8T0W2Z4B6C",
+      "occurredAt": "2026-09-13T09:00:12Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:person:removed",
+      "targetType": "user",
+      "targetId": "usr_erased_01",
+      "targetLabel": "Removed person",
+      "targetExists": false,
+      "summary": "Removed a person. Access, sessions, and identity link deleted; audit trail kept under an anonymized name.",
+      "metadata": {
+        "anonymized": true,
+        "assignmentsRemoved": 2,
+        "sessionsDeleted": 1
+      }
+    },
+    {
+      "id": "evt_01J9ZBXX4A4F6N8R0U2X4A6C8D",
+      "occurredAt": "2026-09-12T06:01:40Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "solutions:solution:registered",
+      "targetType": "solution",
+      "targetId": "sol_portal",
+      "targetLabel": "Benefits Portal",
+      "targetExists": true,
+      "summary": "Registered Benefits Portal as an embedded solution in People and HR. Starts as Draft.",
+      "metadata": {
+        "type": "embedded",
+        "categoryId": "cat_hr",
+        "slug": "benefits-portal"
+      }
+    },
+    {
+      "id": "evt_01J9ZBXJ7B6G8P0S2V4Y6B8D0E",
+      "occurredAt": "2026-09-11T14:22:05Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:group:members-changed",
+      "targetType": "group",
+      "targetId": "grp_pilot",
+      "targetLabel": "AI Pilot Cohort",
+      "targetExists": true,
+      "summary": "Added 3 members to AI Pilot Cohort and removed 1.",
+      "metadata": {
+        "added": [
+          "usr_alex",
+          "usr_wei",
+          "usr_daniel"
+        ],
+        "removed": [
+          "usr_marcus"
+        ]
+      }
+    },
+    {
+      "id": "evt_01J9ZBX50C8H0Q2T4W6Z8C0E2F",
+      "occurredAt": "2026-09-11T08:15:33Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:person:set-password-resent",
+      "targetType": "user",
+      "targetId": "usr_daniel",
+      "targetLabel": "Daniel Okafor",
+      "targetExists": true,
+      "summary": "Resent the set-password email to Daniel Okafor through the tenant realm.",
+      "metadata": {
+        "sentBy": "keycloak",
+        "realm": "meridian"
+      }
+    },
+    {
+      "id": "evt_01J9ZBWR3D0J2R4U6X8A0D2F4G",
+      "occurredAt": "2026-09-10T11:47:58Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:role:created",
+      "targetType": "role",
+      "targetId": "role_auditor_ext",
+      "targetLabel": "External auditor",
+      "targetExists": false,
+      "summary": "Created role External auditor with core:audit:read.",
+      "metadata": {
+        "permissions": [
+          "core:audit:read"
+        ]
+      }
+    },
+    {
+      "id": "evt_01J9ZBWC6E2K4S6V8Y0B2E4G6H",
+      "occurredAt": "2026-09-10T11:50:12Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:role:revoked",
+      "targetType": "role_assignment",
+      "targetId": "ra_1987",
+      "targetLabel": "Solutions user from Marcus Lee",
+      "targetExists": false,
+      "summary": "Revoked Solutions user from Marcus Lee (tenant-wide).",
+      "metadata": {
+        "roleName": "Solutions user",
+        "principalType": "user",
+        "principalName": "Marcus Lee",
+        "scopeType": null
+      }
+    },
+    {
+      "id": "evt_01J9ZBVZ9F4L6T8W0Z2C4F6H8J",
+      "occurredAt": "2026-09-09T03:00:00Z",
+      "actor": null,
+      "action": "core:module-config:changed",
+      "targetType": "tenant_module",
+      "targetId": "contracts",
+      "targetLabel": "Contracts",
+      "targetExists": true,
+      "summary": "Seeded default configuration for Contracts from the tenant configuration.",
+      "metadata": {
+        "source": "provisioning",
+        "values": {
+          "registryName": "Supplier contracts",
+          "scopeDimension": "office",
+          "approvalThreshold": 50000,
+          "remindersEnabled": true,
+          "notifyEmails": [
+            "legal@meridianhealth.example"
+          ]
+        }
+      }
+    },
+    {
+      "id": "evt_01J9ZBVK2G6M8U0X2A4D6G8J0K",
+      "occurredAt": "2026-09-08T09:31:27Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "solutions:solution:deleted",
+      "targetType": "solution",
+      "targetId": "sol_pilot_2025",
+      "targetLabel": "Pilot Assistant (2025)",
+      "targetExists": false,
+      "summary": "Permanently deleted archived solution Pilot Assistant (2025): 4 favorites, 11 recents, and 9 session handles removed with it.",
+      "metadata": {
+        "favoritesRemoved": 4,
+        "recentsRemoved": 11,
+        "handlesRemoved": 9
+      }
+    },
+    {
+      "id": "evt_01J9ZBV65H8N0V2Y4B6E8H0K2L",
+      "occurredAt": "2026-09-07T12:10:44Z",
+      "actor": {
+        "id": "usr_wei",
+        "name": "Wei Ling Tan",
+        "email": "weiling.tan@meridianhealth.example"
+      },
+      "action": "core:sign-out",
+      "targetType": "session",
+      "targetId": "ses_2210ff",
+      "targetLabel": "Session on Chrome, Windows",
+      "targetExists": false,
+      "summary": "Signed out. Realm session ended through the Keycloak logout endpoint.",
+      "metadata": {
+        "realmLogout": true
+      }
+    },
+    {
+      "id": "evt_01J9ZBUS8J0P2W4Z6C8F0J2L4M",
+      "occurredAt": "2026-09-05T07:22:18Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:group:created",
+      "targetType": "group",
+      "targetId": "grp_pilot",
+      "targetLabel": "AI Pilot Cohort",
+      "targetExists": true,
+      "summary": "Created local group AI Pilot Cohort.",
+      "metadata": {
+        "source": "local"
+      }
+    },
+    {
+      "id": "evt_01J9ZBUD1K2Q4X6A8D0G2K4M6N",
+      "occurredAt": "2026-09-03T02:00:00Z",
+      "actor": null,
+      "action": "core:entitlement:enabled",
+      "targetType": "tenant_module",
+      "targetId": "solutions",
+      "targetLabel": "Solutions",
+      "targetExists": true,
+      "summary": "Module Solutions entitled by the operator. Default roles seeded; solutions:admin appended to Tenant administrator.",
+      "metadata": {
+        "moduleId": "solutions",
+        "operator": "genie-ops",
+        "rolesSeeded": [
+          "Solutions user",
+          "Solutions administrator"
+        ],
+        "adminPermissionAppendedTo": "Tenant administrator"
+      }
+    },
+    {
+      "id": "evt_01J9ZBTZ4L4R6Y8B0E2H4L6N8P",
+      "occurredAt": "2026-09-01T08:45:09Z",
+      "actor": {
+        "id": "usr_leila",
+        "name": "Leila Haddad",
+        "email": "leila.haddad@meridianhealth.example"
+      },
+      "action": "core:settings:changed",
+      "targetType": "tenant_settings",
+      "targetId": "tenant",
+      "targetLabel": "Tenant settings",
+      "targetExists": true,
+      "summary": "Changed onboarding mode from Just-in-time to Invite only.",
+      "metadata": {
+        "field": "onboardingMode",
+        "from": "jit",
+        "to": "invite"
+      }
+    },
+    {
+      "id": "evt_01J9ZBTK7M6S8Z0C2F4J6M8P0Q",
+      "occurredAt": "2026-08-30T02:00:41Z",
+      "actor": {
+        "id": "usr_priya",
+        "name": "Priya Nair",
+        "email": "priya.nair@meridianhealth.example"
+      },
+      "action": "core:person:enabled",
+      "targetType": "user",
+      "targetId": "usr_marcus",
+      "targetLabel": "Marcus Lee",
+      "targetExists": true,
+      "summary": "Re-enabled Marcus Lee.",
+      "metadata": {}
+    }
+  ],
+  "tenantSettings": {
+    "onboardingMode": "invite",
+    "localAccountsEnabled": false,
+    "sessionIdleMinutes": 15,
+    "updatedBy": "Leila Haddad",
+    "updatedAt": "2026-09-16T08:12:50Z"
+  },
+  "realm": {
+    "supportsLocalAccounts": true
+  },
+  "moduleConfigs": [
+    {
+      "moduleId": "contracts",
+      "moduleName": "Contracts",
+      "description": "Registers supplier and partner contracts with renewal reminders. Placeholder module that shows every field kind the configuration form supports.",
+      "schema": [
+        {
+          "kind": "string",
+          "key": "registryName",
+          "title": "Registry name",
+          "description": "Shown as the page title of the module for this tenant.",
+          "required": true,
+          "maxLength": 60
+        },
+        {
+          "kind": "number",
+          "key": "approvalThreshold",
+          "title": "Approval threshold",
+          "description": "Contracts above this value in SGD need a second approver.",
+          "required": true,
+          "min": 0,
+          "max": 10000000,
+          "step": 1000
+        },
+        {
+          "kind": "boolean",
+          "key": "remindersEnabled",
+          "title": "Renewal reminders",
+          "description": "Send an in-app notification and an email before an contract expires.",
+          "required": true
+        },
+        {
+          "kind": "enum",
+          "key": "scopeDimension",
+          "title": "Scope by",
+          "description": "How contracts are grouped and how role scopes are declared.",
+          "required": true,
+          "options": [
+            {
+              "value": "office",
+              "label": "Office"
+            },
+            {
+              "value": "entity",
+              "label": "Legal entity"
+            }
+          ]
+        },
+        {
+          "kind": "string-list",
+          "key": "notifyEmails",
+          "title": "Notification recipients",
+          "description": "Email addresses that receive every renewal reminder in addition to the owner.",
+          "itemLimit": 5,
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+          "patternMessage": "Enter a valid email address.",
+          "placeholder": "name@company.example"
+        }
+      ],
+      "values": {
+        "registryName": "Supplier contracts",
+        "approvalThreshold": 50000,
+        "remindersEnabled": true,
+        "scopeDimension": "office",
+        "notifyEmails": [
+          "legal@meridianhealth.example",
+          "procurement@meridianhealth.example"
+        ]
+      },
+      "updatedBy": null,
+      "updatedAt": "2026-09-09T03:00:00Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_health",
+      "name": "Healthcare",
+      "position": 1,
+      "solutionCount": 3,
+      "moduleCount": 0
+    },
+    {
+      "id": "cat_finance",
+      "name": "Finance",
+      "position": 2,
+      "solutionCount": 2,
+      "moduleCount": 1
+    },
+    {
+      "id": "cat_hr",
+      "name": "People and HR",
+      "position": 3,
+      "solutionCount": 2,
+      "moduleCount": 0
+    },
+    {
+      "id": "cat_empty",
+      "name": "Legal",
+      "position": 4,
+      "solutionCount": 0,
+      "moduleCount": 0
+    }
+  ],
+  "ungroupedSolutionCount": 1,
+  "modules": [
+    {
+      "id": "solutions",
+      "displayName": "Solutions",
+      "description": "The solutions catalogue: chat and embedded solutions members open from the hub.",
+      "enabled": true,
+      "categoryId": null,
+      "useKey": "solutions:use",
+      "userRoleName": "Solutions user",
+      "holders": {
+        "groups": [
+          {
+            "id": "grp_all",
+            "name": "All staff",
+            "memberCount": 184
+          },
+          {
+            "id": "grp_clinical",
+            "name": "Clinical operations",
+            "memberCount": 42
+          }
+        ],
+        "people": [
+          {
+            "id": "usr_alex",
+            "name": "Alex Morgan"
+          },
+          {
+            "id": "usr_ravi",
+            "name": "Ravi Menon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts",
+      "displayName": "Contracts",
+      "description": "Registers supplier and partner contracts with renewal reminders.",
+      "enabled": true,
+      "categoryId": "cat_finance",
+      "useKey": "contracts:use",
+      "userRoleName": "Contracts user",
+      "holders": {
+        "groups": [
+          {
+            "id": "grp_legal",
+            "name": "Legal team",
+            "memberCount": 6
+          }
+        ],
+        "people": [
+          {
+            "id": "usr_mei",
+            "name": "Mei Lin Tan"
+          }
+        ]
+      }
+    },
+    {
+      "id": "approvals",
+      "displayName": "Approvals",
+      "description": "Routes purchase and leave requests through approval chains.",
+      "enabled": false,
+      "categoryId": null,
+      "useKey": "approvals:use",
+      "userRoleName": "Approvals user",
+      "holders": {
+        "groups": [
+          {
+            "id": "grp_finance",
+            "name": "Finance",
+            "memberCount": 11
+          }
+        ],
+        "people": []
+      }
+    }
+  ]
+}
