@@ -1,0 +1,87 @@
+# Design System Tokens and Recipes
+
+This file is the fixed token layer. The tenant's one brand color and its approved font list live in `../../architecture/data-shape.md` under `tenant_branding` (`DEC-47`). Every section spec refers here for the values it uses. Implementation lives in `packages/ui` once code exists.
+
+## Type scale
+
+Plus Jakarta Sans for everything, JetBrains Mono for identifiers (hex values, permission keys, ids, chips such as THIS DEVICE). Both faces are self-hosted in the image, never loaded from a third-party font service, because a regulated customer can refuse an outbound request from the sign-in page. Subset to latin and latin-ext, `font-display: swap`, and preload the one weight the sign-in page paints first. The scale is the Tailwind type utilities and nothing else:
+
+| Role | Class | Weight |
+|---|---|---|
+| Display | `text-2xl` | bold |
+| Title (page title, dialog title) | `text-xl` | bold |
+| Heading (card, section) | `text-lg` | semibold |
+| Body | `text-base` | regular |
+| Secondary (nav rows, menu items, helper text) | `text-sm` | regular or medium |
+| Caption (labels, pills, chips, counts) | `text-xs` | medium or semibold |
+
+On phones display and title step down one size (`text-xl lg:text-2xl`, `text-lg lg:text-xl`). Arbitrary pixel sizes (`text-[13.5px]`, `text-[11px]`, any `text-[Npx]`) are forbidden in every component; `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
+
+The tenant font size preset (Branding, Typography tab) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. The tenant text color fills `--foreground` on light surfaces only; the dark theme keeps gray-100.
+
+## Control heights
+
+One scale: sm 32px (`h-8`), md 40px (`h-10`), lg 44px (`h-11`); no other height class on a control. Every row that mixes controls (search, select, segmented, button) renders all of them at md. Icon-only buttons are 40px square (md) or 32px (sm) in dense toolbars. Touch targets are at least 44 by 44 px; a 32px control gets invisible padding to reach it.
+
+## Radius, spacing, elevation, motion
+
+Radius: menus 8px (`rounded-lg`), controls 12px (`rounded-xl`), cards and sheets 16px (`rounded-2xl`), pills full. Page gutters are `px-4 md:px-6 lg:px-8`. Every `transition-*` and `animate-*` utility is written under `motion-safe:` (or paired with a `motion-reduce:` reset). Spacing: 4px base; page gutter 16px on phones, 24px on tablets, 32px on desktop; card padding 20px, 24px on desktop. Elevation: hairline borders (gray-200, gray-800 in dark) over shadows; only dialogs, sheets, and menus carry a shadow. Motion: 150 to 220 ms, ease-out, no bounce and no scale; everything collapses to no motion under `prefers-reduced-motion`.
+
+## Focus ring
+
+2px solid ring in blue-500 with a 2px offset on every focusable control, including icon buttons, links, menu items, and close controls. Never `outline: none` without the ring. The ring is opaque because it is the keyboard focus indicator and must hold 3:1 against the surface behind it (WCAG 2.1 AA, 1.4.11). At 60% opacity it measured 2.11:1 on white and 2.06:1 on gray-50 and failed. Solid blue-500 measures 3.68:1 on white. A tenant color fills this ring on export, so the Branding contrast check covers the ring pair at 3:1. One shared constant, `focusRing`, holds the exact class string. In this design tree it lives in `src/shell/components/helpers.ts` (import from `@/shell/components/helpers`); the export step moves it to `packages/ui` in the platform repository, where every primitive lives:
+
+`outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950`
+
+Every interactive element appends it; no component writes its own ring classes.
+
+## Color roles
+
+The tenant primary color fills solid surfaces and the focus ring, and nothing else. Those are the primary button and the count pill (`bg-blue-600`), the active navigation row's text and icon and the tenant letter tile (`text-blue-700`, `text-blue-600`), and the ring (`ring-blue-500`). In this tree `blue-600` is the default value of the shadcn `--primary` variable, which Branding fills per request, and the export maps those classes to `bg-primary`, `text-primary`, `text-primary-foreground`, and `ring-primary`. A tinted surface that stands for identity or a label stays a fixed neutral gray: the avatar and monogram tile, every label pill, and the chrome pills (Admin portal, Administrator). So no tint ramp is derived from the tenant color, and `packages/ui` needs no color-space computation and no per-step contrast check. A tint that carries state or meaning keeps its blue and is not brand: a selected or focused table row, and an informational notice block. The test is whether the tenant's color would be wrong there. Only `--primary` and `--primary-foreground` are computed. A hover or active state is the same color at reduced opacity, `bg-primary/90` on hover and `bg-primary/80` on press, never a derived shade, which is what keeps the no-ramp rule true for buttons. Pills and semantic tones keep their Tailwind values.
+
+Dark theme primary defaults, pinned here because the tenant derivation needs a fixed starting point: the brand as text or icon is blue-400, not blue-600, because blue-600 measures 3.90:1 on gray-950 and fails AA at `text-sm` while blue-400 measures 7.92:1 on gray-950 and 6.98:1 on gray-900. The focus ring in dark is blue-400. A solid brand fill keeps blue-600 with white text. Blue is the only action and information color in the samples. Status is semantic: emerald success, red danger, amber warning, gray neutral. Text never lighter than gray-500 (gray-400 in dark). Dark theme mirrors: gray-100 body, gray-300 secondary, gray-400 labels, surfaces gray-950 and gray-900.
+
+## Pills and chips
+
+- Status pill: tinted background, semibold small text. Active or Ready or Entitled emerald; Pending or Draft or Not entitled gray; Disabled or Down red; Maintenance or Stale amber.
+- Label pill: gray or blue, never a status color. Used for Admin portal, Notice, counts, type labels (Chat, Embedded), kind (System, Custom), source (Directory, Local).
+- Mono chip: `MonoChip` from `@/shell/components/MonoChip` in this tree, `packages/ui` after export. JetBrains Mono (`font-mono`), `text-xs` medium, uppercase, `tracking-wide`, gray-100 background and gray-700 text (dark: gray-800 and gray-300), full radius. For THIS DEVICE, WORKSPACE MEMBER, ADMINISTRATOR. Never a status or blue color.
+- Count pill: blue background, white text, in navigation for unread and grouped counts.
+
+## Tables and card lists
+
+Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. A clickable row is reachable by keyboard: the row carries `tabindex="0"` and a `role`, Enter and Space open it, and it takes the shared focus ring. A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
+
+## Buttons
+
+Variants: primary (brand fill, `--primary-foreground` text), secondary (white fill, gray-300 border, gray-800 text), danger (red-600 fill, white text), ghost (no fill, no border, gray-700 text), and icon-only, which is a square of the same height with an `aria-label`. Sizes follow the control scale: sm 32px, md 40px, lg 44px, md being the default.
+
+States, the same four for every variant. Hover: a fill variant drops to 90% opacity, an outline or ghost variant takes a gray-50 fill. Active: 80% opacity. Disabled: 50% opacity, `cursor-not-allowed`, no hover change, and `aria-disabled` rather than the `disabled` attribute when the control must stay focusable to explain why. Loading: the label stays, a spinner replaces the leading icon, the control keeps its width, `aria-busy="true"`, and a second press does nothing. Use the loading state for any action that leaves the page or waits on the network, which is at least Publish, Save, Send test, and the sign-in redirect.
+
+## Forms and feedback
+
+Label above the control, helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. An input border is gray-500, which measures 4.89:1 on white, because the border is the boundary of a component and 1.4.11 asks for 3:1. The hairline gray-200 elsewhere stays, because a row divider or a card edge is decoration and the rule does not reach it. Form-level error block with `role="alert"`; informational notice block with `role="status"`. A changed field carries a small blue dot on its label while unsaved. Required fields are marked in the label.
+
+## Overlays
+
+Dialog: 480px wide (`max-w-[480px]`) and centered on desktop; under 768px full width and anchored to the bottom with a bottom action bar; dimmed scrim, focus trapped, Escape closes unless the spec says otherwise. This applies to every dialog, the idle-timeout countdown included: it is 480px on desktop and full width with a bottom action bar on phones, never a narrower centered card. Confirm dialog: title names the object ("Remove Alex Morgan?"), one sentence of consequence, Cancel as the default focused button, the action button in the danger tone for destructive actions and primary otherwise; closing by Escape, scrim, or Cancel is a cancel. Confirm dialog API: `ConfirmDialog({ open, title, description, confirmLabel, danger, onConfirm, onClose })`, built on the shared `Dialog`, Cancel focused by default; every destructive path in every section uses it. Slide-over: 480px (people, groups) or 560px (configure solution) on desktop, a right sheet on tablets, a full-height sheet on phones. Menu: 8px radius, shadow, keyboard navigable.
+
+## Toast
+
+Bottom center on phones, bottom right on desktop; success, neutral, and error tones; auto-dismiss after 4 seconds with a manual close; at most three stacked; `role="status"`.
+
+## Empty state
+
+Centered block: icon or letter tile, one heading, one sentence, at most one primary action. Filter empty states offer Clear filters.
+
+## Loading
+
+Skeleton blocks match the shape they replace and animate only when motion is allowed. A spinner carries `role="status"` and a visually hidden label.
+
+## Icons
+
+Lucide, 16px in text and pills, 20px in navigation and buttons, stroke 1.75. No emoji as icons.
+
+## Live regions
+
+Offline bar, toasts, spinners, the password strength meter, and inline send errors announce through `aria-live` or a role. Countdown text in the idle modal updates in a `role="timer"` region.
