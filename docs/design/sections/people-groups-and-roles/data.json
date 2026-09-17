@@ -1,0 +1,133 @@
+{
+  "_meta": {
+    "models": {
+      "person": "A person who can sign in to the tenant, with status, identity source, group memberships, role assignments, and sessions.",
+      "group": "A set of people. Directory groups arrive from the identity provider and are read-only. Local groups are created and managed by an administrator. A directory group that stops arriving becomes stale.",
+      "role": "A named set of permission keys. System roles are seeded by a module when the tenant is entitled to it. Custom roles are created by an administrator.",
+      "roleAssignment": "Grants a role to a principal (person or group) at a scope. Null scope means the whole tenant.",
+      "module": "A module that declares permission keys and record types for scopes, with the tenant's entitlement state.",
+      "scopeRecord": "A record a module exposes for scoped assignments, for example one chat solution.",
+      "session": "An active browser session of a person.",
+      "tenantSettings": "The settings that change these screens: onboarding mode and local accounts.",
+      "currentUserId": "The signed-in administrator. Their own row cannot be disabled, removed, or stripped of roles."
+    },
+    "relationships": [
+      "person has many groups through membership, each membership carrying its source (idp or local)",
+      "group has many persons",
+      "role has many roleAssignments; each roleAssignment points at one person or one group and optionally at one scopeRecord",
+      "module declares permissionKeys and recordTypes; role permissions reference module permission keys; scopeRecord belongs to a module record type",
+      "person has many sessions"
+    ]
+  },
+  "tenantSettings": { "onboardingMode": "invite", "localAccountsEnabled": false, "identitySource": "Microsoft Entra ID" },
+  "currentUserId": "usr_priya",
+  "modules": [
+    {
+      "id": "core",
+      "name": "Core",
+      "entitled": true,
+      "permissionKeys": [
+        { "key": "core:people:manage", "label": "Manage people" },
+        { "key": "core:groups:manage", "label": "Manage groups" },
+        { "key": "core:roles:manage", "label": "Manage roles" },
+        { "key": "core:branding:manage", "label": "Manage branding" },
+        { "key": "core:audit:read", "label": "Read the audit log" },
+        { "key": "core:settings:manage", "label": "Manage tenant settings" }
+      ],
+      "recordTypes": []
+    },
+    {
+      "id": "solutions",
+      "name": "Solutions",
+      "entitled": true,
+      "permissionKeys": [
+        { "key": "solutions:use", "label": "Use a solution" },
+        { "key": "solutions:admin", "label": "Administer solutions, themes, and categories" }
+      ],
+      "recordTypes": [{ "type": "solution", "label": "Solution" }]
+    },
+    {
+      "id": "contracts",
+      "name": "Contracts",
+      "entitled": true,
+      "permissionKeys": [
+        { "key": "contracts:read", "label": "Read contracts" },
+        { "key": "contracts:write", "label": "Register and update contracts" },
+        { "key": "contracts:admin", "label": "Administer the Contracts module" }
+      ],
+      "recordTypes": [{ "type": "contract", "label": "Contract" }]
+    },
+    {
+      "id": "approvals",
+      "name": "Approvals",
+      "entitled": false,
+      "permissionKeys": [
+        { "key": "approvals:read", "label": "Read requests" },
+        { "key": "approvals:approve", "label": "Approve or reject requests" },
+        { "key": "approvals:admin", "label": "Administer the Approvals module" }
+      ],
+      "recordTypes": [{ "type": "request", "label": "Request" }]
+    }
+  ],
+  "scopeRecords": [
+    { "id": "sol_claims", "type": "solution", "label": "Claims Triage Assistant", "moduleId": "solutions" },
+    { "id": "sol_discharge", "type": "solution", "label": "Discharge Summary Drafting", "moduleId": "solutions" },
+    { "id": "sol_referral", "type": "solution", "label": "Referral Letter Review", "moduleId": "solutions" },
+    { "id": "sol_policy", "type": "solution", "label": "Policy Q&A", "moduleId": "solutions" },
+    { "id": "sol_invoice", "type": "solution", "label": "Vendor Invoice Checker", "moduleId": "solutions" },
+    { "id": "sol_general", "type": "solution", "label": "General Assistant", "moduleId": "solutions" },
+    { "id": "agr_northwind", "type": "contract", "label": "Northwind Labs master services contract", "moduleId": "contracts" },
+    { "id": "agr_harbour", "type": "contract", "label": "Harbour Imaging supply contract", "moduleId": "contracts" }
+  ],
+  "groups": [
+    { "id": "grp_clinops", "name": "Clinical Operations", "description": "Ward and clinic operations staff.", "source": "idp", "externalId": "g-4f1a", "memberCount": 42, "syncedAt": "2026-09-16T08:12:44Z", "stale": false, "lastSeenAt": "2026-09-16T08:12:44Z", "archived": false },
+    { "id": "grp_claims", "name": "Claims Review", "description": "Insurance claims reviewers.", "source": "idp", "externalId": "g-9c02", "memberCount": 17, "syncedAt": "2026-09-16T08:12:44Z", "stale": false, "lastSeenAt": "2026-09-16T08:12:44Z", "archived": false },
+    { "id": "grp_finance", "name": "Finance", "description": "", "source": "idp", "externalId": "g-71be", "memberCount": 9, "syncedAt": "2026-09-16T08:12:44Z", "stale": false, "lastSeenAt": "2026-09-16T08:12:44Z", "archived": false },
+    { "id": "grp_legacy", "name": "Pilot Wave 1 (2025)", "description": "Original pilot cohort. Renamed in the directory in August 2026.", "source": "idp", "externalId": "g-0aa3", "memberCount": 6, "syncedAt": "2026-08-21T07:02:10Z", "stale": true, "lastSeenAt": "2026-08-21T07:02:10Z", "archived": false },
+    { "id": "grp_pilot", "name": "AI Pilot Cohort", "description": "People trialing every solution tenant-wide. Managed in Genie.", "source": "local", "externalId": null, "memberCount": 5, "syncedAt": null, "stale": false, "lastSeenAt": null, "archived": false },
+    { "id": "grp_admins", "name": "Genie Administrators", "description": "Tenant administrators.", "source": "local", "externalId": null, "memberCount": 2, "syncedAt": null, "stale": false, "lastSeenAt": null, "archived": false },
+    { "id": "grp_old", "name": "Radiology Trial", "description": "Archived after the trial ended.", "source": "idp", "externalId": "g-33d1", "memberCount": 0, "syncedAt": "2026-05-02T09:00:00Z", "stale": true, "lastSeenAt": "2026-05-02T09:00:00Z", "archived": true }
+  ],
+  "roles": [
+    { "id": "role_admin", "name": "Tenant administrator", "description": "Full control of people, groups, roles, branding, settings, and the audit log.", "kind": "system", "moduleId": "core", "permissions": ["core:people:manage", "core:groups:manage", "core:roles:manage", "core:branding:manage", "core:audit:read", "core:settings:manage", "solutions:admin", "contracts:admin"], "entitlementAdded": ["solutions:admin", "contracts:admin"] },
+    { "id": "role_auditor", "name": "Auditor", "description": "Read-only access to the audit log.", "kind": "system", "moduleId": "core", "permissions": ["core:audit:read"] },
+    { "id": "role_chat_admin", "name": "Solutions administrator", "description": "Manage solutions, chat themes, categories, and access.", "kind": "system", "moduleId": "solutions", "permissions": ["solutions:admin", "solutions:use"] },
+    { "id": "role_chat_user", "name": "Solutions user", "description": "Open and use a chat solution.", "kind": "system", "moduleId": "solutions", "permissions": ["solutions:use"] },
+    { "id": "role_contracts_manager", "name": "Contracts manager", "description": "Register, update, and administer contracts.", "kind": "system", "moduleId": "contracts", "permissions": ["contracts:write", "contracts:admin"] },
+    { "id": "role_contracts_reader", "name": "Contracts reader", "description": "Read contracts.", "kind": "system", "moduleId": "contracts", "permissions": ["contracts:read"] },
+    { "id": "role_people_ops", "name": "People operations", "description": "Onboard and offboard people without touching roles or branding.", "kind": "custom", "moduleId": null, "permissions": ["core:people:manage", "core:groups:manage"] },
+    { "id": "role_legal", "name": "Legal reviewer", "description": "Created ahead of the Approvals rollout. The module is not entitled yet, so these permissions have no effect.", "kind": "custom", "moduleId": null, "permissions": ["approvals:read", "approvals:approve", "solutions:use"] }
+  ],
+  "people": [
+    { "id": "usr_alex", "name": "Alex Morgan", "email": "alex.morgan@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_clinops", "grp_claims", "grp_pilot"], "firstSignInAt": "2026-06-03T01:10:00Z", "lastSignInAt": "2026-09-16T08:12:44Z", "onboarding": "invited" },
+    { "id": "usr_priya", "name": "Priya Nair", "email": "priya.nair@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_admins", "grp_clinops"], "firstSignInAt": "2026-05-20T02:00:00Z", "lastSignInAt": "2026-09-16T07:55:20Z", "onboarding": "invited" },
+    { "id": "usr_wei", "name": "Wei Ling Tan", "email": "weiling.tan@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_finance"], "firstSignInAt": "2026-07-14T03:30:00Z", "lastSignInAt": "2026-09-15T10:41:03Z", "onboarding": "invited" },
+    { "id": "usr_daniel", "name": "Daniel Okafor", "email": "daniel.okafor@meridianhealth.example", "status": "pending", "accountType": "local", "identitySource": "Genie (local password)", "groupIds": [], "firstSignInAt": null, "lastSignInAt": null, "onboarding": "invited", "setPasswordSentAt": "2026-09-15T02:10:00Z" },
+    { "id": "usr_sofia", "name": "Sofia Reyes", "email": "sofia.reyes@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_claims", "grp_legacy"], "firstSignInAt": "2026-04-02T05:00:00Z", "lastSignInAt": "2026-09-14T13:20:00Z", "onboarding": "invited" },
+    { "id": "usr_hiro", "name": "Hiroshi Sato", "email": "hiroshi.sato@meridianhealth.example", "status": "disabled", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_legacy"], "firstSignInAt": "2026-03-11T06:15:00Z", "lastSignInAt": "2026-07-30T09:00:00Z", "onboarding": "invited" },
+    { "id": "usr_amara", "name": "Amara Osei", "email": "amara.osei@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_clinops", "grp_pilot"], "firstSignInAt": "2026-08-01T01:00:00Z", "lastSignInAt": "2026-09-16T02:12:00Z", "onboarding": "invited" },
+    { "id": "usr_marcus", "name": "Marcus Lee", "email": "marcus.lee@meridianhealth.example", "status": "pending", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_finance"], "firstSignInAt": null, "lastSignInAt": null, "onboarding": "invited" },
+    { "id": "usr_leila", "name": "Leila Haddad", "email": "leila.haddad@meridianhealth.example", "status": "active", "accountType": "brokered", "identitySource": "Microsoft Entra ID", "groupIds": ["grp_admins"], "firstSignInAt": "2026-05-20T02:05:00Z", "lastSignInAt": "2026-09-13T11:00:00Z", "onboarding": "invited" }
+  ],
+  "roleAssignments": [
+    { "id": "ra_1", "roleId": "role_admin", "principalType": "group", "principalId": "grp_admins", "scopeType": null, "scopeId": null, "createdBy": "Provisioning", "createdAt": "2026-05-19T00:00:00Z" },
+    { "id": "ra_2", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_claims", "scopeType": "solution", "scopeId": "sol_claims", "createdBy": "Priya Nair", "createdAt": "2026-06-01T03:00:00Z" },
+    { "id": "ra_3", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_clinops", "scopeType": "solution", "scopeId": "sol_discharge", "createdBy": "Priya Nair", "createdAt": "2026-06-01T03:05:00Z" },
+    { "id": "ra_4", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_clinops", "scopeType": "solution", "scopeId": "sol_referral", "createdBy": "Priya Nair", "createdAt": "2026-09-16T09:20:00Z" },
+    { "id": "ra_5", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_pilot", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-09-08T16:30:00Z" },
+    { "id": "ra_6", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_finance", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Priya Nair", "createdAt": "2026-07-15T02:00:00Z" },
+    { "id": "ra_7", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_finance", "scopeType": "solution", "scopeId": "sol_invoice", "createdBy": "Priya Nair", "createdAt": "2026-07-15T02:01:00Z" },
+    { "id": "ra_8", "roleId": "role_chat_admin", "principalType": "user", "principalId": "usr_priya", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-05-21T01:00:00Z" },
+    { "id": "ra_9", "roleId": "role_chat_user", "principalType": "group", "principalId": "grp_legacy", "scopeType": "solution", "scopeId": "sol_general", "createdBy": "Priya Nair", "createdAt": "2026-03-01T00:00:00Z" },
+    { "id": "ra_10", "roleId": "role_people_ops", "principalType": "user", "principalId": "usr_wei", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-08-10T04:00:00Z" },
+    { "id": "ra_11", "roleId": "role_auditor", "principalType": "user", "principalId": "usr_sofia", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-08-12T04:00:00Z" },
+    { "id": "ra_12", "roleId": "role_contracts_manager", "principalType": "group", "principalId": "grp_finance", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-09-02T02:00:00Z" },
+    { "id": "ra_13", "roleId": "role_contracts_reader", "principalType": "user", "principalId": "usr_sofia", "scopeType": "contract", "scopeId": "agr_northwind", "createdBy": "Priya Nair", "createdAt": "2026-09-10T06:30:00Z" }
+  ],
+  "sessions": [
+    { "id": "ses_a1", "personId": "usr_alex", "device": "Windows 11", "browser": "Edge 129", "ipAddress": "203.0.113.24", "signedInAt": "2026-09-16T08:12:44Z", "lastActiveAt": "2026-09-16T09:41:03Z" },
+    { "id": "ses_b2", "personId": "usr_alex", "device": "iPhone", "browser": "Safari 18", "ipAddress": "198.51.100.7", "signedInAt": "2026-09-15T22:03:10Z", "lastActiveAt": "2026-09-16T07:55:20Z" },
+    { "id": "ses_c3", "personId": "usr_alex", "device": "macOS", "browser": "Chrome 130", "ipAddress": "192.0.2.88", "signedInAt": "2026-09-14T13:20:00Z", "lastActiveAt": "2026-09-14T13:34:51Z" },
+    { "id": "ses_d4", "personId": "usr_priya", "device": "Windows 11", "browser": "Edge 129", "ipAddress": "203.0.113.41", "signedInAt": "2026-09-16T07:55:20Z", "lastActiveAt": "2026-09-16T09:30:00Z" }
+  ]
+}
