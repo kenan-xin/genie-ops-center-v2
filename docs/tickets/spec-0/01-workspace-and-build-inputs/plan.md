@@ -2241,6 +2241,112 @@ git commit -m "test: prove the affected graph, project tags and local cache reus
 
 ---
 
+### Task 10: Apply the owner's formatter preferences
+
+The owner supplied `/home/kenan/Desktop/oxfmt.json` on 2026-09-19. Most of it cannot be used as written. Checked against `node_modules/oxfmt/configuration_schema.json`, the installed schema for oxfmt 0.68.0:
+
+- Four keys do not exist: `experimentalTernaries`, `experimentalSortImports`, `experimentalSortPackageJson`, and `experimentalTailwindcss`. The three sorting options lost their `experimental` prefix in a later release, and `experimentalTernaries` is a Prettier option with no oxfmt equivalent. Writing `experimentalSortImports` would turn import sorting off, because the real key `sortImports` would then be unset and it defaults to disabled.
+- `"ignorePatterns": "[]"` is a string. The schema requires an array of strings. Taking it literally would erase the ignore list that keeps the formatter away from `.beads/`, `.claude/`, `docs/`, and the vendored anti-slop source.
+- Fourteen keys restate the oxfmt default, so they add lines that can drift from the tool without changing behavior.
+
+Three entries are genuine preferences that differ from the defaults, and those are the whole of this change: `printWidth` 80 rather than 100, `trailingComma` `"es5"` rather than `"all"`, and `quoteProps` `"consistent"` rather than `"as-needed"`.
+
+**Files:**
+- Modify: `packages/config/src/oxfmt/index.ts`
+- Modify: every file the reformat touches
+
+- [ ] **Step 1: Add the three preferences**
+
+In `packages/config/src/oxfmt/index.ts`, add the block below above `ignorePatterns`. Change nothing else. Keep `ignorePatterns` and `sortImports` exactly as they are.
+
+```ts
+  // Owner's choices, 2026-09-19. Everything not listed keeps the oxfmt default.
+  // Narrower than the oxfmt default of 100, which the tool recommends for
+  // TypeScript. The owner prefers 80.
+  printWidth: 80,
+  // Trailing commas in arrays and objects, but not in function parameter lists.
+  trailingComma: "es5",
+  // Quote every property in an object once any one of them needs quoting.
+  quoteProps: "consistent",
+```
+
+- [ ] **Step 1a: Ignore markdown, and keep the ignore list in one place**
+
+The owner asked for an ignore file for markdown and similar files. oxfmt has no `.oxfmtignore`. Its only separate ignore file is `.prettierignore`, kept for Prettier compatibility, and [its documentation](https://oxc.rs/docs/guide/usage/formatter/ignore-files.html) says to prefer `ignorePatterns` for a new project. Three reasons decide it here:
+
+1. This repository has no Prettier and rejects it by policy, so a file named after Prettier would be confusing.
+2. R-5 puts the formatter configuration in `packages/config`. A root ignore file would split one decision across two places.
+3. `ignorePatterns` is the stronger guard. A file that only `.gitignore` covers can still be formatted when a caller names it directly, and the lefthook pre-commit hook does exactly that: it passes explicit staged paths. A file listed in `ignorePatterns` cannot be formatted even when named directly.
+
+Replace the `ignorePatterns` array in `packages/config/src/oxfmt/index.ts` with the list below. It adds markdown, and drops entries that are now redundant: `README.md`, `DESIGN.md`, and `PRODUCT.md` are covered by the markdown pattern, `plans/**` holds only markdown, and oxfmt always ignores lock files.
+
+```ts
+  // oxfmt recommends ignorePatterns over a separate ignore file for a new
+  // project, and it is the stronger guard: a path listed here cannot be
+  // formatted even when a caller names it directly, which is how the
+  // pre-commit hook invokes the formatter.
+  // https://oxc.rs/docs/guide/usage/formatter/ignore-files.html
+  ignorePatterns: [
+    // Prose. Markdown is written by hand, and reflowing it churns documents
+    // without improving them.
+    "**/*.md",
+    "**/*.mdx",
+
+    // State owned by other tools.
+    ".beads/**",
+    ".claude/**",
+    ".agents/**",
+    ".impeccable/**",
+    "graft/**",
+
+    // Diagram sources and generated HTML live here beside the prose.
+    "docs/**",
+
+    // Vendored upstream source. Reformatting it would break the three-way
+    // merge that an anti-slop update depends on (R-5a).
+    "packages/config/oxlint/anti-slop/**",
+
+    // Generated at build time from MODULE_INCLUDE (ADR 0008).
+    "apps/genie/src/modules.ts",
+
+    // Build output. Also gitignored, but repeated here so a direct
+    // invocation cannot reach it.
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.nx/**",
+  ],
+```
+
+Do not add `node_modules` or a lock file. oxfmt ignores `.git`, `.svn`, `.jj`, `node_modules`, and every lock file by default.
+
+- [ ] **Step 2: Confirm the tool accepts all three**
+
+Run: `pnpm exec oxfmt --check --disable-nested-config`
+Expected: the command runs and reports files to change. It must not report an unknown or invalid option. An unknown key is the failure mode this task exists to avoid, so read the output rather than only the exit code.
+
+- [ ] **Step 3: Reformat, and confirm the scope**
+
+Run: `pnpm format`
+Run: `git status --short`
+Expected: many files change, because the print width moved. Confirm that nothing under `docs/`, `.beads/`, `.claude/`, `.agents/`, `.impeccable/`, `graft/`, `plans/`, or `packages/config/oxlint/anti-slop/` changed, and that `README.md`, `DESIGN.md`, and `PRODUCT.md` are untouched. If any of those moved, the ignore list was damaged. Stop and report.
+
+- [ ] **Step 4: Confirm convergence and the gates**
+
+Run: `pnpm format`
+Run: `git diff --stat`
+Expected: unchanged from Step 3. A second pass changes nothing.
+Run: `pnpm lint && pnpm test && pnpm typecheck`
+Expected: all pass. The narrower print width rewraps code that the linter also reads, so this proves the formatter and the linter still agree.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "style: apply the owner's formatter preferences"
+```
+
+---
+
 ## Completion handoff
 
 After Task 9, do not close the bead and do not push. Record on `genie-ops-center-v2-1rd.1`: the changed paths, every command and its real outcome, the red and green evidence, the checks that were not run, the base revision, and the proposed integration action. The integration owner closes the bead after integrated proof.
