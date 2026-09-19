@@ -7,6 +7,8 @@ Status: draft for review, 2026-09-17. One monorepo owned by Genie Ops Center (`D
 ```
 genie-ops-center/
   apps/
+    storybook/                      Development-only app composition: UI, core-feature and selected module
+                                    stories. Next.js/Vite; no runtime bootstrap or customer image output.
     genie/                          The standard Next.js application. One composition of core, ui, and modules.
       src/app/(auth)/               Sign-in, break-glass, tenant pages.
       src/app/(workspace)/          Member routes. Thin files that render module pages.
@@ -14,7 +16,10 @@ genie-ops-center/
       src/app/api/                  Better Auth handler, tRPC, chat stream, health, /api/m/<module>/ endpoints.
       src/context.ts                Builds the one TenantContext at startup from the environment (DEC-34).
       src/modules.ts                Module registry. Generated at build time from MODULE_INCLUDE;
-                                    imports only the included modules (DEC-33). Not edited by hand.
+                                    imports only the included modules (DEC-33). Gitignored, never committed or
+                                    hand-edited; generated before consumers run (ADR 0008).
+      testing/                      App composition tests, including two-context isolation; deployment-wide
+                                    Playwright seed from Section 1. Imports core helpers and module factories.
   packages/
     core/                           Tenant context, auth, authz, people, groups, roles, branding, settings,
                                     audit, notifications, files, mailer, events, jobs, integrations, shell.
@@ -26,10 +31,11 @@ genie-ops-center/
       src/services/<name>/          Mailer, files, events, jobs, auth, and every other unit that does
                                     work for the application.
       migrations/                   The core drizzle-kit history.
-      testing/                      Factories for core tables, the two-context isolation test helpers,
-                                    and the Playwright seed.
+      testing/                      Core-table factories and generic database, migration, and tenant-context
+                                    helpers. No module imports; composed tests and seed belong to the app.
     ui/                             Design-system primitives and tokens.
-    config/                         tsconfig, oxlint, oxfmt, tailwind preset, vitest preset.
+    config/                         Tagged config: shared tsconfig, oxlint, oxfmt, Tailwind, Vitest and Storybook presets.
+                                    No internal project imports; consumed by configuration files, not runtime.
     modules/
       solutions/               Platform module, every tenant.
       agreements/                   Built for the first customer. Entitled to that tenant only, for now.
@@ -52,12 +58,17 @@ genie-ops-center/
         e2e/                        At least one Playwright main-path test.
         README.md                   Points to docs/modules/<capability>/.
   tools/
-    generators/                     Nx local plugin: module:new, tenant:new.
+    generators/                     Tagged tooling: Nx local plugin, module:new and tenant:new.
+                                    Uses config and exposed build-safe core schemas/types only; generated
+                                    modules/apps follow their destination tags and import rules.
   scripts/
     build-customer-image.sh         docker build with the customer's include list, then push (DEC-33).
     seed.ts                         Interactive local seed: slug, modules, first administrator.
   customers/
     <slug>/                         One folder per customer. Composition and configuration, never capability.
+      runbook.md                    The operations record: hosting mode, host, Postgres, SMTP, Keycloak own or
+                                    supplied, object storage, delivery path, image version, recovery requests.
+                                    Values no code reads (DEC-35). From the template in docs/runbooks/.
       deploy/
         tenant.yaml                 Modules, onboarding mode, local_accounts, first administrators,
                                     break-glass email. Input to the generator and to genie-ops setup.
@@ -74,7 +85,7 @@ genie-ops-center/
                                     packages/core/src/lib/tenant-config/; carries a $schema key (DEC-35).
         compose.yaml                Generated from deploy/stack/. Committed; holds no secret.
         .env.example                Generated from the environment contract. The real .env is never committed.
-        values.yaml                 Helm values, only when the customer runs Kubernetes.
+        values.yaml                 Helm values, written by the generator and used only when the customer runs Kubernetes.
       app/                          Only when this customer needs an entirely different experience
                                     (level 8): an Nx app composing core, ui, and modules.
   deploy/
@@ -96,6 +107,8 @@ Every folder that the tree above names holds a `README.md` that says in a few li
 A customer folder holds two kinds of thing and no third: the customer's deployment configuration, and, when they need one, the custom application that composes core and modules for them. It never holds a module. A module is a capability, lives under `packages/modules/<capability>`, and is given to a customer by adding it to their include list, so it can be given to a second customer without moving. The slug in `customers/<slug>` names the image and the stack and will usually be recognizably the customer's; that is acceptable in this folder and in deployment configuration, and not acceptable in `packages/`, `apps/genie`, or `docs/`.
 
 ## How a customer's requirement is met
+
+UI stories are colocated with their owning component, not moved into the composition host. The development-only Storybook app aggregates browser-safe stories without relaxing package import rules. Discovery, module selection, Nx dependencies, and customer-artifact confidentiality follow [Storybook and UI development](ui-development.md). Capability modules created for a tenant use the same story convention as every other module.
 
 Work down this list and stop at the first level that satisfies the requirement. Each level is cheaper and safer than the next.
 

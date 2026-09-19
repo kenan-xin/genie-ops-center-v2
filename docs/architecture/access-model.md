@@ -10,16 +10,16 @@ The customer's identity provider owns people and groups. Genie Ops Center owns r
 
 1. The person opens Genie Ops Center and clicks sign in.
 2. Genie Ops Center sends the browser to Keycloak, to the customer's own realm.
-3. Keycloak sends the browser to the customer's identity provider, for example Microsoft Entra ID, Google, Okta, or an on-premises Active Directory.
+3. Keycloak sends the browser to the customer's identity provider, for example Microsoft Entra ID, Google, or Okta. A tenant that federates an on-premises LDAP or Active Directory signs in on the realm's own form instead, and Keycloak checks the password against the directory.
 4. The provider checks the password and any second factor, then returns a signed token to Keycloak. A token is a small signed document with facts about the person. Each fact is a claim: name, email, and the groups the person belongs to.
-5. Keycloak copies the group list into its own token under the fixed claim name `groups`, whatever the provider called it. A mapper in the realm does this copy.
+5. Keycloak puts the group list into its own token under the fixed claim name `groups`, whatever the provider called it. An identity provider mapper in the realm imports the list, and a protocol mapper on the client emits the claim.
 6. Keycloak returns its token to Genie Ops Center. Better Auth creates the application session, and the sync described below records the groups.
 
 A customer without an identity provider uses local accounts. Keycloak then holds the password itself, and step 3 and step 4 happen inside Keycloak. Everything from step 5 on is the same.
 
 ## Where the group list comes from
 
-Every provider sends groups in its own way: an OIDC claim, a SAML attribute, or LDAP `memberOf`. The command `genie-ops idp set` writes the provider into the realm and creates the mapper that copies that list into the `groups` claim. Genie Ops Center reads only the `groups` claim. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
+Every provider sends groups in its own way: an OIDC claim, a SAML attribute, or LDAP `memberOf`. The command `genie-ops idp set` writes the provider into the realm (for LDAP or Active Directory, a user federation with its group mapper) and creates the mappers that carry that list into the `groups` claim (`../runbooks/keycloak-realm.md`). Genie Ops Center reads only the `groups` claim. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
 
 One provider per customer is the current design. A second provider in the same realm is a Keycloak addition with a chooser on the sign-in page. It is not described in the runbook until a customer needs it.
 
@@ -37,7 +37,7 @@ The absent case exists because the earlier rule, replace on every sign-in, delet
 
 A tenant administrator maps a group to a role in the admin portal. The mapping is a `role_assignment` row with `principal_type` equal to `group`, optionally at a scope such as one office or one record. Example: the directory group `Finance-Managers` gets the role `Invoice approver`. From then on `can(user, "invoices:approve")` returns true for every person whose last sign-in listed that group. When the provider removes the person from the group, the next sign-in rewrites their list, and the role is gone. Nobody touches Genie Ops Center for that.
 
-The mapping lives in Genie Ops Center, not in the provider, because the provider knows nothing about product roles, and because the same mapping must work for every provider. A directory group appears in the Groups screen the first time any member signs in with it. It can be archived, never deleted.
+The mapping lives in Genie Ops Center, not in the provider, because the provider knows nothing about product roles, and because the same mapping must work for every provider. A directory group appears in the Groups screen the first time any member signs in with it. It can be archived, never deleted. While a group is archived, the roles assigned to it stop applying, and restoring the group brings them back, so archiving is how an administrator retires a directory group's access without touching the provider.
 
 ## Local groups
 
