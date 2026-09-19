@@ -12,6 +12,8 @@ Standing check: a field in a `types.ts` that has no column in `../architecture/d
 
 Ownership: the design authoring workspace is `/home/kenan/work/genie-ops-center-design`; this tree is the imported reference used by the v2 repository. Each section folder holds its specification, `types.ts`, `data.json`, and captures; `reference/` holds screen components as visual evidence (see `reference/README.md`); `design-system/tokens.md` and `shell/spec.md` hold the imported token layer and shell. Importing a design does not approve changes to platform behavior, data shape, module contracts or roadmap scope. Conflicts require explicit reconciliation with the canonical platform decisions and specifications. The [2026-09-19 import record](imports/2026-09-19.md) records provenance, known stale captures and review status. A capture is one historical state, not proof of current behavior; do not choose authority merely by file modification time. Inspect current source and its governing contract, and report disagreements rather than silently promoting screenshots or prototype callbacks into requirements.
 
+Latest snapshot: [2026-09-19 synchronized design bundle](imports/2026-09-19-latest.md), with per-file before/import hashes and remaining review limitations. This supersedes the earlier import status linked above. The snapshot does not approve open product decisions or certify capture freshness; no recoverable pre-import backup is claimed.
+
 Design rounds and the core section each one serves. The rounds carry no numbering of their own.
 
 | Design round | Serves |
