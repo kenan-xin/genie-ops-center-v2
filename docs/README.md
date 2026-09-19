@@ -4,14 +4,20 @@ The core product and the modules are documented apart. Read `core/` first, then 
 
 | Folder | Holds | Status |
 | --- | --- | --- |
+| `flows/` | Business stories and cross-section core flows: actors, triggers, walkthroughs, outcomes, alternate paths, and links to owning requirements and tests. Module-specific flows remain under their module and are indexed here. | Module activation, permission-upgrade and removal/reintroduction scenarios captured; not implementation proof |
 | `core/` | `vision.md`, `roadmap.md`, `tech-stack.md`, `decision-log.md`. The platform every tenant gets: tenancy, identity, access, branding, audit, storage, shell, and the module contract. The decision log keeps questions answered by default, with what is built now and what waits. No module content. | Draft for review |
 | `modules/` | One folder per module: `README.md` (users, problem, phases, permissions, tables, open decisions) and `discovery.md` (customer questions, `D-n`). The solutions module also carries `chat-proxy.md` and `external-chat-api-contract.md`. `modules/README.md` is the catalogue. | Solutions defined; contracts and approvals deferred on discovery |
 | `architecture/` | `access-model.md` (how sign-in, the groups claim, the group-to-role mapping, and local groups work, in prose), `data-shape.md` (deployment tables, core tables, and the rules module tables follow), `module-contract.md` (every extension point a module may use and how the contract grows), `repository-layout.md` (the monorepo tree and the eight levels at which a customer requirement is met), `environment-contract.md` (every environment variable the image reads, with defaults and rules), and `diagrams/` (interactive HTML with JSON sources). | Draft for review |
-| `adr/` | Architecture decision records, numbered. Each records one hard-to-reverse decision, the options considered, and why. Read these before proposing to change a foundation choice. | Seven accepted; 0001, 0003, and 0005 superseded in part by 0007 |
-| `design/` | Design tokens, the shell, and one design per core roadmap section or module phase, delivered by the design owner as text (specs, `types.ts`, `data.json`); captures stay in the design tree. `design/history/` holds past review records. | Seven section designs, shell, and tokens delivered and reconciled through `DEC-51` |
-| `specs/` | One specification per core roadmap section or module phase, written before implementation and approved before tickets. | Empty |
+| `adr/` | Architecture decision records, numbered. Each records one hard-to-reverse decision, the options considered, and why. Read these before proposing to change a foundation choice. | Eight accepted; 0001, 0003, and 0005 superseded in part by 0007; 0008 records foundation integration and registry choices |
+| `design/` | Design tokens, the shell, and one design per core roadmap section or module phase: specs, `types.ts`, `data.json`, and the captures beside each section. `design/reference/` holds the screen components as a visual reference. This repository is the only home of the design. `design/history/` holds past review records. | Seven section designs, shell, and tokens delivered and reconciled through `DEC-51` |
+| `specs/` | One specification per core roadmap section or module phase, written before implementation and approved before tickets. `specs/SPEC_READINESS_REPORT.md` holds the evidence and findings of the specification round. | Six drafts for Sections 0 to 5, awaiting approval |
+| `tech-plans/` | Bounded technical approaches, verification gates and complexity stop conditions; decisions link back to ADRs and the core decision log. | Spec 0 draft for review; no implementation proof |
 | `tickets/` | Ticket breakdowns per specification, with dependencies. | Empty |
-| `runbooks/` | Operator procedures: the deployment guide (`deployment.md`), Keycloak realm and identity provider setup, upgrades, backup verification. | Deployment guide written |
+| `runbooks/` | Operator procedures: the deployment guide (`deployment.md`), the Keycloak realm and identity provider runbook (`keycloak-realm.md`), the reverse proxy setup (`reverse-proxy.md`), upgrades, backup verification. | Deployment guide, realm runbook, and reverse proxy runbook written; the last two are planned procedures not yet run |
+
+For module lifecycle policy, read [Module removal and reintroduction](architecture/module-removal.md) and its linked business flows and required test matrix. Acceptance of the policy is not implementation proof.
+
+For UI implementation and testing, read [Storybook and UI development](architecture/ui-development.md): story ownership, module-safe discovery, documentation, the test-first loop, and the boundary between component tests and E2E. Section 0 establishes this development infrastructure.
 
 Rules for every document in this tree:
 
