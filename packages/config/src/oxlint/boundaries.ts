@@ -37,6 +37,7 @@ const DRIVERS = [
   "pg",
   "pg/**",
   "drizzle-orm/node-postgres",
+  "@genie/core/services/**",
   "**/packages/core/src/services/database/**",
   "**/../core/src/services/database/**",
 ];

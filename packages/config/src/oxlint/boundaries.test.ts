@@ -90,6 +90,24 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).not.toMatch(/no-restricted-imports/);
   });
 
+  it("stops contracts from importing anything but zod", () => {
+    const result = lintAt("packages/core/contracts/__boundary__/__boundary__.ts", `import "node:fs";\n`);
+    expect(result.failed).toBe(true);
+    expect(result.output).toMatch(/no-restricted-imports/);
+  });
+
+  it("allows contracts to import zod, which is the one dependency DEC-42 grants", () => {
+    const result = lintAt("packages/core/contracts/__boundary__/__boundary__.ts", `import "zod";\n`);
+    expect(result.failed).toBe(false);
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("stops a module from importing a core service through the package subpath", () => {
+    const result = lintAt("packages/modules/alpha/__boundary__/__boundary__.ts", `import "@genie/core/services/database";\n`);
+    expect(result.failed).toBe(true);
+    expect(result.output).toMatch(/no-restricted-imports/);
+  });
+
   it("stops tools/generators from importing a database driver", () => {
     const result = lintAt("tools/generators/__boundary__/__boundary__.ts", `import "pg";\n`);
     expect(result.failed).toBe(true);
