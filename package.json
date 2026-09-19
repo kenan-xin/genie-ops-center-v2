@@ -1,0 +1,30 @@
+{
+  "name": "genie-ops-center",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hooks:install": "lefthook install",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "typecheck": "nx run-many -t typecheck",
+    "format": "oxfmt --disable-nested-config",
+    "format:check": "oxfmt --check --disable-nested-config",
+    "affected": "nx affected -t build test lint typecheck"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.83.0",
+    "@types/node": "26.6.2",
+    "lefthook": "2.1.14",
+    "nx": "23.2.1",
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
+  },
+  "engines": {
+    "node": "^26.0.0"
+  },
+  "packageManager": "pnpm@12.4.2"
+}

@@ -1,0 +1,28 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/modules/*"
+  - "tools/*"
+  - "customers/*/app"
+
+# pnpm 12 reads only auth and registry settings from .npmrc. Everything else
+# lives here: https://pnpm.io/settings
+saveExact: true
+strictPeerDependencies: true
+autoInstallPeers: false
+
+# Supply-chain guard. Refuse any version published less than one day ago,
+# because a malicious release is usually pulled from the registry within the
+# hour. The 1440 default is non-strict, so a too-fresh pin would silently fall
+# back to an older version. Setting the value explicitly turns strict mode on,
+# and the install fails instead. Every exception is one auditable line below.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeExclude:
+  - "@types/node@26.6.2"
+
+# An install script runs arbitrary code at install time. Name each package that
+# needs one. Never use dangerouslyAllowAllBuilds.
+allowBuilds:
+  nx: true
+  lefthook: true

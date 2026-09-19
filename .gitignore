@@ -10,3 +10,19 @@
 # Beads gate locks are runtime state, machine-local like the locks bd already
 # ignores inside .beads/ — transient, never committed.
 *.gate.lock
+
+node_modules/
+.nx/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Agent scratch space. Holds the execution ledger and review packages, never source.
+.superpowers/
+
+# Generated at build time from MODULE_INCLUDE. Never commit it (ADR 0008).
+apps/genie/src/modules.ts
+
+.env
+.env.*
+!.env.example
