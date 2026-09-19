@@ -1,18 +1,38 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ConfigField, ConfigValue } from '@/../product/sections/audit-and-tenant-settings/types'
 
-/** The one focus ring (tokens.md): 2px blue-500 at 60% with a 2px offset, on every interactive element. */
-export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950'
+/** The one focus ring (tokens.md): solid blue-500 (blue-400 in dark) with a 2px offset, on every interactive element. */
+export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950'
 export const btnPrimary =
-  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500 ${focusRing}`
+  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-600/90 active:bg-blue-600/80 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 ${focusRing}`
 export const btnSecondary =
-  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 ${focusRing}`
+  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:disabled:hover:bg-gray-950 ${focusRing}`
 export const btnDanger =
-  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-red-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-red-600/20 motion-safe:transition-colors hover:bg-red-700 ${focusRing}`
+  `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-red-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-red-600/20 motion-safe:transition-colors hover:bg-red-600/90 active:bg-red-600/80 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-600 ${focusRing}`
 /** Text button: 44px tall on phones for the touch target, 32px from sm. */
 export const btnGhost =
-  `inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-100 sm:h-8 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`
+  `inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent sm:h-8 dark:text-gray-300 dark:hover:bg-gray-900 ${focusRing}`
 export const inputClass =
-  `h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 aria-[invalid=true]:border-red-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
+  `h-10 w-full rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 aria-[invalid=true]:border-red-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
+
+/**
+ * Design-only loading state (tokens.md, Buttons): `trigger` flips `loading` for `ms`, then runs `fn`.
+ * A press while loading is ignored.
+ */
+export function useDelayed(fn: () => void, ms = 900): [boolean, () => void] {
+  const [loading, setLoading] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const trigger = () => {
+    if (loading) return
+    setLoading(true)
+    timer.current = setTimeout(() => {
+      setLoading(false)
+      fn()
+    }, ms)
+  }
+  return [loading, trigger]
+}
 export const labelClass = 'text-sm font-semibold text-gray-800 dark:text-gray-200'
 
 /** Fixed design clock so relative times in screenshots are stable. */
@@ -78,6 +98,44 @@ export function formatMetaValue(v: unknown): string {
   if (typeof v === 'string') return v
   if (Array.isArray(v)) return v.length ? v.map(formatMetaValue).join(', ') : '—'
   return JSON.stringify(v)
+}
+
+/**
+ * Edit distance with transposition (optimal string alignment), stopped once it passes `max`. The
+ * transposition case matters: “remidners” for “reminders” is two plain edits and one swap, and a
+ * swap is the typo people make most.
+ */
+function distance(a: string, b: string, max = 1) {
+  if (Math.abs(a.length - b.length) > max) return max + 1
+  const rows: number[][] = [Array.from({ length: b.length + 1 }, (_, i) => i)]
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i]
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      let v = Math.min(rows[i - 1][j] + 1, row[j - 1] + 1, rows[i - 1][j - 1] + cost)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, rows[i - 2][j - 2] + 1)
+      row[j] = v
+    }
+    if (Math.min(...row) > max) return max + 1
+    rows.push(row)
+  }
+  return rows[a.length][b.length]
+}
+
+const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean)
+
+/**
+ * Typo-tolerant match for the settings search. Every word of the query must match a word of the
+ * haystack: the haystack word contains it, or, from four characters, it is one edit or one swap
+ * away. So "timout" finds "Idle timeout" and "remidners" finds "Renewal reminders". The haystack is the
+ * setting's title, its description, its keywords, and its section name. It never holds a saved value
+ * and never a secret.
+ */
+export function matchesQuery(haystack: string, query: string) {
+  const terms = words(query)
+  if (terms.length === 0) return false
+  const pool = words(haystack)
+  return terms.every((t) => pool.some((w) => w.includes(t) || (t.length >= 4 && distance(t, w) <= 1)))
 }
 
 /** One validation message per field, mirroring the constraints the zod schema carries (DEC-28). */

@@ -59,14 +59,14 @@ export function AuditEventSheet({ event: e, timeZone, onClose, onOpenTarget, onC
         </Section>
 
         <Section title="Target">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-3.5 py-2.5 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3.5 py-2.5 dark:border-gray-800">
             <div className="min-w-0">
               <p className="text-xs text-gray-500">{humanize(e.targetType)}</p>
               <p className="truncate text-sm font-semibold">{e.targetLabel}</p>
               <p className="truncate font-mono text-xs text-gray-500">{e.targetId}</p>
             </div>
             {e.targetExists ? (
-              <button type="button" className={`${btnGhost} shrink-0 text-blue-700 dark:text-blue-300`} onClick={() => onOpenTarget?.(e.targetType, e.targetId)}>Open<ExternalLink className="size-4" strokeWidth={2} aria-hidden /></button>
+              <button type="button" className={`${btnGhost} shrink-0 text-blue-700 dark:text-blue-400`} onClick={() => onOpenTarget?.(e.targetType, e.targetId)}>Open<ExternalLink className="size-4" strokeWidth={2} aria-hidden /></button>
             ) : (
               <Pill>Removed</Pill>
             )}
@@ -81,7 +81,7 @@ export function AuditEventSheet({ event: e, timeZone, onClose, onOpenTarget, onC
           {entries.length === 0 ? (
             <p className="text-sm text-gray-500">This event carries no extra details.</p>
           ) : (
-            <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+            <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
               {entries.map(([k, v]) => (
                 <div key={k} className="grid grid-cols-[minmax(0,150px)_1fr] gap-3 px-3.5 py-2 text-sm">
                   <dt className="break-words text-gray-600 dark:text-gray-400">{humanize(k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase())}</dt>
@@ -91,8 +91,8 @@ export function AuditEventSheet({ event: e, timeZone, onClose, onOpenTarget, onC
             </dl>
           )}
           <details className="group mt-1" open={initialJsonOpen}>
-            <summary className={`w-fit cursor-pointer select-none rounded-lg text-sm font-medium text-blue-700 hover:underline dark:text-blue-300 ${focusRing}`}><span className="group-open:hidden">Show JSON</span><span className="hidden group-open:inline">Hide JSON</span></summary>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">{JSON.stringify(e, null, 2)}</pre>
+            <summary className={`w-fit cursor-pointer select-none rounded-lg text-sm font-medium text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}><span className="group-open:hidden">Show JSON</span><span className="hidden group-open:inline">Hide JSON</span></summary>
+            <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">{JSON.stringify(e, null, 2)}</pre>
           </details>
         </Section>
       </div>

@@ -1,28 +1,41 @@
+import { goTo } from '@/shell/components/routes'
 import data from '@/../product/sections/audit-and-tenant-settings/data.json'
-import type { ModuleConfig, SettingsViewer, TenantSettings as TenantSettingsModel } from '@/../product/sections/audit-and-tenant-settings/types'
+import type { ConfigValue, ModuleConfig, SettingsViewer, TenantRealm, TenantSettings } from '@/../product/sections/audit-and-tenant-settings/types'
 import { TenantSettingsPage } from './components/TenantSettingsPage'
 
-// ?brokered=1 shows a realm without local accounts (switch disabled). ?nomodules=1 hides module cards.
-// ?dirty=1 opens with an unsaved idle timeout. ?invalid=1 opens the Contracts card with one failing value per field kind.
-const INVALID_CONTRACTS = {
-  registryName: '',
-  approvalThreshold: 20000000,
-  scopeDimension: '',
-  notifyEmails: ['legal@meridianhealth.example', 'not-an-email'],
-}
+/**
+ * Preview switches:
+ * `?section=<id>` opens one section, which is also the phone detail screen. `?q=<text>` fills the
+ * search, for example `?q=timout`. `?fail=<sectionId>` makes that section's save fail, so the
+ * refusal and Retry can be read. `?draft=1` loads with unsaved changes in Sessions and in Contracts,
+ * for the unsaved-navigation confirm. `?brokered=1` previews a realm without local accounts.
+ */
 export default function TenantSettingsPreview() {
   const params = new URLSearchParams(window.location.search)
-  const brokered = params.get('brokered') === '1'
+  const fail = params.get('fail')
+  const draft = params.get('draft') === '1'
+
   return (
     <TenantSettingsPage
       viewer={data.viewer as SettingsViewer}
-      tenantSettings={data.tenantSettings as TenantSettingsModel}
-      realm={{ supportsLocalAccounts: brokered ? false : data.realm.supportsLocalAccounts }}
-      moduleConfigs={params.get('nomodules') === '1' ? [] : (data.moduleConfigs as ModuleConfig[])}
-      initialDraft={params.get('dirty') === '1' ? { sessionIdleMinutes: 30 } : undefined}
-      initialModuleDrafts={params.get('invalid') === '1' ? { contracts: INVALID_CONTRACTS } : undefined}
-      onSaveTenantSettings={(input) => console.log('Save tenant settings:', input)}
-      onSaveModuleConfig={(moduleId, values) => console.log('Save module config:', moduleId, values)}
+      tenantSettings={data.tenantSettings as TenantSettings}
+      realm={params.get('brokered') === '1' ? { supportsLocalAccounts: false } : (data.realm as TenantRealm)}
+      moduleConfigs={data.moduleConfigs as unknown as ModuleConfig[]}
+      initialSectionId={params.get('section') ?? undefined}
+      initialQuery={params.get('q') ?? undefined}
+      initialDraft={draft ? { sessionIdleMinutes: 45 } : undefined}
+      initialModuleDrafts={draft ? { contracts: { ...(data.moduleConfigs[0].values as unknown as Record<string, ConfigValue>), registryName: 'Vendor agreements' } } : undefined}
+      onNavigate={goTo}
+      onSaveTenantSettings={(input) =>
+        new Promise<void>((resolve, reject) => {
+          window.setTimeout(() => (fail === 'accounts' || fail === 'sessions' || fail === 'all' ? reject(new Error('The server refused the change (503).')) : resolve()), 700)
+        }).then(() => console.log('Save tenant settings:', input))
+      }
+      onSaveModuleConfig={(moduleId, values) =>
+        new Promise<void>((resolve, reject) => {
+          window.setTimeout(() => (fail === moduleId || fail === 'all' ? reject(new Error('The server refused the change (503).')) : resolve()), 700)
+        }).then(() => console.log('Save module config:', moduleId, values))
+      }
     />
   )
 }

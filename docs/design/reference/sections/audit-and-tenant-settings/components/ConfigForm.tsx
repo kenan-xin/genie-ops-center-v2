@@ -10,10 +10,12 @@ export interface ConfigFormProps {
   onChange: (values: Record<string, ConfigValue>) => void
   /** Validation messages by key. Shown under the field once it was touched. */
   errors: Record<string, string | null>
+  /** The field a search result led to. It takes a ring for a moment, so the eye lands where the focus went. */
+  highlightKey?: string | null
 }
 
 /** Renders the five supported field kinds from a module's configuration schema (DEC-28). Never a form engine. */
-export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps) {
+export function ConfigForm({ schema, values, onChange, errors, highlightKey }: ConfigFormProps) {
   // A stored value that already fails the schema shows its message at once; everything else waits for blur.
   const [touched, setTouched] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.entries(errors).map(([k, v]) => [k, Boolean(v)])))
   const set = (key: string, v: ConfigValue) => onChange({ ...values, [key]: v })
@@ -24,6 +26,8 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
     <div className="flex flex-col gap-5">
       {schema.map((field) => {
         const id = `cfg-${field.key}`
+        // The ring marks the field a search result led to, so the eye lands where the focus went.
+        const lit = highlightKey === field.key ? 'rounded-lg ring-2 ring-blue-500 ring-offset-4 dark:ring-blue-400 dark:ring-offset-gray-900' : ''
         const message = err(field.key)
         const describedBy = message ? `${id}-e` : `${id}-d`
         const head = (
@@ -39,15 +43,15 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
 
         if (field.kind === 'boolean') {
           return (
-            <div key={field.key} className="flex flex-col gap-1.5">
-              <SwitchRow label={field.title} description={field.description} checked={values[field.key] === true} onChange={(v) => { set(field.key, v); touch(field.key) }} />
+            <div key={field.key} className={`flex flex-col gap-1.5 ${lit}`}>
+              <SwitchRow id={id} label={field.title} description={field.description} checked={values[field.key] === true} onChange={(v) => { set(field.key, v); touch(field.key) }} />
               {error}
             </div>
           )
         }
         if (field.kind === 'string') {
           return (
-            <div key={field.key} className="flex flex-col gap-1.5">
+            <div key={field.key} className={`flex flex-col gap-1.5 ${lit}`}>
               {head}
               <input id={id} value={String(values[field.key] ?? '')} onChange={(e) => set(field.key, e.target.value)} onBlur={() => touch(field.key)} className={inputClass} aria-invalid={Boolean(message)} aria-describedby={describedBy} />
               {error ?? desc}
@@ -56,7 +60,7 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
         }
         if (field.kind === 'number') {
           return (
-            <div key={field.key} className="flex flex-col gap-1.5">
+            <div key={field.key} className={`flex flex-col gap-1.5 ${lit}`}>
               {head}
               <input id={id} type="number" inputMode="decimal" min={field.min} max={field.max} step={field.step} value={values[field.key] === undefined ? '' : String(values[field.key])} onChange={(e) => set(field.key, e.target.value === '' ? '' : Number(e.target.value))} onBlur={() => touch(field.key)} className={`${inputClass} font-mono sm:max-w-[240px]`} aria-invalid={Boolean(message)} aria-describedby={describedBy} />
               {error ?? desc}
@@ -65,7 +69,7 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
         }
         if (field.kind === 'enum') {
           return (
-            <div key={field.key} className="flex flex-col gap-1.5">
+            <div key={field.key} className={`flex flex-col gap-1.5 ${lit}`}>
               {head}
               <select id={id} value={String(values[field.key] ?? '')} onChange={(e) => { set(field.key, e.target.value); touch(field.key) }} className={`${inputClass} appearance-none sm:max-w-[320px]`} aria-invalid={Boolean(message)} aria-describedby={describedBy}>
                 <option value="" disabled={field.required}>Select…</option>
@@ -80,7 +84,7 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
         const atLimit = field.itemLimit !== undefined && list.length >= field.itemLimit
         const re = field.pattern ? new RegExp(field.pattern) : null
         return (
-          <div key={field.key} className="flex flex-col gap-1.5">
+          <div key={field.key} className={`flex flex-col gap-1.5 ${lit}`}>
             <div className="flex items-baseline justify-between gap-3">
               <span className={labelClass}>{field.title}</span>
               {field.itemLimit !== undefined ? <span className={`text-xs ${list.length > field.itemLimit ? 'text-red-600' : 'text-gray-500'}`}>{list.length}/{field.itemLimit}</span> : null}
@@ -96,7 +100,7 @@ export function ConfigForm({ schema, values, onChange, errors }: ConfigFormProps
                 )
               })}
             </ul>
-            <button type="button" disabled={atLimit} title={atLimit ? `At most ${field.itemLimit} entries` : undefined} onClick={() => set(field.key, [...list, ''])} className={`${btnGhost} w-fit text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-300`}><Plus className="size-5" strokeWidth={2} aria-hidden />Add entry</button>
+            <button type="button" disabled={atLimit} title={atLimit ? `At most ${field.itemLimit} entries` : undefined} onClick={() => set(field.key, [...list, ''])} className={`${btnGhost} w-fit text-blue-700 dark:text-blue-400`}><Plus className="size-5" strokeWidth={2} aria-hidden />Add entry</button>
             {error ?? desc}
           </div>
         )

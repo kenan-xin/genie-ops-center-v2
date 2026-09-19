@@ -1,13 +1,19 @@
 import { useCallback, useState } from 'react'
 import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from 'lucide-react'
-import type { Category, CompiledModule } from '@/../product/sections/audit-and-tenant-settings/types'
+import type { AssignableItem, Category, CompiledModule } from '@/../product/sections/audit-and-tenant-settings/types'
 import { btnGhost, btnPrimary, focusRing, inputClass } from './helpers'
-import { BottomBar, Card, ConfirmDialog, Pill, Toast } from './ui'
+import { BottomBar, Card, ConfirmDialog, HelpNote, Pill, Toast } from './ui'
+import { AssignItems } from './AssignItems'
 
 export interface CategoriesPageProps {
   categories: Category[]
   modules: CompiledModule[]
-  ungroupedSolutionCount: number
+  /** Rows for the Assign items table: the modules with a workspace entry, and the records each enabled module contributes. */
+  assignableItems?: AssignableItem[]
+  /** The viewer's permission keys. A row whose write key is missing is read-only. */
+  permissions?: string[]
+  /** Files one item. It resolves on success and rejects on failure. */
+  onSetItemCategory?: (itemId: string, categoryId: string | null) => void | Promise<void>
   onCreateCategory?: (name: string) => void
   onRenameCategory?: (categoryId: string, name: string) => void
   onReorderCategories?: (orderedIds: string[]) => void
@@ -19,12 +25,13 @@ export interface CategoriesPageProps {
 const SAVED = 'Saved. Written to the audit log.'
 const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
-function Counts({ solutions, modules }: { solutions: number; modules: number }) {
-  return <><Pill>{n(solutions, 'solution', 'solutions')}</Pill><Pill>{n(modules, 'module', 'modules')}</Pill></>
+/** Core counts modules only. It reads no module table, so it cannot count a module's records (DEC-51). */
+function Counts({ modules }: { modules: number }) {
+  return <Pill>{n(modules, 'module', 'modules')}</Pill>
 }
 
 /** Core categories (DEC-51): one ordered list that groups solutions and modules alike. */
-export function CategoriesPage({ categories, modules, ungroupedSolutionCount, onCreateCategory, onRenameCategory, onReorderCategories, onDeleteCategory, initialConfirmId }: CategoriesPageProps) {
+export function CategoriesPage({ categories, modules, assignableItems = [], permissions = [], onSetItemCategory, onCreateCategory, onRenameCategory, onReorderCategories, onDeleteCategory, initialConfirmId }: CategoriesPageProps) {
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -53,7 +60,18 @@ export function CategoriesPage({ categories, modules, ungroupedSolutionCount, on
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 pb-8">
+    <div className="flex w-full max-w-3xl flex-col gap-4 pb-8">
+      {/* The one line of guidance this screen needs, because a category is easily read as a permission. */}
+      <div className="flex flex-col items-start gap-1">
+        <p className="max-w-prose text-sm text-gray-600 dark:text-gray-400">
+          A category groups what people already see in the navigation. It never grants access: who can open a module or a solution is set in Access.
+        </p>
+        <HelpNote label="What the counts mean">
+          <p>A count on a row counts modules only. A solution carries its own category, which the solutions admin owns and this page does not read, so no solution is ever in this number.</p>
+          <p>Deleting a category deletes nothing else. Its modules move to Other, and its solutions lose the heading and keep everything else.</p>
+          <p className="text-gray-600 dark:text-gray-400">Other is fixed. It gathers every module with no category, and it cannot be renamed, moved, or deleted.</p>
+        </HelpNote>
+      </div>
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); create() }}>
         <input aria-label="New category name" value={name} onChange={(e) => setName(e.target.value)} placeholder="New category, for example Operations" className={inputClass} />
         {/* Under md the primary action moves to the sticky bottom bar (DEC-25). */}
@@ -90,10 +108,10 @@ export function CategoriesPage({ categories, modules, ungroupedSolutionCount, on
                     className={`${inputClass} min-w-0 flex-1 sm:max-w-sm`}
                   />
                 ) : (
-                  <button type="button" onClick={() => { setEditing(c.id); setEditValue(c.name) }} className={`min-h-11 min-w-0 flex-1 truncate rounded-xl px-2 py-1 text-left text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 ${focusRing}`} title="Click to rename">{c.name}</button>
+                  <button type="button" onClick={() => { setEditing(c.id); setEditValue(c.name) }} className={`min-h-11 min-w-0 flex-1 truncate rounded-lg px-2 py-1 text-left text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 ${focusRing}`} title="Click to rename">{c.name}</button>
                 )}
                 <span className="flex basis-full items-center gap-2 pl-12 sm:basis-auto sm:pl-0">
-                  <Counts solutions={c.solutionCount} modules={c.moduleCount} />
+                  <Counts modules={c.moduleCount} />
                   <button type="button" aria-label={`Delete ${c.name}`} title="Delete category" onClick={() => setConfirmId(c.id)} className={`${btnGhost} ml-auto size-11 justify-center px-0 text-gray-500 hover:text-red-700 sm:size-8`}>
                     <Trash2 className="size-4" strokeWidth={1.75} />
                   </button>
@@ -104,17 +122,25 @@ export function CategoriesPage({ categories, modules, ungroupedSolutionCount, on
           <li className="flex flex-wrap items-center gap-x-3 gap-y-2 bg-gray-50 px-3 py-2.5 sm:flex-nowrap dark:bg-gray-950/50">
             <span className="w-4" /><span className="w-5" />
             <span className="min-h-11 flex-1 px-2 text-sm font-semibold leading-11 text-gray-600 dark:text-gray-400">Other</span>
-            <span className="flex basis-full items-center gap-2 pl-12 sm:basis-auto sm:pl-0"><Counts solutions={ungroupedSolutionCount} modules={otherModules} /><span className="ml-auto size-11 sm:size-8" /></span>
+            <span className="flex basis-full items-center gap-2 pl-12 sm:basis-auto sm:pl-0"><Counts modules={otherModules} /><span className="ml-auto size-11 sm:size-8" /></span>
           </li>
         </ul>
         <div className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-600 dark:border-gray-800 dark:text-gray-400">Drag or use the arrows to reorder. Click a name to rename it. Deleting a category leaves its solutions and modules ungrouped under Other; nothing else is removed.</div>
       </Card>
+      <AssignItems
+        categories={categories}
+        items={assignableItems}
+        modules={modules}
+        permissions={permissions}
+        onSetItemCategory={async (itemId, categoryId) => { await onSetItemCategory?.(itemId, categoryId); setToast(SAVED) }}
+      />
+
       <BottomBar><button type="button" className={btnPrimary} disabled={!name.trim()} onClick={create}><Plus className="size-5" strokeWidth={2} aria-hidden />Add</button></BottomBar>
 
       <ConfirmDialog
         open={Boolean(confirming)}
         title={`Delete ${confirming?.name ?? ''}?`}
-        description={`${n(confirming?.solutionCount ?? 0, 'solution', 'solutions')} and ${n(confirming?.moduleCount ?? 0, 'module', 'modules')} become ungrouped. Nothing is deleted with it.`}
+        description={`${n(confirming?.moduleCount ?? 0, 'module', 'modules')} and every solution in it become ungrouped. Nothing is deleted with it.`}
         confirmLabel="Delete"
         danger
         onConfirm={() => { if (confirming) { onDeleteCategory?.(confirming.id); setToast(SAVED) } setConfirmId(null) }}

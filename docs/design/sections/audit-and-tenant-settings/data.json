@@ -14,7 +14,7 @@
       "auditEvent.actor is a person (or null for System); erased people appear anonymized",
       "auditEvent target is referenced by type and id; targetExists is false when the record was removed",
       "moduleConfig belongs to one entitled module; Solutions declares no schema and has no card (DEC-30)",
-      "module.categoryId references a category or is null; Solutions carries none because its entries carry their own",
+      "module.categoryId references a category or is null; the picker shows for every module with a static workspace entry, the solutions hub included (DEC-50)",
       "module.holders is read only here; role assignment happens on the Roles screen (DEC-39)",
       "category ids match the solutions section data so both trees show the same headings"
     ]
@@ -735,7 +735,8 @@
           "title": "Registry name",
           "description": "Shown as the page title of the module for this tenant.",
           "required": true,
-          "maxLength": 60
+          "maxLength": 60,
+          "keywords": ["title", "label", "heading"]
         },
         {
           "kind": "number",
@@ -745,14 +746,16 @@
           "required": true,
           "min": 0,
           "max": 10000000,
-          "step": 1000
+          "step": 1000,
+          "keywords": ["amount", "limit", "sign off", "second approver"]
         },
         {
           "kind": "boolean",
           "key": "remindersEnabled",
           "title": "Renewal reminders",
-          "description": "Send an in-app notification and an email before an contract expires.",
-          "required": true
+          "description": "Send an in-app notification and an email before a contract expires.",
+          "required": true,
+          "keywords": ["notifications", "email", "expiry", "renewal"]
         },
         {
           "kind": "enum",
@@ -775,6 +778,7 @@
           "kind": "string-list",
           "key": "notifyEmails",
           "title": "Notification recipients",
+          "keywords": ["email", "distribution list", "copy"],
           "description": "Email addresses that receive every renewal reminder in addition to the owner.",
           "itemLimit": 5,
           "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
@@ -793,7 +797,100 @@
         ]
       },
       "updatedBy": null,
-      "updatedAt": "2026-09-09T03:00:00Z"
+      "updatedAt": "2026-09-09T03:00:00Z",
+      "enabled": true
+    },
+    {
+      "moduleId": "approvals",
+      "moduleName": "Approvals",
+      "description": "Routes purchase and leave requests through approval chains. Installed and switched off, so its settings can be prepared before it is enabled.",
+      "enabled": false,
+      "schema": [
+        {
+          "kind": "boolean",
+          "key": "allowDelegation",
+          "title": "Allow delegation",
+          "description": "An approver can nominate somebody to approve in their place.",
+          "required": true,
+          "keywords": ["substitute", "deputy", "cover", "out of office"]
+        },
+        {
+          "kind": "number",
+          "key": "reminderDays",
+          "title": "Reminder interval",
+          "description": "Days between reminders while a request waits for an approver.",
+          "required": true,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "keywords": ["notifications", "chase", "nudge", "email"]
+        }
+      ],
+      "values": {
+        "allowDelegation": false,
+        "reminderDays": 3
+      },
+      "updatedBy": null,
+      "updatedAt": null
+    },
+    {
+      "moduleId": "fixture_inventory",
+      "moduleName": "Inventory",
+      "description": "Design fixture. Present only to show how the navigator holds a long list of module sections.",
+      "enabled": true,
+      "synthetic": true,
+      "schema": [
+        {
+          "kind": "string",
+          "key": "defaultWarehouse",
+          "title": "Default warehouse",
+          "description": "The location a new inventory record is filed under.",
+          "required": true,
+          "maxLength": 60,
+          "keywords": ["location", "storage", "site"]
+        }
+      ],
+      "values": {
+        "defaultWarehouse": "Main warehouse"
+      },
+      "updatedBy": "Priya Nair",
+      "updatedAt": "2026-09-11T02:20:00Z"
+    },
+    {
+      "moduleId": "fixture_servicedesk",
+      "moduleName": "Service desk",
+      "description": "Design fixture. Present only to show how the navigator holds a long list of module sections.",
+      "enabled": true,
+      "synthetic": true,
+      "schema": [
+        {
+          "kind": "string",
+          "key": "defaultQueue",
+          "title": "Default queue",
+          "description": "Where a new service request arrives before anybody picks it up.",
+          "required": true,
+          "maxLength": 60,
+          "keywords": ["routing", "tickets", "support", "triage"]
+        },
+        {
+          "kind": "enum",
+          "key": "priorityScheme",
+          "title": "Priority scheme",
+          "description": "How a request's urgency is named.",
+          "required": true,
+          "options": [
+            { "value": "p1p4", "label": "P1 to P4" },
+            { "value": "lowhigh", "label": "Low, Normal, High" }
+          ],
+          "keywords": ["urgency", "severity"]
+        }
+      ],
+      "values": {
+        "defaultQueue": "General enquiries",
+        "priorityScheme": "p1p4"
+      },
+      "updatedBy": "Priya Nair",
+      "updatedAt": "2026-09-11T02:22:00Z"
     }
   ],
   "categories": [
@@ -801,38 +898,34 @@
       "id": "cat_health",
       "name": "Healthcare",
       "position": 1,
-      "solutionCount": 3,
       "moduleCount": 0
     },
     {
       "id": "cat_finance",
       "name": "Finance",
       "position": 2,
-      "solutionCount": 2,
       "moduleCount": 1
     },
     {
       "id": "cat_hr",
       "name": "People and HR",
       "position": 3,
-      "solutionCount": 2,
       "moduleCount": 0
     },
     {
       "id": "cat_empty",
       "name": "Legal",
       "position": 4,
-      "solutionCount": 0,
       "moduleCount": 0
     }
   ],
-  "ungroupedSolutionCount": 1,
   "modules": [
     {
       "id": "solutions",
       "displayName": "Solutions",
       "description": "The solutions catalogue: chat and embedded solutions members open from the hub.",
       "enabled": true,
+      "staticEntries": 1,
       "categoryId": null,
       "useKey": "solutions:use",
       "userRoleName": "Solutions user",
@@ -866,6 +959,7 @@
       "displayName": "Contracts",
       "description": "Registers supplier and partner contracts with renewal reminders.",
       "enabled": true,
+      "staticEntries": 1,
       "categoryId": "cat_finance",
       "useKey": "contracts:use",
       "userRoleName": "Contracts user",
@@ -886,10 +980,45 @@
       }
     },
     {
+      "id": "requests",
+      "displayName": "Service requests",
+      "description": "Raise and track internal service requests. One workspace entry, no records of its own.",
+      "enabled": true,
+      "staticEntries": 1,
+      "categoryId": null,
+      "useKey": "requests:use",
+      "userRoleName": "Service requests user",
+      "holders": {
+        "groups": [
+          {
+            "id": "grp_pilot",
+            "name": "AI Pilot Cohort",
+            "memberCount": 5
+          }
+        ],
+        "people": []
+      }
+    },
+    {
+      "id": "reporting",
+      "displayName": "Reporting exports",
+      "description": "Scheduled exports for the finance team. Admin screens only, so it has no workspace entry.",
+      "enabled": true,
+      "staticEntries": 0,
+      "categoryId": null,
+      "useKey": "reporting:use",
+      "userRoleName": "Reporting exports user",
+      "holders": {
+        "groups": [],
+        "people": []
+      }
+    },
+    {
       "id": "approvals",
       "displayName": "Approvals",
       "description": "Routes purchase and leave requests through approval chains.",
       "enabled": false,
+      "staticEntries": 1,
       "categoryId": null,
       "useKey": "approvals:use",
       "userRoleName": "Approvals user",
@@ -904,5 +1033,16 @@
         "people": []
       }
     }
+  ],
+  "assignableRecords": [
+    { "id": "sol_claims", "label": "Claims Triage Assistant", "detail": "Chat · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_health", "writeKey": "solutions:admin" },
+    { "id": "sol_discharge", "label": "Discharge Summary Drafting", "detail": "Chat · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_health", "writeKey": "solutions:admin" },
+    { "id": "sol_referral", "label": "Referral Letter Review", "detail": "Chat · Maintenance", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_health", "writeKey": "solutions:admin" },
+    { "id": "sol_radiology", "label": "Radiology Report Helper", "detail": "Chat · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_health", "writeKey": "solutions:admin" },
+    { "id": "sol_policy", "label": "Policy Q&A", "detail": "Chat · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_finance", "writeKey": "solutions:admin" },
+    { "id": "sol_invoice", "label": "Vendor Invoice Checker", "detail": "Embedded · Down", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_finance", "writeKey": "solutions:admin" },
+    { "id": "sol_onboarding", "label": "Onboarding Buddy", "detail": "Chat · Draft", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_hr", "writeKey": "solutions:admin" },
+    { "id": "sol_portal", "label": "Benefits Portal", "detail": "Embedded · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": "cat_hr", "writeKey": "solutions:admin" },
+    { "id": "sol_general", "label": "General Assistant", "detail": "Chat · Ready", "kind": "record", "ownerModuleId": "solutions", "typeLabel": "Solution", "categoryId": null, "writeKey": "solutions:admin" }
   ]
 }

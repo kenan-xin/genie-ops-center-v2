@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import type { AuditEvent, AuditFilterOptions, AuditFilters, DateRangePreset, SettingsViewer } from '@/../product/sections/audit-and-tenant-settings/types'
 import { actionModule, btnSecondary, fmtDateTime, fmtExact, focusRing, humanize, inputClass, NOW, relativeTime, startOfDay } from './helpers'
-import { Avatar, Card, Pill, SearchField, Select, Td, Th } from './ui'
+import { Avatar, Card, HelpNote, Pill, SearchField, Select, Td, Th } from './ui'
 import { AuditEventSheet } from './AuditEventSheet'
 
 export interface AuditLogProps {
@@ -86,6 +86,11 @@ export function AuditLog(p: AuditLogProps) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <SearchField value={f.query} onChange={(v) => update({ query: v })} placeholder="Search summary or target" />
+        <HelpNote label="Why a row can look incomplete" iconOnly>
+          <p>An event is never edited and never deleted. It keeps the words that were true when it was written, so an old row can name something that has since changed.</p>
+          <p>A target opens only while the record still exists and its module returns a path. Other rows show the label with no link, or read Removed.</p>
+          <p className="text-gray-600 dark:text-gray-400">A person an operator erased appears under an anonymized name. Their earlier events stay where they are.</p>
+        </HelpNote>
         <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
           <Select ariaLabel="Filter by actor" value={f.actorId} onChange={(v) => update({ actorId: v })}>
             <option value="all">All actors</option>
@@ -120,7 +125,7 @@ export function AuditLog(p: AuditLogProps) {
       {chips.length ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {chips.map((c) => (
-            <button key={c.label} type="button" onClick={c.clear} className={`inline-flex h-8 items-center gap-1 rounded-full bg-blue-50 pl-2.5 pr-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:text-blue-300 ${focusRing}`}>
+            <button key={c.label} type="button" onClick={c.clear} className={`inline-flex h-8 items-center gap-1 rounded-full bg-gray-100 pl-2.5 pr-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 ${focusRing}`}>
               {c.label}<X className="size-4" strokeWidth={2} aria-hidden />
             </button>
           ))}
@@ -161,7 +166,7 @@ export function AuditLog(p: AuditLogProps) {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {visible.map((e) => (
-                  <tr key={e.id} onClick={() => setOpenId(e.id)} tabIndex={0} onKeyDown={(k) => k.key === 'Enter' && setOpenId(e.id)} className={`cursor-pointer hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${focusRing} focus-visible:ring-inset focus-visible:ring-offset-0`}>
+                  <tr key={e.id} role="button" onClick={() => setOpenId(e.id)} tabIndex={0} onKeyDown={(k) => { if (k.key === 'Enter' || k.key === ' ') { k.preventDefault(); setOpenId(e.id) } }} className={`cursor-pointer hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${focusRing} focus-visible:ring-inset focus-visible:ring-offset-0`}>
                     <Td className="whitespace-nowrap text-gray-700 dark:text-gray-300"><span title={fmtExact(e.occurredAt, tz)}>{relativeTime(e.occurredAt)}</span><span className="block text-xs text-gray-500">{fmtDateTime(e.occurredAt, tz)}</span></Td>
                     <Td><span className="flex min-w-0 items-center gap-2"><Avatar size="sm" name={e.actor?.name} system={!e.actor} anonymized={e.actor?.anonymized} /><span className={`truncate font-medium ${e.actor ? '' : 'text-gray-600 dark:text-gray-400'}`}>{e.actor?.name ?? 'System'}</span></span></Td>
                     <Td><Pill mono wrap>{e.action}</Pill></Td>

@@ -55,7 +55,7 @@ export interface TenantSettings {
 }
 
 export interface TenantRealm {
-  /** Server-derived from the tenant's Keycloak realm. False for a brokered-only realm; the local accounts switch is then disabled. */
+  /** `tenant_settings.realm_supports_local_accounts`, written by the realm step of `genie-ops setup` from the template variant it applied (DEC-36). False for a brokered-only realm; the local accounts switch is then disabled. */
   supportsLocalAccounts: boolean
 }
 
@@ -64,6 +64,13 @@ interface ConfigFieldBase {
   title: string
   description: string
   required?: boolean
+  /**
+   * Words a person might search for that the title and the description do not contain, for example
+   * "logout" for an idle timeout. The settings search reads them. A module declares them on its
+   * `configSchema` field, which the module contract does not carry yet
+   * (`product/amendments-settings-2026-09-18.md`, A2).
+   */
+  keywords?: string[]
 }
 export interface StringField extends ConfigFieldBase { kind: 'string'; maxLength?: number; pattern?: string; patternMessage?: string }
 export interface NumberField extends ConfigFieldBase { kind: 'number'; min?: number; max?: number; step?: number }
@@ -84,14 +91,50 @@ export interface ModuleConfig {
   values: Record<string, ConfigValue>
   updatedBy: string | null
   updatedAt: string | null
+  /**
+   * `tenant_module.enabled`. An installed module that is switched off keeps its settings section, so
+   * a tenant can prepare the configuration before enabling it (`architecture/module-removal.md`,
+   * "Reintroduction"). Saving settings writes `tenant_module.config` and never `enabled`.
+   */
+  enabled: boolean
+  /** Design fixture only: a made-up module that shows how the navigator holds a long list. Never a product requirement. */
+  synthetic?: boolean
 }
 
-/** The core `category` row (DEC-51). Counts are server-derived: solutions from `solution_category`, modules from `tenant_module.category_id`. */
+export type SettingsGroup = 'tenant' | 'modules'
+
+/** One row of the settings navigator. A core section is owned by core; a module section is one `ModuleConfig`. */
+export interface SettingsSectionSummary {
+  id: string
+  name: string
+  group: SettingsGroup
+  description: string
+  /** Module sections only. */
+  moduleId?: string
+  /** Module sections only: the module is installed and switched off. */
+  disabled?: boolean
+  /** Module sections only: a scale fixture, drawn with a Sample pill. */
+  synthetic?: boolean
+}
+
+/**
+ * One hit of the settings search. The index holds the field title, its description, its keywords, and
+ * the section name. It never holds a saved value and never a secret.
+ */
+export interface SettingsSearchHit {
+  sectionId: string
+  sectionName: string
+  group: SettingsGroup
+  fieldKey: string
+  title: string
+  description: string
+}
+
+/** The core `category` row (DEC-51). The count is server-derived from `tenant_module.category_id` only; core reads no module table, so there is no solutions count. */
 export interface Category {
   id: string
   name: string
   position: number
-  solutionCount: number
   moduleCount: number
 }
 
@@ -102,8 +145,10 @@ export interface CompiledModule {
   description: string
   /** `tenant_module.enabled`. Off hides the module's navigation and refuses its routes; data stays. */
   enabled: boolean
-  /** `tenant_module.category_id`. Null for no category; Solutions carries none because its entries carry their own. */
+  /** `tenant_module.category_id`. Null for no category. The picker shows for every module with at least one static workspace entry, the solutions hub included (DEC-49, DEC-50); a module with none shows no picker. */
   categoryId: string | null
+  /** How many static workspace entries the module declares. Zero means no category picker and no Assign items row (R-84). */
+  staticEntries: number
   /** `<id>:use`, the key every workspace entry of the module requires. */
   useKey: string
   /** The seeded `<Display name> user` role that carries `useKey`. */
@@ -113,6 +158,30 @@ export interface CompiledModule {
     groups: Array<{ id: string; name: string; memberCount: number }>
     people: Array<{ id: string; name: string }>
   }
+}
+
+/**
+ * One row of Assign items.
+ *
+ * A `module` row is core's own data: the write is `tenant_module.category_id`, behind
+ * `core:settings:manage`. A `record` row belongs to a module. Core neither reads nor writes a module
+ * table (`DEC-51`), so the module contributes the row and performs the write through its own
+ * procedure, behind its own key. The interface that carries this does not exist yet and is raised as
+ * an amendment (`product/amendments-categories-2026-09-18.md`, A1 and A2).
+ */
+export interface AssignableItem {
+  id: string
+  label: string
+  /** One scan fact, for example the status or what the entry covers. */
+  detail: string
+  kind: 'module' | 'record'
+  /** The module that owns the row. A module row owns itself. */
+  ownerModuleId: string
+  /** What the row is called, for example Module or Solution. */
+  typeLabel: string
+  categoryId: string | null
+  /** The permission key the write needs, for example `core:settings:manage` or `solutions:admin`. */
+  writeKey: string
 }
 
 export interface SettingsViewer {
@@ -137,10 +206,8 @@ export interface AuditAndTenantSettingsProps {
   auditEvents: AuditEvent[]
   /** Every module compiled into the image, enabled or not. */
   modules: CompiledModule[]
-  /** Core categories in position order. */
+  /** Core categories in position order. The Other row's modules count is derived from `modules` (DEC-51). */
   categories: Category[]
-  /** Solutions with no category or a deleted one; shown on the Other row of the Categories page. Modules ungrouped are derived from `modules`. */
-  ungroupedSolutionCount: number
   /** Total in the tenant after filters; the footer reads Showing n of total. */
   auditTotal: number
   auditFilterOptions: AuditFilterOptions
@@ -155,14 +222,22 @@ export interface AuditAndTenantSettingsProps {
   onOpenAuditTarget?: (targetType: string, targetId: string) => void
   /** Administrator copies an event id for a support ticket. */
   onCopyEventId?: (eventId: string) => void
-  /** Administrator saves one core settings card. */
-  onSaveTenantSettings?: (input: TenantSettingsInput) => void
-  /** Administrator saves one module configuration card. Validated against the same schema on the server. */
-  onSaveModuleConfig?: (moduleId: string, values: Record<string, ConfigValue>) => void
+  /** Administrator saves one core settings section. It resolves on success and rejects on failure. */
+  onSaveTenantSettings?: (input: TenantSettingsInput) => void | Promise<void>
+  /**
+   * Administrator saves one module's settings section. Validated against the same schema on the
+   * server. It writes `tenant_module.config` only: it never writes `tenant_module.enabled`, so
+   * saving cannot enable a module. It resolves on success and rejects on failure.
+   */
+  onSaveModuleConfig?: (moduleId: string, values: Record<string, ConfigValue>) => void | Promise<void>
   /** Administrator switches a module on or off; writes `tenant_module.enabled` through the same core procedure as the command line. */
   onSetModuleEnabled?: (moduleId: string, enabled: boolean) => void
   /** Administrator places a module in a core category or removes it from one; writes `tenant_module.category_id`. */
   onSetModuleCategory?: (moduleId: string, categoryId: string | null) => void
+  /** Every row the Assign items table offers: the modules with a static workspace entry, and the records each enabled module contributes. */
+  assignableItems: AssignableItem[]
+  /** Administrator files one item. It resolves on success and rejects on failure, so a failed save never reads as a saved one. */
+  onSetItemCategory?: (itemId: string, categoryId: string | null) => void | Promise<void>
   /** Administrator creates a core category at the end of the order. */
   onCreateCategory?: (name: string) => void
   /** Administrator renames a category inline. */

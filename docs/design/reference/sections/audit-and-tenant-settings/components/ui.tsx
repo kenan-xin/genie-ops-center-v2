@@ -1,20 +1,21 @@
-import { useEffect, useId } from 'react'
-import { ChevronDown, Cog, Search, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { AlertTriangle, ChevronDown, Cog, HelpCircle, Loader2, Search, X } from 'lucide-react'
 import { btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, initials } from './helpers'
 
 /* Shared building blocks for this section: rounded cards, hairline borders, semantic pills, slide-over, switch, toast. */
 
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
+  return <section className={`rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
 }
 
-export type Tone = 'gray' | 'blue' | 'green' | 'red' | 'amber'
+/** Label pills stay a fixed neutral gray (tokens.md, Color roles): no tint ramp from the tenant color, so `blue` is the gray palette. */
+export type Tone = 'gray' | 'blue' | 'emerald' | 'red' | 'amber'
 const TONES: Record<Tone, string> = {
   gray: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  blue: 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  blue: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   red: 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  amber: 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  amber: 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', // unslop-ignore: the warning surface, not a cream page (tokens.md, Color roles)
 }
 /** `wrap` lets a long key break inside a fixed table column instead of overrunning the next one. */
 export function Pill({ tone = 'gray', children, title, mono, wrap }: { tone?: Tone; children: React.ReactNode; title?: string; mono?: boolean; wrap?: boolean }) {
@@ -26,6 +27,60 @@ export function Pill({ tone = 'gray', children, title, mono, wrap }: { tone?: To
 }
 
 /** Person monogram, or a neutral System mark (Lucide Cog) when there is no actor. */
+/**
+ * Contextual help (design-system/tokens.md, "Help disclosure"): a labelled button that opens one
+ * short callout. It is collapsed by default, it opens on click, tap, Enter, or Space, and it never
+ * opens on hover alone. Escape and a click outside close it.
+ */
+export function HelpNote({ label, children, align = 'left', iconOnly }: { label: string; children: React.ReactNode; align?: 'left' | 'right'; iconOnly?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const wrap = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  return (
+    <span ref={wrap} className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        aria-label={iconOnly ? label : undefined}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-blue-700 motion-safe:transition-colors hover:bg-blue-50 sm:h-8 dark:text-blue-400 dark:hover:bg-blue-950/40 ${focusRing}`}
+      >
+        <HelpCircle className="size-4" strokeWidth={1.75} aria-hidden />{iconOnly ? null : label}
+      </button>
+      {open ? (
+        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'right-0 max-sm:left-0 max-sm:right-auto' : 'left-0'}`}>
+          <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
+          <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
+/**
+ * The one warning note (DESIGN.md, Semantic colors): amber-800 on amber-50, one alert icon, one
+ * short sentence. `sm` is the inline note under a control, `md` the block at the top of a card or a
+ * sheet. Amber is only ever a real warning.
+ */
+export function WarningNote({ children, size = 'sm', className = '', role }: { children: React.ReactNode; size?: 'sm' | 'md'; className?: string; role?: 'status' | 'alert' }) {
+  const md = size === 'md'
+  return (
+    <div role={role} className={`flex items-start rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 ${md ? 'gap-2.5 px-3.5 py-3 text-sm' : 'gap-1.5 px-2.5 py-1.5 text-xs'} ${className}`}>
+      <AlertTriangle className={`size-4 shrink-0 ${md ? 'mt-0.5' : 'mt-px'}`} strokeWidth={2} aria-hidden />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
 export function Avatar({ name, size = 'md', system, anonymized }: { name?: string; size?: 'sm' | 'md' | 'lg'; system?: boolean; anonymized?: boolean }) {
   const cls = { sm: 'size-8 text-xs', md: 'size-9 text-xs', lg: 'size-12 text-sm' }[size]
   if (system || !name) {
@@ -36,7 +91,7 @@ export function Avatar({ name, size = 'md', system, anonymized }: { name?: strin
     )
   }
   return (
-    <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full font-bold ${anonymized ? 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200'} ${cls}`}>
+    <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full font-bold ${anonymized ? 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'} ${cls}`}>
       {anonymized ? '?' : initials(name)}
     </span>
   )
@@ -44,21 +99,23 @@ export function Avatar({ name, size = 'md', system, anonymized }: { name?: strin
 
 export function SearchField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
-    <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 sm:max-w-xs dark:border-gray-700 dark:bg-gray-950 dark:focus-within:ring-offset-gray-950">
+    <label className="flex h-10 min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:max-w-xs dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
       <Search className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
+      {/* The label holds only an icon, so the field needs its own name. */}
+      <input value={value} onChange={(e) => onChange(e.target.value)} aria-label={placeholder} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
     </label>
   )
 }
 
-export function Select({ value, onChange, children, ariaLabel, className = '' }: { value: string; onChange: (v: string) => void; children: React.ReactNode; ariaLabel: string; className?: string }) {
+export function Select({ value, onChange, children, ariaLabel, className = '', disabled }: { value: string; onChange: (v: string) => void; children: React.ReactNode; ariaLabel: string; className?: string; disabled?: boolean }) {
   return (
     <span className={`relative ${className}`}>
       <select
         aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-10 w-full appearance-none rounded-xl border border-gray-300 bg-white pl-3 pr-9 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 ${focusRing}`}
+        disabled={disabled}
+        className={`h-10 w-full appearance-none rounded-lg border border-gray-500 bg-white pl-3 pr-9 text-sm text-gray-800 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-200 dark:disabled:border-gray-700 dark:disabled:bg-gray-900 ${focusRing}`}
       >
         {children}
       </select>
@@ -90,7 +147,7 @@ export function SlideOver({ open, onClose, title, children }: { open: boolean; o
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[480px] sm:rounded-2xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800"
+        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[480px] sm:rounded-xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800"
       >
         {children}
       </aside>
@@ -107,23 +164,23 @@ export function CloseButton({ onClick }: { onClick: () => void }) {
 }
 
 /** Bare switch control. Wrap it in a label or give it an aria-label. */
-export function Switch({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+export function Switch({ label, checked, onChange, disabled, id }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; id?: string }) {
   return (
     <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
-      <input type="checkbox" role="switch" aria-label={label} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-      <span className="h-6 w-11 rounded-full bg-gray-300 motion-safe:transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500/60 peer-focus-visible:ring-offset-2 peer-disabled:cursor-not-allowed dark:bg-gray-700 dark:peer-focus-visible:ring-offset-gray-950" />
+      <input id={id} type="checkbox" role="switch" aria-label={label} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+      <span className="h-6 w-11 rounded-full bg-gray-300 motion-safe:transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 peer-disabled:cursor-not-allowed dark:bg-gray-700 dark:peer-focus-visible:ring-blue-400 dark:peer-focus-visible:ring-offset-gray-950" />
       <span className="absolute left-0.5 size-5 rounded-full bg-white shadow motion-safe:transition-transform peer-checked:translate-x-5" />
     </span>
   )
 }
 
 /** Labeled switch row with a 44px touch target. */
-export function SwitchRow({ label, description, checked, onChange, disabled, note }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; note?: React.ReactNode }) {
+export function SwitchRow({ label, description, checked, onChange, disabled, note, id }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; note?: React.ReactNode; id?: string }) {
   return (
-    <div className={`rounded-xl border border-gray-200 px-3.5 py-3 dark:border-gray-800 ${disabled ? 'opacity-70' : ''}`}>
+    <div className={disabled ? 'opacity-70' : undefined}>
       <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
         <span><span className="block text-sm font-semibold">{label}</span>{description ? <span className="block text-xs text-gray-600 dark:text-gray-400">{description}</span> : null}</span>
-        <Switch label={label} checked={checked} onChange={onChange} disabled={disabled} />
+        <Switch id={id} label={label} checked={checked} onChange={onChange} disabled={disabled} />
       </label>
       {note ? <div className="mt-2 text-xs text-gray-700 dark:text-gray-300">{note}</div> : null}
     </div>
@@ -131,7 +188,7 @@ export function SwitchRow({ label, description, checked, onChange, disabled, not
 }
 
 /** Confirm dialog per tokens.md: object in the title, one sentence of consequence, Cancel focused, danger tone on a destructive action. Bottom sheet on phones. */
-export function ConfirmDialog({ open, title, description, confirmLabel, danger, onConfirm, onClose }: { open: boolean; title: string; description: string; confirmLabel: string; danger?: boolean; onConfirm: () => void; onClose: () => void }) {
+export function ConfirmDialog({ open, title, description, confirmLabel, danger, busy, onConfirm, onClose }: { open: boolean; title: string; description: string; confirmLabel: string; danger?: boolean; /** Loading state on the confirm button: spinner, `aria-busy`, width held. */ busy?: boolean; onConfirm: () => void; onClose: () => void }) {
   const id = useId()
   useEffect(() => {
     if (!open) return
@@ -143,14 +200,16 @@ export function ConfirmDialog({ open, title, description, confirmLabel, danger, 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <button type="button" aria-label="Close dialog" onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
-      <div role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative w-full rounded-t-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+      <div role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative w-full rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="px-5 pb-5 pt-5 sm:px-6">
           <h2 id={`${id}-title`} className="text-lg font-bold tracking-tight">{title}</h2>
           <p id={`${id}-body`} className="mt-2 text-sm text-gray-600 dark:text-gray-400">{description}</p>
         </div>
         <div className="flex flex-col-reverse gap-2 border-t border-gray-100 px-5 py-3 sm:flex-row sm:justify-end sm:px-6 dark:border-gray-800">
           <button type="button" autoFocus className={`${btnSecondary} h-11 justify-center sm:h-10`} onClick={onClose}>Cancel</button>
-          <button type="button" className={`${danger ? btnDanger : btnPrimary} h-11 justify-center sm:h-10`} onClick={onConfirm}>{confirmLabel}</button>
+          <button type="button" className={`${danger ? btnDanger : btnPrimary} h-11 justify-center sm:h-10 sm:min-w-32`} aria-busy={busy || undefined} onClick={onConfirm}>
+            {busy ? <Loader2 className="size-4 motion-safe:animate-spin" strokeWidth={2} aria-hidden /> : null}{confirmLabel}
+          </button>
         </div>
       </div>
     </div>
@@ -172,7 +231,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   if (!message) return null
   return (
     <div role="status" aria-live="polite" className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:inset-x-auto md:bottom-6 md:right-6 md:px-0">
-      <div className="flex items-center gap-2 rounded-xl bg-gray-900 py-1.5 pl-4 pr-1.5 text-sm font-medium text-white shadow-lg dark:bg-gray-100 dark:text-gray-900">
+      <div className="flex items-center gap-2 rounded-lg bg-gray-900 py-1.5 pl-4 pr-1.5 text-sm font-medium text-white shadow-lg dark:bg-gray-100 dark:text-gray-900">
         {message}
         <button type="button" aria-label="Dismiss" onClick={onDone} className={`flex size-8 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 hover:text-white dark:text-gray-600 dark:hover:bg-gray-900/10 dark:hover:text-gray-900 ${focusRing}`}>
           <X className="size-4" strokeWidth={2} aria-hidden />
