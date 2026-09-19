@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
-import { MessageSquareText, PanelTop, Plus } from 'lucide-react'
+import { MessageSquareText, PanelTop, Plus, X } from 'lucide-react'
 import type { AccessGrant, Category, ChatTheme, Solution, SolutionInput, SolutionStatus, SolutionType } from '@/../product/sections/solutions/types'
-import { DEFAULT_CHAT_API_ENDPOINT, btnPrimary, btnSecondary, focusRing, initials, inputClass, isPublicHttps, labelClass, relativeTime } from './helpers'
-import { BottomBar, Card, ConfirmDialog, Dialog, EmptyRow, HelpNote, Monogram, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+import { DEFAULT_CHAT_API_ENDPOINT, STATUS_META, btnPrimary, btnSecondary, focusRing, initials, inputClass, isPublicHttps, labelClass, relativeTime } from './helpers'
+import { BottomBar, Card, ConfirmDialog, Dialog, EmptyRow, FilterMenu, HelpNote, Monogram, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+
+/** Field label inside the filter panel. Sentence case at caption size: the panel is already titled. */
+const filterLabel = 'text-xs font-semibold text-gray-700 dark:text-gray-300'
 import { ChatDisabledNotice, ConfigureSolutionSlideOver } from './ConfigureSolutionSlideOver'
 
 function SwitchRow({ label, help, checked, onChange }: { label: string; help: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -88,35 +91,79 @@ export function AdminSolutions(p: AdminSolutionsProps) {
   const archivedCount = p.solutions.filter((s) => s.archived).length
   const open = p.solutions.find((s) => s.id === openId) ?? null
 
+  // Search stands in the toolbar; the four narrowing controls sit behind one Filters button and
+  // report themselves as removable chips, so a collapsed panel never holds invisible state.
+  const filterCount = (type !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0) + (cat !== 'all' ? 1 : 0) + (showArchived ? 1 : 0)
+  const resetFilters = () => { setType('all'); setStatus('all'); setCat('all'); setShowArchived(false) }
+  const clearAll = () => { setQ(''); resetFilters() }
+  const chips: Array<{ label: string; clear: () => void }> = []
+  if (q.trim()) chips.push({ label: `“${q.trim()}”`, clear: () => setQ('') })
+  if (type !== 'all') chips.push({ label: type === 'chat' ? 'Chat' : 'Embedded', clear: () => setType('all') })
+  if (status !== 'all') chips.push({ label: STATUS_META[status].label, clear: () => setStatus('all') })
+  if (cat !== 'all') chips.push({ label: cat === 'none' ? 'Other' : p.categories.find((c) => c.id === cat)?.name ?? 'Category', clear: () => setCat('all') })
+  if (showArchived) chips.push({ label: 'Including archived', clear: () => setShowArchived(false) })
+  const noMatch = (
+    <>No solutions match.{chips.length ? <> <button type="button" onClick={clearAll} className={`rounded font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Clear filters</button></> : null}</>
+  )
+
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <SearchField value={q} onChange={setQ} placeholder="Search solutions" />
-        <Select ariaLabel="Filter by type" value={type} onChange={(v) => setType(v as typeof type)}>
-          <option value="all">All types</option><option value="chat">Chat</option><option value="embedded">Embedded</option>
-        </Select>
-        <Select ariaLabel="Filter by status" value={status} onChange={(v) => setStatus(v as typeof status)}>
-          <option value="all">All statuses</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="maintenance">Maintenance</option><option value="down">Down</option>
-        </Select>
-        <Select ariaLabel="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)}>
-          <option value="updated">Recently updated</option><option value="name">Name</option><option value="status">Status</option>
-        </Select>
-        <Select ariaLabel="Filter by category" value={cat} onChange={setCat}>
-          <option value="all">All categories</option>
-          {p.categories.slice().sort((a, b) => a.position - b.position).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          <option value="none">Other</option>
-        </Select>
-        {archivedCount > 0 ? (
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="size-4 rounded accent-blue-600" />Show archived ({archivedCount})</label>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+          <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-md">
+          <SearchField value={q} onChange={setQ} placeholder="Search solutions" />
+          {/* Icon only: the row carries enough words already, and the panel still names itself. */}
+          <HelpNote label="What members see" iconOnly>
+            <p>Members see Ready, Maintenance, and Down. A Draft is visible to administrators only, and an archived solution leaves everyone's hub while its data stays.</p>
+            <p>A status never grants or removes access. Who reaches a solution is decided in Access, which is why the Access tab here only reads.</p>
+            <p className="text-gray-600 dark:text-gray-400">Preview as member opens any solution, a Draft included. The preview is written to the audit log and counts as nobody's access.</p>
+          </HelpNote>
+          </div>
+          {/* One pair on phones, so neither control claims a row of its own. */}
+          <div className="flex items-center gap-2">
+          <Select ariaLabel="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)}>
+            <option value="updated">Recently updated</option><option value="name">Name</option><option value="status">Status</option>
+          </Select>
+          <FilterMenu count={filterCount} onClear={filterCount ? resetFilters : undefined}>
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5"><span className={filterLabel}>Type</span>
+                <Select full ariaLabel="Type" value={type} onChange={(v) => setType(v as typeof type)}>
+                  <option value="all">All types</option><option value="chat">Chat</option><option value="embedded">Embedded</option>
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5"><span className={filterLabel}>Status</span>
+                <Select full ariaLabel="Status" value={status} onChange={(v) => setStatus(v as typeof status)}>
+                  <option value="all">All statuses</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="maintenance">Maintenance</option><option value="down">Down</option>
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5"><span className={filterLabel}>Category</span>
+                <Select full ariaLabel="Category" value={cat} onChange={setCat}>
+                  <option value="all">All categories</option>
+                  {p.categories.slice().sort((a, b) => a.position - b.position).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="none">Other</option>
+                </Select>
+              </label>
+              {archivedCount > 0 ? (
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 border-t border-gray-100 pt-3 text-sm text-gray-700 sm:min-h-0 dark:border-gray-800 dark:text-gray-300"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className={`size-4 rounded accent-blue-600 ${focusRing}`} />Show archived ({archivedCount})</label>
+              ) : null}
+            </div>
+          </FilterMenu>
+          </div>
+          {/* Under md the primary action moves to the sticky bottom bar (DEC-25). */}
+          <div className="ml-auto hidden md:block"><button type="button" className={btnPrimary} onClick={() => setRegistering(true)}><Plus className="size-5" strokeWidth={2} aria-hidden />Register solution</button></div>
+        </div>
+
+        {chips.length ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chips.map((c) => (
+              <button key={c.label} type="button" onClick={c.clear} className={`inline-flex h-8 items-center gap-1 rounded-full bg-gray-100 pl-2.5 pr-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 ${focusRing}`}>
+                {c.label}<X className="size-4" strokeWidth={2} aria-hidden />
+              </button>
+            ))}
+            <button type="button" onClick={clearAll} className={`h-8 rounded-lg px-1.5 text-xs font-medium text-gray-600 underline-offset-2 hover:underline dark:text-gray-400 ${focusRing}`}>Clear all</button>
+          </div>
         ) : null}
-        {/* Last control in the toolbar row, so the panel hangs from its right edge (tokens.md, Help disclosure). */}
-        <HelpNote label="What members see" align="right">
-          <p>Members see Ready, Maintenance, and Down. A Draft is visible to administrators only, and an archived solution leaves everyone's hub while its data stays.</p>
-          <p>A status never grants or removes access. Who reaches a solution is decided in Access, which is why the Access tab here only reads.</p>
-          <p className="text-gray-600 dark:text-gray-400">Preview as member opens any solution, a Draft included. The preview is written to the audit log and counts as nobody's access.</p>
-        </HelpNote>
-        {/* Under md the primary action moves to the sticky bottom bar (DEC-25). */}
-        <div className="ml-auto hidden md:block"><button type="button" className={btnPrimary} onClick={() => setRegistering(true)}><Plus className="size-5" strokeWidth={2} aria-hidden />Register solution</button></div>
       </div>
 
       <Card className="overflow-hidden">
@@ -133,7 +180,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
               <RowMenu items={rowMenu(s)} />
             </li>
           ))}
-          {rows.length === 0 ? <li className="px-5 py-12 text-center text-sm text-gray-600 dark:text-gray-400">No solutions match.</li> : null}
+          {rows.length === 0 ? <li className="px-5 py-12 text-center text-sm text-gray-600 dark:text-gray-400">{noMatch}</li> : null}
         </ul>
         <div className="hidden md:block">
           <table className="w-full">
@@ -158,7 +205,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
                   <Td className="text-right"><RowMenu items={rowMenu(s)} /></Td>
                 </tr>
               ))}
-              {rows.length === 0 ? <EmptyRow colSpan={8}>No solutions match.</EmptyRow> : null}
+              {rows.length === 0 ? <EmptyRow colSpan={8}>{noMatch}</EmptyRow> : null}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Check, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowUp, Check, Plus, Trash2 } from 'lucide-react'
 import type { ApprovedFont, ChatTheme, ChatThemeInput, Solution } from '@/../product/sections/solutions/types'
 import { btnSecondary, contrastRatio, focusRing, inputClass, labelClass } from './helpers'
 import { Card, ConfirmDialog, HelpNote, Pill, SaveButton } from './ui'
@@ -56,7 +56,7 @@ function Preview({ t }: { t: ChatThemeInput }) {
   )
   const reply = (text: string) => (
     <div className="flex gap-2.5">
-      <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-[9px] font-extrabold tracking-tight" style={{ backgroundColor: t.headerColor, color: t.headerForeground }}>CT</span>
+      <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-extrabold tracking-tight" style={{ backgroundColor: t.headerColor, color: t.headerForeground }}>CT</span>
       <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-800 dark:text-gray-200">{text}</p>
     </div>
   )
@@ -75,7 +75,7 @@ function Preview({ t }: { t: ChatThemeInput }) {
       <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
         <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white py-1.5 pl-4 pr-1.5 dark:border-gray-700 dark:bg-gray-950">
           <span className="flex-1 text-sm text-gray-500">{t.placeholder || 'Ask a question'}</span>
-          <span className="flex size-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: t.userBubbleColor, color: t.userBubbleForeground }}>↑</span>
+          <span className="flex size-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: t.userBubbleColor, color: t.userBubbleForeground }}><ArrowUp className="size-4" strokeWidth={2.5} aria-hidden /></span>
         </div>
       </div>
     </div>
@@ -176,7 +176,7 @@ export function ChatThemes({ chatThemes, approvedFonts, solutions, initialThemeI
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-600 dark:text-gray-400">Live preview</span>
             <div role="radiogroup" aria-label="Preview frame" className="inline-flex h-10 items-center rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-              {(['phone', 'desktop'] as const).map((f) => <button key={f} type="button" role="radio" aria-checked={frame === f} onClick={() => setFrame(f)} className={`h-8 rounded-md px-2.5 text-xs font-medium capitalize ${focusRing} ${frame === f ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}`}>{f}</button>)}
+              {(['phone', 'desktop'] as const).map((f) => <button key={f} type="button" role="radio" aria-checked={frame === f} onClick={() => setFrame(f)} className={`h-8 rounded-md px-2.5 text-xs font-medium capitalize ${focusRing} ${frame === f ? 'bg-white text-gray-900 ring-1 ring-gray-200 dark:bg-gray-950 dark:text-gray-100 dark:ring-gray-700' : 'text-gray-600 dark:text-gray-400'}`}>{f}</button>)}
             </div>
           </div>
           <div className={`flex-1 ${frame === 'phone' ? 'mx-auto w-full max-w-[360px]' : ''}`}><Preview t={draft} /></div>

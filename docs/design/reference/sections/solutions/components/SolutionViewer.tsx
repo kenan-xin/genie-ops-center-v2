@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowUp, ChevronDown, Info, Maximize2, MoreHorizontal, RotateCcw, Square, Star, ThumbsDown, ThumbsUp, WrenchIcon, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Info, Maximize2, MoreHorizontal, RotateCcw, Square, Star, ThumbsDown, ThumbsUp, WrenchIcon, X } from 'lucide-react'
 import type { ChatTheme, Conversation, Message, Solution, Viewer } from '@/../product/sections/solutions/types'
 import { btnPrimary, btnSecondary, focusRing, foregroundFor } from './helpers'
 import { ConfirmDialog, Monogram, Pill, StatusPill } from './ui'
@@ -45,7 +45,7 @@ const FONT_STACK: Record<string, string> = {
 const iconBase = `flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 ${focusRing}`
 const iconInk = 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
 const iconBtn = () => `${iconBase} ${iconInk}`
-const textBtn = `inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 ${focusRing}`
+const textBtn = `inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 ${focusRing}`
 /** The composer's one action. It wears the theme color, so it cannot borrow the blue primary button's fill or its blue shadow. */
 const sendBtn = `flex size-10 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-600 ${focusRing}`
 
@@ -81,7 +81,7 @@ function FencedBlock({ lang, code }: { lang: string; code: string }) {
   return (
     <figure className="my-1 border-y border-gray-200 py-3 dark:border-gray-800">
       <figcaption className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500">{kind}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">{kind}</span>
         <button type="button" onClick={() => setShowCode((v) => !v)} className={`rounded-md text-xs font-medium text-gray-600 underline underline-offset-2 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 ${focusRing}`}>{showCode ? `Show ${kind.toLowerCase()}` : 'Show code'}</button>
       </figcaption>
       {showCode ? (
@@ -105,11 +105,11 @@ function MermaidStandIn({ code }: { code: string }) {
   // A decision node reads as a decision through weight and a darker tint. Amber in this design system is
   // only ever a real warning, and a flow step is not one.
   return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm">
       {nodes.map((n, i) => (
         <span key={i} className="flex items-center gap-1.5">
           <span className={`rounded-md px-2 py-1 ${/\?$/.test(n) ? 'bg-gray-200 font-semibold dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}>{n}</span>
-          {i < nodes.length - 1 ? <span aria-hidden className="text-gray-400 dark:text-gray-500">→</span> : null}
+          {i < nodes.length - 1 ? <ChevronRight aria-hidden className="size-4 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.75} /> : null}
         </span>
       ))}
     </div>
@@ -169,7 +169,7 @@ function Turn({ m, theme, monogram, streaming, feedbackEnabled, showTime, onFeed
     return (
       <div className="flex flex-col items-end gap-1.5">
         <div
-          className="max-w-[74%] space-y-2 px-3.5 py-2.5 text-[15px] leading-[1.6]"
+          className="max-w-[74%] space-y-2 px-3.5 py-2.5 text-base leading-relaxed"
           style={{ backgroundColor: theme.userBubbleColor, color: theme.userBubbleForeground, borderRadius: theme.radius, borderBottomRightRadius: Math.min(6, theme.radius) }}
         >
           {renderRich(m.text)}
@@ -181,10 +181,10 @@ function Turn({ m, theme, monogram, streaming, feedbackEnabled, showTime, onFeed
 
   return (
     <div className="flex gap-3">
-      <span aria-hidden className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold tracking-tight" style={{ backgroundColor: theme.headerColor, color: theme.headerForeground }}>{monogram}</span>
+      <span aria-hidden className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-extrabold tracking-tight" style={{ backgroundColor: theme.headerColor, color: theme.headerForeground }}>{monogram}</span>
       <div className="min-w-0 flex-1">
         {m.reasoning ? <Reasoning text={m.reasoning} streaming={Boolean(streaming && !m.text)} interrupted={m.interrupted && !m.text} seconds={Math.max(1, Math.round(m.reasoning.length / 40))} /> : null}
-        <div className="space-y-2 text-[15px] leading-[1.7] text-gray-800 dark:text-gray-200">
+        <div className="space-y-2 text-base leading-relaxed text-gray-800 dark:text-gray-200">
           {renderRich(m.text)}
           {streaming ? <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] motion-safe:animate-pulse bg-current align-middle" /> : null}
         </div>
@@ -252,9 +252,9 @@ export function SolutionViewer(p: SolutionViewerProps) {
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-gray-200 px-2 sm:gap-2 sm:px-3 dark:border-gray-800">
         <button type="button" aria-label="Back to Solutions" onClick={() => p.onBack?.()} className={iconBtn()}><ArrowLeft className="size-5" strokeWidth={1.75} /></button>
         <Monogram text={s.monogram} color={s.accentColor} size="sm" />
-        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[-0.01em]">{s.name}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">{s.name}</h2>
         {/* The type reads as a quiet label; a status that is not ready outranks it and takes the slot. */}
-        {s.status !== 'ready' ? <StatusPill status={s.status} /> : <span className="hidden shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 sm:block dark:text-gray-500">{type === 'embedded' ? 'Embedded' : 'Chat'}</span>}
+        {s.status !== 'ready' ? <StatusPill status={s.status} /> : <span className="hidden shrink-0 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:block dark:text-gray-400">{type === 'embedded' ? 'Embedded' : 'Chat'}</span>}
         <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block dark:bg-gray-800" />
         <button type="button" aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFavorite} onClick={() => p.onToggleFavorite?.(s.id)} className={`${iconBase} ${isFavorite ? 'text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400' : iconInk}`}>
           <Star className="size-5" strokeWidth={1.75} fill={isFavorite ? 'currentColor' : 'none'} />
@@ -348,7 +348,7 @@ export function SolutionViewer(p: SolutionViewerProps) {
                 {messages.map((m, i) => (
                   <Fragment key={m.id}>
                     {i === 0 || dayLabel(messages[i - 1].at) !== dayLabel(m.at) ? (
-                      <p className="self-center text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">{dayLabel(m.at)}</p>
+                      <p className="self-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{dayLabel(m.at)}</p>
                     ) : null}
                     <Turn m={m} theme={theme} monogram={s.monogram} streaming={streaming && i === messages.length - 1 && m.role === 'assistant'} showTime={endsRun(messages, i)} feedbackEnabled={Boolean(s.feedbackEnabled)} onFeedback={(v) => { p.onSendFeedback?.(s.id, m.id, v); if (v === 'down') setToast('Thanks. Your feedback helps improve this solution.') }} />
                   </Fragment>
