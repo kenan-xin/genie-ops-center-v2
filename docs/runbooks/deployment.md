@@ -43,7 +43,7 @@ Make sure that the target host has the following. The customer's platform team s
 - Docker with the Compose plugin.
 - A Postgres database and a role that owns it. The image creates every table.
 - A mail server or a mail provider account, for the invitation and notification emails. Setup and the first administrator's sign-in send no email, so this can arrive after setup, but it must be configured before the first "Add person" in `invite` mode. A local-accounts realm sends its set-password email through the realm's own SMTP settings, not through this mailer.
-- A public hostname with a certificate at the reverse proxy. This hostname is `PUBLIC_URL` (`DEC-19`). The proxy must let a streamed response stay open for hours with no read or idle timeout on `/api/m/solutions/chat`, because a chat solution can run a workflow for that long.
+- A public hostname with a certificate at the reverse proxy. This hostname is `PUBLIC_URL` (`DEC-19`). A host that has no reverse proxy sets one up with `reverse-proxy.md` before the stack starts; a host that has one, or a cloud load balancer, applies the rules in that runbook's last section. The proxy must let a streamed response stay open for hours on `/api/m/solutions/chat`, because a chat solution can run a workflow for that long. The application writes a keepalive line to the browser every 20 seconds while the upstream is silent, so a proxy or an edge in front of it needs an idle timeout above 20 seconds, not an unlimited one; a DNS provider's proxied mode (about 100 seconds between bytes on most plans) and a cloud load balancer (60 seconds on some) are both fine with that. Make sure that no hop in the path buffers responses of type `text/event-stream`.
 - A Keycloak server, if the customer already runs one. If not, the stack template starts one.
 - A decision on file storage. The default keeps file bytes in the database. A customer who wants their own bucket, or files above 15 MB, sets `FILE_STORAGE_ADAPTER=s3` and the `S3_*` variables in `.env` before setup, and can then raise `FILE_MAX_BYTES` (`DEC-44`). Choose before go-live, because a later switch needs `genie-ops files migrate`, which is not built yet (`DEC-20`).
 - A read-only token for the customer's image on the registry, or the image file for a host without internet access.
@@ -82,6 +82,7 @@ The protocol and the credentials of the customer's identity provider are not in 
 2. On the host, change `IMAGE_TAG` in `.env` to the new version.
 3. Run `docker compose pull` and `docker compose up -d`.
 4. The new container applies the migration histories under one lock before it serves. If a migration fails, the container stays unhealthy and the previous version keeps serving. Read the container log, fix the cause, and repeat step 3.
+5. If the release notes name a new `genie-ops setup` step, run `docker compose exec app genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done (`../core/roadmap.md`, Section 1 items 2 and 5).
 
 Every release upgrades from the last three releases (`DEC-9`). A customer-managed stack that is more than three releases behind must upgrade through an intermediate release. Release notes name the oldest release that each version upgrades from. The migrator logs the count of pending migrations at start, so read that line after an upgrade of a stack that was behind (`DEC-43`).
 
@@ -123,7 +124,11 @@ Not supported: setup against an existing realm with its own users and clients (`
 
 ## Backups
 
-Back up the database and `.env`. The image is rebuilt from the repository, and the realm is recreated by setup from the template plus `realm.overrides.json`, so neither needs a backup, but a realm export after setup shortens a restore. A Genie-hosted database gets a nightly logical backup kept for 30 days (`DEC-31`). A customer-managed stack backs up on its own schedule. Test a restore on a second host before go-live, and every quarter after that.
+Back up the database and `.env`. The image is rebuilt from the repository. A brokered realm is recreated by setup from the template plus `realm.overrides.json`, so it needs no backup, but a realm export after setup shortens a restore. If `local_accounts` is on, back up the Keycloak database as well. That realm holds the people's passwords and second factors (`DEC-10`), and the template cannot recreate them. A Genie-hosted database gets a nightly logical backup kept for 30 days (`DEC-31`). A customer-managed stack backs up on its own schedule. Test a restore on a second host before go-live, and every quarter after that.
+
+## Logs
+
+Logs stay on the host. Every service in the generated compose file uses Docker's `json-file` driver with rotation, 50 MB per file and 20 files per container, so a container keeps about 1 GB of recent log (`DEC-31`). Read them with `docker compose logs app`, `docker compose logs worker`, or the host's own tools. Every line is JSON with a request id, and an error shown to a person carries the same request id, so search for that id first. No line holds a secret, a session token, or an emailed link. A customer-managed stack sends Genie nothing; attach the relevant lines to a support request.
 
 ## Retire a customer
 
