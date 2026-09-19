@@ -98,7 +98,7 @@ export function EmailGallery(p: EmailGalleryProps) {
                     const variants = variantsOf(t.id)
                     return (
                       <li key={t.id}>
-                        <button type="button" aria-current={t.id === template.id ? 'true' : undefined} onClick={() => pickTemplate(t.id)} className={`flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-left motion-safe:transition-colors ${focusRing} ${active ? 'bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700' : 'hover:bg-white/70 dark:hover:bg-gray-800/60'}`}>
+                        <button type="button" aria-current={t.id === template.id ? 'true' : undefined} onClick={() => pickTemplate(t.id)} className={`flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-left motion-safe:transition-colors ${focusRing} ${active ? 'bg-white ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700' : 'hover:bg-white/70 dark:hover:bg-gray-800/60'}`}>
                           <span className="flex items-center gap-2"><span className={`text-sm font-semibold ${active ? 'text-blue-700 dark:text-blue-400' : ''}`}>{t.name}</span>{t.sender === 'keycloak' ? kcBadge : null}</span>
                           <span className="line-clamp-2 text-xs text-gray-600 dark:text-gray-400">{t.trigger}</span>
                         </button>
