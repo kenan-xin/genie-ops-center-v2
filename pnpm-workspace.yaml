@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/modules/*"
+  - "tools/*"
+  - "customers/*/app"
+allowBuilds:
+  nx: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.6.2'

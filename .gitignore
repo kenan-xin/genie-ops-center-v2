@@ -6,3 +6,19 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+node_modules/
+.nx/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Agent scratch space. Holds the execution ledger and review packages, never source.
+.superpowers/
+
+# Generated at build time from MODULE_INCLUDE. Never commit it (ADR 0008).
+apps/genie/src/modules.ts
+
+.env
+.env.*
+!.env.example
