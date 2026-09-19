@@ -1,24 +1,22 @@
 import { useState } from 'react'
 import { Check, Info } from 'lucide-react'
 import type { AccessProps, AccessRecord, AccessModule, Grant, LevelId, PendingChange, Recipient } from '@/../product/sections/access/types'
-import { btnPrimary, btnSecondary, focusRing, useDelayed } from './helpers'
+import { LAST_ADMIN_GUARD, SELF_GUARD, activeTenantAdmins, btnGhost, btnPrimary, btnSecondary, focusRing, tenantAdminRoleIds, useDelayed } from './helpers'
 import { Card, CloseButton, Pill, Select, SlideOver, WarningNote } from './ui'
 import { TransferList } from './TransferList'
-
-const SELF_GUARD = 'You cannot change your own access. Ask another administrator.'
-const LAST_ADMIN_GUARD = 'This is the last grant of Tenant administrator'
 
 export interface AdvancedAccessProps {
   open: boolean
   onClose: () => void
   recipient: Recipient | null
+  /** Every recipient, because the last-active-administrator rule counts people across every group. */
+  recipients: Recipient[]
   modules: AccessModule[]
   records: AccessRecord[]
   grants: Grant[]
   customRoles: AccessProps['customRoles']
   currentUserId?: string
-  onSave?: (changes: PendingChange[]) => void
-  onAssignRole?: AccessProps['onAssignRole']
+  onSave?: AccessProps['onSave']
   initial?: { moduleId?: string; level?: LevelId }
 }
 
@@ -31,6 +29,11 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
   const [moduleId, setModuleId] = useState<string | null>(p.initial?.moduleId ?? null)
   const [levelId, setLevelId] = useState<LevelId | null>(p.initial?.level ?? null)
   const [directRole, setDirectRole] = useState<{ roleId: string; scopeId: string } | null>(null)
+  // A role picked directly joins the same pending list as the levels above, so one Save writes both
+  // through one procedure. Nothing here writes on its own.
+  const [staged, setStaged] = useState<PendingChange[]>([])
+  const stagedGrants = staged.filter((c) => c.kind === 'grant')
+  const [refusal, setRefusal] = useState<string | null>(null)
 
   const mod = p.modules.find((m) => m.id === moduleId) ?? null
   const level = mod?.levels.find((l) => l.id === levelId) ?? null
@@ -43,24 +46,37 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
 
   const key = `${recipient?.id}|${moduleId}|${levelId}`
   const [work, setWork] = useState<{ key: string; records: string[]; all: boolean }>({ key, records: savedRecordIds, all: savedAll })
-  if (work.key !== key) setWork({ key, records: savedRecordIds, all: savedAll })
+  if (work.key !== key) {
+    setWork({ key, records: savedRecordIds, all: savedAll })
+    setStaged([])
+    setRefusal(null)
+  }
 
   const added = work.records.filter((id) => !savedRecordIds.includes(id))
   const removed = savedRecordIds.filter((id) => !work.records.includes(id))
   const allChanged = work.all !== savedAll
-  const pendingCount = added.length + removed.length + (allChanged ? 1 : 0)
+  const pendingCount = added.length + removed.length + (allChanged ? 1 : 0) + staged.length
 
   // A switched-off module keeps its grants and takes no new one here either.
   const blocked = mod && !mod.enabled ? `The ${mod.name} module is switched off. Existing grants are kept and can be removed, and no new grant can be added until it is switched on.` : null
-  const coreAdminGrants = p.grants.filter((g) => g.moduleId === 'core' && g.level === 'admin')
+  // The same rule the server holds (Spec 2 R-38): count the active people who would still hold the
+  // Tenant administrator role, not the grant rows, and count by role rather than by the level this
+  // screen shows, so a role picked directly counts too. A pending person, a disabled person, and an
+  // archived group carry nobody.
+  const adminRoleIds = tenantAdminRoleIds(p.modules, p.customRoles)
   const revokeGuard = (): string | null => {
     if (!(mod?.id === 'core' && level?.id === 'admin')) return null
     if (recipient?.type === 'user' && recipient.id === p.currentUserId) return SELF_GUARD
-    return coreAdminGrants.length <= 1 ? LAST_ADMIN_GUARD : null
+    if (!recipient) return null
+    // This control ends the level grant only. A role this recipient holds another way stays.
+    const after = p.grants.filter((g) => !(g.moduleId === 'core' && g.level === 'admin' && g.recipientId === recipient.id))
+    if (activeTenantAdmins(p.recipients, p.grants, adminRoleIds).length === 0) return null
+    return activeTenantAdmins(p.recipients, after, adminRoleIds).length === 0 ? LAST_ADMIN_GUARD : null
   }
 
   const changes = (): PendingChange[] => {
-    if (!recipient || !mod || !level) return []
+    // A role picked directly needs no module or level, so it is saved whether or not one is chosen.
+    if (!recipient || !mod || !level) return staged
     const label = (id: string) => p.records.find((r) => r.id === id)?.label ?? id
     const list: PendingChange[] = [
       ...added.map((id) => ({ kind: 'grant' as const, recipientId: recipient.id, moduleId: mod.id, level: level.id, scopeId: id, label: label(id) })),
@@ -72,16 +88,84 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
         ? { kind: 'grant', recipientId: recipient.id, moduleId: mod.id, level: level.id, scopeId: null, label: wide }
         : { kind: 'revoke', recipientId: recipient.id, moduleId: mod.id, level: level.id, scopeId: null, label: wide, grantId: saved.find((g) => !g.scopeId)?.id })
     }
-    return list
+    return [...list, ...staged]
   }
 
   const [saving, save] = useDelayed(() => {
-    p.onSave?.(changes())
+    // The server decides. A refusal keeps the sheet and the pending list, so a rule the screen could
+    // not see, for example another administrator removed since this sheet opened, loses no work.
+    const result = p.onSave?.(changes()) ?? { ok: false as const, reason: 'This preview has no save procedure connected, so nothing was written.' }
+    if (!result.ok) return setRefusal(result.reason)
+    setRefusal(null)
+    setStaged([])
     p.onClose()
   })
 
   const choice = (on: boolean, disabled?: boolean) =>
     `inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${disabled ? 'cursor-not-allowed border-gray-200 text-gray-500 dark:border-gray-800' : on ? 'border-blue-600 bg-gray-100 text-gray-900 dark:border-blue-400 dark:bg-gray-800 dark:text-gray-100' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`
+
+  /* Everything else this recipient holds. A role picked directly carries no level, and an assignment
+     kept from an earlier deployment can name a level the module has since retired or a module that
+     is no longer compiled. None of those can be reached by the level controls above, so they are
+     listed here instead: every retained assignment stays open to inspection and removal, whatever
+     recorded it. A staged removal is a `PendingChange` like any other, so it writes nothing until
+     Save and Undo takes it off the list. */
+
+  const revokedIds = new Set(staged.flatMap((c) => (c.kind === 'revoke' && c.grantId ? [c.grantId] : [])))
+
+  /** True when the level controls above can already edit this grant. */
+  const editableByLevel = (g: Grant) => {
+    if (g.level === 'custom') return false
+    const m = p.modules.find((x) => x.id === g.moduleId)
+    return Boolean(m?.levels.some((l) => l.id === g.level && l.roleId))
+  }
+
+  /**
+   * Why the levels above cannot show this grant, or null. It states what the deployment no longer
+   * declares and stops there. It never says what a retired or unknown key still grants: that is the
+   * server's answer under the permission evolution policy, not this screen's to guess.
+   */
+  const outsideReason = (g: Grant): string | null => {
+    if (g.level === 'custom') return null
+    const m = p.modules.find((x) => x.id === g.moduleId)
+    if (!m) return 'This module is not in this deployment.'
+    const l = m.levels.find((x) => x.id === g.level)
+    if (!l) return 'The module no longer offers this access level.'
+    if (!l.roleId) return 'The module no longer declares a role for this access level.'
+    return null
+  }
+
+  const directGrants = recipient ? p.grants.filter((g) => g.recipientId === recipient.id && !editableByLevel(g)) : []
+  const scopeOf = (g: Grant) => (g.scopeId ? p.records.find((r) => r.id === g.scopeId)?.label ?? g.scopeId : 'Whole tenant')
+  const moduleOf = (g: Grant) => p.modules.find((m) => m.id === g.moduleId)
+
+  /**
+   * Why one of those removals is refused, or null. Same order as everywhere else: a role that is not
+   * Tenant administrator is never protected, then self-protection, then the last active holder. A
+   * switched-off module is not a reason: a kept grant must always be removable.
+   */
+  const removalGuard = (g: Grant): string | null => {
+    if (!adminRoleIds.has(g.roleId)) return null
+    if (g.recipientType === 'user' && g.recipientId === p.currentUserId) return SELF_GUARD
+    const after = p.grants.filter((x) => x.id !== g.id && !revokedIds.has(x.id))
+    if (activeTenantAdmins(p.recipients, p.grants, adminRoleIds).length === 0) return null
+    return activeTenantAdmins(p.recipients, after, adminRoleIds).length === 0 ? `${LAST_ADMIN_GUARD}. Give the role to somebody else first.` : null
+  }
+
+  const stageRemoval = (g: Grant) => {
+    setRefusal(null)
+    setStaged((l) => [...l, {
+      kind: 'revoke',
+      recipientId: g.recipientId,
+      moduleId: g.moduleId,
+      level: 'custom',
+      roleId: g.roleId,
+      scopeType: g.scopeType,
+      scopeId: g.scopeId,
+      label: `${g.roleName}${g.scopeId ? ` on ${scopeOf(g)}` : ', whole tenant'}`,
+      grantId: g.id,
+    }])
+  }
 
   const role = p.customRoles.find((r) => r.id === directRole?.roleId)
   const roleRecords = role?.moduleId ? p.records.filter((r) => r.moduleId === role.moduleId) : p.records
@@ -182,8 +266,38 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
             ) : null}
 
             <Card className="p-4">
-              <h3 className="text-sm font-semibold">Assign a role directly</h3>
-              <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">For a custom role, or a role the levels above do not cover. It writes the same assignment.</p>
+              <h3 className="text-sm font-semibold">Roles the levels above do not cover</h3>
+              <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">A role picked directly, and anything this recipient still holds that the levels cannot show: a level the module has retired, or a module that is no longer here. Every change joins the pending list and one Save writes them all through the same procedure.</p>
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {directGrants.map((g) => {
+                  const leaving = revokedIds.has(g.id)
+                  const why = leaving ? null : removalGuard(g)
+                  return (
+                    <li key={g.id} className="flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700">
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate font-medium ${leaving ? 'text-gray-500 line-through decoration-gray-400' : ''}`}>{g.roleName}</span>
+                        <span className="block truncate text-xs text-gray-600 dark:text-gray-400">{moduleOf(g)?.name ?? g.moduleId} · {scopeOf(g)}{outsideReason(g) ? ` · ${outsideReason(g)}` : ''}{why ? ` · ${why}` : ''}</span>
+                      </span>
+                      {leaving ? <Pill>Pending removal</Pill> : null}
+                      {leaving ? (
+                        <button type="button" className={btnGhost} onClick={() => setStaged((l) => l.filter((c) => c.grantId !== g.id))}>Undo</button>
+                      ) : (
+                        <button type="button" className={`${btnGhost} text-red-700 dark:text-red-300`} disabled={Boolean(why)} title={why ?? undefined} onClick={() => stageRemoval(g)}>Remove</button>
+                      )}
+                    </li>
+                  )
+                })}
+                {stagedGrants.map((c, i) => (
+                  <li key={`new-${c.roleId}-${c.scopeId ?? 'all'}-${i}`} className="flex min-h-11 items-center gap-2 rounded-lg border border-blue-600 px-3 py-2 text-sm dark:border-blue-400">
+                    <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                    <Pill>Pending</Pill>
+                    <button type="button" className={btnGhost} onClick={() => setStaged((l) => l.filter((x) => x !== c))}>Remove</button>
+                  </li>
+                ))}
+                {directGrants.length === 0 && stagedGrants.length === 0 ? (
+                  <li className="rounded-lg border border-dashed border-gray-300 px-3 py-3 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400">{recipient.name} holds nothing the levels above cannot show.</li>
+                ) : null}
+              </ul>
               {directRole ? (
                 <div className="mt-3 flex flex-col gap-3">
                   <Select ariaLabel="Role" value={directRole.roleId} onChange={(v) => setDirectRole({ roleId: v, scopeId: '' })}>
@@ -206,18 +320,22 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
                       disabled={Boolean(roleBlocked)}
                       title={roleBlocked ?? undefined}
                       onClick={() => {
-                        p.onAssignRole?.({
+                        const scope = p.records.find((r) => r.id === directRole.scopeId) ?? null
+                        setStaged((l) => [...l, {
+                          kind: 'grant',
+                          recipientId: recipient.id,
+                          moduleId: role?.moduleId ?? 'core',
+                          level: 'custom',
                           roleId: directRole.roleId,
-                          principalType: recipient.type,
-                          principalId: recipient.id,
-                          scopeType: directRole.scopeId ? p.records.find((r) => r.id === directRole.scopeId)?.type ?? null : null,
+                          scopeType: scope?.type ?? null,
                           scopeId: directRole.scopeId || null,
-                        })
+                          label: `${role?.name ?? 'Role'}${scope ? ` on ${scope.label}` : ', whole tenant'}`,
+                        }])
                         setDirectRole(null)
-                        p.onClose()
+                        setRefusal(null)
                       }}
                     >
-                      Assign role
+                      Add to changes
                     </button>
                     <button type="button" className={btnSecondary} onClick={() => setDirectRole(null)}>Cancel</button>
                   </div>
@@ -230,12 +348,15 @@ export function AdvancedAccess(p: AdvancedAccessProps) {
         ) : null}
       </div>
 
-      <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+      <footer className="flex shrink-0 flex-col gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+        {refusal ? <WarningNote role="alert">{refusal} Your changes are still here.</WarningNote> : null}
+        <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-gray-600 dark:text-gray-400" role="status">{pendingCount === 0 ? 'Nothing to save yet.' : pendingCount === 1 ? 'One change not saved' : `${pendingCount} changes not saved`}</p>
         <span className="flex gap-2">
           <button type="button" className={btnSecondary} onClick={p.onClose}>Cancel</button>
           <button type="button" className={btnPrimary} disabled={pendingCount === 0} aria-busy={saving || undefined} onClick={save}>Save changes</button>
         </span>
+        </div>
       </footer>
     </SlideOver>
   )
