@@ -39,8 +39,9 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
 
     return { failed: false, output };
   } catch (error) {
-    // SAFETY: execFileSync throws a plain object here. Only the output fields are read,
-    // so the narrow shape holds for every error this call raises.
+    // SAFETY: execFileSync throws an Error that also carries stdout and stderr. Only
+    // the output fields are read, so the narrow shape holds for every error this call
+    // raises.
     const failure = error as { stdout?: string; stderr?: string };
 
     return {
