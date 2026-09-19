@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Group, ModuleInfo, NewPersonInput, Person, PersonSession, PersonStatus, Role, RoleAssignment, ScopeRecord, TenantSettingsSummary } from '@/../product/sections/people-groups-and-roles/types'
 import { btnPrimary, focusRing, guardReason, relativeTime, rowKeyDown, type Guard } from './helpers'
-import { Avatar, Card, ConfirmDialog, EmptyRow, HelpNote, PhoneBar, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+import { Avatar, Card, ConfirmDialog, EmptyRow, FilterChip, FilterMenu, HelpNote, PhoneBar, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+
+/** Field label inside the filter panel. Caption size: the panel is already titled. */
+const filterLabel = 'text-xs font-semibold text-gray-700 dark:text-gray-300'
 import { PersonInspector, type PersonTab } from './PersonInspector'
 import { AddPersonDialog } from './AddPersonDialog'
 import { GroupInspector } from './GroupInspector'
@@ -66,7 +69,7 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
   }, [p.people, q, status, groupId, sort])
 
   // Self-protection and the last-administrator rule. The server refuses too; the UI explains why first.
-  const guard: Guard = (action) => guardReason({ people: p.people, roles: p.roles, roleAssignments: p.roleAssignments }, p.currentUserId, action)
+  const guard: Guard = (action) => guardReason({ people: p.people, roles: p.roles, roleAssignments: p.roleAssignments, groups: p.groups }, p.currentUserId, action)
   const menuFor = (person: Person) => {
     const disableWhy = guard({ type: 'disablePerson', personId: person.id })
     const removeWhy = guard({ type: 'removePerson', personId: person.id })
@@ -85,31 +88,65 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
   const counts = { active: p.people.filter((x) => x.status === 'active').length, pending: p.people.filter((x) => x.status === 'pending').length, disabled: p.people.filter((x) => x.status === 'disabled').length }
   const open = p.people.find((x) => x.id === openId) ?? null
 
+  // Status and Group sit behind one Filters button so search keeps its standing width. Sort stays in
+  // the toolbar, because it orders the list and never removes a row.
+  const filterCount = (status !== 'all' ? 1 : 0) + (groupId !== 'all' ? 1 : 0)
+  const resetFilters = () => { setStatus('all'); setGroupId('all') }
+  const clearAll = () => { setQ(''); resetFilters() }
+  const chips: Array<{ label: string; clear: () => void }> = []
+  if (q.trim()) chips.push({ label: `“${q.trim()}”`, clear: () => setQ('') })
+  if (status !== 'all') chips.push({ label: `${status[0].toUpperCase()}${status.slice(1)}`, clear: () => setStatus('all') })
+  if (groupId !== 'all') chips.push({ label: p.groups.find((g) => g.id === groupId)?.name ?? 'Group', clear: () => setGroupId('all') })
+  const noMatch = (
+    <>No people match.{chips.length ? <> <button type="button" onClick={clearAll} className={`rounded font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Clear filters</button></> : <> Add a person to start.</>}</>
+  )
+
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <SearchField value={q} onChange={setQ} placeholder="Search by name or email" />
-        <HelpNote label="Pending, disabled, removed">
-          <p>Somebody you add stays Pending until their first sign-in. Nothing activates them by hand, and they can hold roles while they wait.</p>
-          <p>Disabling stops sign-in and keeps everything else. Removing ends every session, drops their groups and their direct roles, and keeps their name and their audit trail.</p>
-          <p className="text-gray-600 dark:text-gray-400">Replacing a name with an anonymous one is an operator command, never an action on this screen.</p>
-        </HelpNote>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select ariaLabel="Filter by status" value={status} onChange={(v) => setStatus(v as typeof status)}>
-            <option value="all">All statuses ({p.people.length})</option>
-            <option value="active">Active ({counts.active})</option>
-            <option value="pending">Pending ({counts.pending})</option>
-            <option value="disabled">Disabled ({counts.disabled})</option>
-          </Select>
-          <Select ariaLabel="Filter by group" value={groupId} onChange={setGroupId}>
-            <option value="all">All groups</option>
-            {p.groups.filter((g) => !g.archived).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </Select>
-          <Select ariaLabel="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)}>
-            <option value="name">Name</option><option value="status">Status</option><option value="lastSignIn">Last sign-in</option>
-          </Select>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+          <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-md">
+            <SearchField value={q} onChange={setQ} placeholder="Search by name or email" />
+            <HelpNote label="Pending, disabled, removed" iconOnly>
+              <p>Somebody you add stays Pending until their first sign-in. Nothing activates them by hand, and they can hold roles while they wait.</p>
+              <p>Disabling stops sign-in and keeps everything else. Removing ends every session, drops their groups and their direct roles, and keeps their name and their audit trail.</p>
+              <p className="text-gray-600 dark:text-gray-400">Replacing a name with an anonymous one is an operator command, never an action on this screen.</p>
+            </HelpNote>
+          </div>
+          {/* One pair on phones, so neither control claims a row of its own. */}
+          <div className="flex items-center gap-2">
+            <Select ariaLabel="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)}>
+              <option value="name">Name</option><option value="status">Status</option><option value="lastSignIn">Last sign-in</option>
+            </Select>
+            <FilterMenu count={filterCount} onClear={filterCount ? resetFilters : undefined}>
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1.5"><span className={filterLabel}>Status</span>
+                  <Select full ariaLabel="Status" value={status} onChange={(v) => setStatus(v as typeof status)}>
+                    <option value="all">All statuses ({p.people.length})</option>
+                    <option value="active">Active ({counts.active})</option>
+                    <option value="pending">Pending ({counts.pending})</option>
+                    <option value="disabled">Disabled ({counts.disabled})</option>
+                  </Select>
+                </label>
+                <label className="flex flex-col gap-1.5"><span className={filterLabel}>Group</span>
+                  <Select full ariaLabel="Group" value={groupId} onChange={setGroupId}>
+                    <option value="all">All groups</option>
+                    {p.groups.filter((g) => !g.archived).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </Select>
+                </label>
+              </div>
+            </FilterMenu>
+          </div>
+          <div className="hidden sm:ml-auto md:block">{addPerson}</div>
         </div>
-        <div className="hidden sm:ml-auto md:block">{addPerson}</div>
+
+        {chips.length ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chips.map((c) => <FilterChip key={c.label} label={c.label} onClear={c.clear} />)}
+            <button type="button" onClick={clearAll} className={`h-8 rounded-lg px-1.5 text-xs font-medium text-gray-600 underline-offset-2 hover:underline dark:text-gray-400 ${focusRing}`}>Clear all</button>
+          </div>
+        ) : null}
       </div>
 
       <Card className="overflow-hidden">
@@ -128,7 +165,7 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
               <RowMenu items={menuFor(person)} />
             </li>
           ))}
-          {rows.length === 0 ? <li className="px-5 py-12 text-center text-sm text-gray-600 dark:text-gray-400">No people match. Clear the filters or add a person.</li> : null}
+          {rows.length === 0 ? <li className="px-5 py-12 text-center text-sm text-gray-600 dark:text-gray-400">{noMatch}</li> : null}
         </ul>
         <div className="hidden md:block">
           <table className="w-full">
@@ -169,7 +206,7 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
                   </tr>
                 )
               })}
-              {rows.length === 0 ? <EmptyRow colSpan={6}>No people match. Clear the filters or add a person.</EmptyRow> : null}
+              {rows.length === 0 ? <EmptyRow colSpan={6}>{noMatch}</EmptyRow> : null}
             </tbody>
           </table>
         </div>
@@ -212,7 +249,7 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
         open={Boolean(confirm)}
         onClose={() => setConfirm(null)}
         title={confirm?.kind === 'remove' ? `Remove ${confirm.person.name}?` : `Disable ${confirm?.person.name ?? ''}?`}
-        description={confirm?.kind === 'remove' ? 'Their access, sessions, and identity link are deleted. The audit trail is kept under an anonymized name.' : 'They cannot sign in and every session ends. History and assignments are kept; you can re-enable them later.'}
+        description={confirm?.kind === 'remove' ? 'Every session ends, and their groups and direct roles are removed. Their name, email, and audit trail are kept, and their identity-provider account is untouched.' : 'They cannot sign in and every session ends. History and assignments are kept, and you can re-enable them later.'}
         confirmLabel={confirm?.kind === 'remove' ? 'Remove' : 'Disable'}
         danger
         onConfirm={() => { if (!confirm) return; if (confirm.kind === 'remove') p.onRemovePerson?.(confirm.person.id); else p.onDisablePerson?.(confirm.person.id) }}
