@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/solutions/data.json'
 import type { Category, Favorite, Recent, Solution, Viewer } from '@/../product/sections/solutions/types'
@@ -24,7 +25,7 @@ export default function SolutionsHubPreview() {
       favorites={favorites}
       recents={data.recents as Recent[]}
       support={{ companyName: 'Meridian Health', href: 'mailto:support@meridianhealth.example' }}
-      onOpenSolution={(id) => console.log('Open solution:', id)}
+      onOpenSolution={(id) => goTo(`/s/${data.solutions.find((s) => s.id === id)?.slug ?? ''}`)}
       onToggleFavorite={(id) => setFavorites((f) => (f.some((x) => x.solutionId === id) ? f.filter((x) => x.solutionId !== id) : [...f, { solutionId: id, position: f.length + 1 }]))}
     />
   )

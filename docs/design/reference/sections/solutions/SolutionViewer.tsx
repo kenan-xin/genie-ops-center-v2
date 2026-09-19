@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useEffect, useRef, useState } from 'react'
 import data from '@/../product/sections/solutions/data.json'
 import type { ChatTheme, Conversation, Message, Solution, Viewer } from '@/../product/sections/solutions/types'
@@ -40,6 +41,7 @@ export default function SolutionViewerPreview() {
     return withError ? { ...c, error: 'The solution did not respond correctly. Try again.' } : c
   })
   const [fav, setFav] = useState(data.favorites.some((f) => f.solutionId === solution.id))
+
   const timer = useRef<number | null>(null)
   useEffect(() => () => { if (timer.current) window.clearInterval(timer.current) }, [])
 
@@ -76,7 +78,7 @@ export default function SolutionViewerPreview() {
       isFavorite={fav}
       focused={focused}
       frameState={frame}
-      onBack={() => console.log('Back to Solutions')}
+      onBack={() => goTo('/')}
       onSendMessage={send}
       onStopStreaming={() => { if (timer.current) window.clearInterval(timer.current); timer.current = null; setConv((c) => (c ? { ...c, streaming: false, messages: c.messages.map((m, i) => (i === c.messages.length - 1 && m.role === 'assistant' ? { ...m, interrupted: true } : m)) } : c)) }}
       onNewChat={() => setConv({ ...base, resumed: false })}

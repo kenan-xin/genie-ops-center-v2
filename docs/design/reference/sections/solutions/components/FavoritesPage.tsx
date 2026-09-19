@@ -38,8 +38,8 @@ export function FavoritesPage({ viewer, favorites, solutions, categories, onOpen
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-6 py-14 text-center dark:border-gray-800">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><Star className="size-6" strokeWidth={1.75} aria-hidden /></span>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-200 px-6 py-14 text-center dark:border-gray-800">
+        <span className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><Star className="size-6" strokeWidth={1.75} aria-hidden /></span>
         <h2 className="text-base font-semibold">No favorites yet</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">Star a solution on the Solutions hub to pin it here.</p>
       </div>
@@ -83,10 +83,10 @@ export function FavoritesPage({ viewer, favorites, solutions, categories, onOpen
       </Card>
 
       {undo ? (
-        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-lg md:left-auto md:right-6 md:translate-x-0 dark:border-gray-700 dark:bg-gray-900">
+        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-lg md:left-auto md:right-6 md:translate-x-0 dark:border-gray-700 dark:bg-gray-900">
           Removed {undo.name} from favorites.
-          <button type="button" className={`rounded-md font-semibold text-blue-700 hover:underline dark:text-blue-300 ${focusRing}`} onClick={() => { onToggleFavorite?.(undo.id); setUndo(null) }}>Undo</button>
-          <button type="button" aria-label="Dismiss" onClick={() => setUndo(null)} className={`ml-1 flex size-8 items-center justify-center rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button>
+          <button type="button" className={`rounded-md font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`} onClick={() => { onToggleFavorite?.(undo.id); setUndo(null) }}>Undo</button>
+          <button type="button" aria-label="Dismiss" onClick={() => setUndo(null)} className={`ml-1 flex size-8 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button>
         </div>
       ) : null}
     </div>

@@ -2,17 +2,17 @@ import { useMemo, useState } from 'react'
 import { MessageSquareText, PanelTop, Plus } from 'lucide-react'
 import type { AccessGrant, Category, ChatTheme, Solution, SolutionInput, SolutionStatus, SolutionType } from '@/../product/sections/solutions/types'
 import { DEFAULT_CHAT_API_ENDPOINT, btnPrimary, btnSecondary, focusRing, initials, inputClass, isPublicHttps, labelClass, relativeTime } from './helpers'
-import { BottomBar, Card, ConfirmDialog, Dialog, EmptyRow, Monogram, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+import { BottomBar, Card, ConfirmDialog, Dialog, EmptyRow, HelpNote, Monogram, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
 import { ChatDisabledNotice, ConfigureSolutionSlideOver } from './ConfigureSolutionSlideOver'
 
 function SwitchRow({ label, help, checked, onChange }: { label: string; help: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 px-3.5 py-2.5 dark:border-gray-800">
+    <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
       <span><span className="block text-sm font-semibold">{label}</span><span className="block text-xs text-gray-600 dark:text-gray-400">{help}</span></span>
       <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
         <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-        <span className="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500/60 dark:bg-gray-700" />
-        <span className="absolute left-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+        <span className="h-6 w-11 rounded-full bg-gray-300 motion-safe:transition-colors peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 dark:bg-gray-700 dark:peer-focus-visible:ring-blue-400 dark:peer-focus-visible:ring-offset-gray-950" />
+        <span className="absolute left-0.5 size-5 rounded-full bg-white shadow motion-safe:transition-transform peer-checked:translate-x-5" />
       </span>
     </label>
   )
@@ -36,8 +36,8 @@ export interface AdminSolutionsProps {
   onUpdateSolution?: (solutionId: string, input: Partial<SolutionInput>) => void
   onSetSolutionStatus?: (solutionId: string, status: SolutionStatus, reason: string | null) => void
   onArchiveSolution?: (solutionId: string, archived: boolean) => void
-  onAddAccess?: (solutionId: string) => void
-  onRemoveAccess?: (grantId: string) => void
+  /** Opens core Access with this solution preselected. The admin screens never write an assignment (`DEC-39`). */
+  onManageAccess?: (solutionId: string) => void
   onPreview?: (solutionId: string) => void
 }
 
@@ -109,6 +109,12 @@ export function AdminSolutions(p: AdminSolutionsProps) {
         {archivedCount > 0 ? (
           <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="size-4 rounded accent-blue-600" />Show archived ({archivedCount})</label>
         ) : null}
+        {/* Last control in the toolbar row, so the panel hangs from its right edge (tokens.md, Help disclosure). */}
+        <HelpNote label="What members see" align="right">
+          <p>Members see Ready, Maintenance, and Down. A Draft is visible to administrators only, and an archived solution leaves everyone's hub while its data stays.</p>
+          <p>A status never grants or removes access. Who reaches a solution is decided in Access, which is why the Access tab here only reads.</p>
+          <p className="text-gray-600 dark:text-gray-400">Preview as member opens any solution, a Draft included. The preview is written to the audit log and counts as nobody's access.</p>
+        </HelpNote>
         {/* Under md the primary action moves to the sticky bottom bar (DEC-25). */}
         <div className="ml-auto hidden md:block"><button type="button" className={btnPrimary} onClick={() => setRegistering(true)}><Plus className="size-5" strokeWidth={2} aria-hidden />Register solution</button></div>
       </div>
@@ -117,7 +123,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
         <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
           {rows.map((s) => (
             <li key={s.id} className={`flex items-center gap-2 pr-2 ${s.archived ? 'opacity-60' : ''}`}>
-              <button type="button" onClick={() => setOpenId(s.id)} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+              <button type="button" onClick={() => setOpenId(s.id)} className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg px-4 py-3 text-left ${focusRing}`}>
                 <Monogram text={s.monogram} color={s.accentColor} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5"><span className="truncate font-semibold">{s.name}</span><Pill>{s.type === 'embedded' ? 'Embedded' : 'Chat'}</Pill><StatusPill status={s.status} />{s.archived ? <Pill>Archived</Pill> : null}</span>
@@ -135,7 +141,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
             <thead className="bg-gray-50 dark:bg-gray-950/50"><tr><Th>Solution</Th><Th>Type</Th><Th>Category</Th><Th>Status</Th><Th className="hidden 2xl:table-cell">Theme</Th><Th className="text-right">Access</Th><Th>Updated</Th><Th /></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.map((s) => (
-                <tr key={s.id} tabIndex={0} onClick={() => setOpenId(s.id)} onKeyDown={(e) => e.key === 'Enter' && setOpenId(s.id)} className={`cursor-pointer outline-none motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${s.archived ? 'opacity-60' : ''} ${openId === s.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}>
+                <tr key={s.id} tabIndex={0} role="button" onClick={() => setOpenId(s.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(s.id) } }} className={`cursor-pointer motion-safe:transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 ${focusRing} ${s.archived ? 'opacity-60' : ''} ${openId === s.id ? 'bg-gray-100 dark:bg-gray-800' : ''}`}>
                   <Td>
                     <div className="flex items-center gap-3">
                       <Monogram text={s.monogram} color={s.accentColor} size="sm" />
@@ -159,7 +165,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
         <div className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-600 dark:border-gray-800 dark:text-gray-400">{rows.length} of {p.solutions.length} solutions. New solutions start as Draft and are visible to administrators only.</div>
       </Card>
 
-      <ConfigureSolutionSlideOver solution={open} initialTab={p.initialTab} onClose={() => setOpenId(null)} categories={p.categories} chatThemes={p.chatThemes} chatEnabled={p.chatEnabled} accessGrants={p.accessGrants} canAdminister={p.canAdminister} onUpdateSolution={p.onUpdateSolution} onSetSolutionStatus={p.onSetSolutionStatus} onArchiveSolution={p.onArchiveSolution} onAddAccess={p.onAddAccess} onRemoveAccess={p.onRemoveAccess} onPreview={p.onPreview} />
+      <ConfigureSolutionSlideOver solution={open} initialTab={p.initialTab} onClose={() => setOpenId(null)} categories={p.categories} chatThemes={p.chatThemes} chatEnabled={p.chatEnabled} accessGrants={p.accessGrants} canAdminister={p.canAdminister} onUpdateSolution={p.onUpdateSolution} onSetSolutionStatus={p.onSetSolutionStatus} onArchiveSolution={p.onArchiveSolution} onManageAccess={p.onManageAccess} onPreview={p.onPreview} />
 
       <ConfirmDialog
         open={confirmDelete !== null}
@@ -181,7 +187,7 @@ export function AdminSolutions(p: AdminSolutionsProps) {
         <div className="flex flex-col gap-4">
           <div role="radiogroup" aria-label="Type" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {([['chat', 'Chat', 'A streaming conversation with an external bot, styled by a chat theme.', MessageSquareText], ['embedded', 'Embedded', 'An external web app shown inside Genie Ops Center in a sandboxed frame.', PanelTop]] as Array<[SolutionType, string, string, typeof MessageSquareText]>).map(([id, label, help, Icon]) => (
-              <label key={id} className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 motion-safe:transition-colors ${id === 'chat' && p.chatEnabled === false ? 'cursor-not-allowed border-gray-200 opacity-70 dark:border-gray-800' : 'cursor-pointer'} ${rType === id ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/30' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60'}`}>
+              <label key={id} className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 motion-safe:transition-colors ${id === 'chat' && p.chatEnabled === false ? 'cursor-not-allowed border-gray-200 opacity-70 dark:border-gray-800' : 'cursor-pointer'} ${rType === id ? 'border-blue-600 bg-gray-100 dark:border-blue-400 dark:bg-gray-800' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60'}`}>
                 <input type="radio" name="solution-type" checked={rType === id} disabled={id === 'chat' && p.chatEnabled === false} onChange={() => setRType(id)} className={`mt-1 size-4 accent-blue-600 ${focusRing}`} />
                 <span className="flex-1"><span className="flex items-center gap-1.5 text-sm font-semibold"><Icon className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />{label}</span><span className="mt-0.5 block text-xs text-gray-600 dark:text-gray-400">{help}</span>{id === 'chat' && p.chatEnabled === false ? <span role="status" className="mt-1.5 block text-xs font-medium text-gray-800 dark:text-gray-200">Chat solutions are not enabled on this deployment. Contact your Genie operator.</span> : null}</span>
               </label>

@@ -23,13 +23,13 @@ export interface ChatTheme {
   /** Stored themes only. The "Tenant branding" chip with id `default` is a client-side seed rendered from the branding values, never a row; sample data lists it for the preview. */
   id: string
   name: string
-  isDefault: boolean
+  /** Paints the square mark beside an assistant reply. The viewer has no colored header band. */
   headerColor: string
   headerForeground: string
+  /** The reader's own turn is the only bubble in the transcript. An assistant reply is plain text and takes no theme color. */
   userBubbleColor: string
   userBubbleForeground: string
-  assistantBubbleColor: string
-  assistantBubbleForeground: string
+  /** Corner radius of the reader's own bubble. */
   radius: number
   font: string
   placeholder: string
@@ -88,7 +88,7 @@ export interface Message {
   reasoning?: string
   /** Assistant only. True when the stream ended without a finish signal. */
   interrupted?: boolean
-  /** Assistant only. The member's vote when feedback is enabled. */
+  /** Assistant only. The member's vote when feedback is enabled. Ephemeral client state: a vote is an event plus an audit row, there is no feedback table, so it does not survive a reload. */
   feedback?: 'up' | 'down' | null
 }
 
@@ -149,8 +149,6 @@ export interface ChatThemeInput {
   headerForeground: string
   userBubbleColor: string
   userBubbleForeground: string
-  assistantBubbleColor: string
-  assistantBubbleForeground: string
   radius: number
   font: string
   placeholder: string
@@ -211,7 +209,7 @@ export interface ChatSolutionsProps {
   onToggleFocus?: (focused: boolean) => void
   /** Administrator opens the assignment form with role and scope preselected. */
   onAddAccess?: (solutionId: string) => void
-  /** Administrator removes a direct grant. */
+  /** Administrator asks to remove a direct grant. Opens the core role assignment form with that assignment preselected; the core form performs the removal (DEC-39, DEC-50). */
   onRemoveAccess?: (grantId: string) => void
   /** Administrator creates a theme, starting from the tenant branding colors. */
   onCreateTheme?: (input: ChatThemeInput) => void

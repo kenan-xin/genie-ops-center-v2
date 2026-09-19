@@ -30,10 +30,10 @@
     { "id": "cat_empty", "name": "Legal", "position": 4 }
   ],
   "chatThemes": [
-    { "id": "default", "name": "Tenant branding", "isDefault": true, "headerColor": "#2563eb", "headerForeground": "#ffffff", "userBubbleColor": "#2563eb", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#f3f4f6", "assistantBubbleForeground": "#111827", "radius": 16, "font": "plus-jakarta-sans", "placeholder": "Ask a question" },
-    { "id": "theme_clinical", "name": "Clinical calm", "isDefault": false, "headerColor": "#0f766e", "headerForeground": "#ffffff", "userBubbleColor": "#0f766e", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#ecfdf5", "assistantBubbleForeground": "#064e3b", "radius": 20, "font": "plus-jakarta-sans", "placeholder": "Describe the case or paste the note" },
-    { "id": "theme_finance", "name": "Ledger", "isDefault": false, "headerColor": "#1f2937", "headerForeground": "#ffffff", "userBubbleColor": "#1f2937", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#f9fafb", "assistantBubbleForeground": "#111827", "radius": 8, "font": "ibm-plex-sans", "placeholder": "Ask about a policy or invoice" },
-    { "id": "theme_unused", "name": "Sunrise (unused)", "isDefault": false, "headerColor": "#c2410c", "headerForeground": "#ffffff", "userBubbleColor": "#c2410c", "userBubbleForeground": "#ffffff", "assistantBubbleColor": "#fff7ed", "assistantBubbleForeground": "#431407", "radius": 24, "font": "manrope", "placeholder": "Say hello" }
+    { "id": "default", "name": "Tenant branding", "isDefault": true, "headerColor": "#2563eb", "headerForeground": "#ffffff", "userBubbleColor": "#2563eb", "userBubbleForeground": "#ffffff", "radius": 16, "font": "plus-jakarta-sans", "placeholder": "Ask a question" },
+    { "id": "theme_clinical", "name": "Clinical calm", "isDefault": false, "headerColor": "#0f766e", "headerForeground": "#ffffff", "userBubbleColor": "#0f766e", "userBubbleForeground": "#ffffff", "radius": 20, "font": "plus-jakarta-sans", "placeholder": "Describe the case or paste the note" },
+    { "id": "theme_finance", "name": "Ledger", "isDefault": false, "headerColor": "#1f2937", "headerForeground": "#ffffff", "userBubbleColor": "#1f2937", "userBubbleForeground": "#ffffff", "radius": 8, "font": "ibm-plex-sans", "placeholder": "Ask about a policy or invoice" },
+    { "id": "theme_unused", "name": "Sunrise (unused)", "isDefault": false, "headerColor": "#c2410c", "headerForeground": "#ffffff", "userBubbleColor": "#c2410c", "userBubbleForeground": "#ffffff", "radius": 24, "font": "manrope", "placeholder": "Say hello" }
   ],
   "approvedFonts": [
     { "id": "plus-jakarta-sans", "label": "Plus Jakarta Sans" },

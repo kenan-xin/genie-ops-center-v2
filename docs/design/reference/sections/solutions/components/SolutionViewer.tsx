@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, ArrowUp, ChevronDown, Info, Maximize2, MoreHorizontal, RotateCcw, Square, Star, ThumbsDown, ThumbsUp, WrenchIcon, X } from 'lucide-react'
 import type { ChatTheme, Conversation, Message, Solution, Viewer } from '@/../product/sections/solutions/types'
 import { btnPrimary, btnSecondary, focusRing, foregroundFor } from './helpers'
@@ -39,6 +39,26 @@ const FONT_STACK: Record<string, string> = {
   'source-serif-4': '"Source Serif 4", Georgia, serif',
 }
 
+/* One hairline row of controls. No colored band: the theme color lives on the assistant mark in the
+ * transcript. The color stays out of the base so a caller can override it: two `text-*` utilities in one class
+ * string are settled by the stylesheet's order, not by which one is written last. */
+const iconBase = `flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 ${focusRing}`
+const iconInk = 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+const iconBtn = () => `${iconBase} ${iconInk}`
+const textBtn = `inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 ${focusRing}`
+/** The composer's one action. It wears the theme color, so it cannot borrow the blue primary button's fill or its blue shadow. */
+const sendBtn = `flex size-10 shrink-0 items-center justify-center rounded-lg motion-safe:transition-colors disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-600 ${focusRing}`
+
+/** Day label above the first message of each day, so a resumed conversation says when it happened. */
+function dayLabel(at: string) {
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const d = new Date(at)
+  const days = Math.round((midnight(new Date()) - midnight(d)) / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+}
+
 /* Rich text: sanitized markdown subset. Bold, lists, paragraphs, https and mailto links, fenced code with
  * diagram and chart blocks. No raw HTML passes through. */
 function inline(s: string, key: string) {
@@ -56,18 +76,20 @@ function FencedBlock({ lang, code }: { lang: string; code: string }) {
   const kind = lang === 'mermaid' ? 'Diagram' : lang === 'vega-lite' ? 'Chart' : null
   if (!kind) return <pre className="overflow-x-auto rounded-lg bg-black/5 p-3 font-mono text-xs leading-relaxed dark:bg-white/10"><code>{code}</code></pre>
   // Design stand-in: the renderer draws the diagram or chart; the code is one tap away as the fallback.
+  // No card around it. A reply is page text, so a figure inside one is separated by two hairlines, never
+  // boxed, and it borrows no color of its own.
   return (
-    <figure className="overflow-hidden rounded-xl border border-black/10 bg-white/70 text-gray-900 dark:border-white/10 dark:bg-black/20 dark:text-gray-100">
-      <figcaption className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-gray-600 dark:border-white/10 dark:text-gray-400">
-        {kind} · {lang}
-        <button type="button" onClick={() => setShowCode((v) => !v)} className={`rounded-md font-medium normal-case tracking-normal text-blue-700 hover:underline dark:text-blue-300 ${focusRing}`}>{showCode ? `Show ${kind.toLowerCase()}` : 'Show code'}</button>
+    <figure className="my-1 border-y border-gray-200 py-3 dark:border-gray-800">
+      <figcaption className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500">{kind}</span>
+        <button type="button" onClick={() => setShowCode((v) => !v)} className={`rounded-md text-xs font-medium text-gray-600 underline underline-offset-2 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 ${focusRing}`}>{showCode ? `Show ${kind.toLowerCase()}` : 'Show code'}</button>
       </figcaption>
       {showCode ? (
-        <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed"><code>{code}</code></pre>
+        <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-gray-600 dark:text-gray-400"><code>{code}</code></pre>
       ) : lang === 'mermaid' ? (
         <MermaidStandIn code={code} />
       ) : (
-        <div className="flex h-40 items-end gap-2 px-4 pb-4 pt-6" aria-label="Chart">{[40, 65, 30, 80, 55, 70].map((h, i) => <span key={i} className="flex-1 rounded-t-md bg-blue-600/80" style={{ height: `${h}%` }} />)}</div>
+        <div className="flex h-36 items-end gap-2 pt-2" aria-label="Chart">{[40, 65, 30, 80, 55, 70].map((h, i) => <span key={i} className="flex-1 rounded-t-sm bg-gray-200 dark:bg-gray-700" style={{ height: `${h}%` }} />)}</div>
       )}
     </figure>
   )
@@ -80,12 +102,14 @@ function MermaidStandIn({ code }: { code: string }) {
   for (const m of code.matchAll(/([A-Z])[[{]([^\]}]+)[\]}]/g)) {
     if (!seen.has(m[1])) { seen.add(m[1]); nodes.push(m[2]) }
   }
+  // A decision node reads as a decision through weight and a darker tint. Amber in this design system is
+  // only ever a real warning, and a flow step is not one.
   return (
-    <div className="flex flex-wrap items-center gap-2 p-3">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
       {nodes.map((n, i) => (
-        <span key={i} className="flex items-center gap-2">
-          <span className={`rounded-lg border px-2.5 py-1.5 text-xs ${/\?$/.test(n) ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900'}`}>{n}</span>
-          {i < nodes.length - 1 ? <span aria-hidden className="text-gray-500">→</span> : null}
+        <span key={i} className="flex items-center gap-1.5">
+          <span className={`rounded-md px-2 py-1 ${/\?$/.test(n) ? 'bg-gray-200 font-semibold dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800'}`}>{n}</span>
+          {i < nodes.length - 1 ? <span aria-hidden className="text-gray-400 dark:text-gray-500">→</span> : null}
         </span>
       ))}
     </div>
@@ -123,47 +147,63 @@ function Reasoning({ text, streaming, interrupted, seconds }: { text: string; st
   const setOpen = (fn: (v: boolean) => boolean) => setManual(fn(open))
   const label = streaming ? 'Thinking' : interrupted ? 'Reasoning interrupted' : `Thought for ${seconds} s`
   return (
-    <div className="mb-1.5 max-w-[78%] text-xs">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={`inline-flex h-8 items-center gap-1.5 rounded-xl px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 ${focusRing}`}>
+    <div className="mb-1.5 max-w-full text-xs">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 ${focusRing}`}>
         <ChevronDown className={`size-4 motion-safe:transition-transform ${open ? '' : '-rotate-90'}`} strokeWidth={2} aria-hidden />
         <span className={streaming ? 'motion-safe:animate-pulse' : ''}>{label}</span>
       </button>
-      {open ? <div className="ml-2 mt-1 border-l-2 border-gray-200 pl-3 leading-relaxed text-gray-600 dark:border-gray-700 dark:text-gray-400">{text}{streaming ? <span aria-hidden className="ml-0.5 inline-block h-3 w-[2px] motion-safe:animate-pulse bg-current align-middle" /> : null}</div> : null}
+      {open ? <div className="ml-2 mt-1 border-l border-gray-200 pl-3 leading-relaxed text-gray-600 dark:border-gray-800 dark:text-gray-400">{text}{streaming ? <span aria-hidden className="ml-0.5 inline-block h-3 w-[2px] motion-safe:animate-pulse bg-current align-middle" /> : null}</div> : null}
     </div>
   )
 }
 
-/** `showTime`: the time is always visible under the last bubble of a run (same side, within five minutes); never hover-only. */
-function Bubble({ m, theme, streaming, feedbackEnabled, showTime, onFeedback }: { m: Message; theme: ChatTheme; streaming?: boolean; feedbackEnabled: boolean; showTime: boolean; onFeedback?: (vote: 'up' | 'down') => void }) {
-  const user = m.role === 'user'
-  const bg = user ? theme.userBubbleColor : theme.assistantBubbleColor
-  const fg = user ? theme.userBubbleForeground : theme.assistantBubbleForeground
+/**
+ * `showTime`: the time is always visible under the last turn of a run (same side, within five minutes); never hover-only.
+ * Your turn is a bubble in the theme color. An assistant reply is plain page text behind a small square
+ * mark, so a long answer reads as a document and the tenant color stays an accent, never a wall.
+ */
+function Turn({ m, theme, monogram, streaming, feedbackEnabled, showTime, onFeedback }: { m: Message; theme: ChatTheme; monogram: string; streaming?: boolean; feedbackEnabled: boolean; showTime: boolean; onFeedback?: (vote: 'up' | 'down') => void }) {
   const time = new Date(m.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' })
-  return (
-    <div className={`group flex flex-col ${user ? 'items-end' : 'items-start'}`}>
-      {!user && m.reasoning ? <Reasoning text={m.reasoning} streaming={Boolean(streaming && !m.text)} interrupted={m.interrupted && !m.text} seconds={Math.max(1, Math.round(m.reasoning.length / 40))} /> : null}
-      <div
-        className="max-w-[78%] space-y-2 px-4 py-2.5 text-base leading-relaxed"
-        style={{ backgroundColor: bg, color: fg, borderRadius: theme.radius, [user ? 'borderBottomRightRadius' : 'borderBottomLeftRadius']: Math.min(6, theme.radius) } as React.CSSProperties}
-      >
-        {renderRich(m.text)}
-        {streaming ? <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] motion-safe:animate-pulse bg-current align-middle" /> : null}
+
+  if (m.role === 'user') {
+    return (
+      <div className="flex flex-col items-end gap-1.5">
+        <div
+          className="max-w-[74%] space-y-2 px-3.5 py-2.5 text-[15px] leading-[1.6]"
+          style={{ backgroundColor: theme.userBubbleColor, color: theme.userBubbleForeground, borderRadius: theme.radius, borderBottomRightRadius: Math.min(6, theme.radius) }}
+        >
+          {renderRich(m.text)}
+        </div>
+        {showTime ? <time dateTime={m.at} className="px-1 text-xs tabular-nums text-gray-500">{time}</time> : null}
       </div>
-      {showTime || (!user && (m.interrupted || feedbackEnabled) && !streaming) ? (
-      <div className="mt-1 flex min-h-6 items-center gap-2 px-1 text-xs text-gray-500">
-        {showTime ? <time dateTime={m.at}>{time}</time> : null}
-        {!user && m.interrupted && !streaming ? <Pill tone="amber"><AlertTriangle className="size-4" strokeWidth={2} aria-hidden />Incomplete response</Pill> : null}
-        {!user && feedbackEnabled && !streaming ? (
-          <span className="ml-auto flex items-center gap-0.5">
-            {(['up', 'down'] as const).map((v) => (
-              <button key={v} type="button" aria-label={v === 'up' ? 'Helpful' : 'Not helpful'} aria-pressed={m.feedback === v} onClick={() => onFeedback?.(v)} className={`flex size-8 items-center justify-center rounded-xl motion-safe:transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${focusRing} ${m.feedback === v ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500'}`}>
-                {v === 'up' ? <ThumbsUp className="size-4" strokeWidth={1.75} /> : <ThumbsDown className="size-4" strokeWidth={1.75} />}
-              </button>
-            ))}
-          </span>
+    )
+  }
+
+  return (
+    <div className="flex gap-3">
+      <span aria-hidden className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold tracking-tight" style={{ backgroundColor: theme.headerColor, color: theme.headerForeground }}>{monogram}</span>
+      <div className="min-w-0 flex-1">
+        {m.reasoning ? <Reasoning text={m.reasoning} streaming={Boolean(streaming && !m.text)} interrupted={m.interrupted && !m.text} seconds={Math.max(1, Math.round(m.reasoning.length / 40))} /> : null}
+        <div className="space-y-2 text-[15px] leading-[1.7] text-gray-800 dark:text-gray-200">
+          {renderRich(m.text)}
+          {streaming ? <span aria-hidden className="ml-0.5 inline-block h-4 w-[2px] motion-safe:animate-pulse bg-current align-middle" /> : null}
+        </div>
+        {showTime || ((m.interrupted || feedbackEnabled) && !streaming) ? (
+          <div className="mt-1.5 flex min-h-6 items-center gap-2 text-xs text-gray-500">
+            {showTime ? <time dateTime={m.at} className="tabular-nums">{time}</time> : null}
+            {m.interrupted && !streaming ? <Pill tone="amber"><AlertTriangle className="size-4" strokeWidth={2} aria-hidden />Incomplete response</Pill> : null}
+            {feedbackEnabled && !streaming ? (
+              <span className="ml-auto flex items-center gap-0.5">
+                {(['up', 'down'] as const).map((v) => (
+                  <button key={v} type="button" aria-label={v === 'up' ? 'Helpful' : 'Not helpful'} aria-pressed={m.feedback === v} onClick={() => onFeedback?.(v)} className={`flex size-8 items-center justify-center rounded-lg motion-safe:transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${focusRing} ${m.feedback === v ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500'}`}>
+                    {v === 'up' ? <ThumbsUp className="size-4" strokeWidth={1.75} /> : <ThumbsDown className="size-4" strokeWidth={1.75} />}
+                  </button>
+                ))}
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
-      ) : null}
     </div>
   )
 }
@@ -197,7 +237,7 @@ export function SolutionViewer(p: SolutionViewerProps) {
   const newChat = () => { if (streaming) return; if (messages.length) setConfirmNew(true); else p.onNewChat?.(s.id) }
 
   const notice = blocked ? (
-    <div role={s.status === 'down' ? 'alert' : 'status'} className={`mx-auto my-8 flex max-w-xl items-start gap-3 rounded-2xl border px-5 py-4 ${s.status === 'down' ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/30 dark:text-amber-100'}`}>
+    <div role={s.status === 'down' ? 'alert' : 'status'} className={`mx-auto my-8 flex max-w-xl items-start gap-3 rounded-xl border px-5 py-4 ${s.status === 'down' ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/30 dark:text-amber-100'}`}>
       {s.status === 'down' ? <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-600" strokeWidth={1.75} aria-hidden /> : <WrenchIcon className="mt-0.5 size-5 shrink-0 text-amber-600" strokeWidth={1.75} aria-hidden />}
       <div>
         <p className="font-semibold">{s.status === 'down' ? 'This solution is unavailable.' : 'This solution is under maintenance.'}</p>
@@ -208,46 +248,41 @@ export function SolutionViewer(p: SolutionViewerProps) {
   ) : null
 
   return (
-    <div className={`flex h-full min-h-[70vh] flex-col overflow-hidden bg-white dark:bg-gray-900 ${focused ? '' : 'rounded-2xl border border-gray-200 dark:border-gray-800'}`} style={type === 'chat' ? { fontFamily: FONT_STACK[theme.font] } : undefined}>
-      <header className="flex items-center gap-2 border-b border-gray-200 px-3 py-2.5 sm:gap-3 sm:px-4 dark:border-gray-800" style={type === 'chat' ? { boxShadow: `inset 0 3px 0 ${theme.headerColor}` } : undefined}>
-        <button type="button" aria-label="Back to Solutions" onClick={() => p.onBack?.()} className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`}><ArrowLeft className="size-5" strokeWidth={1.75} /></button>
+    <div className={`flex h-full min-h-[70vh] flex-col overflow-hidden bg-white dark:bg-gray-900 ${focused ? '' : 'rounded-xl border border-gray-200 dark:border-gray-800'}`} style={type === 'chat' ? { fontFamily: FONT_STACK[theme.font] } : undefined}>
+      <header className="flex h-14 shrink-0 items-center gap-1 border-b border-gray-200 px-2 sm:gap-2 sm:px-3 dark:border-gray-800">
+        <button type="button" aria-label="Back to Solutions" onClick={() => p.onBack?.()} className={iconBtn()}><ArrowLeft className="size-5" strokeWidth={1.75} /></button>
         <Monogram text={s.monogram} color={s.accentColor} size="sm" />
-        {/* Name and pills share one row; the name truncates, the pills never wrap under the monogram. */}
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <h2 className="min-w-0 truncate text-base font-bold tracking-tight">{s.name}</h2>
-            <Pill>{type === 'embedded' ? 'Embedded' : 'Chat'}</Pill>
-            {s.status !== 'ready' ? <StatusPill status={s.status} /> : null}
-          </div>
-          <p className="hidden truncate text-xs text-gray-600 sm:block dark:text-gray-400">{s.description}</p>
-        </div>
-        <button type="button" aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFavorite} onClick={() => p.onToggleFavorite?.(s.id)} className={`flex size-10 shrink-0 items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 ${focusRing} ${isFavorite ? 'text-amber-500' : 'text-gray-500'}`}>
+        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[-0.01em]">{s.name}</h2>
+        {/* The type reads as a quiet label; a status that is not ready outranks it and takes the slot. */}
+        {s.status !== 'ready' ? <StatusPill status={s.status} /> : <span className="hidden shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 sm:block dark:text-gray-500">{type === 'embedded' ? 'Embedded' : 'Chat'}</span>}
+        <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block dark:bg-gray-800" />
+        <button type="button" aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFavorite} onClick={() => p.onToggleFavorite?.(s.id)} className={`${iconBase} ${isFavorite ? 'text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400' : iconInk}`}>
           <Star className="size-5" strokeWidth={1.75} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
         {/* Focus toggle, hidden on phones where the viewer is always full width. The wrapper carries the breakpoint so the button's inline-flex does not win over hidden. */}
         <span className="hidden md:contents">
-          <button type="button" aria-pressed={focused} onClick={() => p.onToggleFocus?.(!focused)} className={btnSecondary}>
-            {focused ? <><X className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Exit focus</> : <><Maximize2 className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Focus</>}
+          <button type="button" aria-pressed={focused} onClick={() => p.onToggleFocus?.(!focused)} className={textBtn}>
+            {focused ? <><X className="size-4" strokeWidth={1.75} aria-hidden />Exit focus</> : <><Maximize2 className="size-4" strokeWidth={1.75} aria-hidden />Focus</>}
           </button>
         </span>
         {type === 'chat' ? (
           <>
             <span className="hidden sm:contents">
-              <button type="button" className={btnSecondary} disabled={streaming || blocked} title={streaming ? 'Wait for the reply to finish' : undefined} onClick={newChat}>
-                <RotateCcw className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />New chat
+              <button type="button" className={textBtn} disabled={streaming || blocked} title={streaming ? 'Wait for the reply to finish' : undefined} onClick={newChat}>
+                <RotateCcw className="size-4" strokeWidth={1.75} aria-hidden />New chat
               </button>
             </span>
             <span className="relative sm:hidden">
-              <button type="button" aria-label="More" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} className={`flex size-10 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`}><MoreHorizontal className="size-5" strokeWidth={1.75} /></button>
+              <button type="button" aria-label="More" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} className={iconBtn()}><MoreHorizontal className="size-5" strokeWidth={1.75} /></button>
               {menuOpen ? (
-                <span role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                <span role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
                   <button type="button" role="menuitem" disabled={streaming || blocked} className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2.5 text-left text-sm hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800 ${focusRing}`} onClick={() => { setMenuOpen(false); newChat() }}><RotateCcw className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />New chat</button>
                 </span>
               ) : null}
             </span>
           </>
         ) : s.allowFullscreen && !blocked ? (
-          <button type="button" aria-label="Fullscreen" className={btnSecondary} onClick={() => p.onFullscreen?.()}><Maximize2 className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden /><span className="hidden sm:inline">Fullscreen</span></button>
+          <button type="button" aria-label="Fullscreen" className={textBtn} onClick={() => p.onFullscreen?.()}><Maximize2 className="size-4" strokeWidth={1.75} aria-hidden /><span className="hidden sm:inline">Fullscreen</span></button>
         ) : null}
       </header>
 
@@ -263,7 +298,7 @@ export function SolutionViewer(p: SolutionViewerProps) {
       {type === 'embedded' ? (
         <div className="relative min-h-0 flex-1 bg-gray-50 dark:bg-gray-950">
           {notice ? <div className="px-4">{notice}</div> : frameState === 'failed' ? (
-            <div role="alert" className="mx-auto my-10 flex max-w-md flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-white px-6 py-8 text-center dark:border-gray-800 dark:bg-gray-900">
+            <div role="alert" className="mx-auto my-10 flex max-w-md flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white px-6 py-8 text-center dark:border-gray-800 dark:bg-gray-900">
               <AlertTriangle className="size-6 text-red-600" strokeWidth={1.75} aria-hidden />
               <p className="text-base font-semibold">The application did not load.</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">It may be down or blocked by its own security policy. Try again, or contact your administrator.</p>
@@ -274,9 +309,9 @@ export function SolutionViewer(p: SolutionViewerProps) {
               {frameState === 'loading' ? (
                 <div role="status" aria-label="Loading the application" className="absolute inset-0 flex flex-col gap-3 p-6">
                   <span className="sr-only">Loading the application</span>
-                  <div className="h-10 w-1/3 rounded-xl bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />
-                  <div className="h-32 w-full rounded-2xl bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />
-                  <div className="grid flex-1 grid-cols-3 gap-3">{[0, 1, 2].map((i) => <div key={i} className="rounded-2xl bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />)}</div>
+                  <div className="h-10 w-1/3 rounded-lg bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />
+                  <div className="h-32 w-full rounded-xl bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />
+                  <div className="grid flex-1 grid-cols-3 gap-3">{[0, 1, 2].map((i) => <div key={i} className="rounded-xl bg-gray-200 motion-safe:animate-pulse dark:bg-gray-800" />)}</div>
                 </div>
               ) : null}
               {/* Sandboxed external application. The design shows a neutral frame stand-in. */}
@@ -292,27 +327,34 @@ export function SolutionViewer(p: SolutionViewerProps) {
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
             {notice}
+            {/* Empty state: no second monogram, the header already carries the mark forty pixels above. */}
             {!blocked && messages.length === 0 ? (
-              <div className="mx-auto flex max-w-xl flex-col items-center gap-5 pt-10 text-center">
-                <Monogram text={s.monogram} color={s.accentColor} size="lg" />
+              <div className="mx-auto flex max-w-xl flex-col items-center gap-5 pt-14 text-center">
                 <div>
-                  <h3 className="text-lg font-bold tracking-tight">{s.name}</h3>
+                  <h3 className="text-base font-semibold tracking-[-0.01em]">{s.name}</h3>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{s.welcomeText}</p>
                   {conversation?.resumed ? <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300"><Info className="size-4" strokeWidth={1.75} aria-hidden />Continuing your earlier conversation. Earlier messages are not shown.</p> : null}
                 </div>
                 {s.starterPrompts.length > 0 ? (
                   <div className="flex flex-wrap justify-center gap-2">
                     {s.starterPrompts.map((sp) => (
-                      <button key={sp} type="button" disabled={offline} onClick={() => send(sp)} className={`min-h-10 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-800 motion-safe:transition-colors hover:border-gray-400 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900 ${focusRing}`}>{sp}</button>
+                      <button key={sp} type="button" disabled={offline} onClick={() => send(sp)} className={`min-h-10 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 dark:hover:text-gray-100 ${focusRing}`}>{sp}</button>
                     ))}
                   </div>
                 ) : null}
               </div>
             ) : !blocked ? (
-              <div className="mx-auto flex max-w-3xl flex-col gap-3">
-                {messages.map((m, i) => <Bubble key={m.id} m={m} theme={theme} streaming={streaming && i === messages.length - 1 && m.role === 'assistant'} showTime={endsRun(messages, i)} feedbackEnabled={Boolean(s.feedbackEnabled)} onFeedback={(v) => { p.onSendFeedback?.(s.id, m.id, v); if (v === 'down') setToast('Thanks. Your feedback helps improve this solution.') }} />)}
+              <div className="mx-auto flex max-w-[70ch] flex-col gap-7">
+                {messages.map((m, i) => (
+                  <Fragment key={m.id}>
+                    {i === 0 || dayLabel(messages[i - 1].at) !== dayLabel(m.at) ? (
+                      <p className="self-center text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">{dayLabel(m.at)}</p>
+                    ) : null}
+                    <Turn m={m} theme={theme} monogram={s.monogram} streaming={streaming && i === messages.length - 1 && m.role === 'assistant'} showTime={endsRun(messages, i)} feedbackEnabled={Boolean(s.feedbackEnabled)} onFeedback={(v) => { p.onSendFeedback?.(s.id, m.id, v); if (v === 'down') setToast('Thanks. Your feedback helps improve this solution.') }} />
+                  </Fragment>
+                ))}
                 {sendError ? (
-                  <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+                  <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
                     <span className="flex items-center gap-2"><AlertTriangle className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />{sendError}</span>
                     <button type="button" className={`${btnSecondary} text-red-800 dark:text-red-200`} onClick={() => p.onRetrySend?.(s.id)}><RotateCcw className="size-5" strokeWidth={1.75} aria-hidden />Retry</button>
                   </div>
@@ -324,7 +366,7 @@ export function SolutionViewer(p: SolutionViewerProps) {
 
           {!blocked ? (
             <div className="border-t border-gray-200 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8 dark:border-gray-800">
-              <form className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-gray-300 bg-white p-1.5 pl-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:ring-offset-gray-950" onSubmit={(e) => { e.preventDefault(); if (canSend) send(draft) }}>
+              <form className="mx-auto flex max-w-[70ch] items-end gap-2 rounded-xl border border-gray-500 bg-white p-1.5 pl-4 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950" onSubmit={(e) => { e.preventDefault(); if (canSend) send(draft) }}>
                 <textarea
                   aria-label="Message"
                   value={draft}
@@ -338,21 +380,21 @@ export function SolutionViewer(p: SolutionViewerProps) {
                   style={{ height: `${Math.min(160, 40 + Math.max(0, draft.split('\n').length - 1) * 22)}px` }}
                 />
                 {streaming ? (
-                  <button type="button" aria-label="Stop generating" onClick={() => p.onStopStreaming?.(s.id)} className={`${btnPrimary} size-10 justify-center px-0`} style={{ backgroundColor: theme.userBubbleColor, color: foregroundFor(theme.userBubbleColor) }}><Square className="size-4" strokeWidth={2} fill="currentColor" /></button>
+                  <button type="button" aria-label="Stop generating" onClick={() => p.onStopStreaming?.(s.id)} className={sendBtn} style={{ backgroundColor: theme.userBubbleColor, color: foregroundFor(theme.userBubbleColor) }}><Square className="size-4" strokeWidth={2} fill="currentColor" /></button>
                 ) : (
-                  <button type="submit" aria-label="Send" title={sendError ? 'Retry the last message first' : offline ? 'You are offline' : undefined} disabled={!canSend} className={`${btnPrimary} size-10 justify-center px-0`} style={canSend ? { backgroundColor: theme.userBubbleColor, color: foregroundFor(theme.userBubbleColor) } : undefined}><ArrowUp className="size-4" strokeWidth={2.5} /></button>
+                  <button type="submit" aria-label="Send" title={sendError ? 'Retry the last message first' : offline ? 'You are offline' : undefined} disabled={!canSend} className={sendBtn} style={canSend ? { backgroundColor: theme.userBubbleColor, color: foregroundFor(theme.userBubbleColor) } : undefined}><ArrowUp className="size-4" strokeWidth={2.5} /></button>
                 )}
               </form>
-              <p className="mx-auto mt-2 flex max-w-3xl items-center justify-center gap-2 text-center text-xs text-gray-500"><span>{streaming ? 'Replying. One message at a time.' : `${s.name} can make mistakes. Check important details.`}</span>{draft.length > 7000 ? <span className={`tabular-nums ${draft.length >= 8000 ? 'text-red-700' : ''}`}>{draft.length}/8000</span> : null}</p>
+              <p className="mx-auto mt-2 flex max-w-[70ch] items-center justify-center gap-2 text-center text-xs text-gray-500"><span>{streaming ? 'Replying. One message at a time.' : `${s.name} can make mistakes. Check important details.`}</span>{draft.length > 7000 ? <span className={`tabular-nums ${draft.length >= 8000 ? 'text-red-700' : ''}`}>{draft.length}/8000</span> : null}</p>
             </div>
           ) : null}
         </>
       )}
 
       {toast ? (
-        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-lg md:left-auto md:right-6 md:translate-x-0 dark:border-gray-700 dark:bg-gray-900">
+        <div role="status" className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-lg md:left-auto md:right-6 md:translate-x-0 dark:border-gray-700 dark:bg-gray-900">
           {toast}
-          <button type="button" aria-label="Dismiss" onClick={() => setToast(null)} className={`ml-1 flex size-8 items-center justify-center rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button>
+          <button type="button" aria-label="Dismiss" onClick={() => setToast(null)} className={`ml-1 flex size-8 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button>
         </div>
       ) : null}
     </div>

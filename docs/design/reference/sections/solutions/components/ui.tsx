@@ -1,21 +1,60 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, MoreHorizontal, Search, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { AlertTriangle, ChevronDown, HelpCircle, Loader2, MoreHorizontal, Search, X } from 'lucide-react'
 import type { SolutionStatus } from '@/../product/sections/solutions/types'
 import { STATUS_META, btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, foregroundFor, initials } from './helpers'
 
 /* Shared building blocks: rounded cards, hairline borders, semantic pills, slide-over, dialog. */
 
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
+  return <section className={`rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
 }
 
-export type Tone = 'gray' | 'blue' | 'green' | 'red' | 'amber'
+/**
+ * The one contextual-help pattern (tokens.md, Help disclosure): a labelled button opens one collapsed
+ * callout beside the control it explains, at most one per screen. It never opens on hover alone.
+ * Escape and a click outside close it.
+ */
+export function HelpNote({ label, children, align = 'left' }: { label: string; children: React.ReactNode; align?: 'left' | 'right' }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const wrap = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  return (
+    <span ref={wrap} className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-blue-700 motion-safe:transition-colors hover:bg-blue-50 sm:h-8 dark:text-blue-400 dark:hover:bg-blue-950/40 ${focusRing}`}
+      >
+        <HelpCircle className="size-4" strokeWidth={1.75} aria-hidden />{label}
+      </button>
+      {open ? (
+        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'right-0 max-sm:left-0 max-sm:right-auto' : 'left-0'}`}>
+          <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
+          <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
+export type Tone = 'gray' | 'blue' | 'emerald' | 'red' | 'amber'
+// Tinted surfaces stay neutral gray (tokens, Color roles): the blue label pill is gray too, so no tint ramp is derived from the tenant color.
 const TONES: Record<Tone, string> = {
   gray: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  blue: 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  blue: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   red: 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  amber: 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  amber: 'bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', // unslop-ignore: the warning surface, not a cream page (tokens.md, Color roles)
 }
 export function Pill({ tone = 'gray', children, title }: { tone?: Tone; children: React.ReactNode; title?: string }) {
   return (
@@ -31,7 +70,8 @@ export function StatusPill({ status }: { status: SolutionStatus }) {
 
 /** Solution monogram tile in its accent color with a computed foreground. */
 export function Monogram({ text, color, size = 'md' }: { text: string; color: string; size?: 'sm' | 'md' | 'lg' }) {
-  const cls = { sm: 'size-8 rounded-lg text-xs', md: 'size-11 rounded-xl text-sm', lg: 'size-14 rounded-2xl text-base' }[size]
+  // The letter tile follows the tile step of the radius ladder: 6px small, 8px medium, 12px large.
+  const cls = { sm: 'size-8 rounded-md text-xs', md: 'size-11 rounded-lg text-sm', lg: 'size-14 rounded-xl text-base' }[size]
   return (
     <span aria-hidden className={`flex shrink-0 items-center justify-center font-extrabold tracking-tight ${cls}`} style={{ backgroundColor: color, color: foregroundFor(color) }}>
       {text}
@@ -39,20 +79,39 @@ export function Monogram({ text, color, size = 'md' }: { text: string; color: st
   )
 }
 
+/**
+ * The one warning note (DESIGN.md, Semantic colors): amber-800 on amber-50, one alert icon, one
+ * short sentence. `sm` is the inline note under a control, `md` the block at the top of a card or a
+ * sheet. Amber is only ever a real warning.
+ */
+export function WarningNote({ children, size = 'sm', className = '', role }: { children: React.ReactNode; size?: 'sm' | 'md'; className?: string; role?: 'status' | 'alert' }) {
+  const md = size === 'md'
+  return (
+    <div role={role} className={`flex items-start rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 ${md ? 'gap-2.5 px-3.5 py-3 text-sm' : 'gap-1.5 px-2.5 py-1.5 text-xs'} ${className}`}>
+      <AlertTriangle className={`size-4 shrink-0 ${md ? 'mt-0.5' : 'mt-px'}`} strokeWidth={2} aria-hidden />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
 export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
   const cls = { sm: 'size-8 text-xs', md: 'size-10 text-xs', lg: 'size-14 text-base' }[size]
   return (
-    <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-200 ${cls}`}>
+    <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full bg-gray-100 font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300 ${cls}`}>
       {initials(name)}
     </span>
   )
 }
 
-export function SearchField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+/** `shortcut` draws the key that focuses this field, shown only while the field is empty. `inputRef` lets the page press it. */
+export function SearchField({ value, onChange, placeholder, inputRef, shortcut }: { value: string; onChange: (v: string) => void; placeholder: string; inputRef?: React.Ref<HTMLInputElement>; shortcut?: string }) {
   return (
-    <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 sm:max-w-xs dark:border-gray-700 dark:bg-gray-950 dark:focus-within:ring-offset-gray-950">
+    <label className="flex h-10 min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:max-w-xs dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
       <Search className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
+      <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="peer min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
+      {shortcut && !value ? (
+        <kbd aria-hidden className="hidden shrink-0 rounded border border-gray-300 px-1.5 font-mono text-xs leading-5 text-gray-500 peer-focus:invisible sm:block dark:border-gray-700 dark:text-gray-400">{shortcut}</kbd>
+      ) : null}
     </label>
   )
 }
@@ -64,7 +123,7 @@ export function Select({ value, onChange, children, ariaLabel }: { value: string
         aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-10 w-full appearance-none rounded-xl border border-gray-300 bg-white pl-3 pr-9 text-sm text-gray-800 focus:border-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 ${focusRing}`}
+        className={`h-10 w-full appearance-none rounded-lg border border-gray-500 bg-white pl-3 pr-9 text-sm text-gray-800 focus:border-blue-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-200 ${focusRing}`}
       >
         {children}
       </select>
@@ -84,7 +143,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: Array<
   return (
     // Phone: the strip scrolls and a fade on the right edge hints at more tabs.
     <div className="relative border-b border-gray-200 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-8 after:bg-gradient-to-l after:from-white after:to-transparent sm:after:hidden dark:border-gray-800 dark:after:from-gray-900">
-    <div role="tablist" className="flex gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
+    <div role="tablist" className="flex gap-1 overflow-x-auto overflow-y-hidden px-2 [scrollbar-width:none]">
       {tabs.map((t) => {
         const active = t.id === value
         return (
@@ -94,11 +153,11 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: Array<
             aria-selected={active}
             onClick={() => onChange(t.id)}
             className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium motion-safe:transition-colors ${focusRing} ${
-              active ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+              active ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
             }`}
           >
             {t.label}
-            {t.count !== undefined ? <span className={`rounded-full px-1.5 text-xs ${active ? 'bg-blue-50 dark:bg-blue-900/40' : 'bg-gray-100 dark:bg-gray-800'}`}>{t.count}</span> : null}
+            {t.count !== undefined ? <span className="rounded-full bg-gray-100 px-1.5 text-xs dark:bg-gray-800">{t.count}</span> : null}
           </button>
         )
       })}
@@ -123,7 +182,7 @@ export function SlideOver({ open, onClose, title, children }: { open: boolean; o
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[560px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-2xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800"
+        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[560px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800"
       >
         {children}
       </aside>
@@ -151,7 +210,7 @@ export function Dialog({ open, onClose, title, description, children, footer }: 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <button type="button" aria-label="Close dialog" onClick={onClose} className="absolute inset-0 bg-gray-900/30 backdrop-blur-[1px]" />
-      <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+      <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
             <h2 id="dlg-title" className="text-lg font-bold tracking-tight">{title}</h2>
@@ -195,7 +254,7 @@ export function RowMenu({ items }: { items: Array<{ label: string; onSelect: () 
         <MoreHorizontal className="size-4" strokeWidth={1.75} />
       </button>
       {open ? (
-        <div role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+        <div role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
           {items.map((it) => (
             <button
               key={it.label}
@@ -210,6 +269,24 @@ export function RowMenu({ items }: { items: Array<{ label: string; onSelect: () 
         </div>
       ) : null}
     </div>
+  )
+}
+
+/** Primary button with the tokens loading state: the label stays, a spinner replaces the leading icon, width is kept, `aria-busy`, a second press does nothing. Design-only: waits ~900 ms then calls `onClick`. */
+export function SaveButton({ icon, onClick, disabled, title, className = '', children }: { icon: React.ReactNode; onClick: () => void; disabled?: boolean; title?: string; className?: string; children: React.ReactNode }) {
+  const [loading, setLoading] = useState(false)
+  const timer = useRef(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const press = () => {
+    if (loading) return
+    setLoading(true)
+    timer.current = window.setTimeout(() => { setLoading(false); onClick() }, 900)
+  }
+  return (
+    <button type="button" aria-busy={loading || undefined} disabled={disabled} title={title} onClick={press} className={`${btnPrimary} min-w-24 justify-center ${className}`}>
+      {loading ? <Loader2 className="size-5 motion-safe:animate-spin" strokeWidth={2} aria-hidden /> : icon}
+      {children}
+    </button>
   )
 }
 

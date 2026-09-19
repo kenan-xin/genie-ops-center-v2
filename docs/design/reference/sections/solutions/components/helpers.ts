@@ -1,10 +1,10 @@
-/** One focus ring for every interactive element (tokens: 2px blue-500 at 60%, 2px offset). */
-export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950'
-export const btnPrimary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500 ${focusRing}`
-export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 ${focusRing}`
-export const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-red-600 px-3.5 text-sm font-semibold text-white motion-safe:transition-colors hover:bg-red-700 ${focusRing}`
-export const btnGhost = `inline-flex h-8 items-center gap-1.5 rounded-xl px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`
-export const inputClass = `h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
+/** One focus ring for every interactive element (tokens: 2px solid blue-500, blue-400 in dark, 2px offset). */
+export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950'
+export const btnPrimary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-600/90 active:bg-blue-600/80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 ${focusRing}`
+export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:disabled:hover:bg-gray-950 ${focusRing}`
+export const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-red-600 px-3.5 text-sm font-semibold text-white motion-safe:transition-colors hover:bg-red-600/90 active:bg-red-600/80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 ${focusRing}`
+export const btnGhost = `inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:text-gray-300 dark:hover:bg-gray-900 ${focusRing}`
+export const inputClass = `h-10 w-full rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
 export const labelClass = 'text-sm font-semibold text-gray-800 dark:text-gray-200'
 
 /** Public HTTPS only: private, loopback, and link-local hosts are refused, as the proxy does on every call. */
@@ -42,9 +42,9 @@ export function fmtDateTime(iso: string | null) {
 
 import type { SolutionStatus } from '@/../product/sections/solutions/types'
 
-export const STATUS_META: Record<SolutionStatus, { tone: 'gray' | 'blue' | 'green' | 'red' | 'amber'; label: string }> = {
+export const STATUS_META: Record<SolutionStatus, { tone: 'gray' | 'blue' | 'emerald' | 'red' | 'amber'; label: string }> = {
   draft: { tone: 'gray', label: 'Draft' },
-  ready: { tone: 'green', label: 'Ready' },
+  ready: { tone: 'emerald', label: 'Ready' },
   maintenance: { tone: 'amber', label: 'Maintenance' },
   down: { tone: 'red', label: 'Down' },
 }
@@ -60,6 +60,14 @@ export function foregroundFor(hex: string) {
   }
   const l = 0.2126 * ch(n >> 16) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255)
   return l > 0.4 ? '#111827' : '#ffffff'
+}
+
+/** A solution's accent color at an alpha, for the tinted surface and the glow on its own card. */
+export function accentAlpha(hex: string, alpha: number) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return `rgba(15, 23, 42, ${alpha})`
+  const n = parseInt(m[1], 16)
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
 /** WCAG contrast ratio between two hex colors. */

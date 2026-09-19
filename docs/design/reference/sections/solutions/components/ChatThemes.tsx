@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, Plus, Trash2 } from 'lucide-react'
 import type { ApprovedFont, ChatTheme, ChatThemeInput, Solution } from '@/../product/sections/solutions/types'
-import { btnPrimary, btnSecondary, contrastRatio, focusRing, inputClass, labelClass } from './helpers'
-import { Card, ConfirmDialog, Pill } from './ui'
+import { btnSecondary, contrastRatio, focusRing, inputClass, labelClass } from './helpers'
+import { Card, ConfirmDialog, HelpNote, Pill, SaveButton } from './ui'
 
 export interface ChatThemesProps {
   chatThemes: ChatTheme[]
@@ -22,8 +22,8 @@ const FONT_STACK: Record<string, string> = {
 }
 
 function toInput(t: ChatTheme): ChatThemeInput {
-  const { name, headerColor, headerForeground, userBubbleColor, userBubbleForeground, assistantBubbleColor, assistantBubbleForeground, radius, font, placeholder } = t
-  return { name, headerColor, headerForeground, userBubbleColor, userBubbleForeground, assistantBubbleColor, assistantBubbleForeground, radius, font, placeholder }
+  const { name, headerColor, headerForeground, userBubbleColor, userBubbleForeground, radius, font, placeholder } = t
+  return { name, headerColor, headerForeground, userBubbleColor, userBubbleForeground, radius, font, placeholder }
 }
 
 function ColorPair({ label, bg, fg, onBg, onFg, disabled }: { label: string; bg: string; fg: string; onBg: (v: string) => void; onFg: (v: string) => void; disabled: boolean }) {
@@ -33,11 +33,11 @@ function ColorPair({ label, bg, fg, onBg, onFg, disabled }: { label: string; bg:
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <span className={labelClass}>{label}</span>
-        <Pill tone={ok ? 'green' : 'red'}>{ok ? <Check className="size-4" strokeWidth={2.5} aria-hidden /> : <AlertTriangle className="size-4" strokeWidth={2} aria-hidden />}{r.toFixed(1)}:1</Pill>
+        <Pill tone={ok ? 'emerald' : 'red'}>{ok ? <Check className="size-4" strokeWidth={2.5} aria-hidden /> : <AlertTriangle className="size-4" strokeWidth={2} aria-hidden />}{r.toFixed(1)}:1</Pill>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {[['Background', bg, onBg], ['Text', fg, onFg]].map(([l, v, fn]) => (
-          <label key={l as string} className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white p-1 pr-2 dark:border-gray-700 dark:bg-gray-950">
+          <label key={l as string} className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white p-1 pr-2 dark:border-gray-700 dark:bg-gray-950">
             <input type="color" aria-label={`${label} ${l}`} disabled={disabled} value={v as string} onChange={(e) => (fn as (v: string) => void)(e.target.value)} className="size-8 cursor-pointer rounded-lg border-0 bg-transparent p-0 disabled:cursor-not-allowed" />
             <span className="flex flex-col leading-tight"><span className="text-xs text-gray-500">{l as string}</span><span className="font-mono text-xs">{v as string}</span></span>
           </label>
@@ -48,27 +48,34 @@ function ColorPair({ label, bg, fg, onBg, onFg, disabled }: { label: string; bg:
 }
 
 function Preview({ t }: { t: ChatThemeInput }) {
-  const bubble = (user: boolean, text: string) => (
-    <div className={`flex ${user ? 'justify-end' : 'justify-start'}`}>
-      <div className="max-w-[80%] px-3.5 py-2 text-sm leading-relaxed" style={{ backgroundColor: user ? t.userBubbleColor : t.assistantBubbleColor, color: user ? t.userBubbleForeground : t.assistantBubbleForeground, borderRadius: t.radius, [user ? 'borderBottomRightRadius' : 'borderBottomLeftRadius']: Math.min(6, t.radius) } as React.CSSProperties}>{text}</div>
+  // Mirrors the viewer: the reader's turn is the only bubble, a reply is plain text behind the square mark.
+  const you = (text: string) => (
+    <div className="flex justify-end">
+      <div className="max-w-[74%] px-3.5 py-2 text-sm leading-relaxed" style={{ backgroundColor: t.userBubbleColor, color: t.userBubbleForeground, borderRadius: t.radius, borderBottomRightRadius: Math.min(6, t.radius) }}>{text}</div>
+    </div>
+  )
+  const reply = (text: string) => (
+    <div className="flex gap-2.5">
+      <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-[9px] font-extrabold tracking-tight" style={{ backgroundColor: t.headerColor, color: t.headerForeground }}>CT</span>
+      <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-800 dark:text-gray-200">{text}</p>
     </div>
   )
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900" style={{ fontFamily: FONT_STACK[t.font] }}>
-      <div className="flex items-center gap-2.5 border-b border-gray-200 px-4 py-3 dark:border-gray-800" style={{ boxShadow: `inset 0 3px 0 ${t.headerColor}` }}>
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900" style={{ fontFamily: FONT_STACK[t.font] }}>
+      <div className="flex h-14 items-center gap-2.5 border-b border-gray-200 px-4 dark:border-gray-800">
         <span className="flex size-8 items-center justify-center rounded-lg text-xs font-extrabold" style={{ backgroundColor: t.headerColor, color: t.headerForeground }}>CT</span>
-        <div><div className="text-sm font-bold">Claims Triage Assistant</div><div className="text-xs text-gray-600 dark:text-gray-400">Sample conversation</div></div>
+        <div className="text-sm font-semibold">Claims Triage Assistant</div>
       </div>
-      <div className="flex flex-1 flex-col gap-3 px-4 py-4">
-        {bubble(true, 'Triage this claim: day surgery for cataract, invoice SGD 4,200, no pre-authorisation form.')}
-        {bubble(false, 'Urgency: Routine. Two documents are missing: the pre-authorisation form and the itemised bill.')}
-        {bubble(true, 'Is the form still required for an emergency?')}
-        {bubble(false, 'No. For emergency admissions it is waived, but the ED note must be attached.')}
+      <div className="flex flex-1 flex-col gap-5 px-4 py-5">
+        {you('Triage this claim: day surgery for cataract, invoice SGD 4,200, no pre-authorisation form.')}
+        {reply('Urgency: Routine. Two documents are missing: the pre-authorisation form and the itemised bill.')}
+        {you('Is the form still required for an emergency?')}
+        {reply('No. For emergency admissions it is waived, but the ED note must be attached.')}
       </div>
       <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
-        <div className="flex items-center gap-2 rounded-2xl border border-gray-300 bg-white py-1.5 pl-4 pr-1.5 dark:border-gray-700 dark:bg-gray-950">
+        <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white py-1.5 pl-4 pr-1.5 dark:border-gray-700 dark:bg-gray-950">
           <span className="flex-1 text-sm text-gray-500">{t.placeholder || 'Ask a question'}</span>
-          <span className="flex size-8 items-center justify-center rounded-xl text-white" style={{ backgroundColor: t.userBubbleColor, color: t.userBubbleForeground }}>↑</span>
+          <span className="flex size-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: t.userBubbleColor, color: t.userBubbleForeground }}>↑</span>
         </div>
       </div>
     </div>
@@ -76,7 +83,8 @@ function Preview({ t }: { t: ChatThemeInput }) {
 }
 
 export function ChatThemes({ chatThemes, approvedFonts, solutions, initialThemeId, onCreateTheme, onUpdateTheme, onDeleteTheme }: ChatThemesProps) {
-  const def = chatThemes.find((t) => t.isDefault) ?? chatThemes[0]
+  // The tenant-branding theme is the client-side seed with id `default`, never a stored row (M7).
+  const def = chatThemes.find((t) => t.id === 'default') ?? chatThemes[0]
   const [selectedId, setSelectedId] = useState<string>(initialThemeId ?? def.id)
   const selected = selectedId === 'new' ? null : chatThemes.find((t) => t.id === selectedId) ?? def
   const [draft, setDraft] = useState<ChatThemeInput>(selected ? toInput(selected) : { ...toInput(def), name: 'New theme' })
@@ -90,12 +98,12 @@ export function ChatThemes({ chatThemes, approvedFonts, solutions, initialThemeI
     setDraft(t ? toInput(t) : { ...toInput(def), name: 'New theme' })
   }
   const set = <K extends keyof ChatThemeInput>(k: K, v: ChatThemeInput[K]) => setDraft((d) => ({ ...d, [k]: v }))
-  const isDefault = selected?.isDefault ?? false
+  const isDefault = selected?.id === 'default'
   const isNew = selectedId === 'new'
   // Only a chat solution can carry a theme (DEC-26); an embedded one never counts here.
   const usedBy = selected ? solutions.filter((s) => !s.archived && s.type === 'chat' && (s.chatThemeId ?? 'default') === selected.id) : []
   const dirty = selected ? JSON.stringify(toInput(selected)) !== JSON.stringify(draft) : true
-  const pairsOk = contrastRatio(draft.headerColor, draft.headerForeground) >= 4.5 && contrastRatio(draft.userBubbleColor, draft.userBubbleForeground) >= 4.5 && contrastRatio(draft.assistantBubbleColor, draft.assistantBubbleForeground) >= 4.5
+  const pairsOk = contrastRatio(draft.headerColor, draft.headerForeground) >= 4.5 && contrastRatio(draft.userBubbleColor, draft.userBubbleForeground) >= 4.5
   const canDelete = selected && !isDefault && usedBy.length === 0
 
   return (
@@ -107,27 +115,33 @@ export function ChatThemes({ chatThemes, approvedFonts, solutions, initialThemeI
             type="button"
             onClick={() => pick(t.id)}
             aria-pressed={selectedId === t.id}
-            className={`inline-flex h-10 items-center gap-2.5 rounded-xl border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${selectedId === t.id ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200'}`}
+            className={`inline-flex h-10 items-center gap-2.5 rounded-lg border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${selectedId === t.id ? 'border-blue-600 bg-gray-100 text-blue-700 dark:border-blue-400 dark:bg-gray-800 dark:text-blue-400' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900'}`}
           >
-            <span className="flex -space-x-1">{[t.headerColor, t.userBubbleColor, t.assistantBubbleColor].map((c, i) => <span key={i} className="size-4 rounded-full border-2 border-white dark:border-gray-950" style={{ backgroundColor: c }} />)}</span>
+            <span className="flex -space-x-1">{[t.headerColor, t.userBubbleColor].map((c, i) => <span key={i} className="size-4 rounded-full border-2 border-white dark:border-gray-950" style={{ backgroundColor: c }} />)}</span>
             {t.name}
-            {t.isDefault ? <Pill>Default</Pill> : null}
+            {t.id === 'default' ? <Pill>Default</Pill> : null}
           </button>
         ))}
-        <button type="button" onClick={() => pick('new')} aria-pressed={isNew} className={`${btnSecondary} ${isNew ? 'border-blue-600 text-blue-700' : ''}`}><Plus className="size-5" strokeWidth={2} aria-hidden />New theme</button>
+        <button type="button" onClick={() => pick('new')} aria-pressed={isNew} className={`${btnSecondary} ${isNew ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400' : ''}`}><Plus className="size-5" strokeWidth={2} aria-hidden />New theme</button>
+        {/* Last control in the theme strip, so the panel hangs from its right edge (tokens.md, Help disclosure). */}
+        <HelpNote label="How a theme reaches a solution" align="right">
+          <p>A theme applies to a chat solution only when that solution names it on its Chat tab. Editing a theme changes every solution that names it.</p>
+          <p>Tenant branding is not a saved theme. It is your branding shown as a starting point, and a chat solution with no theme of its own renders with it.</p>
+          <p className="text-gray-600 dark:text-gray-400">A theme in use cannot be deleted. Used by names the solutions holding it. An embedded solution carries no theme at all.</p>
+        </HelpNote>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]">
         <Card>
           <div className="flex flex-col gap-5 px-5 py-5 sm:px-6">
             {isDefault ? (
-              <div className="rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">The default theme is the tenant branding. Change it under Branding. Solutions with no theme use it.</div>
+              <div className="rounded-lg bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">The default theme is the tenant branding. Change it under Branding. Solutions with no theme use it.</div>
             ) : (
               <div className="flex flex-col gap-1.5"><label htmlFor="th-name" className={labelClass}>Theme name</label><input id="th-name" value={draft.name} onChange={(e) => set('name', e.target.value)} className={inputClass} /></div>
             )}
-            <ColorPair label="Header" bg={draft.headerColor} fg={draft.headerForeground} onBg={(v) => set('headerColor', v)} onFg={(v) => set('headerForeground', v)} disabled={isDefault} />
+            <ColorPair label="Assistant mark" bg={draft.headerColor} fg={draft.headerForeground} onBg={(v) => set('headerColor', v)} onFg={(v) => set('headerForeground', v)} disabled={isDefault} />
             <ColorPair label="Your messages" bg={draft.userBubbleColor} fg={draft.userBubbleForeground} onBg={(v) => set('userBubbleColor', v)} onFg={(v) => set('userBubbleForeground', v)} disabled={isDefault} />
-            <ColorPair label="Assistant replies" bg={draft.assistantBubbleColor} fg={draft.assistantBubbleForeground} onBg={(v) => set('assistantBubbleColor', v)} onFg={(v) => set('assistantBubbleForeground', v)} disabled={isDefault} />
+            <p className="-mt-2 text-xs text-gray-600 dark:text-gray-400">An assistant reply is plain text on the page background, so it takes no theme color and always meets contrast.</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <span className={labelClass}>Corner radius <span className="font-mono text-xs font-normal text-gray-500">{draft.radius}px</span></span>
@@ -152,7 +166,7 @@ export function ChatThemes({ chatThemes, approvedFonts, solutions, initialThemeI
                 <button type="button" className={btnSecondary} disabled={!canDelete} title={isDefault ? 'The tenant branding theme cannot be deleted' : usedBy.length > 0 ? 'Remove it from every solution first' : 'Delete theme'} onClick={() => setConfirmDelete(true)}><Trash2 className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Delete</button>
               ) : null}
               {!isDefault ? (
-                <button type="button" className={btnPrimary} disabled={!dirty || !pairsOk || !draft.name.trim()} title={pairsOk ? undefined : 'Fix the contrast first'} onClick={() => (isNew ? onCreateTheme?.(draft) : selected?.id && onUpdateTheme?.(selected.id, draft))}>{isNew ? 'Create theme' : 'Save theme'}</button>
+                <SaveButton icon={isNew ? <Plus className="size-5" strokeWidth={2} aria-hidden /> : <Check className="size-5" strokeWidth={2} aria-hidden />} disabled={!dirty || !pairsOk || !draft.name.trim()} title={pairsOk ? undefined : 'Fix the contrast first'} onClick={() => { if (isNew) onCreateTheme?.(draft); else if (selected?.id) onUpdateTheme?.(selected.id, draft) }}>{isNew ? 'Create theme' : 'Save theme'}</SaveButton>
               ) : null}
               <ConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title={`Delete ${selected?.name ?? ''}?`} description="The theme is removed for good. No solution uses it, so nothing changes for members." confirmLabel="Delete theme" danger onConfirm={() => { if (selected?.id) onDeleteTheme?.(selected.id); pick(def.id) }} />
             </div>

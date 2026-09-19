@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/solutions/data.json'
 import type { Category, Favorite, Solution, Viewer } from '@/../product/sections/solutions/types'
@@ -13,7 +14,7 @@ export default function FavoritesPagePreview() {
       favorites={favorites}
       solutions={data.solutions as Solution[]}
       categories={data.categories as Category[]}
-      onOpenSolution={(id) => console.log('Open solution:', id)}
+      onOpenSolution={(id) => goTo(`/s/${data.solutions.find((s) => s.id === id)?.slug ?? ''}`)}
       onToggleFavorite={(id) => setFavorites((f) => (f.some((x) => x.solutionId === id) ? f.filter((x) => x.solutionId !== id) : [...f, { solutionId: id, position: f.length + 1 }]))}
       onReorderFavorites={(ids) => setFavorites((f) => f.map((x) => ({ ...x, position: ids.indexOf(x.solutionId) + 1 })))}
     />

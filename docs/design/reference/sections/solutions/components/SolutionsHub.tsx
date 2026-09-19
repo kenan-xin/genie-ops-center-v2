@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Clock, Mail, SearchX } from 'lucide-react'
 import type { Category, Favorite, Recent, Solution, SolutionStatus, Viewer } from '@/../product/sections/solutions/types'
-import { btnSecondary } from './helpers'
+import { btnSecondary, relativeTime } from './helpers'
 import { SearchField, Select } from './ui'
 import { SolutionCard } from './SolutionCard'
 
@@ -24,6 +24,20 @@ export function SolutionsHub({ viewer, categories, solutions, favorites, recents
   const [q, setQ] = useState(initialQuery)
   const [status, setStatus] = useState<'all' | SolutionStatus>('all')
   const [sort, setSort] = useState<'recent' | 'name'>('recent')
+  // A hub opened every working day earns one key: `/` puts the caret in the search field from anywhere
+  // on the page, unless the person is already typing in a field.
+  const searchRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = document.activeElement
+      if (el instanceof HTMLElement && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName))) return
+      e.preventDefault()
+      searchRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   const canAdminister = viewer.permissions.includes('solutions:admin')
   const visible = useMemo(
@@ -56,15 +70,15 @@ export function SolutionsHub({ viewer, categories, solutions, favorites, recents
     { id: 'other', name: 'Other', items: shown.filter((s) => !s.categoryId || !categories.some((c) => c.id === s.categoryId)) },
   ].filter((g) => g.items.length > 0)
 
-  const card = (s: Solution, compact = false) => (
-    <SolutionCard key={s.id} solution={s} compact={compact} isFavorite={favIds.has(s.id)} showDraftBadge={canAdminister} onOpen={() => onOpenSolution?.(s.id)} onToggleFavorite={() => onToggleFavorite?.(s.id)} />
+  const card = (s: Solution) => (
+    <SolutionCard key={s.id} solution={s} isFavorite={favIds.has(s.id)} showDraftBadge={canAdminister} onOpen={() => onOpenSolution?.(s.id)} onToggleFavorite={() => onToggleFavorite?.(s.id)} />
   )
 
   if (visible.length === 0) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
+      <div className="flex min-h-[60vh] items-center justify-center rounded-xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
-          <span aria-hidden className="flex size-14 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl font-extrabold text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-blue-300">
+          <span aria-hidden className="flex size-14 items-center justify-center rounded-xl border border-gray-200 bg-white text-2xl font-extrabold text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-blue-400">
             {(support?.companyName ?? 'G').slice(0, 1).toUpperCase()}
           </span>
           <div className="flex flex-col gap-1.5">
@@ -85,7 +99,7 @@ export function SolutionsHub({ viewer, categories, solutions, favorites, recents
   return (
     <div className="flex flex-col gap-6 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <SearchField value={q} onChange={setQ} placeholder="Search solutions" />
+        <SearchField value={q} onChange={setQ} placeholder="Search solutions" inputRef={searchRef} shortcut="/" />
         <Select ariaLabel="Sort" value={sort} onChange={(v) => setSort(v as typeof sort)}>
           <option value="recent">Recently opened</option>
           <option value="name">Name</option>
@@ -107,7 +121,22 @@ export function SolutionsHub({ viewer, categories, solutions, favorites, recents
           <h2 id="recents-h" className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
             <Clock className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />Recent
           </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{recentCards.map((s) => card(s, true))}</div>
+          {/* The first card is the one opened last: it carries its own accent so the way back into the work is found before a word is read. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {recentCards.map((s, i) => (
+              <SolutionCard
+                key={s.id}
+                solution={s}
+                compact
+                resume={i === 0}
+                meta={`Opened ${relativeTime(openedAt(s.id) || null)}`}
+                isFavorite={favIds.has(s.id)}
+                showDraftBadge={canAdminister}
+                onOpen={() => onOpenSolution?.(s.id)}
+                onToggleFavorite={() => onToggleFavorite?.(s.id)}
+              />
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -122,8 +151,8 @@ export function SolutionsHub({ viewer, categories, solutions, favorites, recents
       ))}
 
       {groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-6 py-14 text-center dark:border-gray-800">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><SearchX className="size-6" strokeWidth={1.75} aria-hidden /></span>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-200 px-6 py-14 text-center dark:border-gray-800">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><SearchX className="size-6" strokeWidth={1.75} aria-hidden /></span>
           <h3 className="text-base font-semibold">No solutions match</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">Try another word or clear the filters.</p>
           {filtered ? <button type="button" className={btnSecondary} onClick={() => { setQ(''); setStatus('all') }}>Clear filters</button> : null}
