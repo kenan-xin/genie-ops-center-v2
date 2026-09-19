@@ -50,7 +50,7 @@ export function AuthFrame({ branding, children }: AuthFrameProps) {
 
       <div className="relative flex w-full max-w-[440px] flex-col items-center">
         <div className="auth-reveal mb-6 flex flex-col items-center gap-3 text-center" style={{ animationDelay: '0ms' }}>
-          <span className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <span className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
             {branding.logoLightUrl || branding.logoDarkUrl ? (
               <>
                 <img src={branding.logoLightUrl ?? branding.logoDarkUrl ?? ''} alt="" className="size-9 object-contain dark:hidden" />

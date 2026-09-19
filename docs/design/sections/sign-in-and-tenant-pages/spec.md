@@ -1,5 +1,7 @@
 # Sign-in and Tenant Pages Specification
 
+**Open decision:** how an existing local account still reaches sign-in and password reset once local-account creation is switched off. Turning the setting off keeps the accounts that already exist (R-51a), and this design does not yet name the route they use. See `../../decisions-open-2026-09-19.md`, row B6. It is proposed, not accepted.
+
 ## Overview
 The pages a person sees before a session exists. Members sign in through the tenant's Keycloak realm, so the Genie sign-in page is a branded page with one company-account button and no email field. A hidden break-glass administrator door at `/admin/login` uses a password and an authenticator-app code. One deployment serves one customer at one `PUBLIC_URL`; the app never inspects the hostname, so there is no tenant resolution and no not-found or suspended page. Two standalone pages cover the gaps around a session: a not-set-up page shown on every route until `genie-ops setup` completes, and a limited-session page shown while the break-glass account still has to change its password or enroll an authenticator. All of these render without the app shell.
 
