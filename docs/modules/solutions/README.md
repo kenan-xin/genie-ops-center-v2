@@ -33,6 +33,10 @@ Embedded: `iframeUrl` (a valid public HTTPS URL; private and loopback hosts refu
 
 The module has no per-tenant configuration (DEC-30): every connection value lives on the solution, and Tenant Settings shows no Solutions section. The origins the proxy may call are an operator setting on the deployment, `GENIE_CHAT_API_ALLOWED_ORIGINS`; when it is empty, chat streaming is off and the admin screens say so.
 
+For embedded solutions, the administrator enters the URL in the UI without configuring an environment allow-list. The module's `contentSecurityPolicy.frameOrigins({ tenant })` provider derives the origins described above through the supplied tenant context, following `../../architecture/module-contract.md`, Content security policy provider. The chat API allow-list does not control iframes. A saved origin change takes effect on the next full document response; an already-open viewer needs a reload to receive the updated policy. The destination must permit embedding and work within the sandbox.
+
+Invoke this provider only for embedded-viewer document requests, not chat viewers, directory/admin pages, chat streams, APIs, or assets. Navigating to an embedded viewer must load a full document so its response supplies the new frame policy. Wider origin-policy queries are deferred until a customer requirement justifies them; ordinary security headers still apply throughout the application.
+
 Name is at most 80 characters, description at most 500. The slug is derived from the name at registration and never changes afterwards, so links stay valid. The monogram defaults to the name's initials and is editable.
 
 ## Chat behavior
@@ -46,6 +50,10 @@ Name is at most 80 characters, description at most 500. The slug is derived from
 - Feedback: when `feedbackEnabled` is on, each assistant reply has thumbs up and down; a vote emits `solutions:feedback` (payload: user id, solution id, message id, vote `up` or `down`, version 1) to the event bus and is written to audit, and a down-vote thanks the person in a toast. No feedback table. No subscriber exists today; the event is declared so a later module can subscribe without a change here.
 
 The proxy contract and its limits are in `chat-proxy.md`; the observed external API contract is in `external-chat-api-contract.md`.
+
+## Central category assignment
+
+The core Categories page assigns both whole modules and solutions. Solutions supplies the category contribution defined in [the module contract](../../architecture/module-contract.md#category-assignment-boundary): authorized record descriptors and module-owned assignment/clear writes to `solution_category`, guarded by `solutions:admin` and audited by Solutions. The central page also requires `core:settings:manage`. Core never accesses the table directly. Disabled modules retain placement without editable solution rows; excluded modules contribute nothing. Category assignment changes organization, not permissions. Existing solution configuration and the central page use the same module-owned category-write behavior. Spec 4 R-37a/AC-13a owns verification.
 
 ## Tables
 

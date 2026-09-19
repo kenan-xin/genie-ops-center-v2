@@ -15,10 +15,15 @@ The chat route is a Next.js route handler that turns the external Genie chat API
 - Stream caps: 2 MB per event line. Exceeding it ends the stream with a controlled error. There is no total byte or event cap, for the same reason.
 - The response must be 2xx with `text/event-stream`.
 
+## Downstream keepalive
+
+The route opens the upstream connection first, within the 10 second connect timeout, and checks the status and the content type. A failure there is answered with the HTTP status of the error table below, because nothing was sent to the browser yet. Only then does the route commit its own 200 response and the stream headers, and from that point, while the upstream is silent, it writes an SSE comment line (`: keepalive`) to the browser every 20 seconds. A failure after the commit (a no-data timeout, an over-long line, a malformed event, a redirect to a refused target mid-stream) cannot change the HTTP status any more, so the route ends the stream with an error part that carries the same code and copy as the table row, and the client shows it like an HTTP error. Reason: an edge in front of the deployment (a DNS provider's proxy, a cloud load balancer) closes a response that carries no bytes for about 100 seconds, and a workflow behind a solution can think for longer than that. The upstream heartbeat (`: heartbeat`, every 15 seconds) resets the route's no-data timer but is not forwarded as is, because the browser reads the AI SDK stream, so the route emits its own comment. A comment line is legal in both the SSE and the AI SDK stream framing and carries no data. The response also sets `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no` so no proxy buffers the stream.
+
 ## Mapping
 
-- Each `processing` event's `answer` is a delta: emit `text-delta`. Each `reasoning` value: emit a reasoning delta, accumulating; if a new value is a prefix-superset of the prior, treat it as cumulative, else append.
-- On `completed`: emit `text-end`, `reasoning-end` if open, and `finish` with `outputTokens`. Do not re-emit `answer` or `reasoning`; the completed event repeats both in full.
+- The route writes the AI SDK UI message stream. It emits `start` once, then `text-start` before the first text delta and `reasoning-start` before the first reasoning delta, because the AI SDK rejects a delta whose start part was never sent.
+- Each `processing` event's `answer` is a delta: emit `text-delta`. Each `reasoning` value: emit `reasoning-delta`, accumulating; if a new value is a prefix-superset of the prior, treat it as cumulative, else append.
+- On `completed`: emit `text-end`, `reasoning-end` if open, and `finish`, with `outputTokens` carried as message metadata. Do not re-emit `answer` or `reasoning`; the completed event repeats both in full.
 - A populated `errorMessage`, an unknown status, malformed JSON, or end of stream before `completed` fails the request with a controlled error and does not persist the handle.
 
 ## Conversation model
@@ -38,6 +43,8 @@ The chat route is a Next.js route handler that turns the external Genie chat API
 | Origin not approved | 400 | Contact your administrator: the endpoint is not approved. |
 | Upstream non-2xx or bad content type | 502 | The solution did not respond correctly. Try again. |
 | Timeout or cap exceeded | 504 | The solution took too long. Try again. |
+
+The HTTP status applies to a failure before the route commits its response. After the commit the same condition arrives as a stream error part with the same code and the same copy ("Downstream keepalive").
 
 ## Rendering rules (client)
 
