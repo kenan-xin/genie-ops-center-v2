@@ -27,7 +27,7 @@ export function MailClientFrame({ template: t, ctx, subjectPrefix, children }: M
   const f = (s: string) => fill(s, ctx)
   const kc = t.sender === 'keycloak'
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-base font-bold tracking-tight">{subjectPrefix ? `${subjectPrefix} ` : ''}{f(t.subject)}</h2>

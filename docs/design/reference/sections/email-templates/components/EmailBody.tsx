@@ -43,7 +43,7 @@ function GenieBody({ template: t, ctx, width }: EmailBodyProps) {
   return (
     <div style={{ width, fontFamily: emailFont(t, ctx) }} className="mx-auto text-base leading-relaxed text-gray-800">
       {/* Top bar */}
-      <div style={{ background: ctx.primaryColor, color: fg }} className="flex items-center gap-3 rounded-t-2xl px-6 py-4">
+      <div style={{ background: ctx.primaryColor, color: fg }} className="flex items-center gap-3 rounded-t-xl px-6 py-4">
         <span style={{ color: ctx.primaryColor }} className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-sm font-extrabold tracking-tight">
           {ctx.logoMarkUrl ? <img src={ctx.logoMarkUrl} alt="" width={28} height={28} className="size-7 object-contain" /> : ctx.logoMarkText}
         </span>
@@ -51,15 +51,16 @@ function GenieBody({ template: t, ctx, width }: EmailBodyProps) {
       </div>
 
       {/* Content card */}
-      <div className={`rounded-b-2xl border border-t-0 border-gray-200 bg-white ${phone ? 'px-5 py-6' : 'px-10 py-8'}`}>
+      <div className={`rounded-b-xl border border-t-0 border-gray-200 bg-white ${phone ? 'px-5 py-6' : 'px-10 py-8'}`}>
         {t.eyebrow ? <p style={{ color: ctx.primaryColor }} className="mb-2 text-xs font-bold uppercase tracking-wide">{f(t.eyebrow)}</p> : null}
-        <h1 className={`font-bold tracking-tight text-gray-900 ${phone ? 'text-xl' : 'text-2xl'}`}>{f(t.heading)}</h1>
+        {/* h2, not h1: the host page owns the only h1, and MailClientFrame renders the subject as an h2 above this. */}
+        <h2 className={`font-bold tracking-tight text-gray-900 ${phone ? 'text-xl' : 'text-2xl'}`}>{f(t.heading)}</h2>
         <div className="mt-4 flex flex-col gap-3">
           {t.paragraphs.map((p, i) => <p key={i}>{f(p)}</p>)}
         </div>
 
         {t.details.length ? (
-          <table className="mt-5 w-full border-collapse overflow-hidden rounded-xl text-sm">
+          <table className="mt-5 w-full border-collapse overflow-hidden rounded-lg text-sm">
             <tbody>
               {t.details.map((d) => (
                 <tr key={d.label} className="border-b border-gray-100 last:border-0">
@@ -73,7 +74,7 @@ function GenieBody({ template: t, ctx, width }: EmailBodyProps) {
 
         {t.button ? (
           <div className="mt-6">
-            <a href={f(t.button.url)} onClick={(e) => e.preventDefault()} style={{ background: ctx.primaryColor, color: fg }} className={`inline-flex h-11 items-center justify-center rounded-xl px-6 text-base font-semibold no-underline ${focusRing} ${phone ? 'w-full' : ''}`}>{f(t.button.label)}</a>
+            <a href={f(t.button.url)} onClick={(e) => e.preventDefault()} style={{ background: ctx.primaryColor, color: fg }} className={`inline-flex h-11 items-center justify-center rounded-lg px-6 text-base font-semibold no-underline ${focusRing} ${phone ? 'w-full' : ''}`}>{f(t.button.label)}</a>
             {t.buttonNote ? <p className="mt-3 text-sm text-gray-600">{f(t.buttonNote)}</p> : null}
             <p className="mt-2 break-all font-mono text-xs text-gray-500">{f(t.button.url)}</p>
           </div>
@@ -83,7 +84,8 @@ function GenieBody({ template: t, ctx, width }: EmailBodyProps) {
       </div>
 
       {/* Footer */}
-      <div className={`text-xs leading-relaxed text-gray-500 ${phone ? 'px-5 py-5' : 'px-10 py-6'}`}>
+      {/* gray-600, not gray-500: the footer sits on the frame's gray-100 canvas, where gray-500 is 4.4:1. */}
+      <div className={`text-xs leading-relaxed text-gray-600 ${phone ? 'px-5 py-5' : 'px-10 py-6'}`}>
         <p>{f(t.reason)}</p>
         <p className="mt-2">{ctx.emailFooterText}</p>
         {support ? (
