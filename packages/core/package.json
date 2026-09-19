@@ -7,8 +7,22 @@
     ".": "./src/index.ts",
     "./tenant-config": "./src/lib/tenant-config/index.ts"
   },
-  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
-  "nx": { "tags": ["core"] },
-  "dependencies": { "@genie/ui": "workspace:*" },
-  "devDependencies": { "@genie/config": "workspace:*", "vitest": "5.0.1" }
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@genie/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "oxlint": "1.83.0",
+    "vitest": "5.0.1"
+  },
+  "nx": {
+    "tags": [
+      "core"
+    ]
+  }
 }

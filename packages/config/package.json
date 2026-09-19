@@ -8,13 +8,17 @@
     "./typescript/base": "./src/typescript/base.json"
   },
   "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "nx": {
-    "tags": ["config"]
-  },
   "devDependencies": {
+    "oxlint": "1.83.0",
     "vitest": "5.0.1"
+  },
+  "nx": {
+    "tags": [
+      "config"
+    ]
   }
 }

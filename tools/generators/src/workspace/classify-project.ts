@@ -32,5 +32,7 @@ export function classifyProject(projectRoot: string): ArchitecturalTag {
     }
   }
 
-  throw new Error(`"${root}" has no architectural classification. Add one rule in classify-project.ts.`);
+  throw new Error(
+    `"${root}" has no architectural classification. Add one rule in classify-project.ts.`,
+  );
 }

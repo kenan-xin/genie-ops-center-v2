@@ -8,4 +8,4 @@
  * environment value, open a connection, or start a service (R-19a). It is the one
  * place tooling may import from core (R-7a), so nothing else belongs in it.
  */
-export {};
+export const tenantConfigSchemaVersion = "0.0.0" as const;

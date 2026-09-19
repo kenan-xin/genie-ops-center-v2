@@ -4,14 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "nx": {
-    "tags": ["tooling"]
-  },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "oxlint": "1.83.0",
     "vitest": "5.0.1"
+  },
+  "nx": {
+    "tags": [
+      "tooling"
+    ]
   }
 }

@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { classifyProject } from "./classify-project.ts";
@@ -34,17 +35,23 @@ describe("repository hygiene", () => {
     expect(Object.keys(projects).length).toBeGreaterThan(0);
   });
 
-  it.each(Object.entries(projects))("%s carries exactly its derived classification tag", (_name, project) => {
-    const expected = classifyProject(project.root);
-    const classifications = (project.tags ?? []).filter((tag) =>
-      ["app", "core", "ui", "module", "config", "tooling"].includes(tag),
-    );
-    expect(classifications).toEqual([expected]);
-  });
+  it.each(Object.entries(projects))(
+    "%s carries exactly its derived classification tag",
+    (_name, project) => {
+      const expected = classifyProject(project.root);
+      const classifications = (project.tags ?? []).filter((tag) =>
+        ["app", "core", "ui", "module", "config", "tooling"].includes(tag),
+      );
+      expect(classifications).toEqual([expected]);
+    },
+  );
 
-  it.each(Object.entries(projects))("%s holds a README.md that says what it imports", (_name, project) => {
-    const readme = join(WORKSPACE_ROOT, project.root, "README.md");
-    expect(existsSync(readme)).toBe(true);
-    expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
-  });
+  it.each(Object.entries(projects))(
+    "%s holds a README.md that says what it imports",
+    (_name, project) => {
+      const readme = join(WORKSPACE_ROOT, project.root, "README.md");
+      expect(existsSync(readme)).toBe(true);
+      expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
+    },
+  );
 });

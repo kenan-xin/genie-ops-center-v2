@@ -3,8 +3,23 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
-  "nx": { "tags": ["app"] },
-  "dependencies": { "@genie/core": "workspace:*", "@genie/ui": "workspace:*" },
-  "devDependencies": { "@genie/config": "workspace:*", "vitest": "5.0.1" }
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "@genie/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "oxlint": "1.83.0",
+    "vitest": "5.0.1"
+  },
+  "nx": {
+    "tags": [
+      "app"
+    ]
+  }
 }
