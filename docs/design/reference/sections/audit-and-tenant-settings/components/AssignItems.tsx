@@ -144,9 +144,9 @@ export function AssignItems(p: AssignItemsProps) {
       </div>
 
       {/* Phone: one card per item. */}
-      <ul className="flex flex-col gap-3 border-t border-gray-100 p-3 md:hidden dark:border-gray-800">
+      <ul className="divide-y divide-gray-100 border-t border-gray-100 md:hidden dark:divide-gray-800 dark:border-gray-800">
         {shown.map((item) => (
-          <li key={item.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <li key={item.id} className="px-5 py-3.5">
             <div className="flex items-start justify-between gap-2">
               {identity(item)}
               <Pill>{item.typeLabel}</Pill>
@@ -154,7 +154,7 @@ export function AssignItems(p: AssignItemsProps) {
             <div className="mt-3">{picker(item)}</div>
           </li>
         ))}
-        {shown.length === 0 ? <li className="px-2 py-8 text-center text-sm text-gray-600 dark:text-gray-400">{p.items.length === 0 ? 'Nothing to file yet. A module with a workspace entry, and every solution, appears here.' : 'No item matches.'}</li> : null}
+        {shown.length === 0 ? <li className="px-5 py-8 text-center text-sm text-gray-600 dark:text-gray-400">{p.items.length === 0 ? 'Nothing to file yet. A module with a workspace entry, and every solution, appears here.' : 'No item matches.'}</li> : null}
       </ul>
 
       {/* Desktop table. */}
