@@ -2,8 +2,14 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+interface CompilerOptions {
+  readonly [key: string]: boolean | number | string | undefined;
+}
+
+// SAFETY: the file is read from the package itself, so the parsed JSON is the
+// committed preset and the asserted shape is the one checked into the repository.
 const base = JSON.parse(readFileSync(new URL("./base.json", import.meta.url), "utf8")) as {
-  compilerOptions: Record<string, unknown>;
+  compilerOptions: CompilerOptions;
 };
 
 describe("the shared TypeScript preset", () => {

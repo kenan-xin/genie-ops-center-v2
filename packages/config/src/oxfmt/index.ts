@@ -1,4 +1,5 @@
 import type { OxfmtConfig } from "oxfmt";
+
 /**
  * The one formatter configuration for this repository.
  *

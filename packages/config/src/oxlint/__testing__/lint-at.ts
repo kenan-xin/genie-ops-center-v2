@@ -16,24 +16,33 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
   const directory = dirname(absolute);
   const created: string[] = [];
   let cursor = directory;
+
   while (cursor !== WORKSPACE_ROOT && !existsSync(cursor)) {
     created.push(cursor);
     cursor = dirname(cursor);
   }
+
   mkdirSync(directory, { recursive: true });
+
   writeFileSync(absolute, source, "utf8");
+
   try {
     const output = execFileSync(
       "pnpm",
       ["exec", "oxlint", "--config", "oxlint.config.ts", relativePath],
       { cwd: WORKSPACE_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
+
     return { failed: false, output };
   } catch (error) {
-    const shaped = error as { stdout?: string; stderr?: string };
-    return { failed: true, output: `${shaped.stdout ?? ""}${shaped.stderr ?? ""}` };
+    // SAFETY: execFileSync throws a plain object here. Only the output fields are read,
+    // so the narrow shape holds for every error this call raises.
+    const failure = error as { stdout?: string; stderr?: string };
+
+    return { failed: true, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
   } finally {
     rmSync(absolute, { force: true });
+
     // Leaf first, so each removed directory is empty when its turn comes.
     // recursive is required: without it rm throws EISDIR on an empty directory.
     for (const dir of created) rmSync(dir, { recursive: true, force: true });

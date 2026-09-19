@@ -23,6 +23,10 @@ const reservedEntrypointOverride: OxlintOverride = {
 /**
  * The one Oxlint configuration for this repository.
  * Task 5 adds the import-direction overrides. Task 6 adds the vendored rules.
+ *
+ * The vendored anti-slop plugin lives at `packages/config/oxlint/anti-slop/`
+ * with its licence and provenance beside it. The five Effect rules are not
+ * registered; Effect adoption needs separate approval (Spec 0 R-5a).
  */
 export const sharedOxlintConfig: OxlintConfig = {
   ignorePatterns: [
@@ -33,6 +37,7 @@ export const sharedOxlintConfig: OxlintConfig = {
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
   ],
+  jsPlugins: [{ name: "anti-slop", specifier: "./packages/config/oxlint/anti-slop/index.ts" }],
   categories: {
     correctness: "error",
     suspicious: "error",
@@ -40,9 +45,24 @@ export const sharedOxlintConfig: OxlintConfig = {
   },
   rules: {
     "oxc/no-accumulating-spread": "error",
+    "anti-slop/no-array-filter-map": "error",
+    "anti-slop/no-reduce-accumulator-copy": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-readable-spacing": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
   },
-  overrides: [
-    reservedEntrypointOverride,
-    ...importBoundaryOverrides,
-  ],
+  overrides: [reservedEntrypointOverride, ...importBoundaryOverrides],
 };

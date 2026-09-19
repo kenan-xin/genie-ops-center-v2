@@ -13,6 +13,7 @@
     "affected": "nx affected -t build test lint typecheck"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.83.0",
     "@types/node": "26.6.2",
     "lefthook": "2.1.14",
     "nx": "23.2.1",

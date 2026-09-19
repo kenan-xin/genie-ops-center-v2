@@ -22,6 +22,7 @@ export function classifyProject(projectRoot: string): ArchitecturalTag {
   const root = projectRoot.replace(/\/+$/, "");
 
   const exact = EXACT_ROOTS.get(root);
+
   if (exact !== undefined) {
     return exact;
   }
