@@ -9,7 +9,7 @@ This record states what was run, what it printed, and what it did not prove. Eve
 | Branch | `feature/s0-01-workspace-and-build-inputs` |
 | Integrated base revision | `7d68e91` (`7d68e9161026fd65c0de83dcda15fd17da7d5e37`), `docs: index new folders in the tree readme`, merged from `develop` |
 | Head during this task | `73ed55a` (`73ed55a755d7db40889361f8497a625be0ae4e98`), `build(config): add the tailwind preset and reserve the storybook extension point` |
-| Commits on the branch over base | 11 |
+| Commits on the branch over base | 13, measured as `git rev-list --count 7d68e91..73ed55a` between the base and the head named above. A commit landed after that head makes this number stale, so re-derive it before trusting it |
 
 ## Installed tool versions
 
@@ -113,7 +113,7 @@ The brief predicted that `@genie/config` and `@genie/generators` re-run. All 5 r
 
 ### Why the brief's command form was replaced
 
-The brief's test called `nx show projects --affected` with no `--base` or `--files` flag. On this branch that form is vacuous. The default affected base is `main`. This branch is 11 commits over that base and its commits touch every project, so Nx reports all five projects as affected on a clean tree. The assertion passes even without the dependency edge under test.
+The brief's test called `nx show projects --affected` with no `--base` or `--files` flag. On this branch that form is vacuous. The default affected base is `main`. This branch was 13 commits over that base at the time of measurement (`git rev-list --count 7d68e91..73ed55a` printed 13) and its commits touch every project, so Nx reports all five projects as affected on a clean tree. The assertion passes even without the dependency edge under test.
 
 This was proved by experiment. With `@genie/config` removed from the `@genie/generators` devDependencies and a probe comment appended to the preset, the unflagged command still listed `@genie/generators`, because the edit to its own `package.json` makes it affected. The unflagged form cannot fail for the reason the test exists to catch.
 
