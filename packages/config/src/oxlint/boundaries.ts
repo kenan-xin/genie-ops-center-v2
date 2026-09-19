@@ -37,13 +37,22 @@ const CORE = [
   "**/../core/**",
 ];
 
+// A scoped package name holds exactly one slash, so `@genie/modules/<id>` is
+// not a legal package name and can never appear in a real import. The hyphen
+// form is the realizable spelling, as `tools/generators` fixtures already use.
+// The slash forms stay only because the boundary table in
+// `docs/specs/00-monorepo-foundation.md` writes them.
 const MODULES = [
+  "@genie/modules-*",
+  "@genie/modules-*/**",
   "@genie/modules/*",
   "@genie/modules/**",
   "**/packages/modules/**",
   "**/../modules/**",
 ];
 
+// `apps/*` is a folder glob, not a package name. Apps are imported by path, if
+// at all, so the path spellings here are the realizable ones.
 const APPS = [
   "apps/*",
   "apps/**",
@@ -91,8 +100,9 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         group: CORE,
         message: "ui imports nothing internal. Move the shared piece into ui.",
       },
-      { group: MODULES, message: "ui imports nothing internal." },
-      { group: APPS, message: "ui imports nothing internal." },
+      { group: MODULES, message: "ui imports no module." },
+      { group: APPS, message: "ui imports no app." },
+      { group: CUSTOMERS, message: "ui imports no customer folder." },
       { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
     ]
   ),
@@ -109,7 +119,10 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         message:
           "core never imports an app. A capability that needs one is a defect in core.",
       },
-      { group: CUSTOMERS, message: "core never imports a customer folder." },
+      {
+        group: CUSTOMERS,
+        message: "core never imports a customer folder.",
+      },
     ]
   ),
   restrict(
@@ -132,13 +145,13 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       },
       {
         group: DRIVERS,
-        message: "read the database through ctx.tenant.db (DEC-34).",
+        message: "a module reads the database through ctx.tenant.db (DEC-34).",
       },
     ]
   ),
   restrict(
     ["apps/**", "customers/**"],
-    [{ group: DRIVERS, message: "only core opens a connection (DEC-34)." }]
+    [{ group: DRIVERS, message: "an app opens no connection (DEC-34)." }]
   ),
   restrict(
     ["packages/config/**"],
@@ -147,7 +160,10 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         group: INTERNAL,
         message: "config imports no internal project (R-7a).",
       },
-      { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
+      {
+        group: DRIVERS,
+        message: "config opens no database connection (DEC-34).",
+      },
     ]
   ),
   restrict(
@@ -169,7 +185,10 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         message:
           "tooling uses the build-safe core schema entrypoints only, never the runtime entrypoint (R-7a).",
       },
-      { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
+      {
+        group: DRIVERS,
+        message: "tooling opens no database connection (DEC-34).",
+      },
     ]
   ),
 ];

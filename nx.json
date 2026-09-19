@@ -31,7 +31,7 @@
     },
     "lint": {
       "cache": true,
-      "inputs": ["default", "{workspaceRoot}/oxlint.config.ts"]
+      "inputs": ["default", "^production"]
     },
     "typecheck": {
       "cache": true,

@@ -7,6 +7,10 @@ describe("unitTestPreset", () => {
     expect(unitTestPreset.test?.restoreMocks).toBe(true);
   });
 
+  it("fails an empty run instead of passing a collection that found nothing", () => {
+    expect(unitTestPreset.test?.passWithNoTests).toBe(false);
+  });
+
   it("collects only unit test files and leaves browser and end-to-end files alone", () => {
     expect(unitTestPreset.test?.include).toEqual([
       "src/**/*.test.ts",
