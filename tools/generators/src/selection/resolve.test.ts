@@ -17,7 +17,11 @@ const beta: ModuleInventoryEntry = { ...alpha, id: "beta" };
 const inventory = [alpha, beta] as const;
 
 function resolve(moduleInclude: string | undefined) {
-  return resolveModuleSelection({ moduleInclude, inventory, workspaceRoot: WORKSPACE_ROOT });
+  return resolveModuleSelection({
+    moduleInclude,
+    inventory,
+    workspaceRoot: WORKSPACE_ROOT,
+  });
 }
 
 describe("resolveModuleSelection", () => {
@@ -54,18 +58,23 @@ describe("resolveModuleSelection", () => {
   });
 
   it("rejects a missing entrypoint file", () => {
-    const broken = [{ ...alpha, entrypoint: "throwing-module/src/absent.ts" }] as const;
+    const broken = [
+      { ...alpha, entrypoint: "throwing-module/src/absent.ts" },
+    ] as const;
+
     expect(() =>
       resolveModuleSelection({
         moduleInclude: "alpha",
         inventory: broken,
         workspaceRoot: WORKSPACE_ROOT,
-      }),
+      })
     ).toThrow(/entrypoint .* does not exist/i);
   });
 
   it("never evaluates a module, so a module that throws on import still resolves", () => {
     expect(() => resolve("alpha")).not.toThrow();
-    expect(resolve("alpha").entries[0]?.entrypoint).toBe("throwing-module/src/index.ts");
+    expect(resolve("alpha").entries[0]?.entrypoint).toBe(
+      "throwing-module/src/index.ts"
+    );
   });
 });

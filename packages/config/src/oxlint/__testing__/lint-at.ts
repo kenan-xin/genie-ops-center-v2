@@ -30,7 +30,11 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
     const output = execFileSync(
       "pnpm",
       ["exec", "oxlint", "--config", "oxlint.config.ts", relativePath],
-      { cwd: WORKSPACE_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }
     );
 
     return { failed: false, output };
@@ -39,7 +43,10 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
     // so the narrow shape holds for every error this call raises.
     const failure = error as { stdout?: string; stderr?: string };
 
-    return { failed: true, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    return {
+      failed: true,
+      output: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
+    };
   } finally {
     rmSync(absolute, { force: true });
 

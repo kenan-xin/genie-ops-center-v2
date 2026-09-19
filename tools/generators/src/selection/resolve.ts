@@ -28,7 +28,9 @@ function parseIds(raw: string): readonly string[] {
     const id = segment.trim();
 
     if (id === "") {
-      throw new Error(`Empty module id at position ${index} in MODULE_INCLUDE: "${raw}"`);
+      throw new Error(
+        `Empty module id at position ${index} in MODULE_INCLUDE: "${raw}"`
+      );
     }
 
     return id;
@@ -42,7 +44,8 @@ function parseIds(raw: string): readonly string[] {
 export function resolveModuleSelection(input: ResolveInput): ModuleSelection {
   const byId = new Map(input.inventory.map((entry) => [entry.id, entry]));
 
-  const source: SelectionSource = input.moduleInclude === undefined ? "unset" : "explicit";
+  const source: SelectionSource =
+    input.moduleInclude === undefined ? "unset" : "explicit";
 
   const ids =
     input.moduleInclude === undefined
@@ -63,14 +66,16 @@ export function resolveModuleSelection(input: ResolveInput): ModuleSelection {
 
     if (entry === undefined) {
       throw new Error(
-        `Unknown module id: ${id}. The inventory holds: ${[...byId.keys()].join(", ") || "nothing"}.`,
+        `Unknown module id: ${id}. The inventory holds: ${[...byId.keys()].join(", ") || "nothing"}.`
       );
     }
 
     const absolute = join(input.workspaceRoot, entry.entrypoint);
 
     if (!existsSync(absolute)) {
-      throw new Error(`Module "${id}" entrypoint ${entry.entrypoint} does not exist.`);
+      throw new Error(
+        `Module "${id}" entrypoint ${entry.entrypoint} does not exist.`
+      );
     }
 
     entries.push(entry);

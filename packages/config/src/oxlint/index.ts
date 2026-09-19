@@ -40,7 +40,12 @@ export const sharedOxlintConfig: OxlintConfig = {
     // to explode on evaluation, so no gate may process it.
     "tools/generators/src/selection/__fixtures__/**",
   ],
-  jsPlugins: [{ name: "anti-slop", specifier: "./packages/config/oxlint/anti-slop/index.ts" }],
+  jsPlugins: [
+    {
+      name: "anti-slop",
+      specifier: "./packages/config/oxlint/anti-slop/index.ts",
+    },
+  ],
   categories: {
     correctness: "error",
     suspicious: "error",

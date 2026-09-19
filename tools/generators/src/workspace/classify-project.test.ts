@@ -17,10 +17,14 @@ describe("classifyProject", () => {
   });
 
   it("refuses a root it does not recognise, so a new folder cannot enter the graph untagged", () => {
-    expect(() => classifyProject("packages/mystery")).toThrow(/no architectural classification/i);
+    expect(() => classifyProject("packages/mystery")).toThrow(
+      /no architectural classification/i
+    );
   });
 
   it("treats packages/modules itself as unclassified, because it holds no code", () => {
-    expect(() => classifyProject("packages/modules")).toThrow(/no architectural classification/i);
+    expect(() => classifyProject("packages/modules")).toThrow(
+      /no architectural classification/i
+    );
   });
 });

@@ -8,7 +8,10 @@ describe("unitTestPreset", () => {
   });
 
   it("collects only unit test files and leaves browser and end-to-end files alone", () => {
-    expect(unitTestPreset.test?.include).toEqual(["src/**/*.test.ts", "src/**/*.test.tsx"]);
+    expect(unitTestPreset.test?.include).toEqual([
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+    ]);
     expect(unitTestPreset.test?.exclude).toContain("**/*.stories.*");
     expect(unitTestPreset.test?.exclude).toContain("e2e/**");
   });

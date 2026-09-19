@@ -15,10 +15,14 @@ interface NxProjectGraph {
 }
 
 function readProjectGraph(): NxProjectGraph {
-  const raw = execFileSync("pnpm", ["exec", "nx", "show", "projects", "--json", "--verbose"], {
-    cwd: WORKSPACE_ROOT,
-    encoding: "utf8",
-  });
+  const raw = execFileSync(
+    "pnpm",
+    ["exec", "nx", "show", "projects", "--json", "--verbose"],
+    {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+    }
+  );
 
   // SAFETY: `nx show projects --json` prints one JSON array of project names, and
   // this test fails loudly if that contract changes.
@@ -27,10 +31,14 @@ function readProjectGraph(): NxProjectGraph {
   const projects: NxProjectGraph = {};
 
   for (const name of names) {
-    const detail = execFileSync("pnpm", ["exec", "nx", "show", "project", name, "--json"], {
-      cwd: WORKSPACE_ROOT,
-      encoding: "utf8",
-    });
+    const detail = execFileSync(
+      "pnpm",
+      ["exec", "nx", "show", "project", name, "--json"],
+      {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+      }
+    );
 
     // SAFETY: same provenance as `names`, this time the one-project document whose
     // fields the assertions below read directly.
@@ -53,11 +61,11 @@ describe("repository hygiene", () => {
       const expected = classifyProject(project.root);
 
       const classifications = (project.tags ?? []).filter((tag) =>
-        ["app", "core", "ui", "module", "config", "tooling"].includes(tag),
+        ["app", "core", "ui", "module", "config", "tooling"].includes(tag)
       );
 
       expect(classifications).toEqual([expected]);
-    },
+    }
   );
 
   it.each(Object.entries(projects))(
@@ -68,6 +76,6 @@ describe("repository hygiene", () => {
       expect(existsSync(readme)).toBe(true);
 
       expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
-    },
+    }
   );
 });

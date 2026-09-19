@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { fingerprintSelection, serializeSelection } from "./fingerprint.ts";
 import type { ModuleSelection } from "./resolve.ts";
 
-function selection(source: ModuleSelection["source"], ids: readonly string[]): ModuleSelection {
+function selection(
+  source: ModuleSelection["source"],
+  ids: readonly string[]
+): ModuleSelection {
   return { source, ids, entries: [] };
 }
 
@@ -14,7 +17,7 @@ describe("selection serialization and fingerprint", () => {
 
     expect(a).toBe(b);
     expect(fingerprintSelection(selection("explicit", ["alpha", "beta"]))).toBe(
-      fingerprintSelection(selection("explicit", ["alpha", "beta"])),
+      fingerprintSelection(selection("explicit", ["alpha", "beta"]))
     );
   });
 
@@ -23,22 +26,26 @@ describe("selection serialization and fingerprint", () => {
     const explicit = selection("explicit", ["alpha", "beta"]);
 
     expect(serializeSelection(unset)).not.toBe(serializeSelection(explicit));
-    expect(fingerprintSelection(unset)).not.toBe(fingerprintSelection(explicit));
+    expect(fingerprintSelection(unset)).not.toBe(
+      fingerprintSelection(explicit)
+    );
   });
 
   it("changes when the order changes, because order decides the registry order", () => {
-    expect(fingerprintSelection(selection("explicit", ["alpha", "beta"]))).not.toBe(
-      fingerprintSelection(selection("explicit", ["beta", "alpha"])),
-    );
+    expect(
+      fingerprintSelection(selection("explicit", ["alpha", "beta"]))
+    ).not.toBe(fingerprintSelection(selection("explicit", ["beta", "alpha"])));
   });
 
   it("changes between explicitly empty and one module", () => {
     expect(fingerprintSelection(selection("explicit", []))).not.toBe(
-      fingerprintSelection(selection("explicit", ["alpha"])),
+      fingerprintSelection(selection("explicit", ["alpha"]))
     );
   });
 
   it("produces a hexadecimal digest of a fixed length", () => {
-    expect(fingerprintSelection(selection("explicit", ["alpha"]))).toMatch(/^[0-9a-f]{64}$/);
+    expect(fingerprintSelection(selection("explicit", ["alpha"]))).toMatch(
+      /^[0-9a-f]{64}$/
+    );
   });
 });

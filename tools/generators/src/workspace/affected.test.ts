@@ -16,11 +16,20 @@ const CONFIG_PRESET = "packages/config/src/vitest/unit.ts";
 function affectedByConfigPresetChange(): readonly string[] {
   const raw = execFileSync(
     "pnpm",
-    ["exec", "nx", "show", "projects", "--affected", "--json", "--files", CONFIG_PRESET],
+    [
+      "exec",
+      "nx",
+      "show",
+      "projects",
+      "--affected",
+      "--json",
+      "--files",
+      CONFIG_PRESET,
+    ],
     {
       cwd: WORKSPACE_ROOT,
       encoding: "utf8",
-    },
+    }
   );
 
   // SAFETY: Nx prints one JSON array of project names. Every element is a string,

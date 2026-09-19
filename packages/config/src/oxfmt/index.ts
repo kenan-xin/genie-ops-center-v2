@@ -3,39 +3,56 @@ import type { OxfmtConfig } from "oxfmt";
 /**
  * The one formatter configuration for this repository.
  *
- * It sets no style option. Every rule this repository states is already an oxfmt
- * default: 2 spaces, semicolons, double quotes, trailing commas, print width 100.
- * See https://oxc.rs/docs/guide/usage/formatter/config-file-reference.html
+ * Only the owner's three choices and the ignore list are stated. Everything else
+ * keeps the oxfmt default. See
+ * https://oxc.rs/docs/guide/usage/formatter/config-file-reference.html
  */
 export const sharedOxfmtConfig: OxfmtConfig = {
+  // Owner's choices, 2026-09-19. Everything not listed keeps the oxfmt default.
+  // Narrower than the oxfmt default of 100, which the tool recommends for
+  // TypeScript. The owner prefers 80.
+  printWidth: 80,
+  // Trailing commas in arrays and objects, but not in function parameter lists.
+  trailingComma: "es5",
+  // Quote every property in an object once any one of them needs quoting.
+  quoteProps: "consistent",
+  // oxfmt recommends ignorePatterns over a separate ignore file for a new
+  // project, and it is the stronger guard: a path listed here cannot be
+  // formatted even when a caller names it directly, which is how the
+  // pre-commit hook invokes the formatter.
+  // https://oxc.rs/docs/guide/usage/formatter/ignore-files.html
   ignorePatterns: [
-    "**/node_modules/**",
-    "**/dist/**",
-    "**/.nx/**",
-    "**/coverage/**",
-    "pnpm-lock.yaml",
-    // Generated from MODULE_INCLUDE. The generator owns its shape (ADR 0008).
-    "apps/genie/src/modules.ts",
-    // A test fixture that must throw on evaluation. A formatter rewriting it
-    // could only ever make that proof weaker.
-    "tools/generators/src/selection/__fixtures__/**",
-    // Vendored upstream source. Reformatting it would corrupt the three-way merge
-    // that an anti-slop update depends on (R-5a).
-    "packages/config/oxlint/anti-slop/**",
-    // Approved planning documents. Reformatting every table in docs/ would bury this
-    // ticket's real diff. Reopen by deleting this line once the code tree is stable.
-    "docs/**",
-    // Tool state and documents that predate this ticket. oxfmt formats what this
-    // repository owns as source.
+    // Prose. Markdown is written by hand, and reflowing it churns documents
+    // without improving them.
+    "**/*.md",
+    "**/*.mdx",
+
+    // State owned by other tools.
     ".beads/**",
     ".claude/**",
     ".agents/**",
     ".impeccable/**",
     "graft/**",
-    "plans/**",
-    "README.md",
-    "DESIGN.md",
-    "PRODUCT.md",
+
+    // Diagram sources and generated HTML live here beside the prose.
+    "docs/**",
+
+    // Vendored upstream source. Reformatting it would break the three-way
+    // merge that an anti-slop update depends on (R-5a).
+    "packages/config/oxlint/anti-slop/**",
+
+    // A test fixture that must throw on evaluation. A formatter rewriting it
+    // could only ever make that proof weaker.
+    "tools/generators/src/selection/__fixtures__/**",
+
+    // Generated at build time from MODULE_INCLUDE (ADR 0008).
+    "apps/genie/src/modules.ts",
+
+    // Build output. Also gitignored, but repeated here so a direct
+    // invocation cannot reach it.
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.nx/**",
   ],
   // Built in, so it replaces an import-sorting lint plugin at no cost.
   sortImports: true,

@@ -13,7 +13,9 @@ export type ModuleInventoryEntry = {
 
 type ModulePackageManifest = {
   readonly name?: string;
-  readonly genie?: { readonly module?: { readonly id?: string; readonly entrypoint?: string } };
+  readonly genie?: {
+    readonly module?: { readonly id?: string; readonly entrypoint?: string };
+  };
 };
 
 const MODULES_DIR = "packages/modules";
@@ -22,7 +24,9 @@ const MODULES_DIR = "packages/modules";
  * Reads the data-only module inventory from package metadata under packages/modules.
  * Reads bytes and parses JSON. It never imports, evaluates, or resolves a module.
  */
-export function readModuleInventory(workspaceRoot: string): readonly ModuleInventoryEntry[] {
+export function readModuleInventory(
+  workspaceRoot: string
+): readonly ModuleInventoryEntry[] {
   const modulesRoot = join(workspaceRoot, MODULES_DIR);
 
   if (!existsSync(modulesRoot)) {
@@ -45,12 +49,15 @@ export function readModuleInventory(workspaceRoot: string): readonly ModuleInven
 
     // SAFETY: the bytes come straight from the package.json we just read, and every
     // field the code below touches is validated immediately after the parse.
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as ModulePackageManifest;
+    const manifest = JSON.parse(
+      readFileSync(manifestPath, "utf8")
+    ) as ModulePackageManifest;
+
     const declared = manifest.genie?.module;
 
     if (declared?.id === undefined || declared.entrypoint === undefined) {
       throw new Error(
-        `${MODULES_DIR}/${folder}/package.json has no genie.module id and entrypoint.`,
+        `${MODULES_DIR}/${folder}/package.json has no genie.module id and entrypoint.`
       );
     }
 

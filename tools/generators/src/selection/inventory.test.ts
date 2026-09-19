@@ -9,11 +9,15 @@ import { readModuleInventory } from "./inventory.ts";
 /** One package.json body a test workspace holds under packages/modules/<folder>. */
 type TestManifest = {
   readonly name?: string;
-  readonly genie?: { readonly module?: { readonly id: string; readonly entrypoint: string } };
+  readonly genie?: {
+    readonly module?: { readonly id: string; readonly entrypoint: string };
+  };
 };
 
 /** Builds a throwaway workspace holding one package.json per named module folder. */
-function workspaceHolding(manifests: Readonly<Record<string, TestManifest>>): string {
+function workspaceHolding(
+  manifests: Readonly<Record<string, TestManifest>>
+): string {
   const root = mkdtempSync(join(tmpdir(), "genie-inventory-"));
 
   for (const [folder, manifest] of Object.entries(manifests)) {
@@ -36,7 +40,10 @@ function moduleManifest(id: string): TestManifest {
 
 describe("readModuleInventory", () => {
   it("reads every module in sorted folder order, so the default list is stable", () => {
-    const root = workspaceHolding({ beta: moduleManifest("beta"), alpha: moduleManifest("alpha") });
+    const root = workspaceHolding({
+      beta: moduleManifest("beta"),
+      alpha: moduleManifest("alpha"),
+    });
 
     const inventory = readModuleInventory(root);
 
@@ -57,7 +64,9 @@ describe("readModuleInventory", () => {
   it("rejects a module package that declares no genie.module block", () => {
     const root = workspaceHolding({ alpha: { name: "@genie/modules-alpha" } });
 
-    expect(() => readModuleInventory(root)).toThrow(/no genie.module id and entrypoint/i);
+    expect(() => readModuleInventory(root)).toThrow(
+      /no genie.module id and entrypoint/i
+    );
   });
 
   it("rejects a module package that declares no name", () => {
@@ -69,9 +78,14 @@ describe("readModuleInventory", () => {
   });
 
   it("rejects two folders that claim the same module id", () => {
-    const root = workspaceHolding({ one: moduleManifest("alpha"), two: moduleManifest("alpha") });
+    const root = workspaceHolding({
+      one: moduleManifest("alpha"),
+      two: moduleManifest("alpha"),
+    });
 
-    expect(() => readModuleInventory(root)).toThrow(/duplicate module id in the inventory: alpha/i);
+    expect(() => readModuleInventory(root)).toThrow(
+      /duplicate module id in the inventory: alpha/i
+    );
   });
 
   it("returns an empty inventory when no module folder exists yet", () => {

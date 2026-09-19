@@ -1,5 +1,11 @@
 /** The one architectural classification every project carries (Spec 0 R-4). */
-export type ArchitecturalTag = "app" | "core" | "ui" | "module" | "config" | "tooling";
+export type ArchitecturalTag =
+  | "app"
+  | "core"
+  | "ui"
+  | "module"
+  | "config"
+  | "tooling";
 
 const EXACT_ROOTS = new Map<string, ArchitecturalTag>([
   ["packages/core", "core"],
@@ -34,6 +40,6 @@ export function classifyProject(projectRoot: string): ArchitecturalTag {
   }
 
   throw new Error(
-    `"${root}" has no architectural classification. Add one rule in classify-project.ts.`,
+    `"${root}" has no architectural classification. Add one rule in classify-project.ts.`
   );
 }

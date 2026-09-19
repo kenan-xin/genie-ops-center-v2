@@ -12,5 +12,7 @@ export function serializeSelection(selection: ModuleSelection): string {
 
 /** A stable digest of the canonical value, for use as a declared cache input. */
 export function fingerprintSelection(selection: ModuleSelection): string {
-  return createHash("sha256").update(serializeSelection(selection), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(serializeSelection(selection), "utf8")
+    .digest("hex");
 }
