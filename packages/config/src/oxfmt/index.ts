@@ -16,6 +16,9 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     "pnpm-lock.yaml",
     // Generated from MODULE_INCLUDE. The generator owns its shape (ADR 0008).
     "apps/genie/src/modules.ts",
+    // A test fixture that must throw on evaluation. A formatter rewriting it
+    // could only ever make that proof weaker.
+    "tools/generators/src/selection/__fixtures__/**",
     // Vendored upstream source. Reformatting it would corrupt the three-way merge
     // that an anti-slop update depends on (R-5a).
     "packages/config/oxlint/anti-slop/**",

@@ -36,6 +36,9 @@ export const sharedOxlintConfig: OxlintConfig = {
     "**/coverage/**",
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
+    // Test fixtures the resolver must never evaluate. The throwing fixture exists
+    // to explode on evaluation, so no gate may process it.
+    "tools/generators/src/selection/__fixtures__/**",
   ],
   jsPlugins: [{ name: "anti-slop", specifier: "./packages/config/oxlint/anti-slop/index.ts" }],
   categories: {

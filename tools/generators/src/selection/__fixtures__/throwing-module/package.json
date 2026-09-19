@@ -1,0 +1,7 @@
+{
+  "name": "@genie/modules-alpha",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "genie": { "module": { "id": "alpha", "entrypoint": "src/index.ts" } }
+}
