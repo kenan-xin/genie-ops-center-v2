@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Building2, Check, ChevronDown, ExternalLink, Eye, EyeOff, KeyRound, Laptop, LogOut, Monitor, RotateCcw, ShieldCheck, Smartphone } from 'lucide-react'
+import { Building2, Check, ChevronDown, ExternalLink, Eye, EyeOff, KeyRound, Laptop, Loader2, LogOut, Monitor, RotateCcw, ShieldCheck, Smartphone } from 'lucide-react'
 import type { AccountUser, Group, Preference, RoleGrant, Session, ThemeChoice } from '@/../product/sections/account-and-inbox/types'
 import { Card, ConfirmDialog, MonoChip, Pill, Toasts, type ToastItem } from './ui'
 import { btnPrimary, btnSecondary, evaluatePassword, focusRing, initials, inputClass, relativeTime } from './helpers'
@@ -35,7 +35,7 @@ function PasswordInput({ id, label, value, onChange, autoComplete }: { id: strin
       <label htmlFor={id} className={labelClass}>{label}</label>
       <div className="relative">
         <input id={id} type={show ? 'text' : 'password'} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} pr-11`} />
-        <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} className={`absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}>{show ? <EyeOff className="size-5" strokeWidth={1.75} /> : <Eye className="size-5" strokeWidth={1.75} />}</button>
+        <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} className={`absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}>{show ? <EyeOff className="size-5" strokeWidth={1.75} /> : <Eye className="size-5" strokeWidth={1.75} />}</button>
       </div>
     </div>
   )
@@ -48,9 +48,6 @@ function DeviceIcon({ device }: { device: string }) {
   return <Monitor className={cls} strokeWidth={1.75} aria-hidden />
 }
 
-function fmt(iso: string) {
-  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' })
-}
 
 function Select({ value, onChange, children, label }: { value: string; onChange: (v: string) => void; children: React.ReactNode; label: string }) {
   return (
@@ -64,17 +61,24 @@ function Select({ value, onChange, children, label }: { value: string; onChange:
 function Field({ label, defaultLabel, overridden, onReset, children }: { label: string; defaultLabel: string; overridden: boolean; onReset: () => void; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between">
-        <span className={labelClass}>{label}</span>
+      <span className={labelClass}>{label}</span>
+      {children}
+      {/*
+        The reset action sits on the line that states the value it restores, not at the far right of
+        the label row. Measured there, the Time zone link landed 20px from the *Theme* label and 157px
+        from its own, so proximity read it as part of the next field, and the Theme link overhung its
+        own control by 141px of empty space. Both fields now share one left axis.
+      */}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+        <span>Tenant default: {defaultLabel}</span>
         {overridden ? (
-          <button type="button" onClick={onReset} className={`inline-flex items-center gap-1 rounded-lg text-xs font-medium text-blue-700 hover:underline dark:text-blue-300 ${focusRing}`}>
+          /* `after:` is the hit area, not decoration: the mark is 16px tall and a finger needs 44px. */
+          <button type="button" onClick={onReset} className={`relative inline-flex items-center gap-1 rounded font-medium text-blue-700 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] hover:underline dark:text-blue-400 ${focusRing}`}>
             <RotateCcw className="size-4" strokeWidth={1.75} aria-hidden />
             Use tenant default
           </button>
         ) : null}
-      </div>
-      {children}
-      <span className="text-xs text-gray-600 dark:text-gray-400">Tenant default: {defaultLabel}</span>
+      </p>
     </div>
   )
 }
@@ -87,67 +91,85 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
   const [cur, setCur] = useState('')
   const [next, setNext] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
+  /** Design only: Save shows its loading state for 900 ms before the change lands. */
+  const [saving, setSaving] = useState(false)
   const breakGlass = Boolean(user.isBreakGlass)
   const met = evaluatePassword(next, user.email, passwordPolicy?.minLength ?? 14)
   const pwOk = met.every(Boolean) && next === confirmPw && cur.length > 0
   const ordered = sessions.slice().sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent))
   const others = sessions.filter((s) => !s.isCurrent)
   const d = preference.tenantDefaults
+  /*
+   * Every date on this screen follows the person's chosen time zone, falling back to the tenant
+   * default. The time zone was pinned to 'Asia/Singapore', so the Preferences card below offered a
+   * control that the session timestamps above it then ignored.
+   *
+   * The format locale stays 'en-GB', the convention this product uses everywhere. It is deliberately
+   * not `preference.locale`: that field holds a UI language code, and the tenant default is the bare
+   * tag 'en', which formats dates in US conventions ("Sep 16, 04:12 PM") for a tenant whose time
+   * zones are all Asia-Pacific. Mapping a language choice to a format region is a product decision,
+   * and there is no language choice to make yet, because the Language field renders only when
+   * more than one locale is available.
+   */
+  const timeZone = preference.timeZone ?? d.timeZone
+  const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone })
   const localeLabel = (code: string) => preference.availableLocales.find((l) => l.code === code)?.label ?? code
   const themeLabel: Record<ThemeChoice, string> = { light: 'Light', dark: 'Dark', system: 'System' }
   const theme = preference.theme ?? d.theme
   const prefLabel = { locale: 'Language', timeZone: 'Time zone', theme: 'Theme' }
 
-  const toast = (text: string) => setToasts((t) => [...t, { id: Date.now() + Math.random(), text }])
+  const toast = (text: string, tone: ToastItem['tone'] = 'success') => setToasts((t) => [...t, { id: Date.now() + Math.random(), text, tone }])
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
   const closeConfirm = useCallback(() => setConfirm(null), [])
   const changePref = (key: 'locale' | 'timeZone' | 'theme', value: string | null) => {
     onChangePreference?.(key, value)
-    toast(value === null ? `${prefLabel[key]} reset to the tenant default.` : `${prefLabel[key]} saved.`)
+    // A reset returns a value rather than storing one, so it is neutral and not a success.
+    if (value === null) toast(`${prefLabel[key]} reset to the tenant default.`, 'neutral')
+    else toast(`${prefLabel[key]} saved.`, 'success')
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 pb-8">
+    <div className="flex max-w-3xl flex-col gap-4 pb-8">
       <Card title="Profile" description={breakGlass ? 'Local administrator account. Password and authenticator are managed on this page.' : 'Synced from your company directory at each sign-in.'}>
-        <div className="flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-start sm:px-6">
+        {/*
+         * Identity line first, then one labelled row per remaining field. The previous two-column
+         * `dl` put Groups in a col-span-2 cell, so its label sat under Name and the pill row broke
+         * the rhythm the two text rows set.
+         */}
+        <div className="flex items-center gap-4 px-5 py-5 sm:px-6">
           {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="size-16 rounded-full object-cover" />
+            <img src={user.avatarUrl} alt="" className="size-12 rounded-full object-cover" />
           ) : (
-            <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-200">{initials(user.name)}</span>
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gray-100 text-base font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">{initials(user.name)}</span>
           )}
-          <dl className="grid flex-1 grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-medium text-gray-600 dark:text-gray-400">Name</dt>
-              <dd className="mt-0.5 text-base font-semibold">{user.name}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-600 dark:text-gray-400">Email</dt>
-              <dd className="mt-0.5 text-base">{user.email}</dd>
-            </div>
-            {breakGlass ? (
-              <div className="sm:col-span-2">
-                <dt className="text-xs font-medium text-gray-600 dark:text-gray-400">Identity</dt>
-                <dd className="mt-0.5 text-base">{user.identitySource}</dd>
-              </div>
-            ) : (
-              <div className="sm:col-span-2">
-                <dt className="text-xs font-medium text-gray-600 dark:text-gray-400">Groups</dt>
-                <dd className="mt-1.5 flex flex-wrap gap-1.5">
-                  {groups.map((g) => (
-                    <Pill key={g.id} tone={g.source === 'idp' ? 'gray' : 'blue'}>
-                      {g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : null}
-                      {g.name}
-                    </Pill>
-                  ))}
-                </dd>
-              </div>
-            )}
-          </dl>
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold">{user.name}</p>
+            <p className="truncate text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+          </div>
         </div>
+        <dl className="border-t border-gray-100 px-5 py-4 sm:px-6 dark:border-gray-800">
+          <dt className="text-xs font-medium text-gray-600 dark:text-gray-400">{breakGlass ? 'Identity' : 'Groups'}</dt>
+          {breakGlass ? (
+            <dd className="mt-0.5 text-base">{user.identitySource}</dd>
+          ) : (
+            <dd className="mt-2 flex flex-wrap gap-1.5">
+              {groups.length === 0 ? (
+                <span className="text-sm text-gray-600 dark:text-gray-400">No directory groups.</span>
+              ) : (
+                groups.map((g) => (
+                  <Pill key={g.id}>
+                    {g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : null}
+                    {g.name}
+                  </Pill>
+                ))
+              )}
+            </dd>
+          )}
+        </dl>
         <div className="flex flex-col gap-2 border-t border-gray-100 px-5 py-3 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800 dark:text-gray-400">
           <p>{breakGlass ? 'This account belongs to the tenant, not to a person. It is hidden from People and appears only in the audit log.' : `Name, email, and directory groups come from ${user.identitySource}. Change them there, not in Genie. Last synced ${relativeTime(user.lastSyncedAt)}.`}</p>
           {accountManagementUrl && !breakGlass ? (
-            <a href={accountManagementUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg font-semibold text-blue-700 hover:underline sm:min-h-0 dark:text-blue-300 ${focusRing}`}>
+            <a href={accountManagementUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg font-semibold text-blue-700 hover:underline sm:min-h-0 dark:text-blue-400 ${focusRing}`}>
               <KeyRound className="size-4" strokeWidth={1.75} aria-hidden />Change password<ExternalLink className="size-4" strokeWidth={1.75} aria-label="Opens in a new tab" />
             </a>
           ) : null}
@@ -156,14 +178,21 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
 
       {breakGlass ? (
         <Card title="Change password" description="The shared rule applies. Your current password is required.">
-          <form className="flex flex-col gap-4 px-5 py-5 sm:px-6" onSubmit={(e) => { e.preventDefault(); if (!pwOk) return; onChangeBreakGlassPassword?.(cur, next); setCur(''); setNext(''); setConfirmPw(''); toast('Password changed.') }}>
+          <form className="flex flex-col gap-4 px-5 py-5 sm:px-6" onSubmit={(e) => { e.preventDefault(); if (!pwOk || saving) return; setSaving(true); setTimeout(() => { onChangeBreakGlassPassword?.(cur, next); setCur(''); setNext(''); setConfirmPw(''); setSaving(false); toast('Password changed.') }, 900) }}>
+            {/* Two grids rather than one grid and an empty spacer cell: the current password owns its own row. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <PasswordInput id="bg-cur" label="Current password" value={cur} onChange={setCur} autoComplete="current-password" />
-              <div />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <PasswordInput id="bg-next" label="New password" value={next} onChange={setNext} autoComplete="new-password" />
               <PasswordInput id="bg-confirm" label="Confirm new password" value={confirmPw} onChange={setConfirmPw} autoComplete="new-password" />
             </div>
-            <ul aria-live="polite" className="grid grid-cols-1 gap-1.5 rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-700 sm:grid-cols-2 dark:bg-gray-950/60 dark:text-gray-300">
+            {/*
+              The live region is one counting line, not the list. `aria-live` on the list read every
+              rule again after each character typed, because the whole list re-renders on each keystroke.
+            */}
+            <p aria-live="polite" className="sr-only">{next.length > 0 ? `${met.filter(Boolean).length} of ${met.length} password rules met` : ''}</p>
+            <ul className="grid grid-cols-1 gap-1.5 rounded-lg bg-gray-50 px-3.5 py-3 text-sm text-gray-700 sm:grid-cols-2 dark:bg-gray-950/60 dark:text-gray-300">
               {(passwordPolicy?.rules ?? []).map((rule, i) => {
                 const deferred = i >= met.length
                 const ok = !deferred && met[i] && next.length > 0
@@ -176,7 +205,7 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
               })}
             </ul>
             {confirmPw && next !== confirmPw ? <p role="alert" className="text-xs text-red-700 dark:text-red-300">Passwords do not match.</p> : null}
-            <div><button type="submit" className={btnPrimary} disabled={!pwOk}>Save password</button></div>
+            <div><button type="submit" className={btnPrimary} disabled={!pwOk} aria-busy={saving || undefined}>{saving ? <Loader2 className="size-5 motion-safe:animate-spin" strokeWidth={2} aria-hidden /> : <KeyRound className="size-5" strokeWidth={1.75} aria-hidden />}Save password</button></div>
           </form>
         </Card>
       ) : null}
@@ -184,7 +213,7 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
       {breakGlass ? (
         <Card title="Authenticator" description="Required at every sign-in. Re-enroll if you change phones.">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6">
-            <div className="flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"><ShieldCheck className="size-5" strokeWidth={1.75} aria-hidden /></span><div><div className="text-sm font-semibold">Authenticator app enrolled</div><div className="text-xs text-gray-600 dark:text-gray-400">{authenticatorEnrolledAt ? `Since ${fmt(authenticatorEnrolledAt)}` : 'Enrollment date unknown'}. Re-enrolling replaces the current app and asks for a code from the new one.</div></div></div>
+            <div className="flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"><ShieldCheck className="size-5" strokeWidth={1.75} aria-hidden /></span><div><div className="text-sm font-semibold">Authenticator app enrolled</div><div className="text-xs text-gray-600 dark:text-gray-400">{authenticatorEnrolledAt ? `Since ${fmt(authenticatorEnrolledAt)}` : 'Enrollment date unknown'}. Re-enrolling replaces the current app and asks for a code from the new one.</div></div></div>
             <button type="button" className={btnSecondary} onClick={() => onReenrollAuthenticator?.()}><RotateCcw className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Re-enroll</button>
           </div>
         </Card>
@@ -221,16 +250,27 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-600 dark:bg-gray-950/60 dark:text-gray-400">
-                <th className="px-5 py-2.5 font-semibold sm:px-6">Device</th>
-                <th className="px-3 py-2.5 font-semibold">IP address</th>
-                <th className="px-3 py-2.5 font-semibold">Signed in</th>
-                <th className="px-3 py-2.5 font-semibold">Last active</th>
-                <th className="px-5 py-2.5 sm:px-6"><span className="sr-only">Action</span></th>
+                <th scope="col" className="px-5 py-2.5 font-semibold sm:px-6">Device</th>
+                <th scope="col" className="px-3 py-2.5 font-semibold">IP address</th>
+                <th scope="col" className="px-3 py-2.5 font-semibold">Signed in</th>
+                <th scope="col" className="px-3 py-2.5 font-semibold">Last active</th>
+                <th scope="col" className="px-5 py-2.5 sm:px-6"><span className="sr-only">Action</span></th>
               </tr>
             </thead>
             <tbody>
               {ordered.map((s) => (
-                <tr key={s.id} className="border-t border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60">
+                /*
+                 * The row is a row. It formerly carried role="button", a tabindex, and a click
+                 * handler that signed the device out. The role replaced the row role, so the
+                 * cell-to-column relationship was lost and the `aria-label` became the only text
+                 * announced: the IP address, the sign-in time, and the last-active time were never
+                 * read. A whole-row press also signed a device out with no affordance saying so.
+                 * The Sign out button in the last cell is the one way to do it.
+                 */
+                <tr
+                  key={s.id}
+                  className="border-t border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60"
+                >
                   <td className="px-5 py-3 sm:px-6">
                     <div className="flex items-center gap-2.5">
                       <DeviceIcon device={s.device} />
@@ -246,7 +286,7 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
                   <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{s.isCurrent ? 'Now' : relativeTime(s.lastActiveAt)}</td>
                   <td className="px-5 py-3 text-right sm:px-6">
                     {s.isCurrent ? null : (
-                      <button type="button" className={btnSecondary} onClick={() => setConfirm({ kind: 'one', session: s })}>Sign out</button>
+                      <button type="button" className={btnSecondary} aria-label={`Sign out ${s.device}, ${s.browser}`} onClick={() => setConfirm({ kind: 'one', session: s })}>Sign out</button>
                     )}
                   </td>
                 </tr>
@@ -272,7 +312,8 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
             </Select>
           </Field>
           <Field label="Theme" defaultLabel={themeLabel[d.theme]} overridden={preference.theme !== null} onReset={() => changePref('theme', null)}>
-            <div role="radiogroup" aria-label="Theme" className="inline-flex h-10 items-center rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+            {/* `self-start`: the parent is a flex column, which stretched this `inline-flex` track to 349px for 200px of content. */}
+            <div role="radiogroup" aria-label="Theme" className="inline-flex h-10 items-center self-start rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
               {(['light', 'dark', 'system'] as ThemeChoice[]).map((t) => (
                 <button
                   key={t}
@@ -294,17 +335,19 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
       {breakGlass ? null : (
       <Card title="Roles and access" description="What you can open, and how you got it.">
         <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+          {/*
+            The scope leads, because it is the fact that differs between rows and it answers the card's
+            own question, "what you can open". The role and the module led before, which printed
+            "Solutions user in Solutions" four times over, and left the one varying fact in the smallest
+            type on the row. The check icon in a gray tile is gone: a listed grant is always granted, so
+            the mark carried no state and repeated identically down the list.
+          */}
           {roleGrants.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 sm:px-6 sm:py-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                <Check className="size-4" strokeWidth={2} aria-hidden />
-              </span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold">
-                  {r.roleName} <span className="font-normal text-gray-600 dark:text-gray-400">in {r.moduleName}</span>
-                </div>
+                <div className="text-sm font-semibold">{r.scopeType ? r.scopeLabel : 'Whole tenant'}</div>
                 <div className="text-xs text-gray-600 dark:text-gray-400">
-                  {r.scopeType ? `Scope: ${r.scopeLabel}` : 'Whole tenant'}
+                  {r.roleName} in {r.moduleName}
                   {r.via ? ` · through ${r.via}` : ' · assigned directly'}
                 </div>
               </div>
@@ -326,8 +369,14 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
         danger
         onClose={closeConfirm}
         onConfirm={() => {
-          if (confirm?.kind === 'one') onRevokeSession?.(confirm.session.id)
-          else onRevokeOtherSessions?.()
+          // Signing out is destructive and silent otherwise: the row simply disappears. Say what happened.
+          if (confirm?.kind === 'one') {
+            onRevokeSession?.(confirm.session.id)
+            toast(`${confirm.session.device} signed out.`, 'neutral')
+          } else {
+            onRevokeOtherSessions?.()
+            toast(`${others.length} other ${others.length === 1 ? 'session' : 'sessions'} signed out.`, 'neutral')
+          }
           setConfirm(null)
         }}
       />

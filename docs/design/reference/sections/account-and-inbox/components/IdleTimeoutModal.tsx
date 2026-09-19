@@ -39,11 +39,11 @@ export function IdleTimeoutModal({ idleTimeout, onStaySignedIn, onSignOutNow }: 
             next?.focus()
           }
         }}
-        className="w-full rounded-t-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-2xl dark:border-gray-700 dark:bg-gray-900"
+        className="w-full rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900"
       >
         <div className="px-5 pt-5 pb-5 sm:px-6">
         <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <Clock className="size-5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">

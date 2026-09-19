@@ -15,7 +15,7 @@ export default function IdleTimeoutModalPreview() {
 
   return (
     <>
-      <div className="rounded-2xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
+      <div className="rounded-xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
         <h2 className="mb-1 text-lg font-bold tracking-tight">Solutions</h2>
         <p className="max-w-prose text-sm text-gray-600 dark:text-gray-400">The page the person was on dims behind the dialog.</p>
       </div>

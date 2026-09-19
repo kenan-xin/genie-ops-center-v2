@@ -11,10 +11,10 @@ export interface SolutionsEmptyStateProps {
 export function SolutionsEmptyState({ copy, support }: SolutionsEmptyStateProps) {
   const href = support.supportUrl ?? (support.supportEmail ? `mailto:${support.supportEmail}` : null)
   return (
-    <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
+    <div className="flex min-h-[60vh] items-center justify-center rounded-xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
         {/* Tenant letter tile, same style as the shell TenantMark. */}
-        <span aria-hidden className="flex size-14 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl font-extrabold text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-blue-300">
+        <span aria-hidden className="flex size-14 items-center justify-center rounded-xl border border-gray-200 bg-white text-2xl font-extrabold text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-blue-400">
           {support.companyName.slice(0, 1).toUpperCase()}
         </span>
         <div className="flex flex-col gap-1.5">

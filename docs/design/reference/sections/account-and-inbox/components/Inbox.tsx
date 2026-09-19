@@ -29,7 +29,7 @@ export function Inbox({ notifications, emptyState, hasMore, onOpenNotification, 
   const unread = notifications.filter((n) => !n.readAt).length
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 pb-8">
+    <div className="flex max-w-3xl flex-col gap-4 pb-8">
       <Card
         title="Notifications"
         description={unread > 0 ? `${unread} unread` : 'All caught up'}
@@ -44,7 +44,7 @@ export function Inbox({ notifications, emptyState, hasMore, onOpenNotification, 
       >
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            <span className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               <InboxIcon className="size-6" strokeWidth={1.75} aria-hidden />
             </span>
             <h3 className="text-base font-semibold">{emptyState.heading}</h3>
@@ -58,14 +58,17 @@ export function Inbox({ notifications, emptyState, hasMore, onOpenNotification, 
                 <li key={n.id}>
                   <a
                     href={n.link}
+                    role="link"
+                    tabIndex={0}
                     onClick={(e) => {
                       if (!onOpenNotification) return
                       e.preventDefault()
                       onOpenNotification(n.id)
                     }}
+                    onKeyDown={(e) => { if (e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
                     className={`group flex gap-4 p-4 transition-colors hover:bg-gray-50 focus-visible:ring-inset sm:px-6 dark:hover:bg-gray-800/60 ${focusRing}`}
                   >
-                    <span className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${isUnread ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                    <span className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${isUnread ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
                       <KindIcon kind={n.kind} />
                     </span>
                     <span className="min-w-0 flex-1">
