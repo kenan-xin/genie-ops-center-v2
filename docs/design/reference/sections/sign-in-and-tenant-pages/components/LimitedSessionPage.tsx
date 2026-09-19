@@ -30,7 +30,7 @@ export function LimitedSessionPage({ productName, passwordChanged, authenticator
         </header>
         <ul className="flex flex-col gap-2">
           {items.map((it) => (
-            <li key={it.label} className="flex items-center gap-3 rounded-xl border border-gray-200 px-3.5 py-3 text-sm dark:border-gray-800">
+            <li key={it.label} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm dark:border-gray-800">
               <span
                 aria-hidden
                 className={`flex size-5 shrink-0 items-center justify-center rounded-full ${it.done ? 'bg-emerald-500 text-white' : 'border border-gray-300 dark:border-gray-600'}`}

@@ -28,7 +28,7 @@ export function NotSetUpPage({ productName, steps, supportEmail }: NotSetUpPageP
             <span className="font-semibold text-gray-800 dark:text-gray-200">Setup steps</span>
             <span className="font-mono text-gray-500">{done} of {steps.length} done</span>
           </div>
-          <ol className="divide-y divide-gray-200 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ol className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
             {steps.map((s) => {
               const Icon = s.state === 'done' ? Check : s.state === 'failed' ? X : Circle
               const tone =

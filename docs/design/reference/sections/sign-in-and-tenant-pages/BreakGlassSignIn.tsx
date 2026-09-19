@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/sign-in-and-tenant-pages/data.json'
 import type { BreakGlassAdmin, BreakGlassStep, TenantBranding } from '@/../product/sections/sign-in-and-tenant-pages/types'
@@ -57,16 +58,16 @@ export default function BreakGlassSignInPreview() {
           go('credentials')
         }}
         onUseDifferentAccount={() => go('credentials')}
-        onGoToMemberSignIn={() => console.log('Go to member sign-in')}
+        onGoToMemberSignIn={() => goTo('/signin')}
       />
       {/* Preview-only switcher. Not part of the exported component. Hidden with ?shot=1 for screenshots. */}
-      <div hidden={params.get('shot') === '1'} className="fixed bottom-3 right-3 z-50 flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 font-mono text-xs uppercase tracking-[0.08em] text-gray-500 shadow-lg">
+      <div hidden={params.get('shot') === '1'} className="fixed bottom-3 right-3 z-50 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 font-mono text-xs uppercase tracking-[0.08em] text-gray-500 shadow-lg">
         {steps.map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => go(s)}
-            className={`rounded-lg px-2 py-1 ${s === step ? 'bg-blue-50 text-blue-700' : 'hover:text-gray-900'}`}
+            className={`rounded-lg px-2 py-1 ${s === step ? 'bg-gray-100 text-gray-900' : 'hover:text-gray-900'}`}
           >
             {s}
           </button>
@@ -86,7 +87,7 @@ export default function BreakGlassSignInPreview() {
         <button
           type="button"
           onClick={() => setLimited((v) => !v)}
-          className={`rounded-lg px-2 py-1 ${limited ? 'bg-blue-50 text-blue-700' : 'hover:text-gray-900'}`}
+          className={`rounded-lg px-2 py-1 ${limited ? 'bg-gray-100 text-gray-900' : 'hover:text-gray-900'}`}
         >
           limited
         </button>

@@ -5,7 +5,7 @@
       "signInState": "The reason banner shown at the top of the sign-in card, if any.",
       "breakGlassAdmin": "The break-glass administrator account state that drives the admin door steps and the rate-limit refusal.",
       "tenantSettings": "The tenant settings that change the sign-in page: local accounts and the idle timeout.",
-      "setupSteps": "Progress of the eight `genie-ops setup` steps. Until all are done every route renders the not-set-up page and the health endpoint reports degraded."
+      "setupSteps": "Progress of the `genie-ops setup` steps (`setup_step` in architecture/data-shape.md). Until all are done every route renders the not-set-up page and the health endpoint reports degraded."
     },
     "relationships": [
       "tenantBranding belongs to the one tenant this deployment serves and is read by every auth page; the app never inspects the hostname",
@@ -65,12 +65,11 @@
   },
   "setupSteps": [
     { "step": "migrations", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:11Z" },
+    { "step": "seed", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:14Z" },
     { "step": "realm", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:19Z" },
-    { "step": "identity_provider", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:24Z" },
     { "step": "clients", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:27Z" },
     { "step": "roles", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:29Z" },
     { "step": "admin_seed", "state": "done", "detail": null, "updatedAt": "2026-09-16T08:02:33Z" },
-    { "step": "break_glass", "state": "failed", "detail": "Keycloak refused the user create call (409 Conflict): a user with this email already exists in the realm.", "updatedAt": "2026-09-16T08:02:35Z" },
-    { "step": "settings", "state": "pending", "detail": null, "updatedAt": "2026-09-16T08:02:35Z" }
+    { "step": "break_glass", "state": "failed", "detail": "Keycloak refused the user create call (409 Conflict): a user with this email already exists in the realm.", "updatedAt": "2026-09-16T08:02:35Z" }
   ]
 }

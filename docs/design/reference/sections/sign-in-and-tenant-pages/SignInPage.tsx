@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/sign-in-and-tenant-pages/data.json'
 import type { SignInState, SignInStateId, SignInTenantSettings, TenantBranding } from '@/../product/sections/sign-in-and-tenant-pages/types'
@@ -30,17 +31,17 @@ export default function SignInPagePreview() {
         branding={b}
         tenantSettings={s}
         signInState={state}
-        onContinueWithCompanyAccount={() => console.log('Continue with company account')}
+        onContinueWithCompanyAccount={() => goTo('/')}
         onAcknowledgeNotice={(v) => console.log('Acknowledged notice:', v)}
       />
       {/* Preview-only variant switcher. Not part of the exported component. Hidden with ?shot=1 for screenshots. */}
-      <div hidden={params.get('shot') === '1'} className="fixed bottom-3 right-3 z-50 flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 font-mono text-xs uppercase tracking-[0.08em] text-gray-500 shadow-lg">
+      <div hidden={params.get('shot') === '1'} className="fixed bottom-3 right-3 z-50 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 font-mono text-xs uppercase tracking-[0.08em] text-gray-500 shadow-lg">
         {states.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => setStateId(s.id)}
-            className={`rounded-lg px-2 py-1 ${s.id === stateId ? 'bg-blue-50 text-blue-700' : 'hover:text-gray-900'}`}
+            className={`rounded-lg px-2 py-1 ${s.id === stateId ? 'bg-gray-100 text-gray-900' : 'hover:text-gray-900'}`}
           >
             {s.id}
           </button>
@@ -49,14 +50,14 @@ export default function SignInPagePreview() {
         <button
           type="button"
           onClick={() => setWithNotice((v) => !v)}
-          className={`rounded-lg px-2 py-1 ${withNotice ? 'bg-blue-50 text-blue-700' : 'hover:text-gray-900'}`}
+          className={`rounded-lg px-2 py-1 ${withNotice ? 'bg-gray-100 text-gray-900' : 'hover:text-gray-900'}`}
         >
           notice
         </button>
         <button
           type="button"
           onClick={() => setLocalAccounts((v) => !v)}
-          className={`rounded-lg px-2 py-1 ${localAccounts ? 'bg-blue-50 text-blue-700' : 'hover:text-gray-900'}`}
+          className={`rounded-lg px-2 py-1 ${localAccounts ? 'bg-gray-100 text-gray-900' : 'hover:text-gray-900'}`}
         >
           local accounts
         </button>

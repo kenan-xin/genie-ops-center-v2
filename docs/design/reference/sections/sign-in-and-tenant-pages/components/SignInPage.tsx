@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Info, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Check, Info, Loader2, ShieldCheck } from 'lucide-react'
 import type { SignInState, SignInTenantSettings, TenantBranding } from '@/../product/sections/sign-in-and-tenant-pages/types'
 import { AuthFrame } from './AuthFrame'
-import { focusRing, linkClass, primaryClass } from './helpers'
+import { focusRing, linkClass, primaryClass, useDelayed } from './helpers'
 
 export interface SignInPageProps {
   branding: TenantBranding
@@ -22,6 +22,7 @@ export function SignInPage({
   onAcknowledgeNotice,
 }: SignInPageProps) {
   const [acknowledged, setAcknowledged] = useState(false)
+  const [loading, go] = useDelayed(() => onContinueWithCompanyAccount?.())
   const notice = branding.loginNoticeText
   const gated = Boolean(notice && branding.loginNoticeRequiresAcknowledgement)
   const canContinue = !gated || acknowledged
@@ -41,12 +42,12 @@ export function SignInPage({
             role={bannerWarning ? 'alert' : 'status'}
             className={
               bannerWarning
-                ? 'flex items-start gap-2.5 rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
-                : 'flex items-start gap-2.5 rounded-xl bg-blue-50 px-3.5 py-3 text-sm text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
+                ? 'flex items-start gap-2.5 rounded-lg bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
+                : 'flex items-start gap-2.5 rounded-lg bg-blue-50 px-3.5 py-3 text-sm text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
             }
           >
             <Info
-              className={bannerWarning ? 'mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-300' : 'mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-300'}
+              className={bannerWarning ? 'mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-300' : 'mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400'}
               strokeWidth={1.75}
               aria-hidden
             />
@@ -60,7 +61,7 @@ export function SignInPage({
         </header>
 
         {notice ? (
-          <section aria-labelledby="notice-heading" className="rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/50">
+          <section aria-labelledby="notice-heading" className="rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/50">
             <div className="flex items-center gap-2 px-4 pt-3.5">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-200/70 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 <Info aria-hidden className="size-4" strokeWidth={1.75} />
@@ -81,7 +82,7 @@ export function SignInPage({
                       setAcknowledged(e.target.checked)
                       onAcknowledgeNotice?.(e.target.checked)
                     }}
-                    className={`peer size-5 appearance-none rounded-md border border-gray-300 bg-white transition-colors checked:border-blue-600 checked:bg-blue-600 dark:border-gray-600 dark:bg-gray-900 ${focusRing}`}
+                    className={`peer size-5 appearance-none rounded-md border border-gray-500 bg-white motion-safe:transition-colors checked:border-blue-600 checked:bg-blue-600 dark:border-gray-500 dark:bg-gray-900 ${focusRing}`}
                   />
                   <Check
                     aria-hidden
@@ -99,11 +100,16 @@ export function SignInPage({
           <button
             type="button"
             disabled={!canContinue}
-            onClick={() => onContinueWithCompanyAccount?.()}
+            aria-busy={loading || undefined}
+            onClick={go}
             className={`group ${primaryClass}`}
           >
             {local ? 'Continue to sign in' : 'Continue with your company account'}
-            <ArrowRight className="size-5 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5 group-disabled:translate-x-0" strokeWidth={1.75} aria-hidden />
+            {loading ? (
+              <Loader2 className="size-5 motion-safe:animate-spin" strokeWidth={1.75} aria-hidden />
+            ) : (
+              <ArrowRight className="size-5 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5 group-disabled:translate-x-0" strokeWidth={1.75} aria-hidden />
+            )}
           </button>
           {local && tenantSettings.forgotPasswordUrl ? (
             <a

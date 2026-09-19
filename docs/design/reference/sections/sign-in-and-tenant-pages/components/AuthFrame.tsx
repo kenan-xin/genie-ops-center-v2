@@ -50,14 +50,14 @@ export function AuthFrame({ branding, children }: AuthFrameProps) {
 
       <div className="relative flex w-full max-w-[440px] flex-col items-center">
         <div className="auth-reveal mb-6 flex flex-col items-center gap-3 text-center" style={{ animationDelay: '0ms' }}>
-          <span className="flex size-14 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <span className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
             {branding.logoLightUrl || branding.logoDarkUrl ? (
               <>
                 <img src={branding.logoLightUrl ?? branding.logoDarkUrl ?? ''} alt="" className="size-9 object-contain dark:hidden" />
                 <img src={branding.logoDarkUrl ?? branding.logoLightUrl ?? ''} alt="" className="hidden size-9 object-contain dark:block" />
               </>
             ) : (
-              <span aria-hidden className="text-2xl font-extrabold text-blue-700 dark:text-blue-300">
+              <span aria-hidden className="text-2xl font-extrabold text-blue-700 dark:text-blue-400">
                 {branding.companyName.slice(0, 1).toUpperCase()}
               </span>
             )}
@@ -69,7 +69,7 @@ export function AuthFrame({ branding, children }: AuthFrameProps) {
         </div>
 
         <div
-          className="auth-reveal w-full rounded-2xl border border-gray-200 bg-white p-7 shadow-[0_8px_30px_-12px_rgba(15,23,42,.12)] sm:p-8 dark:border-gray-800 dark:bg-gray-900"
+          className="auth-reveal w-full rounded-xl border border-gray-200 bg-white p-7 shadow-[0_8px_30px_-12px_rgba(15,23,42,.12)] sm:p-8 dark:border-gray-800 dark:bg-gray-900"
           style={{ animationDelay: '80ms' }}
         >
           {children}

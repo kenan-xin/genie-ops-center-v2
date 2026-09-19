@@ -76,8 +76,8 @@ export interface BreakGlassAdmin {
   passwordPolicy: PasswordPolicy
 }
 
-/** The eight steps `genie-ops setup` runs, in order. */
-export type SetupStepName = 'migrations' | 'realm' | 'identity_provider' | 'clients' | 'roles' | 'admin_seed' | 'break_glass' | 'settings'
+/** The `setup_step` names from `architecture/data-shape.md`, in order. The identity provider is not a step (DEC-36). */
+export type SetupStepName = 'migrations' | 'seed' | 'realm' | 'clients' | 'roles' | 'admin_seed' | 'break_glass'
 
 export interface SetupStep {
   step: SetupStepName
@@ -98,7 +98,7 @@ export interface SignInAndTenantPagesProps {
   error: string | null
   /** Break-glass door: the rate limit refused the last attempt. Inputs are disabled until retryAfterMinutes pass. */
   tooManyAttempts: boolean
-  /** Not-set-up page: progress of `genie-ops setup`. Shown on every route until all eight steps are done. */
+  /** Not-set-up page: progress of `genie-ops setup`. Shown on every route until every step the running image knows is done. */
   setupSteps: SetupStep[]
   /** Limited-session page: which of the two conditions the account has cleared. */
   limitedSession: { passwordChanged: boolean; authenticatorEnrolled: boolean }

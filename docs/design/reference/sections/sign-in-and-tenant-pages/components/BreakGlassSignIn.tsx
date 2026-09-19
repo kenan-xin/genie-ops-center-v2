@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
-import { AlertCircle, ArrowLeft, Check, Copy, Eye, EyeOff, QrCode, ShieldAlert, Timer } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, Copy, Eye, EyeOff, Loader2, QrCode, ShieldAlert, Timer } from 'lucide-react'
 import type { BreakGlassAdmin, BreakGlassStep, TenantBranding } from '@/../product/sections/sign-in-and-tenant-pages/types'
 import { AuthFrame } from './AuthFrame'
-import { breakGlassSteps, focusRing, inputClass, labelClass, linkClass, primaryClass } from './helpers'
+import { breakGlassSteps, focusRing, inputClass, labelClass, linkClass, primaryClass, useDelayed } from './helpers'
 
 export interface BreakGlassSignInProps {
   branding: TenantBranding
@@ -35,7 +35,7 @@ function FakeQr({ seed }: { seed: string }) {
   for (let i = 0; i < 21 * 21; i++) { h = (h * 1103515245 + 12345) >>> 0; cells.push(((h >>> 16) & 1) === 1) }
   const finder = (r: number, c: number) => (r < 7 && c < 7) || (r < 7 && c > 13) || (r > 13 && c < 7)
   return (
-    <svg viewBox="0 0 21 21" role="img" aria-label="QR code for the authenticator app" className="size-40 rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-700" shapeRendering="crispEdges">
+    <svg viewBox="0 0 21 21" role="img" aria-label="QR code for the authenticator app" className="size-40 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700" shapeRendering="crispEdges">
       {cells.map((on, i) => {
         const r = Math.floor(i / 21), c = i % 21
         const f = finder(r, c)
@@ -49,7 +49,7 @@ function FakeQr({ seed }: { seed: string }) {
 
 function ErrorBlock({ message }: { message: string }) {
   return (
-    <div role="alert" className="flex items-start gap-2.5 rounded-xl bg-red-50 px-3.5 py-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+    <div role="alert" className="flex items-start gap-2.5 rounded-lg bg-red-50 px-3.5 py-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
       <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-300" strokeWidth={1.75} aria-hidden />
       <span>{message}</span>
     </div>
@@ -89,7 +89,7 @@ function PasswordField({
           onClick={() => setShow((v) => !v)}
           aria-label={show ? 'Hide password' : 'Show password'}
           aria-pressed={show}
-          className={`absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-xl text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}
+          className={`absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}
         >
           {show ? <EyeOff className="size-5" strokeWidth={1.75} /> : <Eye className="size-5" strokeWidth={1.75} />}
         </button>
@@ -98,7 +98,10 @@ function PasswordField({
   )
 }
 
-/** Six one-digit boxes. Auto-advance, backspace steps back, arrows move, paste fills all. */
+/**
+ * Six one-digit boxes in one labeled group (spec). Auto-advance, backspace steps back, arrows move, paste fills all.
+ * Remount it (a new `key`) with `autoFocus` after a wrong code so focus returns to the first box.
+ */
 function CodeInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   const refs = useRef<Array<HTMLInputElement | null>>([])
   const digits = Array.from({ length: 6 }, (_, i) => value[i] ?? '')
@@ -111,7 +114,9 @@ function CodeInput({ value, onChange, autoFocus }: { value: string; onChange: (v
   }
 
   return (
-    <div className="flex items-center justify-center gap-2" role="group" aria-label="Six-digit code">
+    <fieldset className="m-0 min-w-0 border-0 p-0">
+      <legend className={`${labelClass} mb-1.5 block w-full text-center`}>Authentication code</legend>
+      <div className="flex items-center justify-center gap-2">
       {digits.map((d, i) => (
         <span key={i} className="contents">
           {i === 3 ? <span aria-hidden className="mx-0.5 h-px w-3 bg-gray-300 dark:bg-gray-600" /> : null}
@@ -119,10 +124,9 @@ function CodeInput({ value, onChange, autoFocus }: { value: string; onChange: (v
             ref={(el) => {
               refs.current[i] = el
             }}
-            id={i === 0 ? 'bg-code' : undefined}
-            aria-label={`Digit ${i + 1}`}
+            aria-label={`Digit ${i + 1} of 6`}
             inputMode="numeric"
-            autoComplete={i === 0 ? 'one-time-code' : 'off'}
+            autoComplete="one-time-code"
             autoFocus={autoFocus && i === 0}
             maxLength={1}
             value={d}
@@ -161,13 +165,14 @@ function CodeInput({ value, onChange, autoFocus }: { value: string; onChange: (v
               onChange(text)
               focus(text.length)
             }}
-            className={`h-11 w-10 rounded-xl border bg-white text-center font-mono text-xl font-semibold text-gray-900 caret-blue-600 dark:bg-gray-950 dark:text-gray-100 ${focusRing} ${
-              d ? 'border-gray-400 dark:border-gray-500' : 'border-gray-300 dark:border-gray-700'
+            className={`h-11 w-10 rounded-lg border bg-white text-center font-mono text-xl font-semibold text-gray-900 caret-blue-600 dark:bg-gray-950 dark:text-gray-100 ${focusRing} ${
+              d ? 'border-gray-700 dark:border-gray-400' : 'border-gray-500 dark:border-gray-500'
             }`}
           />
         </span>
       ))}
-    </div>
+      </div>
+    </fieldset>
   )
 }
 
@@ -203,6 +208,14 @@ export function BreakGlassSignIn({
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
+  // A wrong code clears every box (spec). Render-phase reset on a changed error, no effect needed.
+  const [seenError, setSeenError] = useState(error)
+  if (error !== seenError) {
+    setSeenError(error)
+    if (error) { setCode(''); setEnrollCode('') }
+  }
+  const [signingIn, signIn] = useDelayed(() => onSubmitCredentials?.(email, password))
+  const [settingPassword, setPassword2] = useDelayed(() => onChangePassword?.(current, next))
 
   const met = evaluateRules(next, admin.email, admin.passwordPolicy.minLength)
   const score = met.filter(Boolean).length
@@ -216,7 +229,7 @@ export function BreakGlassSignIn({
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
               <ShieldAlert className="size-4" strokeWidth={1.75} aria-hidden />
               Administrator
             </span>
@@ -246,11 +259,11 @@ export function BreakGlassSignIn({
             noValidate
             onSubmit={(e) => {
               e.preventDefault()
-              if (!tooManyAttempts) onSubmitCredentials?.(email, password)
+              if (!tooManyAttempts) signIn()
             }}
           >
             {tooManyAttempts ? (
-              <div role="status" className="flex items-start gap-2.5 rounded-xl bg-gray-100 px-3.5 py-3 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+              <div role="status" className="flex items-start gap-2.5 rounded-lg bg-gray-100 px-3.5 py-3 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">
                 <Timer className="mt-0.5 size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
                 <span>Too many sign-in attempts. Try again in {admin.retryAfterMinutes} minutes.</span>
               </div>
@@ -271,7 +284,8 @@ export function BreakGlassSignIn({
               />
             </div>
             <PasswordField id="bg-password" label="Password" value={password} onChange={setPassword} autoComplete="current-password" />
-            <button type="submit" className={`${primaryClass} mt-1`} disabled={!email || !password}>
+            <button type="submit" className={`${primaryClass} mt-1`} disabled={!email || !password} aria-busy={signingIn || undefined}>
+              {signingIn ? <Loader2 className="size-5 motion-safe:animate-spin" strokeWidth={1.75} aria-hidden /> : null}
               Sign in
             </button>
             </fieldset>
@@ -288,10 +302,7 @@ export function BreakGlassSignIn({
             }}
           >
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="bg-code" className={`${labelClass} text-center`}>
-                Six-digit code
-              </label>
-              <CodeInput value={code} onChange={setCode} autoFocus />
+              <CodeInput key={error ?? ''} value={code} onChange={setCode} autoFocus />
               <p className="text-center text-xs text-gray-600 dark:text-gray-400">Codes change every 30 seconds.</p>
             </div>
             <button type="submit" className={`${primaryClass} mt-1`} disabled={code.length !== 6}>
@@ -314,7 +325,7 @@ export function BreakGlassSignIn({
             noValidate
             onSubmit={(e) => {
               e.preventDefault()
-              onChangePassword?.(current, next)
+              setPassword2()
             }}
           >
             <PasswordField id="bg-current" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
@@ -328,7 +339,7 @@ export function BreakGlassSignIn({
                 </div>
                 <span role="status" aria-live="polite" className="w-28 text-right text-xs font-medium text-gray-600 dark:text-gray-400">{next ? strengthLabel : ''}</span>
               </div>
-              <ul className="flex flex-col gap-1 rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">
+              <ul className="flex flex-col gap-1 rounded-lg bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">
                 {admin.passwordPolicy.rules.map((rule, i) => {
                   const deferred = i >= met.length
                   const ok = !deferred && met[i]
@@ -349,7 +360,8 @@ export function BreakGlassSignIn({
             </div>
             <PasswordField id="bg-confirm" label="Confirm new password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
             {confirm && !confirmOk ? <p className="-mt-2 text-xs text-red-600 dark:text-red-300">Passwords do not match.</p> : null}
-            <button type="submit" className={`${primaryClass} mt-1`} disabled={!current || !rulesMet || !confirmOk}>
+            <button type="submit" className={`${primaryClass} mt-1`} disabled={!current || !rulesMet || !confirmOk} aria-busy={settingPassword || undefined}>
+              {settingPassword ? <Loader2 className="size-5 motion-safe:animate-spin" strokeWidth={1.75} aria-hidden /> : null}
               Set password and continue
             </button>
             <p className="text-center text-xs text-gray-600 dark:text-gray-400">Until enrollment is complete, every other page brings you back here.</p>
@@ -369,16 +381,15 @@ export function BreakGlassSignIn({
               <FakeQr seed={admin.enrollment.otpauthUri} />
               <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
                 <p className="flex items-start gap-1.5 text-gray-700 dark:text-gray-300"><QrCode className="mt-0.5 size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />Scan with any authenticator app. Cannot scan? Enter this key by hand.</p>
-                <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-950">
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-950">
                   <code className="flex-1 font-mono text-sm tracking-wider">{admin.enrollment.manualKey}</code>
-                  <button type="button" aria-label={copied ? 'Key copied' : 'Copy key'} onClick={() => { void navigator.clipboard?.writeText(admin.enrollment.manualKey.replace(/\s/g, '')); setCopied(true); setTimeout(() => setCopied(false), 1500) }} className={`-my-1 -mr-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800 ${focusRing}`}>{copied ? <Check className="size-5 text-emerald-600" strokeWidth={2} /> : <Copy className="size-5" strokeWidth={1.75} />}</button>
+                  <button type="button" aria-label={copied ? 'Key copied' : 'Copy key'} onClick={() => { void navigator.clipboard?.writeText(admin.enrollment.manualKey.replace(/\s/g, '')); setCopied(true); setTimeout(() => setCopied(false), 1500) }} className={`-my-1 -mr-1 flex size-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-900 ${focusRing}`}>{copied ? <Check className="size-5 text-emerald-600" strokeWidth={2} /> : <Copy className="size-5" strokeWidth={1.75} />}</button>
                 </div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Issuer {admin.enrollment.issuer} · account {admin.email}</p>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="bg-code" className={`${labelClass} text-center`}>Code from the app</label>
-              <CodeInput value={enrollCode} onChange={setEnrollCode} />
+              <CodeInput key={error ?? ''} value={enrollCode} onChange={setEnrollCode} autoFocus={Boolean(error)} />
               <p className="text-center text-xs text-gray-600 dark:text-gray-400">Enter the current code to prove the app is set up.</p>
             </div>
             <button type="submit" className={`${primaryClass} mt-1`} disabled={enrollCode.length !== 6}>

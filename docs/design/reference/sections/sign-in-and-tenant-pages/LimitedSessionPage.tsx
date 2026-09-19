@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import data from '@/../product/sections/sign-in-and-tenant-pages/data.json'
 import type { TenantBranding } from '@/../product/sections/sign-in-and-tenant-pages/types'
 import { LimitedSessionPage } from './components/LimitedSessionPage'
@@ -16,7 +17,7 @@ export default function LimitedSessionPagePreview() {
         productName={branding.productName}
         passwordChanged={done === 'password'}
         authenticatorEnrolled={false}
-        onContinueSetup={() => console.log('Continue setup')}
+        onContinueSetup={() => goTo('/admin/login')}
       />
     </>
   )
