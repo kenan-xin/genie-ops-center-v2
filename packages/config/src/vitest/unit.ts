@@ -1,7 +1,7 @@
-import type { UserConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
 
 /** The shared unit-test preset. Every package merges it in its own vitest.config.ts. */
-export const unitTestPreset: UserConfig = {
+export const unitTestPreset: ViteUserConfig = {
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],

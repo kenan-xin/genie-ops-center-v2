@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./vitest/unit": "./src/vitest/unit.ts"
+    "./vitest/unit": "./src/vitest/unit.ts",
+    "./typescript/base": "./src/typescript/base.json"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "nx": {
     "tags": ["config"]
