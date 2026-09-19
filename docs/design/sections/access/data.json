@@ -1,0 +1,118 @@
+{
+  "_meta": {
+    "note": "One tenant, Meridian Health. The ids match the people, groups, roles, and solutions of the other sections, so a prefilled link from Modules, People, Groups, Roles, or a solution lands on the same records here."
+  },
+  "currentUserId": "usr_priya",
+  "recipients": [
+    { "id": "grp_clinops", "type": "group", "name": "Clinical Operations", "detail": "Directory group · 42 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_claims", "type": "group", "name": "Claims Review", "detail": "Directory group · 17 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_finance", "type": "group", "name": "Finance", "detail": "Directory group · 9 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_legacy", "type": "group", "name": "Pilot Wave 1 (2025)", "detail": "Directory group · 6 members", "source": "idp", "archived": false, "stale": true },
+    { "id": "grp_pilot", "type": "group", "name": "AI Pilot Cohort", "detail": "Local group · 5 members", "source": "local", "archived": false, "stale": false },
+    { "id": "grp_admins", "type": "group", "name": "Genie Administrators", "detail": "Local group · 2 members", "source": "local", "archived": false, "stale": false },
+    { "id": "grp_old", "type": "group", "name": "Radiology Trial", "detail": "Directory group · archived", "source": "idp", "archived": true, "stale": true },
+    { "id": "usr_alex", "type": "user", "name": "Alex Morgan", "detail": "alex.morgan@meridianhealth.example", "status": "active", "groupIds": ["grp_clinops", "grp_pilot"] },
+    { "id": "usr_priya", "type": "user", "name": "Priya Nair", "detail": "priya.nair@meridianhealth.example", "status": "active", "groupIds": ["grp_admins"] },
+    { "id": "usr_wei", "type": "user", "name": "Wei Ling Tan", "detail": "weiling.tan@meridianhealth.example", "status": "active", "groupIds": ["grp_claims"] },
+    { "id": "usr_daniel", "type": "user", "name": "Daniel Okafor", "detail": "daniel.okafor@meridianhealth.example", "status": "pending", "groupIds": ["grp_finance"] },
+    { "id": "usr_sofia", "type": "user", "name": "Sofia Reyes", "detail": "sofia.reyes@meridianhealth.example", "status": "active", "groupIds": ["grp_clinops"] },
+    { "id": "usr_hiro", "type": "user", "name": "Hiroshi Sato", "detail": "hiroshi.sato@meridianhealth.example", "status": "disabled", "groupIds": ["grp_legacy"] },
+    { "id": "usr_amara", "type": "user", "name": "Amara Osei", "detail": "amara.osei@meridianhealth.example", "status": "active", "groupIds": ["grp_claims", "grp_pilot"] },
+    { "id": "usr_marcus", "type": "user", "name": "Marcus Lee", "detail": "marcus.lee@meridianhealth.example", "status": "pending", "groupIds": [] },
+    { "id": "usr_leila", "type": "user", "name": "Leila Haddad", "detail": "leila.haddad@meridianhealth.example", "status": "active", "groupIds": ["grp_admins", "grp_clinops"] }
+  ],
+  "modules": [
+    {
+      "id": "core",
+      "name": "Core administration",
+      "description": "People, groups, roles, branding, settings, and the audit log.",
+      "enabled": true,
+      "isCore": true,
+      "recordType": null,
+      "levels": [
+        { "id": "admin", "label": "Administer", "description": "Every core administration screen, and every entitled module's admin screens.", "permissionKey": "core:*", "roleId": "role_admin", "roleName": "Tenant administrator", "recordScoped": false },
+        { "id": "audit", "label": "Read the audit log", "description": "The audit reader only. No other administration screen.", "permissionKey": "core:audit:read", "roleId": "role_auditor", "roleName": "Auditor", "recordScoped": false }
+      ]
+    },
+    {
+      "id": "solutions",
+      "name": "Solutions",
+      "description": "The catalogue of chat and embedded solutions members open from the hub.",
+      "enabled": true,
+      "recordType": { "type": "solution", "label": "solution", "pluralLabel": "solutions" },
+      "levels": [
+        { "id": "use", "label": "Use", "description": "Open and use the solutions you pick. Nothing administrative.", "permissionKey": "solutions:use", "roleId": "role_chat_user", "roleName": "Solutions user", "recordScoped": true },
+        { "id": "admin", "label": "Administer", "description": "Register, configure, and archive every solution, and edit chat themes. Not a member grant.", "permissionKey": "solutions:admin", "roleId": "role_chat_admin", "roleName": "Solutions administrator", "recordScoped": false }
+      ]
+    },
+    {
+      "id": "contracts",
+      "name": "Contracts",
+      "description": "Supplier and partner contracts with renewal reminders.",
+      "enabled": true,
+      "recordType": { "type": "contract", "label": "contract", "pluralLabel": "contracts" },
+      "levels": [
+        { "id": "use", "label": "Use", "description": "Open the contracts you pick.", "permissionKey": "contracts:use", "roleId": "role_contracts_reader", "roleName": "Contracts reader", "recordScoped": true },
+        { "id": "admin", "label": "Administer", "description": "The module's admin screens.", "permissionKey": "contracts:admin", "roleId": null, "roleName": null, "missingRoleNote": "Contracts declares no role that carries contracts:admin, so there is nothing to grant here. Its admin screens arrive with the Tenant administrator role while the module is enabled. Raise the gap with the module owner.", "recordScoped": false }
+      ]
+    },
+    {
+      "id": "requests",
+      "name": "Service requests",
+      "description": "Raise and track internal service requests. No records of its own, so a grant covers the module.",
+      "enabled": true,
+      "recordType": null,
+      "levels": [
+        { "id": "use", "label": "Use", "description": "Open the module and work on the requests it shows.", "permissionKey": "requests:use", "roleId": "role_requests_user", "roleName": "Service requests user", "recordScoped": false }
+      ]
+    },
+    {
+      "id": "approvals",
+      "name": "Approvals",
+      "description": "Purchase and leave requests routed through approval chains.",
+      "enabled": false,
+      "recordType": null,
+      "levels": [
+        { "id": "use", "label": "Use", "description": "Open the module and work on the requests it shows.", "permissionKey": "approvals:use", "roleId": "role_approvals_user", "roleName": "Approvals user", "recordScoped": false }
+      ]
+    }
+  ],
+  "records": [
+    { "id": "sol_claims", "type": "solution", "moduleId": "solutions", "label": "Claims Triage Assistant", "detail": "Chat · Ready" },
+    { "id": "sol_discharge", "type": "solution", "moduleId": "solutions", "label": "Discharge Summary Drafting", "detail": "Chat · Ready" },
+    { "id": "sol_referral", "type": "solution", "moduleId": "solutions", "label": "Referral Letter Review", "detail": "Chat · Maintenance" },
+    { "id": "sol_policy", "type": "solution", "moduleId": "solutions", "label": "Policy Q&A", "detail": "Chat · Ready" },
+    { "id": "sol_invoice", "type": "solution", "moduleId": "solutions", "label": "Vendor Invoice Checker", "detail": "Embedded · Ready" },
+    { "id": "sol_general", "type": "solution", "moduleId": "solutions", "label": "General Assistant", "detail": "Chat · Draft" },
+    { "id": "agr_northwind", "type": "contract", "moduleId": "contracts", "label": "Northwind Labs master services contract", "detail": "Renews 1 Mar 2027" },
+    { "id": "agr_harbour", "type": "contract", "moduleId": "contracts", "label": "Harbour Imaging supply contract", "detail": "Renews 14 Nov 2026" }
+  ],
+  "grants": [
+    { "id": "ra_1", "recipientId": "grp_admins", "recipientType": "group", "moduleId": "core", "level": "admin", "roleId": "role_admin", "roleName": "Tenant administrator", "scopeType": null, "scopeId": null, "createdBy": "Provisioning", "createdAt": "2026-05-19T00:00:00Z" },
+    { "id": "ra_2", "recipientId": "grp_claims", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_claims", "createdBy": "Priya Nair", "createdAt": "2026-06-01T03:00:00Z" },
+    { "id": "ra_3", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_discharge", "createdBy": "Priya Nair", "createdAt": "2026-06-01T03:05:00Z" },
+    { "id": "ra_4", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_referral", "createdBy": "Priya Nair", "createdAt": "2026-09-16T09:20:00Z" },
+    { "id": "ra_5", "recipientId": "grp_pilot", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-09-08T16:30:00Z" },
+    { "id": "ra_6", "recipientId": "grp_finance", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Priya Nair", "createdAt": "2026-07-15T02:00:00Z" },
+    { "id": "ra_7", "recipientId": "grp_finance", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_invoice", "createdBy": "Priya Nair", "createdAt": "2026-07-15T02:01:00Z" },
+    { "id": "ra_8", "recipientId": "usr_priya", "recipientType": "user", "moduleId": "solutions", "level": "admin", "roleId": "role_chat_admin", "roleName": "Solutions administrator", "scopeType": null, "scopeId": null, "createdBy": "Provisioning", "createdAt": "2026-05-19T00:05:00Z" },
+    { "id": "ra_9", "recipientId": "grp_finance", "recipientType": "group", "moduleId": "contracts", "level": "use", "roleId": "role_contracts_reader", "roleName": "Contracts reader", "scopeType": "contract", "scopeId": "agr_northwind", "createdBy": "Priya Nair", "createdAt": "2026-08-03T07:40:00Z" },
+    { "id": "ra_10", "recipientId": "usr_leila", "recipientType": "user", "moduleId": "core", "level": "audit", "roleId": "role_auditor", "roleName": "Auditor", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-09-02T01:10:00Z" },
+    { "id": "ra_11", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "approvals", "level": "use", "roleId": "role_approvals_user", "roleName": "Approvals user", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-08-20T05:00:00Z" },
+    { "id": "ra_12", "recipientId": "grp_old", "recipientType": "group", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_general", "createdBy": "Priya Nair", "createdAt": "2026-04-11T08:00:00Z" },
+    { "id": "ra_13", "recipientId": "usr_amara", "recipientType": "user", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_claims", "createdBy": "Priya Nair", "createdAt": "2026-09-10T02:15:00Z" },
+    { "id": "ra_16", "recipientId": "usr_marcus", "recipientType": "user", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Priya Nair", "createdAt": "2026-09-15T01:30:00Z" },
+    { "id": "ra_15", "recipientId": "grp_pilot", "recipientType": "group", "moduleId": "requests", "level": "use", "roleId": "role_requests_user", "roleName": "Service requests user", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-09-12T04:20:00Z" },
+    { "id": "ra_14", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "solutions", "level": "custom", "roleId": "role_legal", "roleName": "Legal reviewer", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Leila Haddad", "createdAt": "2026-09-14T06:30:00Z" }
+  ],
+  "customRoles": [
+    { "id": "role_people_ops", "name": "People operations", "description": "Manages people and groups, without branding or settings.", "kind": "custom", "moduleId": null, "tenantWideOnly": true },
+    { "id": "role_legal", "name": "Legal reviewer", "description": "Reads contracts and uses the policy solutions.", "kind": "custom", "moduleId": null, "tenantWideOnly": false },
+    { "id": "role_chat_user", "name": "Solutions user", "description": "Opens the solutions it is granted.", "kind": "system", "moduleId": "solutions", "tenantWideOnly": false },
+    { "id": "role_chat_admin", "name": "Solutions administrator", "description": "Administers every solution and chat theme.", "kind": "system", "moduleId": "solutions", "tenantWideOnly": true },
+    { "id": "role_requests_user", "name": "Service requests user", "description": "Opens the Service requests module.", "kind": "system", "moduleId": "requests", "tenantWideOnly": false },
+    { "id": "role_contracts_reader", "name": "Contracts reader", "description": "Opens the contracts it is granted.", "kind": "system", "moduleId": "contracts", "tenantWideOnly": false },
+    { "id": "role_auditor", "name": "Auditor", "description": "Reads the audit log.", "kind": "system", "moduleId": "core", "tenantWideOnly": true },
+    { "id": "role_admin", "name": "Tenant administrator", "description": "Every core administration screen.", "kind": "system", "moduleId": "core", "tenantWideOnly": true }
+  ]
+}
