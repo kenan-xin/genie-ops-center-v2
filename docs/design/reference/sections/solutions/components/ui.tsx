@@ -1,23 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { AlertTriangle, ChevronDown, HelpCircle, Loader2, MoreHorizontal, Search, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, HelpCircle, Loader2, MoreHorizontal, Search, SlidersHorizontal, X } from 'lucide-react'
 import type { SolutionStatus } from '@/../product/sections/solutions/types'
-import { STATUS_META, btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, foregroundFor, initials } from './helpers'
+import { STATUS_META, btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, foregroundFor, initials, useModalFocus } from './helpers'
 
 /* Shared building blocks: rounded cards, hairline borders, semantic pills, slide-over, dialog. */
+
 
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
 }
 
-/**
- * The one contextual-help pattern (tokens.md, Help disclosure): a labelled button opens one collapsed
- * callout beside the control it explains, at most one per screen. It never opens on hover alone.
- * Escape and a click outside close it.
- */
-export function HelpNote({ label, children, align = 'left' }: { label: string; children: React.ReactNode; align?: 'left' | 'right' }) {
-  const [open, setOpen] = useState(false)
-  const id = useId()
-  const wrap = useRef<HTMLSpanElement>(null)
+/** One dismiss behavior for every panel that hangs off a control in this section: Escape and a press outside close it. */
+function useDismiss(open: boolean, setOpen: (v: boolean) => void, wrap: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false) }
@@ -25,7 +19,56 @@ export function HelpNote({ label, children, align = 'left' }: { label: string; c
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
-  }, [open])
+  }, [open, setOpen, wrap])
+}
+
+const panelClass = 'absolute top-full z-30 mt-1 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900'
+
+/**
+ * The one contextual-help pattern (tokens.md, Help disclosure): a labelled button opens one collapsed
+ * callout beside the control it explains, at most one per screen. It never opens on hover alone.
+ * Escape and a click outside close it. `iconOnly` drops the text when the row already carries enough
+ * words, and moves the label to `aria-label`.
+ */
+export function HelpNote({ label, children, align = 'left', iconOnly }: { label: string; children: React.ReactNode; align?: 'left' | 'right'; iconOnly?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const wrap = useRef<HTMLSpanElement>(null)
+  useDismiss(open, setOpen, wrap)
+  return (
+    <span ref={wrap} className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        aria-label={iconOnly ? label : undefined}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex h-11 items-center gap-1.5 rounded-lg text-sm font-medium text-blue-700 motion-safe:transition-colors hover:bg-blue-50 sm:h-10 dark:text-blue-400 dark:hover:bg-blue-950/40 ${iconOnly ? 'w-11 justify-center sm:w-10' : 'px-2'} ${focusRing}`}
+      >
+        <HelpCircle className="size-5 sm:size-4" strokeWidth={1.75} aria-hidden />{iconOnly ? null : label}
+      </button>
+      {/* Phones pin the panel to the viewport gutters instead of the button, so it cannot be clipped wherever the trigger sits (tokens.md: a dialog goes full width under 768px). */}
+      {open ? (
+        <div id={`${id}-panel`} role="group" aria-label={label} className={`${panelClass} w-80 max-sm:fixed max-sm:inset-x-4 max-sm:bottom-[calc(7rem+env(safe-area-inset-bottom))] max-sm:top-auto max-sm:w-auto max-sm:max-w-none ${align === 'right' ? 'sm:right-0' : 'sm:left-0'}`}>
+          <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
+          <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
+/**
+ * Secondary filters behind one control. A toolbar that lines up four selects crushes the search field
+ * beside them, and a filter a person touches once a month does not earn standing width. The button
+ * carries the number of filters now narrowing the list, and the page renders a removable chip per
+ * active filter underneath, so nothing this panel holds is ever hidden state.
+ */
+export function FilterMenu({ count, onClear, children }: { count: number; onClear?: () => void; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const wrap = useRef<HTMLSpanElement>(null)
+  useDismiss(open, setOpen, wrap)
   return (
     <span ref={wrap} className="relative inline-flex shrink-0">
       <button
@@ -33,14 +76,18 @@ export function HelpNote({ label, children, align = 'left' }: { label: string; c
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-blue-700 motion-safe:transition-colors hover:bg-blue-50 sm:h-8 dark:text-blue-400 dark:hover:bg-blue-950/40 ${focusRing}`}
+        className={`${btnSecondary} ${count ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400' : ''}`}
       >
-        <HelpCircle className="size-4" strokeWidth={1.75} aria-hidden />{label}
+        <SlidersHorizontal className="size-4" strokeWidth={1.75} aria-hidden />
+        Filters
+        {count ? <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold tabular-nums text-white">{count}</span> : null}
       </button>
       {open ? (
-        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'right-0 max-sm:left-0 max-sm:right-auto' : 'left-0'}`}>
-          <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
-          <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
+        <div id={`${id}-panel`} role="group" aria-label="Filters" className={`${panelClass} left-0 w-72`}>
+          {children}
+          {onClear ? (
+            <button type="button" onClick={onClear} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Clear filters</button>
+          ) : null}
         </div>
       ) : null}
     </span>
@@ -106,7 +153,9 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
 /** `shortcut` draws the key that focuses this field, shown only while the field is empty. `inputRef` lets the page press it. */
 export function SearchField({ value, onChange, placeholder, inputRef, shortcut }: { value: string; onChange: (v: string) => void; placeholder: string; inputRef?: React.Ref<HTMLInputElement>; shortcut?: string }) {
   return (
-    <label className="flex h-10 min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:max-w-xs dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
+    // The field keeps a 192px floor and wraps to its own line rather than shrinking. It was the only
+    // flexible item in the toolbar, so every select beside it took its width first (CHANGELOG, 2026-09-19).
+    <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:max-w-sm dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
       <Search className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
       <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="peer min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
       {shortcut && !value ? (
@@ -116,9 +165,10 @@ export function SearchField({ value, onChange, placeholder, inputRef, shortcut }
   )
 }
 
-export function Select({ value, onChange, children, ariaLabel }: { value: string; onChange: (v: string) => void; children: React.ReactNode; ariaLabel: string }) {
+/** `full` keeps the control at the container's width past `sm`, for a select stacked inside a panel. */
+export function Select({ value, onChange, children, ariaLabel, full }: { value: string; onChange: (v: string) => void; children: React.ReactNode; ariaLabel: string; full?: boolean }) {
   return (
-    <span className="relative block w-full sm:inline-block sm:w-auto">
+    <span className={`relative block w-full ${full ? '' : 'sm:inline-block sm:w-auto'}`}>
       <select
         aria-label={ariaLabel}
         value={value}
@@ -168,17 +218,13 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: Array<
 
 /** Full-height sheet on phones (the base), a right slide-over of 560px from sm. Escape closes. */
 export function SlideOver({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus<HTMLElement>(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-40">
-      <button type="button" aria-label="Close panel" onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
       <aside
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -200,17 +246,12 @@ export function CloseButton({ onClick }: { onClick: () => void }) {
 
 /** Small centered dialog. */
 export function Dialog({ open, onClose, title, description, children, footer }: { open: boolean; onClose: () => void; title: string; description?: string; children?: React.ReactNode; footer?: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <button type="button" aria-label="Close dialog" onClick={onClose} className="absolute inset-0 bg-gray-900/30 backdrop-blur-[1px]" />
-      <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/30 backdrop-blur-[1px]" />
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby="dlg-title" className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
             <h2 id="dlg-title" className="text-lg font-bold tracking-tight">{title}</h2>

@@ -132,15 +132,15 @@ export function PersonInspector(p: PersonInspectorProps) {
                 <span className="text-xs text-gray-500">Synced {relativeTime(idpGroups[0]?.syncedAt ?? null)}</span>
               </div>
               <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">Membership is managed in the identity provider and refreshed at every sign-in.</p>
-              <ul className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+              <ul className="mt-3 divide-y divide-gray-100 dark:divide-gray-800">
                 {idpGroups.map((g) => (
-                  <li key={g.id} className="flex items-center gap-3 px-3.5 py-2.5 text-sm">
+                  <li key={g.id} className="flex items-center gap-3 py-2.5 text-sm">
                     <Building2 className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />
                     <button type="button" onClick={() => p.onOpenGroup?.(g.id)} className={`flex-1 rounded text-left font-medium hover:underline ${focusRing}`}>{g.name}</button>
                     {g.stale ? <Pill tone="amber" title={`Last seen ${relativeTime(g.lastSeenAt)}`}>Stale</Pill> : null}
                   </li>
                 ))}
-                {idpGroups.length === 0 ? <li className="px-3.5 py-5 text-center text-sm text-gray-600 dark:text-gray-400">No directory groups arrived in the last token.</li> : null}
+                {idpGroups.length === 0 ? <li className="py-5 text-center text-sm text-gray-600 dark:text-gray-400">No directory groups arrived in the last token.</li> : null}
               </ul>
             </section>
             <section>
@@ -163,18 +163,18 @@ export function PersonInspector(p: PersonInspectorProps) {
                   ))}
                 </ul>
               ) : null}
-              <ul className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+              <ul className="mt-3 divide-y divide-gray-100 dark:divide-gray-800">
                 {localGroups.map((g) => {
                   const why = guard({ type: 'removeMember', groupId: g.id, personId: person.id })
                   return (
-                    <li key={g.id} className="flex items-center gap-3 px-3.5 py-2 text-sm">
+                    <li key={g.id} className="flex items-center gap-3 py-2 text-sm">
                       <UsersRound className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />
                       <button type="button" onClick={() => p.onOpenGroup?.(g.id)} className={`flex-1 rounded text-left font-medium hover:underline ${focusRing}`}>{g.name}</button>
                       <button type="button" aria-label={`Remove from ${g.name}`} disabled={Boolean(why)} title={why ?? undefined} className={iconBtn} onClick={() => p.onRemoveFromLocalGroup?.(person.id, g.id)}><X className="size-5" strokeWidth={1.75} /></button>
                     </li>
                   )
                 })}
-                {localGroups.length === 0 ? <li className="px-3.5 py-5 text-center text-sm text-gray-600 dark:text-gray-400">Not in any local group.</li> : null}
+                {localGroups.length === 0 ? <li className="py-5 text-center text-sm text-gray-600 dark:text-gray-400">Not in any local group.</li> : null}
               </ul>
             </section>
           </div>
@@ -192,10 +192,10 @@ export function PersonInspector(p: PersonInspectorProps) {
               </span>
               <button type="button" className={`${btnSecondary} shrink-0`} onClick={() => p.onManageAccess?.(person.id)}><KeyRound className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Manage in Access</button>
             </div>
-            <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
               {effective.map(({ a, role, via, scope }) => {
                 return (
-                  <li key={a.id} className="flex items-start gap-3 px-3.5 py-3 text-sm">
+                  <li key={a.id} className="flex items-start gap-3 py-3 text-sm">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold">{role?.name}</span>
@@ -209,7 +209,7 @@ export function PersonInspector(p: PersonInspectorProps) {
                   </li>
                 )
               })}
-              {effective.length === 0 ? <li className="px-3.5 py-6 text-center text-sm text-gray-600 dark:text-gray-400">No roles yet. This person can sign in but sees nothing.</li> : null}
+              {effective.length === 0 ? <li className="py-6 text-center text-sm text-gray-600 dark:text-gray-400">No roles yet. This person can sign in but sees nothing.</li> : null}
             </ul>
             <p className="text-xs text-gray-500">Access is granted and taken back in one place, the Access screen. A role held through a group changes for every member of that group.</p>
           </div>
@@ -222,9 +222,9 @@ export function PersonInspector(p: PersonInspectorProps) {
               {sessions.length > 0 ? <button type="button" className={`${btnSecondary} shrink-0`} onClick={() => setConfirm('signOutAll')}>Sign out all</button> : null}
             </div>
             {sessions.length > 0 ? (
-              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {sessions.map((s) => (
-                  <li key={s.id} className="flex items-center gap-3 px-3.5 py-3 text-sm">
+                  <li key={s.id} className="flex items-center gap-3 py-3 text-sm">
                     <div className="min-w-0 flex-1"><div className="font-medium">{s.device}</div><div className="text-xs text-gray-600 dark:text-gray-400">{s.browser} · <code className="font-mono">{s.ipAddress}</code> · active {relativeTime(s.lastActiveAt)}</div></div>
                     <button type="button" className={`${btnSecondary} h-11 sm:h-10`} onClick={() => p.onRevokeSession?.(s.id)}>Sign out</button>
                   </li>
@@ -236,7 +236,7 @@ export function PersonInspector(p: PersonInspectorProps) {
       </div>
 
       <footer className="border-t border-gray-200 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-gray-800">
-        <p className="text-xs text-gray-600 dark:text-gray-400">{(removeGuard ?? disableGuard) ? `${removeGuard ?? disableGuard}.` : person.status === 'disabled' ? 'Re-enabling restores sign-in with the same groups and roles. Removing keeps only an anonymized audit trail.' : 'Disabling keeps history and assignments. Removing keeps only an anonymized audit trail.'}</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400">{(removeGuard ?? disableGuard) ? `${removeGuard ?? disableGuard}.` : person.status === 'disabled' ? 'Re-enabling restores sign-in with the same groups and roles. Removing drops their groups and direct roles and keeps their name and audit trail.' : 'Disabling keeps history and assignments. Removing drops their groups and direct roles and keeps their name and audit trail.'}</p>
         <div className="mt-2.5 flex flex-wrap gap-2">
           {person.status === 'disabled' ? (
             <button type="button" className={btnSecondary} onClick={() => p.onEnablePerson?.(person.id)}>Re-enable</button>
@@ -247,7 +247,7 @@ export function PersonInspector(p: PersonInspectorProps) {
         </div>
       </footer>
 
-      <ConfirmDialog open={confirm === 'remove'} onClose={() => setConfirm(null)} title={`Remove ${person.name}?`} description="Their access, sessions, and identity link are deleted. The audit trail is kept under an anonymized name." confirmLabel="Remove" danger onConfirm={() => p.onRemovePerson?.(person.id)} />
+      <ConfirmDialog open={confirm === 'remove'} onClose={() => setConfirm(null)} title={`Remove ${person.name}?`} description="Every session ends, and their groups and direct roles are removed. Their name, email, and audit trail are kept, and their identity-provider account is untouched." confirmLabel="Remove" danger onConfirm={() => p.onRemovePerson?.(person.id)} />
       <ConfirmDialog open={confirm === 'disable'} onClose={() => setConfirm(null)} title={`Disable ${person.name}?`} description="They cannot sign in and every session ends. History and assignments are kept; you can re-enable them later." confirmLabel="Disable" danger onConfirm={() => p.onDisablePerson?.(person.id)} />
       <ConfirmDialog open={confirm === 'signOutAll'} onClose={() => setConfirm(null)} title={`Sign out ${person.name} everywhere?`} description={`${sessions.length} ${sessions.length === 1 ? 'session ends' : 'sessions end'} now. They can sign in again straight away.`} confirmLabel="Sign out all" danger onConfirm={() => p.onRevokeAllSessions?.(person.id)} />
     </SlideOver>

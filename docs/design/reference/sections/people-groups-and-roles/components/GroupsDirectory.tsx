@@ -45,14 +45,17 @@ export function GroupsDirectory(p: GroupsDirectoryProps) {
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-md">
         <SearchField value={q} onChange={setQ} placeholder="Search groups" />
-        <HelpNote label="Directory and local groups">
+        <HelpNote label="Directory and local groups" iconOnly>
           <p>A directory group arrives from your identity provider. Its name, its description, and its members are read-only here and change in the provider.</p>
           <p>A local group is managed here. Both kinds carry roles, and every member reaches what the group reaches.</p>
           <p className="text-gray-600 dark:text-gray-400">A directory group that stops arriving is marked stale. Archive it instead of deleting it: it keeps its assignments and gives nothing while it is archived.</p>
         </HelpNote>
+        </div>
         {archivedCount > 0 ? (
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-gray-700 sm:min-h-0 dark:text-gray-300">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className={`size-4 rounded border-gray-300 accent-blue-600 ${focusRing}`} />
             Show archived ({archivedCount})
           </label>

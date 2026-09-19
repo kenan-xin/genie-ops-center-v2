@@ -70,6 +70,8 @@ export function GroupInspector(p: GroupInspectorProps) {
   const local = group.source === 'local'
   const deleteGuard = local ? guard({ type: 'deleteGroup', groupId: group.id }) : null
   const clearGuard = local ? guard({ type: 'removeAllMembers', groupId: group.id }) : null
+  // Archiving stops the group granting, so R-38 guards it like any other assignment write.
+  const archiveGuard = group.archived ? null : guard({ type: 'archiveGroup', groupId: group.id })
   const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
   return (
@@ -152,14 +154,14 @@ export function GroupInspector(p: GroupInspectorProps) {
         {tab === 'members' ? (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">Membership is managed in the identity provider.</p>
-              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {members.map((x) => (
-                  <li key={x.id} className="flex items-center gap-3 px-3.5 py-2.5 text-sm">
+                  <li key={x.id} className="flex items-center gap-3 py-2.5 text-sm">
                     <Avatar name={x.name} size="sm" />
                     <span className="min-w-0 flex-1"><span className="block truncate font-medium">{x.name}</span><span className="block truncate text-xs text-gray-600 dark:text-gray-400">{x.email}</span></span>
                   </li>
                 ))}
-                {members.length === 0 ? <li className="px-3.5 py-6 text-center text-sm text-gray-600 dark:text-gray-400">No members seen in the last sync.</li> : null}
+                {members.length === 0 ? <li className="py-6 text-center text-sm text-gray-600 dark:text-gray-400">No members seen in the last sync.</li> : null}
               </ul>
             {members.length < group.memberCount ? <p className="text-xs text-gray-500">{group.memberCount} members in the directory, {members.length} of them have signed in to Genie.</p> : null}
           </div>
@@ -169,12 +171,12 @@ export function GroupInspector(p: GroupInspectorProps) {
             <p className="text-xs text-gray-600 dark:text-gray-400">What this group carries, and at which scope. Read-only here.</p>
             <button type="button" className={btnSecondary} onClick={() => p.onManageAccess?.(group.id)}>Manage in Access</button>
           </div>
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {carried.map((a) => {
               const role = p.roles.find((r) => r.id === a.roleId)
               const scope = a.scopeId ? p.scopeRecords.find((s) => s.id === a.scopeId) : null
               return (
-                <li key={a.id} className="flex items-center gap-3 px-3.5 py-3 text-sm">
+                <li key={a.id} className="flex items-center gap-3 py-3 text-sm">
                   <ShieldCheck className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />
                   <div className="min-w-0 flex-1">
                     <button type="button" onClick={() => role && p.onOpenRole?.(role.id)} className={`rounded font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>{role?.name}</button>
@@ -184,7 +186,7 @@ export function GroupInspector(p: GroupInspectorProps) {
                 </li>
               )
             })}
-            {carried.length === 0 ? <li className="px-3.5 py-6 text-center text-sm text-gray-600 dark:text-gray-400">This group carries no roles.</li> : null}
+            {carried.length === 0 ? <li className="py-6 text-center text-sm text-gray-600 dark:text-gray-400">This group carries no roles.</li> : null}
           </ul>
           </div>
         )}
@@ -193,7 +195,7 @@ export function GroupInspector(p: GroupInspectorProps) {
 
       {/* Group actions live in one bar at the foot of the sheet, so the header stays identity only. */}
       <footer className="flex shrink-0 flex-col gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
-        {deleteGuard ? <p className="text-xs text-gray-600 dark:text-gray-400">{deleteGuard}. Its members hold the Tenant administrator role through this group.</p> : null}
+        {deleteGuard ?? archiveGuard ? <p className="text-xs text-gray-600 dark:text-gray-400">{deleteGuard ?? archiveGuard}. Its members hold the Tenant administrator role through this group.</p> : null}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {local ? (
             <>
@@ -203,14 +205,14 @@ export function GroupInspector(p: GroupInspectorProps) {
           ) : (
             <>
               <p className="min-w-0 flex-1 text-xs text-gray-600 dark:text-gray-400">{group.archived ? 'Archived. Its role assignments are kept and give nothing while it is archived.' : 'Name, description, and members come from the identity provider.'}</p>
-              {group.archived ? null : <button type="button" className={btnSecondary} onClick={() => setConfirm('archive')}><Archive className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Archive group</button>}
+              {group.archived ? null : <button type="button" className={btnSecondary} disabled={Boolean(archiveGuard)} title={archiveGuard ?? undefined} onClick={() => setConfirm('archive')}><Archive className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Archive group</button>}
             </>
           )}
         </div>
       </footer>
 
       <ConfirmDialog open={confirm === 'delete'} onClose={() => setConfirm(null)} title={`Delete ${group.name}?`} description={`${n(members.length, 'member loses', 'members lose')} this membership and ${n(carried.length, 'role assignment is', 'role assignments are')} removed. This cannot be undone.`} confirmLabel="Delete group" danger onConfirm={() => { p.onDeleteLocalGroup?.(group.id); p.onClose() }} />
-      <ConfirmDialog open={confirm === 'archive'} onClose={() => setConfirm(null)} title={`Archive ${group.name}?`} description={`The group is hidden from lists. Its ${n(carried.length, 'role assignment', 'role assignments')} and the ${members.length} people last seen in it are kept.`} confirmLabel="Archive" onConfirm={() => { p.onArchiveGroup?.(group.id); p.onClose() }} />
+      <ConfirmDialog open={confirm === 'archive' && !archiveGuard} onClose={() => setConfirm(null)} title={`Archive ${group.name}?`} description={`The group is hidden from lists and stops granting. Its ${n(carried.length, 'role assignment', 'role assignments')} and the ${members.length} people last seen in it are kept, and they apply again when it is restored.`} confirmLabel="Archive" onConfirm={() => { p.onArchiveGroup?.(group.id); p.onClose() }} />
       <ConfirmDialog open={confirm === 'clear'} onClose={() => setConfirm(null)} title={`Remove all members from ${group.name}?`} description={`${n(members.length, 'person loses', 'people lose')} every role this group carries. Their direct roles and their other groups still give access, and this does not remove them. The group and its assignments stay.`} confirmLabel="Remove all" danger onConfirm={() => p.onRemoveAllMembers?.(group.id)} />
       <ConfirmDialog
         open={leaving !== null}

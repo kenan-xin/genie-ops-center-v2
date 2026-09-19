@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { AlertTriangle, ChevronDown, HelpCircle, Loader2, Search, X } from 'lucide-react'
-import { btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, initials } from './helpers'
+import { btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, initials, useModalFocus } from './helpers'
+
 
 /* The section's building blocks, matching the other admin screens: rounded cards, hairline borders, neutral label pills. */
 
@@ -50,8 +51,9 @@ export function HelpNote({ label, children, align = 'left', iconOnly }: { label:
       >
         <HelpCircle className="size-4" strokeWidth={1.75} aria-hidden />{iconOnly ? null : label}
       </button>
+      {/* Phones pin the panel to the viewport gutters instead of the button, so it cannot be clipped wherever the trigger sits (tokens.md: a dialog goes full width under 768px). */}
       {open ? (
-        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'right-0 max-sm:left-0 max-sm:right-auto' : 'left-0'}`}>
+        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg max-sm:fixed max-sm:inset-x-4 max-sm:bottom-[calc(7rem+env(safe-area-inset-bottom))] max-sm:top-auto max-sm:w-auto max-sm:max-w-none dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'sm:right-0' : 'sm:left-0'}`}>
           <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
           <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
         </div>
@@ -136,17 +138,12 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: Array<
 /** Confirm dialog per tokens.md: the object in the title, one sentence of consequence, Cancel focused. Bottom sheet on phones. */
 export function ConfirmDialog({ open, title, description, confirmLabel, danger, busy, onConfirm, onClose }: { open: boolean; title: string; description: string; confirmLabel: string; danger?: boolean; busy?: boolean; onConfirm: () => void; onClose: () => void }) {
   const id = useId()
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <button type="button" aria-label="Close dialog" onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
-      <div role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative w-full rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
+      <div ref={panel} role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative w-full rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="px-5 pb-5 pt-5 sm:px-6">
           <h2 id={`${id}-title`} className="text-lg font-bold tracking-tight">{title}</h2>
           <p id={`${id}-body`} className="mt-2 text-sm text-gray-600 dark:text-gray-400">{description}</p>
@@ -165,17 +162,12 @@ export function ConfirmDialog({ open, title, description, confirmLabel, danger, 
 /** A modal for the secondary path only, which needs protected focus. Bottom sheet on phones. */
 export function Dialog({ open, onClose, title, description, children, footer }: { open: boolean; onClose: () => void; title: string; description?: string; children?: React.ReactNode; footer?: React.ReactNode }) {
   const id = useId()
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <button type="button" aria-label="Close dialog" onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
-      <div role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} className="relative flex max-h-[90vh] w-full flex-col rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[520px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} className="relative flex max-h-[90vh] w-full flex-col rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[520px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="flex items-start justify-between gap-3 px-5 pt-5 sm:px-6">
           <div>
             <h2 id={`${id}-title`} className="text-lg font-bold tracking-tight">{title}</h2>
@@ -192,17 +184,12 @@ export function Dialog({ open, onClose, title, description, children, footer }: 
 
 /** Full-height sheet on phones, a right slide-over of 480px from sm. Escape closes. */
 export function SlideOver({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus<HTMLElement>(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-40">
-      <button type="button" aria-label="Close panel" onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
-      <aside role="dialog" aria-modal="true" aria-label={title} className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[520px] sm:rounded-xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800">
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]" />
+      <aside ref={panel} role="dialog" aria-modal="true" aria-label={title} className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl shadow-gray-900/10 sm:inset-y-3 sm:right-3 sm:w-[520px] sm:rounded-xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800">
         {children}
       </aside>
     </div>

@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import type { AuditEvent, AuditFilterOptions, AuditFilters, DateRangePreset, SettingsViewer } from '@/../product/sections/audit-and-tenant-settings/types'
 import { actionModule, btnSecondary, fmtDateTime, fmtExact, focusRing, humanize, inputClass, NOW, relativeTime, startOfDay } from './helpers'
-import { Avatar, Card, HelpNote, Pill, SearchField, Select, Td, Th } from './ui'
+import { Avatar, Card, FilterMenu, HelpNote, Pill, SearchField, Select, Td, Th } from './ui'
+
+/** Field label inside the filter panel. Caption size: the panel is already titled. */
+const filterLabel = 'text-xs font-semibold text-gray-700 dark:text-gray-300'
 import { AuditEventSheet } from './AuditEventSheet'
 
 export interface AuditLogProps {
@@ -17,7 +20,8 @@ export interface AuditLogProps {
   initialFilters?: Partial<AuditFilters>
   onChangeAuditFilters?: (filters: AuditFilters) => void
   onLoadMoreAuditEvents?: () => void
-  onOpenAuditTarget?: (targetType: string, targetId: string) => void
+  /** Follows the path the server supplied on the event. The screen never invents a destination. */
+  onOpenAuditTarget?: (path: string) => void
   onCopyEventId?: (eventId: string) => void
 }
 
@@ -73,6 +77,10 @@ export function AuditLog(p: AuditLogProps) {
     return [...m.entries()]
   }, [p.auditFilterOptions.actions])
 
+  // The four narrowing controls sit behind one Filters button. Search keeps its standing width, and
+  // the chips below the toolbar report every filter the panel holds.
+  const filterCount = (f.actorId !== 'all' ? 1 : 0) + (f.action !== 'all' ? 1 : 0) + (f.targetType !== 'all' ? 1 : 0) + (f.range !== EMPTY.range ? 1 : 0)
+  const clearFilters = () => update({ actorId: 'all', action: 'all', targetType: 'all', range: EMPTY.range, from: null, to: null })
   const chips: Array<{ label: string; clear: () => void }> = []
   if (f.query.trim()) chips.push({ label: `“${f.query.trim()}”`, clear: () => update({ query: '' }) })
   if (f.actorId !== 'all') chips.push({ label: f.actorId === 'system' ? 'System' : p.auditFilterOptions.actors.find((a) => a.id === f.actorId)?.name ?? f.actorId, clear: () => update({ actorId: 'all' }) })
@@ -85,41 +93,54 @@ export function AuditLog(p: AuditLogProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1 md:max-w-md">
         <SearchField value={f.query} onChange={(v) => update({ query: v })} placeholder="Search summary or target" />
         <HelpNote label="Why a row can look incomplete" iconOnly>
           <p>An event is never edited and never deleted. It keeps the words that were true when it was written, so an old row can name something that has since changed.</p>
           <p>A target opens only while the record still exists and its module returns a path. Other rows show the label with no link, or read Removed.</p>
           <p className="text-gray-600 dark:text-gray-400">A person an operator erased appears under an anonymized name. Their earlier events stay where they are.</p>
         </HelpNote>
-        <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
-          <Select ariaLabel="Filter by actor" value={f.actorId} onChange={(v) => update({ actorId: v })}>
-            <option value="all">All actors</option>
-            <option value="system">System</option>
-            {p.auditFilterOptions.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </Select>
-          <Select ariaLabel="Filter by action" value={f.action} onChange={(v) => update({ action: v })}>
-            <option value="all">All actions</option>
-            {modules.map(([mod, list]) => (
-              <optgroup key={mod} label={humanize(mod)}>
-                {list.map((a) => <option key={a} value={a}>{a}</option>)}
-              </optgroup>
-            ))}
-          </Select>
-          <Select ariaLabel="Filter by target type" value={f.targetType} onChange={(v) => update({ targetType: v })}>
-            <option value="all">All targets</option>
-            {p.auditFilterOptions.targetTypes.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
-          </Select>
-          <Select ariaLabel="Date range" value={f.range} onChange={(v) => update({ range: v as DateRangePreset, from: null, to: null })}>
-            {(Object.keys(RANGE_LABEL) as DateRangePreset[]).map((r) => <option key={r} value={r}>{RANGE_LABEL[r]}</option>)}
-          </Select>
-          {f.range === 'custom' ? (
-            <div className="col-span-2 flex items-center gap-2">
-              <input type="date" aria-label="From" value={f.from ?? ''} max={f.to ?? undefined} onChange={(e) => update({ from: e.target.value || null })} className={`${inputClass} md:w-40`} />
-              <span className="text-xs text-gray-500">to</span>
-              <input type="date" aria-label="To" value={f.to ?? ''} min={f.from ?? undefined} onChange={(e) => update({ to: e.target.value || null })} className={`${inputClass} md:w-40`} />
-            </div>
-          ) : null}
         </div>
+        <FilterMenu count={filterCount} onClear={filterCount ? clearFilters : undefined}>
+          <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1.5"><span className={filterLabel}>Actor</span>
+              <Select className="w-full" ariaLabel="Actor" value={f.actorId} onChange={(v) => update({ actorId: v })}>
+                <option value="all">All actors</option>
+                <option value="system">System</option>
+                {p.auditFilterOptions.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1.5"><span className={filterLabel}>Action</span>
+              <Select className="w-full" ariaLabel="Action" value={f.action} onChange={(v) => update({ action: v })}>
+                <option value="all">All actions</option>
+                {modules.map(([mod, list]) => (
+                  <optgroup key={mod} label={humanize(mod)}>
+                    {list.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </optgroup>
+                ))}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1.5"><span className={filterLabel}>Target</span>
+              <Select className="w-full" ariaLabel="Target" value={f.targetType} onChange={(v) => update({ targetType: v })}>
+                <option value="all">All targets</option>
+                {p.auditFilterOptions.targetTypes.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1.5"><span className={filterLabel}>Date range</span>
+              <Select className="w-full" ariaLabel="Date range" value={f.range} onChange={(v) => update({ range: v as DateRangePreset, from: null, to: null })}>
+                {(Object.keys(RANGE_LABEL) as DateRangePreset[]).map((r) => <option key={r} value={r}>{RANGE_LABEL[r]}</option>)}
+              </Select>
+            </label>
+            {f.range === 'custom' ? (
+              <div className="flex items-center gap-2">
+                <input type="date" aria-label="From" value={f.from ?? ''} max={f.to ?? undefined} onChange={(e) => update({ from: e.target.value || null })} className={inputClass} />
+                <span className="shrink-0 text-xs text-gray-500">to</span>
+                <input type="date" aria-label="To" value={f.to ?? ''} min={f.from ?? undefined} onChange={(e) => update({ to: e.target.value || null })} className={inputClass} />
+              </div>
+            ) : null}
+          </div>
+        </FilterMenu>
       </div>
 
       {chips.length ? (

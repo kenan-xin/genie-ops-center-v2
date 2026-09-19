@@ -24,6 +24,13 @@ export interface AuditEvent {
   targetLabel: string
   /** Server-derived at read time. False when the target was removed since; the sheet shows Removed and no link. */
   targetExists: boolean
+  /**
+   * Where Open goes, supplied by the owning module's record resolver and authorized for this
+   * reader, or null. A resolver may return a label with no path (`architecture/module-contract.md`),
+   * and a reader may be allowed to read the event but not the record, so an existing target is not
+   * by itself an openable one. Open renders only when this is a path; the screen never builds one.
+   */
+  targetPath: string | null
   summary: string
   metadata: Record<string, unknown>
 }
@@ -138,6 +145,103 @@ export interface Category {
   moduleCount: number
 }
 
+/**
+ * How the server will let this module be activated. It comes from the core enable procedure, the
+ * same one `genie-ops module enable` calls, and it is never derived on the client.
+ *
+ * `ready` is an ordinary installed module. The switch enables it at once, and switching it off and
+ * on again keeps that simpler flow.
+ *
+ * `review-required` is a module that returned to the image after a controlled removal. It registers
+ * disabled whatever its former state was, and it stays disabled until an administrator reads the
+ * retained configuration and the retained access, the required configuration is valid, and the
+ * administrator confirms (`architecture/module-removal.md`, "Reintroduction and deliberate access
+ * restoration").
+ *
+ * A switched-off ordinary module and a reintroduced module both carry `enabled: false`, so
+ * `enabled === false` must never be read as reintroduction.
+ */
+export type ModuleActivationState = 'ready' | 'review-required'
+
+/**
+ * One role assignment the tenant still holds for a reintroduced module. Read only on this screen:
+ * every assignment change happens on the central Access screen (`DEC-39`), and this list links
+ * there rather than carrying a second permission editor.
+ */
+export interface RetainedGrant {
+  id: string
+  /** The group or the person the assignment names, so the row can link straight into Access. */
+  recipientId: string
+  /** The group or the person the assignment names. */
+  recipientName: string
+  recipientKind: 'group' | 'person'
+  /** Groups only: current members, so the administrator can read how far the grant reaches. */
+  memberCount?: number
+  /** The role that carries the module's keys, for example `Approvals user`. */
+  roleName: string
+  /** What the assignment covers: the whole module, or one named record. */
+  scopeLabel: string
+  /**
+   * The server's verdict for this activation, read now. `valid` restores when the module is enabled.
+   * `invalid` does not restore in this activation, and it is shown so the administrator can see it,
+   * not act on it here. It is a point in time, not a permanent revocation: the assignment is kept,
+   * and a later membership, status, scope, permission, or entitlement change is judged again by
+   * ordinary authorization. Nothing here deletes an assignment or bars it for good.
+   */
+  status: 'valid' | 'invalid'
+  /** `invalid` only: why it does not restore now, for example an archived group or a permission the module no longer declares. */
+  reason?: string
+}
+
+/**
+ * One line of the retained configuration, ready to read. The server renders it, for two reasons.
+ * Core holds no copy of the module's schema on this screen, so it cannot turn a stored value into a
+ * label. And the server decides what may leave the tenant: a secret is never sent, and reads as a
+ * placeholder instead.
+ */
+export interface RetainedConfigField {
+  key: string
+  /** The field title the module declares, for example `Register name`. */
+  title: string
+  /** The value as the server chose to show it: an enum reads as its label, an unset field as `Not set`, a secret as a placeholder. */
+  value: string
+  /** Absent when the field is fine. `missing` is a required field with no value; `invalid` is one the schema refuses. */
+  status?: 'missing' | 'invalid'
+  /** `missing` or `invalid` only: what to fix, in words an administrator can act on. */
+  message?: string
+}
+
+/**
+ * The server's activation verdict for one module. Every field other than `state` belongs to
+ * `review-required` and is absent for `ready`.
+ *
+ * The design repository does not decide how the review is recorded durably, nor which tables hold
+ * it. That is a backend contract, raised in `product/amendments-modules-2026-09-19.md`.
+ */
+export interface ModuleActivation {
+  state: ModuleActivationState
+  /** When the module returned to the image, as an ISO instant. */
+  returnedAt?: string
+  /** Every assignment the tenant kept, valid and invalid alike, in server order. */
+  retainedGrants?: RetainedGrant[]
+  /**
+   * The configuration the tenant kept, in the module's declared field order, ready to read. The
+   * review shows it, because the administrator decides here and must not have to leave to see what
+   * the module will run with. It is read-only: editing stays in the module's settings section, which
+   * the review links to.
+   */
+  retainedConfig?: RetainedConfigField[]
+  /**
+   * The server's verdict on the module's required configuration. Activation is refused while this
+   * is `invalid`, and the field or fields at fault carry their own `status` in `retainedConfig`.
+   */
+  configStatus?: 'valid' | 'invalid'
+  /** `configStatus: 'invalid'` only: the one-line summary above the field list. */
+  configMessage?: string
+  /** Short, plain facts about what enabling does not bring back, for example revoked credentials or stopped schedules. */
+  notRestored?: string[]
+}
+
 /** One module compiled into the image, joined to its `tenant_module` row (DEC-50). */
 export interface CompiledModule {
   id: string
@@ -158,6 +262,11 @@ export interface CompiledModule {
     groups: Array<{ id: string; name: string; memberCount: number }>
     people: Array<{ id: string; name: string }>
   }
+  /**
+   * The server's activation verdict. Required, so a host must answer it rather than let the screen
+   * guess from `enabled`.
+   */
+  activation: ModuleActivation
 }
 
 /**
@@ -218,8 +327,8 @@ export interface AuditAndTenantSettingsProps {
   onChangeAuditFilters?: (filters: AuditFilters) => void
   /** Administrator loads the next page of events. */
   onLoadMoreAuditEvents?: () => void
-  /** Administrator opens an audit event's target in its own screen. */
-  onOpenAuditTarget?: (targetType: string, targetId: string) => void
+  /** Administrator opens an audit event's target in its own screen, at the path the server supplied on the event. The screen never invents a destination. */
+  onOpenAuditTarget?: (path: string) => void
   /** Administrator copies an event id for a support ticket. */
   onCopyEventId?: (eventId: string) => void
   /** Administrator saves one core settings section. It resolves on success and rejects on failure. */
@@ -230,8 +339,26 @@ export interface AuditAndTenantSettingsProps {
    * saving cannot enable a module. It resolves on success and rejects on failure.
    */
   onSaveModuleConfig?: (moduleId: string, values: Record<string, ConfigValue>) => void | Promise<void>
-  /** Administrator switches a module on or off; writes `tenant_module.enabled` through the same core procedure as the command line. */
+  /**
+   * Administrator switches a module on or off; writes `tenant_module.enabled` through the same core
+   * procedure as the command line. It carries the ordinary flow only: a module whose
+   * `activation.state` is `review-required` is enabled through `onActivateModule` instead, and the
+   * server refuses this path for it.
+   */
   onSetModuleEnabled?: (moduleId: string, enabled: boolean) => void
+  /**
+   * Administrator finishes the retained-access review of a reintroduced module and confirms
+   * activation.
+   *
+   * The server runs the shared activation procedure that `genie-ops module enable` runs. It re-reads
+   * the retained grants, re-checks the required configuration, records the review, and enables the
+   * module in one step. The confirmation on this screen is the administrator's decision, not the
+   * enforcement: a client that skips it must still be refused.
+   *
+   * It resolves on success and rejects with the server's reason on failure. A rejection leaves the
+   * module disabled and restores nothing.
+   */
+  onActivateModule?: (moduleId: string) => void | Promise<void>
   /** Administrator places a module in a core category or removes it from one; writes `tenant_module.category_id`. */
   onSetModuleCategory?: (moduleId: string, categoryId: string | null) => void
   /** Every row the Assign items table offers: the modules with a static workspace entry, and the records each enabled module contributes. */

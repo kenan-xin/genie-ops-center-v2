@@ -9,22 +9,22 @@ One shell component with two chromes: the member workspace and the admin portal.
 - Inbox → Notification inbox, with a blue unread count pill on the right [workspace]. Deferred: the platform schedules the inbox screen after the core sections (`DEC-21`), so the shell hides this entry and the pill until then. The design is kept as delivered early.
 - Pinned rail → Up to six favorite solutions, drag to reorder, under the workspace nav [workspace]
 - Category tree → One tree: a collapsible group with a count per core category that holds at least one entry, mixing solution entries and module entries sorted by label, then an ungrouped "Other" area for entries with no category [workspace]
-- People → People, Groups, and Roles [admin, Core]
-- Groups → People, Groups, and Roles [admin, Core]
-- Roles → People, Groups, and Roles [admin, Core]
-- Access → Access: Grants writes every role assignment, Overview reads who reaches what (`DEC-39`) [admin, Core]. It sits in Core, not under a module, so it stays reachable when the solutions module is switched off
-- Branding → Branding [admin, Core]
-- Audit log → Audit and Tenant Settings [admin, Core]
-- Settings → Audit and Tenant Settings [admin, Core]
-- Modules → Modules page: every compiled module, on or off, its category, and who reaches it (`DEC-50`) [admin, Core]
-- Categories → Categories page: the headings that group solutions and modules in the sidebar (`DEC-51`) [admin, Core]
+- People → People, Groups, and Roles [admin, People and access]
+- Groups → People, Groups, and Roles [admin, People and access]
+- Roles → People, Groups, and Roles [admin, People and access]
+- Access → Access: Grants writes every role assignment, Overview reads who reaches what (`DEC-39`) [admin, People and access]. It sits in a core group, not under a module, so it stays reachable when the solutions module is switched off
+- Branding → Branding [admin, Tenant]
+- Settings → Audit and Tenant Settings [admin, Tenant]
+- Audit log → Audit and Tenant Settings [admin, Tenant]
+- Modules → Modules page: every compiled module, on or off, its category, and who reaches it (`DEC-50`) [admin, Catalog]
+- Categories → Categories page: the headings that group solutions and modules in the sidebar (`DEC-51`) [admin, Catalog]
 - Solutions → Solutions admin [admin, Solutions]
 - Chat themes → Solutions admin [admin, Solutions]
 - Administration / Back to workspace → Switch chrome, in the user menu, only for admins
 - Account → Account page, in the user menu (`/account` or `/admin/account` so the chrome does not change)
 - Help and support → Tenant support URL or email from Branding Links, in the user menu
 
-Workspace sidebar, top to bottom: tenant block, WORKSPACE label, Solutions, Favorites, Inbox (hidden until the platform schedules the inbox screen, `DEC-21`), PINNED rail (at most six, drag to reorder, unchanged), divider, one category tree mixing solution and module entries, divider, the ungrouped "Other" area, user footer. The server decides what the tree shows: only entries the person may reach, and only categories that hold at least one of them. A module entry shows its icon; a solution entry shows none. Category names and "Other" entries start at the same x position, so the caret sits on the right. Admin sidebar: tenant block, ADMIN PORTAL pill, CORE group, one group per entitled module that declares admin pages, user footer. Future customer modules add one workspace entry and, if needed, one admin group.
+Workspace sidebar, top to bottom: tenant block, WORKSPACE label, Solutions, Favorites, Inbox (hidden until the platform schedules the inbox screen, `DEC-21`), PINNED rail (at most six, drag to reorder, unchanged), divider, one category tree mixing solution and module entries, divider, the ungrouped "Other" area, user footer. The server decides what the tree shows: only entries the person may reach, and only categories that hold at least one of them. A module entry shows its icon; a solution entry shows none. Category names and "Other" entries start at the same x position, so the caret sits on the right. Admin sidebar: tenant block, ADMIN PORTAL pill, the three core groups PEOPLE AND ACCESS, TENANT, and CATALOG in that order, then one group per entitled module that declares admin pages, user footer. Core carries three captions and not one, because nine rows under a single CORE caption read as one flat list with no grouping. The admin rail has no child level, so no row is indented and no guide rail is drawn: the captions carry the hierarchy. Future customer modules add one workspace entry and, if needed, one admin group.
 
 ## User Menu
 Sidebar footer in both chromes. Avatar with initials fallback, display name, and a `MonoChip` role chip (WORKSPACE MEMBER, ADMINISTRATOR). Opens upward with Account, Change password (local-account tenants only, opens the realm's account page), Administration or Back to workspace (admins only), Help and support, and Sign out. Sign out ends the Genie session and the Keycloak realm session.

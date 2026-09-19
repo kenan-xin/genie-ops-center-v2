@@ -7,6 +7,10 @@
 .beads-credential-key
 .beads/proxieddb/
 
+# Beads gate locks are runtime state, machine-local like the locks bd already
+# ignores inside .beads/ — transient, never committed.
+*.gate.lock
+
 node_modules/
 .nx/
 dist/

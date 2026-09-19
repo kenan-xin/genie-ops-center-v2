@@ -87,16 +87,36 @@ export function OverviewScreen(p: OverviewScreenProps) {
         .map((g) => build(g, g.scopeId ? 'Granted for this record' : 'Granted for the whole module'))
     }
 
-    // One target reached twice means removing one grant leaves the other in place.
-    const byTarget = new Map<string, EffectiveAccessRow[]>()
-    out.forEach((r) => {
-      const k = `${r.moduleId}|${r.targetId ?? 'all'}`
-      byTarget.set(k, [...(byTarget.get(k) ?? []), r])
-    })
+    // "Also through" means one sentence only: remove this grant and that person still reaches that
+    // target with that permission. Four rules make it true rather than merely similar.
+    //
+    // 1. The same effective person. In a module or a record lookup the rows belong to different
+    //    holders, and one group's assignment is never another group's spare path.
+    // 2. The same permission. A row is paired by the permission key behind its level, not by the
+    //    role name, because two role names can carry one key and one name can carry several.
+    // 3. A whole-module grant covers every record of that module, so it is an alternate path for a
+    //    record-scoped row. A record-scoped row is not an alternate path for a whole-module grant.
+    // 4. Only a path that applies today counts. An archived group, a disabled person, or a
+    //    switched-off module gives nothing, so it can never be the path that stays.
+    //
+    // A grant made with a role picked directly carries no level, so this read model cannot say which
+    // permissions it holds. Such a row neither claims an alternate path nor serves as one.
+    const principal = (r: EffectiveAccessRow) => (subject.kind === 'recipient' ? subject.id : r.holderId)
+    const permissionOf = (r: EffectiveAccessRow) =>
+      r.level === 'custom' ? null : moduleById.get(r.moduleId)?.levels.find((l) => l.id === r.level)?.permissionKey ?? null
+    const covers = (peer: EffectiveAccessRow, row: EffectiveAccessRow) => peer.targetId === null || peer.targetId === row.targetId
     return out.map((r) => {
-      const peers = (byTarget.get(`${r.moduleId}|${r.targetId ?? 'all'}`) ?? []).filter((x) => x.id !== r.id)
+      const key = permissionOf(r)
+      if (!key) return r
+      const peers = out.filter((x) =>
+        x.id !== r.id &&
+        !x.inactiveReason &&
+        principal(x) === principal(r) &&
+        x.moduleId === r.moduleId &&
+        permissionOf(x) === key &&
+        covers(x, r))
       const name = (s: string) => (s.startsWith('via ') ? s.slice(4) : s === 'Direct assignment' ? 'a direct assignment' : s.toLowerCase())
-      return peers.length === 0 ? r : { ...r, alsoThrough: peers.map((x) => name(x.source)).join(', ') }
+      return peers.length === 0 ? r : { ...r, alsoThrough: [...new Set(peers.map((x) => name(x.source)))].join(', ') }
     })
     // `p.grants` is the only prop this reads; the maps above carry the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +155,7 @@ export function OverviewScreen(p: OverviewScreenProps) {
       role="radio"
       aria-checked={mode === k}
       onClick={() => { setMode(k); setSubject(null); setPick(''); setPage(0) }}
-      className={`h-8 rounded-lg px-3.5 text-sm font-medium motion-safe:transition-colors ${focusRing} ${mode === k ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
+      className={`h-8 rounded-lg px-3.5 text-sm font-medium motion-safe:transition-colors ${focusRing} ${mode === k ? 'bg-white text-gray-900 ring-1 ring-gray-200 dark:bg-gray-950 dark:text-gray-100 dark:ring-gray-700' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
     >
       {label}
     </button>

@@ -1,6 +1,13 @@
 # Amendments the settings navigator needs
 
-Date: 2026-09-18. Author: design owner. Status: raised, not applied.
+Date: 2026-09-18. Author: design owner. **Status on 2026-09-19: accepted and applied in v2.**
+
+The accepted text is `docs/architecture/module-contract.md` in v2, under "Settings discovery and
+authorization", and that file is the authority. This one is kept as the record of what was asked for
+and why. Where the two differ, the accepted text wins. The accepted boundary is stricter than this
+file on one point: a section's optional additional permission is an AND restriction on top of
+`core:settings:manage`, never a substitute for it, so module administration alone opens no central
+settings section. `product/sections/audit-and-tenant-settings/spec.md` follows the accepted text.
 
 Tenant settings becomes a section navigator: two groups, Tenant and Modules, one section's form at a time, and one search over every setting. The page of stacked cards does not survive a tenant with a dozen modules. This file lists what the platform documents must say for the screen to be buildable. Nothing under `/home/kenan/work/genie-ops-center-v2` was edited.
 

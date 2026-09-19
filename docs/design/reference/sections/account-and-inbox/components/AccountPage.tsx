@@ -321,7 +321,7 @@ export function AccountPage({ user, groups, sessions, preference, roleGrants, on
                   role="radio"
                   aria-checked={theme === t}
                   onClick={() => changePref('theme', t)}
-                  className={`h-8 rounded-lg px-3.5 text-sm font-medium transition-colors ${focusRing} ${theme === t ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
+                  className={`h-8 rounded-lg px-3.5 text-sm font-medium transition-colors ${focusRing} ${theme === t ? 'bg-white text-gray-900 ring-1 ring-gray-200 dark:bg-gray-950 dark:text-gray-100 dark:ring-gray-700' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
                 >
                   {themeLabel[t]}
                 </button>

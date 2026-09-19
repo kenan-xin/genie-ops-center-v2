@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "check:guards": "node scripts/check-guards.ts",
+    "check:manifests": "node scripts/capture/check-manifests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

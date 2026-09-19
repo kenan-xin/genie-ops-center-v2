@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, ChevronRight, Loader2, Search, X } from 'lucide-react'
 import type { ConfigValue, ModuleConfig, OnboardingMode, SettingsSearchHit, SettingsSectionSummary, SettingsViewer, TenantRealm, TenantSettings, TenantSettingsInput } from '@/../product/sections/audit-and-tenant-settings/types'
 import { btnGhost, btnPrimary, btnSecondary, fmtDateTime, focusRing, inputClass, labelClass, matchesQuery, validateField } from './helpers'
-import { Card, ConfirmDialog, Pill, SwitchRow, Toast, WarningNote } from './ui'
+import { Card, ConfirmDialog, HelpNote, Pill, SwitchRow, Toast, WarningNote } from './ui'
 import { ConfigForm } from './ConfigForm'
 
 export interface TenantSettingsPageProps {
@@ -214,7 +214,7 @@ export function TenantSettingsPage(p: TenantSettingsPageProps) {
           <div key={group} className="flex flex-col pt-6 first:pt-0">
             {/* One step under the row label in size and one step lighter in tone: a caption, not a peer.
                 Caps lose the word shape lowercase gives, so it is tracked wider to stay legible small. */}
-            <h2 className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">{group === 'tenant' ? 'Tenant' : 'Modules'}</h2>
+            <h2 className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">{group === 'tenant' ? 'Tenant' : 'Modules'}</h2>
             <ul className="flex flex-col gap-0.5">{rows.map(navRow)}</ul>
           </div>
         )
@@ -377,11 +377,21 @@ export function TenantSettingsPage(p: TenantSettingsPageProps) {
 
   const searchRow = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <label className="flex h-10 min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:max-w-md dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
-        <Search className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search all settings" placeholder="Search all settings" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
-        {query ? <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className={`-mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button> : null}
-      </label>
+      {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+      <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-md">
+        <label className="flex h-10 min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:border-gray-500 dark:bg-gray-950 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
+          <Search className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search all settings" placeholder="Search all settings" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500" />
+          {query ? <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className={`-mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ${focusRing}`}><X className="size-4" strokeWidth={2} /></button> : null}
+        </label>
+        {/* The one rule a successful search never teaches: what the index holds. The empty state says
+            it, but a person who finds what they wanted never reads the empty state. */}
+        <HelpNote label="What is searched" iconOnly>
+          <p>The search reads the name, the description, and the keywords of every setting you may change, and the name of the section it sits in.</p>
+          <p>It tolerates one typo from four letters, so “timout” finds Idle timeout and “remidners” finds Renewal reminders.</p>
+          <p className="text-gray-600 dark:text-gray-400">It never reads a saved value and never a secret. Searching “supplier” finds nothing, although Supplier contracts is the saved registry name.</p>
+        </HelpNote>
+      </div>
     </div>
   )
 
