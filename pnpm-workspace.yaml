@@ -26,3 +26,6 @@ minimumReleaseAgeExclude:
 allowBuilds:
   nx: true
   lefthook: true
+  # Vite's dependency. Its install script links the platform binary, and pnpm
+  # fails the install with ERR_PNPM_IGNORED_BUILDS when the script is ignored.
+  esbuild: true

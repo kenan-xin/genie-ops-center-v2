@@ -17,6 +17,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Storybook host: the static build output, generated and never committed.
+storybook-static/
+
 # Agent scratch space. Holds the execution ledger and review packages, never source.
 .superpowers/
 

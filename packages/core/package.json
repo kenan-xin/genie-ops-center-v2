@@ -13,11 +13,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@genie/ui": "workspace:*"
+    "@genie/ui": "workspace:*",
+    "react": "19.3.0"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "@storybook/nextjs-vite": "10.6.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "oxlint": "1.83.0",
+    "storybook": "10.6.0",
     "vitest": "4.1.11"
   },
   "nx": {
