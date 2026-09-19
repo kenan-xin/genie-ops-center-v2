@@ -4,7 +4,7 @@ This file is the fixed token layer. The tenant's one brand color and its approve
 
 ## Type scale
 
-Plus Jakarta Sans for everything, JetBrains Mono for identifiers (hex values, permission keys, ids, chips such as THIS DEVICE). Both faces are self-hosted in the image, never loaded from a third-party font service, because a regulated customer can refuse an outbound request from the sign-in page. Subset to latin and latin-ext, `font-display: swap`, and preload the one weight the sign-in page paints first. The scale is the Tailwind type utilities and nothing else:
+Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding` (`DEC-47`), for everything, JetBrains Mono for identifiers (hex values, permission keys, ids, chips such as THIS DEVICE). Both faces are self-hosted in the image, never loaded from a third-party font service, because a regulated customer can refuse an outbound request from the sign-in page. Subset to latin and latin-ext, `font-display: swap`, and preload the one weight the sign-in page paints first. The scale is the Tailwind type utilities and nothing else:
 
 | Role | Class | Weight |
 |---|---|---|
@@ -23,9 +23,11 @@ The tenant font size preset (Branding, Typography tab) sets the root font size t
 
 One scale: sm 32px (`h-8`), md 40px (`h-10`), lg 44px (`h-11`); no other height class on a control. Every row that mixes controls (search, select, segmented, button) renders all of them at md. Icon-only buttons are 40px square (md) or 32px (sm) in dense toolbars. Touch targets are at least 44 by 44 px; a 32px control gets invisible padding to reach it.
 
+A control that grows with `flex-1` also carries its height as a minimum, `h-10 min-h-10`. A toolbar that stacks into a column under `sm` turns `flex-1` into a height rule, and a control with only `h-10` collapses to its content, which measured 22px on a phone. The pair keeps the control at md in a row and in a column.
+
 ## Radius, spacing, elevation, motion
 
-Radius: menus 8px (`rounded-lg`), controls 12px (`rounded-xl`), cards and sheets 16px (`rounded-2xl`), pills full. Page gutters are `px-4 md:px-6 lg:px-8`. Every `transition-*` and `animate-*` utility is written under `motion-safe:` (or paired with a `motion-reduce:` reset). Spacing: 4px base; page gutter 16px on phones, 24px on tablets, 32px on desktop; card padding 20px, 24px on desktop. Elevation: hairline borders (gray-200, gray-800 in dark) over shadows; only dialogs, sheets, and menus carry a shadow. Motion: 150 to 220 ms, ease-out, no bounce and no scale; everything collapses to no motion under `prefers-reduced-motion`.
+Radius: menus 6px (`rounded-md`), controls, navigation rows, and informational or warning callouts 8px (`rounded-lg`), cards, dialogs, sheets, and the sidebar panel 12px (`rounded-xl`), pills full. The tenant letter tile is 6px small and 8px medium. A badge, a chip, a switch track, and an avatar keep their full radius, because none of them is a rectangular control. A sheet rounds only the corners it exposes: a phone bottom sheet rounds its top, an inset slide-over rounds all four. Reduced on 2026-09-18 from menus 8px, controls 12px, cards 16px; spacing, type, control heights, hit areas, colors, and behavior did not change. Page gutters are `px-4 md:px-6 lg:px-8`. Every `transition-*` and `animate-*` utility is written under `motion-safe:` (or paired with a `motion-reduce:` reset). Spacing: 4px base; page gutter 16px on phones, 24px on tablets, 32px on desktop; card padding 20px, 24px on desktop. Elevation: hairline borders (gray-200, gray-800 in dark) over shadows; only dialogs, sheets, and menus carry a shadow. Motion: 150 to 220 ms, ease-out, no bounce and no scale; everything collapses to no motion under `prefers-reduced-motion`.
 
 ## Focus ring
 
@@ -52,6 +54,42 @@ Dark theme primary defaults, pinned here because the tenant derivation needs a f
 
 Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. A clickable row is reachable by keyboard: the row carries `tabindex="0"` and a `role`, Enter and Space open it, and it takes the shared focus ring. A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
 
+## Transfer list
+
+One pattern, two forms. Both move rows between two buckets, both search each bucket, both count it, and both move every ticked row in one press. Use a transfer list when both sides can pass about twenty rows and both directions are editable in bulk. A short list keeps the plain picker. A list of permission keys grouped by module keeps the checkbox tree. The pattern comes from the v1 admin portal, where it edits group membership and solution grants.
+
+Two-pane form, for a container of about 900 px or wider, for example a page. The catalogue is on the left and what is granted is on the right. Each side carries a heading with a count, a select-all box, a search field over the label and the secondary line, a quick action for everything shown ("Add all shown", "Remove all shown"), and a footer button that appears only when a row is ticked ("Add 3", "Remove 2"). The left footer button is primary and the right one is secondary with red text, because removal is the destructive direction. A row whose change is not saved carries a Pending pill.
+
+Roster form, for a narrow container, for example a slide-over or a phone sheet. Two panes in 480 px halve every row and leave the lower half of the panel empty, so the roster is one list that fills the height: a search field, a select-all row, then the chosen group and the group of everything else, each under a sticky heading with its count. The footer offers the move that fits the ticks, "Add 3", "Remove 1", or both at once. A destructive group action, for example Remove all, sits at the right of its heading.
+
+In both forms a ticked row takes the blue selected tint, because selection carries state and not identity. A row that must not move keeps its place at reduced opacity with the reason in its `title`, so the rule stays readable instead of hiding the row. Rows are at least 44 px tall.
+
+Components in this tree: the two-pane form is `TransferList` in `src/sections/access/components/`, the roster form is `TransferList` in `src/sections/people-groups-and-roles/components/`. Both become one component with a `layout` prop in `packages/ui` after the export.
+
+## Section navigator
+
+For a screen that holds many independent forms, for example Tenant settings. A gray-50 panel of 232px on the left, sticky on desktop, and one section's card on the right; one column under `md`, where the panel is the first screen and the section is the next, with a text Back control at the top of the section. A row is a `rounded-lg` button at the control height, 44px under `lg`, carrying the section name, then the status marks it needs: an unsaved dot, a label pill, a warning pill. The selected row takes the active navigation treatment, a white fill with a hairline ring and blue text, and carries `aria-current`. Groups are separated by an uppercase caption, never by a rule.
+
+The panel holds four type roles and only two sizes, so case, weight, and tone carry the rest. The group caption is `text-xs` semibold uppercase at `tracking-wider`, because capitals lose the word shape that lowercase gives and need one step more letter spacing than body text. It is gray-600 (gray-400 in dark), never gray-500: gray-500 measured 3.84:1 on the dark panel and failed 1.4.3, and it also left the caption quieter than the closing note it outranks. A section name is `font-medium`, and the selected one `font-semibold`, so a 12px state pill never outreads the 14px name it modifies. The two weights render within one pixel of each other, measured on labels of 48 to 62 px, and the name sits in a fixed box, so it does not move when the selection changes. A name that truncates carries its full text in `title`, because a truncated navigation label is otherwise unrecoverable; a 232px panel cuts at about 19 characters.
+
+The sidebar rail of the shell is the same pattern at 240px and follows the same four roles. Every row is `font-medium`, the selected one `font-semibold`, and a category disclosure is a row like any other: its chevron, its count, and the indent of its children carry the nesting, not extra weight. The tenant name at the head of the rail and the person's name at its foot are both `text-sm` semibold, because the type scale carries no bold at 14px. A 240px rail cuts a nav label at about 26 characters, so every truncating label carries `title`.
+
+The closing note under the groups is separated by a hairline rule, which is the one rule the panel carries, because it marks an aside and not a group boundary. Its measure is about 33 characters, below the 45-character floor for prose, and 232px cannot reach that floor at `text-xs`. Keep the note to one or two short sentences. A longer explanation belongs in a help disclosure, not in the rail.
+
+Each section owns its Save and Discard; the screen has no global save. Every path that leaves an edited section, which is another section, a search result, and the phone Back control, passes through the confirm dialog first.
+
+## Help disclosure
+
+One pattern for contextual help. A labelled button opens one small callout beside the control it explains. The button carries a question-mark icon, and the label names the question, for example "How access works". The callout is collapsed by default, and no screen opens it on load.
+
+The button is a real button. It opens on click, on tap, and on Enter or Space, and it never opens on hover alone. Escape closes it, a click outside closes it, and a Close link at the foot of the callout closes it for touch. The button carries `aria-expanded` and `aria-controls`. The panel carries `role="group"` and the same label.
+
+The panel is 320 px wide and never wider than the viewport less 32 px. It aligns with the left edge of its button, or with the right edge when the button sits at the right of a row. Under 640 px a right-aligned panel returns to the left edge, because a toolbar row wraps there and the right edge carries the panel off the screen. It holds two or three short paragraphs of plain language, and the last one can carry one example drawn from the sample tenant. It holds no control other than Close.
+
+Use it where a concept needs an explanation, at most one per screen: additive grants and scopes in Access, membership-derived access against direct exceptions in People and Groups, permission bundles in Roles, the deployed image and the read-only Access column on Modules, the module-only count on Categories, the unlinked target and the anonymized actor in the Audit log, Pending against Disabled against Removed on People, directory groups against local groups on Groups, what a solution status shows members, how a chat theme reaches a solution, and the browser-side draft behind Publish in Branding. A consequence that changes what a press does belongs in the confirmation or in the result, never only here. Repeated banners, instructional cards, and debug panels stay out. A screen whose own copy already explains the concept takes none: Role detail states entitlement twice in place, so it carries no disclosure.
+
+Components in this tree: `HelpNote` in `src/sections/access/components/ui.tsx`, `src/sections/people-groups-and-roles/components/ui.tsx`, `src/sections/audit-and-tenant-settings/components/ui.tsx`, `src/sections/solutions/components/ui.tsx`, and `src/sections/branding/components/ui.tsx`. The five are identical and become one component in `packages/ui` after the export. The audit that placed them is `../help-disclosure-audit-2026-09-19.md`.
+
 ## Buttons
 
 Variants: primary (brand fill, `--primary-foreground` text), secondary (white fill, gray-300 border, gray-800 text), danger (red-600 fill, white text), ghost (no fill, no border, gray-700 text), and icon-only, which is a square of the same height with an `aria-label`. Sizes follow the control scale: sm 32px, md 40px, lg 44px, md being the default.
@@ -59,6 +97,10 @@ Variants: primary (brand fill, `--primary-foreground` text), secondary (white fi
 States, the same four for every variant. Hover: a fill variant drops to 90% opacity, an outline or ghost variant takes a gray-50 fill. Active: 80% opacity. Disabled: 50% opacity, `cursor-not-allowed`, no hover change, and `aria-disabled` rather than the `disabled` attribute when the control must stay focusable to explain why. Loading: the label stays, a spinner replaces the leading icon, the control keeps its width, `aria-busy="true"`, and a second press does nothing. Use the loading state for any action that leaves the page or waits on the network, which is at least Publish, Save, Send test, and the sign-in redirect.
 
 ## Forms and feedback
+
+Every control carries its own accessible name. A label that wraps its control names it; a label drawn as a sibling does not, so that control takes an `aria-label` with the same words. A field that holds two controls, for example a color picker beside its hex value, names each one.
+
+Warning note: the one amber block, `WarningNote` in this tree. Amber-800 on amber-50 (amber-200 on amber-900/30 in dark), one alert icon, `rounded-lg`, the control radius. `sm` is the inline note under a control (`text-xs`, 10px by 6px padding); `md` is the block at the top of a card or a sheet (`text-sm`, 14px by 12px padding). It carries `role="status"` when it explains a state and nothing when it is static prose. Amber is only ever a real warning.
 
 Label above the control, helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. An input border is gray-500, which measures 4.89:1 on white, because the border is the boundary of a component and 1.4.11 asks for 3:1. The hairline gray-200 elsewhere stays, because a row divider or a card edge is decoration and the rule does not reach it. Form-level error block with `role="alert"`; informational notice block with `role="status"`. A changed field carries a small blue dot on its label while unsaved. Required fields are marked in the label.
 
