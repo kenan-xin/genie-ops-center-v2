@@ -3,7 +3,7 @@ import data from '@/../product/sections/branding/data.json'
 import type { ApprovedFont, Branding, BrandingImage, BrandingTab, ContrastTargets, LastPublish, LocaleOptions, UploadPolicy } from '@/../product/sections/branding/types'
 import { BrandingPage } from './components/BrandingPage'
 
-// ?tab=identity|colors|typography|signin|email|links|locale &primary=failing &text=failing &dialog=publish|discard
+// ?tab=identity|colors|typography|signin|email|links|locale &primary=failing &text=failing &dialog=publish|discard|previous
 // &upload=progress|infected &preview=light|dark
 export default function BrandingPagePreview() {
   const q = new URLSearchParams(window.location.search)
@@ -12,7 +12,8 @@ export default function BrandingPagePreview() {
   const [key, setKey] = useState(0)
 
   // The failing-contrast state is a draft edit, not the published sample: the published primary passes AA.
-  const initialDraft = { ...(q.get('primary') === 'failing' ? { primaryColor: '#7c3aed' } : null), ...(q.get('text') === 'failing' ? { textColor: '#9ca3af' } : null) }
+  // #22c55e passes the fill pair (dark text on green, 7.8:1) but fails as text on the white nav pill (2.3:1), which is the point of the check.
+  const initialDraft = { ...(q.get('primary') === 'failing' ? { primaryColor: '#22c55e' } : null), ...(q.get('text') === 'failing' ? { textColor: '#9ca3af' } : null) }
 
   return (
     <BrandingPage
@@ -26,13 +27,14 @@ export default function BrandingPagePreview() {
       contrastTargets={data.contrastTargets as ContrastTargets}
       initialTab={(q.get('tab') as BrandingTab | null) ?? undefined}
       initialDraft={initialDraft}
-      initialDialog={(q.get('dialog') as 'publish' | 'discard' | null) ?? undefined}
+      initialDialog={(q.get('dialog') as 'publish' | 'discard' | 'previous' | null) ?? undefined}
       initialUpload={q.get('upload') === 'progress' ? 'uploading' : q.get('upload') === 'infected' ? 'infected' : undefined}
       initialPreviewTheme={(q.get('preview') as 'light' | 'dark' | null) ?? undefined}
       onPublish={(draft, changed) => {
         console.log('Publish:', changed)
+        // The previous values a real backend does not keep yet, so Restore stays truthful after a publish in the preview.
+        setLast({ by: 'Priya Nair', at: new Date().toISOString(), changedFields: changed, previousValues: Object.fromEntries(changed.map((k) => [k, branding[k]])) })
         setBranding(draft)
-        setLast({ by: 'Priya Nair', at: new Date().toISOString(), changedFields: changed })
         setKey((k) => k + 1)
       }}
       onDiscard={() => console.log('Discard draft')}

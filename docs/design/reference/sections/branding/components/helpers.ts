@@ -3,14 +3,27 @@ import type { EmailTenant } from '@/../product/sections/email-templates/types'
 import emailData from '@/../product/sections/email-templates/data.json'
 
 /* Shared tokens for Branding. Email templates import the color and font helpers from here so both sections use one rule. */
-export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950'
+export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950'
 
-export const btnPrimary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500 ${focusRing}`
-export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 ${focusRing}`
-export const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-xl bg-red-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-red-600/20 motion-safe:transition-colors hover:bg-red-700 ${focusRing}`
-export const btnGhost = `inline-flex h-8 items-center whitespace-nowrap gap-1.5 rounded-xl px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`
-export const inputClass = `h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
+export const btnPrimary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-blue-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 motion-safe:transition-colors hover:bg-blue-600/90 active:bg-blue-600/80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 ${focusRing}`
+export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 ${focusRing}`
+export const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-red-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-red-600/20 motion-safe:transition-colors hover:bg-red-600/90 active:bg-red-600/80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 ${focusRing}`
+export const btnGhost = `inline-flex h-8 items-center whitespace-nowrap gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-900 ${focusRing}`
+export const inputClass = `h-10 w-full rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`
 export const labelClass = 'text-sm font-semibold text-gray-800 dark:text-gray-200'
+
+/** Next index for a roving-tabindex key press, or -1 when the key does not move the selection. A horizontal strip leaves the up and down arrows to the page. */
+export function rovingNext(key: string, i: number, len: number, horizontalOnly = false) {
+  switch (key) {
+    case 'ArrowDown': case 'ArrowUp': if (horizontalOnly) return -1; break
+    case 'ArrowRight': case 'ArrowLeft': case 'Home': case 'End': break
+    default: return -1
+  }
+  if (key === 'Home') return 0
+  if (key === 'End') return len - 1
+  const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1
+  return (i + step + len) % len
+}
 
 /** The approved fonts: key stored in `tenant_branding.font_family`, label shown in the UI, stack used by the shell and the HTML emails. */
 export const FONTS: Record<string, { label: string; stack: string }> = {
@@ -25,6 +38,23 @@ export const fontLabel = (key: string) => FONTS[key]?.label ?? key
 export const fontStack = (key: string) => FONTS[key]?.stack ?? SYSTEM_FONT_STACK
 /** Root font size per preset. The type scale is rem-based, so everything follows. */
 export const FONT_SIZES: Record<FontSize, number> = { compact: 14, default: 15, large: 16 }
+
+/**
+ * One branding value as a dialog shows it: the file name for an image slot, the label for a stored
+ * key, On or Off for a flag. `undefined` means the value was never recorded, which is not the same
+ * as `null`, an empty slot.
+ */
+export function displayValue(key: keyof Branding, value: Branding[keyof Branding] | undefined, images: BrandingImage[]): string {
+  if (value === undefined) return 'Not recorded'
+  if (value === null || value === '') return 'None'
+  if (typeof value === 'boolean') return value ? 'On' : 'Off'
+  if (key.endsWith('ImageId')) return images.find((i) => i.id === value)?.fileName ?? String(value)
+  if (key === 'fontFamily') return fontLabel(String(value))
+  const text = String(value)
+  if (key === 'fontSize') return `${text[0].toUpperCase()}${text.slice(1)} · ${FONT_SIZES[value as FontSize]} px`
+  if (key === 'defaultTheme') return `${text[0].toUpperCase()}${text.slice(1)}`
+  return text
+}
 
 const NOW = new Date('2026-09-16T09:45:00Z')
 
@@ -71,14 +101,6 @@ export function hslToHex(h: number, s: number, l: number) {
   return `#${f(0)}${f(8)}${f(4)}`
 }
 
-/** Five tints the shell derives from a brand color: background tint, hover tint, the color, hover, focus ring. */
-export function tintStrip(hex: string) {
-  const hsl = hexToHsl(hex)
-  if (!hsl) return [hex, hex, hex, hex, hex]
-  const [h, s, l] = hsl
-  return [hslToHex(h, s, 0.95), hslToHex(h, s, 0.88), hex, hslToHex(h, s, Math.max(0.1, l - 0.08)), hslToHex(h, Math.min(1, s), Math.min(0.85, l + 0.25))]
-}
-
 /** The shade the shell uses for this brand color in the dark theme: same hue, lifted lightness. */
 export function darkVariant(hex: string) {
   const hsl = hexToHsl(hex)
@@ -87,29 +109,48 @@ export function darkVariant(hex: string) {
   return hslToHex(h, s, Math.min(0.85, Math.max(l, 0.62)))
 }
 
-export interface ContrastCheck { light: number; dark: number; ok: boolean }
+export interface ContrastPair { label: string; ratio: number; target: number; ok: boolean; theme: 'light' | 'dark' }
 
-/** Light: the raw color as text on the light surface and as a fill under its computed text. Dark: the dark variant as text on the dark surface. */
-export function checkColor(hex: string, lightSurface: string, darkSurface: string, target = 4.5): ContrastCheck {
-  const light = Math.min(contrastRatio(hex, lightSurface), contrastRatio(hex, foregroundFor(hex)))
-  const dark = contrastRatio(darkVariant(hex), darkSurface)
-  return { light, dark, ok: light >= target && dark >= target }
+/**
+ * One pair per place the primary renders (DEC-47: no ramp, so no per-step check). A solid fill keeps the raw color with its
+ * computed foreground in both themes; as text the shell uses the raw color in light and the dark variant in dark; the ring is 3:1.
+ * `label` names the place and `theme` the surface, so the UI can group by theme instead of repeating it in every label.
+ * Ordered light-first: the report renders them as two theme groups in this order.
+ */
+export function checkPrimaryPairs(hex: string, targets: ContrastTargets): ContrastPair[] {
+  const fill = contrastRatio(hex, foregroundFor(hex))
+  const dark = darkVariant(hex)
+  const pair = (label: string, ratio: number, target: number, theme: 'light' | 'dark'): ContrastPair => ({ label, ratio, target, ok: ratio >= target, theme })
+  return [
+    pair('Fill', fill, 4.5, 'light'),
+    pair('Text on nav', contrastRatio(hex, targets.light.surface), 4.5, 'light'),
+    pair('Count pill', contrastRatio(hex, '#ffffff'), 4.5, 'light'),
+    pair('Focus ring', Math.min(contrastRatio(hex, targets.light.surface), contrastRatio(hex, targets.light.subtleSurface)), 3, 'light'),
+    pair('Fill', fill, 4.5, 'dark'),
+    pair('Text on nav', contrastRatio(dark, targets.dark.subtleSurface), 4.5, 'dark'),
+  ]
 }
 
-/** Text color on the two light surfaces. Dark is not checked: the dark theme keeps its fixed gray-100 text. */
-export function checkTextColor(hex: string, light: ContrastTargets['light'], target = 4.5) {
-  const surface = contrastRatio(hex, light.surface)
-  const subtle = contrastRatio(hex, light.subtleSurface)
-  return { surface, subtle, ok: surface >= target && subtle >= target }
+export const primaryPasses = (hex: string, targets: ContrastTargets) => checkPrimaryPairs(hex, targets).every((x) => x.ok)
+
+/**
+ * One pair per light surface the text color lands on, in the shape the contrast report renders.
+ * Dark is not checked: the dark theme keeps its fixed gray-100 text.
+ */
+export function checkTextPairs(hex: string, light: ContrastTargets['light'], target = 4.5): ContrastPair[] {
+  const pair = (label: string, ratio: number): ContrastPair => ({ label, ratio, target, ok: ratio >= target, theme: 'light' })
+  return [pair('On surface', contrastRatio(hex, light.surface)), pair('On subtle surface', contrastRatio(hex, light.subtleSurface))]
 }
 
-/** Nearest shade that passes both checks. Moves lightness first; lowers saturation only when no lightness passes. The hue is always kept. */
-export function fixLightness(hex: string, lightSurface: string, darkSurface: string, target = 4.5) {
-  return nearestPassing(hex, (c) => checkColor(c, lightSurface, darkSurface, target).ok)
+export const textPasses = (hex: string, light: ContrastTargets['light'], target = 4.5) => checkTextPairs(hex, light, target).every((x) => x.ok)
+
+/** Nearest shade that passes all six pairs. Moves lightness first; lowers saturation only when no lightness passes. The hue is always kept. */
+export function fixLightness(hex: string, targets: ContrastTargets) {
+  return nearestPassing(hex, (c) => primaryPasses(c, targets))
 }
 
 export function fixTextColor(hex: string, light: ContrastTargets['light'], target = 4.5) {
-  return nearestPassing(hex, (c) => checkTextColor(c, light, target).ok)
+  return nearestPassing(hex, (c) => textPasses(c, light, target))
 }
 
 function nearestPassing(hex: string, passes: (c: string) => boolean) {

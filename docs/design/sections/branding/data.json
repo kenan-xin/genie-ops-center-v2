@@ -72,7 +72,15 @@
     "dateFormats": ["d MMM yyyy", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"],
     "numberFormats": ["1,234,567.89", "1.234.567,89", "1 234 567,89"]
   },
-  "lastPublish": { "by": "Priya Nair", "at": "2026-09-16T01:58:30Z", "changedFields": ["faviconImageId", "emailFooterText"] },
+  "lastPublish": {
+    "by": "Priya Nair",
+    "at": "2026-09-16T01:58:30Z",
+    "changedFields": ["faviconImageId", "emailFooterText"],
+    "previousValues": {
+      "faviconImageId": null,
+      "emailFooterText": "Meridian Health Pte Ltd. You receive this email because you have a Genie account."
+    }
+  },
   "contrastTargets": {
     "light": { "surface": "#ffffff", "subtleSurface": "#f9fafb" },
     "dark": { "surface": "#030712", "subtleSurface": "#111827" }

@@ -75,6 +75,13 @@ export interface LastPublish {
   by: string
   at: string
   changedFields: Array<keyof Branding>
+  /**
+   * What each changed field held before that publish, for the Restore action on the published pill.
+   * No platform read returns this yet: the branding row keeps only the current values and the audit
+   * event names the fields, not their old values. The design runs it on the sample fixture and the
+   * dialog says so. A field with no entry here is shown as not recorded and is not restored.
+   */
+  previousValues?: Partial<Branding>
 }
 
 export interface ContrastTargets {
@@ -103,7 +110,7 @@ export interface BrandingProps {
   /** Design-only initial state, read from the preview URL. */
   initialTab?: BrandingTab
   initialDraft?: Partial<Branding>
-  initialDialog?: 'publish' | 'discard'
+  initialDialog?: 'publish' | 'discard' | 'previous'
   /** Design-only: the favicon slot mid-upload, or after the malware scan refused the file. */
   initialUpload?: 'uploading' | 'infected'
   initialPreviewTheme?: 'light' | 'dark'
