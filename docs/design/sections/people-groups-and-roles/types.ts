@@ -116,14 +116,6 @@ export interface RoleInput {
   permissions: string[]
 }
 
-export interface AssignmentInput {
-  roleId: string
-  principalType: PrincipalType
-  principalId: string
-  scopeType: string | null
-  scopeId: string | null
-}
-
 export interface PeopleGroupsAndRolesProps {
   tenantSettings: TenantSettingsSummary
   /** The signed-in administrator, so the UI can disable self-targeting actions. Also the seat of the last-administrator rule: no action may leave zero active holders of Tenant administrator. */
@@ -171,8 +163,9 @@ export interface PeopleGroupsAndRolesProps {
   onCopyRole?: (roleId: string) => void
   /** Delete a custom role. */
   onDeleteRole?: (roleId: string) => void
-  /** Add a role assignment to a person or group at a scope. */
-  onAddAssignment?: (input: AssignmentInput) => void
-  /** Remove a role assignment. */
-  onRemoveAssignment?: (assignmentId: string) => void
+  /**
+   * Open the Access screen with this person, group, or role preselected. These screens read role
+   * assignments and never write one: Access is the only writer (`DEC-39`).
+   */
+  onManageAccess?: (target: { kind: 'person' | 'group' | 'role'; id: string }) => void
 }

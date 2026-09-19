@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/people-groups-and-roles/data.json'
 import type { ModuleInfo, Role, RoleAssignment } from '@/../product/sections/people-groups-and-roles/types'
@@ -10,7 +11,7 @@ export default function RolesDirectoryPreview() {
       roles={roles}
       roleAssignments={data.roleAssignments as RoleAssignment[]}
       modules={data.modules as ModuleInfo[]}
-      onOpenRole={(id) => console.log('Open role:', id)}
+      onOpenRole={(id) => goTo(`/admin/roles/${id}`)}
       onCreateRole={(input) => setRoles((l) => [...l, { id: `role_${Date.now()}`, kind: 'custom', moduleId: null, ...input }])}
       onUpdateRole={(id, input) => setRoles((l) => l.map((r) => (r.id === id ? { ...r, ...input } : r)))}
       onCopyRole={(id) => console.log('Copy role:', id)}

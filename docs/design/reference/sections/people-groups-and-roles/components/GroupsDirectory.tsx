@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Building2, Plus, UsersRound } from 'lucide-react'
 import type { Group, Person, Role, RoleAssignment, ScopeRecord } from '@/../product/sections/people-groups-and-roles/types'
-import { btnPrimary, btnSecondary, focusRing, inputClass, labelClass, relativeTime, type Guard } from './helpers'
-import { Card, Dialog, EmptyRow, PhoneBar, Pill, SearchField, Th, Td } from './ui'
+import { btnPrimary, btnSecondary, focusRing, inputClass, labelClass, relativeTime, rowKeyDown, type Guard } from './helpers'
+import { Card, Dialog, EmptyRow, HelpNote, PhoneBar, Pill, SearchField, Th, Td } from './ui'
 import { GroupInspector } from './GroupInspector'
 
 export interface GroupsDirectoryProps {
@@ -24,6 +24,8 @@ export interface GroupsDirectoryProps {
   onDeleteLocalGroup?: (groupId: string) => void
   onRemoveAllMembers?: (groupId: string) => void
   onOpenRole?: (roleId: string) => void
+  /** Opens core Access with this group preselected. This screen never writes an assignment (`DEC-39`). */
+  onManageAccess?: (groupId: string) => void
 }
 
 export function GroupsDirectory(p: GroupsDirectoryProps) {
@@ -44,6 +46,11 @@ export function GroupsDirectory(p: GroupsDirectoryProps) {
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchField value={q} onChange={setQ} placeholder="Search groups" />
+        <HelpNote label="Directory and local groups">
+          <p>A directory group arrives from your identity provider. Its name, its description, and its members are read-only here and change in the provider.</p>
+          <p>A local group is managed here. Both kinds carry roles, and every member reaches what the group reaches.</p>
+          <p className="text-gray-600 dark:text-gray-400">A directory group that stops arriving is marked stale. Archive it instead of deleting it: it keeps its assignments and gives nothing while it is archived.</p>
+        </HelpNote>
         {archivedCount > 0 ? (
           <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className={`size-4 rounded border-gray-300 accent-blue-600 ${focusRing}`} />
@@ -57,8 +64,8 @@ export function GroupsDirectory(p: GroupsDirectoryProps) {
         <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
           {rows.map((g) => (
             <li key={g.id}>
-              <button type="button" onClick={() => setOpenId(g.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${g.archived ? 'opacity-60' : ''}`}>
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : <UsersRound className="size-4" strokeWidth={1.75} aria-hidden />}</span>
+              <button type="button" onClick={() => setOpenId(g.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${focusRing} ${g.archived ? 'opacity-60' : ''}`}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : <UsersRound className="size-4" strokeWidth={1.75} aria-hidden />}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5"><span className="truncate font-semibold">{g.name}</span><Pill tone={g.source === 'local' ? 'blue' : 'gray'}>{g.source === 'local' ? 'Local' : 'Directory'}</Pill>{g.stale ? <Pill tone="amber">Stale</Pill> : null}{g.archived ? <Pill>Archived</Pill> : null}</span>
                   <span className="block text-xs text-gray-600 dark:text-gray-400">{g.memberCount} members · {rolesFor(g)} roles{g.source === 'idp' ? ` · synced ${relativeTime(g.stale ? g.lastSeenAt : g.syncedAt)}` : ''}</span>
@@ -73,10 +80,10 @@ export function GroupsDirectory(p: GroupsDirectoryProps) {
             <thead className="bg-gray-50 dark:bg-gray-950/50"><tr><Th>Group</Th><Th>Source</Th><Th className="text-right">Members</Th><Th className="text-right">Roles</Th><Th>Sync</Th></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.map((g) => (
-                <tr key={g.id} tabIndex={0} onClick={() => setOpenId(g.id)} onKeyDown={(e) => e.key === 'Enter' && setOpenId(g.id)} className={`cursor-pointer outline-none motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${g.archived ? 'opacity-60' : ''} ${openId === g.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}>
+                <tr key={g.id} tabIndex={0} role="button" onClick={() => setOpenId(g.id)} onKeyDown={rowKeyDown(() => setOpenId(g.id))} className={`cursor-pointer motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${focusRing} ${g.archived ? 'opacity-60' : ''} ${openId === g.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}>
                   <Td>
                     <div className="flex items-center gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : <UsersRound className="size-4" strokeWidth={1.75} aria-hidden />}</span>
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{g.source === 'idp' ? <Building2 className="size-4" strokeWidth={1.75} aria-hidden /> : <UsersRound className="size-4" strokeWidth={1.75} aria-hidden />}</span>
                       <div className="min-w-0"><div className="flex items-center gap-1.5 font-semibold">{g.name}{g.archived ? <Pill>Archived</Pill> : null}</div><div className="max-w-md truncate text-xs text-gray-600 dark:text-gray-400">{g.description || '—'}</div></div>
                     </div>
                   </Td>
@@ -95,7 +102,7 @@ export function GroupsDirectory(p: GroupsDirectoryProps) {
         <div className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-600 dark:border-gray-800 dark:text-gray-400">Directory groups arrive in the sign-in token and are refreshed at every sign-in. A group that stops arriving is marked stale and keeps its roles.</div>
       </Card>
 
-      <GroupInspector group={open} onClose={() => setOpenId(null)} guard={p.guard} initialDialog={p.initialDialog} people={p.people} roles={p.roles} roleAssignments={p.roleAssignments} scopeRecords={p.scopeRecords} onUpdateLocalGroup={p.onUpdateLocalGroup} onAddToLocalGroup={p.onAddToLocalGroup} onRemoveFromLocalGroup={p.onRemoveFromLocalGroup} onArchiveGroup={p.onArchiveGroup} onDeleteLocalGroup={p.onDeleteLocalGroup} onRemoveAllMembers={p.onRemoveAllMembers} onOpenRole={p.onOpenRole} />
+      <GroupInspector group={open} onClose={() => setOpenId(null)} guard={p.guard} initialDialog={p.initialDialog} people={p.people} roles={p.roles} roleAssignments={p.roleAssignments} scopeRecords={p.scopeRecords} onUpdateLocalGroup={p.onUpdateLocalGroup} onAddToLocalGroup={p.onAddToLocalGroup} onRemoveFromLocalGroup={p.onRemoveFromLocalGroup} onArchiveGroup={p.onArchiveGroup} onDeleteLocalGroup={p.onDeleteLocalGroup} onRemoveAllMembers={p.onRemoveAllMembers} onOpenRole={p.onOpenRole} onManageAccess={p.onManageAccess} />
 
       <Dialog
         open={creating}

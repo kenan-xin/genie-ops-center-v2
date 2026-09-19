@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { ModuleInfo, Role, RoleAssignment, RoleInput } from '@/../product/sections/people-groups-and-roles/types'
-import { btnPrimary } from './helpers'
-import { Card, ConfirmDialog, EmptyRow, PhoneBar, Pill, RowMenu, SearchField, Th, Td } from './ui'
+import { btnPrimary, focusRing, rowKeyDown } from './helpers'
+import { Card, ConfirmDialog, EmptyRow, HelpNote, PhoneBar, Pill, RowMenu, SearchField, Th, Td } from './ui'
 import { RoleForm } from './RoleForm'
 
 export interface RolesDirectoryProps {
@@ -39,13 +39,17 @@ export function RolesDirectory({ roles, roleAssignments, modules, onOpenRole, on
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchField value={q} onChange={setQ} placeholder="Search roles" />
+        <HelpNote label="How roles work">
+          <p>A role is a bundle of permissions. A system role is read-only, and you can copy one into a custom role and edit the copy. A custom role is editable here.</p>
+          <p>This page defines roles. Giving a role to a person or a group happens in Access, where one assignment can cover the whole tenant or one record.</p>
+        </HelpNote>
         <div className="hidden sm:ml-auto md:block">{newRole}</div>
       </div>
       <Card className="overflow-hidden">
         <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
           {rows.map((r) => (
             <li key={r.id} className="flex items-center gap-3 px-4 py-3">
-              <button type="button" onClick={() => onOpenRole?.(r.id)} className="min-w-0 flex-1 rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60">
+              <button type="button" onClick={() => onOpenRole?.(r.id)} className={`min-w-0 flex-1 rounded-lg text-left ${focusRing}`}>
                 <span className="flex flex-wrap items-center gap-1.5"><span className="font-semibold">{r.name}</span>{r.kind === 'system' ? <Pill>System</Pill> : <Pill tone="blue">Custom</Pill>}{hasUnentitled(r) ? <Pill>Not entitled</Pill> : null}</span>
                 <span className="block truncate text-xs text-gray-600 dark:text-gray-400">{r.description}</span>
                 <span className="block text-xs text-gray-600 dark:text-gray-400">{r.permissions.length} permissions · {count(r)} assignments</span>
@@ -61,7 +65,7 @@ export function RolesDirectory({ roles, roleAssignments, modules, onOpenRole, on
             <thead className="bg-gray-50 dark:bg-gray-950/50"><tr><Th>Role</Th><Th>Kind</Th><Th className="text-right">Permissions</Th><Th className="text-right">Assignments</Th><Th /></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {rows.map((r) => (
-                <tr key={r.id} tabIndex={0} onClick={() => onOpenRole?.(r.id)} onKeyDown={(e) => e.key === 'Enter' && onOpenRole?.(r.id)} className="cursor-pointer outline-none motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60">
+                <tr key={r.id} tabIndex={0} role="button" onClick={() => onOpenRole?.(r.id)} onKeyDown={rowKeyDown(() => onOpenRole?.(r.id))} className={`cursor-pointer motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${focusRing}`}>
                   <Td>
                     <div className="truncate font-semibold">{r.name}</div>
                     <div className="truncate text-xs text-gray-600 dark:text-gray-400">{r.description}</div>

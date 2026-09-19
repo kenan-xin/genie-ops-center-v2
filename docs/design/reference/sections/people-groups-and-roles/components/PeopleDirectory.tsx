@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Group, ModuleInfo, NewPersonInput, Person, PersonSession, PersonStatus, Role, RoleAssignment, ScopeRecord, TenantSettingsSummary } from '@/../product/sections/people-groups-and-roles/types'
-import { btnPrimary, focusRing, guardReason, relativeTime, type Guard } from './helpers'
-import { Avatar, Card, ConfirmDialog, EmptyRow, PhoneBar, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
+import { btnPrimary, focusRing, guardReason, relativeTime, rowKeyDown, type Guard } from './helpers'
+import { Avatar, Card, ConfirmDialog, EmptyRow, HelpNote, PhoneBar, Pill, RowMenu, SearchField, Select, StatusPill, Th, Td } from './ui'
 import { PersonInspector, type PersonTab } from './PersonInspector'
 import { AddPersonDialog } from './AddPersonDialog'
 import { GroupInspector } from './GroupInspector'
-import type { AssignmentInput } from '@/../product/sections/people-groups-and-roles/types'
 
 export interface PeopleDirectoryProps {
   tenantSettings: TenantSettingsSummary
@@ -43,8 +42,8 @@ export interface PeopleDirectoryProps {
   onRevokeAllSessions?: (personId: string) => void
   onAddToLocalGroup?: (personId: string, groupId: string) => void
   onRemoveFromLocalGroup?: (personId: string, groupId: string) => void
-  onAddAssignment?: (input: AssignmentInput) => void
-  onRemoveAssignment?: (assignmentId: string) => void
+  /** Opens core Access with this person preselected. This screen never writes an assignment (`DEC-39`). */
+  onManageAccess?: (personId: string) => void
 }
 
 const statusOrder: Record<PersonStatus, number> = { active: 0, pending: 1, disabled: 2 }
@@ -90,6 +89,11 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchField value={q} onChange={setQ} placeholder="Search by name or email" />
+        <HelpNote label="Pending, disabled, removed">
+          <p>Somebody you add stays Pending until their first sign-in. Nothing activates them by hand, and they can hold roles while they wait.</p>
+          <p>Disabling stops sign-in and keeps everything else. Removing ends every session, drops their groups and their direct roles, and keeps their name and their audit trail.</p>
+          <p className="text-gray-600 dark:text-gray-400">Replacing a name with an anonymous one is an operator command, never an action on this screen.</p>
+        </HelpNote>
         <div className="flex flex-wrap items-center gap-2">
           <Select ariaLabel="Filter by status" value={status} onChange={(v) => setStatus(v as typeof status)}>
             <option value="all">All statuses ({p.people.length})</option>
@@ -113,7 +117,7 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
         <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
           {rows.map((person) => (
             <li key={person.id} className={`flex items-center gap-3 px-4 py-3 ${openId === person.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}>
-              <button type="button" onClick={() => setOpenId(person.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+              <button type="button" onClick={() => setOpenId(person.id)} className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left ${focusRing}`}>
                 <Avatar name={person.name} />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5"><span className="truncate font-semibold">{person.name}</span><StatusPill status={person.status} /></span>
@@ -138,9 +142,10 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
                   <tr
                     key={person.id}
                     tabIndex={0}
+                    role="button"
                     onClick={() => setOpenId(person.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && setOpenId(person.id)}
-                    className={`cursor-pointer outline-none motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${openId === person.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}
+                    onKeyDown={rowKeyDown(() => setOpenId(person.id))}
+                    className={`cursor-pointer motion-safe:transition-colors hover:bg-gray-50 focus-visible:bg-blue-50/60 dark:hover:bg-gray-800/60 ${focusRing} ${openId === person.id ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''}`}
                   >
                     <Td>
                       <div className="flex items-center gap-3">
@@ -197,12 +202,11 @@ export function PeopleDirectory(p: PeopleDirectoryProps) {
         onRevokeAllSessions={p.onRevokeAllSessions}
         onAddToLocalGroup={p.onAddToLocalGroup}
         onRemoveFromLocalGroup={p.onRemoveFromLocalGroup}
-        onAddAssignment={p.onAddAssignment}
-        onRemoveAssignment={p.onRemoveAssignment}
+        onManageAccess={p.onManageAccess}
       />
       <AddPersonDialog open={adding} onClose={() => setAdding(false)} roles={p.roles} settings={p.tenantSettings} onSubmit={p.onAddPerson} rateLimited={p.addPersonRateLimited} />
       {openGroupId ? (
-        <GroupInspector group={p.groups.find((g) => g.id === openGroupId) ?? null} onClose={() => setOpenGroupId(null)} people={p.people} roles={p.roles} roleAssignments={p.roleAssignments} scopeRecords={p.scopeRecords} guard={guard} initialDialog={p.initialGroupDialog} onUpdateLocalGroup={p.onUpdateLocalGroup} onAddToLocalGroup={p.onAddToLocalGroup} onRemoveFromLocalGroup={p.onRemoveFromLocalGroup} onArchiveGroup={p.onArchiveGroup} onDeleteLocalGroup={p.onDeleteLocalGroup} onRemoveAllMembers={p.onRemoveAllMembers} onOpenRole={p.onOpenRole} />
+        <GroupInspector group={p.groups.find((g) => g.id === openGroupId) ?? null} onClose={() => setOpenGroupId(null)} people={p.people} roles={p.roles} roleAssignments={p.roleAssignments} scopeRecords={p.scopeRecords} guard={guard} initialDialog={p.initialGroupDialog} onUpdateLocalGroup={p.onUpdateLocalGroup} onAddToLocalGroup={p.onAddToLocalGroup} onRemoveFromLocalGroup={p.onRemoveFromLocalGroup} onArchiveGroup={p.onArchiveGroup} onDeleteLocalGroup={p.onDeleteLocalGroup} onRemoveAllMembers={p.onRemoveAllMembers} onOpenRole={p.onOpenRole} onManageAccess={p.onManageAccess} />
       ) : null}
       <ConfirmDialog
         open={Boolean(confirm)}

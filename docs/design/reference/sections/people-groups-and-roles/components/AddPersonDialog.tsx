@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Info } from 'lucide-react'
 import type { AccountType, NewPersonInput, Role, TenantSettingsSummary } from '@/../product/sections/people-groups-and-roles/types'
 import { btnPrimary, btnSecondary, focusRing, inputClass, labelClass } from './helpers'
-import { Dialog, Pill } from './ui'
+import { Dialog, LoadingButton, Pill } from './ui'
 
 export interface AddPersonDialogProps {
   open: boolean
@@ -14,7 +14,7 @@ export interface AddPersonDialogProps {
   rateLimited?: { retryAfterMinutes: number }
 }
 
-const choice = (on: boolean) => `inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${on ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`
+const choice = (on: boolean) => `inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${on ? 'border-blue-600 bg-gray-100 text-gray-900 dark:border-blue-400 dark:bg-gray-800 dark:text-gray-100' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`
 
 export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rateLimited }: AddPersonDialogProps) {
   const [email, setEmail] = useState('')
@@ -34,20 +34,19 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
       footer={
         <>
           <button type="button" className={btnSecondary} onClick={onClose}>Cancel</button>
-          <button
-            type="button"
+          <LoadingButton
             className={btnPrimary}
             disabled={!emailOk || !!rateLimited}
-            onClick={() => { onSubmit?.({ email, name: name || undefined, roleIds, accountType: local ? 'local' : 'brokered' }); onClose() }}
+            onPress={() => { onSubmit?.({ email, name: name || undefined, roleIds, accountType: local ? 'local' : 'brokered' }); onClose() }}
           >
             Add person
-          </button>
+          </LoadingButton>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         {rateLimited ? (
-          <p role="status" className="rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">Too many people added in a short time. Try again in {rateLimited.retryAfterMinutes} minutes.</p>
+          <p role="status" className="rounded-lg bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">Too many people added in a short time. Try again in {rateLimited.retryAfterMinutes} minutes.</p>
         ) : null}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="ap-email" className={labelClass}>Work email</label>
@@ -80,7 +79,7 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
                   role="checkbox"
                   aria-checked={on}
                   onClick={() => setRoleIds((s) => (on ? s.filter((x) => x !== r.id) : [...s, r.id]))}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${on ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium motion-safe:transition-colors ${focusRing} ${on ? 'border-blue-600 bg-gray-100 text-gray-900 dark:border-blue-400 dark:bg-gray-800 dark:text-gray-100' : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
                 >
                   {r.name}
                 </button>
@@ -89,7 +88,7 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
           </div>
           <p className="text-xs text-gray-600 dark:text-gray-400">Tenant-wide. Scoped access is added later from the person or the role.</p>
         </div>
-        <div className="flex items-start gap-2.5 rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">
+        <div className="flex items-start gap-2.5 rounded-lg bg-gray-50 px-3.5 py-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">
           <Info className="mt-0.5 size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
           <span>
             {settings.onboardingMode === 'jit' && !local ? (

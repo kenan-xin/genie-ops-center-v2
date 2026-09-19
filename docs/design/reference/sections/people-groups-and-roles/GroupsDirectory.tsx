@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/people-groups-and-roles/data.json'
 import type { Group, Person, Role, RoleAssignment, ScopeRecord } from '@/../product/sections/people-groups-and-roles/types'
@@ -31,7 +32,8 @@ export default function GroupsDirectoryPreview() {
       onArchiveGroup={(id) => setGroups((l) => l.map((g) => (g.id === id ? { ...g, archived: true } : g)))}
       onDeleteLocalGroup={(id) => { setGroups((l) => l.filter((g) => g.id !== id)); setPeople((l) => l.map((x) => ({ ...x, groupIds: x.groupIds.filter((g) => g !== id) }))) }}
       onRemoveAllMembers={(id) => { setPeople((l) => l.map((x) => ({ ...x, groupIds: x.groupIds.filter((g) => g !== id) }))); setGroups((l) => l.map((g) => (g.id === id ? { ...g, memberCount: 0 } : g))) }}
-      onOpenRole={(id) => console.log('Open role:', id)}
+      onOpenRole={(id) => goTo(`/admin/roles/${id}`)}
+      onManageAccess={(id) => goTo(`/admin/access?recipient=${id}`)}
     />
   )
 }

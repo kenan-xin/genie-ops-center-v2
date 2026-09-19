@@ -1,3 +1,4 @@
+import { goTo } from '@/shell/components/routes'
 import { useState } from 'react'
 import data from '@/../product/sections/people-groups-and-roles/data.json'
 import type { Group, ModuleInfo, Person, PersonSession, Role, RoleAssignment, ScopeRecord, TenantSettingsSummary } from '@/../product/sections/people-groups-and-roles/types'
@@ -17,7 +18,7 @@ export default function PeopleDirectoryPreview() {
   const params = new URLSearchParams(window.location.search)
   const lastAdmin = params.get('lastadmin') === '1'
   const [people, setPeople] = useState(() => (data.people as Person[]).map((x) => (lastAdmin && x.id === 'usr_leila' ? { ...x, groupIds: x.groupIds.filter((g) => g !== 'grp_admins') } : x)))
-  const [assignments, setAssignments] = useState(data.roleAssignments as RoleAssignment[])
+  const assignments = data.roleAssignments as RoleAssignment[]
   const [sessions, setSessions] = useState(data.sessions as PersonSession[])
   const [groups, setGroups] = useState(data.groups as Group[])
   const openPerson = params.get('person') ?? params.get('open')
@@ -38,7 +39,7 @@ export default function PeopleDirectoryPreview() {
       onArchiveGroup={(id) => setGroups((l) => l.map((g) => (g.id === id ? { ...g, archived: true } : g)))}
       onDeleteLocalGroup={(id) => { setGroups((l) => l.filter((g) => g.id !== id)); setPeople((l) => l.map((x) => ({ ...x, groupIds: x.groupIds.filter((g) => g !== id) }))) }}
       onRemoveAllMembers={(id) => { setPeople((l) => l.map((x) => ({ ...x, groupIds: x.groupIds.filter((g) => g !== id) }))); setGroups((l) => l.map((g) => (g.id === id ? { ...g, memberCount: 0 } : g))) }}
-      onOpenRole={(id) => console.log('Open role:', id)}
+      onOpenRole={(id) => goTo(`/admin/roles/${id}`)}
       roles={data.roles as Role[]}
       roleAssignments={assignments}
       sessions={sessions}
@@ -61,11 +62,7 @@ export default function PeopleDirectoryPreview() {
       onRevokeAllSessions={(pid) => setSessions((l) => l.filter((s) => s.personId !== pid))}
       onAddToLocalGroup={(pid, gid) => setPeople((l) => l.map((x) => (x.id === pid ? { ...x, groupIds: [...x.groupIds, gid] } : x)))}
       onRemoveFromLocalGroup={(pid, gid) => setPeople((l) => l.map((x) => (x.id === pid ? { ...x, groupIds: x.groupIds.filter((g) => g !== gid) } : x)))}
-      onAddAssignment={(input) => {
-        console.log('Add assignment:', input)
-        setAssignments((l) => [...l, { id: `ra_${Date.now()}`, ...input, createdBy: 'Priya Nair', createdAt: new Date().toISOString() }])
-      }}
-      onRemoveAssignment={(id) => setAssignments((l) => l.filter((a) => a.id !== id))}
+      onManageAccess={(id) => goTo(`/admin/access?recipient=${id}`)}
     />
   )
 }

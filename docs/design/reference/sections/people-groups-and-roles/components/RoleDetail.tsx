@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { AlertTriangle, ArrowLeft, Building2, Copy, Pencil, Plus, Trash2, UsersRound } from 'lucide-react'
-import type { AssignmentInput, Group, ModuleInfo, Person, Role, RoleAssignment, RoleInput, ScopeRecord } from '@/../product/sections/people-groups-and-roles/types'
-import { btnGhost, btnPrimary, btnSecondary, fmtDate, focusRing, guardReason } from './helpers'
-import { Avatar, Card, ConfirmDialog, EmptyRow, Pill, Th, Td } from './ui'
-import { AssignmentForm } from './AssignmentForm'
+import { AlertTriangle, ArrowLeft, Building2, Copy, KeyRound, Pencil, Trash2, UsersRound } from 'lucide-react'
+import type { Group, ModuleInfo, Person, Role, RoleAssignment, RoleInput, ScopeRecord } from '@/../product/sections/people-groups-and-roles/types'
+import { btnSecondary, fmtDate, focusRing } from './helpers'
+import { Avatar, Card, ConfirmDialog, EmptyRow, Pill, Th, Td, WarningNote } from './ui'
 import { RoleForm } from './RoleForm'
 
 export interface RoleDetailProps {
@@ -20,28 +19,22 @@ export interface RoleDetailProps {
   onCopyRole?: (roleId: string) => void
   onCreateRole?: (input: RoleInput) => void
   onDeleteRole?: (roleId: string) => void
-  onAddAssignment?: (input: AssignmentInput) => void
-  onRemoveAssignment?: (assignmentId: string) => void
+  /** Opens core Access with this role's module and level preselected. Roles never writes an assignment (`DEC-39`). */
+  onManageAccess?: (roleId: string) => void
 }
 
 export function RoleDetail(p: RoleDetailProps) {
   const { role } = p
   const [form, setForm] = useState<'edit' | 'copy' | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [confirm, setConfirm] = useState<'delete' | { assignmentId: string } | null>(null)
+  const [confirm, setConfirm] = useState<'delete' | null>(null)
   const assignments = p.roleAssignments.filter((a) => a.roleId === role.id)
   const modulesWithKeys = p.modules.filter((m) => m.permissionKeys.some((k) => role.permissions.includes(k.key)))
   const moduleName = p.modules.find((m) => m.id === role.moduleId)?.name
-  const state = { people: p.people, roles: p.roles, roleAssignments: p.roleAssignments }
-  const removeGuard = (assignmentId: string) => guardReason(state, p.currentUserId, { type: 'removeAssignment', assignmentId })
   const describe = (a: RoleAssignment) => ({
     person: a.principalType === 'user' ? p.people.find((x) => x.id === a.principalId) : null,
     group: a.principalType === 'group' ? p.groups.find((x) => x.id === a.principalId) : null,
     scope: a.scopeId ? p.scopeRecords.find((s) => s.id === a.scopeId) : null,
   })
-  const confirmed = confirm && typeof confirm === 'object' ? assignments.find((a) => a.id === confirm.assignmentId) : null
-  const confirmedInfo = confirmed ? describe(confirmed) : null
-  const iconBtn = `${btnGhost} justify-center px-0 text-gray-500 hover:text-red-700`
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -72,7 +65,7 @@ export function RoleDetail(p: RoleDetailProps) {
             <h3 className="text-base font-bold tracking-tight">Permissions</h3>
             <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">{role.permissions.length} {role.permissions.length === 1 ? 'key' : 'keys'} across {modulesWithKeys.length} {modulesWithKeys.length === 1 ? 'module' : 'modules'}.</p>
             {role.entitlementAdded?.length ? (
-              <p className="mt-2 rounded-xl bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900 dark:bg-blue-900/30 dark:text-blue-100">When a module is entitled, its admin permission is appended to this role automatically, so administrators always reach every entitled module's admin screens. Member use of a module's records is still a separate grant.</p>
+              <p className="mt-2 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900 dark:bg-blue-900/30 dark:text-blue-100">When a module is entitled, its admin permission is appended to this role automatically, so administrators always reach every entitled module's admin screens. Member use of a module's records is still a separate grant.</p>
             ) : null}
           </div>
           <div className="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-800 dark:border-gray-800">
@@ -80,13 +73,10 @@ export function RoleDetail(p: RoleDetailProps) {
               <div key={m.id} className="px-5 py-3.5 sm:px-6">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold">{m.name}</span>
-                  <Pill tone={m.entitled ? 'green' : 'gray'}>{m.entitled ? 'Entitled' : 'Not entitled'}</Pill>
+                  <Pill tone={m.entitled ? 'emerald' : 'gray'}>{m.entitled ? 'Entitled' : 'Not entitled'}</Pill>
                 </div>
                 {!m.entitled ? (
-                  <p className="mt-1.5 flex items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-                    <AlertTriangle className="mt-px size-4 shrink-0" strokeWidth={2} aria-hidden />
-                    <span className="min-w-0">This tenant is not entitled to {m.name}. These keys grant nothing until an operator enables the module.</span>
-                  </p>
+                  <WarningNote className="mt-1.5">This tenant is not entitled to {m.name}. These keys grant nothing until an operator enables the module.</WarningNote>
                 ) : null}
                 <ul className="mt-2 flex flex-col gap-1.5">
                   {m.permissionKeys.filter((k) => role.permissions.includes(k.key)).map((k) => (
@@ -105,14 +95,13 @@ export function RoleDetail(p: RoleDetailProps) {
           <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-5 sm:px-6">
             <div>
               <h3 className="text-base font-bold tracking-tight">Assignments</h3>
-              <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">Who holds this role, and at which scope.</p>
+              <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">Who holds this role, and at which scope. Read-only here.</p>
             </div>
-            <button type="button" className={btnPrimary} onClick={() => setAdding(true)}><Plus className="size-5" strokeWidth={2} aria-hidden />Add assignment</button>
+            <button type="button" className={btnSecondary} onClick={() => p.onManageAccess?.(role.id)}><KeyRound className="size-5 text-gray-500" strokeWidth={1.75} aria-hidden />Manage in Access</button>
           </div>
           <ul className="divide-y divide-gray-100 border-t border-gray-100 md:hidden dark:divide-gray-800 dark:border-gray-800">
             {assignments.map((a) => {
               const { person, group, scope } = describe(a)
-              const why = removeGuard(a.id)
               return (
                 <li key={a.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                   {person ? <Avatar name={person.name} size="sm" /> : <span className="flex size-7 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"><UsersRound className="size-4 text-gray-600" strokeWidth={1.75} aria-hidden /></span>}
@@ -120,7 +109,6 @@ export function RoleDetail(p: RoleDetailProps) {
                     <div className="flex flex-wrap items-center gap-1.5 font-medium">{person?.name ?? group?.name}<Pill tone={a.scopeId ? 'blue' : 'gray'}>{scope ? scope.label : 'Whole tenant'}</Pill></div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">{fmtDate(a.createdAt)} by {a.createdBy}</div>
                   </div>
-                  <button type="button" aria-label="Remove assignment" disabled={Boolean(why)} title={why ?? undefined} className={`${iconBtn} size-11`} onClick={() => setConfirm({ assignmentId: a.id })}><Trash2 className="size-5" strokeWidth={1.75} /></button>
                 </li>
               )
             })}
@@ -128,12 +116,11 @@ export function RoleDetail(p: RoleDetailProps) {
           </ul>
           <div className="hidden border-t border-gray-100 md:block dark:border-gray-800">
             <table className="w-full table-fixed">
-              <colgroup><col /><col className="w-[30%]" /><col className="w-36" /><col className="w-16" /></colgroup>
-              <thead className="bg-gray-50 dark:bg-gray-950/50"><tr><Th>Principal</Th><Th>Scope</Th><Th>Added</Th><Th /></tr></thead>
+              <colgroup><col /><col className="w-[30%]" /><col className="w-36" /></colgroup>
+              <thead className="bg-gray-50 dark:bg-gray-950/50"><tr><Th>Principal</Th><Th>Scope</Th><Th>Added</Th></tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {assignments.map((a) => {
                   const { person, group, scope } = describe(a)
-                  const why = removeGuard(a.id)
                   return (
                     <tr key={a.id}>
                       <Td>
@@ -147,21 +134,18 @@ export function RoleDetail(p: RoleDetailProps) {
                       </Td>
                       <Td><Pill tone={a.scopeId ? 'blue' : 'gray'}><span className="truncate">{scope ? scope.label : 'Whole tenant'}</span></Pill></Td>
                       <Td className="text-xs text-gray-600 dark:text-gray-400">{fmtDate(a.createdAt)}<br />by {a.createdBy}</Td>
-                      <Td className="text-right"><button type="button" aria-label="Remove assignment" disabled={Boolean(why)} title={why ?? undefined} className={`${iconBtn} size-8`} onClick={() => setConfirm({ assignmentId: a.id })}><Trash2 className="size-5" strokeWidth={1.75} /></button></Td>
                     </tr>
                   )
                 })}
-                {assignments.length === 0 ? <EmptyRow colSpan={4}>Nobody holds this role yet.</EmptyRow> : null}
+                {assignments.length === 0 ? <EmptyRow colSpan={3}>Nobody holds this role yet.</EmptyRow> : null}
               </tbody>
             </table>
           </div>
         </Card>
       </div>
 
-      {adding ? <AssignmentForm open onClose={() => setAdding(false)} roles={p.roles} people={p.people} groups={p.groups} modules={p.modules} scopeRecords={p.scopeRecords} roleAssignments={p.roleAssignments} fixedRoleId={role.id} onSubmit={p.onAddAssignment} /> : null}
       {form ? <RoleForm open onClose={() => setForm(null)} modules={p.modules} existingRoles={p.roles} initial={role} mode={form} onSubmit={(input) => (form === 'edit' ? p.onUpdateRole?.(role.id, input) : p.onCreateRole?.(input))} /> : null}
       <ConfirmDialog open={confirm === 'delete'} onClose={() => setConfirm(null)} title={`Delete ${role.name}?`} description={`Its ${assignments.length} ${assignments.length === 1 ? 'assignment is' : 'assignments are'} removed and the people and groups holding it lose these permissions now.`} confirmLabel="Delete role" danger onConfirm={() => p.onDeleteRole?.(role.id)} />
-      <ConfirmDialog open={Boolean(confirmed)} onClose={() => setConfirm(null)} title={`Remove ${role.name} from ${confirmedInfo?.person?.name ?? confirmedInfo?.group?.name ?? ''}?`} description={`${confirmedInfo?.group ? 'Every member of the group loses' : 'They lose'} this role ${confirmedInfo?.scope ? `for ${confirmedInfo.scope.label}` : 'for the whole tenant'} at once.`} confirmLabel="Remove" danger onConfirm={() => confirmed && p.onRemoveAssignment?.(confirmed.id)} />
     </div>
   )
 }

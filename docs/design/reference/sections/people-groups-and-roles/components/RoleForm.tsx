@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import type { ModuleInfo, Role, RoleInput } from '@/../product/sections/people-groups-and-roles/types'
 import { btnPrimary, btnSecondary, focusRing, inputClass, labelClass } from './helpers'
-import { Dialog, Pill } from './ui'
+import { Dialog, LoadingButton, Pill } from './ui'
 
 export interface RoleFormProps {
   open: boolean
@@ -34,9 +34,9 @@ export function RoleForm({ open, onClose, modules, initial, mode, onSubmit, exis
       footer={
         <>
           <button type="button" className={btnSecondary} onClick={onClose}>Cancel</button>
-          <button type="button" className={btnPrimary} disabled={!name.trim() || duplicate || perms.length === 0} onClick={() => { onSubmit?.({ name: name.trim(), description: description.trim(), permissions: perms }); onClose() }}>
+          <LoadingButton className={btnPrimary} disabled={!name.trim() || duplicate || perms.length === 0} onPress={() => { onSubmit?.({ name: name.trim(), description: description.trim(), permissions: perms }); onClose() }}>
             {mode === 'edit' ? 'Save changes' : 'Create role'}
-          </button>
+          </LoadingButton>
         </>
       }
     >
@@ -52,7 +52,7 @@ export function RoleForm({ open, onClose, modules, initial, mode, onSubmit, exis
         </div>
         <div className="flex flex-col gap-2">
           <span className={labelClass}>Permissions <span className="font-normal text-gray-500">({perms.length} selected)</span></span>
-          <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800">
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
             {modules.map((m) => {
               const keys = m.permissionKeys.map((k) => k.key)
               const all = keys.every((k) => perms.includes(k))
@@ -61,8 +61,8 @@ export function RoleForm({ open, onClose, modules, initial, mode, onSubmit, exis
                   <legend className="sr-only">{m.name}</legend>
                   <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 dark:bg-gray-950/50">
                     <span className="text-sm font-semibold">{m.name}</span>
-                    <Pill tone={m.entitled ? 'green' : 'gray'}>{m.entitled ? 'Entitled' : 'Not entitled'}</Pill>
-                    <button type="button" className={`ml-auto rounded text-xs font-medium text-blue-700 hover:underline dark:text-blue-300 ${focusRing}`} onClick={() => setPerms((s) => (all ? s.filter((k) => !keys.includes(k)) : Array.from(new Set([...s, ...keys]))))}>
+                    <Pill tone={m.entitled ? 'emerald' : 'gray'}>{m.entitled ? 'Entitled' : 'Not entitled'}</Pill>
+                    <button type="button" className={`ml-auto rounded text-xs font-medium text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`} onClick={() => setPerms((s) => (all ? s.filter((k) => !keys.includes(k)) : Array.from(new Set([...s, ...keys]))))}>
                       {all ? 'Clear' : 'Select all'}
                     </button>
                   </div>
