@@ -1,0 +1,21 @@
+[
+  { "name": "account-page-dark", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen", "out": "product/sections/account-and-inbox", "dark": true },
+  { "name": "account-page-local-accounts", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen?local=1", "out": "product/sections/account-and-inbox" },
+  { "name": "account-page-mobile-sessions", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen#sessions", "out": "product/sections/account-and-inbox", "viewport": "phoneTall" },
+  { "name": "account-page-confirm-sign-out-all", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen", "out": "product/sections/account-and-inbox", "actions": [{ "click": "button:has-text('Sign out all other sessions')" }, { "wait": 300 }] },
+  { "name": "account-page-confirm-sign-out-all-mobile", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen", "out": "product/sections/account-and-inbox", "viewport": "phone", "actions": [{ "click": "button:has-text('Sign out all other sessions')" }, { "wait": 300 }] },
+  { "name": "account-page-toast", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen", "out": "product/sections/account-and-inbox", "actions": [{ "click": "button:has-text('Sign out all other sessions')" }, { "wait": 300 }, { "click": "[role='alertdialog'] button:text-is('Sign out')" }, { "wait": 600 }] },
+  { "name": "account-page-break-glass", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen?breakglass=1", "out": "product/sections/account-and-inbox" },
+  { "name": "account-page-break-glass-dark", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen?breakglass=1", "out": "product/sections/account-and-inbox", "dark": true },
+  { "name": "account-page-break-glass-mobile", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen?breakglass=1", "out": "product/sections/account-and-inbox", "viewport": "phoneTall" },
+  { "name": "account-page-break-glass-password-saved", "url": "/sections/account-and-inbox/screen-designs/AccountPage/fullscreen?breakglass=1", "out": "product/sections/account-and-inbox", "actions": [{ "fill": ["#bg-cur", "Current-passw0rd!"] }, { "fill": ["#bg-next", "An0ther-long-passphrase!"] }, { "fill": ["#bg-confirm", "An0ther-long-passphrase!"] }, { "click": "form button[type='submit']" }, { "wait": 1400 }] },
+  { "name": "idle-timeout-modal", "url": "/sections/account-and-inbox/screen-designs/IdleTimeoutModal/fullscreen", "out": "product/sections/account-and-inbox" },
+  { "name": "idle-timeout-modal-dark", "url": "/sections/account-and-inbox/screen-designs/IdleTimeoutModal/fullscreen", "out": "product/sections/account-and-inbox", "dark": true },
+  { "name": "idle-timeout-modal-mobile", "url": "/sections/account-and-inbox/screen-designs/IdleTimeoutModal/fullscreen", "out": "product/sections/account-and-inbox", "viewport": "phone" },
+  { "name": "inbox-dark", "url": "/sections/account-and-inbox/screen-designs/Inbox/fullscreen?shot=1", "out": "product/sections/account-and-inbox", "dark": true },
+  { "name": "inbox-empty", "url": "/sections/account-and-inbox/screen-designs/Inbox/fullscreen?empty=1&shot=1", "out": "product/sections/account-and-inbox" },
+  { "name": "inbox-empty-mobile", "url": "/sections/account-and-inbox/screen-designs/Inbox/fullscreen?empty=1&shot=1", "out": "product/sections/account-and-inbox", "viewport": "phone" },
+  { "name": "solutions-empty-state", "url": "/sections/account-and-inbox/screen-designs/SolutionsEmptyState/fullscreen", "out": "product/sections/account-and-inbox" },
+  { "name": "solutions-empty-state-dark", "url": "/sections/account-and-inbox/screen-designs/SolutionsEmptyState/fullscreen", "out": "product/sections/account-and-inbox", "dark": true },
+  { "name": "solutions-empty-state-mobile", "url": "/sections/account-and-inbox/screen-designs/SolutionsEmptyState/fullscreen", "out": "product/sections/account-and-inbox", "viewport": "phone" }
+]

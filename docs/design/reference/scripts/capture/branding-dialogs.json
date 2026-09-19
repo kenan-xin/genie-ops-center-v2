@@ -1,0 +1,9 @@
+[
+  { "name": "branding-discard-dialog", "url": "/sections/branding/screen-designs/BrandingPage/fullscreen", "out": "product/sections/branding", "viewport": "desktop",
+    "actions": [{ "fill": ["#b-company", "Meridian Health Group"] }, { "fill": ["#b-product", "Genie Operations"] }, { "click": "text=Discard" }, { "wait": 400 }] },
+  { "name": "branding-discard-dialog-mobile", "url": "/sections/branding/screen-designs/BrandingPage/fullscreen", "out": "product/sections/branding", "viewport": "phone",
+    "actions": [{ "fill": ["#b-company", "Meridian Health Group"] }, { "fill": ["#b-product", "Genie Operations"] }, { "click": ".sticky >> text=Discard" }, { "wait": 400 }] },
+  { "name": "branding-previous-values", "url": "/sections/branding/screen-designs/BrandingPage/fullscreen?dialog=previous", "out": "product/sections/branding", "viewport": "desktop" },
+  { "name": "branding-previous-values-mobile", "url": "/sections/branding/screen-designs/BrandingPage/fullscreen?dialog=previous", "out": "product/sections/branding", "viewport": "phone" },
+  { "name": "branding-previous-values-dark", "url": "/sections/branding/screen-designs/BrandingPage/fullscreen?dialog=previous", "out": "product/sections/branding", "viewport": "desktop", "dark": true }
+]

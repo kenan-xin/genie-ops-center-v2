@@ -6,9 +6,11 @@ What belongs here: what only the design owner can decide. That is the token laye
 
 Naming: a `user` row is shown as "person" in every screen. The product is "Genie Ops Center", never bare "Genie".
 
+Sample values: `blue-600` is the default value of the shadcn `--primary` variable that each tenant's Branding fills per request. The sample colors in this tree are reference values of the fixed layer, not brand choices; creative identity is the tenant's contribution, and the fixed layer carries none.
+
 Standing check: a field in a `types.ts` that has no column in `../architecture/data-shape.md` and no row in `../architecture/module-contract.md` is a finding. The design raises it in its handover report and does not invent the column.
 
-Handover rule: on every handover the design owner copies the text of the design tree's `product/` folder into this folder: the section specifications, the `types.ts` files, the `data.json` files, `design-system/tokens.md`, and `shell/spec.md`. The captures stay in the design tree and are referenced by their path there, so a reviewer opens them where they live. The text is what drifts and what a `DEC-` change must be checked against, so a reviewer can do that check in one repository and one pull request. A decision in `../core/decision-log.md` that changes a screen names the files here on its `Design files affected` line, and the next handover carries the change.
+Ownership: the design authoring workspace is `/home/kenan/work/genie-ops-center-design`; this tree is the imported reference used by the v2 repository. Each section folder holds its specification, `types.ts`, `data.json`, and captures; `reference/` holds screen components as visual evidence (see `reference/README.md`); `design-system/tokens.md` and `shell/spec.md` hold the imported token layer and shell. Importing a design does not approve changes to platform behavior, data shape, module contracts or roadmap scope. Conflicts require explicit reconciliation with the canonical platform decisions and specifications. The [2026-09-19 import record](imports/2026-09-19.md) records provenance, known stale captures and review status. A capture is one historical state, not proof of current behavior; do not choose authority merely by file modification time. Inspect current source and its governing contract, and report disagreements rather than silently promoting screenshots or prototype callbacks into requirements.
 
 Design rounds and the core section each one serves. The rounds carry no numbering of their own.
 
@@ -17,6 +19,7 @@ Design rounds and the core section each one serves. The rounds carry no numberin
 | `sections/sign-in-and-tenant-pages` | Section 1 (not-set-up page) and Section 2 (sign-in, break-glass sign-in) |
 | `sections/account-and-inbox` | Section 2 (account page, sessions) and Section 3 (idle timeout, shell empty state, personal overrides). The inbox screen is a later capability, Section 5 item 8. |
 | `sections/people-groups-and-roles` | Section 2 |
+| `sections/access` | Section 2. Grants writes every role assignment, Overview reads who reaches what. The amendments this round needs are in `amendments-access-2026-09-18.md` |
 | `sections/branding` | Section 3 |
 | `sections/audit-and-tenant-settings` | Section 2 item 12 (audit reader) and Section 3 (Tenant settings, Modules, Categories) |
 | `sections/email-templates` | Section 3 |

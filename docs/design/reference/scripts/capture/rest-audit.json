@@ -1,0 +1,12 @@
+[
+  { "name": "audit-log-dark", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen", "out": "product/sections/audit-and-tenant-settings", "dark": true },
+  { "name": "audit-log-detail", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?event=evt_01J9ZC6A1K0N7Q3M9V2R8T4X5B", "out": "product/sections/audit-and-tenant-settings" },
+  { "name": "audit-log-detail-mobile", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?event=evt_01J9ZC6A1K0N7Q3M9V2R8T4X5B", "out": "product/sections/audit-and-tenant-settings", "viewport": "phone" },
+  { "name": "audit-log-detail-json", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?event=evt_01J9ZC6A1K0N7Q3M9V2R8T4X5B&json=1", "out": "product/sections/audit-and-tenant-settings" },
+  { "name": "audit-log-detail-json-mobile", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?event=evt_01J9ZC6A1K0N7Q3M9V2R8T4X5B&json=1", "out": "product/sections/audit-and-tenant-settings", "viewport": "phone" },
+  { "name": "audit-log-empty", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?empty=1", "out": "product/sections/audit-and-tenant-settings" },
+  { "name": "audit-log-empty-mobile", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?empty=1", "out": "product/sections/audit-and-tenant-settings", "viewport": "phone" },
+  { "name": "audit-log-filtered", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?actor=usr_priya&range=7d", "out": "product/sections/audit-and-tenant-settings" },
+  { "name": "audit-log-filtered-mobile", "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen?actor=usr_priya&range=7d", "out": "product/sections/audit-and-tenant-settings", "viewport": "phone" },
+  { "name": "tenant-settings-mobile-dirty", "url": "/sections/audit-and-tenant-settings/screen-designs/TenantSettings/fullscreen?draft=1&section=sessions", "out": "product/sections/audit-and-tenant-settings", "viewport": "phoneTall" }
+]

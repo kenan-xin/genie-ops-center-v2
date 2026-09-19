@@ -1,0 +1,6 @@
+[
+  { "name": "grants-empty", "url": "/sections/access/screen-designs/AccessGrants/fullscreen", "out": "product/sections/access" },
+  { "name": "grants-advanced", "url": "/sections/access/screen-designs/AccessGrants/fullscreen?recipient=grp_claims&dialog=advanced&module=solutions&level=use", "out": "product/sections/access" },
+  { "name": "grants-advanced-core", "url": "/sections/access/screen-designs/AccessGrants/fullscreen?recipient=grp_claims&dialog=advanced&module=core&level=admin", "out": "product/sections/access" },
+  { "name": "grants-mobile-advanced", "url": "/sections/access/screen-designs/AccessGrants/fullscreen?recipient=grp_claims&dialog=advanced&module=solutions&level=use", "out": "product/sections/access", "viewport": "phone" }
+]

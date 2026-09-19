@@ -1,0 +1,15 @@
+[
+  { "name": "shell-desktop-workspace-dark", "url": "/shell/design/fullscreen", "out": "product/shell", "dark": true },
+  { "name": "shell-desktop-loading", "url": "/shell/design/fullscreen?loading=1", "out": "product/shell" },
+  { "name": "shell-desktop-offline", "url": "/shell/design/fullscreen?offline=1", "out": "product/shell" },
+  { "name": "shell-desktop-admin-menu", "url": "/shell/design/fullscreen?mode=admin", "out": "product/shell", "actions": [{ "click": "button[aria-haspopup='menu']" }, { "wait": 300 }] },
+  { "name": "shell-desktop-member-menu", "url": "/shell/design/fullscreen?member=1", "out": "product/shell", "actions": [{ "click": "button[aria-haspopup='menu']" }, { "wait": 300 }] },
+  { "name": "shell-desktop-member-menu-local", "url": "/shell/design/fullscreen?member=1&local=1", "out": "product/shell", "actions": [{ "click": "button[aria-haspopup='menu']" }, { "wait": 300 }] },
+  { "name": "shell-tablet-workspace", "url": "/shell/design/fullscreen", "out": "product/shell", "viewport": "tablet" },
+  { "name": "shell-mobile-loading", "url": "/shell/design/fullscreen?loading=1", "out": "product/shell", "viewport": "phone" },
+  { "name": "shell-mobile-offline", "url": "/shell/design/fullscreen?offline=1", "out": "product/shell", "viewport": "phone" },
+  { "name": "shell-mobile-workspace-drawer", "url": "/shell/design/fullscreen", "out": "product/shell", "viewport": "phone", "actions": [{ "click": "button[aria-label='Open navigation']" }, { "wait": 400 }] },
+  { "name": "shell-mobile-workspace-drawer-dark", "url": "/shell/design/fullscreen", "out": "product/shell", "viewport": "phone", "dark": true, "actions": [{ "click": "button[aria-label='Open navigation']" }, { "wait": 400 }] },
+  { "name": "shell-mobile-admin-drawer", "url": "/shell/design/fullscreen?mode=admin", "out": "product/shell", "viewport": "phone", "actions": [{ "click": "button[aria-label='Open navigation']" }, { "wait": 400 }] },
+  { "name": "shell-mobile-admin-drawer-dark", "url": "/shell/design/fullscreen?mode=admin", "out": "product/shell", "viewport": "phone", "dark": true, "actions": [{ "click": "button[aria-label='Open navigation']" }, { "wait": 400 }] }
+]

@@ -1,0 +1,20 @@
+[
+  { "name": "email-gallery-dark", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen", "out": "product/sections/email-templates", "dark": true },
+  { "name": "email-gallery-mobile-text", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?view=text", "out": "product/sections/email-templates", "viewport": "phoneTall" },
+  { "name": "email-gallery-send-test", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen", "out": "product/sections/email-templates", "actions": [{ "click": "button:has-text('Send test')" }, { "wait": 400 }] },
+  { "name": "email-invitation-local", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=invitation-local", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-invitation-phone-width", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=invitation-brokered&width=phone", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-invitation-plain-text", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=invitation-brokered&view=text", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-role-granted-northwind", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=role-granted&tenant=northwind", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-role-granted-mobile", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=role-granted", "out": "product/sections/email-templates", "viewport": "phoneTall" },
+  { "name": "email-role-removed", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=role-removed", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-role-removed-nothing-left", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=role-removed-last", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-new-device-sign-in", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=new-device-sign-in", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-new-device-sign-in-mobile", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=new-device-sign-in", "out": "product/sections/email-templates", "viewport": "phoneTall" },
+  { "name": "email-module-notification", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=module-notification", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-kc-set-password", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=kc-set-password", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-kc-set-password-brokered", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=kc-set-password&tenant=northwind", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-kc-reset-password-northwind", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=kc-reset-password&tenant=northwind", "out": "product/sections/email-templates", "viewport": "desktopTall" },
+  { "name": "email-kc-reset-password-mobile", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=kc-reset-password", "out": "product/sections/email-templates", "viewport": "phoneTall" },
+  { "name": "email-kc-verify-email", "url": "/sections/email-templates/screen-designs/EmailGallery/fullscreen?t=kc-verify-email", "out": "product/sections/email-templates", "viewport": "desktopTall" }
+]
