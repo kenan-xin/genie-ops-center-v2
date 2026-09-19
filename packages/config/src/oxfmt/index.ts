@@ -21,6 +21,17 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // Approved planning documents. Reformatting every table in docs/ would bury this
     // ticket's real diff. Reopen by deleting this line once the code tree is stable.
     "docs/**",
+    // Tool state and documents that predate this ticket. oxfmt formats what this
+    // repository owns as source.
+    ".beads/**",
+    ".claude/**",
+    ".agents/**",
+    ".impeccable/**",
+    "graft/**",
+    "plans/**",
+    "README.md",
+    "DESIGN.md",
+    "PRODUCT.md",
   ],
   // Built in, so it replaces an import-sorting lint plugin at no cost.
   sortImports: true,

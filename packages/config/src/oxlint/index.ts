@@ -21,4 +21,21 @@ export const sharedOxlintConfig: OxlintConfig = {
   rules: {
     "oxc/no-accumulating-spread": "error",
   },
+  overrides: [
+    // Reserved entrypoints. Each file exists so its package resolves, and stays
+    // empty until the ticket that owns it adds real exports. Delete a path from
+    // this list when that happens, and delete the whole entry when the list
+    // empties.
+    {
+      files: [
+        "apps/genie/src/index.ts",
+        "packages/core/src/index.ts",
+        "packages/ui/src/index.ts",
+        "packages/core/src/lib/tenant-config/index.ts",
+      ],
+      rules: {
+        "unicorn/require-module-specifiers": "off",
+      },
+    },
+  ],
 };

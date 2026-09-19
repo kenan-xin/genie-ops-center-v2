@@ -25,3 +25,4 @@ minimumReleaseAgeExclude:
 # needs one. Never use dangerouslyAllowAllBuilds.
 allowBuilds:
   nx: true
+  lefthook: true
