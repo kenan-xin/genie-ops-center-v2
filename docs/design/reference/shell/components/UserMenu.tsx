@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeftRight, ChevronsUpDown, ExternalLink, KeyRound, LifeBuoy, LogOut, UserRound } from 'lucide-react'
-import { MonoChip } from './MonoChip'
 import { focusRing } from './helpers'
 
 export interface ShellUser {
@@ -64,14 +63,14 @@ export function UserMenu({
   }
 
   // 44px items under lg (touch), 40px on desktop.
-  const itemClass = `flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-gray-800 hover:bg-gray-100 lg:min-h-0 lg:h-10 dark:text-gray-200 dark:hover:bg-gray-800 ${focusRing}`
+  const itemClass = `flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 active:bg-gray-100 lg:min-h-0 lg:h-10 dark:text-gray-200 dark:hover:bg-gray-900 dark:active:bg-gray-800 ${focusRing}`
 
   return (
-    <div ref={rootRef} className="relative p-2">
+    <div ref={rootRef} className="relative border-t border-gray-200 p-2 dark:border-gray-800">
       {open ? (
         <div
           role="menu"
-          className="absolute bottom-full left-2 right-2 mb-2 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg shadow-gray-900/5 dark:border-gray-700 dark:bg-gray-900"
+          className="absolute bottom-full left-2 right-2 mb-2 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg shadow-gray-900/5 dark:border-gray-700 dark:bg-gray-900"
         >
           <button type="button" role="menuitem" className={itemClass} onClick={() => pick(accountHref)}>
             <UserRound className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />
@@ -117,7 +116,7 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-gray-200/60 dark:hover:bg-gray-800 ${focusRing}`}
+        className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-gray-100 active:bg-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700 ${open ? 'bg-gray-100 dark:bg-gray-800' : ''} ${focusRing}`}
       >
         {user.avatarUrl ? (
           <img src={user.avatarUrl} alt="" className="size-9 shrink-0 rounded-full object-cover" />
@@ -130,8 +129,8 @@ export function UserMenu({
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{user.name}</span>
-          {user.role ? <MonoChip className="mt-0.5 max-w-full truncate">{user.role}</MonoChip> : null}
+          <span title={user.name} className="block truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{user.name}</span>
+          {user.role ? <span title={user.role} className="block truncate text-xs text-gray-600 dark:text-gray-400">{user.role}</span> : null}
         </span>
         <ChevronsUpDown className="size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
       </button>

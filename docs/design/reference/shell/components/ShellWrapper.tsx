@@ -1,6 +1,7 @@
-import { LayoutGrid, Star, Inbox, Users, UsersRound, ShieldCheck, Palette, ScrollText, Settings, SwatchBook, Tags, KeyRound, Blocks, FileSignature, CheckSquare } from 'lucide-react'
+import { LayoutGrid, Star, Inbox, Users, UsersRound, ShieldCheck, Palette, ScrollText, Settings, SwatchBook, Tags, KeyRound, Blocks } from 'lucide-react'
 import { AppShell, type ShellMode } from './AppShell'
 import type { NavCategory, NavTree } from './MainNav'
+import { goTo, onInternalLinkClick } from './routes'
 import accountData from '@/../product/sections/account-and-inbox/data.json'
 
 /**
@@ -29,7 +30,8 @@ const PAGES: Record<string, PageMeta> = {
   ChatThemes: { mode: 'admin', title: 'Chat themes', description: 'How the chat surface looks. The tenant branding is the default.', active: '/admin/solutions/themes' },
   CategoriesPage: { mode: 'admin', title: 'Categories', description: 'Headings in the sidebar that group solutions and modules.', active: '/admin/categories' },
   ModulesPage: { mode: 'admin', title: 'Modules', description: 'Every module compiled into this deployment: on or off, its category, and who reaches it.', active: '/admin/modules' },
-  AccessOverview: { mode: 'admin', title: 'Access', description: 'Who can use which solution, and why.', active: '/admin/solutions/access' },
+  AccessGrants: { mode: 'admin', title: 'Access', description: 'Choose a group or a person first. Then give them the solutions and modules they need, or take that access back.', active: '/admin/access' },
+  AccessOverview: { mode: 'admin', title: 'Access', description: 'Who reaches what, and through which role or group.', active: '/admin/access' },
   BrandingPage: { mode: 'admin', title: 'Branding', description: 'How Genie looks for your people. Publish applies every tab at once.', active: '/admin/branding' },
   AuditLog: { mode: 'admin', title: 'Audit log', description: "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited.", active: '/admin/audit' },
   TenantSettings: { mode: 'admin', title: 'Tenant settings', description: 'Sign-in, sessions, and the settings each module exposes for this tenant. Branding has its own page.', active: '/admin/settings' },
@@ -47,6 +49,8 @@ const adminNav = (active?: string) =>
     { label: 'People', href: '/admin/people', icon: Users, section: 'Core' },
     { label: 'Groups', href: '/admin/groups', icon: UsersRound, section: 'Core' },
     { label: 'Roles', href: '/admin/roles', icon: ShieldCheck, section: 'Core' },
+    // Access is core administration, so it stays reachable when the solutions module is switched off.
+    { label: 'Access', href: '/admin/access', icon: KeyRound, section: 'Core' },
     { label: 'Branding', href: '/admin/branding', icon: Palette, section: 'Core' },
     { label: 'Audit log', href: '/admin/audit', icon: ScrollText, section: 'Core' },
     { label: 'Settings', href: '/admin/settings', icon: Settings, section: 'Core' },
@@ -54,7 +58,6 @@ const adminNav = (active?: string) =>
     { label: 'Categories', href: '/admin/categories', icon: Tags, section: 'Core' },
     { label: 'Solutions', href: '/admin/solutions/solutions', icon: LayoutGrid, section: 'Solutions' },
     { label: 'Chat themes', href: '/admin/solutions/themes', icon: SwatchBook, section: 'Solutions' },
-    { label: 'Access', href: '/admin/solutions/access', icon: KeyRound, section: 'Solutions' },
   ].map((i) => ({ ...i, isActive: i.href === active }))
 
 // Core category rows (DEC-51); tree entries reference them by id.
@@ -74,8 +77,8 @@ const navTree = (active?: string): NavTree => {
       sol('Policy Q&A', 'policy-qa', 'cat-finance'),
       sol('Vendor Invoice Checker', 'invoice-checker', 'cat-finance'),
       sol('General Assistant', 'general-assistant', null),
-      { label: 'Contracts', href: '/m/contracts', categoryId: 'cat-finance', moduleId: 'contracts', kind: 'module', icon: FileSignature },
-      { label: 'Approvals', href: '/m/approvals', categoryId: null, moduleId: 'approvals', kind: 'module', icon: CheckSquare },
+      { label: 'Contracts', href: '/m/contracts', categoryId: 'cat-finance', moduleId: 'contracts', kind: 'module' },
+      { label: 'Approvals', href: '/m/approvals', categoryId: null, moduleId: 'approvals', kind: 'module' },
     ],
   }
 }
@@ -119,13 +122,16 @@ export default function ShellWrapper({ children }: { children?: React.ReactNode 
         categories={categories}
         tenant={{ name: 'Meridian Health', productName: 'Genie Ops Center' }}
         user={breakGlass ? { name: accountData.breakGlassUser.name, role: 'Administrator' } : admin ? { name: 'Priya Nair', role: 'Administrator' } : { name: 'Alex Morgan', role: 'Workspace member' }}
-        switchTarget={admin ? { label: 'Back to workspace', href: '/' } : undefined}
+        switchTarget={admin ? { label: 'Back to workspace', href: '/' } : { label: 'Administration', href: '/admin/people' }}
+        onNavigate={goTo}
+        onLogout={() => goTo('/signin')}
         changePasswordHref={changePasswordHref}
         pageTitle={page.title}
         pageDescription={page.description}
         supportHref="mailto:support@meridianhealth.example"
       >
-        {children}
+        {/* Design tree only: routes an internal link inside a section component to its preview screen. */}
+        <div className="contents" onClick={onInternalLinkClick}>{children}</div>
       </AppShell>
     </>
   )

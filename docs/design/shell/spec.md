@@ -4,7 +4,7 @@
 One shell component with two chromes: the member workspace and the admin portal. Both share the same anatomy (tenant identity block, 240px sidebar, 54px header, user footer) but carry different navigation. A person never sees admin items in the workspace. A person who holds admin permissions switches chrome through the user menu. The shell reads tenant branding (logo, company name) and shows only the modules the tenant is entitled to and the person may reach. Visual language: white page, soft gray sidebar panel with rounded corners, hairline borders, rounded rows and pills, blue for actions and active states.
 
 ## Navigation Structure
-- Solutions → the solutions hub, the landing route after sign-in [workspace]. The solutions module owns this page and marks its entry as the landing route; core has no landing page of its own (`DEC-49`)
+- Solutions → the solutions hub, the landing route after sign-in [workspace]. The solutions module owns this page and marks its entry as the landing route; core has no landing page of its own (`DEC-49`). With no category set for the module (the default), the entry sits here in the WORKSPACE block; when an administrator picks a category for the solutions module on the Modules page, this static entry renders under that category heading instead (`DEC-50`), and the landing-route flag does not depend on its placement
 - Favorites → Favorites list in Solutions [workspace]
 - Inbox → Notification inbox, with a blue unread count pill on the right [workspace]. Deferred: the platform schedules the inbox screen after the core sections (`DEC-21`), so the shell hides this entry and the pill until then. The design is kept as delivered early.
 - Pinned rail → Up to six favorite solutions, drag to reorder, under the workspace nav [workspace]
@@ -12,6 +12,7 @@ One shell component with two chromes: the member workspace and the admin portal.
 - People → People, Groups, and Roles [admin, Core]
 - Groups → People, Groups, and Roles [admin, Core]
 - Roles → People, Groups, and Roles [admin, Core]
+- Access → Access: Grants writes every role assignment, Overview reads who reaches what (`DEC-39`) [admin, Core]. It sits in Core, not under a module, so it stays reachable when the solutions module is switched off
 - Branding → Branding [admin, Core]
 - Audit log → Audit and Tenant Settings [admin, Core]
 - Settings → Audit and Tenant Settings [admin, Core]
@@ -19,7 +20,6 @@ One shell component with two chromes: the member workspace and the admin portal.
 - Categories → Categories page: the headings that group solutions and modules in the sidebar (`DEC-51`) [admin, Core]
 - Solutions → Solutions admin [admin, Solutions]
 - Chat themes → Solutions admin [admin, Solutions]
-- Access → Solutions admin, access overview [admin, Solutions]
 - Administration / Back to workspace → Switch chrome, in the user menu, only for admins
 - Account → Account page, in the user menu (`/account` or `/admin/account` so the chrome does not change)
 - Help and support → Tenant support URL or email from Branding Links, in the user menu
@@ -56,11 +56,12 @@ The workspace chrome shows the administrator Priya Nair, whose menu carries Admi
 ## Design Notes
 - Designed mobile first; phone layout is the base and the desktop layout adds columns. The AppShell accepts a `bottomBar` slot for a page's primary action on phones; header actions move there when no bottom bar is given.
 - The Administration switch item renders only when the person holds a core admin permission. Sign out ends the Genie session and then the realm session.
-- Visual language: white page with a soft gray sidebar panel with rounded corners, hairline borders, rounded-xl rows and controls, rounded-2xl cards, tinted pills for status, and blue for actions and active states. No near-black surfaces, no left rules, no sharp corners. Fonts: Plus Jakarta Sans everywhere, JetBrains Mono for identifiers such as hostnames.
+- Visual language: white page with a soft gray sidebar panel with rounded corners, hairline borders, rounded-lg rows and controls, rounded-xl cards, tinted pills for status, and blue for actions and active states. No near-black surfaces, no left rules, no sharp corners. Fonts: Plus Jakarta Sans everywhere, JetBrains Mono for identifiers such as hostnames.
 - Header: page title with a one-line description on the left, search and actions on the right. Not a bar, part of the page. The search placeholder follows the chrome: "Search solutions" in the workspace, "Search people" in the admin portal (People is the admin landing page). No bell and no notification button in the header, in either chrome.
 - Active nav row: white pill with a hairline ring and blue text and icon. Admin portal marker: gray-tinted pill under the tenant name.
 - Color roles: the tenant primary color from Branding fills the shadcn `--primary` and `--primary-foreground` variables per request and shows only as small accents: the active nav row, primary buttons, the focus ring, and count pills. In this design tree `blue-600` stands for `--primary` (the default value); the export maps those classes to `bg-primary`, `text-primary-foreground`, and `ring-primary`. Every tinted surface stays a fixed neutral gray, the avatar background and the Admin portal pill included, so core derives no tint ramp from the tenant color and only `--primary` and `--primary-foreground` are computed. The sidebar panel and page chrome never take the tenant color. There is no secondary or accent brand color. Blue is the only action and information color in the samples. Status is semantic: emerald for success, red for danger, amber only for real warnings, gray for neutral. Pills that label a thing (Admin portal, Notice, counts) are gray or blue, never a status color.
-- Text tones: body and nav rows gray-900 or gray-700, secondary text gray-600, labels and icons gray-500, never lighter than gray-500 for text. Dark theme mirrors with gray-100, gray-300, gray-400.
+- Type roles in the rail: a group caption is `text-xs` semibold uppercase at `tracking-wider`; a nav row, a pinned row, a category disclosure, and a tree entry are all `text-sm` medium; the selected row is `text-sm` semibold; the tenant name and the person's name are `text-sm` semibold, never bold and never tracked tight. Two sizes, so case, weight, and tone carry the rest. Every truncating label carries its full text in `title`, because a 240px rail cuts at about 26 characters. Counts are `tabular-nums`.
+- Text tones: body and nav rows gray-900 or gray-700, secondary text and group captions gray-600, icons gray-500, never lighter than gray-500 for text. Dark theme mirrors with gray-100, gray-300, gray-400.
 - Light and dark themes. The dark sidebar uses the same surface as the page background so the border, not a fill change, separates them.
 - Notifications surface only through the Inbox nav item and its unread chip. No bell in the header. Until the platform ships the inbox, no notification surface is shown at all.
 - Module contract (Navigation row): a module declares workspace entries and admin entries with required permission, and a navigation tree `{ pinned: Entry[] (at most six, ordered), entries: Entry[] }`, built from the records the person may reach and resolved per request after `can()`, where an entry can carry `categoryId`, the id of a core `category` row. Core groups the entries by its own `category` table, places a module's static workspace entries under `tenant_module.category_id`, renders one tree, and persists collapse state per device. A module treats a category id that no longer exists as no category, and core never reads a module table to build the tree (`DEC-51`). One workspace entry is marked the landing route, and core sends a person there after sign-in (`DEC-49`).

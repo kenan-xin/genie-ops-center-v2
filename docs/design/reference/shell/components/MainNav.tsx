@@ -20,8 +20,6 @@ export interface NavEntry {
   categoryId?: string | null
   moduleId: string
   kind: 'solution' | 'module'
-  /** Shown for module entries only. */
-  icon?: LucideIcon
   isActive?: boolean
 }
 
@@ -47,19 +45,29 @@ interface MainNavProps {
 
 export function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 pb-1.5 pt-5 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+    <div className="px-3 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
       {children}
     </div>
   )
 }
 
 // Rows are 44px tall under lg (touch targets), 40px nav and 32px tree rows on desktop.
-const rowBase = `flex min-h-11 items-center gap-2.5 rounded-xl px-3 text-sm motion-safe:transition-colors lg:min-h-0 ${focusRing}`
-const navRow = 'lg:h-10'
-const treeRow = 'lg:h-8'
+const rowBase = `flex min-h-11 items-center gap-2.5 rounded-lg px-3 motion-safe:transition-colors lg:min-h-0 ${focusRing}`
+const navRow = 'text-sm lg:h-10'
+const treeRow = 'text-sm lg:h-8'
+// A category is a heading, not a destination, so it is smaller and heavier than the
+// entries under it. The entries keep the readable size, because they are what you click.
+const catRow = 'text-[13px] lg:h-8'
+// Every row is medium and the selected one semibold, as the section navigator does.
+// The label sits in a fixed flex-1 box and 500 to 600 changes its advance by at most
+// 1px on a 62px label, so selecting a row never moves the text.
 const rowIdle =
-  'text-gray-700 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
-const rowActive = 'bg-white font-semibold text-blue-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-300 dark:ring-gray-700'
+  'font-medium text-gray-700 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+// An entry inside a category is one step quieter than a top-level row, so the two levels never read alike.
+const rowChild =
+  'font-medium text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+const rowCategory = 'font-semibold text-gray-900 hover:bg-gray-200/60 dark:text-gray-100 dark:hover:bg-gray-800'
+const rowActive = 'bg-white font-semibold text-blue-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-400 dark:ring-gray-700'
 
 function go(onNavigate: ((href: string) => void) | undefined, href: string) {
   return (e: React.MouseEvent) => {
@@ -80,16 +88,16 @@ function NavLink({ item, onNavigate }: { item: NavigationItem; onNavigate?: (hre
     >
       {Icon ? (
         <Icon
-          className={`size-5 shrink-0 ${item.isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500'}`}
+          className={`size-5 shrink-0 ${item.isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`}
           strokeWidth={1.75}
           aria-hidden
         />
       ) : null}
-      <span className="flex-1 truncate">{item.label}</span>
+      <span title={item.label} className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.badge ? (
         <span
           aria-label={`${item.badge} unread`}
-          className="rounded-full bg-blue-600 px-1.5 py-px text-xs font-semibold text-white"
+          className="rounded-full bg-blue-600 px-1.5 py-px text-xs font-semibold tabular-nums text-white"
         >
           {item.badge > 99 ? '99+' : item.badge}
         </span>
@@ -100,29 +108,22 @@ function NavLink({ item, onNavigate }: { item: NavigationItem; onNavigate?: (hre
 
 function EntryLink({
   item,
-  indent,
+  child,
   onNavigate,
 }: {
   item: NavEntry
-  indent?: boolean
+  /** The entry sits under a category. The rail and the indent come from the wrapper. */
+  child?: boolean
   onNavigate?: (href: string) => void
 }) {
-  const Icon = item.kind === 'module' ? item.icon : undefined
   return (
     <a
       href={item.href}
       aria-current={item.isActive ? 'page' : undefined}
       onClick={go(onNavigate, item.href)}
-      className={`${rowBase} ${treeRow} ${item.isActive ? rowActive : rowIdle} ${indent ? 'ml-6' : ''}`}
+      className={`${rowBase} ${treeRow} ${item.isActive ? rowActive : child ? rowChild : rowIdle}`}
     >
-      {Icon ? (
-        <Icon
-          className={`size-4 shrink-0 ${item.isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500'}`}
-          strokeWidth={1.75}
-          aria-hidden
-        />
-      ) : null}
-      <span className="truncate">{item.label}</span>
+      <span title={item.label} className="truncate">{item.label}</span>
     </a>
   )
 }
@@ -156,19 +157,26 @@ function Category({ category, items, onNavigate }: { category: NavCategory; item
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`${rowBase} ${rowIdle} ${treeRow} w-full text-left font-medium`}
+        className={`${rowBase} ${rowCategory} ${catRow} w-full text-left`}
       >
         <ChevronDown
           aria-hidden
           strokeWidth={1.75}
           className={`size-4 text-gray-500 motion-safe:transition-transform ${open ? '' : '-rotate-90'}`}
         />
-        <span className="flex-1 truncate">{category.name}</span>
-        <span className="rounded-full bg-gray-200/70 px-1.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+        <span title={category.name} className="min-w-0 flex-1 truncate">{category.name}</span>
+        <span className="rounded-full bg-gray-200/70 px-1.5 text-xs font-medium tabular-nums text-gray-600 dark:bg-gray-800 dark:text-gray-300">
           {items.length}
         </span>
       </button>
-      {open ? items.map((s) => <EntryLink key={s.href} item={s} indent onNavigate={onNavigate} />) : null}
+      {/* The rail starts under the chevron, so every entry reads as hanging off its category. */}
+      {open ? (
+        <div className="ml-5 flex flex-col gap-0.5 border-l border-gray-200 pl-3 dark:border-gray-800">
+          {items.map((s) => (
+            <EntryLink key={s.href} item={s} child onNavigate={onNavigate} />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -222,7 +230,7 @@ export function MainNav({ items, tree, categories = [], onNavigate }: MainNavPro
                 strokeWidth={1.75}
                 className="size-4 shrink-0 cursor-grab text-gray-400 group-hover:text-gray-500 dark:text-gray-500"
               />
-              <span className="truncate">{f.label}</span>
+              <span title={f.label} className="truncate">{f.label}</span>
             </a>
           ))}
         </nav>

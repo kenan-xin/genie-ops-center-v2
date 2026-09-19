@@ -14,8 +14,6 @@ import {
   KeyRound,
   Search,
   Blocks,
-  FileSignature,
-  CheckSquare,
 } from 'lucide-react'
 import { AppShell, type ShellMode } from './components/AppShell'
 import type { NavCategory, NavTree } from './components/MainNav'
@@ -63,8 +61,8 @@ const tree: NavTree = {
     sol('Policy Q&A', 'policy-qa', 'cat-finance'),
     sol('Vendor Invoice Checker', 'invoice-checker', 'cat-finance'),
     sol('General Assistant', 'general-assistant', null),
-    { label: 'Contracts', href: '/m/contracts', categoryId: 'cat-finance', moduleId: 'contracts', kind: 'module', icon: FileSignature },
-    { label: 'Approvals', href: '/m/approvals', categoryId: null, moduleId: 'approvals', kind: 'module', icon: CheckSquare },
+    { label: 'Contracts', href: '/m/contracts', categoryId: 'cat-finance', moduleId: 'contracts', kind: 'module' },
+    { label: 'Approvals', href: '/m/approvals', categoryId: null, moduleId: 'approvals', kind: 'module' },
   ],
 }
 
@@ -87,7 +85,7 @@ export default function ShellPreview() {
   // Placeholder follows the chrome: solutions in the workspace, people on the admin landing page. No bell: notifications live in Inbox.
   const searchPlaceholder = admin ? 'Search people' : 'Search solutions'
   const headerActions = (
-    <label className="hidden h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-600 focus-within:ring-2 focus-within:ring-blue-500/60 focus-within:ring-offset-2 sm:flex dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-offset-gray-950">
+    <label className="hidden h-10 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:flex dark:border-gray-500 dark:bg-gray-900 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
       <Search className="size-4 text-gray-500" strokeWidth={1.75} aria-hidden />
       <input placeholder={searchPlaceholder} aria-label={searchPlaceholder} className="w-40 bg-transparent outline-none placeholder:text-gray-500" />
     </label>
@@ -106,7 +104,7 @@ export default function ShellPreview() {
         switchTarget={memberOnly ? undefined : admin ? { label: 'Back to workspace', href: '/' } : { label: 'Administration', href: '/admin' }}
         changePasswordHref={params.get('local') === '1' ? 'https://id.genie.example/realms/meridian/account/#/security/signingin' : undefined}
         bottomBar={
-          <button type="button" className={`flex h-11 flex-1 items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 ${focusRing}`}>
+          <button type="button" className={`flex h-11 flex-1 items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-600/90 active:bg-blue-600/80 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600 ${focusRing}`}>
             {admin ? 'Add person' : searchPlaceholder}
           </button>
         }
@@ -118,7 +116,7 @@ export default function ShellPreview() {
         onNavigate={onNavigate}
         onLogout={() => { console.log('Sign out: end Genie session'); console.log('Sign out: end realm session') }}
       >
-        <div className="rounded-2xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
+        <div className="rounded-xl border border-dashed border-gray-200 p-8 dark:border-gray-800">
           <h2 className="mb-1 text-lg font-bold tracking-tight">Content area</h2>
           <p className="max-w-prose text-sm text-gray-600 dark:text-gray-400">Section screens render here. Open the user menu in the sidebar footer and choose {admin ? 'Back to workspace' : 'Administration'} to preview the other chrome.</p>
         </div>

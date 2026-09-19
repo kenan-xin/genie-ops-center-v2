@@ -54,10 +54,11 @@ export interface AppShellProps {
 
 function TenantMark({ tenant, size = 'md' }: { tenant?: ShellTenant; size?: 'sm' | 'md' }) {
   const name = tenant?.name ?? 'Genie'
-  const cls = size === 'sm' ? 'size-8 rounded-lg text-sm' : 'size-10 rounded-xl text-base'
+  // The tenant letter tile: 6px small, 8px medium (DESIGN.md, Shapes).
+  const cls = size === 'sm' ? 'size-8 rounded-md text-sm' : 'size-10 rounded-lg text-base'
   return (
     <span className={`flex shrink-0 items-center justify-center overflow-hidden border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${cls}`}>
-      {tenant?.logoUrl ? <img src={tenant.logoUrl} alt="" className="size-[70%] object-contain" /> : <span aria-hidden className="font-extrabold text-blue-700 dark:text-blue-300">{name.slice(0, 1).toUpperCase()}</span>}
+      {tenant?.logoUrl ? <img src={tenant.logoUrl} alt="" className="size-[70%] object-contain" /> : <span aria-hidden className="font-extrabold text-blue-600 dark:text-blue-400">{name.slice(0, 1).toUpperCase()}</span>}
     </span>
   )
 }
@@ -68,13 +69,13 @@ function TenantBlock({ tenant, mode }: { tenant?: ShellTenant; mode: ShellMode }
     <div className="flex items-center gap-3 px-3 pb-2 pt-3">
       <TenantMark tenant={tenant} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-bold tracking-tight text-gray-900 dark:text-gray-100">{name}</span>
+        <span title={name} className="block truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{name}</span>
         {mode === 'admin' ? (
           <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-px text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <span aria-hidden className="size-1.5 rounded-full bg-gray-500" />Admin portal
           </span>
         ) : tenant?.productName ? (
-          <span className="block truncate text-xs text-gray-600 dark:text-gray-400">{tenant.productName}</span>
+          <span title={tenant.productName} className="block truncate text-xs text-gray-600 dark:text-gray-400">{tenant.productName}</span>
         ) : null}
       </span>
     </div>
@@ -139,8 +140,8 @@ export function AppShell({
   const skeleton = (
     <div role="status" aria-label="Loading" className="flex flex-col gap-3">
       <span className="sr-only">Loading</span>
-      <div className="h-10 w-full max-w-sm rounded-xl bg-gray-100 motion-safe:animate-pulse dark:bg-gray-800" />
-      <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
+      <div className="h-10 w-full max-w-sm rounded-lg bg-gray-100 motion-safe:animate-pulse dark:bg-gray-800" />
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 last:border-0 dark:border-gray-800">
             <div className="size-10 rounded-full bg-gray-100 motion-safe:animate-pulse dark:bg-gray-800" />
@@ -153,7 +154,9 @@ export function AppShell({
   )
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-white font-[Plus_Jakarta_Sans] text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+    // `genie-shell` marks the product's type boundary: inside it, headings and mono text take the
+    // product's faces instead of the Design OS ones. See the closing block of src/index.css.
+    <div className="genie-shell flex h-dvh flex-col overflow-hidden bg-white font-[Plus_Jakarta_Sans] text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
       {/* Offline bar: pinned at the top of the viewport (the root never scrolls), full width in both chromes, pushes everything below it down by its height. */}
       {isOffline ? (
         <div role="status" aria-live="polite" className="z-50 flex min-h-10 shrink-0 items-center justify-center gap-2 bg-red-600 px-4 py-2 text-center text-sm font-medium text-white">
@@ -162,7 +165,7 @@ export function AppShell({
       ) : null}
       <div className={`flex min-h-0 flex-1 flex-col ${focus ? '' : 'lg:flex-row lg:gap-3 lg:p-3'}`}>
       {/* Desktop sidebar, lg and up. Hidden in focus mode. */}
-      {!focus ? <aside className="hidden w-60 shrink-0 flex-col rounded-2xl border border-gray-200 bg-gray-50 lg:flex dark:border-gray-800 dark:bg-gray-900">{navPanel}</aside> : null}
+      {!focus ? <aside className="hidden w-60 shrink-0 flex-col rounded-xl border border-gray-200 bg-gray-50 lg:flex dark:border-gray-800 dark:bg-gray-900">{navPanel}</aside> : null}
 
       {/* Drawer, phone and tablet */}
       {drawerOpen ? (
@@ -170,7 +173,7 @@ export function AppShell({
           <button type="button" aria-label="Close navigation" onClick={() => setDrawerOpen(false)} className={`absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] ${focusRing}`} />
           <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col bg-gray-50 shadow-2xl dark:bg-gray-900">
             <div className="flex justify-end px-2 pt-2">
-              <button type="button" aria-label="Close navigation" onClick={() => setDrawerOpen(false)} className={`flex size-11 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-200/60 dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`}><X className="size-5" strokeWidth={1.75} /></button>
+              <button type="button" aria-label="Close navigation" onClick={() => setDrawerOpen(false)} className={`flex size-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-50 active:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-800 ${focusRing}`}><X className="size-5" strokeWidth={1.75} /></button>
             </div>
             {navPanel}
           </aside>
@@ -181,7 +184,7 @@ export function AppShell({
         {/* Phone header: mark, title, hamburger. Grows on lg. Hidden in focus mode, where the page owns its header. */}
         {focus ? null : (
         <header className="flex h-[54px] shrink-0 items-center gap-2 border-b border-gray-200 px-4 md:px-6 lg:h-auto lg:items-start lg:border-0 lg:px-8 lg:pb-4 lg:pt-2 dark:border-gray-800">
-          <button type="button" aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={drawerOpen} onClick={() => setDrawerOpen((v) => !v)} className={`-ml-2 flex size-11 shrink-0 items-center justify-center rounded-xl text-gray-700 hover:bg-gray-100 lg:hidden dark:text-gray-300 dark:hover:bg-gray-800 ${focusRing}`}>
+          <button type="button" aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={drawerOpen} onClick={() => setDrawerOpen((v) => !v)} className={`-ml-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-50 active:bg-gray-100 lg:hidden dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-800 ${focusRing}`}>
             <Menu className="size-5" strokeWidth={1.75} />
           </button>
           <span className="lg:hidden"><TenantMark tenant={tenant} size="sm" /></span>
@@ -192,7 +195,7 @@ export function AppShell({
           {headerActions ? <div className="hidden shrink-0 items-center gap-2 md:flex">{headerActions}</div> : null}
         </header>
         )}
-        <main className={`min-h-0 flex-1 overflow-auto ${focus ? 'p-0' : 'px-4 pb-4 pt-4 md:px-6 lg:px-8 lg:pb-2 lg:pt-0'}`}>{loading ? skeleton : children}</main>
+        <main className={`min-h-0 flex-1 overflow-auto ${focus ? 'p-0' : 'px-4 pb-4 pt-4 md:px-6 lg:px-8 lg:pb-2 lg:pt-1'}`}>{loading ? skeleton : children}</main>
         {mobileActions ? (
           <div className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-gray-200 bg-white/95 px-4 py-2 backdrop-blur md:hidden dark:border-gray-800 dark:bg-gray-950/95">{mobileActions}</div>
         ) : null}
