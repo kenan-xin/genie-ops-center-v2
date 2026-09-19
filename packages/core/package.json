@@ -1,0 +1,14 @@
+{
+  "name": "@genie/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tenant-config": "./src/lib/tenant-config/index.ts"
+  },
+  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
+  "nx": { "tags": ["core"] },
+  "dependencies": { "@genie/ui": "workspace:*" },
+  "devDependencies": { "@genie/config": "workspace:*", "vitest": "5.0.1" }
+}

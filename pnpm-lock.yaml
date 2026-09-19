@@ -185,8 +185,55 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
 
+  apps/genie:
+    dependencies:
+      '@genie/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@genie/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+    devDependencies:
+      '@genie/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
+
   packages/config:
     devDependencies:
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
+
+  packages/core:
+    dependencies:
+      '@genie/ui':
+        specifier: workspace:*
+        version: link:../ui
+    devDependencies:
+      '@genie/config':
+        specifier: workspace:*
+        version: link:../config
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
+
+  packages/ui:
+    devDependencies:
+      '@genie/config':
+        specifier: workspace:*
+        version: link:../config
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
+
+  tools/generators:
+    devDependencies:
+      '@genie/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       vitest:
         specifier: 5.0.1
         version: 5.0.1(@types/node@26.6.2)(vite@8.3.0(@types/node@26.6.2)(yaml@2.9.0))
