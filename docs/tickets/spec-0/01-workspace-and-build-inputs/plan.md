@@ -834,7 +834,7 @@ git commit -m "build: add project skeletons with architectural tags and a hygien
 
 **Interfaces:**
 - Consumes: the config package from Task 1.
-- Produces: `sharedOxlintConfig` from `@genie/config/oxlint`. Task 5 extends its `overrides`. Task 6 extends its `jsPlugins` and `rules`.
+- Produces: `sharedOxlintConfig` in `packages/config/src/oxlint/index.ts` and `sharedOxfmtConfig` in `packages/config/src/oxfmt/index.ts`. The two root entry files import them by relative path, and tasks 5 and 6 edit them in place, so neither needs a package export entry. Task 5 extends `sharedOxlintConfig.overrides`. Task 6 extends its `jsPlugins` and `rules`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1053,8 +1053,9 @@ export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
 /**
- * Lints one source string at a chosen repository-relative path, then deletes the file.
- * The path decides which layer override applies, so a caller picks the path on purpose.
+ * Lints one source string at a chosen repository-relative path, then removes the file
+ * and any directory it had to create. The path decides which layer override applies,
+ * so a caller picks the path on purpose.
  */
 export function lintAt(relativePath: string, source: string): LintOutcome {
   const absolute = join(WORKSPACE_ROOT, relativePath);
@@ -1262,7 +1263,15 @@ The `packages/core/contracts/**` entry uses a deny-all group with negations. Con
 
 - [ ] **Step 4: Merge the overrides into the shared configuration**
 
-In `packages/config/src/oxlint/index.ts`, import `importBoundaryOverrides` and add `overrides: importBoundaryOverrides` to `sharedOxlintConfig`.
+`sharedOxlintConfig` already carries an `overrides` array. Task 4 put one entry in it, which switches off the empty-module rule for the four reserved package entrypoints. Assigning `overrides: importBoundaryOverrides` would delete that entry and break the lint.
+
+In `packages/config/src/oxlint/index.ts`, import `importBoundaryOverrides` and spread both arrays, keeping the existing entry first:
+
+```ts
+overrides: [...reservedEntrypointOverrides, ...importBoundaryOverrides],
+```
+
+If Task 4 wrote its entry inline rather than as a named constant, lift it to a named constant in the same file first, keeping its comment, then spread. Confirm after the change that the four reserved entrypoints still lint clean.
 
 - [ ] **Step 5: Run the test and confirm that it passes**
 
