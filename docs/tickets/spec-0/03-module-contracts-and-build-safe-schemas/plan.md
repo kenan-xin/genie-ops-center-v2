@@ -12,6 +12,78 @@
 
 Plan location note: the Superpowers default is `docs/superpowers/plans/`. This repository keeps ticket-local plans beside the ticket, so the plan lives here. Repository instructions override the skill default.
 
+## Status, 2026-09-20
+
+This plan stays active. Phase A is complete. Phase B is not started, so the
+plan remains the working instruction set for Tasks 6 to 11.
+
+### Completed: Phase A
+
+| Task | Result | Commits |
+| --- | --- | --- |
+| 1 | Target coverage for a top-level `contracts/` folder | `1879df5`, repaired by `b3b476f` |
+| 2 | Permission key and scope primitives | `bc7c3b9`, extended by `71674a8` |
+| 3 | Request-owned authorization seam | `03fb70f`, extended by `b6303e3` |
+| 4 | Pure content security policy validation and serialization | `c6adcc4`, with `2f742c8`, `82895a2`, `933174d` |
+| 5 | Contract dependency pins, prepared and awaiting integration | `66b1c3d` |
+
+Each task passed a review with two verdicts, for specification compliance and
+for code quality. Every finding is fixed or filed in Beads.
+
+### Pending: Phase B
+
+Tasks 6 to 11 are not started. They create `packages/core/contracts/`, the
+TenantContext types, the tenant configuration schemas, the Module type and its
+fixture, the validator and the build-safety proof.
+
+### Revisions
+
+- `66b1c3d` is the original dependency-handoff revision. The integration owner
+  receives this revision for the Task 5 change.
+- `cde5ee5` is the current merged head. It merges develop `53b49f4` into the
+  feature branch.
+- The Global Constraints baseline of `7fe04be` records the original branch cut.
+  That value is history and not the current head.
+
+### Verification
+
+Historical evidence belongs to the revision that produced it. Each task review
+proves its own commit range only. Post-merge verification is separate. At
+`cde5ee5` the merged tree passed `nx affected` 15 of 15 tasks with the cache
+skipped, core tests at 5 files and 48 tests, and zero leaked probe fixtures.
+That run proves the merged tree. It does not re-prove the earlier ranges.
+
+### Authoritative sources
+
+If an instruction in this plan conflicts with a source below, follow the source:
+
+- The ticket [index.md](index.md), sections "Accepted planning decisions — 2026-09-20" and "Naming revision, 2026-09-20".
+- [The module naming revision](../../../tech-plans/module-naming-revision.md).
+- [Module package naming](../../../architecture/repository-layout.md#module-package-naming).
+- [Tenant module visibility](../../../flows/tenant-module-visibility.md).
+
+The naming contract keeps the folder `packages/modules/<capability>/` and the
+module IDs unchanged. The package name becomes `@genie/module-<capability>`.
+One fixture in Task 6 needs this correction. The boundary test named "stops core
+testing helpers importing a module" writes the forbidden import as
+`@genie/modules-placeholder`. Use `@genie/module-placeholder` when Task 6 runs.
+A scoped search found no other naming change for this plan and no naming change
+in committed Phase A source.
+
+### Blocker
+
+Do not resume Phase B before both conditions below hold:
+
+1. S0-01 delivers its naming rework, and the integration owner accepts that
+   baseline. At `cde5ee5` the rework is absent.
+   `tools/generators/src/selection/inventory.ts` accepts a manifest name without
+   the folder, name and ID invariant.
+   `packages/config/src/oxlint/boundaries.ts` carries no singular
+   `@genie/module-*` restriction. Bead `genie-ops-center-v2-1rd.1` stays in
+   progress.
+2. The required ownership handoff completes, including separate integration
+   approval for the Task 5 dependency change.
+
 ## Global Constraints
 
 - Baseline revision is `7fe04be`. Worktree is `~/work/genie-ops-center-v2.feature-s0-03-module-contracts` on branch `feature/s0-03-module-contracts`.
