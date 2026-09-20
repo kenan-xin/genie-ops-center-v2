@@ -72,6 +72,10 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Validate input scope](validate-input-scope.md) removes the workspace-wide `vitest*.config.*` validate input, which no check reads, and excludes the non-project `packages/modules/README.md` from the README inputs. An unrelated vitest config edit now reuses the validate cache, while the generator's own config, its checks and every project-root README still invalidate it. Bead `genie-ops-center-v2-19f`.
 
+## Root config lint scope, 2026-09-21
+
+[Root config lint scope](root-config-lint-scope.md) extends the `@genie/config` lint target to name the root `oxlint.config.ts` and `oxfmt.config.ts` as lint targets, so a syntax or rule error in either fails a real Nx target. `tsconfig.base.json` is JSONC and stays out of oxlint; its validation is the compiler read through `extends`, proved by `nx typecheck` failing on a syntax error. Bead `genie-ops-center-v2-y5e`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
