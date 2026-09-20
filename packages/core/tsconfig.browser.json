@@ -7,6 +7,7 @@
   "include": [
     "src/lib/story-seam/**/*.ts",
     "src/**/*.tsx",
-    "contracts/**/*.tsx"
+    "contracts/**/*.tsx",
+    "testing/**/*.tsx"
   ]
 }
