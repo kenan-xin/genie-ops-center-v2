@@ -20,6 +20,8 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Scope
 
+For the initial overlapping dependency change, follow [S0-03's accepted planning decisions](../03-module-contracts-and-build-safe-schemas/index.md#accepted-planning-decisions--2026-09-20): agree common pins, let S0-03 prepare the minimal contract dependencies, and consume their separately approved integrated revision before writing Storybook dependency/configuration changes. This does not transfer Storybook ownership or require the whole S0-03 ticket to finish. Record the shared-file handoff in both beads; the S0-01 start gate is unchanged.
+
 - One development-only app-classified Storybook host using Next.js/Vite, official Nx serve/build inference and exactly one explicit Vitest-addon component-test owner; no legacy duplicate runner.
 - Install required Docs, a11y and MCP tooling with aligned pins. Verify current official MCP instructions before the requested npx storybook add command; review generated edits and keep local agent endpoint private.
 - Show documented representative UI and placeholder presentation stories plus a browser-safe Core grouping seam, using the S0-01 selector rather than runtime registry imports. Establish English fixture messages, tokens and deterministic assets; no later business screens.
@@ -48,3 +50,7 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 ## Completion handoff
 
 Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: after S0-01 acceptance and S0-03 ownership transfer, reconcile story/placeholder paths and recheck the staged compatibility patch; rerun affected G1 evidence. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. Implemented-ticket rework awaits owner approval of the proposed sequence; existing integration and shared-file gates remain in force.
