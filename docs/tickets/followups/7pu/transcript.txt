@@ -1,0 +1,52 @@
+lefthook:    lefthook version 2.1.14 1e23553eec2392753c5420d348e63a63f517cd45
+dispatchers: post-checkout post-merge pre-commit prepare-commit-msg pre-push README.md 
+throwaway:   /tmp/hook-proof.kYYvut/repo
+
+== case 1: hooks:install sets core.hooksPath to the tracked folder
+ok   core.hooksPath
+
+== case 2: a commit runs the Beads hook, then Lefthook
+╭───────────────────────────────────────╮
+│ lefthook  v2.1.14   hook:  pre-commit │
+╰───────────────────────────────────────╯
+│  core.hooksPath is set locally to '.githooks'    
+│  Custom hooks paths are not supported by default.
+│                                                  
+│  Reset core.hooksPath automatically:             
+│    lefthook install --reset-hooks-path           
+│                                                  
+│  Remove it manually:                             
+│     git config --unset-all --local core.hooksPath
+│                                                  
+│  Force installation into current hooks path:     
+│    lefthook install --force                      
+│                                                  
+│    Target:                                       
+│    .githooks                                     
+│  Skipping hook sync: 
+┃  record ❯ 
+
+  ────────────────────────────────────
+summary: (done in 0.00 seconds)
+✓ record (0.00 seconds)
+ok   commit created
+ok   order
+
+== case 3: a missing Beads hook blocks the commit
+ok   exit status
+ok   message
+ok   no commit written
+
+== case 4: another hook name runs the Beads hook only
+ok   post-merge skips Lefthook
+
+== case 5: a missing pinned Lefthook blocks the commit
+ok   exit status
+ok   remedy named
+ok   no commit written
+
+== case 6: a failing real Lefthook job blocks the commit
+ok   exit status
+ok   no commit written
+
+all cases passed

@@ -5,3 +5,5 @@ Ticket breakdowns are organized by specification. Each ticket has its own number
 | Breakdown | Authority |
 | --- | --- |
 | [Spec 0: Monorepo foundation](spec-0/README.md) | Spec and technical plan approved for breakdown on 2026-09-19; implementation not started |
+
+[followups/](followups/README.md) holds the evidence that closes a follow-up bead of a ticket, one folder for each bead.
