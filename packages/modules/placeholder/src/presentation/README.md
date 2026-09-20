@@ -18,4 +18,4 @@ alone does not belong in this folder.
 
 ## What it imports
 
-`@genie/ui`, `react`, and its own fixtures.
+`@genie/ui`, `react`, and its own fixtures. The story file also imports `@storybook/nextjs-vite` and `storybook/test` types.

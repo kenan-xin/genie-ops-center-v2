@@ -16,4 +16,4 @@ reaches a runtime path.
 
 ## What it imports
 
-Nothing. A fixture is data.
+Nothing. A fixture is data; only the test file imports `vitest`.
