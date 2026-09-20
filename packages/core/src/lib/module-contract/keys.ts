@@ -30,7 +30,10 @@ export function isPermissionKey(value: string): value is PermissionKey {
   return parts.every((part) => KEBAB_CASE.test(part));
 }
 
-export function permissionKeyFor(moduleId: string, action: string): PermissionKey {
+export function permissionKeyFor(
+  moduleId: string,
+  action: string
+): PermissionKey {
   if (!KEBAB_CASE.test(moduleId)) {
     throw new Error(`Module id "${moduleId}" is not kebab-case.`);
   }
