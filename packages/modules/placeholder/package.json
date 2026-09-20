@@ -1,0 +1,35 @@
+{
+  "name": "@genie/modules-placeholder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --config ../../../oxlint.config.ts src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@genie/ui": "workspace:*",
+    "react": "19.3.0"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "@types/react": "19.3.0",
+    "oxlint": "1.83.0",
+    "vitest": "4.1.11"
+  },
+  "genie": {
+    "module": {
+      "id": "placeholder",
+      "entrypoint": "src/index.ts"
+    }
+  },
+  "nx": {
+    "tags": [
+      "module"
+    ]
+  }
+}
