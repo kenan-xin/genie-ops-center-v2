@@ -1,30 +1,34 @@
-import { readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
+import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { WORKSPACE_ROOT } from "./__testing__/lint-at.ts";
+import { WORKSPACE_ROOT, withFixture } from "./__testing__/lint-at.ts";
 
 /**
- * A boundary fixture is a real file, written into the checkout at a path chosen
- * to match one override glob, and removed again. Every project's tsconfig takes
+ * A lint fixture is a real file, written into the checkout at a path chosen to
+ * match one override glob, and removed again. Every project's tsconfig takes
  * `src/**`, so a fixture written under one is visible to `tsc` for as long as it
- * exists. A concurrent `nx run-many -t typecheck test` then fails on a file that
+ * exists. A concurrent `nx run-many -t typecheck test` then compiles a file that
  * is already gone, which is what `genie-ops-center-v2-64a` recorded.
  *
- * The fix is a name, not a location: the suite needs paths inside `src/` to prove
- * the rules that key on them, so the fixtures keep their paths and every project
- * excludes the prefix they share. These cases stop the next fixture from
- * silently reopening the hole.
+ * The fix is a name, not a location: the suites need paths inside `src/` to prove
+ * the rules that key on them, so the fixtures keep their paths and the root
+ * tsconfig excludes the prefixes they share.
  *
- * Paths handed to `lintAtIsolated` are not checked here. That helper writes into
- * a throwaway root and never touches the checkout, which is the whole reason it
- * exists.
+ * These cases assert the RESOLVED configuration, never the raw JSON text. An
+ * earlier version of this file asserted the text and certified a fix that was
+ * not in force: the same patterns declared inside
+ * `packages/config/src/typescript/base.json` rebase onto that folder and match
+ * nothing, because TypeScript resolves a relative path in an inherited config
+ * against the directory that declared it.
+ *
+ * Paths handed to `lintAtIsolated` are not checked. That helper writes into a
+ * throwaway root and never touches the checkout.
  */
 
-const EXCLUDED_PREFIXES = ["__boundary__", "__wiring__"];
-
-/** The tsconfig of every project whose typecheck runs beside the suite. */
+/** The projects whose typecheck runs beside the suites that write fixtures. */
 const TYPECHECKED = [
   "packages/config",
   "packages/core",
@@ -33,19 +37,25 @@ const TYPECHECKED = [
   "tools/generators",
 ];
 
-/** Paths written into the checkout itself, read from the suites' own source. */
-function checkoutFixturePaths(): readonly string[] {
-  const sources = [
-    "packages/config/src/oxlint/boundaries.test.ts",
-    "packages/config/src/oxlint/__testing__/lint-at.test.ts",
-  ];
+/** Every suite in this package that writes a fixture into the checkout. */
+function fixtureSources(): readonly string[] {
+  const root = join(WORKSPACE_ROOT, "packages/config/src/oxlint");
 
+  return readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".test.ts"))
+    .map((entry) => join(entry.parentPath, entry.name))
+    .filter((path) => readFileSync(path, "utf8").includes("lintAt"))
+    .toSorted();
+}
+
+/** Paths written into the checkout itself, read from those suites' source. */
+function checkoutFixturePaths(): readonly string[] {
   const found = new Set<string>();
 
-  for (const source of sources) {
-    const text = readFileSync(join(WORKSPACE_ROOT, source), "utf8");
+  for (const source of fixtureSources()) {
+    const text = readFileSync(source, "utf8");
 
-    // The isolated helper is deliberately excluded by the negative lookahead.
+    // The isolated helper is excluded by the negative lookahead.
     for (const match of text.matchAll(
       /\blintAt(?!Isolated)\(\s*\n?\s*"([^"]+)"/g
     )) {
@@ -69,61 +79,104 @@ function isIncludedBy(path: string, project: string): boolean {
   return path.startsWith(`${project}/src/`) && path.endsWith(".ts");
 }
 
-/** Whether a path carries a name every tsconfig here excludes. */
-function isExcludedByName(path: string): boolean {
-  return EXCLUDED_PREFIXES.some((prefix) => basename(path).startsWith(prefix));
+/** The files a project's resolved configuration hands to the compiler. */
+function resolvedFiles(project: string): readonly string[] {
+  const raw = execFileSync("pnpm", ["exec", "tsc", "--showConfig"], {
+    cwd: join(WORKSPACE_ROOT, project),
+    encoding: "utf8",
+  });
+
+  // SAFETY: `tsc --showConfig` prints one JSON document, and this test fails
+  // loudly if that contract changes, because `files` would be absent.
+  const config = JSON.parse(raw) as { files?: readonly string[] };
+
+  return (config.files ?? []).map((file) =>
+    relative(WORKSPACE_ROOT, join(WORKSPACE_ROOT, project, file))
+  );
 }
 
-/** The exclude list a project applies, its own or the one it inherits. */
-function excludeFor(project: string): readonly string[] {
-  // SAFETY: the bytes are this repository's own tsconfig files, and the single
-  // field read from each is optional and defaulted immediately.
-  const own = JSON.parse(
-    readFileSync(join(WORKSPACE_ROOT, project, "tsconfig.json"), "utf8")
-  ) as { exclude?: readonly string[] };
+const COVERED_PREFIXES = ["__boundary__", "__wiring__", "__antislop__"];
 
-  if (own.exclude !== undefined) {
-    return own.exclude;
+/** The real fixture paths a project's own include would take. */
+function fixturesInside(project: string): readonly string[] {
+  return checkoutFixturePaths().filter((path) => isIncludedBy(path, project));
+}
+
+/**
+ * Probe paths, one per prefix a project's real fixtures use. Deriving a fresh
+ * path rather than reusing a real one matters: the suites that own those paths
+ * run in parallel with this one, and writing a path another suite owns would
+ * collide with the very fixtures this file exists to protect. The process id
+ * keeps two workers apart.
+ */
+function probesInside(project: string): readonly string[] {
+  const prefixes = new Set<string>();
+
+  for (const path of fixturesInside(project)) {
+    const prefix = COVERED_PREFIXES.find((candidate) =>
+      basename(path).startsWith(candidate)
+    );
+
+    if (prefix !== undefined) {
+      prefixes.add(prefix);
+    }
   }
 
-  // SAFETY: same provenance, the shared base this repository owns.
-  const base = JSON.parse(
-    readFileSync(
-      join(WORKSPACE_ROOT, "packages/config/src/typescript/base.json"),
-      "utf8"
-    )
-  ) as { exclude?: readonly string[] };
-
-  return base.exclude ?? [];
+  return [...prefixes]
+    .toSorted()
+    .map((prefix) => `${project}/src/${prefix}probe-${process.pid}.ts`);
 }
 
-describe("boundary fixtures and the typecheck that runs beside them", () => {
-  it("finds the fixture paths, so an empty match cannot pass this suite", () => {
+const AT_RISK = TYPECHECKED.filter(
+  (project) => fixturesInside(project).length > 0
+);
+
+describe("lint fixtures and the typecheck that runs beside them", () => {
+  it("finds the suites that write fixtures, so an empty scan cannot pass", () => {
+    expect(fixtureSources().length).toBeGreaterThan(1);
     expect(checkoutFixturePaths().length).toBeGreaterThan(20);
   });
 
-  it("finds at least one fixture inside a typechecked src, which is the risk", () => {
-    const inside = checkoutFixturePaths().filter((path) =>
-      TYPECHECKED.some((project) => isIncludedBy(path, project))
-    );
-
-    expect(inside.length).toBeGreaterThan(0);
+  it("finds fixtures inside a typechecked src, which is the whole risk", () => {
+    expect(AT_RISK.length).toBeGreaterThan(1);
   });
 
-  it("writes no fixture that a project's typecheck would compile", () => {
-    const visible = checkoutFixturePaths().filter(
-      (path) =>
-        TYPECHECKED.some((project) => isIncludedBy(path, project)) &&
-        !isExcludedByName(path)
-    );
+  // The load-bearing case. It writes the fixture, asks the compiler what it
+  // would compile, and fails if the fixture is in the answer.
+  it.each(AT_RISK)(
+    "%s compiles no fixture it would otherwise include",
+    (project) => {
+      const probes = probesInside(project);
 
-    expect(visible).toEqual([]);
-  });
+      expect(probes.length).toBeGreaterThan(0);
 
-  it.each(TYPECHECKED)("%s excludes both fixture prefixes", (project) => {
-    const exclude = excludeFor(project);
+      for (const probe of probes) {
+        withFixture(
+          WORKSPACE_ROOT,
+          probe,
+          "export const probe = true;\n",
+          () => {
+            expect(resolvedFiles(project)).not.toContain(probe);
+          }
+        );
+      }
+    }
+  );
 
-    expect(exclude).toContain("**/__boundary__*");
-    expect(exclude).toContain("**/__wiring__*");
-  });
+  it.each(checkoutFixturePaths())(
+    "%s is named so that one shared prefix covers it",
+    (path) => {
+      const name = basename(path);
+
+      const covered = COVERED_PREFIXES.some((prefix) =>
+        name.startsWith(prefix)
+      );
+
+      // A fixture outside every typechecked `src/` cannot race, so it is free to
+      // carry any name. One inside must be covered by a prefix.
+      const atRisk = TYPECHECKED.some((project) => isIncludedBy(path, project));
+
+      expect(covered || !atRisk).toBe(true);
+    }
+  );
 });

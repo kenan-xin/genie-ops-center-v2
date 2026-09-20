@@ -1,3 +1,11 @@
 {
-  "extends": "./packages/config/src/typescript/base.json"
+  "extends": "./packages/config/src/typescript/base.json",
+  // These patterns must be declared here, at the repository root, and not in the
+  // shared preset. TypeScript resolves a relative path in an inherited config
+  // against the directory that declared it, so the same patterns inside
+  // `packages/config/src/typescript/base.json` rebase onto that folder and match
+  // nothing. They name transient lint fixtures, which the suites write into a
+  // project's `src/` and delete again, and which a concurrent typecheck would
+  // otherwise compile (`genie-ops-center-v2-64a`).
+  "exclude": ["**/__boundary__*", "**/__wiring__*", "**/__antislop__*"]
 }

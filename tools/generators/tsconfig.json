@@ -1,9 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*.ts", "vitest.config.ts"],
+  // Repeated from `tsconfig.base.json`, because a project's own `exclude`
+  // replaces the inherited one rather than adding to it.
   "exclude": [
     "src/selection/__fixtures__/**",
     "**/__boundary__*",
-    "**/__wiring__*"
+    "**/__wiring__*",
+    "**/__antislop__*"
   ]
 }

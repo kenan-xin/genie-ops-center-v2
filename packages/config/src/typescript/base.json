@@ -15,6 +15,5 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true
-  },
-  "exclude": ["**/__boundary__*", "**/__wiring__*"]
+  }
 }
