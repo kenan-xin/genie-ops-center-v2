@@ -34,11 +34,22 @@ Optional points are omitted rather than set to `undefined`, because the core tsc
 
 `packages/core/src/lib/tenant-config/branding-seed.ts` repeats the four font keys that `docs/architecture/data-shape.md` says are a constant in `packages/ui`. I did not fix it.
 
-The reason is that `packages/ui` holds no font-list constant today, so the fix is not a move: it creates the constant, decides its shape and its owner, and makes the build-safe seed schema depend on `packages/ui`. The seed schema is build-safe and imports only zod, so a dependency on a UI package needs a decision about what that package may export at build time. That is an architectural slice, not a validator gap. It needs its own bead.
+The reason is that `packages/ui` holds no font-list constant today, so the fix is not a move: it creates the constant, decides its shape and its owner, and makes the build-safe seed schema depend on `packages/ui`. The seed schema is build-safe and imports only zod, so a dependency on a UI package needs a decision about what that package may export at build time. That is an architectural slice, not a validator gap.
+
+It is now bead `genie-ops-center-v2-tf1`, split out of this one. The finding came from the S0-03 whole-branch review of 2026-09-21 as M-6, was deferred into `genie-ops-center-v2-1rd.3.4`, and moved to `tf1` unchanged.
 
 ## Checks
 
-All from the worktree root.
+All from the worktree root, at commit `78bb997`. The repository gates run through Nx and are the ones that count. Each Nx run used `--skip-nx-cache`, so no result came from the cache.
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `NX_DAEMON=false pnpm exec nx run @genie/core:lint --skip-nx-cache --output-style=static` | 0 | `Successfully ran target lint for project @genie/core` |
+| `NX_DAEMON=false pnpm exec nx run @genie/core:typecheck --skip-nx-cache --output-style=static` | 0 | `Successfully ran target typecheck for project @genie/core` |
+| `NX_DAEMON=false pnpm exec nx run @genie/core:test --skip-nx-cache --output-style=static` | 0 | 13 files, 152 tests, all passed |
+| `pnpm run format:check` | 0 | 118 files, all correctly formatted |
+
+The direct tool runs below came first, during development. They locate a failure faster; they do not replace the gates above.
 
 | Command | Result |
 | --- | --- |
