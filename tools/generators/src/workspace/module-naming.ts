@@ -14,10 +14,12 @@ export function modulePackageName(moduleId: string): string {
  * disagree, or `undefined` when the three agree
  * (`docs/architecture/repository-layout.md`, Module package naming).
  *
- * It judges agreement only. The shape of the id, kebab-case, is owned by the
+ * It judges agreement only. The shape of the id, kebab-case, belongs to the
  * module declaration contract (`docs/architecture/module-contract.md`, Identity
- * row) and is enforced by the declaration schema. A second character-set rule
- * here would be a second source of truth for the same contract.
+ * row, and Spec 0 R-12). Nothing enforces that shape yet. S0-03 owns the core
+ * contract validator that will, tracked by `genie-ops-center-v2-1rd.1.5`. A
+ * second character-set rule here would be a second source of truth, so this
+ * function stays out of it rather than filling the gap.
  *
  * A string rather than a throw, so that each caller adds the file it read.
  */

@@ -111,9 +111,9 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
-  // DEFERRED (genie-ops-center-v2-1rd.1.5): the id's character set is not checked
-  // here. Kebab-case belongs to the module declaration contract, which is not
-  // built yet, so today no layer enforces it. An off-contract id still lands
+  // DEFERRED (genie-ops-center-v2-1rd.1.5, owned by S0-03): the id's character
+  // set is not checked here. Kebab-case belongs to the module declaration
+  // contract, and no layer enforces it yet. An off-contract id still lands
   // inside `@genie/module-*`, so nothing escapes the boundary meanwhile.
 
   it("stops a module importing a hyphenated module id by the singular name", () => {
