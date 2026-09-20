@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src contracts testing",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json"
   },
   "dependencies": {
     "@genie/ui": "workspace:*",
