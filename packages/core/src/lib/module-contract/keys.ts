@@ -2,6 +2,9 @@
 export type PermissionKey = `${string}:${string}`;
 
 /** One record a permission can be checked against. */
+// Deliberately not a type alias of Scope: a ResourceRef names the thing a
+// permission is checked against, a Scope names a role-assignment target. They
+// drift apart once resource refs carry module ids and scopes carry tenant data.
 export type ResourceRef = { readonly type: string; readonly id: string };
 
 /** One scope a role assignment can point at. */

@@ -7,6 +7,10 @@ describe("isPermissionKey", () => {
     expect(isPermissionKey("placeholder:read")).toBe(true);
   });
 
+  it("accepts hyphenated parts on both sides of the separator", () => {
+    expect(isPermissionKey("a-b:c-d")).toBe(true);
+  });
+
   it("refuses a key without an action", () => {
     expect(isPermissionKey("placeholder")).toBe(false);
   });
