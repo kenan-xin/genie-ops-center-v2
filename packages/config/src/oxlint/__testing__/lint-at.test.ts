@@ -291,6 +291,24 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
   });
 });
 
+// Oxlint refuses any PATH argument holding `..`, so the argument the harness
+// hands it is observable: a normalized path lints, a raw one never reaches a
+// rule. The fixture path is spelled with a `..` segment that normalizes away.
+describe("the path lintAtIsolated hands to oxlint", () => {
+  it("is normalized, so oxlint lints the file instead of refusing the argument", () => {
+    // The process id keeps two vitest workers out of each other's directory.
+    const result = lintAtIsolated(
+      `a/../__normalized__-${process.pid}/__normalized__.ts`,
+      "export function fixture() {\n  debugger;\n}\n"
+    );
+
+    // no-debugger is on for every file, so this holds without a layer override.
+    expect(result.output).toContain("no-debugger");
+    expect(result.output).not.toContain('PATH must not contain ".."');
+    expect(result.failed).toBe(true);
+  });
+});
+
 describe("lintAt through the hardened lifecycle", () => {
   it("removes the fixture and its directory after a lint run that fails", () => {
     // No other suite uses this path, and the process id keeps two workers apart,
