@@ -300,7 +300,7 @@ describe("the import direction, proved through the oxlint binary", () => {
 
     expect(result.failed).toBe(true);
 
-    expect(result.output).toContain("ui imports no app");
+    expect(result.output).toContain("ui imports no app.");
   });
 
   it("rejects ui reaching into the app package through a subpath", () => {
@@ -311,7 +311,7 @@ describe("the import direction, proved through the oxlint binary", () => {
 
     expect(result.failed).toBe(true);
 
-    expect(result.output).toContain("ui imports no app");
+    expect(result.output).toContain("ui imports no app.");
   });
 
   it("rejects ui importing the storybook host package by name", () => {
@@ -322,7 +322,7 @@ describe("the import direction, proved through the oxlint binary", () => {
 
     expect(result.failed).toBe(true);
 
-    expect(result.output).toContain("ui imports no app");
+    expect(result.output).toContain("ui imports no app.");
   });
 
   it("rejects ui reaching into the storybook host through a subpath", () => {
@@ -333,7 +333,7 @@ describe("the import direction, proved through the oxlint binary", () => {
 
     expect(result.failed).toBe(true);
 
-    expect(result.output).toContain("ui imports no app");
+    expect(result.output).toContain("ui imports no app.");
   });
 
   it("allows core to import the database driver, because core owns the pool", () => {
