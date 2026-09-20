@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -10,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -150,6 +151,37 @@ describe("the fixture lifecycle", () => {
 // refuses an existing file rather than overwrite one. The isolated root is how
 // a rule keyed to such a path is still reachable from a test.
 describe("lintAtIsolated over a path the checkout already owns", () => {
+  it("creates a discoverable root and removes the actual root it used", () => {
+    const bin = join(root, "bin");
+    mkdirSync(bin);
+    const command = join(bin, "pnpm");
+    writeFileSync(
+      command,
+      `#!${process.execPath}\nprocess.stdout.write(process.cwd());\n`
+    );
+    chmodSync(command, 0o755);
+    const priorPath = process.env.PATH;
+    let observedRoot: string | undefined;
+
+    try {
+      process.env.PATH = `${bin}${delimiter}${priorPath ?? ""}`;
+      const result = lintAtIsolated("apps/probe.ts", SOURCE);
+      observedRoot = result.output;
+      expect(result.failed).toBe(false);
+      expect(basename(result.output).startsWith(ISOLATED_ROOT_PREFIX)).toBe(
+        true
+      );
+      expect(existsSync(result.output)).toBe(false);
+    } finally {
+      if (observedRoot && dirname(observedRoot) === tmpdir()) {
+        rmSync(observedRoot, { recursive: true, force: true });
+      }
+
+      if (priorPath === undefined) delete process.env.PATH;
+      else process.env.PATH = priorPath;
+    }
+  });
+
   // A real application source file today, and an app-layer path, so the rule it
   // reaches is a production one rather than one invented for this test.
   const OWNED = "apps/genie/src/index.ts";
