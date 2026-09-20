@@ -39,7 +39,7 @@ Measured with the fix, same procedure:
 
 Removing the two inputs restores the replay: with the mutation applied, a warm cache plus a nested `.beads/.gitignore` append returned `Cache: 1/1 hit (100%)`. `nx.json` was restored byte-identical (`sha256 af401e9b6076048bc8835a46174de888cb8da1fd29df2465ccc16b1899aa43f5`) and the fixed behaviour re-measured.
 
-A focused check lives in `tools/generators/src/workspace/validate/validate-inputs.test.ts`: it reads `nx.json` and requires a workspace-rooted `**` input ending in `.gitignore` and one ending in `.nxignore`, so removing the coverage fails the validate collection.
+A focused check lives in `tools/generators/src/workspace/validate/validate-inputs.test.ts`: it reads `nx.json` and requires the exact whole-workspace globs `{workspaceRoot}/**/.gitignore` and `{workspaceRoot}/**/.nxignore`. A looser shape check is not enough — a subtree-only spelling such as `{workspaceRoot}/.beads/**/.gitignore` also starts at the root, contains `**` and ends in the filename, yet omits the root file and every nested ignore file outside `.beads`; the exact assertion fails that replacement.
 
 ## Scope
 
