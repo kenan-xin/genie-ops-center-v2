@@ -77,8 +77,15 @@ const MODULES = [
 ];
 
 // `apps/*` is a folder glob, not a package name. Apps are imported by path, if
-// at all, so the path spellings here are the realizable ones.
+// at all, so the path spellings here are the realizable ones. `@genie/app` is
+// what `apps/genie/package.json` calls itself and `@genie/storybook` is the
+// host's reserved name; a bare specifier contains no `apps/`, so no path glob
+// can stand in for either, and both need their own two spellings.
 const APPS = [
+  "@genie/app",
+  "@genie/app/**",
+  "@genie/storybook",
+  "@genie/storybook/**",
   "apps/*",
   "apps/**",
   "**/apps/genie/**",
@@ -102,11 +109,30 @@ const DRIVERS = [
   "**/../core/src/services/database/**",
 ];
 
+// The shared configuration package. A product package reaches it from a package
+// configuration file only, never from code that ships or runs (R-7a).
+const CONFIG = [
+  "@genie/config",
+  "@genie/config/**",
+  "**/packages/config/**",
+  "**/../config/**",
+];
+
+// The generators. These run at build time, so nothing that ships may reach them (R-7a).
+const TOOLING = [
+  "@genie/generators",
+  "@genie/generators/**",
+  "**/tools/generators/**",
+  "**/../generators/**",
+  "**/../tools/**",
+];
+
 const INTERNAL = [
   ...CORE,
   ...MODULES,
   ...APPS,
   ...CUSTOMERS,
+  ...TOOLING,
   "@genie/ui",
   "@genie/ui/**",
   "**/packages/ui/**",
@@ -183,7 +209,10 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     ["packages/config/**"],
     [
       {
-        group: INTERNAL,
+        // The config package is an internal project too, so a file inside it
+        // reaches its siblings relatively, as `packages/config/vitest.config.ts`
+        // does, and never through the `@genie/config` specifier.
+        group: [...INTERNAL, ...CONFIG],
         message: "config imports no internal project (R-7a).",
       },
       {

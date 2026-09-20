@@ -127,6 +127,52 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("ui imports no customer folder.");
   });
 
+  it("rejects ui importing the app package by name", () => {
+    // `@genie/app` is what `apps/genie/package.json` calls itself, and the bare
+    // specifier contains no `apps/`, so no path glob can stand in for it.
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "@genie/app";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no app");
+  });
+
+  it("rejects ui reaching into the app package through a subpath", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "@genie/app/src/context.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no app");
+  });
+
+  it("rejects ui importing the storybook host package by name", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "@genie/storybook";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no app");
+  });
+
+  it("rejects ui reaching into the storybook host through a subpath", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "@genie/storybook/preview";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no app");
+  });
+
   it("allows core to import the database driver, because core owns the pool", () => {
     const result = lintAt(
       "packages/core/__boundary__/__boundary__.ts",
@@ -149,6 +195,53 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain(
       "config imports no internal project (R-7a)."
     );
+  });
+
+  it("rejects config importing its own package by name", () => {
+    // A file inside the config package reaches its siblings relatively, as
+    // `packages/config/vitest.config.ts` does, so the package specifier is
+    // always the wrong spelling there.
+    const result = lintAt(
+      "packages/config/__boundary__/__boundary__.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("config imports no internal project");
+  });
+
+  it("rejects config importing a generator by package name", () => {
+    const result = lintAt(
+      "packages/config/__boundary__/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("config imports no internal project");
+  });
+
+  it("rejects config importing a generator subpath", () => {
+    const result = lintAt(
+      "packages/config/__boundary__/__boundary__.ts",
+      `import "@genie/generators/selection";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("config imports no internal project");
+  });
+
+  it("rejects config importing a generator by relative path", () => {
+    const result = lintAt(
+      "packages/config/__boundary__/__boundary__.ts",
+      `import "../../tools/generators/src/selection/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("config imports no internal project");
   });
 
   it("stops tools/generators from importing a module implementation", () => {
