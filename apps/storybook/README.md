@@ -14,4 +14,4 @@ No server barrel, no database factory, no tenant bootstrap, and no deployment en
 
 ## What it imports
 
-The shared preset from `@genie/config/storybook` and the module selection resolver from `@genie/generators`, both at configuration time, plus `packages/core` and `packages/ui` at render time through the story files it discovers. It is a development host rather than a product runtime, so it sits outside the app, core, ui, and module import direction and nothing internal imports it.
+The shared preset from `@genie/config/storybook` and the module selection resolver from `@genie/generators`, both at configuration time, plus `packages/core` and `packages/ui` at render time through the story files it discovers. For import direction the host counts as an app: it imports config, generators, core, ui, and the modules, and nothing internal imports it.
