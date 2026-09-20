@@ -4,9 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open",
-    "build-storybook": "storybook build",
-    "test-storybook": "vitest --project storybook run",
     "lint": "oxlint --config ../../oxlint.config.ts .storybook",
     "typecheck": "tsc --noEmit"
   },
@@ -33,6 +30,18 @@
     "vitest": "4.1.11"
   },
   "nx": {
+    "targets": {
+      "storybook": {
+        "options": {
+          "args": "--host=127.0.0.1 --port=6006 --no-open"
+        }
+      },
+      "test-storybook": {
+        "options": {
+          "command": "vitest run --project=storybook --passWithNoTests=false"
+        }
+      }
+    },
     "tags": [
       "app"
     ]
