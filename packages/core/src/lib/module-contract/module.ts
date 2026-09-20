@@ -3,6 +3,7 @@ import type { PgTable } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
 import type { ZodObject, ZodType } from "zod";
 
+import type { CapabilityName } from "../../../contracts/index.ts";
 import type { RequestPrincipal } from "../../services/authorization/index.ts";
 import type { FrameOriginProvider } from "../content-security-policy/index.ts";
 import type { TenantContext } from "../tenant-context/index.ts";
@@ -135,8 +136,14 @@ export type EventDeclaration = {
   readonly payload: ZodType;
 };
 
-/** 12. Capabilities, declaration-site only. Named against packages/core/contracts. */
-export type CapabilityProvision = { readonly name: string };
+/**
+ * 12. Capabilities, declaration-site only. The name is a key of the
+ * `CapabilityInterfaces` registry in `packages/core/contracts`, so a module
+ * cannot provide a capability that does not exist. Section 0 registers none,
+ * so `capabilities` is the empty list until a real module needs one and the
+ * same change adds it to the registry and to the module contract document.
+ */
+export type CapabilityProvision = { readonly name: CapabilityName };
 
 /** 13. Jobs, declaration-site only. Every handler receives the tenant context (DEC-34). */
 export type JobContext = { readonly tenant: TenantContext };

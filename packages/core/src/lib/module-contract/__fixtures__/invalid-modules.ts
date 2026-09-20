@@ -42,38 +42,39 @@ export function renameModule(module: Module, id: string): Module {
 
 /** Flag the first workspace entry as the landing route (DEC-49). */
 export function withLanding(module: Module): Module {
-  const first = module.navigation.entries.findIndex(
-    (entry) => entry.surface === "workspace"
-  );
-
-  if (first === -1) throw new Error("fixture lost its workspace entry");
-
-  return {
-    ...module,
-    navigation: {
-      ...module.navigation,
-      entries: module.navigation.entries.map((entry, index) =>
-        index === first ? { ...entry, landing: true } : entry
-      ),
-    },
-  };
+  return withLandingOn(module, "workspace");
 }
 
 /** Flag the first admin entry as the landing route, which DEC-49 forbids. */
 export function withAdminLanding(module: Module): Module {
-  const first = module.navigation.entries.findIndex(
-    (entry) => entry.surface === "admin"
+  return withLandingOn(module, "admin");
+}
+
+/**
+ * Flags one entry and its pinned copy together. The rail pins the entries a
+ * module declares, so flagging only one of the two copies would break a second
+ * rule and stop the transform from naming a single one.
+ */
+function withLandingOn(
+  module: Module,
+  surface: NavigationEntry["surface"]
+): Module {
+  const target = module.navigation.entries.find(
+    (entry) => entry.surface === surface
   );
 
-  if (first === -1) throw new Error("fixture lost its admin entry");
+  if (target === undefined) {
+    throw new Error(`fixture lost its ${surface} entry`);
+  }
+
+  const flag = (entry: NavigationEntry): NavigationEntry =>
+    entry.id === target.id ? { ...entry, landing: true } : entry;
 
   return {
     ...module,
     navigation: {
-      ...module.navigation,
-      entries: module.navigation.entries.map((entry, index) =>
-        index === first ? { ...entry, landing: true } : entry
-      ),
+      pinned: module.navigation.pinned.map(flag),
+      entries: module.navigation.entries.map(flag),
     },
   };
 }

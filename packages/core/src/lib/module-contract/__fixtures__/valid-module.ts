@@ -132,7 +132,10 @@ export const validModule = {
     },
   ],
 
-  capabilities: [{ name: "fixture-capability" }],
+  // Empty on purpose: a provision names a key of the CapabilityInterfaces
+  // registry, and Section 0 registers no capability. `module.test-d.ts` holds
+  // the type assertion that an invented name is refused.
+  capabilities: [],
 
   jobs: [
     { name: "fixture.cleanup", schedule: "0 3 * * *", handler: async () => {} },

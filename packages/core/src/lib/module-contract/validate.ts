@@ -1,7 +1,7 @@
 import type { ZodType } from "zod";
 
 import { isPermissionKey } from "./keys.ts";
-import type { Module } from "./module.ts";
+import type { Module, NavigationEntry } from "./module.ts";
 
 /**
  * The module contract's own kebab-case rule: lower-case letters and digits in
@@ -156,6 +156,52 @@ export function validateModule(module: Module): readonly string[] {
     );
   }
 
+  // The rail pins entries the module declares. A pinned id core cannot find
+  // among the entries renders nothing, and a second copy of one takes a slot
+  // from the six (module contract, Navigation row).
+  const byId = new Map(
+    module.navigation.entries.map((entry) => [entry.id, entry])
+  );
+
+  const pinnedIds = new Set<string>();
+
+  for (const entry of module.navigation.pinned) {
+    const entryOfThatId = byId.get(entry.id);
+
+    if (entryOfThatId === undefined) {
+      problems.push(
+        `Pinned entry "${entry.id}" is not one of the module's navigation entries.`
+      );
+    } else if (!sameEntry(entryOfThatId, entry)) {
+      problems.push(
+        `Pinned entry "${entry.id}" differs from the navigation entry of that id.`
+      );
+    }
+
+    if (pinnedIds.has(entry.id)) {
+      problems.push(`Entry "${entry.id}" is pinned twice.`);
+    }
+
+    pinnedIds.add(entry.id);
+  }
+
+  // DEC-50: a module with a workspace entry seeds one role named after its
+  // display name, and that role is what carries `<id>:use` to a person.
+  if (workspace.length > 0) {
+    const expected = `${module.identity.displayName} user`;
+    const role = module.defaultRoles.find((entry) => entry.name === expected);
+
+    if (role === undefined) {
+      problems.push(
+        `A module with a workspace entry seeds a default role named "${expected}" (DEC-50).`
+      );
+    } else if (!role.permissions.includes(`${id}:use`)) {
+      problems.push(
+        `Default role "${expected}" must carry "${id}:use" (DEC-50).`
+      );
+    }
+  }
+
   if (landingCount(module) > 1) {
     problems.push(`Module "${id}" flags more than one landing route (DEC-49).`);
   }
@@ -211,6 +257,18 @@ export function validateRegistry(
   }
 
   return problems;
+}
+
+/** Every field of the navigation contract, so a pinned copy cannot drift. */
+function sameEntry(left: NavigationEntry, right: NavigationEntry): boolean {
+  return (
+    left.label === right.label &&
+    left.path === right.path &&
+    left.surface === right.surface &&
+    left.requiredPermission === right.requiredPermission &&
+    left.categoryId === right.categoryId &&
+    left.landing === right.landing
+  );
 }
 
 function landingCount(module: Module): number {

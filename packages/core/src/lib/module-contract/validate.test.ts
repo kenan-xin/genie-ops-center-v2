@@ -73,14 +73,81 @@ describe("validateModule", () => {
   });
 
   it("accepts a pinned list of six", () => {
-    const entry = firstWorkspaceEntry(validModule.navigation.entries);
+    const six = sixWorkspaceEntries(validModule.navigation.entries);
 
     const ok = {
       ...validModule,
+      navigation: { pinned: six, entries: six },
+    };
+
+    expect(validateModule(ok)).toEqual([]);
+  });
+
+  it("rejects a pinned entry the module never declared", () => {
+    const entry = firstWorkspaceEntry(validModule.navigation.entries);
+
+    const broken = {
+      ...validModule,
       navigation: {
         ...validModule.navigation,
-        pinned: Array.from({ length: 6 }, () => entry),
+        pinned: [...validModule.navigation.pinned, { ...entry, id: "ghost" }],
       },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain('"ghost"');
+  });
+
+  it("rejects a pinned entry whose id matches a declared entry of another shape", () => {
+    const entry = firstWorkspaceEntry(validModule.navigation.entries);
+
+    const broken = {
+      ...validModule,
+      navigation: {
+        ...validModule.navigation,
+        pinned: [{ ...entry, path: "/somewhere-else" }],
+      },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(entry.id);
+  });
+
+  it("rejects the same entry pinned twice", () => {
+    const entry = firstWorkspaceEntry(validModule.navigation.entries);
+
+    const broken = {
+      ...validModule,
+      navigation: { ...validModule.navigation, pinned: [entry, entry] },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain("twice");
+  });
+
+  it("rejects a module with a workspace entry and no default user role (DEC-50)", () => {
+    const broken = { ...validModule, defaultRoles: [] };
+
+    expect(validateModule(broken).join(" ")).toContain('"Fixture user"');
+  });
+
+  it("rejects a default user role that does not carry the use key (DEC-50)", () => {
+    const broken = {
+      ...validModule,
+      defaultRoles: [
+        { name: "Fixture user", permissions: ["fixture:read" as const] },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain("fixture:use");
+  });
+
+  it("asks for no default user role when the module has no workspace entry", () => {
+    const adminOnly = validModule.navigation.entries.filter(
+      (entry) => entry.surface === "admin"
+    );
+
+    const ok = {
+      ...validModule,
+      defaultRoles: [],
+      navigation: { pinned: adminOnly, entries: adminOnly },
     };
 
     expect(validateModule(ok)).toEqual([]);
@@ -245,4 +312,21 @@ function firstWorkspaceEntry(
   if (entry === undefined) throw new Error("fixture lost its workspace entry");
 
   return entry;
+}
+
+/**
+ * Six distinct workspace entries. The pinned rail draws from the declared
+ * entries and holds each of them once, so a six-slot case needs six of them
+ * rather than one entry repeated.
+ */
+function sixWorkspaceEntries(
+  entries: readonly NavigationEntry[]
+): readonly NavigationEntry[] {
+  const entry = firstWorkspaceEntry(entries);
+
+  return Array.from({ length: 6 }, (_unused, index) => ({
+    ...entry,
+    id: `${entry.id}-${index}`,
+    path: `${entry.path}/${index}`,
+  }));
 }
