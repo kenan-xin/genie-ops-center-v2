@@ -111,6 +111,11 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
+  // DEFERRED (genie-ops-center-v2-1rd.1.5): the id's character set is not checked
+  // here. Kebab-case belongs to the module declaration contract, which is not
+  // built yet, so today no layer enforces it. An off-contract id still lands
+  // inside `@genie/module-*`, so nothing escapes the boundary meanwhile.
+
   it("stops a module importing a hyphenated module id by the singular name", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__/__boundary__.ts",
@@ -200,8 +205,11 @@ describe("the import direction, proved through the oxlint binary", () => {
     );
   });
 
-  // The positive half. Widening the module group must not break the two imports
-  // the architecture depends on: an app composing a module, and a module using core.
+  // The positive half, with one honest limit. Only the module-imports-core case
+  // can catch a widened module group: the app layer bans drivers and tooling and
+  // never consults that group, so widening it to `@genie/**` leaves both app
+  // cases passing. They are regression cover for the app layer itself, not for
+  // the module group.
 
   it("lets an app compose a module by the singular package name", () => {
     const result = lintAt(
