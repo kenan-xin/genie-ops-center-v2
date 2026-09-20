@@ -98,6 +98,8 @@ Designed in: Section 3 (the inbox screen is designed together with the account p
 
 Question: when a new customer arrives, is a new repository scaffolded for them, and who owns customer-specific module code?
 
+Amendment, 2026-09-20: module packages use `@genie/module-<capability>` and existing capability folders `packages/modules/<capability>/` folders; IDs remain unprefixed. This supersedes the earlier folder spelling below; ownership and entitlement decisions are unchanged. See [the canonical naming contract](../architecture/repository-layout.md#module-package-naming) and [rework plan](../tech-plans/module-naming-revision.md).
+
 Decision: everything is owned by Genie Ops Center, core and every module alike, and everything lives in the one monorepo. There are no customer repositories. A customer-specific module is a package under `packages/modules/<capability>`, named by what it does, never by the customer. The new-customer workflow is: `nx g @genie/tenant:new <slug>` to scaffold `customers/<slug>/deploy/` with the tenant's configuration and provisioning inputs, `nx g @genie/module:new <capability>` for each module the customer needs that does not exist, then one entitlement per module. A generic module, when the team has the experience to design one, is the same kind of package and becomes shared by entitling a second tenant.
 
 Why not a repository per customer: core would become a published package, and every core fix would be published once and then bumped, tested, built, and deployed once per customer repository, with customers drifting onto different core versions. One repository means one fix, one build per customer from the same commit, and every customer on the same core the same day.

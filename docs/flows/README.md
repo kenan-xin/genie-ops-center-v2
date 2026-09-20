@@ -8,6 +8,7 @@ These are product behavior documents, not implementation tickets, test results, 
 
 | Flow document | Business question | Requirements and proof |
 | --- | --- | --- |
+| [Tenant module visibility](tenant-module-visibility.md) | How does a tenant receive only its modules and shared core, with each person limited by permissions? | Canonical invariant; Spec 0 AC-4/AC-17/AC-24, Spec 3 R-28/R-30 and existing access/lifecycle contracts |
 | [Categories and Settings](categories-and-settings.md) | How does one admin organize modules and solutions, and find settings as modules grow? | Spec 0 R-56/AC-29; Spec 3 R-75a/R-91a/AC-19; Spec 4 R-37a/AC-13a |
 | [Module activation, permission upgrades and removal](module-access-upgrades.md) | What changes automatically during upgrades, and what remains under administrator control? | Sections 1–5; exact R/AC mapping in the document |
 

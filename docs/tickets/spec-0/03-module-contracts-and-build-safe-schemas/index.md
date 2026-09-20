@@ -28,12 +28,31 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Acceptance and tests
 
+The accepted planning decisions below supplement these criteria; they do not release the S0-01 prerequisite or approve implementation evidence.
+
 - Positive/negative type and contract fixtures cover all points, five field kinds (sixth rejected), workspace use/admin keys, pinned maximum six, zero/duplicate landing flags, record resolver optional path and Categories/Settings shapes.
 - Many authorization calls in one request read loader once; separate requests remain separate; only placeholder:read succeeds.
 - CSP omitted/empty/deduplicated/invalid/throwing and two-context provider cases cannot broaden policy. Import schemas with deployment env absent and assert no services start.
 - Preserve import direction including testing code and schema subpath; no runtime dependency from config/tooling.
 
 Use TDD in behavioral slices. UI requires documented stories and meaningful failing component assertions before app use; unit, real-database integration and deployed E2E remain separate. Never claim a planned or empty command passed.
+
+## Accepted planning decisions — 2026-09-20
+
+1. **Use actual library types for final signatures.** Add only the dependencies needed by the public contracts, including applicable tRPC, Drizzle, PostgreSQL and React types. Use type-only imports where appropriate; do not substitute temporary structural types that S0-04 must narrow. Determine dependency versus devDependency placement from public consumers and packaging, not from import syntax alone. Verify exact pins against the approved stack and compatibility requirements; this decision does not approve a major-version change or runtime service initialization.
+2. **Keep authorization state request-owned.** Use a server-only request-principal wrapper carrying the lazy loader while preserving the final `can(user, permission, resource?)` and `scopesFor(user, permission)` signatures. Never place that loader on the process-wide TenantContext, persisted user record, browser DTO or shared session object. Create a fresh wrapper per request/job and share its lazy result only within that execution. S0-03 defines and tests the seam; actual request/job wiring remains with its assigned runtime tickets.
+3. **Create the contracts directory only for its intended surface.** `packages/core/contracts/` holds capability interfaces and cross-module event schemas as specified by the repository layout, with only allowed zod/type imports. Keep Module composition types in the planned core module-contract location; do not turn the contracts directory into a barrel for every core type. No real capability service is introduced.
+4. **Serialize the initial dependency change: S0-03, then S0-02.** Agree shared React and other overlapping pins before editing. S0-03 prepares the minimal contract dependency change; after separate approval and integration of that change, S0-02 updates its baseline and takes ownership of Storybook dependency/configuration edits. Record paths, revision and writer handoff in both beads. This is a shared-file handoff, not a dependency on completion of the whole S0-03 ticket. Work on disjoint owned files may continue after S0-01 clears. Exports, import-boundary changes and configuration also require coordination; slice 1 is not the only shared-file slice.
+5. **Combine static and runtime build-safety proof.** Enforce the schema import restrictions and test public build-safe entrypoints in a fresh process with deployment variables absent. Assert that service initialization does not occur, with a meaningful failure case demonstrating the check detects forbidden initialization. A successful import alone is insufficient. These checks prove the foundation import boundary, not deployment E2E.
+
+Implementation-plan corrections:
+
+- R-5a permits narrowly documented anti-slop exceptions for legitimate boundary validation, framework contracts and test fixtures. Reproduce any rule conflict, document the narrow exception and verify it through lint; do not weaken types with `any` or casts or disable the rule globally merely to obtain a pass.
+- Ensure all new contract files participate in Nx-owned lint, typecheck and test collection. At the reviewed S0-01 baseline, core lint scans only `src`, TypeScript includes `src/**/*.ts` and the Vitest configuration, and unit collection scans `src`; a new top-level `contracts/` directory must not escape applicable checks. Prove coverage using intentional negative fixtures.
+- This guidance supersedes conflicting recommendations in `/tmp/s0-03-bounded-plan.md`; that temporary draft is not canonical and its eight slices are not independently approved by accepting these five decisions.
+- Use the installed `wt` CLI to create or verify the isolated feature worktree from the approved `develop` revision, consulting its help rather than guessing syntax. Reuse correct isolation; do not nest worktrees or silently substitute raw Git worktree creation.
+
+The start gate remains unchanged: S0-01 must be integrated, validated and closed in shared Beads before implementation or claiming S0-03. A merge or expired lease alone does not satisfy the gate. No commit or partial integration is authorized by this planning update.
 
 ## Exclusions
 
@@ -50,3 +69,7 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 ## Completion handoff
 
 Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: inspect contract fixtures/imports for naming impact, preserve IDs and pins, and record either focused corrections or an evidenced no-op before handoff. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. Implemented-ticket rework awaits owner approval of the proposed sequence; existing integration and shared-file gates remain in force.
