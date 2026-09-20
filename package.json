@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "hooks:install": "lefthook install",
+    "hooks:install": "git config core.hooksPath .githooks",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
