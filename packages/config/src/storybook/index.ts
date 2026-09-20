@@ -39,6 +39,10 @@ export function sharedStorybookConfig(
       // Owns the test-storybook target and draws the in-user-interface test
       // panel. The command-line run reads the same project from vitest.config.ts.
       "@storybook/addon-vitest",
+      // Serves the agent endpoint on the development server only. The defaults
+      // are the wanted ones: the /mcp pathname and every toolset enabled. The
+      // static build carries no server, so no endpoint ships.
+      "@storybook/addon-mcp",
     ],
   };
 }

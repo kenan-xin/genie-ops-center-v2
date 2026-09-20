@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "storybook": "storybook dev -p 6006 --no-open",
+    "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open",
     "build-storybook": "storybook build",
     "test-storybook": "vitest --project storybook run",
     "lint": "oxlint --config ../../oxlint.config.ts .storybook",
@@ -19,6 +19,7 @@
     "@genie/generators": "workspace:*",
     "@storybook/addon-a11y": "10.6.0",
     "@storybook/addon-docs": "10.6.0",
+    "@storybook/addon-mcp": "10.6.0",
     "@storybook/addon-vitest": "10.6.0",
     "@storybook/nextjs-vite": "10.6.0",
     "next": "16.3.5",
