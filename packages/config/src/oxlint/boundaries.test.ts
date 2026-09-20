@@ -801,6 +801,25 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
+  it("keeps the module layer on a file past the deepest depth entry", () => {
+    // `packages/modules/*/**` is the fallback for a module file more than three
+    // folders below its own root. Every `MODULE_FOLDER_DEPTHS` entry repeats the
+    // whole layer but matches one exact depth, so this depth-4 path is covered by
+    // that fallback alone. Delete it and the file loses `MODULE_LAYER` and
+    // `NO_CONFIG` entirely. The sibling climb at this depth stays allowed: that is
+    // the documented ceiling, not a defect.
+    const result = lintAt(
+      "packages/modules/alpha/src/a/b/c/__boundary__.ts",
+      `import "pg";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "a module reads the database through ctx.tenant.db (DEC-34)."
+    );
+  });
+
   it("still allows a module its own relative import from src", () => {
     const result = lintAt(
       "packages/modules/alpha/src/__boundary__.ts",
