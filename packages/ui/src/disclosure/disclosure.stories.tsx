@@ -6,6 +6,7 @@ import { Disclosure } from "./disclosure.tsx";
 const meta = {
   title: "UI/Disclosure",
   component: Disclosure,
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
