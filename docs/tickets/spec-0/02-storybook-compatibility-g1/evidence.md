@@ -16,6 +16,8 @@ G1 is the first gate of Spec 0. It asks one question: does the Storybook toolcha
 
 This record was written one commit after the head it names. Every gate result below was measured at `3985e5b` before the evidence commit existed. The evidence commit adds only this file, so the numbers stay checkable against the tree they describe.
 
+A correction pass followed the first review, with the working tree at the evidence commit `c1829bc`. It added the state-reset observation of section 9, corrected the component listing of section 8 and the keyboard table row of section 9, re-ran the MCP request of section 10, and labeled the excerpts that come from an earlier task session. Section 9 names which observations are live and section 10 names which line is carried.
+
 The 14 commits, oldest first:
 
 | Commit | Subject |
@@ -203,6 +205,8 @@ Received:
 
 The axe check runs through `@storybook/addon-a11y` with `parameters.a11y.test = "error"` in `apps/storybook/.storybook/preview.tsx`.
 
+Provenance: every transcript in this section is carried from the Task 5 session and recorded in `.superpowers/sdd/plan/task-5-report.md`. That session's work landed in `6321f79` and `be9e251`, so the failing runs cannot be reproduced at head `3985e5b` without reintroducing the defect. What was re-run at head is the green, as the `test-storybook` row of section 4.
+
 **Attempt 1 was rejected as evidence.** Replacing the trigger with a `div` carrying `onClick` gave Nx exit 1, but every failure read `TestingLibraryElementError: Unable to find an accessible element with the role "button"`. Five play functions failed before axe ran, and no axe rule was named anywhere in the output. A query failure is not an accessibility failure, so this attempt was discarded rather than reported as a pass of the gate.
 
 **Attempt 2 found a real defect in the harness.** The accessible `button` was restored and `aria-expanded` was added to the wrapper `div`, where axe's `aria-allowed-attr` rule forbids it. Nx exit **0**:
@@ -273,8 +277,12 @@ $ pnpm --filter @genie/core exec vitest list --filesOnly
 [unit] src/index.test.ts
 
 $ pnpm --filter @genie/storybook exec vitest list --project storybook --filesOnly
+[storybook (chromium)] ../../packages/ui/src/disclosure/disclosure.stories.tsx
 [storybook (chromium)] ../../packages/core/src/lib/story-seam/core-group.stories.tsx
+[storybook (chromium)] ../../packages/modules/placeholder/src/presentation/workspace-page.stories.tsx
 ```
+
+The unit listing names one file because it is scoped to `@genie/core`; the 19 files of the table are the whole `run-many` sweep. The component listing names the same three files the table counts.
 
 The component collection runs in a real browser, not in a simulated DOM. The negative control is a forced browser-path failure:
 
@@ -294,6 +302,8 @@ The run cannot pass without a real Chromium, so a green component run is browser
 | --- | --- | --- | --- |
 | Unset, which the resolver treats as every module | `storybook build` | 13 | yes, four stories plus a Docs page |
 | `MODULE_INCLUDE=""`, an explicitly empty selection | `MODULE_INCLUDE="" storybook build --output-dir storybook-static-empty` | 8 | no |
+
+Provenance: the 13-entry row was re-measured at head `3985e5b` for this record. The 8-entry row is carried from the Task 7 session, recorded in `.superpowers/sdd/plan/task-7-report.md`, whose work landed in `0f62fd1`, `fc85982` and `88db9db`. The empty-selection build was not re-run at head.
 
 The fixture string `First record` appears nowhere in the excluded bundle. The exclusion happens before collection, not by hiding a collected story.
 
@@ -382,12 +392,33 @@ On `ui-disclosure--closed`, driven through the real preview frame. The frame was
 | --- | --- |
 | Focus before Tab | `BODY` |
 | After Tab | `BUTTON[aria-expanded=false] "Deployment notes"` |
-| Initial state | `aria-expanded=false`, `role="region"` absent, content `hidden` present, content not visible |
+| Initial state | `aria-expanded=false`, content `hidden` present, content not visible. The `role="region"` element stays in the document carrying `hidden`, so it is out of the accessibility tree but not out of the DOM |
 | After Enter | `aria-expanded=true`, content `hidden` absent, content visible, region reads `Deployment notes \| One deployment serves one customer.` |
 | After Space | `aria-expanded=false`, content `hidden` present, content not visible |
 | Focus at the end | still on the trigger button |
 
 Result: pass. A native `button` answers both keys, and focus does not move away when the panel opens or closes.
+
+### The state reset between stories
+
+Observed live for this record, with a throwaway Playwright script under `/tmp`, against the same dev server, working tree at commit `c1829bc`. Each step drives the manager to a story and reads the trigger and its `aria-controls` target out of the preview frame.
+
+| Step | Story | Observed |
+| --- | --- | --- |
+| 1 | `ui-disclosure--closed`, on arrival | `aria-expanded=false`, content `hidden` present, content not visible |
+| 2 | the same story, after clicking the trigger by hand | `aria-expanded=true`, content `hidden` absent, content visible |
+| 3 | navigate to `core-story-seam--default` | left the component |
+| 4 | back on `ui-disclosure--closed` | `aria-expanded=false`, content `hidden` present, content not visible |
+| 5 | `ui-disclosure--open-by-default` | `aria-expanded=true`, content `hidden` absent, content visible |
+| 6 | `ui-disclosure--state-resets`, after step 5 | `aria-expanded=false`, content `hidden` present, content not visible |
+| 7 | `ui-disclosure--opens-on-click`, after its play function ran | `aria-expanded=true`, content `hidden` absent, content visible |
+| 8 | `ui-disclosure--state-resets`, after step 7 | `aria-expanded=false`, content `hidden` present, content not visible |
+
+The script collected `pageerror` events and reported `[]`, so no step raised a page error.
+
+Result: pass. A disclosure opened by hand comes back closed after the reader leaves the component and returns. `State Resets` renders closed after a story that renders open and after a story whose play function opens it, so one story does not leak its state into the next.
+
+The element carrying `role="region"` stays in the document at every step, including the closed ones, because `Disclosure` keeps its content mounted and toggles the native `hidden` attribute (commit `be9e251`). `hidden` removes the element from the accessibility tree, which is what the `Closed` story's `queryByRole("region")` assertion reads. The two agree. The state signals here are `aria-expanded` and the `hidden` attribute, read from the DOM.
 
 ### The accessibility panel in the running application
 
@@ -397,7 +428,7 @@ The addon panel tabs read `Violations 0`, `Passes 12`, `Inconclusive 0` on the s
 
 `@storybook/addon-mcp` 10.6.0 is registered as the fourth addon, with no options, so it serves on the documented default path `/mcp` of the dev server.
 
-The connection was made with a real request against the running dev server:
+The connection was made live for this record, against the dev server running with the working tree at commit `c1829bc`:
 
 ```
 curl -sS -i -X POST http://localhost:6006/mcp \
@@ -406,12 +437,12 @@ curl -sS -i -X POST http://localhost:6006/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-Response:
+Response, with the routine headers trimmed:
 
 ```
 HTTP/1.1 200 OK
 content-type: text/event-stream
-mcp-session-id: 81a3900b-5009-488e-b60e-3dc73f203852
+mcp-session-id: 6d6abda3-19e2-4990-be12-3d1ae7e9af73
 
 event: message
 data: {"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"stories-preview",...
@@ -432,6 +463,8 @@ Those cover all three documented toolsets: `dev`, `docs`, and `test`.
 
 ### The listening address
 
+The pre-fix bind below is carried from the Task 8 session, recorded in `.superpowers/sdd/plan/task-8-report.md`. That session's work landed in `d3cfa2a`, so it cannot be reproduced at head `3985e5b`. The post-fix bind was read again live for this record.
+
 Before the fix, `storybook dev` bound every interface:
 
 ```
@@ -443,7 +476,7 @@ and the banner advertised `On your network: http://192.168.50.250:6006/`. Bindin
 Commit `d3cfa2a` added `--host 127.0.0.1` to the `storybook` script. After the fix:
 
 ```
-LISTEN 0  511  127.0.0.1:6006  0.0.0.0:*  users:(("node-MainThread",pid=2402921,fd=42))
+LISTEN 0  511  127.0.0.1:6006  0.0.0.0:*  users:(("node-MainThread",pid=2843283,fd=41))
 ```
 
 The banner prints `On your network: http://127.0.0.1:6006/`, and a probe of the local-area-network address is refused: `curl -m 4 http://192.168.50.250:6006/mcp` returns `curl: (7) Failed to connect to 192.168.50.250:6006 after 0 ms`. The same bind was observed again live during this task, in section 9.
@@ -454,7 +487,7 @@ The endpoint reaches no production surface. The addon is a development dependenc
 
 **G1 passes.**
 
-The Storybook toolchain works on this dependency set. Every gate at head `3985e5b` exits 0, except `pnpm run format:check`, which exits 1 on the pre-existing `.mcp.json` and on nothing else. The four required addons load. The two test collections are separate and both nonempty. The interaction gate and the accessibility gate each failed for the right reason and then passed, with exit codes recorded both times. The static build carries the module's stories under the default selection and excludes them under an empty selection. The MCP endpoint answers on loopback only. The five manual observations, sidebar, theme, viewport, docs and keyboard, all pass in a real browser.
+The Storybook toolchain works on this dependency set. Every gate at head `3985e5b` exits 0, except `pnpm run format:check`, which exits 1 on the pre-existing `.mcp.json` and on nothing else. The four required addons load. The two test collections are separate and both nonempty. The interaction gate and the accessibility gate each failed for the right reason and then passed, with exit codes recorded both times. The static build carries the module's stories under the default selection and excludes them under an empty selection. The MCP endpoint answers on loopback only. The six manual observations, sidebar, theme, viewport, docs, keyboard and state reset, all pass in a real browser.
 
 One stop condition was reached during the work, in section 7: the accessibility addon reported nothing while a real violation was present. It was resolved inside this ticket by deleting the setup file that suppressed the addon, and the gate now fails on that violation. No check was weakened to reach this disposition, no import boundary was changed, no addon was omitted, and no dependency major was moved to make an install succeed.
 
