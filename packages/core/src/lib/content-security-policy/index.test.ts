@@ -122,18 +122,50 @@ describe("collectFrameOrigins", () => {
     ).resolves.toEqual([]);
   });
 
+  // These assert the collector's own return value. Routing them through
+  // serializeContentSecurityPolicy would normalize a second time and hide
+  // whether the collector filtered anything at all.
   it("drops an invalid contribution rather than widening the policy", async () => {
-    const origins = await collectFrameOrigins(
-      {
-        frameOrigins: () =>
-          Promise.resolve(["https:", "*", "https://ok.example.com"]),
-      },
-      ctx
-    );
+    await expect(
+      collectFrameOrigins(
+        {
+          frameOrigins: () =>
+            Promise.resolve(["https:", "*", "https://ok.example.com"]),
+        },
+        ctx
+      )
+    ).resolves.toEqual(["https://ok.example.com"]);
+  });
 
-    expect(serializeContentSecurityPolicy(origins)).toBe(
-      "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src https://ok.example.com"
-    );
+  it("drops a contribution that is not HTTPS", async () => {
+    await expect(
+      collectFrameOrigins(
+        {
+          frameOrigins: () =>
+            Promise.resolve([
+              "http://plain.example.com",
+              "https://ok.example.com",
+            ]),
+        },
+        ctx
+      )
+    ).resolves.toEqual(["https://ok.example.com"]);
+  });
+
+  it("removes a repeated contribution and keeps the supplied order", async () => {
+    await expect(
+      collectFrameOrigins(
+        {
+          frameOrigins: () =>
+            Promise.resolve([
+              "https://b.example.com",
+              "https://a.example.com",
+              "https://b.example.com",
+            ]),
+        },
+        ctx
+      )
+    ).resolves.toEqual(["https://b.example.com", "https://a.example.com"]);
   });
 
   it("gives each context only its own origins", async () => {
@@ -150,12 +182,12 @@ describe("collectFrameOrigins", () => {
     ).resolves.toEqual(["https://two.example.com"]);
   });
 
-  it("leaves frames denied when every contribution is invalid", async () => {
-    const origins = await collectFrameOrigins(
-      { frameOrigins: () => Promise.resolve(["*", "https:"]) },
-      ctx
-    );
-
-    expect(serializeContentSecurityPolicy(origins)).toBe(BASELINE_POLICY);
+  it("contributes nothing when every contribution is invalid", async () => {
+    await expect(
+      collectFrameOrigins(
+        { frameOrigins: () => Promise.resolve(["*", "https:"]) },
+        ctx
+      )
+    ).resolves.toEqual([]);
   });
 });
