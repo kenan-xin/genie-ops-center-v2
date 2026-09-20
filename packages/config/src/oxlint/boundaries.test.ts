@@ -447,6 +447,17 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("tooling never imports an app.");
   });
 
+  it("stops tools/generators from importing a customer folder", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "customers/acme/app/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("tooling never imports a customer folder.");
+  });
+
   it("stops an app from importing a database driver", () => {
     const result = lintAt(
       "apps/genie/__boundary__/__boundary__.ts",

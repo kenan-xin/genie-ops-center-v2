@@ -310,6 +310,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
           "tooling reads module metadata as data. It never imports a module.",
       },
       { group: APPS, message: "tooling never imports an app." },
+      { group: CUSTOMERS, message: "tooling never imports a customer folder." },
       {
         group: [
           "@genie/core",
