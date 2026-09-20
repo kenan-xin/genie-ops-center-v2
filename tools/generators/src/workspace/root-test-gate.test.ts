@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,53 +19,68 @@ const TARGET_FLAGS = new Set(["-t", "--target", "--targets"]);
 
 type RootScripts = { readonly scripts: Readonly<Record<string, string>> };
 
+type RootTestGateRun = {
+  readonly argv: readonly string[];
+  readonly fixture: string;
+};
+
 /**
  * Runs the root `test` script in a disposable directory against a stub `nx` that
  * records each invocation, so the guard reads what Nx was asked to run instead
  * of matching the script text. The real suite never runs: the stub shadows the
- * workspace binary and the fixture holds no project.
+ * workspace binary and the fixture holds no project. The fixture is removed in a
+ * `finally`, so a failed subprocess or a failing assertion leaves nothing in
+ * the system temp directory.
  */
-function recordRootTestGate(): readonly string[] {
+function recordRootTestGate(): RootTestGateRun {
   const fixture = mkdtempSync(join(tmpdir(), "genie-root-gate-"));
-  const bin = join(fixture, "bin");
-  const record = join(fixture, "nx-argv.log");
 
-  mkdirSync(bin);
+  try {
+    const bin = join(fixture, "bin");
+    const record = join(fixture, "nx-argv.log");
 
-  const stub = join(bin, "nx");
+    mkdirSync(bin);
 
-  writeFileSync(
-    stub,
-    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$NX_RECORD"\n`,
-    "utf8"
-  );
-  chmodSync(stub, 0o755);
-  writeFileSync(record, "", "utf8");
+    const stub = join(bin, "nx");
 
-  // SAFETY: the root manifest is a JSON object, and the guard throws right below
-  // when it carries no string `test` script, so the narrowed shape is checked.
-  const manifest = JSON.parse(
-    readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf8")
-  ) as RootScripts;
+    writeFileSync(
+      stub,
+      `#!/bin/sh\nprintf '%s\\n' "$*" >> "$NX_RECORD"\n`,
+      "utf8"
+    );
+    chmodSync(stub, 0o755);
+    writeFileSync(record, "", "utf8");
 
-  const script = manifest.scripts.test;
+    // SAFETY: the root manifest is a JSON object, and the guard throws right below
+    // when it carries no string `test` script, so the narrowed shape is checked.
+    const manifest = JSON.parse(
+      readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf8")
+    ) as RootScripts;
 
-  if (script === undefined) {
-    throw new Error("the root package.json carries no test script to guard");
+    const script = manifest.scripts.test;
+
+    if (script === undefined) {
+      throw new Error("the root package.json carries no test script to guard");
+    }
+
+    execFileSync("sh", ["-c", script], {
+      cwd: fixture,
+      env: {
+        ...process.env,
+        NX_RECORD: record,
+        PATH: `${bin}:${process.env.PATH ?? ""}`,
+      },
+    });
+
+    return {
+      argv: readFileSync(record, "utf8")
+        .split("\n")
+        .filter((line) => line.length > 0),
+      fixture,
+    };
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
   }
-
-  execFileSync("sh", ["-c", script], {
-    cwd: fixture,
-    env: {
-      ...process.env,
-      NX_RECORD: record,
-      PATH: `${bin}:${process.env.PATH ?? ""}`,
-    },
-  });
-
-  return readFileSync(record, "utf8")
-    .split("\n")
-    .filter((line) => line.length > 0);
 }
 
 /** The target names the recorded `nx` invocations ask `run-many` for. */
@@ -99,9 +116,13 @@ function runManyTargets(recorded: readonly string[]): readonly string[] {
 
 describe("the root test gate", () => {
   it("asks Nx for the workspace validate target, not the unit collection alone", () => {
-    const targets = runManyTargets(recordRootTestGate());
+    const run = recordRootTestGate();
+    const targets = runManyTargets(run.argv);
 
     expect(targets).toContain("test");
     expect(targets).toContain("validate");
+    // The run's own directory is gone after the read, so the guard leaves no
+    // fixture behind on a pass; the `finally` covers the failure paths.
+    expect(existsSync(run.fixture)).toBe(false);
   });
 });

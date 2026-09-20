@@ -18,6 +18,12 @@ It deliberately does not compare the script to an exact string, and it does not 
 
 The test lives in the unit collection: `tools/generators/vitest.config.ts` excludes only `src/workspace/validate/**`, and `vitest.validate.config.ts` includes only that directory. The placement is the point. If `validate` is deleted, the guard must still run under `nx test`; a guard inside the `validate` collection would be skipped by exactly the regression it exists to catch.
 
+The disposable fixture is removed in a `finally`, so a failed subprocess or a failing assertion leaves no `genie-root-gate-*` directory in the system temp directory, and the test asserts the removal. Deleting that `finally` fails the assertion (`expected true to be false`), which makes the cleanup tested rather than incidental.
+
+## Review correction, 2026-09-21
+
+The review of `8087534` found that `recordRootTestGate` returned without removing the fixture root, leaking one directory per run. Corrected here: construction, execution and readback are wrapped in `try`/`finally`, and the fixture is removed before the function returns, so cleanup also happens when the subprocess throws. Thirteen directories from the earlier runs were present in the temp directory; all were removed with the fix.
+
 ## RED and GREEN
 
 Run in this worktree, the real root `package.json` mutated and restored:
