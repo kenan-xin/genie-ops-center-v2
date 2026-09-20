@@ -53,6 +53,42 @@ const NEWLY_OPTIONAL = [
   "number_format",
 ] as const satisfies readonly (keyof typeof COMPLETE)[];
 
+/**
+ * A complete file whose acknowledgement flag is false, so dropping any single
+ * optional column leaves the cross-field notice rule satisfied.
+ */
+const OPTIONAL_BASE = {
+  ...COMPLETE,
+  login_notice_requires_acknowledgement: false,
+};
+
+/** Every column the contract does not require. */
+const OPTIONAL_COLUMNS = [
+  "logo_light_file_id",
+  "logo_dark_file_id",
+  "logo_mark_file_id",
+  "favicon_file_id",
+  "primary_color",
+  "default_theme",
+  "font_family",
+  "font_size",
+  "text_color",
+  "login_background_file_id",
+  "login_background_color",
+  "login_welcome_text",
+  "login_notice_text",
+  "login_notice_requires_acknowledgement",
+  "email_sender_name",
+  "email_reply_to",
+  "email_footer_text",
+  "support_url",
+  "support_email",
+  "terms_url",
+  "privacy_url",
+  "date_format",
+  "number_format",
+] as const satisfies readonly (keyof typeof COMPLETE)[];
+
 describe("brandingSeedSchema", () => {
   it("accepts a minimal file: the four required values only", () => {
     expect(brandingSeedSchema.parse(REQUIRED_ONLY)).toEqual(REQUIRED_ONLY);
@@ -68,6 +104,23 @@ describe("brandingSeedSchema", () => {
 
     expect(brandingSeedSchema.safeParse(file).success).toBe(true);
   });
+
+  // Omission is the mechanism the contract describes, so an explicit null is
+  // refused on every optional column until the open question settles
+  // (bead genie-ops-center-v2-1rd.3.3).
+  it.each(OPTIONAL_COLUMNS)(
+    "accepts an omitted %s and rejects an explicit null for it",
+    (column) => {
+      const omitted: Partial<typeof COMPLETE> = { ...OPTIONAL_BASE };
+      delete omitted[column];
+
+      expect(brandingSeedSchema.safeParse(omitted).success).toBe(true);
+      expect(
+        brandingSeedSchema.safeParse({ ...OPTIONAL_BASE, [column]: null })
+          .success
+      ).toBe(false);
+    }
+  );
 
   it("rejects an unknown key", () => {
     const result = brandingSeedSchema.safeParse({
@@ -181,16 +234,6 @@ describe("brandingSeedSchema", () => {
     it("rejects an acknowledgement flag with no notice to acknowledge", () => {
       const result = brandingSeedSchema.safeParse({
         ...REQUIRED_ONLY,
-        login_notice_requires_acknowledgement: true,
-      });
-
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects an acknowledgement flag when the notice is explicitly null", () => {
-      const result = brandingSeedSchema.safeParse({
-        ...REQUIRED_ONLY,
-        login_notice_text: null,
         login_notice_requires_acknowledgement: true,
       });
 
