@@ -20,6 +20,15 @@
   "nx": {
     "tags": [
       "tooling"
-    ]
+    ],
+    "targets": {
+      "test": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/package.json"
+        ]
+      }
+    }
   }
 }

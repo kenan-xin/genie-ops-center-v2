@@ -22,7 +22,7 @@ The important distinction: `@genie/module/alpha` is invalid as an independent np
 | Approved, currently untracked [S0-02 upgrade contract](../architecture/storybook-dependency-upgrades.md) | Approved stable route retains vite-tsconfig-paths 5.1.4, isolates TS 5.9.3 for tsconfck, preserves TS 7 compiler and TS 6 tooling API. Historical scratch evidence is not integrated-branch acceptance. Inherited wildcard alias failure/pass is reported for the alpha comparison; the stable route still requires that verification. |
 | [Spec 0 R-3a, R-7a, R-21/R-22](../specs/00-monorepo-foundation.md), [layout](../architecture/repository-layout.md), [module contract](../architecture/module-contract.md) | Selection must precede cache lookup; retain visible allowed dependencies; registry imports only selected modules; excluded imports/routes/schema/migrations must be absent from build/image. Independent package ownership and module boundaries remain required. |
 
-Online sources below were read through the Traycer browser; Vite documentation was additionally checked through Context7. Rolling documentation/upstream `main` demonstrates documented capability, not exact-version acceptance. Installed Nx source was unavailable through the checkout's package symlink, so no pinned Nx-source or runtime graph claim is made.
+Online sources below were read through a browser; Vite documentation was additionally checked through Context7. Rolling documentation/upstream `main` demonstrates documented capability, not exact-version acceptance. Installed Nx source was unavailable through the checkout's package symlink, so no pinned Nx-source or runtime graph claim is made.
 
 ## Ranked options
 

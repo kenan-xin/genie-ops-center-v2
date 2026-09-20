@@ -1,6 +1,6 @@
 # Storybook dependency-story cache invalidation
 
-Fix for story-cache invalidation (`genie-ops-center-v2-4w0`), based on S0-02 `556289c`. Pending independent review and integrated acceptance; G1 remains open.
+Fix for story-cache invalidation (`genie-ops-center-v2-4w0`), based on S0-02 `556289c`. Independent review approved the fix; integrated acceptance at `ae00f6b` closed this defect and G1. See [integrated acceptance](integrated-acceptance.md). The measurements below preserve the original branch proof.
 
 Both Storybook targets use `^default` instead of `^production`, so dependency story files and their fixtures contribute to the cache key. The normal production exclusions, selection input, graph/discovery, outputs, pins and single test runner are unchanged. This deliberately trades additional cache misses on unrelated dependency test/documentation edits for complete dependency inputs; it introduces no global workspace or customer story glob. S0-10 still owns the full selection/confidentiality matrix.
 
@@ -25,8 +25,8 @@ Caching stays enabled throughout this sequence; no `--skip-nx-cache` is used.
 
 The mutation changes `UI/Disclosure` to `UI/DisclosureCacheProof` and replaces the Closed story's expected `aria-expanded` value with `CACHE_PROOF_FAILURE`. Restoration was byte-identical (SHA256 0bff68fd9877fff36b9322feba2ebe0e84e5f6fc3e85b7842c8fec05e68a63da). The mutation is not retained in source. Failed-run Nx cache summary counts only the successful task (0/1); neither task reports a cache hit, and the browser assertion failure proves execution. Generated static index verification proves the build uses the changed title.
 
-Raw transcripts and probe scripts are supplementary local evidence in the Traycer `story-cache-fix` artifact. The command and procedure above are portable and require only the repository toolchain. This proof is not the full S0-10 selection matrix or G1 integrated acceptance.
+The command and procedure above require only the repository toolchain. Integrated repetition is recorded in [integrated acceptance](integrated-acceptance.md); neither proof covers the full S0-10 selection matrix.
 
 ## Additional checks
 
-Uncached Nx lint, typecheck, test, validate, build-storybook and test-storybook passed across seven projects after restoration. Formatting and git diff --check passed. No dependency manifest, lockfile, production named input or discovery/selection code changed. No commit, merge, push, sync or hook activation. Independent review pending.
+Uncached Nx lint, typecheck, test, validate, build-storybook and test-storybook passed across seven projects after restoration. Formatting and git diff --check passed. No dependency manifest, lockfile, production named input or discovery/selection code changed. No commit, merge, push, sync or hook activation. That was the pre-review branch state; subsequent review and integration are recorded above.

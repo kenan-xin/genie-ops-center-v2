@@ -1,8 +1,8 @@
 # Spec 0 technical plan
 
-Confidence: 8.0/10. Requirements and foundation decisions are explicit, with bounded tests for the difficult integrations. The exact startup/header composition and pinned tooling compatibility remain unproven and may require a revised decision before implementation proceeds.
+Confidence: 8.0/10. Requirements and foundation decisions are explicit, with bounded tests for the difficult integrations. The exact startup/header composition remains unproven; pinned Storybook compatibility has integrated G1 evidence. Later production integration is still unproven and may require a revised decision before implementation proceeds.
 
-Status: approved by the product owner for ticket breakdown, 2026-09-19. See the [ticket dependency map](../tickets/spec-0/README.md). Implementation has not started; G1/G2 remain proof-gate blockers. This plan supplements [Spec 0](../specs/00-monorepo-foundation.md), not a replacement for its numbered requirements.
+Status: approved by the product owner for ticket breakdown, 2026-09-19. See the [ticket dependency map](../tickets/spec-0/README.md). Implementation is underway: S0-01 and G1/S0-02 are integrated and accepted; G2 and later gates remain unproven. See [integrated G1 evidence](../tickets/spec-0/02-storybook-compatibility-g1/integrated-acceptance.md) and live Beads status. This plan supplements [Spec 0](../specs/00-monorepo-foundation.md), not a replacement for its numbered requirements.
 
 ## Scope and decision authority
 

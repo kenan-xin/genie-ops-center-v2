@@ -98,7 +98,7 @@ Modules are not part of the core product and are documented separately, one fold
 
 ## Decided
 
-The reasoning for each decision lives in `../adr/`. The table is the index.
+Product/configuration reasoning lives in [the decision log](decision-log.md); architectural decisions live in [the ADR directory](../adr/). The table is the index.
 
 | Id | Decision |
 | --- | --- |
@@ -154,6 +154,8 @@ The reasoning for each decision lives in `../adr/`. The table is the index.
 | DEC-50 | A tenant administrator switches a compiled module on or off, sees which groups and people reach it, and places it in a category from a Modules page in the admin portal, behind `core:settings:manage`. Every module with a workspace entry declares `<id>:use` and seeds a `<Display name> user` role. The command line and the page share one procedure. `decision-log.md`. |
 | DEC-51 | Navigation categories are a core table with a Categories admin page. A module's navigation entries carry a core category id, `tenant_module.category_id` places a module's static entries, and core renders one tree. The solutions module references the core category by id. `decision-log.md`. |
 
+Initial tenant branding requires customer identity, locale and time zone, with standard product appearance defaults; application email configuration may follow later. See the [branding seed contract](../architecture/branding-seed.md) for the approved rules and their DEC-35 amendment.
+
 ## Open decisions
 
 Ids are stable. A resolved item is removed here and named in the Decided table. Module-level open decisions live in that module's `README.md` under `../modules/`.
@@ -161,3 +163,4 @@ Ids are stable. A resolved item is removed here and named in the Decided table. 
 | Id | Question | Default until decided |
 | --- | --- | --- |
 | OPEN-7 | How are setup and upgrade automated for normal operation, and with which tool? Decided after the platform is built and ready for its first deployment (`DEC-38`). | The manual steps in `../runbooks/deployment.md`. |
+| OPEN-9 | What are the branding explicit-null rules, default materialization and later name-change behavior, exact asset fallbacks and application-email readiness requirements? See [branding seed contract](../architecture/branding-seed.md#open-requirements). | Undecided; do not infer requirements from current schema choices. Approved required values and omission rules stand. |

@@ -11,11 +11,7 @@ const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
 type NxProject = { readonly root: string; readonly tags?: readonly string[] };
 
-interface NxProjectGraph {
-  [name: string]: NxProject;
-}
-
-function readProjectGraph(): NxProjectGraph {
+function readProjectGraph(): ReadonlyMap<string, NxProject> {
   const raw = execFileSync(
     "pnpm",
     ["exec", "nx", "show", "projects", "--json", "--verbose"],
@@ -29,7 +25,7 @@ function readProjectGraph(): NxProjectGraph {
   // this test fails loudly if that contract changes.
   const names = JSON.parse(raw) as readonly string[];
 
-  const projects: NxProjectGraph = {};
+  const projects = new Map<string, NxProject>();
 
   for (const name of names) {
     const detail = execFileSync(
@@ -43,7 +39,7 @@ function readProjectGraph(): NxProjectGraph {
 
     // SAFETY: same provenance as `names`, this time the one-project document whose
     // fields the assertions below read directly.
-    projects[name] = JSON.parse(detail) as NxProject;
+    projects.set(name, JSON.parse(detail) as NxProject);
   }
 
   return projects;
@@ -57,10 +53,10 @@ describe("repository hygiene", () => {
   });
 
   it("finds every workspace project", () => {
-    expect(Object.keys(projects).length).toBeGreaterThan(0);
+    expect(projects.size).toBeGreaterThan(0);
   });
 
-  it.each(Object.entries(projects))(
+  it.each([...projects])(
     "%s carries exactly its derived classification tag",
     (_name, project) => {
       const expected = classifyProject(project.root);
@@ -77,7 +73,7 @@ describe("repository hygiene", () => {
   // generates no case until the first module lands, which is why the same
   // function is proved against a disposable workspace in module-naming.test.ts.
   it.each(
-    Object.entries(projects).filter(
+    [...projects].filter(
       ([, project]) => classifyProject(project.root) === "module"
     )
   )("%s obeys the module package naming contract", (name, project) => {
@@ -88,7 +84,7 @@ describe("repository hygiene", () => {
     expect(name).toBe(`@genie/module-${project.root.split("/").at(-1)}`);
   });
 
-  it.each(Object.entries(projects))(
+  it.each([...projects])(
     "%s holds a README.md that says what it imports",
     (_name, project) => {
       const readme = join(WORKSPACE_ROOT, project.root, "README.md");

@@ -3,6 +3,8 @@
 ## Overview
 The admin pages where a tenant administrator sets how Genie looks for their people: identity, one primary color and theme, typography (font, font size preset, light-theme text color), the sign-in page, emails, footer links, and locale. Seven tabs edit one browser-side draft with a live preview that shows each setting where it lands. One Publish applies everything at once and writes one audit event. Nothing from branding is written to the Keycloak realm (DEC-40): the realm display name is the company name set by provisioning (`genie-ops setup`), and the realm SMTP settings carry the sender name and reply-to. Everything outside these controls is fixed by the design system.
 
+Initial branding values and approved omission/text/format defaults follow [the canonical branding seed contract](../../../architecture/branding-seed.md) and DEC-35. Sample design data does not establish required seed fields.
+
 ## User Flows
 - Administrator opens Branding and lands on the Identity tab. The right pane shows a mini shell preview (sidebar, header, a card, a button) with the current branding and a light or dark toggle.
 - Administrator edits any field on any tab. The change appears in the preview at once, the preview carries a small Draft label, and the page header shows an Unpublished changes indicator with the count of changed fields.

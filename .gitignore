@@ -15,6 +15,7 @@ node_modules/
 .nx/
 dist/
 coverage/
+.vitest/
 *.tsbuildinfo
 
 # Storybook host: the static build output, generated and never committed.

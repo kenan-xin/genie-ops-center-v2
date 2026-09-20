@@ -1,5 +1,7 @@
 # S0-01 evidence record
 
+Historical branch evidence. Current integrated acceptance is recorded in [integrated-acceptance.md](integrated-acceptance.md); the original commands, versions and outcomes below retain their original scope.
+
 This record states what was run, what it printed, and what it did not prove. Every result below comes from a command executed in this worktree during this task. A check that was not run is named in "Not proved by this ticket".
 
 ## Revisions

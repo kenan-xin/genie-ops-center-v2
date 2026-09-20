@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -10,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -127,6 +128,18 @@ describe("the fixture lifecycle", () => {
     expect(readFileSync(blocker, "utf8")).toBe("not a directory\n");
   });
 
+  it.each(["..foo.ts", "..foo/x.ts"])(
+    "allows a dot-prefixed name inside the root: %s",
+    (path) => {
+      const result = withFixture(root, path, SOURCE, () =>
+        readFileSync(join(root, path), "utf8")
+      );
+
+      expect(result).toBe(SOURCE);
+      expect(existsSync(join(root, path))).toBe(false);
+    }
+  );
+
   it("refuses a path that escapes its root", () => {
     expect(() =>
       withFixture(root, "../escape.ts", SOURCE, () => "ran")
@@ -138,6 +151,37 @@ describe("the fixture lifecycle", () => {
 // refuses an existing file rather than overwrite one. The isolated root is how
 // a rule keyed to such a path is still reachable from a test.
 describe("lintAtIsolated over a path the checkout already owns", () => {
+  it("creates a discoverable root and removes the actual root it used", () => {
+    const bin = join(root, "bin");
+    mkdirSync(bin);
+    const command = join(bin, "pnpm");
+    writeFileSync(
+      command,
+      `#!${process.execPath}\nprocess.stdout.write(process.cwd());\n`
+    );
+    chmodSync(command, 0o755);
+    const priorPath = process.env.PATH;
+    let observedRoot: string | undefined;
+
+    try {
+      process.env.PATH = `${bin}${delimiter}${priorPath ?? ""}`;
+      const result = lintAtIsolated("apps/probe.ts", SOURCE);
+      observedRoot = result.output;
+      expect(result.failed).toBe(false);
+      expect(basename(result.output).startsWith(ISOLATED_ROOT_PREFIX)).toBe(
+        true
+      );
+      expect(existsSync(result.output)).toBe(false);
+    } finally {
+      if (observedRoot && dirname(observedRoot) === tmpdir()) {
+        rmSync(observedRoot, { recursive: true, force: true });
+      }
+
+      if (priorPath === undefined) delete process.env.PATH;
+      else process.env.PATH = priorPath;
+    }
+  });
+
   // A real application source file today, and an app-layer path, so the rule it
   // reaches is a production one rather than one invented for this test.
   const OWNED = "apps/genie/src/index.ts";
@@ -259,5 +303,101 @@ describe("lintAt through the hardened lifecycle", () => {
       "config opens no database connection (DEC-34)."
     );
     expect(existsSync(join(WORKSPACE_ROOT, dirname(relativePath)))).toBe(false);
+  });
+});
+
+/**
+ * A `pnpm` stand-in that lands on `PATH` for one `lintAtIsolated` call. It runs
+ * with the isolated root as its working directory, records what it saw there,
+ * then replaces one anchor symlink with a real directory holding a file. It
+ * unlinks the link by name, so the checkout the link points at is never touched.
+ */
+const PNPM_STUB = `#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = process.cwd();
+const anchor = path.join(root, process.env.ANCHOR);
+const linked = fs.readlinkSync(anchor);
+const symlink = fs.lstatSync(anchor).isSymbolicLink();
+
+fs.unlinkSync(anchor);
+fs.mkdirSync(anchor);
+fs.writeFileSync(path.join(anchor, "leftover.txt"), "leftover\\n");
+fs.writeFileSync(process.env.REPORT, JSON.stringify({ root, symlink, target: linked }) + "\\n");
+`;
+
+type StubReport = {
+  readonly root: string;
+  readonly symlink: boolean;
+  readonly target: string;
+};
+
+/** The stub's report, or empty fields when it never ran. */
+function readStubReport(report: string): StubReport {
+  try {
+    // SAFETY: the stub writes this file with JSON.stringify over exactly the
+    // StubReport shape, and a missing file yields the empty shape below.
+    return JSON.parse(readFileSync(report, "utf8")) as StubReport;
+  } catch {
+    return { root: "", symlink: false, target: "" };
+  }
+}
+
+describe("the anchor cleanup", () => {
+  // A symlinked anchor the stub turns into a real directory. The helper's
+  // per-anchor removal has to recurse into it or the isolated root leaks.
+  const REPLACED_ANCHOR = "node_modules";
+
+  it("removes a real directory that replaced an anchor symlink and never follows the link", () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "lint-at-pnpm-"));
+    const report = join(sandbox, "report.json");
+    const stub = join(sandbox, "pnpm");
+    const previousPath = process.env.PATH ?? "";
+    let isolatedRoot = "";
+
+    writeFileSync(stub, PNPM_STUB, "utf8");
+    chmodSync(stub, 0o755);
+
+    try {
+      process.env.PATH = `${sandbox}:${previousPath}`;
+      process.env.ANCHOR = REPLACED_ANCHOR;
+      process.env.REPORT = report;
+
+      const outcome = lintAtIsolated("apps/genie/src/index.ts", SOURCE);
+
+      expect(outcome.failed).toBe(false);
+
+      const seen = readStubReport(report);
+
+      isolatedRoot = seen.root;
+
+      // The stub must really have run, in a harness root, against a symlink, or
+      // the cleanup assertions below would hold without exercising removal.
+      expect(seen.symlink).toBe(true);
+      expect(seen.target).toBe(join(WORKSPACE_ROOT, REPLACED_ANCHOR));
+      expect(basename(seen.root).startsWith(ISOLATED_ROOT_PREFIX)).toBe(true);
+
+      // The helper removed the replaced directory with its file, and the whole
+      // root with it; the checkout anchor the link pointed at still stands.
+      expect(existsSync(seen.root)).toBe(false);
+      expect(existsSync(join(WORKSPACE_ROOT, REPLACED_ANCHOR))).toBe(true);
+    } finally {
+      process.env.PATH = previousPath;
+      delete process.env.ANCHOR;
+      delete process.env.REPORT;
+
+      // A mutation probe throws inside the helper's finally, so the report is
+      // the only record of the root it leaked. Remove it here either way.
+      if (isolatedRoot === "") {
+        isolatedRoot = readStubReport(report).root;
+      }
+
+      if (isolatedRoot !== "") {
+        rmSync(isolatedRoot, { recursive: true, force: true });
+      }
+
+      rmSync(sandbox, { recursive: true, force: true });
+    }
   });
 });

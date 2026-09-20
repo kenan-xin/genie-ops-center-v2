@@ -5,7 +5,7 @@ date: 2026-09-19
 
 # Foundation integration stays native-first and generated outputs stay uncommitted
 
-Spec 0 uses framework-native startup and header integration first, one development-only Storybook host, and a build-generated module registry. These choices avoid introducing custom infrastructure before the production integration has been tested. Acceptance of the approach is not proof that a particular framework hook satisfies it.
+The platform foundation uses framework-native startup and header integration first, one development-only Storybook host, and a build-generated module registry. These choices avoid introducing custom infrastructure before the production integration has been tested. Acceptance of the approach is not proof that a particular framework hook satisfies it.
 
 ## Runtime integration
 
@@ -26,7 +26,7 @@ Use one `apps/storybook` host, official Nx serve/build inference and one explici
 ## Related accepted decisions
 
 - Minimal CSP and its security trade-off: [DEC-31](../core/decision-log.md#dec-31-platform-hardening-defaults). No strict script/style nonce requirement; viewer-only origin checks remain.
-- Local caching only, remote caching deferred: [Spec 0 R-3/R-3a](../specs/00-monorepo-foundation.md#workspace-and-task-graph-item-1). Future remote activation requires provider/confidentiality approval and repeated isolation proof.
-- Dedicated-session migration locking and process-local context ownership remain required by Spec 0 R-19/R-25a/R-26a. This record does not replace them.
+- Local caching only, remote caching deferred: [the roadmap](../core/roadmap.md). Future remote activation requires provider/confidentiality approval and repeated isolation proof.
+- Dedicated-session migration locking and process-local context ownership remain required by the [roadmap](../core/roadmap.md). This record does not replace them.
 
-The [Spec 0 technical plan](../tech-plans/00-monorepo-foundation.md) sequences verification and delivery. No tickets or implementation are authorized by this record.
+Acceptance of this architectural decision does not by itself authorize implementation.

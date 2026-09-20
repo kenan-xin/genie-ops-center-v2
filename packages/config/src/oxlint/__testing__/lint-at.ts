@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, normalize, relative } from "node:path";
+import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 
 export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
@@ -73,7 +73,12 @@ export function withFixture<T>(
   const absolute = join(root, relativePath);
   const inside = relative(root, absolute);
 
-  if (inside === "" || inside.startsWith("..")) {
+  if (
+    inside === "" ||
+    inside === ".." ||
+    inside.startsWith(`..${sep}`) ||
+    isAbsolute(inside)
+  ) {
     throw new Error(
       `A fixture path must name a file inside its root: ${relativePath}`
     );

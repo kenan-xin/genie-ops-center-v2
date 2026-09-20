@@ -164,6 +164,8 @@ R-46. The Colors and theme tab must check six named contrast pairs and show one 
 
 R-47. The Colors and theme tab must show no tint strip, because `DEC-47` derives no ramp. It must show the computed foreground swatch and, under the dark pill, the derived value the shell uses on dark surfaces.
 
+Amendment 2026-09-21: initial branding follows the [approved seed requirements](../architecture/branding-seed.md), including required customer identity/locale/time zone, deferred application-email configuration, standard appearance defaults and notice validation. Its open questions are not implementation defaults. Earlier column inventories do not require every column to be authored.
+
 R-48. The Typography tab must offer the font from the approved list of R-11, the three font size presets with a sample sentence at the chosen size, and the light-surface text color with two contrast pills at 4.5:1, against white and against the subtle surface, each with the same fix action. Publish is blocked while either fails. The tab must state that the size preset sets the root size and that the text color applies to light surfaces only (`../design/sections/branding/spec.md`, "User Flows").
 
 R-49. Image uploads on the Identity and Sign-in page tabs must go through the core `FileStorage` service in one request, accept the declared types, and respect the deployment limit from `FILE_MAX_BYTES` (`DEC-20`, `DEC-44`, `../architecture/environment-contract.md`, "Files"). An uploaded SVG is sanitized in core before the bytes are stored. The branding row stores the `file.id` in the matching column of `../architecture/data-shape.md`, "Branding". An image is shown to members, in the preview, and in emails only when its `scan_status` is `clean` or `skipped`.

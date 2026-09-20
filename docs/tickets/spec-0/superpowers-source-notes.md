@@ -1,5 +1,7 @@
 # Superpowers source notes for independent Spec 0 sessions
 
+Historical source-reading notes. Upstream main and installed skill versions may differ. Follow the installed version's workflow and the current [execution contract](README.md); these notes neither authorize an upgrade nor override ticket-specific commit/integration permissions.
+
 Bounded read of the primary source repository: [obra/superpowers](https://github.com/obra/superpowers). The README describes the workflow as approved design → implementation plan → `subagent-driven-development` or `executing-plans`, with `using-git-worktrees` before plan execution and `finishing-a-development-branch` after completion ([README](https://github.com/obra/superpowers/blob/main/README.md)).
 
 ## Verified handoff guidance

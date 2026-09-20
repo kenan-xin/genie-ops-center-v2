@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,7 +10,7 @@ import { readModuleInventory } from "./inventory.ts";
 type TestManifest = {
   readonly name?: string;
   readonly genie?: {
-    readonly module?: { readonly id: string; readonly entrypoint: string };
+    readonly module?: { readonly id?: string; readonly entrypoint?: string };
   };
 };
 
@@ -39,6 +39,23 @@ function moduleManifest(id: string): TestManifest {
 }
 
 describe("readModuleInventory", () => {
+  it.each([{ entrypoint: "src/index.ts" }, { id: "alpha" }, {}])(
+    "rejects an incomplete module block: %j",
+    (module) => {
+      const root = workspaceHolding({
+        alpha: { name: "@genie/module-alpha", genie: { module } },
+      });
+
+      try {
+        expect(() => readModuleInventory(root)).toThrow(
+          "has no genie.module id and entrypoint"
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
+
   it("reads every module in sorted folder order, so the default list is stable", () => {
     const root = workspaceHolding({
       beta: moduleManifest("beta"),
