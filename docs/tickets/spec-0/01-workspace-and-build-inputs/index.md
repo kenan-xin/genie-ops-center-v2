@@ -68,6 +68,10 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Validate cache inputs and ignore files](validate-ignore-inputs.md) adds the workspace's `.gitignore` and `.nxignore` files, at the root and nested, to the `validate` target's declared inputs. A nested ignore file changes which directories Nx treats as projects, and without the input a warm cache replayed the pass. Bead `genie-ops-center-v2-0d2`.
 
+## Validate input scope, 2026-09-21
+
+[Validate input scope](validate-input-scope.md) removes the workspace-wide `vitest*.config.*` validate input, which no check reads, and excludes the non-project `packages/modules/README.md` from the README inputs. An unrelated vitest config edit now reuses the validate cache, while the generator's own config, its checks and every project-root README still invalidate it. Bead `genie-ops-center-v2-19f`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
