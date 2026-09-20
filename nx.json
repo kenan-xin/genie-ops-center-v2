@@ -37,6 +37,19 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
+    },
+    "storybook": {
+      "cache": false
+    },
+    "build-storybook": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", { "env": "MODULE_INCLUDE" }],
+      "outputs": ["{projectRoot}/storybook-static"]
+    },
+    "test-storybook": {
+      "cache": true,
+      "inputs": ["default", "^production", { "env": "MODULE_INCLUDE" }]
     }
   }
 }
