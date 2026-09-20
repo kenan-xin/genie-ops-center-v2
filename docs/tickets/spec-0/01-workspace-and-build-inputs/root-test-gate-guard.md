@@ -22,7 +22,16 @@ The disposable fixture is removed in a `finally`, so a failed subprocess or a fa
 
 ## Review correction, 2026-09-21
 
-The review of `8087534` found that `recordRootTestGate` returned without removing the fixture root, leaking one directory per run. Corrected here: construction, execution and readback are wrapped in `try`/`finally`, and the fixture is removed before the function returns, so cleanup also happens when the subprocess throws. Thirteen directories from the earlier runs were present in the temp directory; all were removed with the fix.
+The review of `8087534` found that `recordRootTestGate` returned without removing the fixture root, leaking one directory per run. Corrected here: construction, execution and readback are wrapped in `try`/`finally`, and the fixture is removed before the function returns, so cleanup also happens when the subprocess throws.
+
+Counts, kept exact because they are easy to misread. The fix stops new leaks; it does not retroactively remove the directories earlier runs already left.
+
+- Accumulated before the correction: 13 `genie-root-gate-*` directories.
+- A corrected run: 13 before and 13 after, so the fixed helper leaked none.
+- A mutation that deletes the `finally`: 14, one new leak, and the test failed (`expected true to be false`).
+- After removing the accumulated directories: 0. Residual after the committed gates run: 0.
+
+`genie-root-gate-` is written only by `recordRootTestGate` in `tools/generators/src/workspace/root-test-gate.test.ts`, a file present only on this branch, so every such directory comes from this change — from this work or from a review run of this branch. No other prefix and no other session's temporary directory was removed.
 
 ## RED and GREEN
 
