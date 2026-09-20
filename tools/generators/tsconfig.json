@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*.ts", "vitest.config.ts"],
-  "exclude": ["src/selection/__fixtures__/**"]
+  "exclude": [
+    "src/selection/__fixtures__/**",
+    "**/__boundary__*",
+    "**/__wiring__*"
+  ]
 }

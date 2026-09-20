@@ -215,6 +215,9 @@ importers:
 
   packages/config:
     devDependencies:
+      '@oxlint/plugins':
+        specifier: 1.83.0
+        version: 1.83.0
       oxlint:
         specifier: 1.83.0
         version: 1.83.0
