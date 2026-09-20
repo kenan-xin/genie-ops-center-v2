@@ -89,9 +89,11 @@ None of these is automatically required to remove tsconfck, and removing tsconfc
 
 ## Recorded evidence
 
+The upgrade contract and validation requirements are contained in this repository. The links below are optional, machine-local historical probe records; they are not setup steps or dependencies. A reader on another machine should run the documented validation on their own revision rather than treating an inaccessible probe as acceptance.
+
 Prior scratch probes used S0-02 base `22e9d9c046348a2876c6af3a40b648fdcd353de1`. The stable isolation probe reported fresh strict and clean frozen installs, 103 unit tests, 11 browser tests, typechecking, Oxlint and Storybook build passing. The alpha probe additionally demonstrated inherited alias failure/pass behavior. These runs were not repeated for this documentation change and do not prove current branch acceptance, the full affected/cache matrix or every CI platform.
 
 - [Stable workaround and TypeScript alias probe](/home/kenan/.traycer/epics/0489dfa0-8d29-4eef-a10e-da865988d4d3/artifacts/s002-typescript-alias-probe/index.md)
 - [v7 alpha comparison and resolver probe](/home/kenan/.traycer/epics/0489dfa0-8d29-4eef-a10e-da865988d4d3/artifacts/s002-paths-v7-alpha-probe/index.md)
 
-These local evidence links belong to the current Traycer epic. This document retains the upgrade contract for repository readers without access to those artifacts.
+The original local links are retained for provenance. Access to Traycer or the author’s home directory is not required to follow this upgrade contract.

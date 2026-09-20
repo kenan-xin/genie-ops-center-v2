@@ -893,6 +893,23 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).not.toMatch(/no-restricted-imports/);
   });
 
+  // Every exception above is spelled twice, once for `.config.ts` and once for
+  // `.config.mts`, and the cases above exercise only the first spelling. One
+  // fixture per `.mts` glob, so a dropped or mistyped spelling fails here.
+  it.each([
+    "packages/ui/__boundary__.config.mts",
+    "packages/core/__boundary__.config.mts",
+    "packages/modules/alpha/__boundary__.config.mts",
+    "apps/genie/__boundary__.config.mts",
+    "customers/acme/app/__boundary__.config.mts",
+  ])("lets the package configuration at %s consume a preset", (path) => {
+    const result = lintAt(path, `import "@genie/config/vitest/unit";\n`);
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
   it("still bans a sibling module from a module package configuration file", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__.config.ts",
