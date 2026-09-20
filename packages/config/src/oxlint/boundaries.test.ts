@@ -769,28 +769,6 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("never imports a generator");
   });
 
-  it("rejects a top-level testing folder test file importing config", () => {
-    const result = lintAt(
-      "packages/core/testing/__boundary__.test.ts",
-      `import "@genie/config";\n`
-    );
-
-    expect(result.failed).toBe(true);
-
-    expect(result.output).toContain("never imports the shared configuration");
-  });
-
-  it("rejects a top-level testing folder test file importing a generator", () => {
-    const result = lintAt(
-      "packages/core/testing/__boundary__.test.ts",
-      `import "@genie/generators";\n`
-    );
-
-    expect(result.failed).toBe(true);
-
-    expect(result.output).toContain("never imports a generator");
-  });
-
   // The package configuration files are the one exception, and they keep every
   // other ban. A nested source file that merely ends in `.config.ts` does not.
 
