@@ -37,6 +37,20 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
+    },
+    "validate": {
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/**/*.json",
+        "{workspaceRoot}/**/*.ts",
+        "{workspaceRoot}/**/*.tsx",
+        "{workspaceRoot}/**/*.js",
+        "{workspaceRoot}/**/*.mjs",
+        "{workspaceRoot}/**/*.cjs",
+        "{workspaceRoot}/**/README.md",
+        "{workspaceRoot}/pnpm-workspace.yaml",
+        "{workspaceRoot}/pnpm-lock.yaml"
+      ]
     }
   }
 }

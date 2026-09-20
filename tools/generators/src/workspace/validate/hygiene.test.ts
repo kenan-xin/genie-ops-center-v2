@@ -4,9 +4,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { classifyProject } from "./classify-project.ts";
+import { classifyProject } from "../classify-project.ts";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
 type NxProject = { readonly root: string; readonly tags?: readonly string[] };
 
@@ -51,6 +51,10 @@ function readProjectGraph(): NxProjectGraph {
 const projects = readProjectGraph();
 
 describe("repository hygiene", () => {
+  it("computes the real workspace root", () => {
+    expect(existsSync(join(WORKSPACE_ROOT, "pnpm-workspace.yaml"))).toBe(true);
+  });
+
   it("finds every workspace project", () => {
     expect(Object.keys(projects).length).toBeGreaterThan(0);
   });

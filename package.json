@@ -8,9 +8,10 @@
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
+    "validate": "nx run @genie/generators:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck"
+    "affected": "nx affected -t build test lint typecheck && pnpm run validate"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.83.0",
