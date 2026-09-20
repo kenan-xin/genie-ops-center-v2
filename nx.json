@@ -41,15 +41,15 @@
     "validate": {
       "cache": true,
       "inputs": [
-        "{workspaceRoot}/**/*.json",
-        "{workspaceRoot}/**/*.ts",
-        "{workspaceRoot}/**/*.tsx",
-        "{workspaceRoot}/**/*.js",
-        "{workspaceRoot}/**/*.mjs",
-        "{workspaceRoot}/**/*.cjs",
-        "{workspaceRoot}/**/README.md",
+        "{projectRoot}/**/*",
+        "{workspaceRoot}/nx.json",
         "{workspaceRoot}/pnpm-workspace.yaml",
-        "{workspaceRoot}/pnpm-lock.yaml"
+        "{workspaceRoot}/pnpm-lock.yaml",
+        "{workspaceRoot}/**/package.json",
+        "{workspaceRoot}/**/project.json",
+        "{workspaceRoot}/**/tsconfig*.json",
+        "{workspaceRoot}/**/vitest*.config.*",
+        "{workspaceRoot}/**/README.md"
       ]
     }
   }
