@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -13,7 +14,12 @@ import { dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { WORKSPACE_ROOT, lintAt, withFixture } from "./lint-at.ts";
+import {
+  WORKSPACE_ROOT,
+  lintAt,
+  lintAtIsolated,
+  withFixture,
+} from "./lint-at.ts";
 
 const FIXTURE = "packages/ui/__boundary__/__boundary.ts";
 
@@ -30,6 +36,13 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
+
+/** The temporary roots that isolated lint runs have left behind. */
+function strayRoots(): string[] {
+  return readdirSync(tmpdir()).filter((entry) =>
+    entry.startsWith("oxlint-boundary-")
+  );
+}
 
 /** Writes a file that the invocation under test did not create. */
 function place(relativePath: string, content: string): string {
@@ -113,6 +126,56 @@ describe("the fixture lifecycle", () => {
     expect(() =>
       withFixture(root, "../escape.ts", SOURCE, () => "ran")
     ).toThrow("inside its root");
+  });
+});
+
+// A path the product owns is the case `lintAt` cannot serve, by design: it
+// refuses an existing file rather than overwrite one. The isolated root is how
+// a rule keyed to such a path is still reachable from a test.
+describe("lintAtIsolated over a path the checkout already owns", () => {
+  // A real application source file today, and an app-layer path, so the rule it
+  // reaches is a production one rather than one invented for this test.
+  const OWNED = "apps/genie/src/index.ts";
+
+  it("refuses the same path through lintAt, which is why the isolated root exists", () => {
+    expect(() => lintAt(OWNED, SOURCE)).toThrow("EEXIST");
+  });
+
+  it("reaches the app restriction and leaves the real file byte-identical", () => {
+    const absolute = join(WORKSPACE_ROOT, OWNED);
+    const before = readFileSync(absolute, "utf8");
+
+    const result = lintAtIsolated(OWNED, `import "pg";\n`);
+
+    expect(result.failed).toBe(true);
+    expect(result.output).toContain("an app opens no connection (DEC-34).");
+    expect(readFileSync(absolute, "utf8")).toBe(before);
+  });
+
+  it("removes its temporary root and leaves the checkout's anchors in place", () => {
+    const before = strayRoots();
+
+    lintAtIsolated(OWNED, SOURCE);
+
+    expect(strayRoots()).toEqual(before);
+
+    // The anchors are symlinks into the checkout. A recursive removal that
+    // followed one would take the real tree, so this is the guard on that.
+    expect(existsSync(join(WORKSPACE_ROOT, "oxlint.config.ts"))).toBe(true);
+    expect(
+      existsSync(join(WORKSPACE_ROOT, "packages/config/package.json"))
+    ).toBe(true);
+    expect(existsSync(join(WORKSPACE_ROOT, "node_modules"))).toBe(true);
+  });
+
+  it("refuses a fixture path under an anchor, which would write into the checkout", () => {
+    const absolute = join(WORKSPACE_ROOT, "packages/config/__written__.ts");
+
+    expect(() =>
+      lintAtIsolated("packages/config/__written__.ts", SOURCE)
+    ).toThrow("symlinked anchor");
+
+    expect(existsSync(absolute)).toBe(false);
   });
 });
 

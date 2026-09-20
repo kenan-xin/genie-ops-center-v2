@@ -2,13 +2,29 @@ import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   rmdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 
 export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+
+/**
+ * The entries an isolated root needs before the repository's own
+ * `oxlint.config.ts` loads inside it. Oxlint anchors an override's `files` glob
+ * and the plugin specifier to the directory that holds the config file, so the
+ * config is symlinked and never copied: the run reads the real file, and a
+ * fixture path is matched against the isolated root instead of the checkout.
+ */
+const ISOLATED_ROOT_ANCHORS: readonly string[] = [
+  "oxlint.config.ts",
+  "packages",
+  "node_modules",
+];
 
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
@@ -85,37 +101,96 @@ export function withFixture<T>(
   }
 }
 
+/** Runs the repository's own oxlint configuration from `root` against one path. */
+function runOxlint(root: string, relativePath: string): LintOutcome {
+  try {
+    const output = execFileSync(
+      "pnpm",
+      ["exec", "oxlint", "--config", "oxlint.config.ts", relativePath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+
+    return { failed: false, output };
+  } catch (error) {
+    // SAFETY: execFileSync throws an Error that also carries stdout and stderr. Only
+    // the output fields are read, so the narrow shape holds for every error this call
+    // raises.
+    const failure = error as { stdout?: string; stderr?: string };
+
+    return {
+      failed: true,
+      output: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
+    };
+  }
+}
+
 /**
  * Lints one source string at a chosen repository-relative path, then deletes the file.
  * The path decides which layer override applies, so a caller picks the path on purpose.
  * Any directory this function created is removed as well, and only while empty, so the
  * working tree stays clean. A path that already exists is refused rather than
  * overwritten, which keeps one test from silently consuming another's fixture.
+ *
+ * For a path the product itself owns, use `lintAtIsolated` instead. This function
+ * refuses such a path once the real file lands, which is correct and is why the
+ * isolated variant exists.
  */
 export function lintAt(relativePath: string, source: string): LintOutcome {
-  return withFixture(WORKSPACE_ROOT, relativePath, source, () => {
-    try {
-      const output = execFileSync(
-        "pnpm",
-        ["exec", "oxlint", "--config", "oxlint.config.ts", relativePath],
-        {
-          cwd: WORKSPACE_ROOT,
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"],
-        }
-      );
+  return withFixture(WORKSPACE_ROOT, relativePath, source, () =>
+    runOxlint(WORKSPACE_ROOT, relativePath)
+  );
+}
 
-      return { failed: false, output };
-    } catch (error) {
-      // SAFETY: execFileSync throws an Error that also carries stdout and stderr. Only
-      // the output fields are read, so the narrow shape holds for every error this call
-      // raises.
-      const failure = error as { stdout?: string; stderr?: string };
+/**
+ * Lints one source string at a chosen path inside a throwaway root that stands in
+ * for the repository. Use this, and not `lintAt`, when the path under test is one
+ * the product also owns, such as the Storybook host's `main.ts`. The checkout is
+ * never written to, so a real file at that path neither blocks the test nor is
+ * touched by it.
+ *
+ * The root holds the fixture and three symlinks into the checkout. Oxlint loads
+ * the repository's real `oxlint.config.ts` through one of them, so the rule values
+ * under test are the production ones and cannot drift from them.
+ */
+export function lintAtIsolated(
+  relativePath: string,
+  source: string
+): LintOutcome {
+  const [firstSegment] = relativePath.split("/");
 
-      return {
-        failed: true,
-        output: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
-      };
+  // Each anchor is a symlink into the checkout, so a fixture below one would be
+  // written into the real tree. The fixture must land in the root's own storage.
+  if (
+    firstSegment !== undefined &&
+    ISOLATED_ROOT_ANCHORS.includes(firstSegment)
+  ) {
+    throw new Error(
+      `An isolated fixture path must not start with a symlinked anchor: ${relativePath}`
+    );
+  }
+
+  const root = mkdtempSync(join(tmpdir(), "oxlint-boundary-"));
+
+  try {
+    for (const anchor of ISOLATED_ROOT_ANCHORS) {
+      symlinkSync(join(WORKSPACE_ROOT, anchor), join(root, anchor));
     }
-  });
+
+    return withFixture(root, relativePath, source, () =>
+      runOxlint(root, relativePath)
+    );
+  } finally {
+    // Every anchor is unlinked by name before the root is removed. A recursive
+    // removal that ever followed one would take the checkout with it, so the
+    // symlinks are gone before a recursive call can reach them.
+    for (const anchor of ISOLATED_ROOT_ANCHORS) {
+      rmSync(join(root, anchor), { force: true });
+    }
+
+    rmSync(root, { recursive: true, force: true });
+  }
 }

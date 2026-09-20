@@ -3,7 +3,11 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { WORKSPACE_ROOT, lintAt } from "./__testing__/lint-at.ts";
+import {
+  WORKSPACE_ROOT,
+  lintAt,
+  lintAtIsolated,
+} from "./__testing__/lint-at.ts";
 import { importBoundaryOverrides } from "./boundaries.ts";
 
 describe("the import direction, proved through the oxlint binary", () => {
@@ -897,9 +901,14 @@ describe("the import direction, proved through the oxlint binary", () => {
 
   // The Storybook host's main configuration is build-time composition, so it is
   // the one product path that consumes shared config and the public selector.
+  //
+  // These cases name paths the host itself owns, so they lint in an isolated
+  // root rather than the checkout. The rule under test matches one exact path,
+  // and the fixture has to carry that path to reach it. Writing it into the
+  // checkout would collide with the host's real file the moment it lands.
 
   it("lets the storybook host main file compose config and the selectors", () => {
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/main.ts",
       `import { sharedStorybookConfig } from "@genie/config/storybook";\nimport { readModuleInventory, resolveModuleSelection } from "@genie/generators";\n\nexport const main = {\n  preset: sharedStorybookConfig,\n  readModuleInventory,\n  resolveModuleSelection,\n};\n`
     );
@@ -910,7 +919,7 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 
   it("rejects a generator subpath from the storybook host main file", () => {
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/main.ts",
       `import "@genie/generators/selection";\n`
     );
@@ -923,7 +932,7 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 
   it("rejects a relative generator path from the storybook host main file", () => {
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/main.ts",
       `import "../../../tools/generators/src/selection/index.ts";\n`
     );
@@ -936,7 +945,7 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 
   it("rejects a database driver from the storybook host main file", () => {
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/main.ts",
       `import "pg";\n`
     );
@@ -948,7 +957,7 @@ describe("the import direction, proved through the oxlint binary", () => {
 
   it("rejects the selector import from the storybook preview file", () => {
     // This is not a blanket `.storybook/**` exemption. Only `main.ts` composes.
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/preview.tsx",
       `import "@genie/generators";\n`
     );
@@ -959,7 +968,7 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 
   it("rejects shared config from the storybook preview file", () => {
-    const result = lintAt(
+    const result = lintAtIsolated(
       "apps/storybook/.storybook/preview.tsx",
       `import "@genie/config/storybook";\n`
     );
