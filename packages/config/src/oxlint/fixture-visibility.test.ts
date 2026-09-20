@@ -86,13 +86,19 @@ function resolvedFiles(project: string): readonly string[] {
     encoding: "utf8",
   });
 
-  // SAFETY: `tsc --showConfig` prints one JSON document, and this test fails
-  // loudly if that contract changes, because `files` would be absent.
+  // SAFETY: `tsc --showConfig` prints one JSON document, and the one field read
+  // below is optional here and asserted non-empty by the caller.
   const config = JSON.parse(raw) as { files?: readonly string[] };
 
-  return (config.files ?? []).map((file) =>
+  const files = (config.files ?? []).map((file) =>
     relative(WORKSPACE_ROOT, join(WORKSPACE_ROOT, project, file))
   );
+
+  // An empty list would satisfy every `not.toContain` below and certify nothing,
+  // so the absent case fails here rather than passing quietly.
+  expect(files.length).toBeGreaterThan(0);
+
+  return files;
 }
 
 const COVERED_PREFIXES = ["__boundary__", "__wiring__", "__antislop__"];

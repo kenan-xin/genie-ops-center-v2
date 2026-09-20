@@ -7,5 +7,9 @@
   // nothing. They name transient lint fixtures, which the suites write into a
   // project's `src/` and delete again, and which a concurrent typecheck would
   // otherwise compile (`genie-ops-center-v2-64a`).
+  //
+  // `__boundary__` and `__antislop__` each cover a fixture that really lands
+  // inside a typechecked `src/`. `__wiring__` is defensive: today that fixture
+  // sits outside every one, so removing the pattern fails no test.
   "exclude": ["**/__boundary__*", "**/__wiring__*", "**/__antislop__*"]
 }
