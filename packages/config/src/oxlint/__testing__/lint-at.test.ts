@@ -127,6 +127,18 @@ describe("the fixture lifecycle", () => {
     expect(readFileSync(blocker, "utf8")).toBe("not a directory\n");
   });
 
+  it.each(["..foo.ts", "..foo/x.ts"])(
+    "allows a dot-prefixed name inside the root: %s",
+    (path) => {
+      const result = withFixture(root, path, SOURCE, () =>
+        readFileSync(join(root, path), "utf8")
+      );
+
+      expect(result).toBe(SOURCE);
+      expect(existsSync(join(root, path))).toBe(false);
+    }
+  );
+
   it("refuses a path that escapes its root", () => {
     expect(() =>
       withFixture(root, "../escape.ts", SOURCE, () => "ran")
