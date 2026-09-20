@@ -11,18 +11,34 @@
     "validate": "nx run @genie/generators:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck && pnpm run validate"
+    "affected": "nx affected -t build test lint typecheck build-storybook test-storybook && pnpm run validate"
   },
   "devDependencies": {
+    "@nx/storybook": "23.2.1",
     "@oxlint/plugins": "1.83.0",
+    "@storybook/addon-a11y": "10.6.0",
+    "@storybook/addon-docs": "10.6.0",
+    "@storybook/nextjs-vite": "10.6.0",
     "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@vitest/browser": "4.1.11",
+    "@vitest/browser-playwright": "4.1.11",
+    "eslint": "10.11.0",
     "lefthook": "2.1.14",
+    "next": "16.3.5",
     "nx": "23.2.1",
     "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
+    "playwright": "1.63.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "storybook": "10.6.0",
     "tailwindcss": "4.3.3",
-    "typescript": "7.0.2",
-    "vitest": "5.0.1"
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vite": "8.3.0",
+    "vitest": "4.1.11"
   },
   "engines": {
     "node": "^26.0.0"

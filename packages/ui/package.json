@@ -11,11 +11,19 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "@storybook/nextjs-vite": "10.6.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "oxlint": "1.83.0",
+    "storybook": "10.6.0",
     "tailwindcss": "4.3.3",
-    "vitest": "5.0.1"
+    "vitest": "4.1.11"
   },
   "nx": {
     "tags": [

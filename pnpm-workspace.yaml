@@ -11,6 +11,11 @@ saveExact: true
 strictPeerDependencies: true
 autoInstallPeers: false
 
+packageExtensions:
+  "vite-tsconfig-paths@5.1.4":
+    dependencies:
+      typescript: "5.9.3"
+
 # Supply-chain guard. Refuse any version published less than one day ago,
 # because a malicious release is usually pulled from the registry within the
 # hour. The 1440 default is non-strict, so a too-fresh pin would silently fall
@@ -26,3 +31,6 @@ minimumReleaseAgeExclude:
 allowBuilds:
   nx: true
   lefthook: true
+  # Vite's dependency. Its install script links the platform binary, and pnpm
+  # fails the install with ERR_PNPM_IGNORED_BUILDS when the script is ignored.
+  esbuild: true

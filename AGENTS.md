@@ -1,5 +1,9 @@
 # Agent Instructions
 
+## Portable tooling
+
+Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
+
 ## UI development
 
 Before creating, changing, or integrating UI, read and follow [the Storybook and UI TDD workflow](docs/architecture/ui-development.md). Develop documented stories and failing behavior tests one slice at a time, make them pass before app consumption, and retain separate integration/E2E proof. Section 0 establishes this tooling; until it exists, report the missing harness rather than claiming tests passed.

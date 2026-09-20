@@ -74,7 +74,7 @@ These choices are settled. Do not substitute one without approval.
 
 ## Conventions (carried forward, apply once code exists)
 
-- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. Create the branch from the latest `develop`. Never commit straight to `develop` or `main`. Create the worktree with `wt switch --create <branch> --base develop`.
+- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. Create the branch from the latest `develop`. Never commit straight to `develop` or `main`. Create the worktree with `git worktree add -b <branch> <worktree-path> develop`; replace both placeholders for the local checkout.
 - This file and `AGENTS.md` are ignored by the user's global `~/.gitignore`, so they live only in the main checkout and never travel with a branch or a worktree. Edit them at the main checkout path. Mirror any substantive change across both.
 - Commits and pull request titles: Conventional Commits — `type(scope): subject`, imperative, under 72 characters; the body explains why. Allowed types and detailed rules are in the "Commits and Pull Request Titles" section of `AGENTS.md`.
 - Integration: open a pull request from the feature branch to `develop`. When `develop` is ready for production, open a pull request from `develop` to `main`. `main` is the production branch and receives changes only through that pull request.
@@ -83,7 +83,7 @@ These choices are settled. Do not substitute one without approval.
 - State: server state in TanStack Query, complex client state in zustand, trivial local state in `useState`.
 - Forms: TanStack Form, with the procedure's zod schema passed directly as the validator (Standard Schema, no adapter). Tables: TanStack Table. Debounce, throttle, rate limit, and queues: TanStack Pacer. Stateless helpers: es-toolkit.
 - Devtools: TanStack Devtools is mounted once in `apps/genie` for development. Add a panel for new client state rather than logging to the console.
-- Prefix shell commands with `rtk`.
+- Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->

@@ -23,6 +23,7 @@ export const UNIT_TEST_EXCLUDE: readonly string[] = [
 /** The shared unit-test preset. Every package merges it in its own vitest.config.ts. */
 export const unitTestPreset: ViteUserConfig = {
   test: {
+    name: "unit",
     environment: "node",
     include: [...UNIT_TEST_INCLUDE],
     exclude: [...UNIT_TEST_EXCLUDE],
