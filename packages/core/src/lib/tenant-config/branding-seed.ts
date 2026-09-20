@@ -5,59 +5,75 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const HTTP_URL = { protocol: /^https?$/ } as const;
 
 /**
- * Exactly the tenant_branding columns. The file carries a `$schema` key for editors; the loader
- * strips it before parsing, and this schema validates what remains (DEC-35). The admin portal
+ * The tenant_branding columns an author may seed, per docs/architecture/branding-seed.md
+ * (approved 2026-09-21). Only `company_name`, `product_name`, `default_locale` and
+ * `default_time_zone` are required; everything else is optional with contract-defined
+ * omission behaviour. This schema materializes none of those defaults: an omitted value
+ * simply stays absent after parsing, because default materialization is an open
+ * implementation question in the contract, not a missing feature here.
+ * The file carries a `$schema` key for editors; the loader strips it
+ * before parsing, and this schema validates what remains (DEC-35). The admin portal
  * replaces these values after go-live, so this file seeds and never governs.
  */
-export const brandingSeedSchema = z.strictObject({
+const brandingSeedColumns = {
   company_name: z.string().min(1),
   product_name: z.string().min(1),
-  // Nullable columns: the seed may omit them, and the row stores null.
-  // No document marks these nullable; the design section's Branding type does.
   logo_light_file_id: z.string().min(1).nullish(),
   logo_dark_file_id: z.string().min(1).nullish(),
   logo_mark_file_id: z.string().min(1).nullish(),
   favicon_file_id: z.string().min(1).nullish(),
-  primary_color: z
-    .string()
-    .regex(HEX_COLOR, "a colour is a six digit hex value"),
   // Derived: genie-ops setup computes primary_foreground from primary_color with the same shared
   // rule a branding save uses (white or near-black by relative luminance,
   // docs/design/reference/sections/branding/components/helpers.ts line 184, DEC-47).
   // Bead genie-ops-center-v2-1rd.3.1 tracks it; the file never authors it.
-  default_theme: z.enum(["light", "dark", "system"]),
-  // Documented default `plus-jakarta-sans`, so the key may be omitted.
+  primary_color: z
+    .string()
+    .regex(HEX_COLOR, "a colour is a six digit hex value")
+    .optional(),
+  default_theme: z.enum(["light", "dark", "system"]).optional(),
   font_family: z
     .enum(["plus-jakarta-sans", "ibm-plex-sans", "manrope", "source-serif-4"])
     .optional(),
-  // Documented default `default`, so the key may be omitted.
   font_size: z.enum(["compact", "default", "large"]).optional(),
-  text_color: z.string().regex(HEX_COLOR, "a colour is a six digit hex value"),
-  // Unresolved like the other file ids: optional because the design section's Branding type
-  // makes it nullable, not because data-shape.md marks it so.
+  text_color: z
+    .string()
+    .regex(HEX_COLOR, "a colour is a six digit hex value")
+    .optional(),
   login_background_file_id: z.string().min(1).nullish(),
-  // No document marks these three settled or defaulted; required only because no default is
-  // documented, and a default may exist in the database.
   login_background_color: z
     .string()
-    .regex(HEX_COLOR, "a colour is a six digit hex value"),
-  login_welcome_text: z.string().min(1),
-  // The system-use notice is nullable in data-shape.
+    .regex(HEX_COLOR, "a colour is a six digit hex value")
+    .optional(),
+  login_welcome_text: z.string().min(1).optional(),
   login_notice_text: z.string().min(1).nullish(),
-  login_notice_requires_acknowledgement: z.boolean(),
-  email_sender_name: z.string().min(1),
-  email_reply_to: z.email(),
-  email_footer_text: z.string().min(1),
-  // Nullable address columns: an unset address renders no footer entry.
+  login_notice_requires_acknowledgement: z.boolean().optional(),
+  email_sender_name: z.string().min(1).optional(),
+  email_reply_to: z.email().optional(),
+  email_footer_text: z.string().min(1).optional(),
+  // Nullable address columns: an absent link or contact is hidden, per the contract.
   support_url: z.url(HTTP_URL).nullish(),
   support_email: z.email().nullish(),
   terms_url: z.url(HTTP_URL).nullish(),
   privacy_url: z.url(HTTP_URL).nullish(),
-  // No documented default for any of the four locale columns.
+  // Locale and time zone must be explicit customer values, never inferred from the host;
+  // date_format and number_format follow the tenant locale when omitted.
   default_locale: z.string().min(1),
   default_time_zone: z.string().min(1),
-  date_format: z.string().min(1),
-  number_format: z.string().min(1),
-});
+  date_format: z.string().min(1).optional(),
+  number_format: z.string().min(1).optional(),
+} as const;
+
+export const brandingSeedSchema = z
+  .strictObject(brandingSeedColumns)
+  .refine(
+    (seed) =>
+      seed.login_notice_requires_acknowledgement !== true ||
+      (seed.login_notice_text !== undefined && seed.login_notice_text !== null),
+    {
+      message:
+        "login_notice_requires_acknowledgement requires login_notice_text: a person cannot acknowledge a notice that does not exist",
+      path: ["login_notice_requires_acknowledgement"],
+    }
+  );
 
 export type BrandingSeed = z.infer<typeof brandingSeedSchema>;
