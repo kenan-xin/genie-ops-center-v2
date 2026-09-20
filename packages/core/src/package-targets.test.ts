@@ -5,13 +5,9 @@ import {
   UNIT_TEST_EXCLUDE,
   UNIT_TEST_INCLUDE,
 } from "@genie/config/vitest/unit";
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  WORKSPACE_ROOT,
-  cleanUpProbeRoots,
-  probe,
-} from "./__testing__/target-probe.ts";
+import { WORKSPACE_ROOT, probe } from "./__testing__/target-probe.ts";
 
 const VITEST = join(WORKSPACE_ROOT, "node_modules/.bin/vitest");
 
@@ -34,12 +30,6 @@ function vitestConfig(): string {
     `} });`,
   ].join("\n");
 }
-
-// Vitest ends a passing worker without firing "exit", so the probe's own exit
-// handler cannot be the only cleanup path. afterAll still runs.
-afterAll(() => {
-  cleanUpProbeRoots();
-});
 
 describe("unit collection, run through the real vitest binary", () => {
   it("collects src and contracts and leaves testing alone", () => {
@@ -75,7 +65,13 @@ function coreLintPaths(): readonly string[] {
     readFileSync(join(WORKSPACE_ROOT, "packages/core/package.json"), "utf8")
   );
 
-  return manifest.scripts.lint.split(" ").slice(3);
+  const tokens: readonly string[] = manifest.scripts.lint.split(" ");
+
+  // Anchor on the --config flag, not token position, so a reordered script
+  // still yields the scope paths.
+  return tokens
+    .slice(tokens.indexOf("--config") + 2)
+    .filter((token) => !token.startsWith("-"));
 }
 
 function coreTsconfigInclude(): readonly string[] {

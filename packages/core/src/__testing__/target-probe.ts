@@ -9,6 +9,8 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { afterAll } from "vitest";
+
 export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../..");
 
 export type ProbeFile = { readonly path: string; readonly source: string };
@@ -24,7 +26,13 @@ const roots: string[] = [];
 // The fixture must outlive probe(): the calling test reads report files out of
 // result.root after the command has finished. Cleanup therefore runs when this
 // process exits, never inside probe(). Vitest terminates passing workers without
-// firing "exit", so the importing test also calls cleanUpProbeRoots() in afterAll.
+// firing "exit", so this module also self-registers an afterAll hook on import;
+// no caller needs to remember cleanup. A hard kill (SIGKILL, out-of-memory) runs
+// neither path, and the operating system's temporary-folder reaping is the backstop.
+afterAll(() => {
+  cleanUpProbeRoots();
+});
+
 process.on("exit", () => {
   cleanUpProbeRoots();
 });
@@ -79,7 +87,7 @@ export function probe(
 }
 
 /** Removes every fixture this module created. Safe to call more than once. */
-export function cleanUpProbeRoots(): void {
+function cleanUpProbeRoots(): void {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
