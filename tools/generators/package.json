@@ -3,10 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/selection/index.ts"
+  },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate": "vitest run --config vitest.validate.config.ts"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
