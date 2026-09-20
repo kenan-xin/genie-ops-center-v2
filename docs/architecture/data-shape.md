@@ -79,11 +79,11 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 `tenant_branding`: one row.
 
 - Identity: company_name, product_name, logo_light_file_id, logo_dark_file_id, logo_mark_file_id, favicon_file_id.
-- Colors: primary_color and primary_foreground (the foreground is computed and stored; one brand color, `DEC-47`), default_theme (`light`, `dark`, `system`), font_family (a key from the approved list: `plus-jakarta-sans` (default), `ibm-plex-sans`, `manrope`, `source-serif-4`; the list is a constant in `packages/ui` and grows only by a pull request that adds the self-hosted font files). Emails use the same family in the HTML part with a system font stack as fallback; Keycloak credential emails carry no branding (`DEC-40`).
+- Colors: primary_color and primary_foreground (one brand color; the foreground is computed and stored, never authored, so `branding.seed.json` omits it and `genie-ops setup` derives it with the same rule a branding save uses, `DEC-47`, `DEC-35`), default_theme (`light`, `dark`, `system`), font_family (a key from the approved list: `plus-jakarta-sans` (default), `ibm-plex-sans`, `manrope`, `source-serif-4`; the list is a constant in `packages/ui` and grows only by a pull request that adds the self-hosted font files). Emails use the same family in the HTML part with a system font stack as fallback; Keycloak credential emails carry no branding (`DEC-40`).
 - Typography: font_size (`compact`, `default`, `large`, default `default`; the root font size in the browser, 14, 15, or 16 px, and the type scale is rem-based so it follows), text_color (heading and body color on light surfaces, contrast-checked like primary_color; the dark theme keeps its fixed value) (`DEC-47`).
 - Sign-in page: login_background_file_id, login_background_color, login_welcome_text, login_notice_text (the system-use notice, nullable), login_notice_requires_acknowledgement.
-- Email: email_sender_name, email_reply_to, email_footer_text.
-- Links: support_url, support_email, terms_url, privacy_url.
+- Email: email_sender_name, email_reply_to (an email address), email_footer_text.
+- Links: support_url, terms_url, privacy_url (each an HTTP or HTTPS URL), support_email (an email address). Each link is optional, and an unset link renders no entry.
 - Locale: default_locale, default_time_zone, date_format, number_format.
 - Bookkeeping: updated_by_user_id (nullable, foreign key added with `user` in Section 2), updated_at.
 

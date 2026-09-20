@@ -1586,6 +1586,12 @@ const VALID = {
   email_sender_name: "Example Ops",
 };
 
+CORRECTION, 2026-09-21: the two blocks above and below are stale. `tenant_branding`
+has no `product_display_name` column; the column is `product_name`. The seed file
+also carries every `tenant_branding` column, not the five shown here. Use the
+implemented schema and the field table at `.superpowers/sdd/plan/branding-field-table.md`
+as the source. The block is kept so the historical evidence stays readable.
+
 describe("brandingSeedSchema", () => {
   it("accepts a complete file with its schema key", () => {
     expect(brandingSeedSchema.parse(VALID)).toEqual(VALID);
@@ -1629,7 +1635,7 @@ const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
  */
 export const tenantYamlSchema = z.strictObject({
   modules: z.array(z.string().regex(MODULE_ID, "a module id is kebab-case")),
-  onboarding_mode: z.enum(["invite", "open"]),
+  onboarding_mode: z.enum(["invite", "jit"]),
   local_accounts: z.boolean(),
   first_administrators: z.array(z.email()).min(1),
   break_glass_email: z.email(),
@@ -1653,13 +1659,24 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 export const brandingSeedSchema = z.strictObject({
   $schema: z.string(),
   company_name: z.string().min(1),
-  product_display_name: z.string().min(1),
+  product_name: z.string().min(1),
   primary_color: z.string().regex(HEX_COLOR, "a colour is a six digit hex value"),
   email_sender_name: z.string().min(1),
+  // ... and every other tenant_branding column. See the correction below.
 });
 
 export type BrandingSeed = z.infer<typeof brandingSeedSchema>;
 ```
+
+CORRECTION, 2026-09-21, applied. The block above is an excerpt, not the schema.
+It named `product_display_name`, but the column is `product_name`. It also
+listed five fields, while DEC-35 and `docs/architecture/repository-layout.md`
+line 82 require exactly the `tenant_branding` columns. The implemented schema
+carries all 26 non-bookkeeping columns plus `$schema`, and rejects the two
+bookkeeping columns the database owns. The field table at
+`.superpowers/sdd/plan/branding-field-table.md` gives every column with its
+source, its required or optional state and its supplier. One column,
+`primary_foreground`, is an open question recorded in that table.
 
 Before writing these, read `docs/architecture/data-shape.md` for the exact `tenant_branding` columns and match them. If a column is missing from the list above, add it and record the correction in the bead.
 
