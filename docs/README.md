@@ -23,7 +23,7 @@ For module lifecycle policy, read [Module removal and reintroduction](architectu
 
 For UI implementation and testing, read [Storybook and UI development](architecture/ui-development.md): story ownership, module-safe discovery, documentation, the test-first loop, and the boundary between component tests and E2E. Section 0 establishes this development infrastructure.
 
-The [2026-09-21 reconciliation record](maintenance/2026-09-21-documentation-reconciliation.md) maps current decisions, accepted integration evidence and remaining open requirements.
+The [2026-09-21 reconciliation record](maintenance/2026-09-21-documentation-reconciliation.md) maps current decisions, accepted integration evidence and remaining open requirements. [Optional agent hooks](maintenance/optional-agent-hooks.md) states how the tracked agent hooks find personal tools that the repository does not require.
 
 ## Direction of authority
 
