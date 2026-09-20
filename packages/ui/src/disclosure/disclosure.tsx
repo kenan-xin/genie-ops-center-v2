@@ -21,11 +21,15 @@ export function Disclosure(props: DisclosureProps) {
       >
         {props.summary}
       </button>
-      {open ? (
-        <div id={regionId} role="region" aria-label={props.summary}>
-          {props.children}
-        </div>
-      ) : null}
+      {/* Always mounted, so aria-controls always names an element that exists. */}
+      <div
+        id={regionId}
+        role="region"
+        aria-label={props.summary}
+        hidden={!open}
+      >
+        {props.children}
+      </div>
     </div>
   );
 }

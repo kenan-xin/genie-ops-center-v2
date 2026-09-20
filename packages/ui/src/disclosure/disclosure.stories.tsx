@@ -29,8 +29,14 @@ export const Closed: Story = {
     const trigger = canvas.getByRole("button", { name: "Deployment notes" });
 
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    // The content stays mounted so that aria-controls always resolves. Closed
+    // therefore means hidden from sight and from the accessibility tree, which
+    // is what this asserts, rather than absent from the document.
     await expect(
-      canvas.queryByText("One deployment serves one customer.")
+      canvas.getByText("One deployment serves one customer.")
+    ).not.toBeVisible();
+    await expect(
+      canvas.queryByRole("region", { name: "Deployment notes" })
     ).not.toBeInTheDocument();
   },
 };
@@ -80,19 +86,22 @@ export const StateResets: Story = {
   },
 };
 
-// The first consumer of the theme toolbar. It proves the preview decorator
-// applies the selected scheme, and it runs the same accessibility check in dark
-// mode that every other story runs in light mode.
+// Renders on a dark surface owned by this package, so the story asserts on what
+// packages/ui itself renders and never reaches for the host's decorator. The
+// theme toolbar in apps/storybook is a separate concern.
 export const Dark: Story = {
-  globals: { theme: "dark" },
   args: { defaultOpen: true },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(canvasElement.querySelector("[data-theme]")).toHaveAttribute(
-      "data-theme",
-      "dark"
-    );
-    await expect(
-      canvas.getByRole("region", { name: "Deployment notes" })
-    ).toBeInTheDocument();
+  decorators: [
+    (Story) => (
+      <div data-theme="dark">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const region = canvas.getByRole("region", { name: "Deployment notes" });
+
+    await expect(region).toBeVisible();
+    await expect(region.closest("[data-theme='dark']")).not.toBeNull();
   },
 };
