@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/selection/index.ts"
+  },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src",
     "test": "vitest run",
