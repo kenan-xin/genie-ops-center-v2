@@ -628,6 +628,30 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("ctx.tenant.db");
   });
 
+  it("lets a module package configuration file consume a preset", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__.config.ts",
+      `import "@genie/config/vitest/unit";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("lets a customer app package configuration file consume a preset", () => {
+    // The glob for this path is spelled once and shared with the apps globs, so
+    // the apps fixture proves the pattern list but never this nesting.
+    const result = lintAt(
+      "customers/acme/app/vitest.__boundary__.config.ts",
+      `import { unitTestPreset } from "@genie/config/vitest/unit";\nimport { defineConfig } from "vitest/config";\n\nexport default defineConfig(unitTestPreset);\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
   it("still bans a sibling module from a module package configuration file", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__.config.ts",
@@ -679,6 +703,19 @@ describe("the import direction, proved through the oxlint binary", () => {
     const result = lintAt(
       "packages/modules/alpha/src/nested/__boundary__.ts",
       `import "../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached from the deepest covered folder", () => {
+    // The deepest entry in `MODULE_FOLDER_DEPTHS`. Without it this climb is
+    // matched by no depth entry at all.
+    const result = lintAt(
+      "packages/modules/alpha/src/a/b/__boundary__.ts",
+      `import "../../../../beta/src/index.ts";\n`
     );
 
     expect(result.failed).toBe(true);
