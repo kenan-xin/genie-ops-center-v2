@@ -9,11 +9,13 @@ import { importBoundaryOverrides } from "./boundaries.ts";
  * empties.
  *
  * The override suppresses a real diagnostic. Verified 2026-09-20
- * (genie-ops-center-v2-k3c): without it, oxlint reports
- * `unicorn(require-module-specifiers): Empty export specifier is not allowed`
- * on all four files. Removing the `export {}` line does not avoid the
- * override, because oxlint then reports `unicorn(no-empty-file): Empty files
- * are not allowed` on the same files.
+ * (genie-ops-center-v2-k3c) against the four paths the list held then:
+ * without it, oxlint reports `unicorn(require-module-specifiers): Empty
+ * export specifier is not allowed` on every one of them. Removing the
+ * `export {}` line does not avoid the override, because oxlint then reports
+ * `unicorn(no-empty-file): Empty files are not allowed` on the same files.
+ * That four is the historical probe result, not the current entry count:
+ * `packages/ui/src/index.ts` left the list once it gained real exports.
  */
 const reservedEntrypointOverride: OxlintOverride = {
   files: [
