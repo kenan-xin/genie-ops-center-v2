@@ -266,7 +266,7 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.failed).toBe(true);
 
     expect(result.output).toContain(
-      "tooling uses the build-safe core schema entrypoints only, never the runtime entrypoint (R-7a)."
+      "tooling imports only the build-safe core schema entrypoints of R-7a."
     );
   });
 
@@ -279,6 +279,73 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.failed).toBe(false);
 
     expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("rejects tooling importing an unlisted core subpath", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "@genie/core/tenant-config/nested";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("build-safe core schema entrypoints");
+  });
+
+  it("rejects tooling importing core by relative path", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "../../packages/core/src/lib/tenant-config/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("build-safe core schema entrypoints");
+  });
+
+  it("rejects tooling importing core through a bare sibling climb", () => {
+    // The raw-string spelling that only `**/../core/**` can see: it names `core`
+    // directly, with no `packages/` segment for the folder glob to match. It is
+    // the same climb CORE reserves for the folder glob's relative twin.
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "../../core/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("build-safe core schema entrypoints");
+  });
+
+  it("rejects tooling importing the core index entrypoint", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "@genie/core/index";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("build-safe core schema entrypoints");
+  });
+
+  it("rejects tooling importing the app package by name", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "@genie/app";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("tooling never imports an app");
+  });
+
+  it("lets tooling consume the shared config preset", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "@genie/config/vitest/unit";\n`
+    );
+
+    expect(result.failed).toBe(false);
   });
 
   it("stops contracts from importing anything but zod", () => {

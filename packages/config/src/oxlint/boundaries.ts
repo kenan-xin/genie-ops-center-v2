@@ -313,12 +313,13 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       {
         group: [
           "@genie/core",
-          "@genie/core/index",
-          "**/packages/core/src/index.ts",
-          "**/../core/src/index.ts",
+          "@genie/core/**",
+          "!@genie/core/tenant-config",
+          "**/packages/core/**",
+          "**/../core/**",
         ],
         message:
-          "tooling uses the build-safe core schema entrypoints only, never the runtime entrypoint (R-7a).",
+          "tooling imports only the build-safe core schema entrypoints of R-7a.",
       },
       {
         group: DRIVERS,
