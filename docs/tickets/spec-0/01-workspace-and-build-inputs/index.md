@@ -62,6 +62,8 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Root test gate guard](root-test-gate-guard.md) adds a `tools/generators` unit test that runs the root `test` script against a stub `nx` and fails when the `run-many` target list no longer carries `validate`. It makes the `validate` target added by `38c7a3e` non-deletable without a failing check, and it stays outside the validate collection so deleting the target cannot hide its own guard. The generators `test` target also takes the root manifest as a project-local input, so a warm Nx cache cannot replay past the mutation. No root `package.json`, `nx.json`, lockfile or product change. Bead `genie-ops-center-v2-3o6`.
 
+[Anchor cleanup guard](anchor-cleanup-guard.md) proves the isolated-root helper's per-anchor recursive removal. A disposable `pnpm` replaces one anchor symlink with a real directory that holds a file; the helper must remove it recursively and leave the checkout target untouched. Bead `genie-ops-center-v2-1rd.1.3`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
