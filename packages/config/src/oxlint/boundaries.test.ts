@@ -1082,6 +1082,50 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
+  it("rejects a sibling module reached by a literal require", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `export const beta = require("../../../beta/src/index.ts");\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("leaves a local function named require alone, which loads nothing", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      [
+        `function require(name: string): string {`,
+        `  return name.toUpperCase();`,
+        `}`,
+        ``,
+        `export const label = require("../../../beta/src/index.ts");`,
+        ``,
+      ].join("\n")
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
+  it("leaves a computed specifier unjudged, because it needs the program to run", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      [
+        `export const load = (name: string) =>`,
+        "  import(`../../../${name}/src/index.ts`);",
+        ``,
+      ].join("\n")
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
   it("leaves a local re-export alone, which carries no specifier at all", () => {
     const result = lintAt(
       "packages/modules/alpha/src/lib/__boundary__.ts",

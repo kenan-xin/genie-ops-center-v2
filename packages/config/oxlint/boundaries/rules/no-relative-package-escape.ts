@@ -1,7 +1,7 @@
 import { dirname, resolve, sep } from "node:path";
 
 import { defineRule } from "@oxlint/plugins";
-import type { ESTree } from "@oxlint/plugins";
+import type { ESTree, Scope, SourceCode } from "@oxlint/plugins";
 
 /** The three declarations that can carry a module specifier. */
 type DeclarationWithSource =
@@ -26,6 +26,26 @@ function moduleRootOf(filePath: string): string | null {
   );
 
   return match?.[1] ?? null;
+}
+
+/**
+ * True when the identifier resolves to a binding in some enclosing scope. A
+ * loader `require` resolves to nothing, in a module file as well as a script,
+ * so a resolved binding marks an ordinary local function of that name.
+ */
+function isDeclaredLocally(
+  sourceCode: SourceCode,
+  identifier: ESTree.IdentifierReference
+): boolean {
+  let scope: Scope | null = sourceCode.getScope(identifier);
+
+  while (scope !== null) {
+    if (scope.set.has(identifier.name)) return true;
+
+    scope = scope.upper;
+  }
+
+  return false;
 }
 
 /**
@@ -82,6 +102,25 @@ export const noRelativePackageEscapeRule = defineRule({
       ImportDeclaration: check,
       ExportAllDeclaration: check,
       ExportNamedDeclaration: check,
+      // `require` is executable source too, whatever the module format of the
+      // file. A local declaration of that name is not a loader, so a resolved
+      // binding means the call is an ordinary function call and is left alone.
+      CallExpression(node) {
+        const callee = node.callee;
+
+        if (callee.type !== "Identifier" || callee.name !== "require") return;
+
+        if (isDeclaredLocally(context.sourceCode, callee)) return;
+
+        const [argument] = node.arguments;
+
+        if (
+          argument?.type === "Literal" &&
+          typeof argument.value === "string"
+        ) {
+          report(node, argument.value);
+        }
+      },
       // A dynamic import is executable source too (Spec 0 R-7, the paragraph
       // after R-7a). Only a literal specifier can be judged here; a computed
       // one is not decidable without running the program.
