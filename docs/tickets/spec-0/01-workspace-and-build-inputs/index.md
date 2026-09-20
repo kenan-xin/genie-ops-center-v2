@@ -64,6 +64,10 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Anchor cleanup guard](anchor-cleanup-guard.md) proves the isolated-root helper's per-anchor recursive removal. A disposable `pnpm` replaces one anchor symlink with a real directory that holds a file; the helper must remove it recursively and leave the checkout target untouched. Bead `genie-ops-center-v2-1rd.1.3`.
 
+## Validate cache ignore inputs, 2026-09-21
+
+[Validate cache inputs and ignore files](validate-ignore-inputs.md) adds the workspace's `.gitignore` and `.nxignore` files, at the root and nested, to the `validate` target's declared inputs. A nested ignore file changes which directories Nx treats as projects, and without the input a warm cache replayed the pass. Bead `genie-ops-center-v2-0d2`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
