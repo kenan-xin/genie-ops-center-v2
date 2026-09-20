@@ -55,12 +55,12 @@
     "build-storybook": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production", { "env": "MODULE_INCLUDE" }],
+      "inputs": ["default", "^default", { "env": "MODULE_INCLUDE" }],
       "outputs": ["{projectRoot}/storybook-static"]
     },
     "test-storybook": {
       "cache": true,
-      "inputs": ["default", "^production", { "env": "MODULE_INCLUDE" }]
+      "inputs": ["default", "^default", { "env": "MODULE_INCLUDE" }]
     },
     "validate": {
       "cache": true,
