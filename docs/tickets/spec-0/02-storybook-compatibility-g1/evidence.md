@@ -10,13 +10,13 @@ G1 is the first gate of Spec 0. It asks one question: does the Storybook toolcha
 | --- | --- |
 | Branch | `feature/s0-02-storybook-g1` |
 | Integrated base revision | `7fe04be` (`7fe04be688b5d51a13d563908cd43fad3e97f422`), `Merge pull request #1 from kenan-xin/feature/s0-01-workspace-and-build-inputs` |
-| Head described by this record | `3985e5b` (`3985e5b45846f6255802f56efc58ed8e4c2cfd35`), `docs(core): reference the unused-nx-storybook bead` |
-| Commits on the branch over base | 14, measured as `git rev-list --count 7fe04be..3985e5b` |
-| Diff size | 46 files changed, 8457 insertions, 1167 deletions |
+| Head described by this record | `1d356cb` (`1d356cb` `test(modules): strengthen the fixture blank check`), after the whole-branch review fix batch |
+| Commits on the branch over base | 23, measured as `git rev-list --count 7fe04be..1d356cb` |
+| Diff size | 49 files changed, 9030 insertions, 1169 deletions |
 
 This record was written one commit after the head it names. Every gate result below was measured at `3985e5b` before the evidence commit existed. The evidence commit adds only this file, so the numbers stay checkable against the tree they describe.
 
-A correction pass followed the first review, with the working tree at the evidence commit `c1829bc`. It added the state-reset observation of section 9, corrected the component listing of section 8 and the keyboard table row of section 9, re-ran the MCP request of section 10, and labeled the excerpts that come from an earlier task session. Section 9 names which observations are live and section 10 names which line is carried.
+A correction pass followed the first review, with the working tree at the evidence commit `c1829bc`. A final review pass followed the whole-branch review, with its five should-fixes and five adjudicated notes landing across `9b72d68`..`1d356cb`; section 4 records the re-run of the affected gate over all six targets. It added the state-reset observation of section 9, corrected the component listing of section 8 and the keyboard table row of section 9, re-ran the MCP request of section 10, and labeled the excerpts that come from an earlier task session. Section 9 names which observations are live and section 10 names which line is carried.
 
 The 14 commits, oldest first:
 
@@ -531,11 +531,11 @@ Every finding this ticket did not fix is filed in Beads. None is left only in th
 | `genie-ops-center-v2-n35` | P3 | Amend S0-02 plan stale lines after `vitest.setup.ts` deletion | The plan document still lists the deleted setup file as a deliverable. Correcting an approved plan is the integration owner's call. |
 | `genie-ops-center-v2-div` | P3 | Selection resolver is unreachable by package specifier and its plugin dependency is misplaced | The exports map landed on this branch in `094d063`. The bead stays open until the integration owner confirms and closes it. |
 
-No new finding was opened by this task. The one surprise in section 9, the disabled viewport control on a story that pins `globals.viewport`, is Storybook working as documented and is recorded in this document rather than filed.
+The whole-branch review pass opened one finding outside the branch, `genie-ops-center-v2-1w4`: the approved spec's line 378 still names Vitest 5 while `tech-stack.md` pins 4.1.11. Amending an approved spec is the integration owner's call, so it is filed rather than fixed. The one surprise in section 9, the disabled viewport control on a story that pins `globals.viewport`, is Storybook working as documented and is recorded in this document rather than filed.
 
 ## 14. Changed paths
 
-Base `7fe04be` to head `3985e5b`, 46 files.
+Base `7fe04be` to head `1d356cb`, 49 files.
 
 New:
 
@@ -557,4 +557,4 @@ Changed:
 - `packages/ui/package.json`, `packages/ui/src/index.ts`, `packages/ui/tsconfig.json`
 - `tools/generators/package.json`
 
-This record is the only file added after `3985e5b`.
+This record is the only file added after `3985e5b` that carries no code. The fix batch after the whole-branch review touched eleven more files, all mapped to review findings.
