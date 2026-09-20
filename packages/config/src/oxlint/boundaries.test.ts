@@ -1005,24 +1005,92 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
-  it("names the right remedy for a climb that leaves the package for core", () => {
-    // A module may import core, by package name. The relative spelling is the
-    // problem, so the diagnosis must say that and not accuse it of reaching a
-    // sibling module (bead genie-ops-center-v2-ft5).
+  it("never calls a climb into core a sibling-module import", () => {
+    // R-7 bans another module, an app and a customer folder for a module, and
+    // core is on none of those lists: a module imports core by design. The old
+    // depth glob used `../*`, which also matched `..`, so this climb was
+    // rejected with the sibling-module message, the wrong diagnosis (bead
+    // genie-ops-center-v2-ft5). No rule here bans the spelling itself, because
+    // no requirement does.
     const result = lintAt(
       "packages/modules/alpha/src/__boundary__.ts",
       `import "../../../core/src/index.ts";\n`
     );
 
-    expect(result.failed).toBe(true);
-
-    expect(result.output).toContain(
-      "a module reaches another package by its package name, never by a relative path."
-    );
-
     expect(result.output).not.toContain(
       "a module never imports another module."
     );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("rejects a sibling module reached by a re-export", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `export { thing } from "../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached by a star re-export", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `export * from "../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("reads the outermost module folder as the package root", () => {
+    // A module may hold a folder named like the workspace layout, for a fixture
+    // or a template. A greedy root match would take that nested folder for the
+    // package root and then call this ordinary alpha-internal import a sibling.
+    const result = lintAt(
+      "packages/modules/alpha/src/packages/modules/beta/__boundary__.ts",
+      `import "../../../../utils/__boundary_target__.ts";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
+  it("still sees a real sibling from inside such a folder", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/packages/modules/beta/__boundary__.ts",
+      `import "../../../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached by a dynamic import", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `export const load = () => import("../../../beta/src/index.ts");\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("leaves a local re-export alone, which carries no specifier at all", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `const thing = 1;\n\nexport { thing };\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
   });
 
   it("still allows a module its own relative import from a folder four deep", () => {
