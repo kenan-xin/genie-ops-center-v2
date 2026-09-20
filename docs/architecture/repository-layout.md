@@ -37,7 +37,7 @@ genie-ops-center/
     config/                         Tagged config: shared tsconfig, oxlint, oxfmt, Tailwind, Vitest and Storybook presets.
                                     No internal project imports; consumed by configuration files, not runtime.
     modules/
-      solutions/               Platform module, every tenant.
+      solutions/                    Platform module, every tenant.
       agreements/                   Built for the first customer. Entitled to that tenant only, for now.
       approvals/                    Built for the first customer. Deferred on discovery.
       document-extraction/          A generic module, when the team is ready to design one.
@@ -105,6 +105,14 @@ Where a piece of code goes is decided by three questions, inside `packages/core/
 Every folder that the tree above names holds a `README.md` that says in a few lines what the folder is for, what belongs in it, and what must not go in it. A package folder's `README.md` also names what it imports. The module generator and the tenant generator write that file for the folders they create, and CI fails a package folder without one.
 
 A customer folder holds two kinds of thing and no third: the customer's deployment configuration, and, when they need one, the custom application that composes core and modules for them. It never holds a module. A module is a capability, lives under `packages/modules/<capability>`, and is given to a customer by adding it to their include list, so it can be given to a second customer without moving. The slug in `customers/<slug>` names the image and the stack and will usually be recognizably the customer's; that is acceptable in this folder and in deployment configuration, and not acceptable in `packages/`, `apps/genie`, or `docs/`.
+
+## Module package naming
+
+Owner decision, 2026-09-20: each module is an independent package named `@genie/module-<capability>` in `packages/modules/<capability>/`. The folder basename matches the unprefixed module ID; the package name adds `@genie/module-`. The prefix groups module imports for IDE discoverability, although actual suggestions depend on IDE indexing and available dependencies. No folder rename is required. This supersedes the earlier same-day proposal to repeat `module-` in folder names. For example, `packages/modules/contract-data/` declares `@genie/module-contract-data`; its module ID remains `contract-data`. The `module-` prefix is not part of IDs, permission namespaces or customer include-list entries. Documentation remains under `docs/modules/<capability>/`.
+
+`@genie/modules/<capability>` is a legal import specifier for a subpath of an umbrella package named `@genie/modules`; this architecture does not define that package. No umbrella or alias mapping is required by the chosen convention. This singular `module-` decision supersedes the earlier plural `modules-` proposal.
+
+Implementation reconciliation is tracked by `genie-ops-center-v2-ygn`, including the naming-enforcement gap `genie-ops-center-v2-1rd.1.4`. Discovery, generators, fixture manifests, active path references and import-boundary tests must agree with this contract. This documentation update does not claim that those code changes or validation have occurred. Existing defensive plural/slash restrictions and historical evidence remain intact; singular package roots and public subpaths require equivalent enforcement.
 
 ## How a customer's requirement is met
 
