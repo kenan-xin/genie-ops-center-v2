@@ -9,6 +9,8 @@ const TSC = join(WORKSPACE_ROOT, "node_modules/.bin/tsc");
 
 const DOM_USE = `export const probe = document.title;\n`;
 
+const TYPE_ERROR = `export const bad: number = "not a number";\n`;
+
 const CORE_ROOT = join(WORKSPACE_ROOT, "packages/core");
 
 /**
@@ -77,5 +79,32 @@ describe("the core browser program", () => {
     );
 
     expect(result.failed).toBe(false);
+  });
+
+  it("still typechecks a .tsx outside the story seam", () => {
+    const result = probe(
+      [
+        {
+          path: "package.json",
+          source: `{\n  "type": "module"\n}\n`,
+        },
+        {
+          path: "tsconfig.json",
+          source: readConfig(
+            "tsconfig.browser.json",
+            join(CORE_ROOT, "tsconfig.json")
+          ),
+        },
+        // The seam file keeps the program non-empty, so a .tsx that reaches no
+        // program fails on the missing type error rather than on TS18003.
+        { path: "src/lib/story-seam/dom-probe.tsx", source: DOM_USE },
+        { path: "src/services/rogue-probe.tsx", source: TYPE_ERROR },
+      ],
+      TSC,
+      ["--noEmit", "-p", "tsconfig.json"]
+    );
+
+    expect(result.failed).toBe(true);
+    expect(result.output).toContain("rogue-probe.tsx");
   });
 });
