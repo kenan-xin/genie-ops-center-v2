@@ -1,8 +1,11 @@
+
+== case 0a: without the guard, the sentinel hook does run
+ok   sentinel ran
 lefthook:    /home/kenan/.local/share/mise/installs/npm-lefthook/latest/node_modules/.bin/lefthook (pinned 2.1.14)
 dispatchers: post-checkout post-merge pre-commit prepare-commit-msg pre-push README.md 
-throwaway:   /tmp/hook-proof.jzEICV/repo
+throwaway:   /tmp/hook-proof.TetykX/repo
 
-== case 0: no hook of the caller's machine runs, seed commit included
+== case 0b: with the guard, no hook of the caller's machine runs
 ok   sentinel did not run
 ok   seed produced no hook output
 
@@ -14,7 +17,7 @@ ok   core.hooksPath
 │ lefthook  v2.1.14   hook:  pre-commit │
 ╰───────────────────────────────────────╯
 │  core.hooksPath is set locally to '.githooks'                             
-│  core.hooksPath is set globally to '/tmp/hook-proof.jzEICV/sentinel-hooks'
+│  core.hooksPath is set globally to '/tmp/hook-proof.TetykX/sentinel-hooks'
 │  Custom hooks paths are not supported by default.                         
 │                                                                           
 │  Reset core.hooksPath automatically:                                      

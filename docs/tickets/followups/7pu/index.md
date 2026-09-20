@@ -14,11 +14,12 @@ Run date 2026-09-21. Repository head `1fa6176` on branch `test/7pu-hook-proof`. 
 
 The script builds a throwaway Git repository under the temporary directory, copies the tracked dispatchers from `.githooks/`, and deletes the directory when it exits.
 
-No hook of the caller's machine can run, the seed commit included. Every Git command runs with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointing at files the script writes, with an empty template directory, and the throwaway repository sets its own `core.hooksPath` to an empty folder before the seed commit. The temporary global file names a sentinel hooks directory on purpose, and case 0 and case 7 prove the sentinel never ran.
+No hook of the caller's machine can run, the seed commit included. Every Git command runs with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointing at files the script writes, with an empty template directory, and the throwaway repository sets its own `core.hooksPath` to an empty folder before the seed commit. The temporary global file names a sentinel hooks directory on purpose. Case 0a shows the sentinel firing in a second throwaway repository that has no guard, then deletes the marker. Case 0b and case 7 show that the proof repository never fires it. Both controls are in the script, so the transcript proves the absence is real and not vacuous.
 
 | Case | What it does | Result |
 | --- | --- | --- |
-| 0 | Configures a sentinel hook in the temporary global Git configuration, then seeds the throwaway repository | The sentinel did not run and the seed commit produced no hook output |
+| 0a | Seeds a second throwaway repository under the same sentinel configuration, without the local hooks guard | The sentinel ran, which is what makes case 0b meaningful |
+| 0b | Seeds the proof repository, which sets its own empty hooks folder first | The sentinel did not run and the seed commit produced no hook output |
 | 1 | Sets `core.hooksPath` to `.githooks` in the throwaway repository, the same command as `pnpm run hooks:install` | `core.hooksPath` reads back as `.githooks` |
 | 2 | Commits one file | Order recorded: Beads `pre-commit`, then the Lefthook job, then Beads `prepare-commit-msg`. The commit was written |
 | 3 | Removes `.beads/hooks/pre-commit`, then commits | Exit status 1, message `hook dispatcher: ... is missing or not executable`, no commit written |
@@ -29,7 +30,7 @@ No hook of the caller's machine can run, the seed commit included. Every Git com
 | 8 | Runs the script again with `LEFTHOOK_BIN` pointing at a stub that reports version 1.0.0 | Exit status 1, the message names the pinned version |
 | 9 | Runs the script again from another directory with a relative `LEFTHOOK_BIN` | Exit status 0, all cases passed, so the path was made absolute before the symlink |
 
-Case 0 is a real control, not a formality. The same sentinel configuration with no local `core.hooksPath` guard runs the sentinel on the seed commit, which is what the guard prevents.
+Case 0a is the positive control for case 0b. It uses a repository of its own and the sentinel configuration the script itself wrote, so it changes nothing outside the temporary directory.
 
 ## What is real and what is a stub
 

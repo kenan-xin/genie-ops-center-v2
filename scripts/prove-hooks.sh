@@ -54,7 +54,8 @@ if [ "$lefthook_version" != "$pinned" ]; then
   exit 1
 fi
 
-# Git isolation. The sentinel hook must never run; case 0 checks that.
+# Git isolation. The sentinel hook fires in a repository without the guard
+# (case 0a) and must never fire in the proof repository (case 0b and case 7).
 mkdir -p "$sentinel"
 printf '#!/bin/sh\ntouch "%s/sentinel.ran"\n' "$work" >"$sentinel/pre-commit"
 chmod +x "$sentinel/pre-commit"
@@ -76,6 +77,22 @@ expect() { # expect <label> <expected> <actual>
 }
 ran() { tr '\n' '|' <"$repo/ran.log" | sed 's/|$//'; }
 found() { if grep -q "$1" "$2"; then echo found; else echo missing; fi; }
+
+# Case 0a: the positive control. A second throwaway repository, same sentinel
+# configuration, no local hooks guard. The sentinel must fire here, otherwise
+# the absence proved by case 0b would mean nothing.
+say "case 0a: without the guard, the sentinel hook does run"
+control="$work/control"
+mkdir -p "$control"
+git init -q "$control"
+git -C "$control" config user.name proof
+git -C "$control" config user.email proof@example.invalid
+git -C "$control" config commit.gpgsign false
+echo seed >"$control/seed.txt"
+git -C "$control" add -A
+git -C "$control" commit -q -m seed
+expect "sentinel ran" "present" "$([ -e "$work/sentinel.ran" ] && echo present || echo absent)"
+rm -f "$work/sentinel.ran"
 
 # A throwaway repository carrying the tracked dispatchers, stub Beads hooks and
 # the real Lefthook binary at the path the dispatcher expects.
@@ -112,7 +129,7 @@ printf 'throwaway:   %s\n' "$repo"
 
 # Case 0: the negative control. The seed commit ran with the sentinel hooks
 # directory configured globally, and the sentinel must not have run.
-say "case 0: no hook of the caller's machine runs, seed commit included"
+say "case 0b: with the guard, no hook of the caller's machine runs"
 expect "sentinel did not run" "absent" "$([ -e "$work/sentinel.ran" ] && echo present || echo absent)"
 expect "seed produced no hook output" "" "$(cat "$repo/ran.log")"
 
