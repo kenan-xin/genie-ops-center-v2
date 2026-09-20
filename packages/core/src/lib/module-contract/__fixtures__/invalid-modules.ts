@@ -59,6 +59,25 @@ export function withLanding(module: Module): Module {
   };
 }
 
+/** Flag the first admin entry as the landing route, which DEC-49 forbids. */
+export function withAdminLanding(module: Module): Module {
+  const first = module.navigation.entries.findIndex(
+    (entry) => entry.surface === "admin"
+  );
+
+  if (first === -1) throw new Error("fixture lost its admin entry");
+
+  return {
+    ...module,
+    navigation: {
+      ...module.navigation,
+      entries: module.navigation.entries.map((entry, index) =>
+        index === first ? { ...entry, landing: true } : entry
+      ),
+    },
+  };
+}
+
 function renameEntry(
   entry: NavigationEntry,
   oldId: string,

@@ -128,6 +128,28 @@ export function validateModule(module: Module): readonly string[] {
     );
   }
 
+  // The landing entry is where a signed-in person arrives (DEC-49), so an admin
+  // landing route would send everyone to a page gated on `<id>:admin`.
+  for (const entry of admin) {
+    if (entry.landing === true) {
+      problems.push(
+        `Admin entry "${entry.id}" carries the landing flag. Only a workspace entry may (DEC-49).`
+      );
+    }
+  }
+
+  // Seeding a default role creates missing permission definitions, never a
+  // privilege in another module (docs/architecture/permission-evolution.md).
+  for (const role of module.defaultRoles) {
+    for (const key of role.permissions) {
+      if (!declared.has(key)) {
+        problems.push(
+          `Default role "${role.name}" grants "${key}", which this module does not declare.`
+        );
+      }
+    }
+  }
+
   if (module.navigation.pinned.length > MAX_PINNED) {
     problems.push(
       `The pinned list holds ${module.navigation.pinned.length} entries. The maximum is six.`

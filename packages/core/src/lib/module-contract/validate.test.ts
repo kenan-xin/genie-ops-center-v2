@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { renameModule, withLanding } from "./__fixtures__/invalid-modules.ts";
+import {
+  renameModule,
+  withAdminLanding,
+  withLanding,
+} from "./__fixtures__/invalid-modules.ts";
 import { validModule } from "./__fixtures__/valid-module.ts";
 import type { NavigationEntry } from "./module.ts";
 import { validateModule, validateRegistry } from "./validate.ts";
@@ -165,6 +169,23 @@ describe("validateModule", () => {
     };
 
     expect(validateModule(broken).join(" ")).toContain("fixture-home");
+  });
+
+  it("rejects the landing flag on an admin entry", () => {
+    expect(validateModule(withAdminLanding(validModule)).join(" ")).toContain(
+      'Admin entry "fixture-admin"'
+    );
+  });
+
+  it("rejects a default role granting a permission the module does not declare", () => {
+    const broken = {
+      ...validModule,
+      defaultRoles: [
+        { name: "Fixture user", permissions: ["other:read" as const] },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain("other:read");
   });
 
   it("rejects two landing flags within one module", () => {
