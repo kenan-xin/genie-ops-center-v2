@@ -26,10 +26,13 @@ const ISOLATED_ROOT_ANCHORS: readonly string[] = [
   "node_modules",
 ];
 
-/** Names every isolated root this process owns, and no other process's. */
-export function isolatedRootPrefix(): string {
-  return `oxlint-boundary-${process.pid}-`;
-}
+/**
+ * Names every isolated root this process owns, and no other process's. One
+ * constant, so that the code creating a root and the code listing them cannot
+ * drift apart: the process id is what keeps two vitest workers from counting
+ * each other's roots.
+ */
+export const ISOLATED_ROOT_PREFIX = `oxlint-boundary-${process.pid}-`;
 
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
@@ -191,7 +194,7 @@ export function lintAtIsolated(
     );
   }
 
-  const root = mkdtempSync(join(tmpdir(), isolatedRootPrefix()));
+  const root = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
 
   try {
     for (const anchor of ISOLATED_ROOT_ANCHORS) {
@@ -203,9 +206,10 @@ export function lintAtIsolated(
     // Node unlinks a symlink-to-directory rather than descending into it, so the
     // recursive removal below is already safe. Every anchor is unlinked by name
     // first anyway: the cost is three lines, and the cost of that behaviour ever
-    // changing is the checkout.
+    // changing is the checkout. `recursive` covers the case where an anchor name
+    // is a real directory, which would otherwise throw here and hide a live error.
     for (const anchor of ISOLATED_ROOT_ANCHORS) {
-      rmSync(join(root, anchor), { force: true });
+      rmSync(join(root, anchor), { force: true, recursive: true });
     }
 
     rmSync(root, { recursive: true, force: true });

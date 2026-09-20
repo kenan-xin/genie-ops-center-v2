@@ -15,8 +15,8 @@ import { basename, dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  ISOLATED_ROOT_PREFIX,
   WORKSPACE_ROOT,
-  isolatedRootPrefix,
   lintAt,
   lintAtIsolated,
   withFixture,
@@ -45,7 +45,7 @@ afterEach(() => {
  */
 function strayRoots(): string[] {
   return readdirSync(tmpdir()).filter((entry) =>
-    entry.startsWith(isolatedRootPrefix())
+    entry.startsWith(ISOLATED_ROOT_PREFIX)
   );
 }
 
@@ -196,6 +196,18 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
       );
     }
   );
+
+  it("sees a root named with the prefix the harness creates roots under", () => {
+    // Paired with the case below: together they fix what the count means. Without
+    // this one, a filter that matched nothing at all would look like clean-up.
+    const mine = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
+
+    try {
+      expect(strayRoots()).toContain(basename(mine));
+    } finally {
+      rmSync(mine, { recursive: true, force: true });
+    }
+  });
 
   it("ignores a root belonging to another process, so a parallel worker cannot skew it", () => {
     // The boundary suite runs in its own worker and makes six roots of its own.
