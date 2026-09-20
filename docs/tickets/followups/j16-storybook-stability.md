@@ -1,4 +1,6 @@
-# Storybook component-test stability characterization
+# Storybook component-test stability characterization (historical)
+
+Historical record. The ten runs below were not bound to a revision or to a worktree state: the raw logs carried no `git rev-parse HEAD` and no `git status` output, so they cannot certify the baseline they name. The bound replacement is [the 2026-09-21 provenance record](j16-storybook-stability-provenance.md). Read this file for the procedure and the reasoning, not as proof of a tested revision.
 
 Ticket: `genie-ops-center-v2-j16`. Baseline `c87591f`, pinned Nx 23.2.1 and Vitest 4.1.11. Recorded 2026-09-21 in a dedicated worktree; no source/configuration changes.
 
