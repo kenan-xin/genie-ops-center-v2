@@ -40,9 +40,14 @@ The two root files are hashed already through `sharedGlobals`, so an edit re-run
 
 ## Mutation evidence
 
-Dropping the two positional files from the script (`... packages/config/src`) makes the guard test fail — `expected [ 'cd', '../..', '&&', 'oxlint', …(2) ] to include 'oxlint.config.ts'` — and lets a broken `oxfmt.config.ts` pass: `NX Successfully ran target lint for project @genie/config`. `packages/config/package.json` was restored byte-identical (`sha256 7070c1b5e437c37aa21f8b5812593dbaaa2ce0d5f4f0b475823e3749ee29247d`).
+Two mutations, each from the committed script:
 
-The guard is `tools/generators/src/workspace/validate/lint-scope.test.ts`: it reads the config manifest and requires `oxlint.config.ts` and `oxfmt.config.ts` as positional tokens.
+1. Dropping the two positional files (`... packages/config/src`) fails the guard with `expected [ 'packages/config/src', …(1) ] to include 'oxlint.config.ts'`, and lets a broken `oxfmt.config.ts` pass: `NX Successfully ran target lint for project @genie/config`.
+2. The space form `--config oxlint.config.ts packages/config/src oxfmt.config.ts`, where the root `oxlint.config.ts` is only the option value, fails the guard with `expected [ 'packages/config/src', …(1) ] to include 'oxlint.config.ts'`. A token-substring guard would have accepted this, because the token `oxlint.config.ts` is present either way.
+
+`packages/config/package.json` was restored byte-identical after each (`sha256 7070c1b5e437c37aa21f8b5812593dbaaa2ce0d5f4f0b475823e3749ee29247d`).
+
+The guard is `tools/generators/src/workspace/validate/lint-scope.test.ts`. It runs the lint script in a disposable tree against a stub `oxlint` that records the argv it was handed, consumes each option's value, and requires `oxlint.config.ts` and `oxfmt.config.ts` among the positional paths. Observing the argv is what separates a linted path from an option value.
 
 ## Not addressed here
 
