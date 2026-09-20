@@ -104,15 +104,15 @@ The installed bd help states linked Git worktrees discover the shared database v
 
 Use Superpowers using-git-worktrees to create or verify one isolated worktree per ticket, never a second nested worktree. Verify the intended integration revision and clean baseline before making edits. [Primary-source notes](superpowers-source-notes.md) describe the verified upstream skills; Beads rules here are the project's coordination overlay.
 
-In the worktree, with a unique session actor:
+Run these native commands in the worktree, with a unique session actor. `--sandbox` prevents automatic Dolt pushes; remote sync requires separate authorization. Personal command wrappers such as RTK are optional locally and are not prerequisites for these instructions:
 
 ```bash
-rtk proxy bd prime
-rtk proxy bd where --json
-rtk proxy bd worktree info
-rtk proxy bd ready --label spec-0 --type task --json
-rtk proxy bd show <bead-id> --json
-rtk proxy bd --actor <unique-session-name> update <bead-id> --claim
+bd --sandbox prime
+bd --sandbox where --json
+bd --sandbox worktree info
+bd --sandbox ready --label spec-0 --type task --json
+bd --sandbox show <bead-id> --json
+bd --sandbox --actor <unique-session-name> update <bead-id> --claim
 ```
 
 If claim fails, stop; do not overwrite the owner or retry with forced reassignment. Check prerequisite revisions even if the bead is ready. Stop if the worktree cannot see the approved ticket or if its tracker differs from the shared database.
@@ -121,10 +121,10 @@ Use writing-plans only for a bounded implementation plan inside this ticket, fol
 
 ## Copy-ready session prompt
 
-Replace the two placeholders before sending:
+Replace `<S0-ticket>`, `<bead-id>` and `<workspace-path>` before sending; use the recipient’s actual checkout path.
 
 ```text
-Implement only <S0-ticket> / <bead-id> in /home/kenan/work/genie-ops-center-v2 using Superpowers.
+Implement only <S0-ticket> / <bead-id> in <workspace-path> using Superpowers.
 
 Read docs/tickets/spec-0/README.md and that ticket's index.md, approved Spec 0, its technical plan, AGENTS.md and CLAUDE.md. Verify all prerequisite beads are closed with integrated passing evidence, and the worktree base contains their changes plus the approved planning files.
 
