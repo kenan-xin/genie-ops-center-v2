@@ -46,17 +46,14 @@ process.on("exit", () => {
 export function probe(
   files: readonly ProbeFile[],
   command: string,
-  args: readonly string[]
+  args: readonly string[],
+  nodeModulesRoot = join(WORKSPACE_ROOT, "node_modules")
 ): ProbeResult {
   const root = mkdtempSync(join(tmpdir(), "genie-target-probe-"));
 
   roots.push(root);
 
-  symlinkSync(
-    join(WORKSPACE_ROOT, "node_modules"),
-    join(root, "node_modules"),
-    "dir"
-  );
+  symlinkSync(nodeModulesRoot, join(root, "node_modules"), "dir");
 
   for (const file of files) {
     const absolute = join(root, file.path);

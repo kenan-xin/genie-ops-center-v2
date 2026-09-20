@@ -1,10 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  UNIT_TEST_EXCLUDE,
-  UNIT_TEST_INCLUDE,
-} from "@genie/config/vitest/unit";
 import { describe, expect, it } from "vitest";
 
 import { WORKSPACE_ROOT, probe } from "./__testing__/target-probe.ts";
@@ -20,15 +16,10 @@ const PASSING = `import { expect, it } from "vitest";\nit("passes", () => { expe
 const FAILING = `import { expect, it } from "vitest";\nit("fails", () => { expect(1).toBe(2); });\n`;
 
 function vitestConfig(): string {
-  return [
-    `import { defineConfig } from "vitest/config";`,
-    `export default defineConfig({ test: {`,
-    `  environment: "node",`,
-    `  include: ${JSON.stringify([...UNIT_TEST_INCLUDE])},`,
-    `  exclude: ${JSON.stringify([...UNIT_TEST_EXCLUDE])},`,
-    `  passWithNoTests: false,`,
-    `} });`,
-  ].join("\n");
+  return readFileSync(
+    join(WORKSPACE_ROOT, "packages/core/vitest.config.ts"),
+    "utf8"
+  );
 }
 
 describe("unit collection, run through the real vitest binary", () => {
@@ -40,9 +31,12 @@ describe("unit collection, run through the real vitest binary", () => {
         { path: "src/in-src.test.ts", source: PASSING },
         { path: "contracts/in-contracts.test.ts", source: PASSING },
         { path: "testing/in-testing.test.ts", source: FAILING },
+        { path: "src/excluded.stories.test.ts", source: FAILING },
+        { path: "contracts/excluded.stories.test.ts", source: FAILING },
       ],
       VITEST,
-      ["run", "--reporter=json", "--outputFile=report.json"]
+      ["run", "--reporter=json", "--outputFile=report.json"],
+      join(WORKSPACE_ROOT, "packages/core/node_modules")
     );
 
     expect(result.failed).toBe(false);
@@ -57,6 +51,7 @@ describe("unit collection, run through the real vitest binary", () => {
     expect(collected.some((name) => name.includes("in-src"))).toBe(true);
     expect(collected.some((name) => name.includes("in-contracts"))).toBe(true);
     expect(collected.some((name) => name.includes("in-testing"))).toBe(false);
+    expect(collected.some((name) => name.includes("stories"))).toBe(false);
   });
 });
 
