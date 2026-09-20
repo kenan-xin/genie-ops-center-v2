@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { WORKSPACE_ROOT, lintAt } from "./__testing__/lint-at.ts";
+import { importBoundaryOverrides } from "./boundaries.ts";
 
 describe("the import direction, proved through the oxlint binary", () => {
   it("runs against the real repository root", () => {
@@ -211,6 +212,44 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).not.toMatch(/no-restricted-imports/);
   });
 
+  it("lets contracts import a type from a runtime module", () => {
+    // The blank line is the repository's own spacing rule, not the boundary rule:
+    // without it this fixture fails on `require-readable-spacing` and would pass
+    // for the wrong reason.
+    const result = lintAt(
+      "packages/core/contracts/__boundary__/__boundary__.ts",
+      `import type { Stats } from "node:fs";\n\nexport type Echo = Stats;\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("still rejects a value import from the same runtime module", () => {
+    const result = lintAt(
+      "packages/core/contracts/__boundary__/__boundary__.ts",
+      `import { readFileSync } from "node:fs";\n\nexport const read = readFileSync;\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "contracts import only zod and types (DEC-42)."
+    );
+  });
+
+  it("still rejects a mixed type and value import from the same runtime module", () => {
+    const result = lintAt(
+      "packages/core/contracts/__boundary__/__boundary__.ts",
+      `import { type Stats, readFileSync } from "node:fs";\n\nexport const read: Stats | null = readFileSync;\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "contracts import only zod and types (DEC-42)."
+    );
+  });
+
   it("stops a module from importing a core service through the package subpath", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__/__boundary__.ts",
@@ -270,5 +309,24 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain(
       "ui imports nothing internal. Move the shared piece into ui."
     );
+  });
+});
+
+describe("the serialized oxlint configuration", () => {
+  it("keeps allowTypeImports on the contracts pattern", () => {
+    const entry = importBoundaryOverrides.find((o) =>
+      o.files?.includes("packages/core/contracts/**")
+    );
+
+    expect(entry).toBeDefined();
+
+    // `restrict()` always writes the rule as this two-element array, so matching it
+    // directly proves the field survived serialization. Oxlint exports no type for
+    // the rule's configuration, and its declared type is a union that includes a
+    // bare severity string, so reading it back needs no assertion.
+    expect(entry?.rules?.["no-restricted-imports"]).toMatchObject([
+      "error",
+      { patterns: [expect.objectContaining({ allowTypeImports: true })] },
+    ]);
   });
 });

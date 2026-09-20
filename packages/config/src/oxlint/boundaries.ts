@@ -3,7 +3,36 @@ import type { OxlintOverride } from "oxlint";
 type RestrictedGroup = {
   readonly group: readonly string[];
   readonly message: string;
+  /** Oxlint defaults this to false. Only the contracts entry sets it (R-7, DEC-42). */
+  readonly allowTypeImports?: boolean;
 };
+
+/** The shape Oxlint's `no-restricted-imports` schema accepts, ready to serialize. */
+type SerializedRestrictedGroup = {
+  group: string[];
+  message: string;
+  allowTypeImports?: boolean;
+};
+
+/**
+ * Copies one restricted group into the shape Oxlint accepts. Oxlint's schema wants
+ * mutable string arrays, so each group is copied. `allowTypeImports` is added only
+ * when the caller set it, so every other entry keeps the exact shape it had before.
+ */
+function serializeRestrictedGroup(
+  pattern: RestrictedGroup
+): SerializedRestrictedGroup {
+  const serialized: SerializedRestrictedGroup = {
+    group: [...pattern.group],
+    message: pattern.message,
+  };
+
+  if (pattern.allowTypeImports !== undefined) {
+    serialized.allowTypeImports = pattern.allowTypeImports;
+  }
+
+  return serialized;
+}
 
 function restrict(
   files: readonly string[],
@@ -14,12 +43,8 @@ function restrict(
     rules: {
       "no-restricted-imports": [
         "error",
-        // Oxlint's schema wants mutable string arrays, so each group is copied.
         {
-          patterns: patterns.map((p) => ({
-            group: [...p.group],
-            message: p.message,
-          })),
+          patterns: patterns.map(serializeRestrictedGroup),
         },
       ],
     },
@@ -131,6 +156,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       {
         group: ["*", "!zod", "!zod/**"],
         message: "contracts import only zod and types (DEC-42).",
+        allowTypeImports: true,
       },
     ]
   ),
