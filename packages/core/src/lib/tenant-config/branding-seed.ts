@@ -18,14 +18,18 @@ export const brandingSeedSchema = z.strictObject({
   logo_dark_file_id: z.string().min(1).nullish(),
   logo_mark_file_id: z.string().min(1).nullish(),
   favicon_file_id: z.string().min(1).nullish(),
-  primary_color: z.string().regex(HEX_COLOR, "a colour is a six digit hex value"),
+  primary_color: z
+    .string()
+    .regex(HEX_COLOR, "a colour is a six digit hex value"),
   // Derived: genie-ops setup computes primary_foreground from primary_color with the same shared
   // rule a branding save uses (white or near-black by relative luminance,
   // docs/design/reference/sections/branding/components/helpers.ts line 184, DEC-47).
   // Bead genie-ops-center-v2-1rd.3.1 tracks it; the file never authors it.
   default_theme: z.enum(["light", "dark", "system"]),
   // Documented default `plus-jakarta-sans`, so the key may be omitted.
-  font_family: z.enum(["plus-jakarta-sans", "ibm-plex-sans", "manrope", "source-serif-4"]).optional(),
+  font_family: z
+    .enum(["plus-jakarta-sans", "ibm-plex-sans", "manrope", "source-serif-4"])
+    .optional(),
   // Documented default `default`, so the key may be omitted.
   font_size: z.enum(["compact", "default", "large"]).optional(),
   text_color: z.string().regex(HEX_COLOR, "a colour is a six digit hex value"),
@@ -34,7 +38,9 @@ export const brandingSeedSchema = z.strictObject({
   login_background_file_id: z.string().min(1).nullish(),
   // No document marks these three settled or defaulted; required only because no default is
   // documented, and a default may exist in the database.
-  login_background_color: z.string().regex(HEX_COLOR, "a colour is a six digit hex value"),
+  login_background_color: z
+    .string()
+    .regex(HEX_COLOR, "a colour is a six digit hex value"),
   login_welcome_text: z.string().min(1),
   // The system-use notice is nullable in data-shape.
   login_notice_text: z.string().min(1).nullish(),

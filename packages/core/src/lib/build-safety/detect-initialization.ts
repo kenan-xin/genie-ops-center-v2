@@ -11,7 +11,6 @@
  */
 import { writeFileSync } from "node:fs";
 import { createRequire, registerHooks } from "node:module";
-
 import type { Socket } from "node:net";
 
 const FORBIDDEN = ["pg", "drizzle-orm/node-postgres", "pg-pool"] as const;
@@ -37,28 +36,24 @@ const realLookup = dns.lookup.bind(dns);
 // `Object.assign` carries the original's static side (its `__promisify__` and
 // overloads) onto the wrapper, so the patch satisfies the declared property type
 // without a cast.
-dns.lookup = Object.assign(
-  function patchedLookup(...args: Parameters<typeof realLookup>) {
-    connections.push("dns");
+dns.lookup = Object.assign(function patchedLookup(
+  ...args: Parameters<typeof realLookup>
+) {
+  connections.push("dns");
 
-    return realLookup(...args);
-  },
-  dns.lookup
-);
+  return realLookup(...args);
+}, dns.lookup);
 
 const realConnect = net.Socket.prototype.connect;
 
-net.Socket.prototype.connect = Object.assign(
-  function patchedConnect(
-    this: Socket,
-    ...args: Parameters<typeof realConnect>
-  ) {
-    connections.push("socket");
+net.Socket.prototype.connect = Object.assign(function patchedConnect(
+  this: Socket,
+  ...args: Parameters<typeof realConnect>
+) {
+  connections.push("socket");
 
-    return realConnect.apply(this, args);
-  },
-  realConnect
-);
+  return realConnect.apply(this, args);
+}, realConnect);
 
 registerHooks({
   resolve(specifier, context, nextResolve) {

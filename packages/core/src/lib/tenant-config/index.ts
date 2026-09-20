@@ -11,4 +11,3 @@
 export { brandingSeedSchema, type BrandingSeed } from "./branding-seed.ts";
 
 export { tenantYamlSchema, type TenantYaml } from "./tenant-yaml.ts";
-

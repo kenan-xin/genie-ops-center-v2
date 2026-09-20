@@ -50,25 +50,37 @@ describe("brandingSeedSchema", () => {
   });
 
   it("rejects an unknown key", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, modules: ["placeholder"] });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      modules: ["placeholder"],
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a bookkeeping column the database owns, such as updated_at", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, updated_at: "2026-09-21T00:00:00Z" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      updated_at: "2026-09-21T00:00:00Z",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a colour that is not a hex value", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, primary_color: "blue" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      primary_color: "blue",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects an out-of-range enum value", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, font_size: "huge" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      font_size: "huge",
+    });
 
     expect(result.success).toBe(false);
   });
@@ -83,7 +95,10 @@ describe("brandingSeedSchema", () => {
   });
 
   it("rejects primary_foreground, a derived column an author must not write", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, primary_foreground: "#ffffff" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      primary_foreground: "#ffffff",
+    });
 
     expect(result.success).toBe(false);
   });
@@ -98,31 +113,46 @@ describe("brandingSeedSchema", () => {
   });
 
   it("rejects a reply-to address that is not an email address", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, email_reply_to: "not-an-email" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      email_reply_to: "not-an-email",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a support email that is not an email address", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, support_email: "not-an-email" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      support_email: "not-an-email",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a support URL that is not HTTP or HTTPS", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, support_url: "ftp://files.example.com" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      support_url: "ftp://files.example.com",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a terms URL that is not HTTP or HTTPS", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, terms_url: "ftp://files.example.com" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      terms_url: "ftp://files.example.com",
+    });
 
     expect(result.success).toBe(false);
   });
 
   it("rejects a privacy URL that is not HTTP or HTTPS", () => {
-    const result = brandingSeedSchema.safeParse({ ...VALID, privacy_url: "ftp://files.example.com" });
+    const result = brandingSeedSchema.safeParse({
+      ...VALID,
+      privacy_url: "ftp://files.example.com",
+    });
 
     expect(result.success).toBe(false);
   });
