@@ -49,7 +49,11 @@
         "{workspaceRoot}/**/project.json",
         "{workspaceRoot}/**/tsconfig*.json",
         "{workspaceRoot}/**/vitest*.config.*",
-        "{workspaceRoot}/**/README.md"
+        "{workspaceRoot}/apps/*/README.md",
+        "{workspaceRoot}/packages/*/README.md",
+        "{workspaceRoot}/packages/modules/*/README.md",
+        "{workspaceRoot}/tools/*/README.md",
+        "{workspaceRoot}/customers/*/app/README.md"
       ]
     }
   }
