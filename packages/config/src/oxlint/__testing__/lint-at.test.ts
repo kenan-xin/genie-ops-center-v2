@@ -10,12 +10,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   WORKSPACE_ROOT,
+  isolatedRootPrefix,
   lintAt,
   lintAtIsolated,
   withFixture,
@@ -37,10 +38,14 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** The temporary roots that isolated lint runs have left behind. */
+/**
+ * The temporary roots this process left behind. Scoped by process id, because a
+ * parallel worker running the boundary suite creates roots of its own, and an
+ * unscoped count would swing between the reading before and the one after.
+ */
 function strayRoots(): string[] {
   return readdirSync(tmpdir()).filter((entry) =>
-    entry.startsWith("oxlint-boundary-")
+    entry.startsWith(isolatedRootPrefix())
   );
 }
 
@@ -138,6 +143,10 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
   const OWNED = "apps/genie/src/index.ts";
 
   it("refuses the same path through lintAt, which is why the isolated root exists", () => {
+    // Asserted first, so that a rename of the real file blames the rename rather
+    // than looking like the refusal stopped working.
+    expect(existsSync(join(WORKSPACE_ROOT, OWNED))).toBe(true);
+
     expect(() => lintAt(OWNED, SOURCE)).toThrow("EEXIST");
   });
 
@@ -168,14 +177,61 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
     expect(existsSync(join(WORKSPACE_ROOT, "node_modules"))).toBe(true);
   });
 
-  it("refuses a fixture path under an anchor, which would write into the checkout", () => {
-    const absolute = join(WORKSPACE_ROOT, "packages/config/__written__.ts");
+  // A guard that compares the raw first segment is bypassed by every spelling
+  // below, and each one resolves through an anchor symlink into the checkout.
+  const UNDER_AN_ANCHOR = [
+    "packages/config/__written__.ts",
+    "./packages/config/__written__.ts",
+    ".//packages/config/__written__.ts",
+    "a/../packages/config/__written__.ts",
+    "node_modules/__written__.ts",
+    "packages/../oxlint.config.ts",
+  ];
 
+  it.each(UNDER_AN_ANCHOR)(
+    "refuses %s, which would write into the checkout",
+    (candidate) => {
+      expect(() => lintAtIsolated(candidate, SOURCE)).toThrow(
+        "symlinked anchor"
+      );
+    }
+  );
+
+  it("ignores a root belonging to another process, so a parallel worker cannot skew it", () => {
+    // The boundary suite runs in its own worker and makes six roots of its own.
+    // An unscoped prefix would count them, and the before-and-after comparison
+    // would then swing on another worker's timing rather than on cleanup.
+    const foreign = join(tmpdir(), `oxlint-boundary-${process.pid + 1}-abc123`);
+
+    mkdirSync(foreign);
+
+    try {
+      expect(strayRoots()).not.toContain(basename(foreign));
+    } finally {
+      rmSync(foreign, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses an absolute path, which no root can contain", () => {
     expect(() =>
-      lintAtIsolated("packages/config/__written__.ts", SOURCE)
-    ).toThrow("symlinked anchor");
+      lintAtIsolated(
+        join(WORKSPACE_ROOT, "packages/config/__written__.ts"),
+        SOURCE
+      )
+    ).toThrow("must be relative");
+  });
 
-    expect(existsSync(absolute)).toBe(false);
+  it("leaves no file in the checkout after the refusals", () => {
+    for (const candidate of UNDER_AN_ANCHOR) {
+      expect(() => lintAtIsolated(candidate, SOURCE)).toThrow();
+    }
+
+    expect(
+      existsSync(join(WORKSPACE_ROOT, "packages/config/__written__.ts"))
+    ).toBe(false);
+    expect(
+      existsSync(join(WORKSPACE_ROOT, "node_modules/__written__.ts"))
+    ).toBe(false);
   });
 });
 

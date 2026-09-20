@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, isAbsolute, join, normalize, relative } from "node:path";
 
 export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
@@ -25,6 +25,11 @@ const ISOLATED_ROOT_ANCHORS: readonly string[] = [
   "packages",
   "node_modules",
 ];
+
+/** Names every isolated root this process owns, and no other process's. */
+export function isolatedRootPrefix(): string {
+  return `oxlint-boundary-${process.pid}-`;
+}
 
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
@@ -155,38 +160,50 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
  * The root holds the fixture and three symlinks into the checkout. Oxlint loads
  * the repository's real `oxlint.config.ts` through one of them, so the rule values
  * under test are the production ones and cannot drift from them.
+ *
+ * No path under `packages/` can be served, because `packages` is one of those
+ * symlinks. Most boundary rules key there, so if such a path ever needs a
+ * fixture, reopen this by making `root/packages` a real directory holding one
+ * symlink per child: only the symlinked children then stay off-limits.
  */
 export function lintAtIsolated(
   relativePath: string,
   source: string
 ): LintOutcome {
-  const [firstSegment] = relativePath.split("/");
+  if (isAbsolute(relativePath)) {
+    throw new Error(
+      `An isolated fixture path must be relative: ${relativePath}`
+    );
+  }
+
+  // Normalized first, so that `./packages/x`, `.//packages/x` and `a/../packages/x`
+  // are judged by where they land rather than by how they are spelled.
+  const safePath = normalize(relativePath);
+  // The default only satisfies `noUncheckedIndexedAccess`. `split` always yields
+  // at least one element, and an empty segment is not an anchor name either way.
+  const [firstSegment = ""] = safePath.split("/");
 
   // Each anchor is a symlink into the checkout, so a fixture below one would be
   // written into the real tree. The fixture must land in the root's own storage.
-  if (
-    firstSegment !== undefined &&
-    ISOLATED_ROOT_ANCHORS.includes(firstSegment)
-  ) {
+  if (ISOLATED_ROOT_ANCHORS.includes(firstSegment)) {
     throw new Error(
       `An isolated fixture path must not start with a symlinked anchor: ${relativePath}`
     );
   }
 
-  const root = mkdtempSync(join(tmpdir(), "oxlint-boundary-"));
+  const root = mkdtempSync(join(tmpdir(), isolatedRootPrefix()));
 
   try {
     for (const anchor of ISOLATED_ROOT_ANCHORS) {
       symlinkSync(join(WORKSPACE_ROOT, anchor), join(root, anchor));
     }
 
-    return withFixture(root, relativePath, source, () =>
-      runOxlint(root, relativePath)
-    );
+    return withFixture(root, safePath, source, () => runOxlint(root, safePath));
   } finally {
-    // Every anchor is unlinked by name before the root is removed. A recursive
-    // removal that ever followed one would take the checkout with it, so the
-    // symlinks are gone before a recursive call can reach them.
+    // Node unlinks a symlink-to-directory rather than descending into it, so the
+    // recursive removal below is already safe. Every anchor is unlinked by name
+    // first anyway: the cost is three lines, and the cost of that behaviour ever
+    // changing is the checkout.
     for (const anchor of ISOLATED_ROOT_ANCHORS) {
       rmSync(join(root, anchor), { force: true });
     }
