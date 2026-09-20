@@ -62,12 +62,21 @@ const CORE = [
   "**/../core/**",
 ];
 
-// A scoped package name holds exactly one slash, so `@genie/modules/<id>` is
-// not a legal package name and can never appear in a real import. The hyphen
-// form is the realizable spelling, as `tools/generators` fixtures already use.
-// The slash forms stay only because the boundary table in
-// `docs/specs/00-monorepo-foundation.md` writes them.
+// `@genie/module-<id>` is the module package name, for the capability folder
+// `packages/modules/<id>` (`docs/architecture/repository-layout.md`, Module
+// package naming). Those two entries are the reachable ones.
+//
+// The rest are defensive and stay. `@genie/modules-*` is the superseded plural
+// spelling, which a hand-edited manifest could still carry. A scoped name holds
+// one slash, so `@genie/modules/<id>` denotes a subpath of an umbrella package
+// this architecture does not define. The two path forms catch relative
+// spellings, which carry no package name at all.
+//
+// `@genie/module-*` does not match `@genie/modules-*`: the literal prefix
+// `module-` fails at the `s`. The entries are distinct, not redundant.
 const MODULES = [
+  "@genie/module-*",
+  "@genie/module-*/**",
   "@genie/modules-*",
   "@genie/modules-*/**",
   "@genie/modules/*",

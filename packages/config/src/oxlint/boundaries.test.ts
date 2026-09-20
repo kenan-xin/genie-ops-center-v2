@@ -85,6 +85,157 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
+  // The singular `@genie/module-<id>` spelling is the naming contract
+  // (`docs/architecture/repository-layout.md`, Module package naming). The plural
+  // and slash cases above stay as defensive cover; these are the reachable ones.
+
+  it("stops one module from importing another by the singular package name", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/module-beta";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("stops one module reaching into another through a singular public subpath", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/module-beta/schema";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("stops a module importing a hyphenated module id by the singular name", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/module-contract-data";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("stops ui importing a module by the singular package name", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "@genie/module-alpha";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no module.");
+  });
+
+  it("stops core importing a module by the singular package name", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import "@genie/module-alpha";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "core never imports a module. Extend the module contract instead."
+    );
+  });
+
+  it("stops config importing a module by the singular package name", () => {
+    const result = lintAt(
+      "packages/config/__boundary__/__boundary__.ts",
+      `import "@genie/module-alpha";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "config imports no internal project (R-7a)."
+    );
+  });
+
+  it("stops tooling importing a module by the singular package name", () => {
+    const result = lintAt(
+      "tools/generators/src/__boundary__.ts",
+      `import "@genie/module-alpha";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "tooling reads module metadata as data. It never imports a module."
+    );
+  });
+
+  // The two path spellings in the module group carry no package name, so no
+  // package pattern can see them. They are what stops a module being reached by
+  // walking the tree instead of naming it.
+
+  it("stops ui reaching a module by climbing into the modules folder", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "../../modules/alpha/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports no module.");
+  });
+
+  it("stops core reaching a module by its repository path", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import "../../../packages/modules/alpha/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "core never imports a module. Extend the module contract instead."
+    );
+  });
+
+  // The positive half. Widening the module group must not break the two imports
+  // the architecture depends on: an app composing a module, and a module using core.
+
+  it("lets an app compose a module by the singular package name", () => {
+    const result = lintAt(
+      "apps/genie/src/__boundary__.ts",
+      `import "@genie/module-alpha";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("lets an app compose a module through a public subpath", () => {
+    const result = lintAt(
+      "apps/genie/src/__boundary__.ts",
+      `import "@genie/module-alpha/pages";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("lets a module import core, which the module contract depends on", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/core";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
   it("stops a module from importing the application", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__/__boundary__.ts",
