@@ -1,5 +1,7 @@
 # S0-03 — Define foundation module contracts and build-safe schemas
 
+Current preparation: [reconciled dependency slice and pending ownership handoff](dependency-handoff.md), based on accepted S0-01 `cb5b010`. This does not accept the slice, release S0-02 adoption, or start Phase B.
+
 Bead: `genie-ops-center-v2-1rd.3`. Status and claims live in Beads, not this document.
 
 ## Governing context
