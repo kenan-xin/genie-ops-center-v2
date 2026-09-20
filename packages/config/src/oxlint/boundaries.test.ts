@@ -893,6 +893,23 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).not.toMatch(/no-restricted-imports/);
   });
 
+  // Every exception above is spelled twice, once for `.config.ts` and once for
+  // `.config.mts`, and the cases above exercise only the first spelling. One
+  // fixture per `.mts` glob, so a dropped or mistyped spelling fails here.
+  it.each([
+    "packages/ui/__boundary__.config.mts",
+    "packages/core/__boundary__.config.mts",
+    "packages/modules/alpha/__boundary__.config.mts",
+    "apps/genie/__boundary__.config.mts",
+    "customers/acme/app/__boundary__.config.mts",
+  ])("lets the package configuration at %s consume a preset", (path) => {
+    const result = lintAt(path, `import "@genie/config/vitest/unit";\n`);
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
   it("still bans a sibling module from a module package configuration file", () => {
     const result = lintAt(
       "packages/modules/alpha/__boundary__.config.ts",
@@ -1149,6 +1166,29 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 });
 
+/** The serialized pattern shape `restrict()` writes into every override. */
+type SerializedPattern = {
+  group: string[];
+  message: string;
+  allowTypeImports?: boolean;
+};
+
+/** Reads the patterns back out of one override. */
+function patternsOf(
+  override: (typeof importBoundaryOverrides)[number]
+): SerializedPattern[] {
+  // SAFETY: every entry in `importBoundaryOverrides` comes from `restrict()`, which
+  // writes this rule as exactly this two-element array. Oxlint exports no type for
+  // the rule's configuration, and its declared type is a union that includes a bare
+  // severity string, so reading the patterns back needs the assertion.
+  const rule = override.rules?.["no-restricted-imports"] as [
+    "error",
+    { patterns: SerializedPattern[] },
+  ];
+
+  return rule[1].patterns;
+}
+
 describe("the serialized oxlint configuration", () => {
   it("keeps allowTypeImports on the contracts pattern", () => {
     const entry = importBoundaryOverrides.find((o) =>
@@ -1164,6 +1204,22 @@ describe("the serialized oxlint configuration", () => {
     expect(entry?.rules?.["no-restricted-imports"]).toMatchObject([
       "error",
       { patterns: [expect.objectContaining({ allowTypeImports: true })] },
+    ]);
+  });
+
+  it("omits allowTypeImports from every other pattern", () => {
+    const carriers = importBoundaryOverrides
+      .flatMap(patternsOf)
+      .filter((pattern) => "allowTypeImports" in pattern);
+
+    // `toEqual` on the whole list, not `objectContaining` on one entry: an extra
+    // serialized field on any other pattern lengthens this list and fails here.
+    expect(carriers).toEqual([
+      {
+        group: ["*", "!zod", "!zod/**"],
+        message: "contracts import only zod and types (DEC-42).",
+        allowTypeImports: true,
+      },
     ]);
   });
 });
