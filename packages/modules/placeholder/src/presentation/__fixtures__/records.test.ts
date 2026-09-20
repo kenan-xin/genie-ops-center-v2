@@ -15,8 +15,8 @@ describe("placeholderRecords", () => {
 
   it("gives every row a label and a detail the stories can assert on", () => {
     for (const record of placeholderRecords) {
-      expect(record.label).not.toBe("");
-      expect(record.detail).not.toBe("");
+      expect(record.label.trim().length).toBeGreaterThan(0);
+      expect(record.detail.trim().length).toBeGreaterThan(0);
     }
   });
 });
