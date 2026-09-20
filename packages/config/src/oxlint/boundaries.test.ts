@@ -820,6 +820,23 @@ describe("the import direction, proved through the oxlint binary", () => {
     );
   });
 
+  it("keeps the NO_CONFIG restriction on a module file past the deepest depth entry", () => {
+    // `packages/modules/*/**` is the fallback for a module file more than three
+    // folders below its own root. The depth-4 entry repeats the whole layer,
+    // including `NO_CONFIG`. This test proves `NO_CONFIG` fires at that depth
+    // so the restriction list on entry 250 is not test-invisible.
+    const result = lintAt(
+      "packages/modules/alpha/src/a/b/c/__boundary__.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "product code never imports the shared configuration package (R-7a)."
+    );
+  });
+
   it("still allows a module its own relative import from src", () => {
     const result = lintAt(
       "packages/modules/alpha/src/__boundary__.ts",
