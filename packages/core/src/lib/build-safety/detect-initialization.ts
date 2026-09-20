@@ -3,11 +3,14 @@
  * point. Two detectors record what that import started, and the report file is
  * written when the process exits.
  *
- * `node:net` captures `dns.lookup` while it loads, so the DNS patch must be in
- * place before `node:net` is first required. That is why this module reaches for
- * both through `createRequire` in this order: static imports would load
- * `node:net` before the patch runs, and the DNS half of the connection detector
- * would go silently dead.
+ * Both modules are reached through `createRequire` rather than imported, to keep
+ * the load order of this file's own body under its control. On Node 26 that buys
+ * nothing measurable: `node:net` reads `dns.lookup` when it connects, not while
+ * it loads, and forcing `node:net` to load first leaves every build-safety test
+ * passing. The ordering is defensive against a runtime that captures the
+ * reference at load time instead. What proves the DNS half of the connection
+ * detector is live is the `opens-connection.ts` control fixture, which asserts
+ * both "socket" and "dns": if the patch ever went dead, that test would fail.
  */
 import { writeFileSync } from "node:fs";
 import { createRequire, registerHooks } from "node:module";
@@ -25,8 +28,6 @@ type DnsModule = typeof import("node:dns");
 
 type NetModule = typeof import("node:net");
 
-// The require calls stay above the patches so the DNS patch lands before
-// `node:net` loads and captures the un-patched `dns.lookup` for itself.
 const dns: DnsModule = require("node:dns");
 
 const net: NetModule = require("node:net");

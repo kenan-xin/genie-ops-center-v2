@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 
@@ -94,10 +94,17 @@ describe("the build-safe entrypoints", () => {
     "BETTER_AUTH_SECRET",
   ];
 
+  // The child inherits this worker's environment, so the clearing has to happen
+  // here. Stubbing rather than deleting keeps it out of every later test file
+  // that shares the worker.
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it.each(buildSafeSubpaths())(
     "imports %s with no deployment variable and starts nothing",
     (subpath) => {
-      for (const name of CLEARED) delete process.env[name];
+      for (const name of CLEARED) vi.stubEnv(name, undefined);
 
       const specifier = `@genie/core${subpath.replace(/^\./, "")}`;
 
