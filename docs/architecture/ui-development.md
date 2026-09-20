@@ -65,6 +65,6 @@ Documentation checked 2026-09-18; these are documentation findings, not installe
 
 - [Next.js with Vite](https://storybook.js.org/docs/get-started/frameworks/nextjs-vite): recommended framework, Next.js >=14.1, Vite >=5, routing adapters, experimental RSC support.
 - [Nx Storybook](https://nx.dev/docs/technologies/test-tools/storybook/introduction): plugin inference, Nx/plugin version alignment, Storybook >=8 and <11 support. The generic generator's listed framework choices do not explicitly include nextjs-vite; verify generated output and configure the requested framework explicitly when necessary.
-- [Vitest addon](https://storybook.js.org/docs/writing-tests/integrations/vitest-addon): Vite framework, Vitest >=3, browser-mode provider, rendering/interaction tests and CLI execution without serving Storybook. Its version floor does not by itself prove compatibility with the repository's Vitest 5 pin.
+- [Vitest addon](https://storybook.js.org/docs/writing-tests/integrations/vitest-addon): Vite framework, Vitest >=3, browser-mode provider, rendering/interaction tests and CLI execution without serving Storybook. Its version floor does not by itself prove compatibility with the repository's Vitest 4.1.11 pin (ADR 0009).
 
 Before accepting implementation, install the pinned combination and demonstrate dev startup, static build, CLI and in-UI tests, a deliberate failing interaction, and an accessibility failure. Any incompatible pinned major is a reported blocker, not permission to silently downgrade the stack.

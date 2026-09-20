@@ -471,7 +471,7 @@ Before the fix, `storybook dev` bound every interface:
 LISTEN 0  511  *:6006  *:*  users:(("node-MainThread",pid=2394850,fd=42))
 ```
 
-and the banner advertised `On your network: http://192.168.50.250:6006/`. Binding every interface publishes a local-area-network address, which this ticket must not do.
+and the banner advertised `On your network: http://<lan-ip>:6006/`. Binding every interface publishes a local-area-network address, which this ticket must not do.
 
 Commit `d3cfa2a` added `--host 127.0.0.1` to the `storybook` script. After the fix:
 
@@ -479,7 +479,7 @@ Commit `d3cfa2a` added `--host 127.0.0.1` to the `storybook` script. After the f
 LISTEN 0  511  127.0.0.1:6006  0.0.0.0:*  users:(("node-MainThread",pid=2843283,fd=41))
 ```
 
-The banner prints `On your network: http://127.0.0.1:6006/`, and a probe of the local-area-network address is refused: `curl -m 4 http://192.168.50.250:6006/mcp` returns `curl: (7) Failed to connect to 192.168.50.250:6006 after 0 ms`. The same bind was observed again live during this task, in section 9.
+The banner prints `On your network: http://127.0.0.1:6006/`, and a probe of the local-area-network address is refused: `curl -m 4 http://<lan-ip>:6006/mcp` returns `curl: (7) Failed to connect to <lan-ip>:6006 after 0 ms`. The same bind was observed again live during this task, in section 9.
 
 The endpoint reaches no production surface. The addon is a development dependency of `apps/storybook`, which is itself private, and the static build carries no `/mcp` string. The stop condition "the MCP endpoint cannot bind to loopback only" was not reached.
 
