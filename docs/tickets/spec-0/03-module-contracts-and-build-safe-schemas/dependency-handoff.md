@@ -15,7 +15,7 @@ The previous independent review of `66b1c3d` identified two real blockers. Both 
 
 ## Minimal independently integrable slice
 
-Use [dependency-slice.patch](dependency-slice.patch), based on develop `cb5b010`. Do not cherry-pick `66b1c3d` unchanged: it contains the premature export. Do not merge the full S0-03 branch merely to obtain its pins.
+Applied. The five pins and their matching lock entries are on develop, so the slice that `dependency-slice.patch` carried needs no further application and the patch file is removed. The table below stays as the record of what landed. Do not cherry-pick `66b1c3d` unchanged: it contains the premature export. Do not merge the full S0-03 branch merely to obtain its pins.
 
 | File | Change |
 | --- | --- |
@@ -30,9 +30,7 @@ Use [dependency-slice.patch](dependency-slice.patch), based on develop `cb5b010`
 | `@trpc/server` | `11.19.0` | core devDependency |
 | `@types/pg` | `8.23.1` | core devDependency |
 
-Patch SHA-256: `f05e79c774040b79bd22c9b3efa043bdc935a5d22f68876d34736b2b1364d25d`.
-
-The patch excludes Phase A implementation, coverage changes, the contracts export, and Storybook adoption. It preserves S0-01's config-local `@oxlint/plugins` entry. Root manifest, `nx.json`, `pnpm-workspace.yaml`, TypeScript/Vitest pins and React-family pins are unchanged. S0-03's baseline remains Vitest 5.0.1 until S0-02's separately approved adoption; this is not an instruction to revert S0-02's approved 4.1.11 pin. React/react-dom/@types/react/@types/react-dom agreement remains 19.3.0, installed only where the relevant owner requires them.
+The slice excluded Phase A implementation, coverage changes, the contracts export, and Storybook adoption. It preserves S0-01's config-local `@oxlint/plugins` entry. Root manifest, `nx.json`, `pnpm-workspace.yaml`, TypeScript/Vitest pins and React-family pins are unchanged. S0-03's baseline remains Vitest 5.0.1 until S0-02's separately approved adoption; this is not an instruction to revert S0-02's approved 4.1.11 pin. React/react-dom/@types/react/@types/react-dom agreement remains 19.3.0, installed only where the relevant owner requires them.
 
 ## Validation
 
