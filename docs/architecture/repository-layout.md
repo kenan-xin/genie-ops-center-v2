@@ -82,7 +82,8 @@ genie-ops-center/
         branding.seed.json          Initial authored branding; required values and omission rules follow
                                     architecture/branding-seed.md (DEC-35). Replaced by the admin
                                     portal after go-live. Validated by the strict schema in
-                                    packages/core/src/lib/tenant-config/; carries a $schema key (DEC-35).
+                                    packages/core/src/lib/tenant-config/ after the loader removes its
+                                    $schema editor key (DEC-35).
         compose.yaml                Generated from deploy/stack/. Committed; holds no secret.
         .env.example                Generated from the environment contract. The real .env is never committed.
         values.yaml                 Helm values, written by the generator and used only when the customer runs Kubernetes.

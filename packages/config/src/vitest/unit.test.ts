@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { unitTestPreset } from "./unit.ts";
+import {
+  UNIT_TEST_EXCLUDE,
+  UNIT_TEST_INCLUDE,
+  unitTestPreset,
+} from "./unit.ts";
 
 describe("unitTestPreset", () => {
   it("restores mocks between tests so one test cannot leak into the next", () => {
@@ -11,12 +15,21 @@ describe("unitTestPreset", () => {
     expect(unitTestPreset.test?.passWithNoTests).toBe(false);
   });
 
-  it("collects only unit test files and leaves browser and end-to-end files alone", () => {
-    expect(unitTestPreset.test?.include).toEqual([
-      "src/**/*.test.ts",
-      "src/**/*.test.tsx",
-    ]);
-    expect(unitTestPreset.test?.exclude).toContain("**/*.stories.*");
-    expect(unitTestPreset.test?.exclude).toContain("e2e/**");
+  it("collects unit tests from src and from the top-level contracts folder", () => {
+    expect(unitTestPreset.test?.include).toEqual([...UNIT_TEST_INCLUDE]);
+    expect(UNIT_TEST_INCLUDE).toContain("src/**/*.test.ts");
+    expect(UNIT_TEST_INCLUDE).toContain("contracts/**/*.test.ts");
+  });
+
+  it("keeps integration tests under testing out of the unit collection", () => {
+    expect(
+      UNIT_TEST_INCLUDE.some((pattern) => pattern.startsWith("testing/"))
+    ).toBe(false);
+    expect(unitTestPreset.test?.exclude).toContain("testing/**");
+  });
+
+  it("leaves browser stories and end-to-end files out of the unit collection", () => {
+    expect(UNIT_TEST_EXCLUDE).toContain("**/*.stories.*");
+    expect(UNIT_TEST_EXCLUDE).toContain("e2e/**");
   });
 });

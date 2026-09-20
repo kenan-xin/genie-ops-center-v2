@@ -5,12 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./contracts": "./contracts/index.ts",
     "./tenant-config": "./src/lib/tenant-config/index.ts"
   },
   "scripts": {
-    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "lint": "oxlint --config ../../oxlint.config.ts src contracts testing",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json"
   },
   "dependencies": {
     "@genie/ui": "workspace:*",

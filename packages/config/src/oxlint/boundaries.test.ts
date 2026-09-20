@@ -1166,6 +1166,66 @@ describe("the import direction, proved through the oxlint binary", () => {
   });
 });
 
+describe("the contracts and schema subpaths", () => {
+  it("lets tooling import the build-safe tenant schemas", () => {
+    const result = lintAt(
+      "tools/generators/__boundary__/__boundary__.ts",
+      `import "@genie/core/tenant-config";\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("lets a module import the contracts surface", () => {
+    const result = lintAt(
+      "packages/modules/example/__boundary__/__boundary__.ts",
+      `import "@genie/core/contracts";\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("lets the contracts surface import zod", () => {
+    const result = lintAt(
+      "packages/core/contracts/__boundary__/__boundary__.ts",
+      `import "zod";\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("stops the contracts surface importing anything else", () => {
+    const result = lintAt(
+      "packages/core/contracts/__boundary__/__boundary__.ts",
+      `import "node:fs";\n`
+    );
+
+    expect(result.failed).toBe(true);
+    expect(result.output).toContain(
+      "contracts import only zod and types (DEC-42)."
+    );
+  });
+
+  it("stops the tenant schemas importing a database driver", () => {
+    const result = lintAt(
+      "packages/core/src/lib/tenant-config/__boundary__/__boundary__.ts",
+      `import "pg";\n`
+    );
+
+    expect(result.failed).toBe(true);
+  });
+
+  it("stops core testing helpers importing a module", () => {
+    const result = lintAt(
+      "packages/core/testing/__boundary__/__boundary__.ts",
+      `import "@genie/module-placeholder";\n`
+    );
+
+    expect(result.failed).toBe(true);
+    expect(result.output).toContain("core never imports a module");
+  });
+});
+
 /** The serialized pattern shape `restrict()` writes into every override. */
 type SerializedPattern = {
   group: string[];
