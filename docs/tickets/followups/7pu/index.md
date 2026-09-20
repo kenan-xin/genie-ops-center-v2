@@ -10,18 +10,26 @@ sh scripts/prove-hooks.sh
 
 ## What the run covered
 
-Run date 2026-09-21. Repository head `1fa6176` on branch `test/7pu-hook-proof`. Lefthook `2.1.14`, the version pinned in `package.json`, taken from `LEFTHOOK_BIN` or `node_modules/.bin/lefthook` or `PATH`. The script printed `all cases passed`.
+Run date 2026-09-21. Repository head `1fa6176` on branch `test/7pu-hook-proof`. Lefthook `2.1.14`, taken from `LEFTHOOK_BIN`, then `node_modules/.bin/lefthook`, then `PATH`. The script makes that path absolute and compares the binary's reported version with the `lefthook` pin it reads from `package.json`. Any other version stops the run, so the recorded version is the version that ran. The script printed `all cases passed`.
 
 The script builds a throwaway Git repository under the temporary directory, copies the tracked dispatchers from `.githooks/`, and deletes the directory when it exits.
 
+No hook of the caller's machine can run, the seed commit included. Every Git command runs with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointing at files the script writes, with an empty template directory, and the throwaway repository sets its own `core.hooksPath` to an empty folder before the seed commit. The temporary global file names a sentinel hooks directory on purpose, and case 0 and case 7 prove the sentinel never ran.
+
 | Case | What it does | Result |
 | --- | --- | --- |
+| 0 | Configures a sentinel hook in the temporary global Git configuration, then seeds the throwaway repository | The sentinel did not run and the seed commit produced no hook output |
 | 1 | Sets `core.hooksPath` to `.githooks` in the throwaway repository, the same command as `pnpm run hooks:install` | `core.hooksPath` reads back as `.githooks` |
 | 2 | Commits one file | Order recorded: Beads `pre-commit`, then the Lefthook job, then Beads `prepare-commit-msg`. The commit was written |
 | 3 | Removes `.beads/hooks/pre-commit`, then commits | Exit status 1, message `hook dispatcher: ... is missing or not executable`, no commit written |
 | 4 | Runs the `post-merge` dispatcher directly | The Beads hook ran and Lefthook did not, which proves the `pre-commit` guard |
 | 5 | Removes `node_modules/.bin/lefthook`, then commits | Exit status 1, the message names `pnpm install --frozen-lockfile`, no commit written |
 | 6 | Points the throwaway `lefthook.yml` at a job that exits 1, then commits | Exit status 1, no commit written |
+| 7 | Checks the sentinel again after every other case | The sentinel never ran |
+| 8 | Runs the script again with `LEFTHOOK_BIN` pointing at a stub that reports version 1.0.0 | Exit status 1, the message names the pinned version |
+| 9 | Runs the script again from another directory with a relative `LEFTHOOK_BIN` | Exit status 0, all cases passed, so the path was made absolute before the symlink |
+
+Case 0 is a real control, not a formality. The same sentinel configuration with no local `core.hooksPath` guard runs the sentinel on the seed commit, which is what the guard prevents.
 
 ## What is real and what is a stub
 

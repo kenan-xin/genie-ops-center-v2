@@ -5,31 +5,65 @@
 # runs Beads or any remote command: the Beads hooks of the throwaway repository
 # are stubs that only record that they ran.
 #
+# Isolation: every Git command runs with GIT_CONFIG_GLOBAL and GIT_CONFIG_SYSTEM
+# pointing at files this script writes, and with an empty template directory, so
+# no hook configured on the caller's machine can fire. The temporary global file
+# names a sentinel hooks directory on purpose. Case 0 proves the sentinel never
+# runs, which is the negative control for that isolation.
+#
 # Usage, from the repository root:
 #   sh scripts/prove-hooks.sh
 #
-# Lefthook is the real pinned binary. The script looks for LEFTHOOK_BIN, then
-# node_modules/.bin/lefthook, then lefthook on PATH. Without one it stops with
-# that reason instead of reporting a pass.
+# Lefthook is the real binary pinned in package.json. The script looks for
+# LEFTHOOK_BIN, then node_modules/.bin/lefthook, then lefthook on PATH. It makes
+# the path absolute and refuses any other version, so the transcript cannot
+# claim a version it did not run.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-lefthook_bin=${LEFTHOOK_BIN:-}
-if [ -z "$lefthook_bin" ] && [ -x "$root/node_modules/.bin/lefthook" ]; then
-  lefthook_bin="$root/node_modules/.bin/lefthook"
-fi
-if [ -z "$lefthook_bin" ]; then
-  lefthook_bin=$(command -v lefthook || true)
-fi
-if [ -z "$lefthook_bin" ]; then
-  echo "no lefthook binary found; run pnpm install --frozen-lockfile or set LEFTHOOK_BIN" >&2
-  exit 1
-fi
+pinned=$(sed -n 's/.*"lefthook": "\([^"]*\)".*/\1/p' "$root/package.json" | head -1)
+[ -n "$pinned" ] || { echo "no lefthook version pinned in package.json" >&2; exit 1; }
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/hook-proof.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
+sentinel="$work/sentinel-hooks"
 failures=0
+
+# Absolute path of an executable, whether it was given relatively or by name.
+resolve() {
+  case "$1" in
+    */*) [ -x "$1" ] || return 1; printf '%s/%s\n' "$(cd "$(dirname "$1")" && pwd)" "$(basename "$1")" ;;
+    *) command -v "$1" || return 1 ;;
+  esac
+}
+
+lefthook_bin=${LEFTHOOK_BIN:-}
+if [ -z "$lefthook_bin" ] && [ -x "$root/node_modules/.bin/lefthook" ]; then
+  lefthook_bin="$root/node_modules/.bin/lefthook"
+fi
+[ -n "$lefthook_bin" ] || lefthook_bin=$(command -v lefthook || true)
+if [ -z "$lefthook_bin" ]; then
+  echo "no lefthook binary found; run pnpm install --frozen-lockfile or set LEFTHOOK_BIN" >&2
+  exit 1
+fi
+lefthook_bin=$(resolve "$lefthook_bin") || { echo "LEFTHOOK_BIN is not an executable file: $lefthook_bin" >&2; exit 1; }
+lefthook_version=$("$lefthook_bin" --version 2>/dev/null | awk '{print $3}')
+if [ "$lefthook_version" != "$pinned" ]; then
+  echo "lefthook $lefthook_bin reports version '$lefthook_version'; package.json pins $pinned" >&2
+  exit 1
+fi
+
+# Git isolation. The sentinel hook must never run; case 0 checks that.
+mkdir -p "$sentinel"
+printf '#!/bin/sh\ntouch "%s/sentinel.ran"\n' "$work" >"$sentinel/pre-commit"
+chmod +x "$sentinel/pre-commit"
+mkdir -p "$work/empty-template"
+printf '[core]\n\thooksPath = %s\n' "$sentinel" >"$work/gitconfig"
+: >"$work/gitconfig-system"
+GIT_CONFIG_GLOBAL="$work/gitconfig"
+GIT_CONFIG_SYSTEM="$work/gitconfig-system"
+export GIT_CONFIG_GLOBAL GIT_CONFIG_SYSTEM
 
 say() { printf '\n== %s\n' "$1"; }
 expect() { # expect <label> <expected> <actual>
@@ -46,7 +80,10 @@ found() { if grep -q "$1" "$2"; then echo found; else echo missing; fi; }
 # A throwaway repository carrying the tracked dispatchers, stub Beads hooks and
 # the real Lefthook binary at the path the dispatcher expects.
 mkdir -p "$repo"
-git init -q "$repo"
+git init -q --template="$work/empty-template" "$repo"
+# No hook may run before the proof says so, not even the seed commit's.
+mkdir -p "$work/no-hooks"
+git -C "$repo" config core.hooksPath "$work/no-hooks"
 git -C "$repo" config user.name proof
 git -C "$repo" config user.email proof@example.invalid
 git -C "$repo" config commit.gpgsign false
@@ -69,9 +106,15 @@ echo seed >"$repo/seed.txt"
 git -C "$repo" add -A
 git -C "$repo" commit -q -m seed
 
-printf 'lefthook:    %s\n' "$("$lefthook_bin" --version)"
+printf 'lefthook:    %s (pinned %s)\n' "$lefthook_bin" "$pinned"
 printf 'dispatchers: %s\n' "$(ls "$root/.githooks" | tr '\n' ' ')"
 printf 'throwaway:   %s\n' "$repo"
+
+# Case 0: the negative control. The seed commit ran with the sentinel hooks
+# directory configured globally, and the sentinel must not have run.
+say "case 0: no hook of the caller's machine runs, seed commit included"
+expect "sentinel did not run" "absent" "$([ -e "$work/sentinel.ran" ] && echo present || echo absent)"
+expect "seed produced no hook output" "" "$(cat "$repo/ran.log")"
 
 # Case 1: installation. The documented command activates the dispatchers, and
 # it changes the throwaway repository only.
@@ -131,6 +174,29 @@ status=0
 git -C "$repo" commit -q -m "case 6" >"$work/case6.out" 2>&1 || status=$?
 expect "exit status" "1" "$status"
 expect "no commit written" "case 2" "$(git -C "$repo" log -1 --format=%s)"
+
+say "case 7: the sentinel never ran, from the first command to the last"
+expect "sentinel did not run" "absent" "$([ -e "$work/sentinel.ran" ] && echo present || echo absent)"
+
+# Cases 8 and 9 check this script's own binary selection, by running it again
+# with a deliberately bad and a deliberately relative LEFTHOOK_BIN.
+if [ "${HOOK_PROOF_CHILD:-}" != "1" ]; then
+  say "case 8: a lefthook of another version is refused"
+  printf '#!/bin/sh\necho "lefthook version 1.0.0 fake"\n' >"$work/fake-lefthook"
+  chmod +x "$work/fake-lefthook"
+  status=0
+  HOOK_PROOF_CHILD=1 LEFTHOOK_BIN="$work/fake-lefthook" sh "$root/scripts/prove-hooks.sh" >"$work/case8.out" 2>&1 || status=$?
+  expect "exit status" "1" "$status"
+  expect "version named" "found" "$(found "package.json pins $pinned" "$work/case8.out")"
+
+  say "case 9: a relative LEFTHOOK_BIN resolves to a working absolute path"
+  mkdir -p "$work/rel"
+  ln -sf "$lefthook_bin" "$work/rel/lefthook"
+  status=0
+  (cd "$work" && HOOK_PROOF_CHILD=1 LEFTHOOK_BIN=rel/lefthook sh "$root/scripts/prove-hooks.sh" >"$work/case9.out" 2>&1) || status=$?
+  expect "exit status" "0" "$status"
+  expect "all cases passed" "found" "$(found 'all cases passed' "$work/case9.out")"
+fi
 
 printf '\n'
 if [ "$failures" -eq 0 ]; then

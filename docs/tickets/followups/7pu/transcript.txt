@@ -1,6 +1,10 @@
-lefthook:    lefthook version 2.1.14 1e23553eec2392753c5420d348e63a63f517cd45
+lefthook:    /home/kenan/.local/share/mise/installs/npm-lefthook/latest/node_modules/.bin/lefthook (pinned 2.1.14)
 dispatchers: post-checkout post-merge pre-commit prepare-commit-msg pre-push README.md 
-throwaway:   /tmp/hook-proof.kYYvut/repo
+throwaway:   /tmp/hook-proof.jzEICV/repo
+
+== case 0: no hook of the caller's machine runs, seed commit included
+ok   sentinel did not run
+ok   seed produced no hook output
 
 == case 1: hooks:install sets core.hooksPath to the tracked folder
 ok   core.hooksPath
@@ -9,20 +13,22 @@ ok   core.hooksPath
 ╭───────────────────────────────────────╮
 │ lefthook  v2.1.14   hook:  pre-commit │
 ╰───────────────────────────────────────╯
-│  core.hooksPath is set locally to '.githooks'    
-│  Custom hooks paths are not supported by default.
-│                                                  
-│  Reset core.hooksPath automatically:             
-│    lefthook install --reset-hooks-path           
-│                                                  
-│  Remove it manually:                             
-│     git config --unset-all --local core.hooksPath
-│                                                  
-│  Force installation into current hooks path:     
-│    lefthook install --force                      
-│                                                  
-│    Target:                                       
-│    .githooks                                     
+│  core.hooksPath is set locally to '.githooks'                             
+│  core.hooksPath is set globally to '/tmp/hook-proof.jzEICV/sentinel-hooks'
+│  Custom hooks paths are not supported by default.                         
+│                                                                           
+│  Reset core.hooksPath automatically:                                      
+│    lefthook install --reset-hooks-path                                    
+│                                                                           
+│  Remove it manually:                                                      
+│     git config --unset-all --local core.hooksPath                         
+│     git config --unset-all --global core.hooksPath                        
+│                                                                           
+│  Force installation into current hooks path:                              
+│    lefthook install --force                                               
+│                                                                           
+│    Target:                                                                
+│    .githooks                                                              
 │  Skipping hook sync: 
 ┃  record ❯ 
 
@@ -48,5 +54,16 @@ ok   no commit written
 == case 6: a failing real Lefthook job blocks the commit
 ok   exit status
 ok   no commit written
+
+== case 7: the sentinel never ran, from the first command to the last
+ok   sentinel did not run
+
+== case 8: a lefthook of another version is refused
+ok   exit status
+ok   version named
+
+== case 9: a relative LEFTHOOK_BIN resolves to a working absolute path
+ok   exit status
+ok   all cases passed
 
 all cases passed
