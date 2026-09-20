@@ -139,42 +139,103 @@ const INTERNAL = [
   "**/../ui/**",
 ];
 
+const NO_CONFIG = {
+  group: CONFIG,
+  message:
+    "product code never imports the shared configuration package (R-7a). Only a package configuration file consumes a preset.",
+};
+
+const NO_TOOLING = {
+  group: TOOLING,
+  message: "product code never imports a generator (R-7a).",
+};
+
+// Each layer list is used twice: once for the whole package, and once for the
+// package configuration files, which keep every ban except the one on config.
+const UI_LAYER: readonly RestrictedGroup[] = [
+  {
+    group: CORE,
+    message: "ui imports nothing internal. Move the shared piece into ui.",
+  },
+  { group: MODULES, message: "ui imports no module." },
+  { group: APPS, message: "ui imports no app." },
+  { group: CUSTOMERS, message: "ui imports no customer folder." },
+  { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
+  NO_TOOLING,
+];
+
+const CORE_LAYER: readonly RestrictedGroup[] = [
+  {
+    group: MODULES,
+    message: "core never imports a module. Extend the module contract instead.",
+  },
+  {
+    group: APPS,
+    message:
+      "core never imports an app. A capability that needs one is a defect in core.",
+  },
+  { group: CUSTOMERS, message: "core never imports a customer folder." },
+  NO_TOOLING,
+];
+
+const MODULE_LAYER: readonly RestrictedGroup[] = [
+  { group: MODULES, message: "a module never imports another module." },
+  { group: APPS, message: "a module never imports an app." },
+  { group: CUSTOMERS, message: "a module never imports a customer folder." },
+  {
+    group: DRIVERS,
+    message: "a module reads the database through ctx.tenant.db (DEC-34).",
+  },
+  NO_TOOLING,
+];
+
+const APP_LAYER: readonly RestrictedGroup[] = [
+  { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
+  NO_TOOLING,
+];
+
+// A sibling module is reached by climbing out of the module's own folder, and
+// that spelling carries no `modules/` segment, so no folder glob in `MODULES`
+// can see it. How far `..` has to climb depends on how deep the importing file
+// sits, and oxlint matches the raw specifier, never a resolved path. The ban is
+// therefore owner-aware by being depth-aware: one entry per depth, each one
+// banning exactly the climb that leaves that file's own module. From
+// `alpha/src/x.ts` that rejects `../../beta/src/index.ts` while leaving
+// `../lib/x.ts` alone, and from `alpha/src/nested/x.ts` the identical string
+// `../../utils/x.ts` stays allowed, because there it lands inside alpha.
+// Ceiling: a file more than three folders below its module root is not covered.
+// Add the next depth here when a module grows one.
+const MODULE_FOLDER_DEPTHS = [0, 1, 2, 3];
+
+/** Files exactly `depth` directories below a module's own root. */
+function moduleFilesAtDepth(depth: number): string {
+  return `packages/modules/*/${"*/".repeat(depth)}*`;
+}
+
+/** The climb that leaves a module whose importing file sits at `depth`. */
+function siblingModulesAtDepth(depth: number): RestrictedGroup {
+  const climb = "../".repeat(depth + 1);
+
+  return {
+    group: [`${climb}*`, `${climb}*/**`],
+    message: "a module never imports another module.",
+  };
+}
+
 // One entry per layer, in this order: when two entries match one file, the last
 // entry wins for a rule it sets, so a layer's drivers entry lives inside the
-// layer's own entry and the contracts entry follows the core entry.
+// layer's own entry and the contracts entry follows the core entry. An exception
+// entry repeats its whole layer list for the same reason, and follows the entry
+// it excepts. These globs use no brace expansion, because that behavior is not
+// proved here.
 
 export const importBoundaryOverrides: OxlintOverride[] = [
+  restrict(["packages/ui/**"], [...UI_LAYER, NO_CONFIG]),
+  restrict(["packages/ui/*.config.ts", "packages/ui/*.config.mts"], UI_LAYER),
+  restrict(["packages/core/**"], [...CORE_LAYER, NO_CONFIG]),
   restrict(
-    ["packages/ui/**"],
-    [
-      {
-        group: CORE,
-        message: "ui imports nothing internal. Move the shared piece into ui.",
-      },
-      { group: MODULES, message: "ui imports no module." },
-      { group: APPS, message: "ui imports no app." },
-      { group: CUSTOMERS, message: "ui imports no customer folder." },
-      { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
-    ]
-  ),
-  restrict(
-    ["packages/core/**"],
-    [
-      {
-        group: MODULES,
-        message:
-          "core never imports a module. Extend the module contract instead.",
-      },
-      {
-        group: APPS,
-        message:
-          "core never imports an app. A capability that needs one is a defect in core.",
-      },
-      {
-        group: CUSTOMERS,
-        message: "core never imports a customer folder.",
-      },
-    ]
+    ["packages/core/*.config.ts", "packages/core/*.config.mts"],
+    CORE_LAYER
   ),
   restrict(
     ["packages/core/contracts/**"],
@@ -186,24 +247,43 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       },
     ]
   ),
-  restrict(
-    ["packages/modules/*/**"],
-    [
-      { group: MODULES, message: "a module never imports another module." },
-      { group: APPS, message: "a module never imports an app." },
-      {
-        group: CUSTOMERS,
-        message: "a module never imports a customer folder.",
-      },
-      {
-        group: DRIVERS,
-        message: "a module reads the database through ctx.tenant.db (DEC-34).",
-      },
-    ]
+  restrict(["packages/modules/*/**"], [...MODULE_LAYER, NO_CONFIG]),
+  ...MODULE_FOLDER_DEPTHS.map((depth) =>
+    restrict(
+      [moduleFilesAtDepth(depth)],
+      [...MODULE_LAYER, NO_CONFIG, siblingModulesAtDepth(depth)]
+    )
   ),
   restrict(
-    ["apps/**", "customers/**"],
-    [{ group: DRIVERS, message: "an app opens no connection (DEC-34)." }]
+    ["packages/modules/*/*.config.ts", "packages/modules/*/*.config.mts"],
+    // A module configuration file sits at the module root, so it keeps the
+    // depth-zero sibling ban along with the rest of the layer.
+    [...MODULE_LAYER, siblingModulesAtDepth(0)]
+  ),
+  restrict(["apps/**", "customers/**"], [...APP_LAYER, NO_CONFIG]),
+  restrict(
+    [
+      "apps/*/*.config.ts",
+      "apps/*/*.config.mts",
+      "customers/*/app/*.config.ts",
+      "customers/*/app/*.config.mts",
+    ],
+    APP_LAYER
+  ),
+  // The host's main configuration is build-time composition, not product runtime.
+  // It keeps every app driver restriction, may read the shared configuration, and
+  // may reach the generators through their one public entrypoint and nothing else.
+  // This is not a blanket `.storybook/**` exemption: `preview` and every other
+  // file under the host stay on the ordinary app entry above.
+  restrict(
+    ["apps/storybook/.storybook/main.ts"],
+    [
+      { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
+      {
+        group: [...TOOLING, "!@genie/generators"],
+        message: "Storybook main consumes only the public selector entrypoint.",
+      },
+    ]
   ),
   restrict(
     ["packages/config/**"],

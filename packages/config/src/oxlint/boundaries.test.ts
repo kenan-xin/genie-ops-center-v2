@@ -403,6 +403,431 @@ describe("the import direction, proved through the oxlint binary", () => {
       "ui imports nothing internal. Move the shared piece into ui."
     );
   });
+
+  // R-7a. Configuration and tooling are build-time surfaces. Nothing that ships
+  // or runs reaches them, and only a package configuration file consumes a preset.
+
+  it("rejects core importing the config package", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects core importing a config subpath", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import "@genie/config/vitest/unit";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects core importing a generator", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects ui importing config by relative path", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__/__boundary__.ts",
+      `import "../../config/src/vitest/unit.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects an app importing config", () => {
+    const result = lintAt(
+      "apps/genie/__boundary__/__boundary__.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects an app importing a generator by relative path", () => {
+    const result = lintAt(
+      "apps/genie/__boundary__/__boundary__.ts",
+      `import "../../tools/generators/src/selection/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects a module importing a generator", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects a root-level core test file importing a generator", () => {
+    const result = lintAt(
+      "packages/core/__boundary__.test.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects an app end-to-end file importing config", () => {
+    const result = lintAt(
+      "apps/genie/e2e/__boundary__.spec.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects a core src test file importing config", () => {
+    const result = lintAt(
+      "packages/core/src/__boundary__.test.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects a core src test file importing a generator", () => {
+    const result = lintAt(
+      "packages/core/src/__boundary__.test.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects a top-level testing folder test file importing config", () => {
+    const result = lintAt(
+      "packages/core/testing/__boundary__.test.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects a top-level testing folder test file importing a generator", () => {
+    const result = lintAt(
+      "packages/core/testing/__boundary__.test.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  // The package configuration files are the one exception, and they keep every
+  // other ban. A nested source file that merely ends in `.config.ts` does not.
+
+  it("lets a ui package configuration file consume a preset", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__.config.ts",
+      `import "@genie/config/vitest/unit";\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("lets an app package configuration file consume a preset", () => {
+    const result = lintAt(
+      "apps/genie/__boundary__.config.ts",
+      `import "@genie/config/vitest/unit";\n`
+    );
+
+    expect(result.failed).toBe(false);
+  });
+
+  it("lets the real package Vitest configuration shape lint unchanged", () => {
+    // Byte-for-byte the body of `packages/core/vitest.config.ts`, at an isolated
+    // name because `lintAt` refuses a path that already exists.
+    const result = lintAt(
+      "packages/core/vitest.__boundary__.config.ts",
+      `import { unitTestPreset } from "@genie/config/vitest/unit";\nimport { defineConfig } from "vitest/config";\n\nexport default defineConfig(unitTestPreset);\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("still bans config from a nested source file that ends in .config.ts", () => {
+    const result = lintAt(
+      "packages/ui/src/__boundary__.config.ts",
+      `import "@genie/config";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("still bans core from a ui package configuration file", () => {
+    const result = lintAt(
+      "packages/ui/__boundary__.config.ts",
+      `import "@genie/core";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ui imports nothing internal");
+  });
+
+  it("still bans a module from a core package configuration file", () => {
+    const result = lintAt(
+      "packages/core/__boundary__.config.ts",
+      `import "@genie/modules-alpha";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("core never imports a module");
+  });
+
+  it("still bans a driver from a module package configuration file", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__.config.ts",
+      `import "pg";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("ctx.tenant.db");
+  });
+
+  it("still bans a sibling module from a module package configuration file", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__.config.ts",
+      `import "../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("still bans a driver from an app package configuration file", () => {
+    const result = lintAt(
+      "apps/genie/__boundary__.config.ts",
+      `import "pg";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("an app opens no connection");
+  });
+
+  // A sibling module is reached by climbing out of the module's own folder, and
+  // that spelling never contains `modules/`, so the folder globs cannot see it.
+
+  it("rejects a sibling module reached by a relative path from src", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/__boundary__.ts",
+      `import "../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached by a relative path from the module root", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__.ts",
+      `import "../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached by a relative path from a nested folder", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/nested/__boundary__.ts",
+      `import "../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("still allows a module its own relative import from src", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/__boundary__.ts",
+      `import "../lib/__boundary_target__.ts";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("still allows a module its own relative import from a nested folder", () => {
+    // `../../` from `src/nested/` lands back in the module root, so this is the
+    // exact string a sibling import uses one level shallower. The ban is keyed on
+    // the importing file's depth, which is what keeps these two apart.
+    const result = lintAt(
+      "packages/modules/alpha/src/nested/__boundary__.ts",
+      `import "../../utils/__boundary_target__.ts";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("rejects core reaching a customer app through a relative path", () => {
+    const result = lintAt(
+      "packages/core/src/__boundary__.ts",
+      `import "../../../customers/acme/app/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("core never imports a customer folder.");
+  });
+
+  it("rejects core importing a named binding from the storybook host", () => {
+    const result = lintAt(
+      "packages/core/__boundary__/__boundary__.ts",
+      `import { preview } from "@genie/storybook";\n\nexport const echo = preview;\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("core never imports an app.");
+  });
+
+  it("rejects a module importing a storybook host subpath", () => {
+    const result = lintAt(
+      "packages/modules/alpha/__boundary__/__boundary__.ts",
+      `import "@genie/storybook/preview";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports an app.");
+  });
+
+  // The Storybook host's main configuration is build-time composition, so it is
+  // the one product path that consumes shared config and the public selector.
+
+  it("lets the storybook host main file compose config and the selectors", () => {
+    const result = lintAt(
+      "apps/storybook/.storybook/main.ts",
+      `import { sharedStorybookConfig } from "@genie/config/storybook";\nimport { readModuleInventory, resolveModuleSelection } from "@genie/generators";\n\nexport const main = {\n  preset: sharedStorybookConfig,\n  readModuleInventory,\n  resolveModuleSelection,\n};\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("rejects a generator subpath from the storybook host main file", () => {
+    const result = lintAt(
+      "apps/storybook/.storybook/main.ts",
+      `import "@genie/generators/selection";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "Storybook main consumes only the public selector entrypoint."
+    );
+  });
+
+  it("rejects a relative generator path from the storybook host main file", () => {
+    const result = lintAt(
+      "apps/storybook/.storybook/main.ts",
+      `import "../../../tools/generators/src/selection/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "Storybook main consumes only the public selector entrypoint."
+    );
+  });
+
+  it("rejects a database driver from the storybook host main file", () => {
+    const result = lintAt(
+      "apps/storybook/.storybook/main.ts",
+      `import "pg";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("an app opens no connection (DEC-34).");
+  });
+
+  it("rejects the selector import from the storybook preview file", () => {
+    // This is not a blanket `.storybook/**` exemption. Only `main.ts` composes.
+    const result = lintAt(
+      "apps/storybook/.storybook/preview.tsx",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
+  it("rejects shared config from the storybook preview file", () => {
+    const result = lintAt(
+      "apps/storybook/.storybook/preview.tsx",
+      `import "@genie/config/storybook";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports the shared configuration");
+  });
+
+  it("rejects tooling from ordinary app source", () => {
+    const result = lintAt(
+      "apps/storybook/src/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
 });
 
 describe("the serialized oxlint configuration", () => {
