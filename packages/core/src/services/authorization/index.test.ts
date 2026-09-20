@@ -96,6 +96,7 @@ describe("the lazy loader", () => {
 
   it("memoises a rejected read for the principal's lifetime", async () => {
     let reads = 0;
+
     const user = principalWith(async () => {
       reads += 1;
 
