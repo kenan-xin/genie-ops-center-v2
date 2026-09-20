@@ -1,8 +1,8 @@
 # Spec 0 ticket breakdown
 
-Confidence: 8.0/10. Dependencies preserve the reviewed permanent G2 slice, and each parallel lane has a bounded owner. Exact pinned compatibility and native production startup/header behavior remain unproven until G1/G2; shared lockfile changes still need serialized integration.
+Confidence: 8.0/10. Dependencies preserve the reviewed permanent G2 slice, and each parallel lane has a bounded owner. Pinned compatibility is accepted at G1; native production startup/header behavior remains unproven until G2; shared lockfile changes still need serialized integration.
 
-Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. This is the proposed execution breakdown for review; writing it does not start implementation. Beads owns live status, claims and blocking edges. Markdown owns ticket scope and acceptance, not a second task tracker.
+Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. The breakdown is in execution; the original publication did not itself authorize implementation. Beads owns live status, claims and blocking edges. Markdown owns ticket scope and acceptance, not a second task tracker.
 
 ## Authority and scope
 
@@ -12,7 +12,15 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. All twelve children are open and unclaimed at publication; check Beads for current state.
+Beads epic: `genie-ops-center-v2-1rd`. Live claims/status remain in Beads. As verified on 2026-09-21, [S0-01](01-workspace-and-build-inputs/integrated-acceptance.md) is accepted at `cb5b010`, [S0-02/G1](02-storybook-compatibility-g1/integrated-acceptance.md) at `ae00f6b`, and S0-03 is in progress under its [delivered continuation authority](03-module-contracts-and-build-safe-schemas/continuation.md). S0-04 still requires S0-03 acceptance; G1 closure alone does not release it.
+
+## Execution authority and documentation
+
+Use the repository ticket and its current continuation/authorization record. Specific owner grants supersede generic restrictions below: do not repeatedly request already-granted scoped commits, review, local integration or evidence-based closure. S0-03 has that bounded authority; this does not grant every unstarted ticket local merge rights. Routine Beads updates and Dolt sync are allowed by the owner; code push, deployment and hook activation remain separate permissions.
+
+Keep approved requirements, shared-file rules and durable handoffs in `docs/` with relative links. A session may keep scratch recovery notes, but no other session should need them to discover the approved contract or acceptance result. A fresh worktree must receive the current documentation baseline before implementation; never overwrite newer documentation during integration. Product decisions flow into specifications, then plans/tickets; status and claims remain in Beads.
+
+Use Superpowers in the existing ticket session/worktree. Refine only unresolved design questions, preserve completed work and use the workflow supported by the installed skill version. Routine implementation fixes remain with the delivery owner; escalate genuine product/architecture choices, conflicting writers or incompatible requirements. Do not add a second coordinator review loop to S0-03's authorized review workflow.
 
 ## Ticket index
 
@@ -98,21 +106,21 @@ S0-01 reserves only a Storybook configuration extension point; S0-02 exclusively
 
 Accepted S0-02/S0-03 shared-file sequence (2026-09-20): follow [S0-03's accepted planning decisions](03-module-contracts-and-build-safe-schemas/index.md#accepted-planning-decisions--2026-09-20). After S0-01 is integrated, validated and closed, agree overlapping dependency pins first. S0-03 prepares the minimal contract dependencies; following separate approval and integration of that change, S0-02 updates its baseline and takes over Storybook dependency/configuration edits. Record the writer, paths and integrated revision in both beads. This does not add a whole-ticket S0-03 prerequisite to S0-02 or close either gate; disjoint owned-file work may proceed in parallel. Exports, boundaries and configuration changes also obey the single-writer protocol.
 
-First make the approved planning files available on the agreed integration baseline. The current checkout contains pre-existing tracked and untracked changes; a fresh worktree does not inherit those changes. Do not commit everything or copy the dirty tree blindly. Preparing/committing the baseline needs separate authorization. CLAUDE.md uses feature branches from develop once code exists; if develop is not prepared, ask the integration owner to establish the base rather than silently using main.
+First make the approved planning files available on the agreed integration baseline. A checkout may contain tracked or untracked changes; a fresh worktree does not inherit uncommitted changes. Do not commit everything or copy the dirty tree blindly. Preparing/committing the baseline needs separate authorization. CLAUDE.md uses feature branches from develop once code exists; if develop is not prepared, ask the integration owner to establish the base rather than silently using main.
 
-The installed bd help states linked Git worktrees discover the shared database via Git common-directory discovery. Verify that claim in each new worktree using bd where and bd worktree info; do not run bd init or create separate issue stores there. The observed coordinator database is .beads/embeddeddolt, not an assumed JSONL store. Same-machine linked worktrees need no remote sync. Separate clones/machines need explicitly coordinated Dolt sync, not this local recipe.
+The installed bd help states linked Git worktrees discover the shared database via Git common-directory discovery. Verify that claim in each new worktree using bd where and bd worktree info; do not run bd init or create separate issue stores there. Use the path reported by bd where; never hardcode a local database layout or treat JSONL as the database. Same-machine linked worktrees need no remote sync. Separate clones/machines use Dolt sync; routine sync is authorized, independently of code pushes.
 
 Use Superpowers using-git-worktrees to create or verify one isolated worktree per ticket, never a second nested worktree. Verify the intended integration revision and clean baseline before making edits. [Primary-source notes](superpowers-source-notes.md) describe the verified upstream skills; Beads rules here are the project's coordination overlay.
 
-Run these native commands in the worktree, with a unique session actor. `--sandbox` prevents automatic Dolt pushes; remote sync requires separate authorization. Personal command wrappers such as RTK are optional locally and are not prerequisites for these instructions:
+Run these native commands in the worktree, with a unique session actor. Routine Beads sync is allowed. Use `--sandbox` only when a specific task explicitly forbids remote sync; it disables automatic Dolt pushes. Personal command wrappers such as RTK are optional locally and are not prerequisites for these instructions:
 
 ```bash
-bd --sandbox prime
-bd --sandbox where --json
-bd --sandbox worktree info
-bd --sandbox ready --label spec-0 --type task --json
-bd --sandbox show <bead-id> --json
-bd --sandbox --actor <unique-session-name> update <bead-id> --claim
+bd prime
+bd where --json
+bd worktree info
+bd ready --label spec-0 --type task --json
+bd show <bead-id> --json
+bd --actor <unique-session-name> update <bead-id> --claim
 ```
 
 If claim fails, stop; do not overwrite the owner or retry with forced reassignment. Check prerequisite revisions even if the bead is ready. Stop if the worktree cannot see the approved ticket or if its tracker differs from the shared database.
@@ -132,9 +140,9 @@ Use one isolated worktree and feature branch from the agreed integration baselin
 
 Create only the bounded implementation plan this ticket needs. Follow Superpowers execution/review, repository TDD and the Storybook-first UI workflow. Preserve G1/G2 stop gates; no silent dependency downgrade, skipped proof, extra pool/custom server, wider authorization, design import or later-section scope.
 
-Respect owned paths and coordinate shared manifest/lockfile/config changes with the integration owner before editing. No git commit, merge, push, publication, Dolt remote sync or worktree deletion without separate authorization.
+Respect owned paths and coordinate shared manifest/lockfile/config changes with the integration owner before editing. Follow the ticket-specific execution authority for scoped commits, local merge and closure; do not ask again for actions it already authorizes. Routine Beads sync is allowed. No code push, publication, deployment, hook activation or worktree deletion without explicit authority.
 
-At completion report changed paths, red/green and gate evidence, exact commands/results, unverified checks, and integration needs on the bead. Keep it open while awaiting integration. Do not close dependencies or start another ticket. The integration owner closes this bead after the integrated revision passes.
+At completion report changed paths, red/green and gate evidence, exact commands/results, unverified checks, and integration needs on the bead. Keep it open while awaiting integration. Do not close dependencies or start another ticket. The authorized integration owner (including an explicitly delegated ticket implementer) closes this bead after the integrated revision passes.
 ```
 
 ## Gate evidence and closure
@@ -153,10 +161,10 @@ External publication is separate authority: S0-11 tests ordering without pushing
 
 ## Breakdown verification
 
-Independent critique and bounded recheck passed on 2026-09-19 after separating S0-01's extension point from S0-02's exclusive Storybook implementation ownership. Published Beads has the same 18 blocking edges as this map, no cycles and only S0-01 ready. All twelve tickets remain open/unclaimed. Mechanical checks found all 75 numbered requirements and 30 acceptance IDs in the coverage map, valid local links and no whitespace errors. These checks validate the breakdown, not runtime implementation. Recheck current Beads state before dispatch.
+Independent critique and bounded recheck passed on 2026-09-19 after separating S0-01's extension point from S0-02's exclusive Storybook implementation ownership. At publication, Beads had the same 18 blocking edges as this map, no cycles and only S0-01 ready. At that publication date, all twelve tickets were open/unclaimed; this is historical, not current readiness. Mechanical checks found all 75 numbered requirements and 30 acceptance IDs in the coverage map, valid local links and no whitespace errors. These checks validate the breakdown, not runtime implementation. Recheck current Beads state before dispatch.
 
-Assumptions: one shared same-machine Beads database and one human/coordinator integration owner; future implementation authorization is separate from this breakdown. Unresolved implementation mechanisms remain exactly G1 pinned compatibility and G2 native runtime/header composition. No remaining product question is decided here.
+Assumptions: one shared same-machine Beads database and one human/coordinator integration owner; future implementation authorization is separate from this breakdown. G1 compatibility is now accepted; G2 native runtime/header composition remains an implementation gate. No remaining product question is decided here.
 
 ## Module naming revision, 2026-09-20
 
-The approved singular package names and existing capability folders are propagated through [the revision and rework plan](../../tech-plans/module-naming-revision.md). S0-01–03 have proposed rework before further acceptance; later tickets inherit the naming contract. Beads ygn and 1rd.1.4 track reconciliation and enforcement; existing acceptance gates and single-writer handoffs remain unchanged. Code changes await approval of the implemented-ticket rework sequence.
+The approved singular package names and existing capability folders are propagated through [the revision and rework plan](../../tech-plans/module-naming-revision.md). S0-01 enforcement and S0-02 reconciliation are accepted; S0-03 has explicit continuation authority and later tickets inherit the contract. Naming aggregate ygn remains separate from closed enforcement item 1rd.1.4. Existing acceptance gates and the single-writer protocol remain unchanged.

@@ -1,6 +1,6 @@
 # Module naming revision and implementation rework
 
-2026-09-20. Singular package naming with existing capability folders is approved; the earlier matching-folder/rename proposal is superseded. This document propagates those requirements; the rework sequence for implemented tickets below is proposed for owner approval. No implementation, branch integration, commit, acceptance closure or hook activation is authorized by this planning pass. Beads owns task status.
+2026-09-21 reconciliation: singular package naming with existing capability folders is approved. S0-01 naming enforcement is accepted at `cb5b010`; S0-02 placeholder reconciliation is accepted at `ae00f6b`. S0-03 continuation authorizes the remaining contract/fixture work. The rework sequence below is the original approved sequencing rationale, not a fresh approval hold. Beads owns live state; the aggregate naming item remains open until all consumers satisfy it.
 
 ## Settled requirement and product impact
 
@@ -23,7 +23,7 @@ No umbrella, new scope, alias resolver, loader or dependency upgrade is part of 
 
 Current source evidence: `tools/generators/src/selection/inventory.ts` accepts a present manifest name without checking this invariant; `tools/generators/src/workspace/classify-project.ts` classifies any direct module folder by path. These are observations from the main checkout, not proof of branch rework. S0-01's reported reviewed repair head is `5327afb`; S0-02's recorded correction head is `6c6c056`; verify live heads before implementation. Historical tests and reviews prove their original revisions only.
 
-## Proposed rework of implemented or in-progress tickets
+## Approved rework sequence and remaining consumers
 
 | Owner | Bounded rework | Acceptance before handing off |
 | --- | --- | --- |
@@ -31,9 +31,7 @@ Current source evidence: `tools/generators/src/selection/inventory.ts` accepts a
 | S0-03, `1rd.3` | After the approved S0-01 revision, reconcile any contract fixtures/imports that actually encode old package names or paths. Preserve IDs, contract shapes and shared dependency pins. | Contract/type fixtures and build-safe import proof. If no affected source exists, record the scoped search and no-op result rather than inventing changes. |
 | S0-02, `1rd.2` | After accepted S0-01 and the existing S0-03 shared-file transfer, reconcile placeholder/story package names and imports, verify existing discovery paths, and recheck the backed-up adoption patch. Preserve the stable workaround. | Recheck patch applicability and refresh hashes; story selection uses unprefixed IDs and inventory paths; boundary suites coexist with actual Storybook configs; rerun affected G1 proof at the final source. |
 
-Recommended sequence: approve this bounded rework; S0-01 implements and receives a fresh delta review; integration owner validates/accepts its revised baseline; S0-03 reconciles affected fixtures and completes its separately approved dependency handoff; S0-02 consumes that baseline and resumes its correction. The current five acceptance beads remain open until integration-owner verification. A previous repair review is not approval of naming changes. No other branch is edited by the S0-01 owner.
-
-Open owner choice: approve this sequence or request a different ownership split before code changes. The skill requires alignment on reworking implemented tickets; the existing choice of spelling and folder names does not need reconfirmation.
+The sequence was authorized and executed for S0-01/S0-02: shared validation and boundary enforcement landed first, then dependency handoff and placeholder/Storybook reconciliation. Their integrated acceptance records are under the owning ticket directories. S0-03 continues its contract validation and fixture checks under its current continuation authority. Later consumers retain the obligations below; the naming aggregate is not complete merely because S0-01/S0-02 are accepted.
 
 ## Downstream ticket requirements
 

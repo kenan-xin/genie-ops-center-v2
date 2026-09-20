@@ -6,7 +6,7 @@ Removal backlog: `genie-ops-center-v2-8c2` (P4). Live status and assignment rema
 
 ## Status and scope
 
-The user approved the stable workaround for the bounded S0-02 correction pass on 2026-09-20. Adoption must follow the existing prerequisite and shared-file handoff gates; approval does not establish G1 acceptance or authorize branch integration. Beads owns implementation status. The S0-02 toolchain maintainer owns adoption; the future removal item remains unassigned.
+The stable workaround was adopted in `556289c` and accepted with G1 on integrated develop `ae00f6b`. See [integrated acceptance](../tickets/spec-0/02-storybook-compatibility-g1/integrated-acceptance.md). The removal backlog remains separate; Beads owns live status and shared-file writer assignments.
 
 Here, **v7 means vite-tsconfig-paths v7**, distinct from the TypeScript 7 compiler. This is development tooling maintenance, with no expected application rewrite or database migration.
 
@@ -24,7 +24,7 @@ The recorded scratch baseline used this dependency chain:
 
 Optional permits an absent peer, not an incompatible installed peer. In the probe, the TypeScript 6 tooling alias did not satisfy that range, so fresh strict installation failed. A frozen installation alone did not expose the problem.
 
-The proposed addition to `pnpm-workspace.yaml` is narrowly version-scoped:
+The adopted addition to `pnpm-workspace.yaml` is narrowly version-scoped:
 
 ```yaml
 packageExtensions:
@@ -35,7 +35,7 @@ packageExtensions:
 
 This adds a real dependency to the parent of tsconfck. The scratch probe verified that tsconfck resolves TypeScript 5.9.3, while the root compiler remains TypeScript 7.0.2 and Nx's tooling API remains TypeScript 6.0.3. The TypeScript 6 alias wrapper version was 6.0.2; record wrapper and resolved API versions separately when refreshing evidence.
 
-No peer range is widened, strict checks are not suppressed, and no library source is patched. Preserve disabled automatic peer installation, release-age policy and the build-script allowlist. Keep the official Nx Storybook plugin, one nonempty component-test target and loopback-only serving. Compatibility-only ESLint is a separate approved development dependency; Oxlint remains the sole configured and executed linter.
+No peer range is widened, strict checks are not suppressed, and no library source is patched. Preserve disabled automatic peer installation, release-age policy and the build-script allowlist. Keep the official Nx Storybook plugin, one nonempty component-test target and loopback serving defaults (explicit command-line overrides are possible). Compatibility-only ESLint is a separate approved development dependency; Oxlint remains the sole configured and executed linter.
 
 ## Costs and limits
 
@@ -89,11 +89,6 @@ None of these is automatically required to remove tsconfck, and removing tsconfc
 
 ## Recorded evidence
 
-The upgrade contract and validation requirements are contained in this repository. The links below are optional, machine-local historical probe records; they are not setup steps or dependencies. A reader on another machine should run the documented validation on their own revision rather than treating an inaccessible probe as acceptance.
+[Integrated G1 acceptance](../tickets/spec-0/02-storybook-compatibility-g1/integrated-acceptance.md) records adopted versions, independent reviews, fresh/frozen installs, alias controls, cache invalidation, live UI and binding results at `ae00f6b`. [Cache proof](../tickets/spec-0/02-storybook-compatibility-g1/story-cache-invalidation.md) records the reproducible mutation sequence.
 
-Prior scratch probes used S0-02 base `22e9d9c046348a2876c6af3a40b648fdcd353de1`. The stable isolation probe reported fresh strict and clean frozen installs, 103 unit tests, 11 browser tests, typechecking, Oxlint and Storybook build passing. The alpha probe additionally demonstrated inherited alias failure/pass behavior. These runs were not repeated for this documentation change and do not prove current branch acceptance, the full affected/cache matrix or every CI platform.
-
-- [Stable workaround and TypeScript alias probe](/home/kenan/.traycer/epics/0489dfa0-8d29-4eef-a10e-da865988d4d3/artifacts/s002-typescript-alias-probe/index.md)
-- [v7 alpha comparison and resolver probe](/home/kenan/.traycer/epics/0489dfa0-8d29-4eef-a10e-da865988d4d3/artifacts/s002-paths-v7-alpha-probe/index.md)
-
-The original local links are retained for provenance. Access to Traycer or the author’s home directory is not required to follow this upgrade contract.
+Earlier scratch probes used base `22e9d9c046348a2876c6af3a40b648fdcd353de1`. Stable isolation reported fresh strict/frozen installs, 103 unit tests, 11 browser tests, typecheck, Oxlint and Storybook build passing. An alpha resolver probe also demonstrated inherited alias failure/pass behavior, but required an out-of-range prerelease override. Those historical experiments explain the chosen bridge, not approval of the alpha or proof of current upstream support. Repeat the validation matrix on any upgrade candidate; no external local report is required to execute it.

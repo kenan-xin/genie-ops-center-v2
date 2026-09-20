@@ -1,5 +1,7 @@
 # Specification readiness report
 
+Historical drafting-round report. Its tables describe 2026-09-18, not current delivery status. Spec 0 was subsequently approved and ticketed; S0-01 and S0-02/G1 were integrated and accepted. See the [current ticket map](../tickets/spec-0/README.md) and its repository acceptance records. Sections 1–5 and unresolved design decisions are not automatically approved.
+
 Status: 2026-09-18, drafting round complete. This report is the evidence and findings record of the specification round for roadmap Sections 0 to 5. It is not a task tracker: tasks live in Beads (`bd`), and decisions live in `../core/vision.md`, `../core/decision-log.md`, the module READMEs, and the discovery files. The six specifications are drafts and wait for the product owner's approval. Nothing here is self-approved, and no ticket breakdown was started.
 
 ## 1. Inventory

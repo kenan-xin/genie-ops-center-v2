@@ -79,8 +79,8 @@ genie-ops-center/
         modules.txt                 The module include list for this customer's image, one id per line,
                                     written by the generator from tenant.yaml (DEC-33).
         realm.overrides.json        Deltas on the realm template for this customer.
-        branding.seed.json          Initial branding, exactly the tenant_branding columns, including the
-                                    company name and the product display name. Replaced by the admin
+        branding.seed.json          Initial authored branding; required values and omission rules follow
+                                    architecture/branding-seed.md (DEC-35). Replaced by the admin
                                     portal after go-live. Validated by the strict schema in
                                     packages/core/src/lib/tenant-config/; carries a $schema key (DEC-35).
         compose.yaml                Generated from deploy/stack/. Committed; holds no secret.

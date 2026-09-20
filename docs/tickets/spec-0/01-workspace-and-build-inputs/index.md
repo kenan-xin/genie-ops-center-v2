@@ -1,5 +1,7 @@
 # S0-01 — Establish workspace, import boundaries and data-only build inputs
 
+Accepted integration is recorded in [integrated-acceptance.md](integrated-acceptance.md). Consult Beads for current status; earlier planning holds below do not reopen satisfied gates.
+
 Bead: `genie-ops-center-v2-1rd.1`. Status and claims live in Beads, not this document.
 
 ## Governing context
@@ -47,11 +49,11 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
 
 ## Naming revision, 2026-09-20
 
-Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: shared naming validation, inventory and singular boundary coverage; fixture reconciliation and a fresh delta review. Prior repair approval does not cover this change. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. Implemented-ticket rework awaits owner approval of the proposed sequence; existing integration and shared-file gates remain in force.
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: shared naming validation, inventory and singular boundary coverage; fixture reconciliation and a fresh delta review. Prior repair approval does not cover this change. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The sequence was subsequently authorized. Follow the current acceptance/continuation record linked above; retain the shared-file protocol and outstanding consumer work.
 
 ## Historical implementation plan
 
