@@ -3,6 +3,8 @@
 // Nothing here is required: when graft is absent every candidate misses and the
 // caller no-ops. Set GRAFT_CLAUDE_DIR to that directory to point at a specific
 // installation (a version manager, a vendored copy); never bake a machine path here.
+// A GRAFT_CLAUDE_DIR that does not hold the entry file is ignored, so a stale
+// value degrades to ordinary discovery rather than breaking the hook.
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -58,8 +60,12 @@ function best(dirs, name) {
 // The absolute path a hook entry file would have, whether or not it exists.
 function entry(name) {
   const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  // A configured directory that holds the file wins outright, whatever version it
+  // is. Version ranking decides only between the directories found by discovery.
+  const configured = process.env.GRAFT_CLAUDE_DIR;
+  if (configured && fs.existsSync(path.join(configured, name))) return path.join(configured, name);
   // Cheap candidates first, and only shell out to npm when every one of them misses.
-  const cheap = [process.env.GRAFT_CLAUDE_DIR || null, fromPkg(dir), fromPkg(path.join(path.dirname(process.execPath), '..', 'lib'))];
+  const cheap = [fromPkg(dir), fromPkg(path.join(path.dirname(process.execPath), '..', 'lib'))];
   const hit = best(cheap, name);
   if (hit) return path.join(hit, name);
   const gr = globalRoot();

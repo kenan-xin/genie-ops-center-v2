@@ -17,7 +17,7 @@
         "hooks": [
           {
             "command": "tool=\"${IMPECCABLE_BIN:-$(command -v impeccable 2>/dev/null)}\"; [ -x \"$tool\" ] || exit 0; \"$tool\" hook",
-            "commandWindows": "if defined IMPECCABLE_BIN (\"%IMPECCABLE_BIN%\" hook & exit /b) else (where impeccable.cmd >nul 2>nul && impeccable.cmd hook)",
+            "commandWindows": "if defined IMPECCABLE_BIN (if exist \"%IMPECCABLE_BIN%\" (\"%IMPECCABLE_BIN%\" hook)) else (where impeccable.cmd >nul 2>nul && impeccable.cmd hook)",
             "statusMessage": "Checking UI changes",
             "timeout": 5,
             "type": "command"
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "command": "tool=\"${IMPECCABLE_BIN:-$(command -v impeccable 2>/dev/null)}\"; [ -x \"$tool\" ] || exit 0; \"$tool\" hook",
-            "commandWindows": "if defined IMPECCABLE_BIN (\"%IMPECCABLE_BIN%\" hook & exit /b) else (where impeccable.cmd >nul 2>nul && impeccable.cmd hook)",
+            "commandWindows": "if defined IMPECCABLE_BIN (if exist \"%IMPECCABLE_BIN%\" (\"%IMPECCABLE_BIN%\" hook)) else (where impeccable.cmd >nul 2>nul && impeccable.cmd hook)",
             "statusMessage": "Design deep pass",
             "timeout": 30,
             "type": "command"
