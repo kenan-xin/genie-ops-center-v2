@@ -94,6 +94,20 @@ describe("the lazy loader", () => {
     expect(counting.reads()).toBe(1);
   });
 
+  it("memoises a rejected read for the principal's lifetime", async () => {
+    let reads = 0;
+    const user = principalWith(async () => {
+      reads += 1;
+
+      throw new Error("loader down");
+    });
+
+    await expect(can(user, STUB_GRANTED_KEY)).rejects.toThrow("loader down");
+    await expect(can(user, STUB_GRANTED_KEY)).rejects.toThrow("loader down");
+
+    expect(reads).toBe(1);
+  });
+
   it("keeps two executions apart", async () => {
     const first = countingReader();
     const second = countingReader();
