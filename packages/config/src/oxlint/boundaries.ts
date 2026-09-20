@@ -206,30 +206,13 @@ const APP_LAYER: readonly RestrictedGroup[] = [
 // A sibling module is reached by climbing out of the module's own folder, and
 // that spelling carries no `modules/` segment, so no folder glob in `MODULES`
 // can see it. How far `..` has to climb depends on how deep the importing file
-// sits, and oxlint matches the raw specifier, never a resolved path. The ban is
-// therefore owner-aware by being depth-aware: one entry per depth, each one
-// banning exactly the climb that leaves that file's own module. From
-// `alpha/src/x.ts` that rejects `../../beta/src/index.ts` while leaving
-// `../lib/x.ts` alone, and from `alpha/src/nested/x.ts` the identical string
-// `../../utils/x.ts` stays allowed, because there it lands inside alpha.
-// Ceiling: a file more than three folders below its module root is not covered.
-// Add the next depth here when a module grows one.
-const MODULE_FOLDER_DEPTHS = [0, 1, 2, 3];
-
-/** Files exactly `depth` directories below a module's own root. */
-function moduleFilesAtDepth(depth: number): string {
-  return `packages/modules/*/${"*/".repeat(depth)}*`;
-}
-
-/** The climb that leaves a module whose importing file sits at `depth`. */
-function siblingModulesAtDepth(depth: number): RestrictedGroup {
-  const climb = "../".repeat(depth + 1);
-
-  return {
-    group: [`${climb}*`, `${climb}*/**`],
-    message: "a module never imports another module.",
-  };
-}
+// sits, and oxlint matches the raw specifier and never a resolved path, so no
+// glob here can tell `../../beta/src/index.ts` (a sibling, from `alpha/src/`)
+// from `../../utils/x.ts` (inside alpha, from `alpha/src/nested/`). That case
+// belongs to the `boundaries/no-relative-package-escape` rule in
+// `packages/config/oxlint/boundaries/`, which resolves the specifier against
+// the importing file. It has no depth ceiling and names the right remedy for a
+// climb that lands outside every module.
 
 // One entry per layer, in this order: when two entries match one file, the last
 // entry wins for a rule it sets, so a layer's drivers entry lives inside the
@@ -282,17 +265,9 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     ]
   ),
   restrict(["packages/modules/*/**"], [...MODULE_LAYER, NO_CONFIG]),
-  ...MODULE_FOLDER_DEPTHS.map((depth) =>
-    restrict(
-      [moduleFilesAtDepth(depth)],
-      [...MODULE_LAYER, NO_CONFIG, siblingModulesAtDepth(depth)]
-    )
-  ),
   restrict(
     ["packages/modules/*/*.config.ts", "packages/modules/*/*.config.mts"],
-    // A module configuration file sits at the module root, so it keeps the
-    // depth-zero sibling ban along with the rest of the layer.
-    [...MODULE_LAYER, siblingModulesAtDepth(0)]
+    MODULE_LAYER
   ),
   restrict(["apps/**", "customers/**"], [...APP_LAYER, NO_CONFIG]),
   restrict(

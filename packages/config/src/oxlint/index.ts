@@ -53,6 +53,10 @@ export const sharedOxlintConfig: OxlintConfig = {
       name: "anti-slop",
       specifier: "./packages/config/oxlint/anti-slop/index.ts",
     },
+    {
+      name: "boundaries",
+      specifier: "./packages/config/oxlint/boundaries/index.ts",
+    },
   ],
   categories: {
     correctness: "error",
@@ -61,6 +65,7 @@ export const sharedOxlintConfig: OxlintConfig = {
   },
   rules: {
     "oxc/no-accumulating-spread": "error",
+    "boundaries/no-relative-package-escape": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reduce-accumulator-copy": "error",
     "anti-slop/no-chained-type-assertions": "error",

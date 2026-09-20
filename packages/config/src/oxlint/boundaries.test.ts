@@ -981,6 +981,72 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("a module never imports another module.");
   });
 
+  it("rejects a sibling module reached from a folder four deep", () => {
+    // CLAUDE.md prescribes `src/lib/<name>/`, so this depth is ordinary once a
+    // module grows. The ban may not stop at a fixed depth.
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/widgets/components/__boundary__.ts",
+      `import "../../../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("rejects a sibling module reached from a folder seven deep", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/a/b/c/d/e/f/__boundary__.ts",
+      `import "../../../../../../../../beta/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("a module never imports another module.");
+  });
+
+  it("names the right remedy for a climb that leaves the package for core", () => {
+    // A module may import core, by package name. The relative spelling is the
+    // problem, so the diagnosis must say that and not accuse it of reaching a
+    // sibling module (bead genie-ops-center-v2-ft5).
+    const result = lintAt(
+      "packages/modules/alpha/src/__boundary__.ts",
+      `import "../../../core/src/index.ts";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "a module reaches another package by its package name, never by a relative path."
+    );
+
+    expect(result.output).not.toContain(
+      "a module never imports another module."
+    );
+  });
+
+  it("still allows a module its own relative import from a folder four deep", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/widgets/components/__boundary__.ts",
+      `import "../../../../utils/__boundary_target__.ts";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
+  it("still allows a module its own relative import that climbs to its root", () => {
+    const result = lintAt(
+      "packages/modules/alpha/src/lib/__boundary__.ts",
+      `import "../../package.json";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
   it("keeps the module layer on a file past the deepest depth entry", () => {
     // `packages/modules/*/**` is the fallback for a module file more than three
     // folders below its own root. Every `MODULE_FOLDER_DEPTHS` entry repeats the
