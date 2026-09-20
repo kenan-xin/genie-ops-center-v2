@@ -10,7 +10,7 @@
     "typecheck": "nx run-many -t typecheck",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck"
+    "affected": "nx affected -t build test lint typecheck build-storybook test-storybook"
   },
   "devDependencies": {
     "@nx/storybook": "23.2.1",
