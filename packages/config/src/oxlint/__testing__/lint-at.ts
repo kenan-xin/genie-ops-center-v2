@@ -73,7 +73,12 @@ export function withFixture<T>(
   const absolute = join(root, relativePath);
   const inside = relative(root, absolute);
 
-  if (inside === "" || inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+  if (
+    inside === "" ||
+    inside === ".." ||
+    inside.startsWith(`..${sep}`) ||
+    isAbsolute(inside)
+  ) {
     throw new Error(
       `A fixture path must name a file inside its root: ${relativePath}`
     );
