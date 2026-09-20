@@ -54,3 +54,7 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: after S0-01 acceptance and S0-03 ownership transfer, reconcile story/placeholder paths and recheck the staged compatibility patch; rerun affected G1 evidence. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. Implemented-ticket rework awaits owner approval of the proposed sequence; existing integration and shared-file gates remain in force.
+
+## Historical implementation plan
+
+The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/02-storybook-compatibility-g1/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
