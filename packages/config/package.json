@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./vitest/unit": "./src/vitest/unit.ts",
+    "./vitest/component": "./src/vitest/component.ts",
     "./typescript/base": "./src/typescript/base.json",
     "./tailwind": "./src/tailwind/preset.ts",
     "./storybook": "./src/storybook/index.ts"
@@ -15,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@vitest/browser-playwright": "4.1.11",
     "oxlint": "1.83.0",
     "tailwindcss": "4.3.3",
     "vitest": "4.1.11"

@@ -42,6 +42,7 @@ describe("sharedStorybookConfig", () => {
     expect(config.addons).toEqual([
       "@storybook/addon-docs",
       "@storybook/addon-a11y",
+      "@storybook/addon-vitest",
     ]);
   });
 });

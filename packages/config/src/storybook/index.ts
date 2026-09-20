@@ -33,6 +33,12 @@ export function sharedStorybookConfig(
       `${FROM_HOST}/packages/core/${STORY_GLOB}`,
       ...input.moduleRoots.map((root) => `${FROM_HOST}/${root}/${STORY_GLOB}`),
     ],
-    addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+    addons: [
+      "@storybook/addon-docs",
+      "@storybook/addon-a11y",
+      // Owns the test-storybook target and draws the in-user-interface test
+      // panel. The command-line run reads the same project from vitest.config.ts.
+      "@storybook/addon-vitest",
+    ],
   };
 }
