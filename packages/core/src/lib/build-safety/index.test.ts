@@ -28,7 +28,11 @@ type Report = {
 
 type Manifest = { readonly exports: Record<string, string> };
 
-function runProbe(entrySource: string, nodeModulesRoot: string) {
+function runProbe(
+  entrySource: string,
+  nodeModulesRoot: string,
+  env: NodeJS.ProcessEnv = process.env
+) {
   const result = probe(
     [
       { path: "package.json", source: PACKAGE },
@@ -37,7 +41,8 @@ function runProbe(entrySource: string, nodeModulesRoot: string) {
     ],
     NODE,
     ["--experimental-strip-types", "--import", PRELOAD, "entry.ts"],
-    nodeModulesRoot
+    nodeModulesRoot,
+    env
   );
 
   // A missing report must fail the test loudly, never read as a silent pass.
@@ -94,9 +99,8 @@ describe("the build-safe entrypoints", () => {
     "BETTER_AUTH_SECRET",
   ];
 
-  // The child inherits this worker's environment, so the clearing has to happen
-  // here. Stubbing rather than deleting keeps it out of every later test file
-  // that shares the worker.
+  // Seed the parent with recognizable values so accidentally inheriting its
+  // environment makes the child fail. Restore them for subsequent tests.
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -104,16 +108,31 @@ describe("the build-safe entrypoints", () => {
   it.each(buildSafeSubpaths())(
     "imports %s with no deployment variable and starts nothing",
     (subpath) => {
-      for (const name of CLEARED) vi.stubEnv(name, undefined);
+      for (const name of CLEARED)
+        vi.stubEnv(name, "build-safety-test-sentinel");
+
+      const env = { ...process.env };
+
+      for (const name of CLEARED) delete env[name];
 
       const specifier = `@genie/core${subpath.replace(/^\./, "")}`;
 
       const run = runProbe(
-        `await import(${JSON.stringify(specifier)});\n`,
-        APP_MODULES
+        `
+const requiredAbsent = ${JSON.stringify(CLEARED)};
+if (requiredAbsent.some((name) => Object.hasOwn(process.env, name))) {
+  throw new Error("Deployment environment reached build-safe import");
+}
+await import(${JSON.stringify(specifier)});
+console.log("deployment-environment:absent");
+`,
+        APP_MODULES,
+        env
       );
 
       expect(run.failed).toBe(false);
+
+      expect(run.output).toContain("deployment-environment:absent");
 
       expect(run.report.resolved).toEqual([]);
 

@@ -47,7 +47,8 @@ export function probe(
   files: readonly ProbeFile[],
   command: string,
   args: readonly string[],
-  nodeModulesRoot = join(WORKSPACE_ROOT, "node_modules")
+  nodeModulesRoot = join(WORKSPACE_ROOT, "node_modules"),
+  env: NodeJS.ProcessEnv = process.env
 ): ProbeResult {
   const root = mkdtempSync(join(tmpdir(), "genie-target-probe-"));
 
@@ -65,6 +66,7 @@ export function probe(
   try {
     const output = execFileSync(command, [...args], {
       cwd: root,
+      env,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
