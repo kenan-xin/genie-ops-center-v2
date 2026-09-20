@@ -55,6 +55,10 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: shared naming validation, inventory and singular boundary coverage; fixture reconciliation and a fresh delta review. Prior repair approval does not cover this change. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The sequence was subsequently authorized. Follow the current acceptance/continuation record linked above; retain the shared-file protocol and outstanding consumer work.
 
+## Follow-up evidence, 2026-09-21
+
+[Generator entrypoint resolution](generator-entrypoint-resolution.md) replaces the weak `exports`-revert negative control with a disposable fixture that carries both a valid legacy `main` and an `exports` map. It proves the exports map alone decides resolution, that a broken exports target does not fall back to a valid `main`, and that the real consumer specifier resolves from `apps/storybook`. Bead `genie-ops-center-v2-vqi`, strengthening `genie-ops-center-v2-div`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
