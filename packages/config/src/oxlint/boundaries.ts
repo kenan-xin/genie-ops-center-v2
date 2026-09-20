@@ -247,12 +247,37 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     CORE_LAYER
   ),
   restrict(
+    ["packages/core/src/lib/tenant-config/**"],
+    [
+      {
+        group: DRIVERS,
+        message:
+          "the tenant schemas stay build-safe: no driver, no connection (R-19a, R-7a).",
+      },
+    ]
+  ),
+  restrict(
     ["packages/core/contracts/**"],
     [
       {
         group: ["*", "!zod", "!zod/**"],
         message: "contracts import only zod and types (DEC-42).",
         allowTypeImports: true,
+      },
+    ]
+  ),
+  // A colocated test is not the shipping surface, so it adds vitest and the
+  // file under test in the same folder. Every other ban holds, including the
+  // one on climbing into `src/` or `testing/`.
+  restrict(
+    ["packages/core/contracts/*.test.ts"],
+    [
+      ...CORE_LAYER,
+      NO_CONFIG,
+      {
+        group: ["*", "!zod", "!zod/**", "!vitest", "!./*"],
+        message:
+          "a contracts test imports vitest, zod and the file under test, nothing else (DEC-42).",
       },
     ]
   ),
