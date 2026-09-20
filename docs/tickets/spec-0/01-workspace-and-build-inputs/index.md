@@ -60,7 +60,7 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 [Generator entrypoint resolution](generator-entrypoint-resolution.md) replaces the weak `exports`-revert negative control with a disposable fixture that carries both a valid legacy `main` and an `exports` map. It proves the exports map alone decides resolution, that a broken exports target does not fall back to a valid `main`, and that the real consumer specifier resolves from `apps/storybook`. Bead `genie-ops-center-v2-vqi`, strengthening `genie-ops-center-v2-div`.
 ## Root test gate guard, 2026-09-21
 
-[Root test gate guard](root-test-gate-guard.md) adds a `tools/generators` unit test that runs the root `test` script against a stub `nx` and fails when the `run-many` target list no longer carries `validate`. It makes the `validate` target added by `38c7a3e` non-deletable without a failing check, and it stays outside the validate collection so deleting the target cannot hide its own guard. No root manifest, Nx input, lockfile or product change. Bead `genie-ops-center-v2-3o6`.
+[Root test gate guard](root-test-gate-guard.md) adds a `tools/generators` unit test that runs the root `test` script against a stub `nx` and fails when the `run-many` target list no longer carries `validate`. It makes the `validate` target added by `38c7a3e` non-deletable without a failing check, and it stays outside the validate collection so deleting the target cannot hide its own guard. The generators `test` target also takes the root manifest as a project-local input, so a warm Nx cache cannot replay past the mutation. No root `package.json`, `nx.json`, lockfile or product change. Bead `genie-ops-center-v2-3o6`.
 
 ## Historical implementation plan
 

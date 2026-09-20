@@ -28,6 +28,33 @@ Run in this worktree, the real root `package.json` mutated and restored:
 4. The manifest was restored from a byte copy of the original. `sha256sum package.json` again: `0fdb4687e8ae023e67ab3bdda26a7b7834b70bd6b5f83b896ddc9f74331433dd`. `git status --porcelain` reports only the new test file, so the mutation left no trace.
 5. The same vitest run passed: 1 test file, 1 test.
 
+## Cache invalidation
+
+The guard only runs when Nx re-runs the generators `test` task. That task's inputs were `["default", "^production"]`, which do not include the root `package.json`, so a warm cache replayed the task after the root script changed and the guard never saw the mutation. Measured before the correction: one byte appended to the root `package.json` left `nx test @genie/generators` at `Cache: 1/1 hit (100%)`.
+
+`tools/generators/package.json` now gives its own `test` target the root manifest as an input:
+
+```json
+"nx": {
+  "tags": ["tooling"],
+  "targets": {
+    "test": {
+      "inputs": ["default", "^production", "{workspaceRoot}/package.json"]
+    }
+  }
+}
+```
+
+`nx show project @genie/generators --json` resolves `targets.test.inputs` to that array and keeps the inferred `nx:run-script` executor, its `options.script` and its metadata, so the override merges and changes only the inputs. The project-local manifest is used because the equivalent change in `nx.json` (`sharedGlobals` or `targetDefaults.test.inputs`) is a root shared surface this work does not own, and the `validate` target's inputs already cover the root manifest but the guard must stay outside the validate collection.
+
+Measured with the override, from a cleared cache:
+
+1. `nx reset`, then two `nx test @genie/generators` runs: the first ran for real (`0/1 hit`), the second replayed (`1/1 hit (100%)`, 15 ms).
+2. The root `test` script was mutated to `nx run-many -t test`.
+3. `nx test @genie/generators` re-ran for real (526 ms, no cache hit) and failed: `AssertionError: expected [ 'test' ] to include 'validate'`.
+4. The manifest was restored to `sha256 0fdb4687e8ae023e67ab3bdda26a7b7834b70bd6b5f83b896ddc9f74331433dd`.
+5. The next run replayed from the cache and passed: `1/1 hit (100%)`, 52 tests.
+
 ## Scope
 
-This change adds no root `package.json`, `nx.json`, lockfile, or product change. The root script wiring, and any Nx cache input that would let the root manifest invalidate the guard, belong to the shared-file surface and are not touched here. The residuals recorded in the same bead, the narrowed README input still selecting non-root `README.md` files and the unit-collection caching boundary, are cache noise tracked separately.
+The only source change is the generators `test` target input in `tools/generators/package.json`. No root `package.json`, `nx.json`, lockfile, or product change. The narrowed README input still selecting non-root `README.md` files, and other cache noise recorded in the same bead, remain in their own cache ticket and are not claimed here.
