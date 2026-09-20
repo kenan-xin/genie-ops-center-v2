@@ -18,7 +18,7 @@ fi
 if [ "$hook_name" = "pre-commit" ]; then
   lefthook_bin="$here/../node_modules/.bin/lefthook"
   if [ ! -x "$lefthook_bin" ]; then
-    echo "hook dispatcher: pinned workspace Lefthook is missing" >&2
+    echo "hook dispatcher: pinned workspace Lefthook is missing; run pnpm install --frozen-lockfile from the repository root, then retry the commit" >&2
     exit 1
   fi
   "$lefthook_bin" run pre-commit
