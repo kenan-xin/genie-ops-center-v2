@@ -12,7 +12,6 @@ const reservedEntrypointOverride: OxlintOverride = {
   files: [
     "apps/genie/src/index.ts",
     "packages/core/src/index.ts",
-    "packages/ui/src/index.ts",
     "packages/core/src/lib/tenant-config/index.ts",
   ],
   rules: {
