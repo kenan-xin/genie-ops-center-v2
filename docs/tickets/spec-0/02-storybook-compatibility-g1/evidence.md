@@ -136,6 +136,10 @@ Finished in 18ms on 80 files using 32 threads.
 
 `pnpm install` exits 1 on two pre-existing unmet peers: `tsconfck@3.1.6` wants `typescript@^5` and the repository carries 7.0.2, and `@nx/eslint@23.2.1` wants `eslint`, which this repository does not use because it lints with oxlint. The install itself completes its work and then fails on the report step. Bead `genie-ops-center-v2-8nb` holds this. Nothing on this branch relaxes `strictPeerDependencies`, and no dependency major was changed to make an install pass.
 
+### The affected alias carries the storybook targets
+
+Spec 00 R-51 requires `build-storybook` and `test-storybook` on every change, and the root `affected` alias originally stopped at `build test lint typecheck`. The final review fix batch extended the alias to `nx affected -t build test lint typecheck build-storybook test-storybook`. The post-fix run, `pnpm run affected` at the fix-batch working tree, exited 0 with `Successfully ran targets test, lint, typecheck, build-storybook, test-storybook for 7 projects`, 22 tasks, 0 served from cache. The `build` target in the alias matched no project, because no project declares one yet.
+
 ## 5. Target ownership
 
 Read from `nx show project @genie/storybook --json` at head `3985e5b`.
