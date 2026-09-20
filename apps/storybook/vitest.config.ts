@@ -17,9 +17,6 @@ export default defineConfig({
             configDir: join(here, ".storybook"),
           }),
         ],
-        test: {
-          setupFiles: ["./.storybook/vitest.setup.ts"],
-        },
       }),
     ],
   },
