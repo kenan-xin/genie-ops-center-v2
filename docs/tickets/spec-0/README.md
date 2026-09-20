@@ -96,6 +96,8 @@ S0-01 reserves only a Storybook configuration extension point; S0-02 exclusively
 
 ## Starting a Claude Code / Superpowers session
 
+Accepted S0-02/S0-03 shared-file sequence (2026-09-20): follow [S0-03's accepted planning decisions](03-module-contracts-and-build-safe-schemas/index.md#accepted-planning-decisions--2026-09-20). After S0-01 is integrated, validated and closed, agree overlapping dependency pins first. S0-03 prepares the minimal contract dependencies; following separate approval and integration of that change, S0-02 updates its baseline and takes over Storybook dependency/configuration edits. Record the writer, paths and integrated revision in both beads. This does not add a whole-ticket S0-03 prerequisite to S0-02 or close either gate; disjoint owned-file work may proceed in parallel. Exports, boundaries and configuration changes also obey the single-writer protocol.
+
 First make the approved planning files available on the agreed integration baseline. The current checkout contains pre-existing tracked and untracked changes; a fresh worktree does not inherit those changes. Do not commit everything or copy the dirty tree blindly. Preparing/committing the baseline needs separate authorization. CLAUDE.md uses feature branches from develop once code exists; if develop is not prepared, ask the integration owner to establish the base rather than silently using main.
 
 The installed bd help states linked Git worktrees discover the shared database via Git common-directory discovery. Verify that claim in each new worktree using bd where and bd worktree info; do not run bd init or create separate issue stores there. The observed coordinator database is .beads/embeddeddolt, not an assumed JSONL store. Same-machine linked worktrees need no remote sync. Separate clones/machines need explicitly coordinated Dolt sync, not this local recipe.
@@ -154,3 +156,7 @@ External publication is separate authority: S0-11 tests ordering without pushing
 Independent critique and bounded recheck passed on 2026-09-19 after separating S0-01's extension point from S0-02's exclusive Storybook implementation ownership. Published Beads has the same 18 blocking edges as this map, no cycles and only S0-01 ready. All twelve tickets remain open/unclaimed. Mechanical checks found all 75 numbered requirements and 30 acceptance IDs in the coverage map, valid local links and no whitespace errors. These checks validate the breakdown, not runtime implementation. Recheck current Beads state before dispatch.
 
 Assumptions: one shared same-machine Beads database and one human/coordinator integration owner; future implementation authorization is separate from this breakdown. Unresolved implementation mechanisms remain exactly G1 pinned compatibility and G2 native runtime/header composition. No remaining product question is decided here.
+
+## Module naming revision, 2026-09-20
+
+The approved singular package names and existing capability folders are propagated through [the revision and rework plan](../../tech-plans/module-naming-revision.md). S0-01–03 have proposed rework before further acceptance; later tickets inherit the naming contract. Beads ygn and 1rd.1.4 track reconciliation and enforcement; existing acceptance gates and single-writer handoffs remain unchanged. Code changes await approval of the implemented-ticket rework sequence.

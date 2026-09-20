@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { moduleNamingError } from "../workspace/module-naming.ts";
+
 /** One module, described by data only. No declaration is ever imported. */
 export type ModuleInventoryEntry = {
   readonly id: string;
@@ -81,6 +83,21 @@ export function readModuleInventory(
     }
 
     seen.add(entry.id);
+  }
+
+  // After the duplicate pass, so that two folders claiming one id still report
+  // the duplicate rather than a naming disagreement. Checked for every folder
+  // found, before any selection or cache lookup, so a module the boundary
+  // patterns cannot match never reaches a build. Metadata only: the declaration
+  // is still never imported or evaluated.
+  for (const entry of entries) {
+    const folder = entry.packageRoot.slice(`${MODULES_DIR}/`.length);
+
+    const naming = moduleNamingError(folder, entry.packageName, entry.id);
+
+    if (naming !== undefined) {
+      throw new Error(`${entry.packageRoot}/package.json: ${naming}.`);
+    }
   }
 
   return entries;

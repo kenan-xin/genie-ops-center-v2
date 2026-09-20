@@ -4,9 +4,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { classifyProject } from "./classify-project.ts";
+import { classifyProject } from "../classify-project.ts";
+import { moduleProjectNamingError } from "../module-naming.ts";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
 type NxProject = { readonly root: string; readonly tags?: readonly string[] };
 
@@ -51,6 +52,10 @@ function readProjectGraph(): NxProjectGraph {
 const projects = readProjectGraph();
 
 describe("repository hygiene", () => {
+  it("computes the real workspace root", () => {
+    expect(existsSync(join(WORKSPACE_ROOT, "pnpm-workspace.yaml"))).toBe(true);
+  });
+
   it("finds every workspace project", () => {
     expect(Object.keys(projects).length).toBeGreaterThan(0);
   });
@@ -67,6 +72,21 @@ describe("repository hygiene", () => {
       expect(classifications).toEqual([expected]);
     }
   );
+
+  // The production check, over whatever modules the workspace really holds. It
+  // generates no case until the first module lands, which is why the same
+  // function is proved against a disposable workspace in module-naming.test.ts.
+  it.each(
+    Object.entries(projects).filter(
+      ([, project]) => classifyProject(project.root) === "module"
+    )
+  )("%s obeys the module package naming contract", (name, project) => {
+    expect(
+      moduleProjectNamingError(project.root, WORKSPACE_ROOT)
+    ).toBeUndefined();
+
+    expect(name).toBe(`@genie/module-${project.root.split("/").at(-1)}`);
+  });
 
   it.each(Object.entries(projects))(
     "%s holds a README.md that says what it imports",

@@ -2,6 +2,8 @@
 
 Status: draft for review, 2026-09-16. This is the single list of what a module may declare and what core provides. Customer modules are unknown in advance, so the rule is: a module uses these points and nothing else, and when a module needs something not on this list, the list is extended in core once, in the same change, so every later module gets it. A module never reaches around the contract.
 
+Package names and folder basenames follow [Module package naming](repository-layout.md#module-package-naming). The module ID stays unprefixed: `contract-data` maps to `@genie/module-contract-data` in `packages/modules/contract-data/`. Package naming does not rename routes, permissions, entitlements, migration identities or selection IDs. Data-only metadata checks own package/folder/ID consistency; runtime declarations remain module-owned.
+
 ## What a module declares
 
 Permission keys and default roles follow [Permission and system-role evolution](permission-evolution.md). Registration/seeding creates missing definitions, not new assignments or silent privilege expansions. Renames, retirement, and permission-affecting upgrades require the explicit migration and verification policy there.

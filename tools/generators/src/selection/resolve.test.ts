@@ -7,7 +7,7 @@ const WORKSPACE_ROOT = new URL("./__fixtures__/", import.meta.url).pathname;
 
 const alpha: ModuleInventoryEntry = {
   id: "alpha",
-  packageName: "@genie/modules-alpha",
+  packageName: "@genie/module-alpha",
   packageRoot: "throwing-module",
   entrypoint: "throwing-module/src/index.ts",
 };

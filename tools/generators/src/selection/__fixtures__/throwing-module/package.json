@@ -1,7 +1,9 @@
 {
-  "name": "@genie/modules-alpha",
+  "name": "@genie/module-throwing-module",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "genie": { "module": { "id": "alpha", "entrypoint": "src/index.ts" } }
+  "genie": {
+    "module": { "id": "throwing-module", "entrypoint": "src/index.ts" }
+  }
 }

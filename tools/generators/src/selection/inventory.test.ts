@@ -33,7 +33,7 @@ function workspaceHolding(
 
 function moduleManifest(id: string): TestManifest {
   return {
-    name: `@genie/modules-${id}`,
+    name: `@genie/module-${id}`,
     genie: { module: { id, entrypoint: "src/index.ts" } },
   };
 }
@@ -55,14 +55,14 @@ describe("readModuleInventory", () => {
 
     expect(readModuleInventory(root)[0]).toEqual({
       id: "alpha",
-      packageName: "@genie/modules-alpha",
+      packageName: "@genie/module-alpha",
       packageRoot: "packages/modules/alpha",
       entrypoint: "packages/modules/alpha/src/index.ts",
     });
   });
 
   it("rejects a module package that declares no genie.module block", () => {
-    const root = workspaceHolding({ alpha: { name: "@genie/modules-alpha" } });
+    const root = workspaceHolding({ alpha: { name: "@genie/module-alpha" } });
 
     expect(() => readModuleInventory(root)).toThrow(
       /no genie.module id and entrypoint/i
@@ -85,6 +85,74 @@ describe("readModuleInventory", () => {
 
     expect(() => readModuleInventory(root)).toThrow(
       /duplicate module id in the inventory: alpha/i
+    );
+  });
+
+  it("reads a hyphenated module id", () => {
+    const root = workspaceHolding({
+      "contract-data": moduleManifest("contract-data"),
+    });
+
+    expect(readModuleInventory(root)[0]).toEqual({
+      id: "contract-data",
+      packageName: "@genie/module-contract-data",
+      packageRoot: "packages/modules/contract-data",
+      entrypoint: "packages/modules/contract-data/src/index.ts",
+    });
+  });
+
+  // Discovery is where an arbitrary manifest name is stopped. A module the
+  // boundary patterns cannot match must never reach selection at all.
+  it("rejects an arbitrary package name outside the module namespace", () => {
+    const root = workspaceHolding({
+      alpha: {
+        name: "@genie/whatever",
+        genie: { module: { id: "alpha", entrypoint: "src/index.ts" } },
+      },
+    });
+
+    expect(() => readModuleInventory(root)).toThrow(
+      /must be "@genie\/module-alpha"/
+    );
+  });
+
+  it("rejects the superseded plural package name", () => {
+    const root = workspaceHolding({
+      alpha: {
+        name: "@genie/modules-alpha",
+        genie: { module: { id: "alpha", entrypoint: "src/index.ts" } },
+      },
+    });
+
+    expect(() => readModuleInventory(root)).toThrow(
+      /must be "@genie\/module-alpha"/
+    );
+  });
+
+  it("rejects a folder basename that is not the declared module id", () => {
+    const root = workspaceHolding({
+      contracts: {
+        name: "@genie/module-contract-data",
+        genie: { module: { id: "contract-data", entrypoint: "src/index.ts" } },
+      },
+    });
+
+    expect(() => readModuleInventory(root)).toThrow(
+      /folder "contracts" holds the module "contract-data"/
+    );
+  });
+
+  it("validates a module that no selection would include, so nothing is skipped", () => {
+    const root = workspaceHolding({
+      alpha: moduleManifest("alpha"),
+      beta: {
+        name: "@genie/whatever",
+        genie: { module: { id: "beta", entrypoint: "src/index.ts" } },
+      },
+    });
+
+    expect(() => readModuleInventory(root)).toThrow(
+      /must be "@genie\/module-beta"/
     );
   });
 

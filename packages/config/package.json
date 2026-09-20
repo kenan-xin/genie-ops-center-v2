@@ -19,6 +19,7 @@
     "@vitest/browser-playwright": "4.1.11"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.83.0",
     "oxlint": "1.83.0",
     "tailwindcss": "4.3.3",
     "vitest": "4.1.11"

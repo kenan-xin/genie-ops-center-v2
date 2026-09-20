@@ -50,6 +50,24 @@
     "test-storybook": {
       "cache": true,
       "inputs": ["default", "^production", { "env": "MODULE_INCLUDE" }]
+    },
+    "validate": {
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/**/*",
+        "{workspaceRoot}/nx.json",
+        "{workspaceRoot}/pnpm-workspace.yaml",
+        "{workspaceRoot}/pnpm-lock.yaml",
+        "{workspaceRoot}/**/package.json",
+        "{workspaceRoot}/**/project.json",
+        "{workspaceRoot}/**/tsconfig*.json",
+        "{workspaceRoot}/**/vitest*.config.*",
+        "{workspaceRoot}/apps/*/README.md",
+        "{workspaceRoot}/packages/*/README.md",
+        "{workspaceRoot}/packages/modules/*/README.md",
+        "{workspaceRoot}/tools/*/README.md",
+        "{workspaceRoot}/customers/*/app/README.md"
+      ]
     }
   }
 }

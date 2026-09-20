@@ -3,14 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "hooks:install": "lefthook install",
+    "hooks:install": "git config core.hooksPath .githooks",
     "build": "nx run-many -t build",
-    "test": "nx run-many -t test",
+    "test": "nx run-many -t test validate",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
+    "validate": "nx run @genie/generators:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck build-storybook test-storybook"
+    "affected": "nx affected -t build test lint typecheck build-storybook test-storybook && pnpm run validate"
   },
   "devDependencies": {
     "@nx/storybook": "23.2.1",

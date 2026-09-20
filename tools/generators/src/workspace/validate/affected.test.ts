@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
 const CONFIG_PRESET = "packages/config/src/vitest/unit.ts";
 
@@ -38,6 +39,10 @@ function affectedByConfigPresetChange(): readonly string[] {
 }
 
 describe("the affected graph", () => {
+  it("computes the real workspace root", () => {
+    expect(existsSync(join(WORKSPACE_ROOT, "pnpm-workspace.yaml"))).toBe(true);
+  });
+
   it("marks every consumer affected when the shared config preset changes", () => {
     const affected = affectedByConfigPresetChange();
     expect(affected).toContain("@genie/config");

@@ -24,11 +24,15 @@ Deliver the workspace, import boundaries, typed module extension points, placeho
 
 These are dependency stages, not tickets. Build only enough foundation to exercise a gate, prove it, then expand. No installed versions or runtime results are claimed here.
 
+## Naming revision, 2026-09-20
+
+Apply [the canonical module naming contract](../architecture/repository-layout.md#module-package-naming): independent `@genie/module-<id>` packages live in `packages/modules/<id>/`, with unchanged kebab-case IDs. See [the propagation and rework plan](module-naming-revision.md) before resuming implemented tickets; this revision does not authorize code changes or invalidate unrelated historical evidence.
+
 ## Build ownership and dependency graph
 
 The names below are planned target responsibilities, not claims that targets already exist. Build-time tooling owns selection; product runtime never imports it. The shared resolver lives under `tools/generators` with a build-safe entrypoint, not in `packages/config` or a runtime module barrel.
 
-The resolver reads a data-only module inventory (package metadata or a non-executable manifest containing module id and entrypoint path strings). It never imports or evaluates module declarations, application runtime, database drivers or executable configuration to discover modules. Entrypoint strings are validated data for emitting imports, not instructions for tooling to load them. The authoritative `Module` declarations remain in their owning modules; metadata does not duplicate permissions, routes or other runtime contracts. App-owned validation checks selected metadata against actual declaration identity and typechecks the generated registry without initializing deployment services. Fail on missing entrypoints, duplicate ids or identity mismatch. Unselected modules are not imported for validation.
+The resolver reads a data-only module inventory (package metadata or a non-executable manifest containing module id and entrypoint path strings). It never imports or evaluates module declarations, application runtime, database drivers or executable configuration to discover modules. Entrypoint strings are validated data for emitting imports, not instructions for tooling to load them. The authoritative `Module` declarations remain in their owning modules; metadata does not duplicate permissions, routes or other runtime contracts. App-owned validation checks selected metadata against actual declaration identity and typechecks the generated registry without initializing deployment services. Fail on missing entrypoints, duplicate ids or identity mismatch. Unselected modules are not imported for validation. Before selection/cache lookup, validate every discovered module package's metadata: its folder basename must be `<id>` and its package name `@genie/module-<id>`. Workspace validation must enforce the same rule so arbitrary package names cannot bypass name-based import restrictions. Share this data-only invariant; keep path-based architectural classification separate. Preserve custom declaration entrypoints and consume validated inventory paths instead of reconstructing paths from IDs.
 
 | Owner / producer | Input and declared output | Required consumers / edges |
 | --- | --- | --- |
