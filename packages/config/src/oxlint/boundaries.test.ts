@@ -1283,3 +1283,27 @@ describe("the serialized oxlint configuration", () => {
     ]);
   });
 });
+
+describe("the tooling relative-path glob", () => {
+  it("rejects a generators climb without the tools path segment", () => {
+    const result = lintAt(
+      "packages/core/src/__boundary__.ts",
+      'import "../generators/index.ts";\n'
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "product code never imports a generator (R-7a)."
+    );
+  });
+
+  it("allows a legitimate relative climb within core", () => {
+    const result = lintAt(
+      "packages/core/src/nested/__boundary__.ts",
+      'import "../lib/index.ts";\n'
+    );
+
+    expect(result.failed).toBe(false);
+  });
+});
