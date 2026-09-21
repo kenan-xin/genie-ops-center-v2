@@ -9,6 +9,27 @@ type DeclarationWithSource =
   | ESTree.ExportAllDeclaration
   | ESTree.ExportNamedDeclaration;
 
+/** The values an ESTree literal node can carry. */
+type LiteralValue =
+  | ESTree.StringLiteral["value"]
+  | ESTree.NumericLiteral["value"]
+  | ESTree.BooleanLiteral["value"]
+  | ESTree.NullLiteral["value"]
+  | ESTree.BigIntLiteral["value"]
+  | ESTree.RegExpLiteral["value"];
+
+/**
+ * True for a primitive string. A literal's value is already parsed AST, not
+ * untrusted input, which is the type-guard case the anti-slop
+ * `no-runtime-typeof` rule documents. Its `allowInTypeGuards` option is off
+ * repository-wide, so this one guard carries a local suppression instead of a
+ * configuration change.
+ */
+function isStringValue(value: LiteralValue): value is string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a parsed AST literal, not untrusted I/O
+  return typeof value === "string";
+}
+
 /**
  * The module folder of a file, or null when the file is not inside one. The
  * path is the absolute file name oxlint reports, so the match is anchored on
@@ -74,14 +95,16 @@ export const noRelativePackageEscapeRule = defineRule({
     },
   },
   createOnce(context) {
-    function report(node: ESTree.Node, specifier: string): void {
-      if (!specifier.startsWith(".")) return;
+    function report(node: ESTree.Node, value: LiteralValue): void {
+      if (!isStringValue(value)) return;
+
+      if (!value.startsWith(".")) return;
 
       const own = moduleRootOf(context.filename);
 
       if (own === null) return;
 
-      const target = resolve(dirname(context.filename), specifier);
+      const target = resolve(dirname(context.filename), value);
 
       if (target === own || target.startsWith(`${own}${sep}`)) return;
 
@@ -114,23 +137,13 @@ export const noRelativePackageEscapeRule = defineRule({
 
         const [argument] = node.arguments;
 
-        if (
-          argument?.type === "Literal" &&
-          typeof argument.value === "string"
-        ) {
-          report(node, argument.value);
-        }
+        if (argument?.type === "Literal") report(node, argument.value);
       },
       // A dynamic import is executable source too (Spec 0 R-7, the paragraph
       // after R-7a). Only a literal specifier can be judged here; a computed
       // one is not decidable without running the program.
       ImportExpression(node) {
-        if (
-          node.source.type === "Literal" &&
-          typeof node.source.value === "string"
-        ) {
-          report(node, node.source.value);
-        }
+        if (node.source.type === "Literal") report(node, node.source.value);
       },
     };
   },

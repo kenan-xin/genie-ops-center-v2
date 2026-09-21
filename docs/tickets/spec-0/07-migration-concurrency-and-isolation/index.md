@@ -53,3 +53,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Resolve module migration paths through inventory and preserve history/locking identity. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Extend the integrated S0-04 migrator and S0-05 image/isolation harness. Do not rebuild the unit cleanup state machine. Add real multi-process contention, connection loss, timeout, cleanup uncertainty and forward-only rerun cases; fail missing/skipped isolation collection. This remains after G2 because startup failure and composed app isolation are in scope.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

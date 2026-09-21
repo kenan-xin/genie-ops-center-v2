@@ -1,6 +1,6 @@
 # S0-03 — Define foundation module contracts and build-safe schemas
 
-Current execution authority: [continuation through reviewed local integration](continuation.md), delivered 2026-09-21. It supersedes the earlier Tasks-7/8-only pause and ticket-local no-commit/no-merge/no-sync holds. Acceptance remains open until its integrated checks pass.
+Accepted integration: `9f67536`, with later contract and build-safety fixes integrated. The [continuation](continuation.md) is a completed authorization record. Consult Beads and the audit below for remaining follow-ups.
 
 Bead: `genie-ops-center-v2-1rd.3`. Status and claims live in Beads, not this document.
 
@@ -79,3 +79,9 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 ## Branding requirements clarification — 2026-09-21
 
 Reconcile the seed schema and its tests with [the canonical branding seed requirements](../../../architecture/branding-seed.md). Required identity, locale and time zone, deferred reply-to configuration, optional assets/links, notice validation and standard appearance defaults are approved. Welcome text defaults to “Welcome to {product name}”, application-email sender name to company name, email footer to absent, and date/number formatting to tenant locale with overrides. Null/default-materialization questions remain open. Preserve completed work and existing pins/ownership; this clarification does not itself claim implementation or integrated acceptance. Reconcile the latest main-checkout documentation into the worktree before final schema acceptance; do not overwrite newer requirements during integration.
+
+## Develop audit, 2026-09-21
+
+Integrated and closed at 9f67536; contract-validation fixes at 2f5a09c and child-process environment proof at b61c080 are also ancestors of develop ea4890b. The continuation and remaining-work map are historical execution records. The S0-03 shared-file window is over. Setup foreground derivation (1rd.3.1), explicit-null policy (1rd.3.3) and shared font ownership (tf1) remain separate.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

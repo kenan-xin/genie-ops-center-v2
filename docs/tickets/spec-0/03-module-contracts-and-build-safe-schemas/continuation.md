@@ -1,5 +1,7 @@
 # S0-03 continuation through reviewed local integration
 
+Historical execution record: S0-03 was integrated and closed at `9f67536`; see the [current audit](../audit-2026-09-21.md). Earlier pauses, remaining-task lists and exclusive writer windows below are not current dispatch instructions.
+
 Authorized and delivered by the owner to the existing S0-03 implementation session on 2026-09-21. This repository copy replaces the external handoff as the readable execution contract. It is authority to proceed, not proof of completion or confirmation that the writer transfer has been recorded. Live status and effective writer records remain in Beads.
 
 The later approved [branding seed requirements](../../../architecture/branding-seed.md) govern required fields, omission and text/format defaults. Unresolved null/materialization questions remain explicit. Preserve this documentation reconciliation when integrating; do not replace newer main-checkout requirements with older branch documents.

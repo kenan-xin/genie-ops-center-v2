@@ -11,7 +11,7 @@
     "./storybook": "./src/storybook/index.ts"
   },
   "scripts": {
-    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "lint": "cd ../.. && oxlint --config=oxlint.config.ts packages/config/src packages/config/oxlint/boundaries oxlint.config.ts oxfmt.config.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -10,7 +10,7 @@ import { readModuleInventory } from "./inventory.ts";
 type TestManifest = {
   readonly name?: string;
   readonly genie?: {
-    readonly module?: { readonly id?: string; readonly entrypoint?: string };
+    readonly module?: { readonly id?: string; readonly entrypoint?: unknown };
   };
 };
 
@@ -172,6 +172,117 @@ describe("readModuleInventory", () => {
       /must be "@genie\/module-beta"/
     );
   });
+
+  // The entrypoint is emitted as import text by registry generation, so a value
+  // that is not a usable relative path must be stopped at discovery.
+  it.each([
+    { entrypoint: "" },
+    { entrypoint: "   " },
+    { entrypoint: 7 },
+    { entrypoint: ["src/index.ts"] },
+    { entrypoint: null },
+  ])("rejects a malformed entrypoint value: %j", ({ entrypoint }) => {
+    const root = workspaceHolding({
+      alpha: {
+        name: "@genie/module-alpha",
+        genie: { module: { id: "alpha", entrypoint } },
+      },
+    });
+
+    try {
+      expect(() => readModuleInventory(root)).toThrow(
+        /entrypoint must be a non-empty string/i
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    "../../../etc/passwd",
+    "src/../../beta/index.ts",
+    "..",
+    "/etc/passwd",
+  ])(
+    "rejects an entrypoint that leaves the module package: %s",
+    (entrypoint) => {
+      const root = workspaceHolding({
+        alpha: {
+          name: "@genie/module-alpha",
+          genie: { module: { id: "alpha", entrypoint } },
+        },
+      });
+
+      try {
+        expect(() => readModuleInventory(root)).toThrow(
+          /must stay inside the module package/i
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it.each(["src\\..\\..\\beta\\index.ts", "C:\\Windows\\x.ts"])(
+    "rejects a backslash spelling the posix normalizer cannot inspect: %s",
+    (entrypoint) => {
+      const root = workspaceHolding({
+        alpha: {
+          name: "@genie/module-alpha",
+          genie: { module: { id: "alpha", entrypoint } },
+        },
+      });
+
+      try {
+        expect(() => readModuleInventory(root)).toThrow(
+          /must stay inside the module package/i
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it.each([".", "./", "src/", "src/index.ts/"])(
+    "rejects a folder-shaped entrypoint: %s",
+    (entrypoint) => {
+      const root = workspaceHolding({
+        alpha: {
+          name: "@genie/module-alpha",
+          genie: { module: { id: "alpha", entrypoint } },
+        },
+      });
+
+      try {
+        expect(() => readModuleInventory(root)).toThrow(
+          /must name a file rather than a folder/i
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
+
+  // The recorded path becomes import text, so one spelling must produce one string.
+  it.each(["./src/index.ts", "src//index.ts", "  src/index.ts  "])(
+    "records one canonical path for the spelling %j",
+    (entrypoint) => {
+      const root = workspaceHolding({
+        alpha: {
+          name: "@genie/module-alpha",
+          genie: { module: { id: "alpha", entrypoint } },
+        },
+      });
+
+      try {
+        expect(readModuleInventory(root)[0]?.entrypoint).toBe(
+          "packages/modules/alpha/src/index.ts"
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  );
 
   it("returns an empty inventory when no module folder exists yet", () => {
     const root = mkdtempSync(join(tmpdir(), "genie-inventory-empty-"));

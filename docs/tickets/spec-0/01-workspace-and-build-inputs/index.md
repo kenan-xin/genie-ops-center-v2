@@ -72,6 +72,20 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Validate input scope](validate-input-scope.md) removes the workspace-wide `vitest*.config.*` validate input, which no check reads, and excludes the non-project `packages/modules/README.md` from the README inputs. An unrelated vitest config edit now reuses the validate cache, while the generator's own config, its checks and every project-root README still invalidate it. Bead `genie-ops-center-v2-19f`.
 
+## Root config lint scope, 2026-09-21
+
+[Root config lint scope](root-config-lint-scope.md) extends the `@genie/config` lint target to name the root `oxlint.config.ts` and `oxfmt.config.ts` as lint targets, so a syntax or rule error in either fails a real Nx target. `tsconfig.base.json` is JSONC and stays out of oxlint; its validation is the compiler read through `extends`, proved by `nx typecheck` failing on a syntax error. Bead `genie-ops-center-v2-y5e`.
+
+## Boundary plugin static coverage, 2026-09-21
+
+[Boundary plugin static coverage](boundary-plugin-static-coverage.md) brings the repository-owned Oxlint plugin at `packages/config/oxlint/boundaries/**` into the config package's lint command and tsconfig include, which the `jsPlugins` string specifier had left out. It records the two `no-runtime-typeof` lint errors that the new coverage revealed, the type guard with a local suppression that fixes them, and a real-oxlint control proving non-string literals stay unjudged, with injected lint and type errors failing the real Nx gates. Bead `genie-ops-center-v2-x7x`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
+
+## Develop audit, 2026-09-21
+
+Accepted at cb5b010; later boundary, probe, cache and lint-coverage repairs are integrated through ea4890b. Preserve them. No foundation rebuild. Live-hook proof (2o4), first Tailwind-consumer proof (3yv), and downstream naming completion (ygn) remain separate; this audit does not reopen acceptance.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

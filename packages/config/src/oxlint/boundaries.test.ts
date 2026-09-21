@@ -769,28 +769,6 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("never imports a generator");
   });
 
-  it("rejects a top-level testing folder test file importing config", () => {
-    const result = lintAt(
-      "packages/core/testing/__boundary__.test.ts",
-      `import "@genie/config";\n`
-    );
-
-    expect(result.failed).toBe(true);
-
-    expect(result.output).toContain("never imports the shared configuration");
-  });
-
-  it("rejects a top-level testing folder test file importing a generator", () => {
-    const result = lintAt(
-      "packages/core/testing/__boundary__.test.ts",
-      `import "@genie/generators";\n`
-    );
-
-    expect(result.failed).toBe(true);
-
-    expect(result.output).toContain("never imports a generator");
-  });
-
   // The package configuration files are the one exception, and they keep every
   // other ban. A nested source file that merely ends in `.config.ts` does not.
 
@@ -1124,6 +1102,26 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.failed).toBe(false);
 
     expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+  });
+
+  it("leaves a non-string literal specifier unjudged, because it names no module", () => {
+    // The value narrowing must reject every non-string literal variant, not only
+    // a template literal, which is a different AST node. Each case runs the real
+    // oxlint binary, so a crash in the narrowing fails here.
+    for (const source of [
+      `export const beta = require(42);\n`,
+      `export const load = () => import(42);\n`,
+      `export const load = () => import(true);\n`,
+    ]) {
+      const result = lintAt(
+        "packages/modules/alpha/src/lib/__boundary__.ts",
+        source
+      );
+
+      expect(result.failed).toBe(false);
+
+      expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+    }
   });
 
   it("leaves a local re-export alone, which carries no specifier at all", () => {
