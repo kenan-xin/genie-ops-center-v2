@@ -97,6 +97,45 @@ Section 3 question tracked as genie-ops-center-v2-ghe.
 
 ## DEFERRED
 
+### D6. The proxy is the single request logger, and it forwards its id
+
+2026-09-22, resolving F3 below.
+
+I first left this for you as a requirement reading. On reflection that was the
+wrong call, and a stop-time review pushed back correctly. R-44 says one line per
+request. Two lines is not a reading, it is a violation. Only the CHOICE of which
+site logs was open, and that is an engineering call I can make and you can
+overturn in one line.
+
+The choice: the proxy logs, the handlers do not.
+
+Why the proxy rather than the handlers:
+
+- It sees every request class, static assets included, so one line per request
+  is true literally rather than only for handled routes.
+- It already reads the published context, so its line carries the context id
+  that the single-context acceptance check depends on. Nothing is lost there.
+- It runs before the filesystem check, so a request that never reaches a
+  handler is still recorded.
+
+The correlation defect is fixed at the same time, and it was the real problem.
+The proxy mints one id, sets it on the response as it already did, and now also
+forwards it upstream with `NextResponse.next({ request: { headers } })`, which
+the framework documents for exactly this. Handlers read that id instead of
+minting their own, so the id in an error body, the id in the response header and
+the id in the log are one value.
+
+Consequence you will see in the tests: the single-context count returns from 48
+to 24, one line per request. I am keeping it an exact count rather than the
+plan's "at least 24", because an exact count is what catches a second logger
+being added back by accident. That is the whole defect this fixes.
+
+To overturn: if you want handler-level logging instead, the proxy's one call
+goes and the handlers keep reading the forwarded id, so correlation survives
+either way.
+
+### F3 RESOLVED by D6. Original text follows.
+
 ### F3. One request now produces two log lines, with two different request ids
 
 2026-09-22, Task 7. Does NOT block anything. It is a requirement reading, and a
