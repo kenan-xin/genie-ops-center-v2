@@ -1,5 +1,5 @@
 import { pino } from "pino";
-import type { DestinationStream, Logger, LoggerOptions } from "pino";
+import type { DestinationStream, LogFn, Logger, LoggerOptions } from "pino";
 
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
 
@@ -52,6 +52,26 @@ function isSecretLink(value: string): boolean {
   return SECRET_PARAMETERS.some((name) => url.searchParams.has(name));
 }
 
+/** Every url inside a piece of text, however it is punctuated around them. */
+const URL_IN_TEXT = /\bhttps?:\/\/[^\s"'<>)\]]+/g;
+
+/** A bare `token=value` pair, which a message can carry without a whole url. */
+const SECRET_PAIR = new RegExp(
+  `\\b(${SECRET_PARAMETERS.join("|")}|password)=[^\\s&"']+`,
+  "gi"
+);
+
+/**
+ * Replaces the secrets inside one piece of text: a link that carries a token, and a bare
+ * `token=value` pair. A message string reaches a log line as it was written, so the same rule
+ * has to run on it and not only on the object beside it (R-45).
+ */
+function redactText(text: string): string {
+  return text
+    .replace(URL_IN_TEXT, (link) => (isSecretLink(link) ? REDACTED : link))
+    .replace(SECRET_PAIR, REDACTED);
+}
+
 /** What a log line can hold once it is serialized: json, and nothing else. */
 export type LogValue =
   | string
@@ -70,7 +90,9 @@ export type LogValue =
 // whatever a call site logged, on its way to json. The two checks below are that inspection.
 // oxlint-disable anti-slop/no-runtime-typeof
 function redact(value: LogValue, seen = new WeakSet<object>()): LogValue {
-  if (typeof value === "string") return isSecretLink(value) ? REDACTED : value;
+  if (typeof value === "string") {
+    return isSecretLink(value) ? REDACTED : redactText(value);
+  }
 
   if (value === null || typeof value !== "object") return value;
 
@@ -93,6 +115,30 @@ function redact(value: LogValue, seen = new WeakSet<object>()): LogValue {
 type PinoLogObject = Parameters<
   NonNullable<NonNullable<LoggerOptions["formatters"]>["log"]>
 >[0];
+
+/**
+ * A copy of one error with its message and stack redacted. pino builds `msg` from the error's
+ * own message and serializes it by its own path, neither of which the log formatter sees, so
+ * the copy is what reaches pino. The prototype and every other field are kept, so an
+ * `AppError` still logs as an `AppError` and its cause still travels.
+ */
+function redactError(error: Error): Error {
+  // SAFETY: the new object takes the prototype of the error it copies and then every own
+  // field of it, so it is the same kind of error with the same members.
+  const prototype = Object.getPrototypeOf(error) as object;
+
+  // SAFETY: the object is created from the error's own prototype, so it is that kind of
+  // error, and the assignment below copies every own field onto it.
+  const empty = Object.create(prototype) as Error;
+
+  const safe = Object.assign(empty, error);
+
+  safe.message = redactText(error.message);
+
+  if (error.stack !== undefined) safe.stack = redactText(error.stack);
+
+  return safe;
+}
 
 /** The hook pino calls for every logged object, which is where redaction lives. */
 function redactLogObject(object: PinoLogObject): PinoLogObject {
@@ -117,6 +163,27 @@ export function createLogger(
     formatters: {
       level: (label: string) => ({ level: label }),
       log: redactLogObject,
+    },
+
+    // The formatter above sees the object a call site logged. The message string, and any
+    // value interpolated into it, never reach it, so pino's own argument hook redacts those
+    // before the line is built (pino 10 `hooks.logMethod`).
+    hooks: {
+      logMethod(this: Logger, args: Parameters<LogFn>, method: LogFn): void {
+        // A log method takes a message string, values interpolated into it, and an object or
+        // an error beside them. Reading which is which is the hook's whole job.
+        // oxlint-disable anti-slop/no-runtime-typeof
+        const safe = args.map((argument) => {
+          if (typeof argument === "string") return redactText(argument);
+
+          return argument instanceof Error ? redactError(argument) : argument;
+        });
+        // oxlint-enable anti-slop/no-runtime-typeof
+
+        // SAFETY: `map` keeps the argument list of the log method it came from, one redacted
+        // string for each string. pino's own type for the hook is that same tuple.
+        method.apply(this, safe as Parameters<LogFn>);
+      },
     },
   };
 

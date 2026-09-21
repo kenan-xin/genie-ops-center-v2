@@ -94,7 +94,9 @@ The cause and the stack are untouched: a test asserts that an `AppError` keeps t
 
 The test reads each subpath out of the manifest and imports the file the manifest names. It does not import the package by name, because the import boundary forbids a module importing a module package, its own included, and reading the manifest is also what catches the real defect: an entry point that maps to a file exporting something else. A case also asserts that the presentation subpath exports no router, schema or declaration.
 
-The limit of that test, stated so no reader takes it for more: it proves that the file each subpath names exports the right members, and it does not prove that `@genie/module-placeholder` resolves to that file for a consumer. A by-name resolution proof belongs to a consumer outside this package, which is the app harness of R-20, and that harness is not this ticket's surface.
+That test proves what each entry file exports. A second test, `src/resolution.test.ts`, proves where the names land: it builds a throwaway consumer directory with one symlink to this package and a manifest of its own, and asks Node to resolve `@genie/module-placeholder` and `@genie/module-placeholder/presentation`. They resolve to `src/index.ts` and `src/presentation/index.ts`, and an undeclared subpath raises `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+
+The consumer resolves and does not import. Node's type stripping does not read `.tsx`, and the declaration reaches page components, so a plain Node process cannot load the graph. The two tests together are the proof: one says where a name lands, the other says what that file exports. A consumer that imports the package by name and mounts it is the app harness of R-20, which is not this ticket's surface and which I did not touch.
 
 The package and `src/` READMEs now describe the two surfaces and the imports the module really has.
 
@@ -127,6 +129,20 @@ The logger is pino at the level `LOG_LEVEL` names, with the request, tenant and 
 
 `packages/core/testing` starts a disposable Postgres and applies the same histories in the same order the image applies them (R-28). It takes a module's history as an argument, because core imports no module (R-39).
 
+## The database test has a target
+
+The integration test was orphaned: the unit preset excludes `testing/` and nothing else collected it. The module now carries `vitest.integration.config.ts`, package-local, with `include: ["testing/**/*.integration.test.ts"]`, `passWithNoTests: false` so a file that stops matching fails the target, and a 120 second timeout for the container start. The script `test:integration` runs it, and Nx resolves the target from that script.
+
+The intended command is:
+
+```bash
+nx run @genie/module-placeholder:test:integration
+```
+
+`nx show project @genie/module-placeholder` lists `lint`, `test`, `test:integration` and `typecheck`, so the target exists rather than being described. Discovery is proved without running anything, with `vitest list --config vitest.integration.config.ts` from the package, which prints the three cases of `testing/router.integration.test.ts`.
+
+The target has never been run to completion, here or anywhere: it needs a container runtime, and bead `genie-ops-center-v2-2tc` holds that gap. Nothing falls back to a fake database and nothing is skipped to make it green. No preset in `packages/config`, no root Nx configuration and no dependency changed for this.
+
 ## Gates
 
 From the worktree root, each Nx run with `--skip-nx-cache`.
@@ -144,6 +160,6 @@ From the worktree root, each Nx run with `--skip-nx-cache`.
 ## Not proved
 
 - Every real-database path: the migrator's session behavior, the histories, the lock, the timeout, the cleanup, the router read and the two-context isolation test. Bead `genie-ops-center-v2-2tc` holds the runtime gap.
-- That a green unit run says anything about the database tests. It does not: the unit preset excludes `testing/`, so `packages/modules/placeholder/testing/router.integration.test.ts` has never run, on this host or any other. No target wires it yet, and the preset that would belongs to `packages/config`, which another ticket owns.
-- By-name resolution of `@genie/module-placeholder`, as stated above.
+- That a green unit run says anything about the database tests. It does not: the unit preset excludes `testing/`, and the integration tests run under their own target.
+- A consumer that imports the package by name and mounts the module, which is the app harness of R-20.
 - Two-context isolation, which R-20 places in the app harness and S0-05 completes.

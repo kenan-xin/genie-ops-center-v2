@@ -5,6 +5,7 @@ import {
   MIGRATION_LOCK_KEY,
   migrationPlan,
   releaseMode,
+  runFailure,
   sessionCleanupPlan,
 } from "./index.ts";
 
@@ -65,6 +66,33 @@ describe("the session cleanup plan", () => {
     expect(sessionCleanupPlan({ settingApplied: false, locked: true })).toEqual(
       ["unlock"]
     );
+  });
+});
+
+describe("the outcome of a run", () => {
+  it.each([
+    { migrationFailed: true, cleanupConfirmed: true, expected: "original" },
+    { migrationFailed: true, cleanupConfirmed: false, expected: "original" },
+    { migrationFailed: false, cleanupConfirmed: false, expected: "cleanup" },
+    { migrationFailed: false, cleanupConfirmed: true, expected: "none" },
+  ])(
+    "answers $expected when the migration failed is $migrationFailed and cleanup confirmed is $cleanupConfirmed",
+    (matrix) => {
+      expect(
+        runFailure({
+          migrationFailed: matrix.migrationFailed,
+          cleanupConfirmed: matrix.cleanupConfirmed,
+        })
+      ).toBe(matrix.expected);
+    }
+  );
+
+  it("fails the start when every history applied and the session would not restore", () => {
+    // The case the review found: the client was destroyed, and the run still
+    // resolved, so a container started on a session nobody could account for.
+    expect(
+      runFailure({ migrationFailed: false, cleanupConfirmed: false })
+    ).toBe("cleanup");
   });
 });
 

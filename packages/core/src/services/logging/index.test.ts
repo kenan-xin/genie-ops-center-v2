@@ -146,6 +146,73 @@ describe("the logger", () => {
     expect(JSON.stringify(lines[0])).not.toContain("hunter2");
   });
 
+  // Every case below reads the serialized line the destination received, not the redactor's
+  // return value, and each secret is a made-up value that exists only inside this file.
+  it("redacts a token link passed as the message itself", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info(
+      "https://genie.example.com/set-password?token=abc123"
+    );
+
+    expect(JSON.stringify(lines[0])).not.toContain("abc123");
+    expect(lines[0]).toMatchObject({ msg: REDACTED });
+  });
+
+  it("redacts a token link inside a longer message", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).warn(
+      "sent https://genie.example.com/invite?token=abc123 to one person"
+    );
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("to one person");
+  });
+
+  it("redacts a secret interpolated into a message", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info(
+      "reset link %s",
+      "https://genie.example.com/reset?token=abc123"
+    );
+
+    expect(JSON.stringify(lines[0])).not.toContain("abc123");
+  });
+
+  it("redacts a bare token pair in a message", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info("callback failed for token=abc123");
+
+    expect(JSON.stringify(lines[0])).not.toContain("abc123");
+  });
+
+  it("redacts a token link inside a logged error", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).error(
+      new Error("fetch failed: https://upstream.example.com/api?key=abc123")
+    );
+
+    expect(JSON.stringify(lines[0])).not.toContain("abc123");
+  });
+
+  it("leaves an ordinary message and an ordinary link alone", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info(
+      "opened https://genie.example.com/help for the reader"
+    );
+
+    expect(lines[0]).toMatchObject({
+      msg: "opened https://genie.example.com/help for the reader",
+    });
+  });
+
   it("survives an object that holds itself", () => {
     const { lines, destination } = capture();
 

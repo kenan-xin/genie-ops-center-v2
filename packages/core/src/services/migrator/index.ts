@@ -87,6 +87,24 @@ export function releaseMode(cleanupConfirmed: boolean): "reuse" | "destroy" {
   return cleanupConfirmed ? "reuse" : "destroy";
 }
 
+/** What a finished run raises: the error it already had, one for the cleanup, or nothing. */
+export type RunFailure = "original" | "cleanup" | "none";
+
+/**
+ * The outcome of one run. A cleanup that did not confirm fails the start, because the session
+ * state is unknown and a container that starts on an unknown state is worse than one that does
+ * not start (R-27). The only thing cleanup suppression may do is keep an earlier migration
+ * error as the error the caller sees (R-26a).
+ */
+export function runFailure(result: {
+  readonly migrationFailed: boolean;
+  readonly cleanupConfirmed: boolean;
+}): RunFailure {
+  if (result.migrationFailed) return "original";
+
+  return result.cleanupConfirmed ? "none" : "cleanup";
+}
+
 /** True when Postgres refused the lock because the wait limit expired. */
 function isLockTimeout(error: Error): boolean {
   return "code" in error && error.code === LOCK_NOT_AVAILABLE;
@@ -111,6 +129,7 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
 
   let settingApplied = false;
   let locked = false;
+  let failure: unknown;
 
   try {
     await client.query(`SET lock_timeout = ${run.env.lockTimeoutMs}`);
@@ -154,16 +173,32 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
 
       log({ event: "migration-history-done", history: history.name });
     }
-  } finally {
-    const confirmed = await releaseSession(
-      client,
-      { settingApplied, locked },
-      log
-    );
+  } catch (error) {
+    failure = error;
+  }
 
-    // An uncertain session never goes back to the pool for another caller (R-26a). A cleanup
-    // problem never replaces the error this block is already carrying, either.
-    client.release(releaseMode(confirmed) === "destroy");
+  const confirmed = await releaseSession(
+    client,
+    { settingApplied, locked },
+    log
+  );
+
+  // An uncertain session never goes back to the pool for another caller (R-26a).
+  client.release(releaseMode(confirmed) === "destroy");
+
+  const outcome = runFailure({
+    migrationFailed: failure !== undefined,
+    cleanupConfirmed: confirmed,
+  });
+
+  // An earlier error stays the one the caller sees. Without one, a cleanup that did not
+  // confirm still fails the start rather than passing quietly.
+  if (outcome === "original") throw failure;
+
+  if (outcome === "cleanup") {
+    throw new AppError(CORE_ERRORS["migration-failed"], {
+      cause: new Error("the migration session could not be restored"),
+    });
   }
 }
 
