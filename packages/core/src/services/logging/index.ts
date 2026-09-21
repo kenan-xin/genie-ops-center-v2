@@ -72,6 +72,31 @@ function redactText(text: string): string {
     .replace(SECRET_PAIR, REDACTED);
 }
 
+/** One error as a log line holds it. The cause travels, because it is the diagnosis. */
+type ErrorLine = {
+  type: string;
+  message: string;
+  stack?: LogValue;
+  cause?: LogValue;
+};
+
+function errorToJson(error: Error, seen: WeakSet<object>): ErrorLine {
+  const line: ErrorLine = {
+    type: error.name,
+    message: redactText(error.message),
+  };
+
+  if (error.stack !== undefined) line.stack = redactText(error.stack);
+
+  if (error.cause !== undefined) {
+    // SAFETY: a cause is whatever the thrower passed. `redact` walks it as json, which is
+    // what a log line holds, and an error among it takes this same shape.
+    line.cause = redact(error.cause as LogValue, seen);
+  }
+
+  return line;
+}
+
 /** What a log line can hold once it is serialized: json, and nothing else. */
 export type LogValue =
   | string
@@ -100,6 +125,11 @@ function redact(value: LogValue, seen = new WeakSet<object>()): LogValue {
 
   seen.add(value);
 
+  // An error carries its fields as not enumerable, so walking its entries answers an empty
+  // object. It is turned into the shape a log line needs instead: the kind, the message, the
+  // stack and the cause, each redacted.
+  if (value instanceof Error) return errorToJson(value, seen);
+
   if (Array.isArray(value)) return value.map((entry) => redact(entry, seen));
 
   return Object.fromEntries(
@@ -122,20 +152,55 @@ type PinoLogObject = Parameters<
  * the copy is what reaches pino. The prototype and every other field are kept, so an
  * `AppError` still logs as an `AppError` and its cause still travels.
  */
-function redactError(error: Error): Error {
-  // SAFETY: the new object takes the prototype of the error it copies and then every own
-  // field of it, so it is the same kind of error with the same members.
+function put(target: Error, name: string, value: LogValue | Error): void {
+  Object.defineProperty(target, name, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+function redactError(error: Error, seen = new WeakMap<Error, Error>()): Error {
+  const started = seen.get(error);
+
+  // A cause chain can point back at an error it came from. The copy is registered before the
+  // chain is walked, so a cycle answers that copy instead of running forever.
+  if (started !== undefined) return started;
+
+  // SAFETY: the object takes the error's own prototype and then every own property
+  // descriptor of it, so it is that kind of error with those members. Copying descriptors is
+  // what carries `cause`: `new Error(message, { cause })` defines it as not enumerable, so
+  // an `Object.assign` copy loses it, which is the defect this replaced.
+  // SAFETY: every object has a prototype object or null, and `Object.create` takes both.
   const prototype = Object.getPrototypeOf(error) as object;
 
-  // SAFETY: the object is created from the error's own prototype, so it is that kind of
-  // error, and the assignment below copies every own field onto it.
-  const empty = Object.create(prototype) as Error;
+  const descriptors = Object.getOwnPropertyDescriptors(error);
 
-  const safe = Object.assign(empty, error);
+  // The three fields this function rewrites are left out of the copy, because a descriptor
+  // the original froze cannot be redefined on the copy afterwards.
+  for (const name of ["message", "stack", "cause"]) delete descriptors[name];
 
-  safe.message = redactText(error.message);
+  // SAFETY: the object takes the error's own prototype and its remaining descriptors, so it
+  // is that kind of error with those members.
+  const safe = Object.create(prototype, descriptors) as Error;
 
-  if (error.stack !== undefined) safe.stack = redactText(error.stack);
+  seen.set(error, safe);
+
+  put(safe, "message", redactText(error.message));
+
+  if (error.stack !== undefined) put(safe, "stack", redactText(error.stack));
+
+  const cause: unknown = error.cause;
+
+  // The cause is the diagnosis a reader needs, so it travels, redacted like everything else.
+  if (cause instanceof Error) {
+    put(safe, "cause", redactError(cause, seen));
+  } else if (cause !== undefined) {
+    // SAFETY: a cause is whatever the thrower passed, and a log line holds json. `redact`
+    // walks it as json, which is the shape it reaches the line in.
+    put(safe, "cause", redact(cause as LogValue));
+  }
 
   return safe;
 }

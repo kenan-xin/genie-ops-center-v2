@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { Pool, PoolClient } from "pg";
 
@@ -36,13 +37,34 @@ export type MigrationLog = (event: {
   readonly history?: string;
 }) => void;
 
+/** Applies one history on the run's own session. The default is Drizzle's own migrator. */
+export type ApplyHistory = (
+  db: NodePgDatabase,
+  history: MigrationHistory
+) => Promise<void>;
+
 export type MigrationRun = {
   readonly env: DeploymentEnvironment;
-  readonly pool: Pool;
+  /**
+   * Where the run reserves its one session. Only `connect` is read: the run holds that one
+   * client from the lock to the unlock and dispatches nothing to the pool (R-25a).
+   */
+  readonly pool: Pick<Pool, "connect">;
   /** Core first, then each included module in registry order. */
   readonly histories: readonly MigrationHistory[];
   readonly log?: MigrationLog;
+  /**
+   * The seam a caller-level test uses to watch the session without a database. Production
+   * passes nothing, so the real migrator runs.
+   */
+  readonly apply?: ApplyHistory;
 };
+
+const applyWithDrizzle: ApplyHistory = (db, history) =>
+  migrate(db, {
+    migrationsFolder: history.folder,
+    migrationsTable: history.table,
+  });
 
 /** The histories one run applies, core first, in registry order after it (R-25). */
 export function migrationPlan(
@@ -163,10 +185,7 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
         // A history runs after the one before it, on the same session and under the same
         // lock. Running them together would apply two ledgers to one database at once.
         // oxlint-disable-next-line no-await-in-loop
-        await migrate(db, {
-          migrationsFolder: history.folder,
-          migrationsTable: history.table,
-        });
+        await (run.apply ?? applyWithDrizzle)(db, history);
       } catch (error) {
         throw new AppError(CORE_ERRORS["migration-failed"], { cause: error });
       }

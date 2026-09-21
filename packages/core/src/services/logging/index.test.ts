@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  AppError,
+  CORE_ERROR_MESSAGES,
+  CORE_ERRORS,
+} from "../../lib/errors/index.ts";
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
 import type { LogValue } from "./index.ts";
 import { REDACTED, createLogger, forExecution } from "./index.ts";
@@ -199,6 +204,66 @@ describe("the logger", () => {
     );
 
     expect(JSON.stringify(lines[0])).not.toContain("abc123");
+  });
+
+  it("keeps a redacted cause chain, which is the diagnosis a reader needs", () => {
+    const { lines, destination } = capture();
+
+    const driver = new Error(
+      "connect ECONNREFUSED db.internal:5432, retry https://db.example.com/reset?token=abc123"
+    );
+
+    const wrapped = new Error("the core history did not apply", {
+      cause: driver,
+    });
+
+    createLogger(ENV, destination).error(wrapped);
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("the core history did not apply");
+    expect(written).toContain("ECONNREFUSED");
+  });
+
+  it("keeps the cause of an AppError, whose fields are not writable", () => {
+    const { lines, destination } = capture();
+
+    const cause = new Error("pg: password authentication failed for genie");
+    const error = new AppError(CORE_ERRORS["migration-failed"], { cause });
+
+    createLogger(ENV, destination).error(error);
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).toContain("password authentication failed");
+    expect(written).toContain(CORE_ERROR_MESSAGES["migration-failed"]);
+    expect(error.safeMessage).toBe(CORE_ERROR_MESSAGES["migration-failed"]);
+  });
+
+  it("survives a cause that points back at its own error", () => {
+    const { lines, destination } = capture();
+
+    const first = new Error("first");
+    const second = new Error("second", { cause: first });
+
+    Object.defineProperty(first, "cause", { value: second, writable: true });
+
+    createLogger(ENV, destination).error(second);
+
+    expect(JSON.stringify(lines[0])).toContain("second");
+  });
+
+  it("leaves the error it was given unchanged", () => {
+    const { destination } = capture();
+
+    const original = new Error(
+      "link https://genie.example.com/reset?token=abc123"
+    );
+
+    createLogger(ENV, destination).error(original);
+
+    expect(original.message).toContain("abc123");
   });
 
   it("leaves an ordinary message and an ordinary link alone", () => {
