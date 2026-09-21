@@ -21,9 +21,6 @@ coverage/
 # Storybook host: the static build output, generated and never committed.
 storybook-static/
 
-# Agent scratch space. Holds the execution ledger and review packages, never source.
-.superpowers/
-
 # Coverage tool scratch space. Holds request and snapshot JSON, never source.
 .supercov/
 
