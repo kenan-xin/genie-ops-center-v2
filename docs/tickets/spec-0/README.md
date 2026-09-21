@@ -12,7 +12,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding and completed fresh real-database proof on `bugfix/spec0-integration-review`. S0-04 remains gated only on committing and integrating that reviewed repair union and recording the accepted revision. S0-01/S0-02/S0-03 and 5ph remain accepted. S0-05 onward remain unimplemented. Beads owns current status; do not redispatch either historical first-batch prompt.
+Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05 is the sole ready whole ticket; later tickets remain gated. Beads owns current status; do not redispatch either historical first-batch prompt.
 
 ## Execution authority and documentation
 
@@ -87,7 +87,7 @@ The pure data-only resolver begins in S0-01 because G1 story discovery needs the
 
 ## Current dispatch recommendation
 
-Commit and integrate the independently reviewed [S0-04 repair union](04-context-migrator-and-placeholder/integrated-review.md), rerun its union gates and record the accepted revision before releasing further runtime work. The original S0-04/5ph first batch already integrated; do not recreate it.
+Dispatch S0-05 alone from accepted develop revision `531e8af` using its [G2 handoff](handoffs/s0-05-g2.md). The original S0-04/5ph first batch and its repair union are integrated; do not recreate them.
 
 Once S0-04 is reaccepted on the repaired integrated revision, run S0-05 alone, including yt2 and 3yv. After integrated G2, S0-06/S0-07/S0-08/S0-09 may run together under the [shared-file schedule](handoffs/README.md). Preserve all eighteen original ticket-to-ticket edges.
 

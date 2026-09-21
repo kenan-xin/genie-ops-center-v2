@@ -4,7 +4,7 @@ Prepared by the [2026-09-21 audit](../audit-2026-09-21.md). These are proposed d
 
 ## Dispatch order
 
-The original first batch integrated at `bcd66e7` and `13800cd`. Its prompts below are historical. The [integrated-review repair union](../04-context-migrator-and-placeholder/integrated-review.md) now passes independent review and real-database proof; integrate it and record S0-04 reacceptance before dispatch. S0-05 is the next whole ticket, alone. The table preserves the original lane boundaries, not present readiness.
+The original first batch integrated at `bcd66e7` and `13800cd`; its [review repair union](../04-context-migrator-and-placeholder/integrated-review.md) integrated and reaccepted S0-04 at `531e8af`. Those prompts are historical. S0-05 is the sole ready whole ticket and runs alone. The table preserves the original lane boundaries.
 
 | Batch | Handoff | Release condition |
 | --- | --- | --- |

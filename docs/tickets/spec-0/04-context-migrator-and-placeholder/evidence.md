@@ -313,4 +313,4 @@ From `bugfix/spec0-integration-review`, with Nx cache disabled:
 
 An earlier seven-case core run passed six tests before one Testcontainers host-port startup timeout. The affected negative control passed alone and the full suite passed on the immediate serial rerun. This is environment flakiness evidence, not a migration assertion failure.
 
-These results clear the repair branch for integration. They do not by themselves reaccept S0-04: commit the branch, integrate it into current develop, rerun applicable union checks and record that revision in Beads before closing the findings and parent ticket.
+The repair union integrated into develop at `531e8af`. The affected 14 tasks, Storybook 12/12, core Postgres 7/7, placeholder Postgres 4/4, frozen install, format and diff checks all passed again from integrated develop. The finding beads and S0-04 are closed against that revision.

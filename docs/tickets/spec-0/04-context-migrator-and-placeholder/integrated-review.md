@@ -20,11 +20,11 @@ Independent review of the integrated code reproduced defects and identified an e
 
 These findings do not pull forward S0-05's app/image/header/two-context/browser proof or S0-07's adversarial multi-process matrix. Every confirmed finding is tracked; SuperCov scores alone are not tickets or acceptance findings.
 
-## Repair disposition before integration
+## Repair disposition and integration
 
 Every finding above now has a bounded repair and independent review on `bugfix/spec0-integration-review`. The final logging review found no remaining P1/P2 after the public logger was narrowed to an explicit redacting interface rather than exposing raw Pino callbacks and child customization. The other repaired surfaces survived the whole-patch review: conservative migrator cleanup, public package seams, the real same-session proof, safe migration text, AdminPage Storybook coverage and the inventory-ID diagnostic.
 
-This is reviewed branch evidence, not integrated acceptance. Close the finding beads and reaccept S0-04 only after the repair branch is committed, integrated into current develop and the applicable union checks pass there.
+The repair union integrated into develop at `531e8af`. Post-integration affected, Storybook, format, frozen-install and both real-Postgres suites passed. The finding beads and S0-04 are closed against that revision.
 
 ## Fresh verification at f8b797f
 
@@ -61,8 +61,7 @@ The all-files pass also flagged hardcoded secrets in tests. These are synthetic 
 
 Confidence: 8.8/10 for the sequencing, not for unexecuted G2 compatibility. The repair set, real database proof and dependency order are now independently checked. Native framework context/header composition remains the G2 uncertainty.
 
-1. Commit and integrate the reviewed repair union into current develop, rerun applicable union checks, then close `of8`, `2ht` and the repair findings against that integrated evidence and reaccept S0-04.
-2. Dispatch **S0-05 alone** with its existing [G2 handoff](../handoffs/s0-05-g2.md), consuming the accepted repaired baseline. Deliver `yt2` and `3yv` inside that owner session; keep them manually blocked until parent claim and prerequisites pass.
-3. Only after integrated G2, release the **S0-06/S0-07/S0-08/S0-09** parallel batch under the recorded shared-file schedule.
+1. Dispatch **S0-05 alone** with its existing [G2 handoff](../handoffs/s0-05-g2.md), consuming accepted develop revision `531e8af`. Deliver `yt2` and `3yv` inside that owner session; keep them manually blocked until parent claim.
+2. Only after integrated G2, release the **S0-06/S0-07/S0-08/S0-09** parallel batch under the recorded shared-file schedule.
 
 Native G2 feasibility remains its own hard stop; this review chooses no custom server, extra pool or workaround. Assumption: no other session writes the repair-owned surfaces concurrently.

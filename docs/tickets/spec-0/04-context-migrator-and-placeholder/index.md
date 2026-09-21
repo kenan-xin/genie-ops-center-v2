@@ -10,7 +10,7 @@ Traceability: R-13–R-20, R-24–R-28, R-37–R-39, R-44–R-46; AC-3/AC-6/AC-1
 
 ## Dependencies and worktree ownership
 
-Hard prerequisites: [S0-02](../02-storybook-compatibility-g1/index.md), [S0-03](../03-module-contracts-and-build-safe-schemas/index.md). Original disposable endpoint proof `2tc` is closed. The [post-integration review](integrated-review.md) records the bounded repairs and recovered real-database proof; S0-04 remains open only until that reviewed union is integrated and recorded.
+Hard prerequisites: [S0-02](../02-storybook-compatibility-g1/index.md), [S0-03](../03-module-contracts-and-build-safe-schemas/index.md). Original disposable endpoint proof `2tc` is closed. The [post-integration review](integrated-review.md) records the bounded repairs, recovered real-database proof and reacceptance at `531e8af`.
 
 S0-02 and S0-03 are integrated and closed. S0-04 implementation is integrated at `13800cd`; preserve it and repair only confirmed findings on a branch from current develop. Review repair ownership is tracked on its individual beads. Do not restart the historical implementation or infer acceptance from its earlier closure.
 
