@@ -79,13 +79,21 @@ describe("the detectors", () => {
   });
 });
 
-/** Every subpath export except the runtime root; these are the build-safe surface. */
+/**
+ * Every subpath export that ships. `.` is the runtime root, which reaches the driver on
+ * purpose, and `./testing` is the test harness, which starts a container and runs migrations.
+ * Neither is part of the build-safe surface.
+ */
+const RUNTIME_SUBPATHS = new Set([".", "./testing"]);
+
 function buildSafeSubpaths(): readonly string[] {
   const manifest: Manifest = JSON.parse(
     readFileSync(join(WORKSPACE_ROOT, "packages/core/package.json"), "utf8")
   );
 
-  return Object.keys(manifest.exports).filter((subpath) => subpath !== ".");
+  return Object.keys(manifest.exports).filter(
+    (subpath) => !RUNTIME_SUBPATHS.has(subpath)
+  );
 }
 
 describe("the build-safe entrypoints", () => {

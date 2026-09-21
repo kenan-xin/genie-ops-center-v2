@@ -6,7 +6,7 @@
  * Codes are kebab-case, because a module code is `<id>:<code>` and a module id is kebab-case.
  * A later section adds its codes here; a module raises `<id>:<code>` with its own safe message.
  */
-export const CORE_ERROR_MESSAGES = {
+export const CORE_ERROR_MESSAGES = Object.freeze({
   "internal-error":
     "Something went wrong. The support team can look it up by the request id.",
   "environment-invalid":
@@ -18,17 +18,30 @@ export const CORE_ERROR_MESSAGES = {
   "not-found": "That item does not exist, or you may not see it.",
   "forbidden": "You may not do that.",
   "invalid-input": "The request was not valid.",
-} as const;
+} as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */
 export const GENERIC_ERROR_CODE = "internal-error";
+
+/**
+ * The generic message, captured at load. Every path that answers for an unknown error reads
+ * this, not the exported catalogue, so the message a client sees cannot be changed later. The
+ * catalogue is frozen as well; this is the second lock on the one message nobody chose.
+ */
+const GENERIC_MESSAGE: string = CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE];
 
 export type CoreErrorCode = keyof typeof CORE_ERROR_MESSAGES;
 
 /**
  * The mark a definition built here carries. The symbol is module-private and exported by no
- * entry point, so an object literal a caller writes cannot hold it. That is what separates a
- * declared error from one assembled at a throw site out of whatever text was at hand.
+ * entry point, so an ordinary object literal cannot hold it and a spread of a real definition
+ * drops it. That separates a declared error from one assembled at a throw site out of whatever
+ * text was at hand.
+ *
+ * It is a guard against a mistake, not a sandbox: `Object.getOwnPropertySymbols` on a real
+ * definition finds the symbol, so code that sets out to defeat this can. The rule the guard
+ * supports is the one that matters: a definition holds text its author wrote, never a value
+ * from a request, a database or an upstream service.
  */
 const DECLARED = Symbol("genie.error-definition");
 
@@ -93,7 +106,7 @@ const MESSAGES_BY_CODE = new Map(Object.entries(CORE_ERROR_MESSAGES));
 
 /** The safe message of a code, or the generic one when the catalogue does not hold it. */
 export function safeMessageFor(code: string): string {
-  return MESSAGES_BY_CODE.get(code) ?? CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE];
+  return MESSAGES_BY_CODE.get(code) ?? GENERIC_MESSAGE;
 }
 
 /** A module's error code, `<id>:<code>` (R-46). */
@@ -141,9 +154,15 @@ export function defineModuleErrors<
  * transport adapter, so wrapping an upstream failure loses no detail on the server side.
  */
 export class AppError extends Error {
-  readonly code: string;
+  /**
+   * Both fields are fixed at construction with `defineProperty`, not assigned. A transport
+   * reads them for the response body, so a later `Object.assign` must not be able to put a
+   * database message into a client's hands. TypeScript's `readonly` is a compile-time rule
+   * only; these are not writable and not configurable at run time either.
+   */
+  declare readonly code: string;
 
-  readonly safeMessage: string;
+  declare readonly safeMessage: string;
 
   constructor(
     definition: ErrorDefinition,
@@ -168,8 +187,18 @@ export class AppError extends Error {
     );
 
     this.name = "AppError";
-    this.code = definition.code;
-    this.safeMessage = message;
+
+    for (const [name, value] of [
+      ["code", definition.code],
+      ["safeMessage", message],
+    ] as const) {
+      Object.defineProperty(this, name, {
+        value,
+        writable: false,
+        configurable: false,
+        enumerable: true,
+      });
+    }
   }
 }
 
@@ -188,9 +217,5 @@ export function safeBodyFor(
     return { code: error.code, message: error.safeMessage, requestId };
   }
 
-  return {
-    code: GENERIC_ERROR_CODE,
-    message: CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE],
-    requestId,
-  };
+  return { code: GENERIC_ERROR_CODE, message: GENERIC_MESSAGE, requestId };
 }

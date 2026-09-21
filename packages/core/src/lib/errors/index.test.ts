@@ -187,6 +187,52 @@ describe("safeBodyFor", () => {
     expect(JSON.stringify(body)).not.toContain("duplicate key");
   });
 
+  it("keeps its code and message after a later assignment", () => {
+    const upstream = 'relation "placeholder_record" does not exist';
+    const error = new AppError(CORE_ERRORS["migration-failed"]);
+
+    // The fields are not writable, so the assignment itself fails in strict mode.
+    expect(() =>
+      Object.assign(error, { code: "forged", safeMessage: upstream })
+    ).toThrow(TypeError);
+
+    const body = safeBodyFor(error, REQUEST_ID);
+
+    expect(body).toEqual({
+      code: "migration-failed",
+      message: CORE_ERROR_MESSAGES["migration-failed"],
+      requestId: REQUEST_ID,
+    });
+
+    expect(JSON.stringify(body)).not.toContain("placeholder_record");
+  });
+
+  it("keeps both generic paths after an attempt to rewrite the catalogue", () => {
+    const canonical = CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE];
+    const forged = "Stack trace: at Object.query (pg/lib/client.js:1)";
+
+    // The catalogue is frozen, so the assignment fails rather than passing quietly.
+    expect(() => {
+      Object.assign(CORE_ERROR_MESSAGES, { [GENERIC_ERROR_CODE]: forged });
+    }).toThrow(TypeError);
+
+    expect(safeMessageFor("a-code-nobody-declared")).toBe(canonical);
+
+    expect(safeBodyFor(new Error(forged), REQUEST_ID)).toEqual({
+      code: GENERIC_ERROR_CODE,
+      message: canonical,
+      requestId: REQUEST_ID,
+    });
+  });
+
+  it("keeps the cause and the stack an error needs for the log", () => {
+    const cause = new Error("connection refused");
+    const error = new AppError(CORE_ERRORS["migration-failed"], { cause });
+
+    expect(error.cause).toBe(cause);
+    expect(error.stack).toContain("AppError");
+  });
+
   it("refuses a module error code or message the contract does not allow", () => {
     expect(() => defineModuleErrors("Placeholder", { ok: "Fine." })).toThrow(
       "kebab-case"

@@ -6,8 +6,18 @@ real capability is built.
 
 ## What belongs here
 
-In Section 0, presentation only: a page component, its fixtures, and its stories.
-S0-04 adds the schema, the router, the permission keys, and the server module
+The module declaration and everything it names: the `placeholder_record` schema with its own
+migration history, the read router behind `can()`, the permission keys, the navigation, the
+configuration schema, the frame origin, the page components with their fixtures and stories,
+and the factories for its own tables under `testing/`.
+
+Two entry points, so a browser never loads the server graph. `@genie/module-placeholder` is the
+module-facing declaration the application mounts. `@genie/module-placeholder/presentation` is
+the client surface a story and the shell render.
+
+Historical note, kept because the sentence below still describes the rest of the rules: in
+Section 0 this package held presentation only, and S0-04 added the schema, the router, the
+permission keys, and the server module
 declaration this package's `genie.module.entrypoint` already points at.
 
 ## What must not go here

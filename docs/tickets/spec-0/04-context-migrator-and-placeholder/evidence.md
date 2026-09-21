@@ -38,7 +38,9 @@ A separate case proves the transport path: `safeBodyFor` given a caught `Error` 
 
 A valid code and a frozen object are not enough on their own, because a caller can write an object literal with a real code beside its own text. Two rules close that.
 
-A core code takes its message from the catalogue, whatever the caller supplied. A definition with any other code must carry a mark that `declare()` sets with `Object.defineProperty`, not enumerable, so an object spread of a real definition does not copy it. The symbol is module-private and no entry point exports it, so a caller cannot write it.
+A core code takes its message from the catalogue, whatever the caller supplied. A definition with any other code must carry a mark that `declare()` sets with `Object.defineProperty`, not enumerable, so an object spread of a real definition does not copy it. The symbol is module-private and no entry point exports it, so ordinary code cannot write it.
+
+The limit of that claim, stated plainly: `Object.getOwnPropertySymbols` on a real definition finds the symbol, so code written to defeat the guard can. This is not a sandbox against hostile code inside the image. A module declaration author is trusted, and the rule the guard supports is that a definition holds text its author wrote, never a value from a request, a database or an upstream service. What the guard does buy is that the ordinary ways to get it wrong, an object literal at a throw site and a spread with the message replaced, fail loudly.
 
 The cases, all through the supported API:
 
@@ -73,6 +75,36 @@ The module now declares what R-15 fixes: the identity, the `placeholder_record` 
 The router mounts one read procedure at `placeholder.read`. It calls `can(ctx.caller, "placeholder:read")` before it reads, and reads through `ctx.tenant.db`. Its unit tests give the context a database that throws on any property access, so a refusal proves the check happened before any read, and the granted case proves the read starts. That object stands in for nothing: the rows themselves are proved against a real Postgres in `packages/modules/placeholder/testing/`, which waits on 2tc.
 
 The module owns its factory, `testing/factories.ts`, which inserts a real row through the tenant context. Core imports no module (R-39).
+
+## The response body cannot be rewritten
+
+Three further review findings, each about state a client reads. They are listed together because they are one audit: a definition, an error instance and the exported catalogue.
+
+| What was writable | What holds now | Regression |
+| --- | --- | --- |
+| `AppError.code` and `AppError.safeMessage` were ordinary fields, so `Object.assign(error, { safeMessage: <database text> })` changed the body | both are defined with `writable: false` and `configurable: false` at construction | the assignment raises a `TypeError`, and `safeBodyFor` still answers the catalogue's code and message |
+| `CORE_ERROR_MESSAGES` was an exported mutable object, and both generic paths read its entry | the catalogue is frozen, and the generic message is captured at load into a module-private value that the generic paths read | rewriting the catalogue raises a `TypeError`, and `safeMessageFor` for an undeclared code and `safeBodyFor` for a caught error both still answer the canonical text |
+| A definition could be assembled at a throw site | a core code takes the catalogue's message, and any other code needs the non-enumerable mark `declare()` sets | the four cases in the table above |
+
+The cause and the stack are untouched: a test asserts that an `AppError` keeps the error it wrapped and a stack naming `AppError`, because the log needs both.
+
+## The module is reachable through its declared entry point
+
+`packages/modules/placeholder/src/index.ts` exported the presentation only, so `placeholderModule` was unreachable through `@genie/module-placeholder`. The package now declares two entry points: `.` for the module-facing declaration, the router and the schema, and `./presentation` for the components a story and the shell render. Keeping them apart is what stops a browser bundle from pulling the router, drizzle and tRPC.
+
+The test reads each subpath out of the manifest and imports the file the manifest names. It does not import the package by name, because the import boundary forbids a module importing a module package, its own included, and reading the manifest is also what catches the real defect: an entry point that maps to a file exporting something else. A case also asserts that the presentation subpath exports no router, schema or declaration.
+
+The package and `src/` READMEs now describe the two surfaces and the imports the module really has.
+
+## The migrator, the logger and the test helpers
+
+The migrator applies core's history first and then each included module in registry order, on one reserved client that sets the lock wait limit, takes the one fixed advisory lock, applies every history and unlocks (R-25, R-25a, R-26). A lock timeout becomes `migration-lock-timeout` and a failed history becomes `migration-failed`, each keeping the original error as its cause. Cleanup never turns a failed run into a successful one, and a session whose cleanup did not confirm is destroyed rather than returned to the pool (R-26a). Its unit tests cover the plan order and the lock key; the session behavior is what the real-database acceptance proves, and that waits on 2tc.
+
+Core's own history is a scaffold generated by drizzle-kit, `packages/core/drizzle/meta/_journal.json` with no entries, because Section 0 creates no core table. The journal is generated, never hand-authored.
+
+The logger is pino at the level `LOG_LEVEL` names, with the request, tenant and user ids on every line and redaction as a property of the logger: a walker replaces a secret by name at any depth, inside an array, and replaces a url that carries a token or a credential. Ten cases cover nested headers, arrays, an emailed link, a url with userinfo and an object that holds itself.
+
+`packages/core/testing` starts a disposable Postgres and applies the same histories in the same order the image applies them (R-28). It takes a module's history as an argument, because core imports no module (R-39).
 
 ## Gates
 
