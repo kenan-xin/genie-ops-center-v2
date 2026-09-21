@@ -31,7 +31,7 @@ export const validModule = {
 
   schema: {
     tables: { fixtureRecord },
-    migrationsFolder: "packages/modules/fixture/drizzle",
+    migrations: [],
     migrationsTable: "fixture_migrations",
   },
 

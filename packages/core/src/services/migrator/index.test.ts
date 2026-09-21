@@ -1,6 +1,3 @@
-import { existsSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -17,13 +14,13 @@ describe("the migration plan", () => {
   it("applies core first, then each module in registry order", () => {
     const alpha = {
       name: "alpha",
-      folder: "packages/modules/alpha/drizzle",
+      migrations: [],
       table: "__drizzle_migrations_alpha",
     };
 
     const beta = {
       name: "beta",
-      folder: "packages/modules/beta/drizzle",
+      migrations: [],
       table: "__drizzle_migrations_beta",
     };
 
@@ -42,26 +39,30 @@ describe("the migration plan", () => {
     expect(CORE_HISTORY.table).toBe("__drizzle_migrations");
   });
 
-  it("names core's folder so that it resolves from any working directory", () => {
-    expect(isAbsolute(CORE_HISTORY.folder)).toBe(true);
+  it("carries core's migrations as data, so no folder is resolved at run time", () => {
+    // The empty journal is core's current state, not an accident of the test: core owns a
+    // history and has generated no migration into it yet. The ledger table is still created.
+    expect(CORE_HISTORY.migrations).toEqual([]);
 
-    expect(existsSync(join(CORE_HISTORY.folder, "meta", "_journal.json"))).toBe(
-      true
-    );
+    expect(CORE_HISTORY).not.toHaveProperty("folder");
   });
 
   it("reads a module's history from its declaration, not from its schema shape", () => {
+    const migrations = [
+      { sql: ["select 1"], bps: true, folderMillis: 1, hash: "abc" },
+    ];
+
     const history = moduleHistory({
       identity: { id: "alpha" },
       schema: {
-        migrationsFolder: "/somewhere/alpha/drizzle",
+        migrations,
         migrationsTable: "__drizzle_migrations_alpha",
       },
     });
 
     expect(history).toEqual({
       name: "alpha",
-      folder: "/somewhere/alpha/drizzle",
+      migrations,
       table: "__drizzle_migrations_alpha",
     });
   });

@@ -1,7 +1,8 @@
-import { fileURLToPath } from "node:url";
-
+import { migrationsFromJournal } from "@genie/core";
 import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+import journal from "../drizzle/meta/_journal.json" with { type: "json" };
 
 /**
  * The module's one table. A primary key is a UUID and an edited table carries both timestamps
@@ -25,9 +26,18 @@ export const placeholderRecord = pgTable("placeholder_record", {
 export const MIGRATIONS_TABLE = "__drizzle_migrations_placeholder";
 
 /**
- * The folder holding this module's migration history, resolved from this file. It is absolute
- * so that the migrator finds it whatever the working directory of the process is.
+ * Every SQL file the journal above names, one `new URL` each. This spelling is what puts the
+ * SQL in the image: a production bundler follows a file reference written this way, emits the
+ * file beside the server and rewrites the URL to the emitted copy, while a folder path is
+ * followed by nothing and copied by nothing. A new migration adds its line here in the same
+ * change that generates it, and `migrationsFromJournal` refuses to start if it does not.
  */
-export const MIGRATIONS_FOLDER = fileURLToPath(
-  new URL("../drizzle", import.meta.url)
-);
+const MIGRATION_FILES = {
+  "0000_boring_gargoyle": new URL(
+    "../drizzle/0000_boring_gargoyle.sql",
+    import.meta.url
+  ),
+};
+
+/** This module's migration history, in journal order (R-24). */
+export const MIGRATIONS = migrationsFromJournal(journal, MIGRATION_FILES);

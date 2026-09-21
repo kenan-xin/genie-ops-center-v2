@@ -1,4 +1,5 @@
 import type { AnyTRPCRouter } from "@trpc/server";
+import type { MigrationMeta } from "drizzle-orm/migrator";
 import type { PgTable } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
 import type { ZodObject, ZodType } from "zod";
@@ -19,7 +20,12 @@ export type ModuleIdentity = {
 /** 2. Schema: one Drizzle schema and its own migration history. */
 export type ModuleSchema = {
   readonly tables: Readonly<Record<string, PgTable>>;
-  readonly migrationsFolder: string;
+  /**
+   * The module's migration history as data, built by core's `migrationsFromJournal` from the
+   * module's own drizzle-kit journal and one `new URL` per SQL file. It is not a folder path:
+   * a production bundler cannot follow a folder, so the SQL would never reach the image.
+   */
+  readonly migrations: readonly MigrationMeta[];
   readonly migrationsTable: string;
 };
 

@@ -10,8 +10,4 @@ export { placeholderModule } from "./module.ts";
 
 export { placeholderRouter, type PlaceholderRouter } from "./router.ts";
 
-export {
-  MIGRATIONS_FOLDER,
-  MIGRATIONS_TABLE,
-  placeholderRecord,
-} from "./schema.ts";
+export { MIGRATIONS, MIGRATIONS_TABLE, placeholderRecord } from "./schema.ts";

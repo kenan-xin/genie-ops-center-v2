@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { Client, type Pool, type PoolClient, type QueryConfig } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -24,7 +25,8 @@ import { startDisposablePostgres } from "./index.ts";
  * these prove what the database does with those statements.
  *
  * Core imports no module (R-39), so the second history is written to a temporary folder here
- * rather than taken from a module package.
+ * and read with drizzle's own folder reader, rather than taken from a module package. A module
+ * declares the same data from files the build traced; what reaches the migrator is identical.
  */
 const ALPHA_TABLE = 'CREATE TABLE "alpha_record" ("id" integer PRIMARY KEY);';
 
@@ -82,7 +84,14 @@ async function writeHistory(
     "utf8"
   );
 
-  return { name, folder, table: `__drizzle_migrations_${name}` };
+  return {
+    name,
+    migrations: readMigrationFiles({
+      migrationsFolder: folder,
+      migrationsTable: `__drizzle_migrations_${name}`,
+    }),
+    table: `__drizzle_migrations_${name}`,
+  };
 }
 
 /** Every ledger table this database holds, whatever schema drizzle put it in. */
@@ -397,16 +406,26 @@ describe("the migrator against a real database", () => {
   it("keeps the original error when a history fails, and blocks no later run", async () => {
     const context = await freshDeployment();
 
-    const missing: MigrationHistory = {
-      name: "missing",
-      folder: join(tmpdir(), "genie-history-that-does-not-exist"),
-      table: "__drizzle_migrations_missing",
+    // A history whose statement the database refuses. It stands where a missing folder used to:
+    // the migrator no longer reads a folder, so the failure a history can still raise is the
+    // database rejecting what it was given.
+    const broken: MigrationHistory = {
+      name: "broken",
+      migrations: [
+        {
+          sql: ['CREATE TABLE "broken_record" ("id" no_such_type);'],
+          bps: true,
+          folderMillis: 1789948987482,
+          hash: "broken",
+        },
+      ],
+      table: "__drizzle_migrations_broken",
     };
 
     const raised: Error | undefined = await runMigrations({
       env: context.env,
       pool: context.db.$client,
-      histories: migrationPlan([missing]),
+      histories: migrationPlan([broken]),
     }).then(
       () => undefined,
       (error: Error) => error
@@ -415,14 +434,24 @@ describe("the migrator against a real database", () => {
     expect(raised).toMatchObject({ code: "migration-failed" });
     expect(raised?.cause).toBeInstanceOf(Error);
 
-    // The failed run left nothing behind: a later run takes the lock and finishes.
+    // The failed run left nothing applied: a later run takes the lock and finishes.
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([]),
     });
 
-    expect(await ledgerNames(context)).toEqual(["__drizzle_migrations"]);
+    // Drizzle creates a history's ledger table before it opens the transaction that runs the
+    // statements, so a history that fails leaves its ledger behind, empty. That is drizzle's
+    // own order and it predates this migrator: what matters is that the failed statement
+    // recorded nothing and applied nothing.
+    expect(await ledgerNames(context)).toEqual([
+      "__drizzle_migrations",
+      "__drizzle_migrations_broken",
+    ]);
+
+    expect(await appliedCount(context, "__drizzle_migrations_broken")).toBe(0);
+    expect(await tableExists(context, "broken_record")).toBe(false);
     expect(await advisoryLocks(context)).toBe(0);
   });
 });

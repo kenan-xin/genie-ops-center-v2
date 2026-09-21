@@ -1,7 +1,8 @@
-import { existsSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { type NavigationEntry, validateModule } from "@genie/core";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { describe, expect, it } from "vitest";
 
 import { placeholderModule } from "./module.ts";
@@ -81,11 +82,36 @@ describe("the placeholder module declaration", () => {
     );
   });
 
-  it("names its history folder so that it resolves from any working directory", () => {
-    const folder = placeholderModule.schema.migrationsFolder;
+  it("carries its migration history as data, not as a folder path", () => {
+    // A folder path would be resolved at run time, which is what keeps the SQL out of a
+    // production image: the bundler follows no folder and copies no folder.
+    expect(placeholderModule.schema).not.toHaveProperty("migrationsFolder");
 
-    expect(isAbsolute(folder)).toBe(true);
-    expect(existsSync(join(folder, "meta", "_journal.json"))).toBe(true);
+    expect(placeholderModule.schema.migrations).toHaveLength(1);
+  });
+
+  it("declares the same migrations drizzle's own folder reader produces", () => {
+    // The guard against two kinds of drift: a migration generated into the folder without its
+    // `new URL` beside it, and a reader of ours that stopped agreeing with drizzle's. The
+    // hashes are what the ledger stores, so they must match statement for statement.
+    // The directory URL below is the spelling the rest of this package may no longer use. It is
+    // allowed here, and only here, because driving drizzle's own folder reader is the whole
+    // point of the comparison, and because a test file is never bundled into the image.
+    const fromFolder = readMigrationFiles({
+      migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
+      migrationsTable: placeholderModule.schema.migrationsTable,
+    });
+
+    expect(placeholderModule.schema.migrations).toEqual(fromFolder);
+  });
+
+  it("carries the real SQL of the one migration on disk", () => {
+    const onDisk = readFileSync(
+      new URL("../drizzle/0000_boring_gargoyle.sql", import.meta.url),
+      "utf8"
+    );
+
+    expect(placeholderModule.schema.migrations[0]?.sql.join("")).toBe(onDisk);
   });
 
   it("contributes one https frame origin", async () => {

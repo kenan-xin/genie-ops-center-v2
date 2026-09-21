@@ -86,6 +86,13 @@ export {
 } from "./services/migrator/index.ts";
 
 export {
+  type MigrationFiles,
+  type MigrationJournal,
+  type MigrationJournalEntry,
+  migrationsFromJournal,
+} from "./services/migrator/history.ts";
+
+export {
   type LogBindings,
   createLogger,
   forExecution,

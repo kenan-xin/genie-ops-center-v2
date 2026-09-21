@@ -1,34 +1,43 @@
-import { fileURLToPath } from "node:url";
-
+import type { MigrationMeta } from "drizzle-orm/migrator";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
+import type { PgDialect, PgSession } from "drizzle-orm/pg-core";
 import type { Pool, PoolClient } from "pg";
 
+import coreJournal from "../../../drizzle/meta/_journal.json" with { type: "json" };
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type {
   ModuleIdentity,
   ModuleSchema,
 } from "../../lib/module-contract/module.ts";
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
+import { type MigrationFiles, migrationsFromJournal } from "./history.ts";
 
-/** One migration history: a folder of SQL files and the table that records what was applied. */
+/** One migration history: the SQL it applies and the table that records what was applied. */
 export type MigrationHistory = {
   /** The name in a log line, `core` or the module id. */
   readonly name: string;
   /**
-   * An absolute path to the folder of SQL files. Drizzle resolves a relative folder against
-   * the working directory of the process, and that directory differs between the image, a
-   * test run and a command, so a relative folder fails the start wherever it does not match.
+   * The migrations this history applies, in journal order, already read from files the build
+   * traced. It is data and not a folder path because a folder resolved at run time is invisible
+   * to a production bundler: the bundler neither resolves the reference nor copies the SQL into
+   * the image, so a container built that way cannot migrate at all.
    */
-  readonly folder: string;
+  readonly migrations: readonly MigrationMeta[];
   readonly table: string;
 };
+
+/**
+ * Core's own SQL files, one entry per journal tag. Core's journal holds no entry today, so this
+ * map holds none either; the first core migration adds its `new URL` here in the same change
+ * that adds the file, and `migrationsFromJournal` refuses to start if it does not.
+ */
+const CORE_MIGRATION_FILES: MigrationFiles = {};
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */
 export const CORE_HISTORY: MigrationHistory = {
   name: "core",
-  folder: fileURLToPath(new URL("../../../drizzle", import.meta.url)),
+  migrations: migrationsFromJournal(coreJournal, CORE_MIGRATION_FILES),
   table: "__drizzle_migrations",
 };
 
@@ -73,11 +82,37 @@ export type MigrationRun = {
   readonly apply?: ApplyHistory;
 };
 
-const applyWithDrizzle: ApplyHistory = (db, history) =>
-  migrate(db, {
-    migrationsFolder: history.folder,
+/**
+ * The database with the two properties drizzle's own `migrate()` uses to apply migrations it
+ * has already read. Both are real properties of every `NodePgDatabase`, constructor arguments
+ * that drizzle marks `@internal`, which hides them from the declaration without removing them
+ * from the object. Both types here are drizzle's own.
+ */
+type MigrationApply = NodePgDatabase & {
+  readonly dialect: PgDialect;
+  readonly session: PgSession;
+};
+
+const applyWithDrizzle: ApplyHistory = (db, history) => {
+  // Drizzle's `migrate()` is `readMigrationFiles(config)` followed by exactly the call below.
+  // The folder read is the half a production bundler cannot follow, so the migrations arrive
+  // as data and only the apply is borrowed. The statements, their order and the ledger rows
+  // stay drizzle's own.
+  // SAFETY: the assertion narrows the database to the same object with the two properties the
+  // pinned drizzle-orm 0.45.2 `PgDatabase` assigns in its constructor and hides in its types.
+  // Only `migrator.integration.test.ts` reaches this call, so only the Docker-gated
+  // `test:integration` target catches an upgrade that renamed either property. The assertion
+  // fabricates both, so neither `typecheck` nor the unit suite can see the rename. The failure
+  // is loud when it comes: a `TypeError` on the first migration of a real run.
+  const internals = db as MigrationApply;
+
+  return internals.dialect.migrate([...history.migrations], internals.session, {
+    // `migrate` reads only the table and the schema from this config. The folder is required
+    // by drizzle's type and is never opened, which is the whole point of the change.
+    migrationsFolder: "",
     migrationsTable: history.table,
   });
+};
 
 /**
  * What the migrator needs from a module declaration. It is the declaration itself, never a
@@ -85,19 +120,19 @@ const applyWithDrizzle: ApplyHistory = (db, history) =>
  */
 export type ModuleHistorySource = {
   readonly identity: Pick<ModuleIdentity, "id">;
-  readonly schema: Pick<ModuleSchema, "migrationsFolder" | "migrationsTable">;
+  readonly schema: Pick<ModuleSchema, "migrations" | "migrationsTable">;
 };
 
 /**
  * The history a module declares, in the shape the migrator applies. The contract names the
- * folder and the table on the schema, and the migrator names them beside the module id, so a
- * log line can say which history is running. Every caller converts here, so the app bootstrap
+ * migrations and the table on the schema, and the migrator names them beside the module id, so
+ * a log line can say which history is running. Every caller converts here, so the app bootstrap
  * and the test helper cannot disagree about the mapping.
  */
 export function moduleHistory(module: ModuleHistorySource): MigrationHistory {
   return {
     name: module.identity.id,
-    folder: module.schema.migrationsFolder,
+    migrations: module.schema.migrations,
     table: module.schema.migrationsTable,
   };
 }

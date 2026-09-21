@@ -6,11 +6,7 @@ import {
   PlaceholderWorkspacePage,
 } from "./presentation/module-pages.tsx";
 import { placeholderRouter } from "./router.ts";
-import {
-  MIGRATIONS_FOLDER,
-  MIGRATIONS_TABLE,
-  placeholderRecord,
-} from "./schema.ts";
+import { MIGRATIONS, MIGRATIONS_TABLE, placeholderRecord } from "./schema.ts";
 
 /**
  * A category row this deployment holds. The navigation guard of DEC-51 needs a case for a live
@@ -77,7 +73,7 @@ export const placeholderModule = {
 
   schema: {
     tables: { placeholderRecord },
-    migrationsFolder: MIGRATIONS_FOLDER,
+    migrations: MIGRATIONS,
     migrationsTable: MIGRATIONS_TABLE,
   },
 
