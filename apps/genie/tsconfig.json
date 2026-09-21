@@ -1,4 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*.ts", "vitest.config.ts"]
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "next.config.ts",
+    "tailwind.config.ts",
+    "vitest.config.ts"
+  ]
 }

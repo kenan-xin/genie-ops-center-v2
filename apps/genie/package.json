@@ -4,22 +4,67 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "next build",
+    "generate-registry": "node tools/generate-registry.ts",
+    "start": "node tools/start-standalone.mjs",
     "lint": "oxlint --config ../../oxlint.config.ts src",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@genie/core": "workspace:*",
-    "@genie/ui": "workspace:*"
+    "@genie/module-placeholder": "workspace:*",
+    "@genie/ui": "workspace:*",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "@genie/generators": "workspace:*",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "oxlint": "1.83.0",
+    "tailwindcss": "4.3.3",
     "vitest": "4.1.11"
   },
   "nx": {
     "tags": [
       "app"
-    ]
+    ],
+    "targets": {
+      "generate-registry": {
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "env": "MODULE_INCLUDE"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/src/modules.ts"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "generate-registry",
+          "^build"
+        ]
+      },
+      "typecheck": {
+        "dependsOn": [
+          "generate-registry",
+          "^build"
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "generate-registry"
+        ]
+      }
+    }
   }
 }
