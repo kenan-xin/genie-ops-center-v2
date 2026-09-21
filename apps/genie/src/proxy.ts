@@ -5,6 +5,7 @@
 // all. Everything else the proxy needs, the provider map and the failure
 // reporter, comes from the context slot, which the bootstrap filled.
 import {
+  BASELINE_POLICY,
   type FrameOriginProvider,
   collectFrameOrigins,
   serializeContentSecurityPolicy,
@@ -37,8 +38,7 @@ export async function buildViewerPolicy<Ctx>(input: {
 const STANDARD_HEADERS = [
   {
     key: "Content-Security-Policy",
-    value:
-      "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'",
+    value: BASELINE_POLICY,
   },
   {
     key: "Strict-Transport-Security",

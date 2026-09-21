@@ -86,22 +86,31 @@ test("the placeholder read procedure succeeds through the real transport", async
   expect(body.result).toBeDefined();
 });
 
-test("styles and hydration work without a nonce", async ({ page }) => {
+// The criterion is "the policy strips no stylesheet" (DEC-31 as amended: no
+// nonce). The value asserted must be one only the application stylesheet can
+// produce. Tailwind's preflight sets `body { margin: 0 }`, while the browser's
+// own user-agent stylesheet leaves `body` at `8px`. Both are non-empty, so an
+// emptiness check passes with no application CSS at all; the exact value is what
+// fails when the stylesheet is missing. `margin-top` is read rather than the
+// shorthand, so the assertion does not depend on how a browser formats a
+// four-sided shorthand.
+//
+// The hydration claim was removed. This page has no client-side behaviour to
+// observe: every component reachable here renders on the server, and the one
+// client component in the workspace is not mounted on any route, so no
+// interaction or marker can distinguish "React attached" from "React never
+// ran". The reload below still asserts the one client-side signal the page does
+// emit: no uncaught page error, which a hydration crash would produce.
+test("the application stylesheet is applied without a nonce", async ({
+  page,
+}) => {
   await page.goto("/");
 
-  // A style the stylesheet supplies, so a failed stylesheet is visible here.
-  const body = page.locator("body");
+  const margin = await page
+    .locator("body")
+    .evaluate((node) => getComputedStyle(node).getPropertyValue("margin-top"));
 
-  await expect(body).toBeVisible();
-
-  const applied = await body.evaluate((node) =>
-    getComputedStyle(node).getPropertyValue("margin")
-  );
-
-  expect(applied).not.toBe("");
-
-  // React attached. A hydration failure leaves this attribute absent.
-  await expect(page.locator("html")).toBeAttached();
+  expect(margin).toBe("0px");
 
   const errors: string[] = [];
 

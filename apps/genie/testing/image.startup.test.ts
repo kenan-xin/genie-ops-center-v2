@@ -1,5 +1,4 @@
 import { execFile } from "node:child_process";
-import { statSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
@@ -21,6 +20,9 @@ const IMAGE = "genie-s005:test";
 const REBUILD_IMAGE =
   "docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .";
 
+/** The repository root, which holds the Dockerfile and the context it builds from. */
+const WORKSPACE_ROOT = resolvePath(import.meta.dirname, "../../..");
+
 /** The image's creation time, or `undefined` when the image does not exist. */
 async function imageCreatedAt(): Promise<string | undefined> {
   try {
@@ -32,46 +34,84 @@ async function imageCreatedAt(): Promise<string | undefined> {
       IMAGE,
     ]);
 
-    return inspected.stdout.trim();
+    return inspected.stdout.trim() || undefined;
   } catch {
     return undefined;
   }
 }
 
 /**
- * The image is not a build dependency of this suite, so a stale one surfaces as
- * a bootstrap failure about a migration file and reads like a broken product.
- * This makes staleness loud instead: it fails once, before any test runs, and
- * names the command that fixes it.
+ * Assembles the image from the current build context, and reports whether the
+ * build succeeded.
  *
- * The build stamp is `apps/genie/.next/BUILD_ID`, which `next build` rewrites on
- * every run. An image older than that stamp was built from an older build than
- * the one on disk.
+ * `--quiet` drops the progress output, which a rebuild of the whole workspace
+ * would otherwise flood the hook with.
+ */
+async function buildImage(): Promise<boolean> {
+  try {
+    await run(
+      "docker",
+      [
+        "build",
+        "--quiet",
+        "-f",
+        "deploy/Dockerfile",
+        "--build-arg",
+        `MODULE_INCLUDE=${process.env.MODULE_INCLUDE ?? "placeholder"}`,
+        "-t",
+        IMAGE,
+        ".",
+      ],
+      { cwd: WORKSPACE_ROOT, maxBuffer: 64 * 1024 * 1024 }
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `test:integration` depends on `build-image`, which assembles the image from
+ * this working tree, but a direct `vitest` run skips that. A stale image then
+ * surfaces as a bootstrap failure about a migration file and reads like a broken
+ * product. This makes staleness loud instead: it fails once, before any test
+ * runs, and names the command that fixes it.
+ *
+ * Freshness is settled by asking Docker to produce the image from the current
+ * build context, because nothing cheaper can settle it. Docker addresses its
+ * layers by the content of what it copies, so an unchanged context is a cache hit
+ * costing a fraction of a second, while a changed one rebuilds the image.
+ *
+ * The verdict is the image's creation time, which a cached build reuses and a
+ * real one moves. The image id cannot stand in for it: BuildKit mints a fresh
+ * config digest on every build, so two back-to-back cache hits produce different
+ * ids for the same bytes. Timestamps of the local build cannot stand in either,
+ * because `next build` rewrites its own stamp on every run while the image, which
+ * `.dockerignore` keeps away from `.next` entirely, stays put.
  */
 async function requireFreshImage(): Promise<void> {
-  const created = await imageCreatedAt();
+  const before = await imageCreatedAt();
 
-  if (created === undefined) {
+  const built = await buildImage();
+
+  const after = await imageCreatedAt();
+
+  if (!built || after === undefined) {
     throw new Error(
-      `The image ${IMAGE} is missing. Rebuild it before running the integration suite:\n  ${REBUILD_IMAGE}`
+      `Could not build the image ${IMAGE} from ${WORKSPACE_ROOT}. Build it by hand and read the error:\n  ${REBUILD_IMAGE}`
     );
   }
 
-  const buildId = resolvePath(import.meta.dirname, "../.next/BUILD_ID");
-
-  const builtAt = statSync(buildId, { throwIfNoEntry: false })?.mtimeMs;
-
-  if (builtAt === undefined) {
-    throw new Error(
-      `No build output at ${buildId}, so image staleness cannot be judged. Build the app first:\n  MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build`
-    );
+  if (before === after) {
+    return;
   }
 
-  if (Date.parse(created) < builtAt) {
-    throw new Error(
-      `The image ${IMAGE} is older than the app build at ${buildId}, so it may serve stale code. Rebuild it:\n  ${REBUILD_IMAGE}`
-    );
-  }
+  throw new Error(
+    before === undefined
+      ? `The image ${IMAGE} was missing and has now been built. Re-run the integration suite.`
+      : `The image ${IMAGE} was built from older source than this working tree and has now been rebuilt. Re-run the integration suite.`
+  );
 }
 
 // A deployment rather than a bare container, because two tests need a pooled
@@ -91,6 +131,9 @@ const requestLinesIn = (logs: string) =>
 
 beforeAll(async () => {
   await requireFreshImage();
+}, 900000);
+
+beforeAll(async () => {
   database = await startDisposableDeployment([]);
 }, 180000);
 
@@ -345,7 +388,7 @@ async function logsUntil(
 }
 
 describe("the built image", () => {
-  it("answers health only after migrations complete, and builds exactly one context", async () => {
+  it("becomes healthy, logs one bootstrap line, and invokes no provider before it", async () => {
     const image = await startImage(
       {
         DATABASE_URL: databaseUrl(),
@@ -365,11 +408,64 @@ describe("the built image", () => {
 
       expect(countLines(logs, "bootstrap complete")).toBe(1);
 
-      // No request-bound path ran before the bootstrap finished.
+      // No provider ran before the bootstrap finished. The ordering of health
+      // against migrations, and the one-context claim, are proved by the other
+      // cases in this file, not here.
       const bootstrapAt = logs.indexOf("bootstrap complete");
       const providerAt = logs.indexOf("frame origin provider invoked");
 
       expect(providerAt === -1 || providerAt > bootstrapAt).toBe(true);
+    } finally {
+      await image.stop();
+    }
+  }, 180000);
+
+  // R-44/R-46: one log line per request, carrying the request id, and that id is
+  // the one the client is handed. The response header is read and matched against
+  // the request line for the same request, so neither the header nor the line's
+  // `requestId` binding can be dropped or changed without failing here. The path
+  // is ordinary and succeeds, so no error line carries this id: the request line
+  // is the only line that holds it.
+  it("hands the client the same request id it logs for an ordinary request", async () => {
+    const image = await startImage(
+      {
+        DATABASE_URL: databaseUrl(),
+        PUBLIC_URL: "https://example.invalid",
+      },
+      3405
+    );
+
+    try {
+      // Readiness uses `/api/health`, which never touches `/api/status`, so the
+      // status request lines read below are only this test's own request.
+      await pollHealth(3405);
+
+      const response = await fetch("http://127.0.0.1:3405/api/status");
+
+      expect(response.status).toBe(200);
+
+      const handed = response.headers.get("x-request-id");
+
+      expect(handed).toMatch(/^[0-9a-f-]{36}$/);
+
+      const logs = await logsUntil(image, (seen) =>
+        seen.split("\n").some((line) => line.includes('"path":"/api/status"'))
+      );
+
+      const statusLines = logs
+        .split("\n")
+        .filter((line) => line.includes('"path":"/api/status"'));
+
+      // Exactly one: the proxy is the only request logger, and only this test
+      // asked for `/api/status`.
+      expect(statusLines).toHaveLength(1);
+
+      const line = statusLines[0] ?? "";
+
+      // The request line, not the error line. This request produced no error, so
+      // a `request failed` line would belong to a different request.
+      expect(line).toContain('"msg":"request"');
+      expect(line).toContain(`"requestId":"${handed}"`);
     } finally {
       await image.stop();
     }
@@ -422,16 +518,15 @@ describe("the built image", () => {
       // The viewer request reached no provider, because no request was handled.
       expect(during).not.toContain("frame origin provider invoked");
 
-      // Release the lock and readiness must follow.
+      // Release the lock. No readiness probe runs inside this window: `pollHealth`
+      // issues `/api/health` requests, which would write the very request line the
+      // `/api/health` leg below reads, so the probe would satisfy its own
+      // assertion and a server that discarded the queued request would still pass.
+      // Readiness is instead read from the log, which the bootstrap writes itself
+      // and which the queued requests add to as they are served.
       await holder.query("select pg_advisory_unlock($1)", [
         MIGRATION_LOCK_KEY.toString(),
       ]);
-
-      const after = await pollHealth(3404, 60);
-
-      expect(after.some((observation) => observation.status === 200)).toBe(
-        true
-      );
 
       const logs = await logsUntil(
         image,
@@ -439,16 +534,19 @@ describe("the built image", () => {
           seen.includes("bootstrap complete") &&
           ABANDONED_PATHS.every((path) =>
             seen.slice(seen.indexOf("bootstrap complete")).includes(path)
-          )
+          ),
+        120000
       );
 
       expect(logs).toContain("bootstrap complete");
 
       // Amendment A point 6: a client timeout does not cancel a queued request.
-      // The four requests the client abandoned were accepted before the
-      // bootstrap finished, so they must appear in the request log afterwards.
-      // Without this the test would tolerate an implementation that silently
-      // discarded them, and the documented behaviour would be unproven.
+      // The three non-overlapping paths below were queued and abandoned before the
+      // bootstrap finished, so each must appear in the request log afterwards.
+      // (The probe also issued `/`, which is a substring of the other three, so the
+      // loop asserts only the three that can be told apart.) Without this the test
+      // would tolerate an implementation that silently discarded them, and the
+      // documented behaviour would be unproven.
       const bootstrapAt = logs.indexOf("bootstrap complete");
       const afterBootstrap = logs.slice(bootstrapAt);
 

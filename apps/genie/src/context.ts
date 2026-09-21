@@ -56,7 +56,7 @@ export type AppContext = {
   ) => void;
 };
 
-type Slot = { context: AppContext; constructions: number };
+type Slot = { context: AppContext };
 
 /**
  * The name of the response header a route handler writes from the context it
@@ -73,8 +73,9 @@ const KEY = Symbol.for("genie.app.context");
 
 function slot(): Slot | undefined {
   // SAFETY: the seam stores its one slot on the process global under this exact
-  // symbol, and `publishContext` is the only writer of that key. A global read
-  // therefore answers either the slot this module wrote or nothing.
+  // symbol, so a global read answers either a slot stored under this key or
+  // nothing. The symbol is process-global, so this module cannot promise it is
+  // the only writer; `publishContext` below is this module's only writer.
   return (globalThis as Record<symbol, Slot | undefined>)[KEY];
 }
 
@@ -86,18 +87,13 @@ export function publishContext(context: AppContext): void {
     );
   }
 
-  // SAFETY: the read above answered undefined, so no slot is stored under this
-  // key and this write cannot overwrite a context another path published.
-  (globalThis as Record<symbol, Slot>)[KEY] = { context, constructions: 1 };
+  // SAFETY: the read above answered undefined at this moment, so this module has
+  // not published a slot under this key.
+  (globalThis as Record<symbol, Slot>)[KEY] = { context };
 }
 
 export function readContext(): AppContext | undefined {
   return slot()?.context;
-}
-
-/** How many contexts this process built. Acceptance asserts that this is one. */
-export function constructionCount(): number {
-  return slot()?.constructions ?? 0;
 }
 
 /**

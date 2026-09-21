@@ -71,6 +71,8 @@ distinct ids across four bundles: 1
 
 `apps/genie/testing/image.startup.test.ts` narrows to nothing: `ABANDONED_PATHS` is `["/api/health", "/api/trpc/placeholder.read", "/viewer/placeholder"]`, and the `logsUntil` predicate waits for all three after `bootstrap complete` before the loop asserts that each was handled after the bootstrap finished. All three paths are proved; none was dropped.
 
+One correction to how the `/api/health` leg is measured. Readiness used to be polled with `pollHealth` **inside** the measurement window. `pollHealth` issues `/api/health` requests, so it wrote the very request line that leg then read: the probe satisfied its own assertion, and the leg could not fail. The probe is now out of that window, and readiness is read from the log the bootstrap writes itself (`bootstrap complete` plus all three `ABANDONED_PATHS`, via `logsUntil(..., 120000)`) before the loop asserts each path. The three legs are asserted the same way as before; only the readiness signal moved.
+
 ### 3. The `/home` redirect writes one request line
 
 The defect was real: the redirect branch returned before the logger was called, so `/home` produced zero request lines and R-44's "one line per request" was false for it. The fix mints the request id and calls `app.logRequest` before the `APPLICATION_REDIRECTS` branch, and sets `x-request-id` on the redirect response.
@@ -102,6 +104,64 @@ CREATE TABLE "placeholder_record" (
 The whole module migration, seven lines, is served unauthenticated. `grep` on the `genie-s005:empty` image shows the same route serves nothing when the module is not selected (0 `*.sql` files in the image). A wrong hash returns 404, so this is the static asset route, not a directory listing. The second copy at `.next/server/assets/0000_boring_gargoyle.3-bu8-fe23s4p.sql` is not reachable over HTTP (404).
 
 The mechanism is the `new URL(...)` spelling in `packages/modules/placeholder/src/schema.ts`, which is what makes the bundler trace the SQL into the image at all. That same trace emits a second copy under `static/media/`, which is a public path. Closing it means changing how the SQL is carried, which is a decision about `DEC-33` packaging, so it was left open as instructed.
+
+### 5. The request id the client is handed is the one that is logged
+
+Nothing observed this before: the proxy sets `x-request-id` and the request line carries a `requestId`, and no test read the two against each other. A header the client receives and a log line an operator reads could have disagreed, and nothing would have failed.
+
+`apps/genie/testing/image.startup.test.ts` → **`hands the client the same request id it logs for an ordinary request`**. Against the built image it requests `/api/status` — an ordinary success, so no error line carries the id — reads `x-request-id`, asserts it is a uuid, finds the single request line whose `"path":"/api/status"`, asserts there is exactly one such line, that it is the `"msg":"request"` line, and that it contains `"requestId":"<the header value>"`.
+
+Watched able to fail by making the proxy mint a second id for the header, then rebuilding:
+
+```
+FAIL |app-integration| testing/image.startup.test.ts > the built image
+  > hands the client the same request id it logs for an ordinary request
+AssertionError: expected '{"level":"info",…,"requestId":"78bb7afe-e6d9-4b7b-8c9c-d1b7dd8b875d",
+  …,"path":"/api/status","msg":"request"}' to contain '"requestId":"b5494988-816a-410b-aa1c-92172edef438"'
+  at testing/image.startup.test.ts:425
+```
+
+Reverted, rebuilt, passes.
+
+### 6. The proxy bundle reaches no database driver
+
+The claim in `apps/genie/src/proxy.ts`, `src/viewer-routes.ts` and `src/context.ts` — that the proxy bundle carries no database driver — was measured zero times. It is an architecture claim (`pg` is banned outside core), so it now has an executable check.
+
+`apps/genie/testing/proxy-bundle.integration.test.ts` → **`the proxy bundle's dependency closure reaches no database driver, while a database route does`**, run against the built output. Chunk text alone cannot see the driver, because `pg` is externalised from every JS chunk; the detector is the Next node-file-trace manifests. The test locates the proxy's chunks from the `R.c("server/chunks/…")` lines in `.next/server/middleware.js` (asserting it found some, so the locator cannot silently find none), asserts those chunks contain `frame-ancestors` (proving they are the proxy), asserts the proxy trace's driver files are `[]` and its chunk text has zero driver tokens — and carries a **positive control**: the `/api/status` route trace must have driver files, and `pg-pool/index.js` must match the driver token. Without the control, a detector that matched nothing would pass vacuously.
+
+Watched able to fail by importing the module registry into `src/proxy.ts`, then rebuilding:
+
+```
+FAIL |app-integration| testing/proxy-bundle.integration.test.ts
+  > the proxy bundle's dependency closure
+  > reaches no database driver, while a database route does
+AssertionError: the proxy bundle traced database driver files:
+  ../../../../node_modules/.pnpm/node_modules/pg, …/pg-pool, … : expected [ …(63) ] to deeply equal []
+  at testing/proxy-bundle.integration.test.ts:100
+```
+
+Reverted, rebuilt, passes.
+
+### 7. The freshness guard on the test image
+
+`apps/genie/testing/image.startup.test.ts` refuses to run against an image older than the source, and that guard was unsound. It compared the image's creation time with the mtime of `apps/genie/.next/BUILD_ID`, which **false-positives on a warm Docker cache**: `.dockerignore` excludes `.next`, so the Dockerfile builds the app *inside* the image and the image's own `BUILD_ID` differs from the local one by construction, while the local `BUILD_ID` mtime moves on every `next build` even though the image consumes none of it. The result was that root `pnpm test` failed on its second and every later run, and the documented gate sequence 2 → 4 → 5 failed:
+
+```
+Error: The image genie-s005:test is older than the app build at
+  …/apps/genie/.next/BUILD_ID, so it may serve stale code. Rebuild it:
+  docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .
+```
+
+Two candidate signals were measured and found unsound before being discarded. The image id changes on every build even with identical bytes (BuildKit mints a fresh config digest: two back-to-back cache hits gave `391b8ede…` then `532b39ab…`). Local build stamps churn too: `tools/generate-registry.ts` rewrites `src/modules.ts` unconditionally and `public/probe.txt` is rewritten during runs.
+
+The guard now asks Docker to reproduce the image from the current build context and compares the image's creation time before and after. A cached build costs about 0.27 s and reuses the creation time; a changed context rebuilds and moves it. The build runs in its own `beforeAll` with a 900 s timeout so a real rebuild cannot surface as a hook timeout. Watched able to fail, after reverting a source change so the image predated the tree:
+
+```
+Error: The image genie-s005:test was built from older source than this working tree and has now been
+  rebuilt. Re-run the integration suite.
+```
+
+Root `pnpm test` now passes on a clean checkout: `apps/genie/package.json` gains a `build-image` script and an nx `build-image` target (`cache: false`, `dependsOn: ["build"]`), and `test:integration` is `dependsOn: ["build", "build-image"]`. Docker stays a prerequisite. `.dockerignore` also now excludes `**/test-results` and `**/playwright-report`: those gitignored browser artifacts change on every run, and leaving them in the context made a browser run force a rebuild the guard would report as staleness.
 
 ## Step 3b2: the header matrix on the running image
 
@@ -143,21 +203,24 @@ R-49a holds: zero provider calls outside the viewer, one per viewer document.
 `pnpm exec playwright test --config apps/genie/playwright.config.ts`, against `genie-s005:test` started by the suite's own `globalSetup` (compose project `genie-s005-e2e`, `127.0.0.1:3400`), torn down by `globalTeardown`.
 
 ```
-Running 28 tests using 8 workers
-  4 skipped
+Running 24 tests using 8 workers
   24 passed (8.6s)
 ```
 
-Two projects, `phone` (Pixel 7) and `desktop` (Desktop Chrome), 14 tests each: 12 passed and 2 skipped per viewport. The two skipped tests per project are `failed-provider.spec.ts`, which needs the disposable image and skips unless `GENIE_FAILING_VIEWER=1` names it. No test ran at only one viewport.
+Two projects, `phone` (Pixel 7) and `desktop` (Desktop Chrome), 12 tests each: 12 passed per viewport, none skipped. No test ran at only one viewport.
 
 Per file, per project:
 
 | Spec | Tests | What it proves |
 | --- | --- | --- |
-| `placeholder.spec.ts` | 5 | navigation renders, the module page and the admin page are refused to the anonymous caller, the read procedure succeeds through the real transport, styles and hydration work with no nonce, and axe reports no violation |
+| `placeholder.spec.ts` | 5 | navigation renders, the module page and the admin page are refused to the anonymous caller, the read procedure succeeds through the real transport, the application stylesheet is applied with no nonce, and axe reports no violation |
 | `security-headers.spec.ts` | 6 | the permitted frame visibly loads in the viewer; the same frame is blocked on an ordinary page; the viewer refuses an unlisted origin; another page cannot frame the app; `<object>` content is blocked; a cross-origin `<base>` cannot change URL resolution |
 | `context-sharing.spec.ts` | 1 | one context id from the home document, the viewer document and the tRPC response header |
-| `failed-provider.spec.ts` | 2 | skipped in this run; run separately below |
+
+Two corrections to this table, both from the same defect class — a test claiming more than it could detect:
+
+- **The no-nonce test proved neither styles nor hydration.** It asserted `margin !== ""` (a browser default of `8px` and a Tailwind reset of `0px` are both non-empty) and `expect(html).toBeAttached()` (true before React runs). The test is renamed **"the application stylesheet is applied without a nonce"** and asserts a computed value only the application stylesheet can produce: `body { margin-top }` is `0px` (Tailwind 4 preflight) where the browser default is `8px`. Proved able to fail by removing `apps/genie/postcss.config.mjs`, rebuilding, and watching both viewports fail with `Expected: "0px" / Received: "8px"` at `placeholder.spec.ts:113`. The hydration half was removed, not weakened: the page has no client behaviour to observe — the only client component (`disclosure.tsx`) is unmounted on `/` — and the file now says so rather than asserting `toBeAttached()`.
+- **`failed-provider.spec.ts` was deleted.** Its two tests per viewport could never run again: they needed a disposable image and skipped unless `GENIE_FAILING_VIEWER=1` named it, so on every ordinary run they were 2 skipped per project and proved nothing. Step 3a2 below records the provider behaviour against a real disposable image and is the surviving proof. The spec was not made re-executable: both routes to that are worse than deletion — committing fixture modules into `packages/modules/` changes what the default `MODULE_INCLUDE` selects and breaks the placeholder-only assumption every other test rests on, and a generate/install/build/restore dance mutates `apps/genie/package.json` and `pnpm-lock.yaml` mid-suite. `installFrameFixture` is retained and still used by `security-headers.spec.ts`.
 
 Two deliberate deviations in the accessibility checks, both disclosed rather than hidden:
 
@@ -217,7 +280,7 @@ provider invocations for one viewer request: 1
 
 Neither widened the policy, neither fell back to `*` or `https:`, no error text and no invalid contribution reached the headers, and the failure is recorded in the log, which is the `yt2` obligation.
 
-In the browser, against the same image with the suite's hooks standing aside:
+In the browser, against the same image with the suite's hooks standing aside. **This command can never run again:** it targeted `failed-provider.spec.ts`, which has been deleted (see Step 3a), because it skipped on every ordinary run and proved nothing there. The run below was observed once, in the session that wrote this file, against the disposable image; it is recorded for what it showed, not as a check that still exists:
 
 ```
 GENIE_E2E_EXTERNAL=1 E2E_BASE_URL=http://127.0.0.1:3406 GENIE_FAILING_VIEWER=1 \
@@ -230,7 +293,7 @@ GENIE_E2E_EXTERNAL=1 E2E_BASE_URL=http://127.0.0.1:3406 GENIE_FAILING_VIEWER=1 \
   4 passed (2.6s)
 ```
 
-Each asserts the response's own `content-security-policy` header equals the deny baseline, that the controlled fixture origin was never requested, and that nothing from it rendered.
+Each asserted the response's own `content-security-policy` header equals the deny baseline, that the controlled fixture origin was never requested, and that nothing from it rendered. The surviving executable proof of the failed and invalid provider is the container batch above; this browser run corroborated it once and is now history, not a gate.
 
 ## Step 4: the criterion-to-check matrix
 
@@ -238,7 +301,7 @@ Each asserts the response's own `content-security-policy` header equals the deny
 | --- | --- | --- |
 | AC-4 two-context isolation | `apps/genie/testing/isolation.integration.test.ts` | pass, 2 tenant contexts, 2 databases, one process |
 | AC-5 excluded modules | Step 3c above | pass, with the corrected counts |
-| AC-11 two viewports | Step 3a, 14 tests per project | pass, `phone` and `desktop` |
+| AC-11 two viewports | Step 3a, 12 tests per project | pass, `phone` and `desktop` |
 | AC-15 both transports | `apps/genie/testing/transport.integration.test.ts` | pass, real HTTP and a real `@trpc/client` round trip |
 | AC-16 viewer policy and framing | Step 3b2 plus `security-headers.spec.ts` | pass, exactly one policy, baseline replaced at `frame-src` only |
 | AC-23 provider contract | `packages/core/src/lib/content-security-policy/index.test.ts` | pass at the unit layer; the same cases at the response layer are Step 3a2 |
@@ -257,14 +320,16 @@ From the worktree root, in this order, each after the last code change.
 | `MODULE_INCLUDE=placeholder pnpm exec nx run-many -t lint typecheck test --skip-nx-cache` | success, 21 tasks across 7 projects |
 | `MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build --skip-nx-cache` | success |
 | `docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .` | success |
-| `cd apps/genie && pnpm exec vitest run --config vitest.integration.config.ts` | 4 files passed, 31 tests passed |
-| `pnpm exec playwright test --config apps/genie/playwright.config.ts` | 24 passed, 4 skipped, both viewports |
+| `cd apps/genie && pnpm exec vitest run --config vitest.integration.config.ts` | 5 files passed, 33 tests passed, 0 skipped |
+| `pnpm exec playwright test --config apps/genie/playwright.config.ts` | 24 passed, 0 skipped, both viewports |
+| `MODULE_INCLUDE=placeholder pnpm test` | success, from a state with no `genie-s005:test` image |
 
 ## Corrections made during execution
 
 - **The fixture modules needed a dependency entry.** The app resolves a selected module through its own manifest, not through a root `node_modules` symlink: `apps/genie/package.json` declares `@genie/module-placeholder`, and a module the app does not declare cannot be resolved by Turbopack even when `MODULE_INCLUDE` names it. The two fixtures were added to that dependency list, installed, built, then removed and reinstalled. The final tree is back to the placeholder-only list, and `pnpm-lock.yaml` holds no fixture reference.
 - **Playwright's output directory broke the formatter gate.** `apps/genie/test-results/.last-run.json` is written by every browser run, and `pnpm exec oxfmt --check .` failed on it. `test-results/` and `playwright-report/` are now gitignored and listed in `packages/config/src/oxfmt/index.ts` under the build-output block, so the two gates cannot contradict each other.
 - **Two brief checks in Step 3c were replaced** with the three measured counts above.
+- **The image freshness guard was unsound and was replaced.** It compared the image's creation time with `.next/BUILD_ID`'s mtime and false-positived on a warm Docker cache, failing root `pnpm test` on every run after the first. It now asks Docker to reproduce the image and compares the creation time before and after. See Step 7. `test:integration` now depends on a `build-image` target through the nx graph, and `.dockerignore` excludes `test-results` and `playwright-report`.
 - **The accessibility assertion was scoped**, with an unscoped baseline added on `/`, as described in Step 3a.
 
 ## Not proved

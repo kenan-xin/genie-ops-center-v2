@@ -1,6 +1,9 @@
-# The smallest deployment R-40 asks for: the image and its database. It holds no
-# secret and no host-specific value, so it is committed. Section 1 replaces it
-# with the generated customer stack.
+# The smallest deployment R-40 asks for: the image and its database. It is a
+# disposable local stack: the database is created and destroyed by the browser
+# run and is never reachable off-host, so the fixed `genie`/`genie` credential
+# below is a throwaway for that stack, not a secret. Production credentials are
+# generated per deployment by the customer stack (Section 1), which replaces
+# this file.
 services:
   database:
     image: postgres:18-alpine
