@@ -137,7 +137,16 @@ The logger is pino at the level `LOG_LEVEL` names, with the request, tenant and 
 
 Three paths reach a line, and all three are redacted. An object goes through the log formatter, where a walker replaces a secret by name at any depth and inside an array. A message string and any value interpolated into it go through pino's own `hooks.logMethod`, because the formatter never sees them. An error is replaced by a copy whose message and stack are redacted; the copy is built from the original's property descriptors, which is what carries `cause`, since `new Error(message, { cause })` defines it as not enumerable and an `Object.assign` copy loses it. The cause chain is walked and redacted, a cause that points back at an error it came from answers the copy already made rather than looping, and the error the caller passed is never changed.
 
-An error reaches a line as `{ type, message, stack, cause }`, because an error's own fields are not enumerable and walking its entries would answer an empty object.
+An error reaches a line with its kind and its own fields. Two paths get there, because pino treats the error it was handed differently from one nested in an object.
+
+The error pino puts under `err` is left to pino's own error serializer, so the line keeps `type: "AppError"` with `code` and `safeMessage` beside it. Walking that error here would turn it into a plain object, and pino would then report its type as `Object`, which is what the review found. Safety does not depend on skipping it: the argument hook already replaced it with a redacted copy, and that copy redacts every own field it carries, so a custom error's `password` or token-bearing endpoint is gone before pino sees it.
+
+An error nested inside a logged object has no serializer of its own, and its fields are not enumerable, so walking its entries would answer an empty object. It is turned into `{ type, message, stack, cause }` plus its own fields, each redacted.
+
+| Mutation | Result |
+| --- | --- |
+| The logged error walked as a plain object again | 1 failed: the kind and the code are lost |
+| A custom error's own fields copied without redaction | 1 failed: the secret field reaches the line |
 
 The cases read the serialized line the destination received. They cover nested headers, an array of tokens, an emailed link, a url with a credential in its userinfo, a token link as the whole message, one inside a longer message, one interpolated with `%s`, a bare `token=` pair, a link inside a logged error, a redacted cause chain that keeps `ECONNREFUSED` while losing the token beside it, an `AppError` whose fields are not writable keeping its cause, a cause that points at its own error, an unchanged original, and an ordinary link that survives.
 

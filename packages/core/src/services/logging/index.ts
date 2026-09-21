@@ -72,27 +72,29 @@ function redactText(text: string): string {
     .replace(SECRET_PAIR, REDACTED);
 }
 
-/** One error as a log line holds it. The cause travels, because it is the diagnosis. */
-type ErrorLine = {
-  type: string;
-  message: string;
-  stack?: LogValue;
-  cause?: LogValue;
-};
+/** One error as a nested field of a log line: its own fields, then the fixed ones. */
+function errorToJson(error: Error, seen: WeakSet<object>) {
+  // SAFETY: the spread copies the error's own enumerable fields, which are data a call site
+  // put there, so `redact` walks them as the json they become on the line.
+  const own = redact({ ...error } as LogValue, seen) as Record<
+    string,
+    LogValue
+  >;
 
-function errorToJson(error: Error, seen: WeakSet<object>): ErrorLine {
-  const line: ErrorLine = {
+  // The fixed fields are written after the error's own, so a field of the same name cannot
+  // take their place on the line.
+  const line = {
+    ...own,
     type: error.name,
     message: redactText(error.message),
+    stack: error.stack === undefined ? undefined : redactText(error.stack),
+    // SAFETY: a cause is whatever the thrower passed, and a line holds json, which is the
+    // shape `redact` answers. An absent cause stays absent: json drops an undefined field.
+    cause:
+      error.cause === undefined
+        ? undefined
+        : redact(error.cause as LogValue, seen),
   };
-
-  if (error.stack !== undefined) line.stack = redactText(error.stack);
-
-  if (error.cause !== undefined) {
-    // SAFETY: a cause is whatever the thrower passed. `redact` walks it as json, which is
-    // what a log line holds, and an error among it takes this same shape.
-    line.cause = redact(error.cause as LogValue, seen);
-  }
 
   return line;
 }
@@ -181,6 +183,18 @@ function redactError(error: Error, seen = new WeakMap<Error, Error>()): Error {
   // the original froze cannot be redefined on the copy afterwards.
   for (const name of ["message", "stack", "cause"]) delete descriptors[name];
 
+  // Every other own field travels, redacted. A custom error can carry anything, and pino's
+  // error serializer writes those fields straight onto the line.
+  for (const [name, descriptor] of Object.entries(descriptors)) {
+    if (!("value" in descriptor)) continue;
+
+    // SAFETY: an own field of an error is data a call site put there, so `redact` walks it
+    // as the json it becomes on the line.
+    const value = descriptor.value as LogValue;
+
+    descriptor.value = isSecretName(name) ? REDACTED : redact(value);
+  }
+
   // SAFETY: the object takes the error's own prototype and its remaining descriptors, so it
   // is that kind of error with those members.
   const safe = Object.create(prototype, descriptors) as Error;
@@ -205,11 +219,22 @@ function redactError(error: Error, seen = new WeakMap<Error, Error>()): Error {
   return safe;
 }
 
-/** The hook pino calls for every logged object, which is where redaction lives. */
+/**
+ * The hook pino calls for every logged object, which is where redaction lives.
+ *
+ * The error pino put under `err` is left for pino's own error serializer, which is what keeps
+ * an `AppError` logging as an `AppError` with its code beside it. That error is already a
+ * redacted copy: the argument hook replaced it before pino ever saw it. Walking it here would
+ * turn it into a plain object, and pino would then report its type as `Object`.
+ */
 function redactLogObject(object: PinoLogObject): PinoLogObject {
+  const { err, ...rest } = object;
+
   // SAFETY: pino calls this on its way to serializing the object as json, so the value is
   // json already. `redact` walks it as json and answers the same shape.
-  return redact(object as LogValue) as PinoLogObject;
+  const safe = redact(rest as LogValue) as PinoLogObject;
+
+  return err === undefined ? safe : { ...safe, err };
 }
 
 /**
