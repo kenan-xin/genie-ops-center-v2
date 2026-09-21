@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation.js";
 
-import { recordPageRequest, renderIfPermitted } from "../../../page-access.tsx";
+import { renderIfPermitted } from "../../../page-access.tsx";
 import { moduleById } from "../../../registry.ts";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,6 @@ export const dynamic = "force-dynamic";
  * permission comes from the module's own declaration, never a literal here.
  */
 export default async function PlaceholderAdminRoute() {
-  recordPageRequest("/admin/placeholder");
-
   const module = moduleById.get("placeholder");
 
   if (module === undefined) notFound();

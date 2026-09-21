@@ -40,6 +40,9 @@
       "cache": true,
       "inputs": ["default", "^production"]
     },
+    "test:integration": {
+      "cache": false
+    },
     "lint": {
       "cache": true,
       "inputs": ["default", "^production"]

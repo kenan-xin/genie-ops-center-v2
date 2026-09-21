@@ -75,18 +75,37 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return redirect;
   }
 
-  const response = NextResponse.next();
+  // The one request id for this request (R-44). It is minted here, set on the
+  // response, and forwarded upstream, so the response header, the log line and
+  // every handler's error body carry the same value. Handlers read this id
+  // instead of minting their own, which is what previously left the two halves
+  // of one request unjoinable.
+  const requestId = newRequestId();
+
+  // Forwarded upstream through `NextResponse.next`, which the framework
+  // documents as the way to pass headers to a page, route or server action.
+  // These headers are not sent to the client; the response header below is set
+  // separately. Without this a handler sees no id and mints a second one.
+  const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set("x-request-id", requestId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  response.headers.set("x-request-id", requestId);
+
   const app = readContext();
 
   // Before the bootstrap publishes, no viewer route exists, so frames stay
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
 
-  const requestId = newRequestId();
-
   // One line per request (R-44), carrying the context id. This is also what the
   // single-context acceptance check reads, so it must run on every request and
-  // not only on the viewer path.
+  // not only on the viewer path. The proxy is the only request logger: handlers
+  // no longer write a line, so this count is exactly the request count.
   app.logRequest({ requestId, path: pathname });
 
   const route = viewerRouteFor(pathname, new Set(app.viewerProviders.keys()));
@@ -110,7 +129,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   });
 
   response.headers.set("Content-Security-Policy", policy);
-  response.headers.set("x-request-id", requestId);
 
   return response;
 }

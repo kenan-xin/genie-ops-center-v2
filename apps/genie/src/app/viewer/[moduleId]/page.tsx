@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation.js";
 
-import { recordPageRequest } from "../../../page-access.tsx";
 import { viewerModuleIds } from "../../../registry.ts";
 import { viewerRouteFor } from "../../../viewer-routes.ts";
 
@@ -25,8 +24,6 @@ export default async function ViewerPage({
   if (viewerRouteFor(`/viewer/${moduleId}`, viewerModuleIds) === undefined) {
     notFound();
   }
-
-  recordPageRequest(`/viewer/${moduleId}`);
 
   const t = await getTranslations("viewer");
 

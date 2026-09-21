@@ -7,21 +7,6 @@ import {
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
-import { requireContext } from "./context.ts";
-import { newRequestId } from "./request-id.ts";
-
-/**
- * One line per request for a page (R-44), the same line every route handler
- * writes. Acceptance counts these lines to prove a single context serves the
- * pages as well as the transports, so a page that rendered without logging would
- * make a two-context process look like a one-context one.
- */
-export function recordPageRequest(path: string): void {
-  const app = requireContext();
-
-  app.logRequest({ requestId: newRequestId(), path });
-}
-
 /**
  * The page loader of R-14. One principal per request, read lazily once, and the
  * single authorization seam of DEC-39.

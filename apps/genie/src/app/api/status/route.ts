@@ -26,12 +26,13 @@ const LEDGER = `drizzle."${CORE_HISTORY.table}"`;
  * read here goes through the tenant context with no module import and no
  * database driver import, so it works whatever the selection is.
  */
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   const app = requireContext();
-  const requestId = newRequestId();
 
-  // One line per request (R-44), as on every served route.
-  app.logRequest({ requestId, path: "/api/status" });
+  // The proxy logs the one request line (R-44) and forwards its id upstream, so
+  // this reads that id rather than minting a second one. The fallback keeps a
+  // direct invocation working instead of failing on a missing header.
+  const requestId = request.headers.get("x-request-id") ?? newRequestId();
 
   try {
     // Reads the core migration ledger, which the migrator creates on every start

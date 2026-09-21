@@ -1,7 +1,6 @@
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
-import { recordPageRequest } from "../page-access.tsx";
 import { modules } from "../registry.ts";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +12,6 @@ export const dynamic = "force-dynamic";
  * import, because R-43 requires the catalogue to be the one path for text.
  */
 export default async function HomePage() {
-  recordPageRequest("/");
-
   const t = await getTranslations("app");
 
   const items = modules.flatMap((module) =>

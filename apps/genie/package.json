@@ -67,6 +67,11 @@
         "dependsOn": [
           "generate-registry"
         ]
+      },
+      "test:integration": {
+        "dependsOn": [
+          "build"
+        ]
       }
     }
   }

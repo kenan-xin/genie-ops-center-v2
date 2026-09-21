@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { statSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
 import { MIGRATION_LOCK_KEY } from "@genie/core";
@@ -9,6 +11,66 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
+
+/** The image every test in this file drives. */
+const IMAGE = "genie-s005:test";
+
+/** Named in the staleness failures below, so the fix is one copy-paste away. */
+const REBUILD_IMAGE =
+  "docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .";
+
+/** The image's creation time, or `undefined` when the image does not exist. */
+async function imageCreatedAt(): Promise<string | undefined> {
+  try {
+    const inspected = await run("docker", [
+      "image",
+      "inspect",
+      "-f",
+      "{{.Created}}",
+      IMAGE,
+    ]);
+
+    return inspected.stdout.trim();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The image is not a build dependency of this suite, so a stale one surfaces as
+ * a bootstrap failure about a migration file and reads like a broken product.
+ * This makes staleness loud instead: it fails once, before any test runs, and
+ * names the command that fixes it.
+ *
+ * The build stamp is `apps/genie/.next/BUILD_ID`, which `next build` rewrites on
+ * every run. An image older than that stamp was built from an older build than
+ * the one on disk.
+ */
+async function requireFreshImage(): Promise<void> {
+  const created = await imageCreatedAt();
+
+  if (created === undefined) {
+    throw new Error(
+      `The image ${IMAGE} is missing. Rebuild it before running the integration suite:\n  ${REBUILD_IMAGE}`
+    );
+  }
+
+  const buildId = resolvePath(import.meta.dirname, "../.next/BUILD_ID");
+
+  const builtAt = statSync(buildId, { throwIfNoEntry: false })?.mtimeMs;
+
+  if (builtAt === undefined) {
+    throw new Error(
+      `No build output at ${buildId}, so image staleness cannot be judged. Build the app first:\n  MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build`
+    );
+  }
+
+  if (Date.parse(created) < builtAt) {
+    throw new Error(
+      `The image ${IMAGE} is older than the app build at ${buildId}, so it may serve stale code. Rebuild it:\n  ${REBUILD_IMAGE}`
+    );
+  }
+}
 
 // A deployment rather than a bare container, because two tests need a pooled
 // client to hold the migrator's advisory lock. `pg` may not be imported outside
@@ -21,11 +83,12 @@ const databaseUrl = () => database.context.env.databaseUrl;
 
 const pool = () => database.context.db.$client;
 
-/** The lines one request handler wrote, which is what proves a request was served. */
+/** The request lines the proxy wrote, one per request (R-44). */
 const requestLinesIn = (logs: string) =>
   logs.split("\n").filter((line) => line.includes('"msg":"request"'));
 
 beforeAll(async () => {
+  await requireFreshImage();
   database = await startDisposableDeployment([]);
 }, 180000);
 
@@ -85,7 +148,7 @@ async function startImage(env: Record<string, string>, port: number) {
     args.push("-e", `${key}=${reachable}`);
   }
 
-  args.push("genie-s005:test");
+  args.push(IMAGE);
 
   const { stdout } = await run("docker", args);
   const id = stdout.trim();
@@ -435,7 +498,7 @@ describe("the built image", () => {
       "DATABASE_URL=not-a-url",
       "-e",
       "PUBLIC_URL=https://example.invalid",
-      "genie-s005:test",
+      IMAGE,
     ]).then(
       () => ({ code: 0, output: "" }),
       (error: { code?: number; stdout?: string; stderr?: string }) => ({
@@ -503,13 +566,13 @@ describe("the built image", () => {
       // pass on a process that built a second context for every request.
       const requestLines = requestLinesIn(logs);
 
-      // Both paths are request-bound: the ordinary document renders per request
-      // and records a line, and the health route records one. Since Task 7 the
-      // proxy records one per request as well (R-44), so twenty-four requests
-      // produce forty-eight request lines. Asserting the exact count is what
-      // keeps the set assertion below honest: an empty set has size zero, but
-      // one served request also has size one.
-      expect(requestLines.length - before).toBe(48);
+      // The proxy is the one request logger (R-44), so each of the twenty-four
+      // requests produces exactly one request line. The count is exact, not
+      // "at least": a second logger added back anywhere would double it, which
+      // is the defect this count exists to catch. It also keeps the set
+      // assertion below honest: an empty set has size zero, but one served
+      // request also has size one.
+      expect(requestLines.length - before).toBe(24);
 
       const contextIds = new Set(
         requestLines.map((line) => /"contextId":"([^"]+)"/.exec(line)?.[1])

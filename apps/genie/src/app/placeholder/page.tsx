@@ -3,7 +3,7 @@
 // Next's own generated `next/types.js` import uses the same form.
 import { notFound } from "next/navigation.js";
 
-import { recordPageRequest, renderIfPermitted } from "../../page-access.tsx";
+import { renderIfPermitted } from "../../page-access.tsx";
 import { moduleById } from "../../registry.ts";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,6 @@ export const dynamic = "force-dynamic";
  * the real server bundle, behind the one authorization seam.
  */
 export default async function PlaceholderRoute() {
-  recordPageRequest("/placeholder");
-
   const module = moduleById.get("placeholder");
 
   if (module === undefined) notFound();
