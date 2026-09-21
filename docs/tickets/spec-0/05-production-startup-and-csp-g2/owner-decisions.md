@@ -17,7 +17,30 @@ engineering judgment and is recorded in DECIDED without waiting.
 
 ## DECIDED
 
-### D1. The tRPC acceptance test uses the untyped standard client
+### D1. The tRPC acceptance test is typed from the module's own router
+
+UPDATED 2026-09-22 after the Codex consult returned. The original decision, kept
+below, was to accept the untyped client. Codex found a better answer and it is
+now the one in force.
+
+Codex confirmed, quoting the installed source, that `createTRPCUntypedClient` is
+a supported public export and that both clients construct the same underlying
+client, so decoding is identical. It also confirmed the compile failure is real.
+Then it supplied a typed spelling that needs neither a contract change nor a
+type assertion: alias the endpoint router from the module's own exported
+`PlaceholderRouter` and type the client with that alias. The runtime still calls
+the application router over the same batch link.
+
+This is strictly better, because a typed procedure path cannot be misspelled,
+and an independent review had found that a misspelled path would have satisfied
+every assertion in that test. The fix round applies it.
+
+The contract question is unchanged and still not S0-05's: making `Module.router`
+generic so composition preserves procedure types is a core change with a blast
+radius across core, every module and the app. It belongs to the ticket that owns
+the module contract.
+
+#### Superseded: the tRPC acceptance test uses the untyped standard client
 
 2026-09-22, Task 4.
 
