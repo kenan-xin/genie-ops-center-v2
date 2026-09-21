@@ -44,6 +44,9 @@ export const sharedOxlintConfig: OxlintConfig = {
     "**/coverage/**",
     // Scratch state a local coverage tool writes. It is JSON, never source.
     ".supercov/**",
+    // Agent-tool shims the graft CLI regenerates on each update, so hand
+    // repairs would only drift from the generator output.
+    ".claude/helpers/**",
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
     // Test fixtures the resolver must never evaluate. The throwing fixture exists
