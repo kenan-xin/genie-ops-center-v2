@@ -6,6 +6,11 @@ import { NavigationList } from "./navigation-list.tsx";
 const meta = {
   title: "UI/NavigationList",
   component: NavigationList,
+  // Without this the component gets no Docs page, so the description below is
+  // written and never rendered, and the folder README's claim that the stories
+  // document the component on its Docs page would be false. Every other story
+  // file in this repository sets it, and nothing sets it globally.
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
