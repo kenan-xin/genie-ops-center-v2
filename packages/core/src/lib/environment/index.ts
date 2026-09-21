@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import { z } from "zod";
 
 import type {
@@ -39,6 +41,51 @@ function list(value: string | undefined): readonly string[] {
     .filter((entry) => entry !== "");
 }
 
+/**
+ * True for a bare HTTPS origin: scheme, host, optional port, and nothing else. A path, a query,
+ * a fragment, a credential or an empty host is not an origin, and `https://` alone is not one
+ * either (environment contract, Optional).
+ */
+function isHttpsOrigin(value: string): boolean {
+  if (!URL.canParse(value)) return false;
+
+  const url = new URL(value);
+
+  return (
+    url.protocol === "https:" &&
+    url.hostname !== "" &&
+    url.username === "" &&
+    url.password === "" &&
+    url.search === "" &&
+    url.hash === "" &&
+    (url.pathname === "" || url.pathname === "/") &&
+    value.replace(/\/$/, "") === url.origin
+  );
+}
+
+/**
+ * True for one proxy address or CIDR range. A prefix length of zero covers the whole internet,
+ * which the environment contract forbids by naming `0.0.0.0/0`; the IPv6 spelling of the same
+ * range is refused for the same reason.
+ */
+function isProxyAddress(value: string): boolean {
+  const [address = "", prefix, ...rest] = value.split("/");
+
+  if (rest.length > 0) return false;
+
+  const family = isIP(address);
+
+  if (family === 0) return false;
+
+  if (prefix === undefined) return true;
+
+  if (!/^\d+$/.test(prefix)) return false;
+
+  const length = Number(prefix);
+
+  return length >= 1 && length <= (family === 4 ? 32 : 128);
+}
+
 /** A whole number above zero, written as a string. */
 const wholeNumber = z
   .string()
@@ -64,16 +111,16 @@ const schema = z.object({
     .optional()
     .transform(list)
     .refine(
-      (origins) => origins.every((origin) => origin.startsWith("https://")),
-      "https origins only"
+      (origins) => origins.every(isHttpsOrigin),
+      "each entry is one https origin, such as https://chat.example.com"
     ),
   AUTH_TRUSTED_PROXIES: z
     .string()
     .optional()
     .transform(list)
     .refine(
-      (proxies) => !proxies.includes("0.0.0.0/0"),
-      "a proxy address or range, never 0.0.0.0/0"
+      (proxies) => proxies.every(isProxyAddress),
+      "each entry is one ip address or cidr range, never the whole internet"
     ),
   LOCK_TIMEOUT_MS: wholeNumber.default(120000),
   LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),

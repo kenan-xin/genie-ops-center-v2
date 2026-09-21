@@ -25,8 +25,18 @@ export const GENERIC_ERROR_CODE = "internal-error";
 
 export type CoreErrorCode = keyof typeof CORE_ERROR_MESSAGES;
 
-/** A core code, or a module's `<id>:<code>`. */
-export type AppErrorCode = CoreErrorCode | (string & {});
+/**
+ * One error a caller may raise: a stable code with its fixed safe message. A definition is
+ * written where the error is declared, in this file for core and through `defineModuleErrors`
+ * for a module. It never carries a value from a request, a database or an upstream service.
+ */
+export type ErrorDefinition = {
+  readonly code: string;
+  readonly message: string;
+};
+
+/** The former name of `ErrorDefinition`, kept for the module-facing spelling. */
+export type ModuleErrorDefinition = ErrorDefinition;
 
 /** The body an ordinary route handler returns (R-46). */
 export type SafeErrorBody = {
@@ -36,6 +46,23 @@ export type SafeErrorBody = {
 };
 
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
+const MODULE_CODE = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
+
+/**
+ * The core catalogue as definitions, which is what an error is raised with. Every entry is
+ * frozen, so no later code can rewrite the message a client reads.
+ */
+// SAFETY: the entries come from CORE_ERROR_MESSAGES, so the keys are exactly its own and each
+// value is the frozen definition built beside it. `fromEntries` cannot express that itself.
+export const CORE_ERRORS = Object.freeze(
+  Object.fromEntries(
+    Object.entries(CORE_ERROR_MESSAGES).map(([code, message]) => [
+      code,
+      Object.freeze({ code, message }),
+    ])
+  )
+) as Readonly<Record<CoreErrorCode, ErrorDefinition>>;
 
 /** The catalogue keyed by an arbitrary code, which a module's `<id>:<code>` also is. */
 const MESSAGES_BY_CODE = new Map(Object.entries(CORE_ERROR_MESSAGES));
@@ -59,6 +86,36 @@ export function moduleErrorCode(moduleId: string, code: string): string {
 }
 
 /**
+ * The errors one module can raise, each with its own fixed safe message. A module calls this
+ * once where it declares itself, and raises `AppError` with one of the returned definitions.
+ * The result is frozen and local to that module: no shared mutable registry exists, and a code
+ * cannot be invented at the point where an error is thrown.
+ */
+export function defineModuleErrors<
+  const TCodes extends Readonly<Record<string, string>>,
+>(
+  moduleId: string,
+  messages: TCodes
+): Readonly<Record<keyof TCodes, ErrorDefinition>> {
+  const entries = Object.entries(messages).map(([code, message]) => {
+    if (message.trim() === "") {
+      throw new Error(`Error code "${code}" has no message.`);
+    }
+
+    return [
+      code,
+      Object.freeze({ code: moduleErrorCode(moduleId, code), message }),
+    ] as const;
+  });
+
+  // SAFETY: the entries are built from this object's own keys, one definition each, which is
+  // the mapped type below. `fromEntries` widens the key type and cannot express it.
+  return Object.freeze(Object.fromEntries(entries)) as Readonly<
+    Record<keyof TCodes, ErrorDefinition>
+  >;
+}
+
+/**
  * An error that carries a catalogue code. The cause is kept for the log and is never read by a
  * transport adapter, so wrapping an upstream failure loses no detail on the server side.
  */
@@ -68,19 +125,28 @@ export class AppError extends Error {
   readonly safeMessage: string;
 
   constructor(
-    code: AppErrorCode,
-    options: { readonly cause?: unknown; readonly safeMessage?: string } = {}
+    definition: ErrorDefinition,
+    options: { readonly cause?: unknown } = {}
   ) {
-    const safeMessage = options.safeMessage ?? safeMessageFor(code);
+    // A code reaches a client, so it may never be built from request, database or upstream
+    // text. It is a core catalogue code, or a module's `<id>:<code>` from defineModuleErrors.
+    if (
+      !MESSAGES_BY_CODE.has(definition.code) &&
+      !MODULE_CODE.test(definition.code)
+    ) {
+      throw new Error(
+        `"${definition.code}" is not a catalogue code. Raise a core error from CORE_ERRORS, or a module error from defineModuleErrors.`
+      );
+    }
 
     super(
-      safeMessage,
+      definition.message,
       options.cause === undefined ? undefined : { cause: options.cause }
     );
 
     this.name = "AppError";
-    this.code = code;
-    this.safeMessage = safeMessage;
+    this.code = definition.code;
+    this.safeMessage = definition.message;
   }
 }
 

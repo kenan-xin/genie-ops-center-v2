@@ -89,18 +89,69 @@ describe("validateEnvironment", () => {
     ]);
   });
 
-  it("refuses a chat origin that is not https", () => {
+  it.each([
+    "http://a.example.com",
+    "https://",
+    "https://a.example.com/chat",
+    "https://a.example.com?key=1",
+    "https://user:pass@a.example.com",
+    "not a url",
+    "a.example.com",
+  ])("refuses the chat origin %s", (origin) => {
     expect(() =>
       validateEnvironment({
         ...MINIMAL,
-        GENIE_CHAT_API_ALLOWED_ORIGINS: "http://a.example.com",
+        GENIE_CHAT_API_ALLOWED_ORIGINS: origin,
       })
     ).toThrow("GENIE_CHAT_API_ALLOWED_ORIGINS");
   });
 
-  it("refuses the whole internet as a trusted proxy range", () => {
+  it.each([
+    "https://a.example.com",
+    "https://a.example.com/",
+    "https://a.example.com:8443",
+  ])("accepts the chat origin %s", (origin) => {
+    const env = validateEnvironment({
+      ...MINIMAL,
+      GENIE_CHAT_API_ALLOWED_ORIGINS: origin,
+    });
+
+    expect(env.chatAllowedOrigins).toEqual([origin]);
+  });
+
+  it.each([
+    "0.0.0.0/0",
+    "::/0",
+    "not-an-ip",
+    "10.0.0.1/33",
+    "10.0.0.300",
+    "10.0.0.1/",
+    "10.0.0.1/8/8",
+    "https://proxy.example.com",
+  ])("refuses the trusted proxy %s", (proxy) => {
     expect(() =>
-      validateEnvironment({ ...MINIMAL, AUTH_TRUSTED_PROXIES: "0.0.0.0/0" })
+      validateEnvironment({ ...MINIMAL, AUTH_TRUSTED_PROXIES: proxy })
+    ).toThrow("AUTH_TRUSTED_PROXIES");
+  });
+
+  it.each(["10.0.0.1", "10.0.0.0/8", "fd00::1", "fd00::/8"])(
+    "accepts the trusted proxy %s",
+    (proxy) => {
+      const env = validateEnvironment({
+        ...MINIMAL,
+        AUTH_TRUSTED_PROXIES: proxy,
+      });
+
+      expect(env.authTrustedProxies).toEqual([proxy]);
+    }
+  );
+
+  it("refuses a list where only one entry is malformed", () => {
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        AUTH_TRUSTED_PROXIES: "10.0.0.0/8, not-an-ip",
+      })
     ).toThrow("AUTH_TRUSTED_PROXIES");
   });
 

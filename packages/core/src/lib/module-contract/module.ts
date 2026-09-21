@@ -71,11 +71,18 @@ export type ModulePages = {
   readonly admin: Readonly<Record<string, ComponentType>>;
 };
 
-/** 9. Category assignment, optional. Runtime arrives in Section 3. */
-export type CategoryContext = {
+/**
+ * What every module procedure reads: the one tenant context and the request's own principal.
+ * A module builds its router against this type, so no procedure can reach a connection of its
+ * own and every check goes through `can()` (DEC-34, DEC-39).
+ */
+export type ModuleRequestContext = {
   readonly tenant: TenantContext;
   readonly caller: RequestPrincipal;
 };
+
+/** 9. Category assignment, optional. Runtime arrives in Section 3. */
+export type CategoryContext = ModuleRequestContext;
 
 export type AssignableRecord = {
   readonly id: string;
