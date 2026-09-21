@@ -76,6 +76,10 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 [Root config lint scope](root-config-lint-scope.md) extends the `@genie/config` lint target to name the root `oxlint.config.ts` and `oxfmt.config.ts` as lint targets, so a syntax or rule error in either fails a real Nx target. `tsconfig.base.json` is JSONC and stays out of oxlint; its validation is the compiler read through `extends`, proved by `nx typecheck` failing on a syntax error. Bead `genie-ops-center-v2-y5e`.
 
+## Boundary plugin static coverage, 2026-09-21
+
+[Boundary plugin static coverage](boundary-plugin-static-coverage.md) brings the repository-owned Oxlint plugin at `packages/config/oxlint/boundaries/**` into the config package's lint command and tsconfig include, which the `jsPlugins` string specifier had left out. It records the two `no-runtime-typeof` lint errors that the new coverage revealed and the `typeof`-free narrowing that fixes them, with injected lint and type errors failing the real Nx gates. Bead `genie-ops-center-v2-x7x`.
+
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
