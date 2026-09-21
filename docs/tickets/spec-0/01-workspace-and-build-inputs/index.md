@@ -78,7 +78,7 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 ## Boundary plugin static coverage, 2026-09-21
 
-[Boundary plugin static coverage](boundary-plugin-static-coverage.md) brings the repository-owned Oxlint plugin at `packages/config/oxlint/boundaries/**` into the config package's lint command and tsconfig include, which the `jsPlugins` string specifier had left out. It records the two `no-runtime-typeof` lint errors that the new coverage revealed and the `typeof`-free narrowing that fixes them, with injected lint and type errors failing the real Nx gates. Bead `genie-ops-center-v2-x7x`.
+[Boundary plugin static coverage](boundary-plugin-static-coverage.md) brings the repository-owned Oxlint plugin at `packages/config/oxlint/boundaries/**` into the config package's lint command and tsconfig include, which the `jsPlugins` string specifier had left out. It records the two `no-runtime-typeof` lint errors that the new coverage revealed, the type guard with a local suppression that fixes them, and a real-oxlint control proving non-string literals stay unjudged, with injected lint and type errors failing the real Nx gates. Bead `genie-ops-center-v2-x7x`.
 
 ## Historical implementation plan
 

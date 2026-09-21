@@ -19,12 +19,15 @@ type LiteralValue =
   | ESTree.RegExpLiteral["value"];
 
 /**
- * True for a primitive string. A number, boolean, `null`, bigint or RegExp is
- * never equal to its own `String()` coercion, so this narrows a literal's value
- * without the runtime `typeof` this repository's anti-slop rules forbid.
+ * True for a primitive string. A literal's value is already parsed AST, not
+ * untrusted input, which is the type-guard case the anti-slop
+ * `no-runtime-typeof` rule documents. Its `allowInTypeGuards` option is off
+ * repository-wide, so this one guard carries a local suppression instead of a
+ * configuration change.
  */
 function isStringValue(value: LiteralValue): value is string {
-  return String(value) === value;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a parsed AST literal, not untrusted I/O
+  return typeof value === "string";
 }
 
 /**

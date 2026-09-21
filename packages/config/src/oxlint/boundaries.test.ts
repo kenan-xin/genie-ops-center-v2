@@ -1104,6 +1104,26 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
   });
 
+  it("leaves a non-string literal specifier unjudged, because it names no module", () => {
+    // The value narrowing must reject every non-string literal variant, not only
+    // a template literal, which is a different AST node. Each case runs the real
+    // oxlint binary, so a crash in the narrowing fails here.
+    for (const source of [
+      `export const beta = require(42);\n`,
+      `export const load = () => import(42);\n`,
+      `export const load = () => import(true);\n`,
+    ]) {
+      const result = lintAt(
+        "packages/modules/alpha/src/lib/__boundary__.ts",
+        source
+      );
+
+      expect(result.failed).toBe(false);
+
+      expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
+    }
+  });
+
   it("leaves a local re-export alone, which carries no specifier at all", () => {
     const result = lintAt(
       "packages/modules/alpha/src/lib/__boundary__.ts",

@@ -27,15 +27,16 @@ The vendored anti-slop plugin stays out of both: it remains in the shared config
 
 With the plugin in scope, `nx lint @genie/config` reported two `anti-slop(no-runtime-typeof)` errors in `rules/no-relative-package-escape.ts`, on the `typeof value === "string"` checks that guard a literal specifier. The rule forbids runtime `typeof` outside an existence probe.
 
-The fix narrows without `typeof`, in one place: `report` now takes the literal value and uses
+The rule documents a type-guard exception (`allowInTypeGuards`), because an AST literal is already parsed rather than untrusted I/O, but that option is off repository-wide. The fix keeps the ordinary type guard and carries a local suppression, changing no configuration:
 
 ```ts
 function isStringValue(value: LiteralValue): value is string {
-  return String(value) === value;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a parsed AST literal, not untrusted I/O
+  return typeof value === "string";
 }
 ```
 
-A number, boolean, `null`, bigint or RegExp is never equal to its own `String()` coercion, so the predicate is exact. Both call sites pass the literal value and the check moved into `report`. Behaviour is unchanged; the boundary suite passes.
+Both call sites pass the literal value and the narrowing stays in `report`. Behaviour is unchanged; the boundary suite passes.
 
 ## Evidence
 
@@ -48,13 +49,18 @@ A number, boolean, `null`, bigint or RegExp is never equal to its own `String()`
 | injected `const broken: number = "x";` | `nx typecheck @genie/config` fails: `...:148:7: error TS2322: Type 'string' is not assignable to type 'number'` |
 | plugin edit | lint `0/1 hit`, typecheck `0/1 hit` |
 | restored | lint `1/1 hit`, typecheck `1/1 hit` |
+| type guard without its suppression | `nx lint @genie/config` fails: `...:29:10: error anti-slop(no-runtime-typeof)` |
+| type guard with its suppression | `nx lint @genie/config` passes |
+| `require(42)`, `import(42)`, `import(true)` through real oxlint | left unjudged, no boundary diagnostic |
+| narrowing mutated to accept every value | the non-string control fails: `expected true to be false` |
 
-The plugin file was restored byte-identical after each injection (`sha256 6f7bec44fb25e7b3d912395cf26f13be7706b7a449b83ec93e5663e874ae41a9`).
+The plugin file was restored byte-identical after each injection (`sha256 53bbe7257396dda7b17f18de1dbfe079849d474972708ea567af0de15dd8852b`). The existing string rejections (`require("…")` and `import("…")` reaching a sibling module) still fail as before, so the control keeps both directions.
 
 ## Guards
 
 - `tools/generators/src/workspace/validate/lint-scope.test.ts` (extended) observes the lint script's argv and requires `packages/config/oxlint/boundaries` among the positional paths. Dropping it fails: `expected [ 'packages/config/src', …(2) ] to include 'packages/config/oxlint/boundaries'`.
 - `packages/config/src/oxlint/plugin-coverage.test.ts` (new) runs `tsc --listFilesOnly` and requires both plugin files in the program. Dropping `oxlint/boundaries/**/*.ts` from the include fails the assertion.
+- `packages/config/src/oxlint/boundaries.test.ts` (extended) runs `require(42)`, `import(42)` and `import(true)` through the real oxlint binary and requires them left unjudged, beside the existing string rejections.
 
 `packages/config/package.json` and `packages/config/tsconfig.json` were restored byte-identical after the guard mutations.
 
