@@ -45,3 +45,13 @@ allowBuilds:
   # protobufjs 7.6.6 `node scripts/postinstall` only prints a version-scheme
   # warning for dependents. It generates nothing the package needs.
   protobufjs: false
+  # Two dependencies of next-intl, denied rather than run. Both scripts are
+  # prebuild selectors: they compile from source only when the platform package
+  # is absent, and both platform packages are installed here
+  # (@parcel/watcher-linux-x64-glibc 2.6.0, @swc/core-linux-x64-gnu 1.16.2).
+  # @parcel/watcher 2.6.0 `node scripts/build-from-source.js` is the fallback to
+  # `node-gyp rebuild`; the prebuild is present, so the script is a no-op.
+  # @swc/core 1.16.2 `node postinstall.js` only resolves the same prebuilt
+  # binary its optional dependencies already carry.
+  "@parcel/watcher": false
+  "@swc/core": false

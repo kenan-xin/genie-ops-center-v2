@@ -1,0 +1,14 @@
+{
+  "app": {
+    "title": "Genie Ops Center",
+    "navigationHeading": "Modules",
+    "noModules": "No modules are compiled into this deployment."
+  },
+  "viewer": {
+    "heading": "Placeholder viewer",
+    "frameTitle": "Embedded placeholder content"
+  },
+  "access": {
+    "denied": "You may not view this page."
+  }
+}
