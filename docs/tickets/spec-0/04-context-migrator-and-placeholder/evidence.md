@@ -266,3 +266,28 @@ From the worktree root at revision `37e5e4a`, each Nx run with `--skip-nx-cache`
 - Two-context isolation against two databases, which S0-05 completes.
 - Adversarial multi-process contention, which S0-07 broadens.
 - A build target and an end-to-end target: neither exists for these packages, so neither ran.
+
+## The reconciled union, 2026-09-21
+
+The human opened the exclusive integration window after `genie-ops-center-v2-5ph` was integrated into develop at `bcd66e7`. Develop was merged into this branch at `387e2aa`. Git reported no conflict, and the two change sets share no file, so nothing was resolved by hand and no accepted pin, alias, compatibility bridge or boundary fix from develop was altered.
+
+Develop brought eight commits: the boundary plugin work and its static coverage, the root configuration lint scope, the duplicate core boundary fixtures removal, the literal-narrowing type guard, the spec-0 handoff documentation, and the 5ph entrypoint repair. The only manifest among them is `packages/config/package.json`, so the frozen install was checked.
+
+### Every target that ran on the union
+
+At `387e2aa`, each Nx run with `--skip-nx-cache`.
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `pnpm install --frozen-lockfile` | 0 | `Lockfile is up to date, resolution step is skipped` |
+| `nx run-many -t lint typecheck test -p @genie/core @genie/module-placeholder` | 0 | `Successfully ran targets lint, typecheck, test for 2 projects` |
+| `nx run-many -t test:integration -p @genie/core @genie/module-placeholder` | 0 | `Successfully ran target test:integration for 2 projects` |
+| `nx affected -t build test lint typecheck --base=develop --head=HEAD` | 0 | `Successfully ran targets test, lint, typecheck for 7 projects` |
+| `nx run @genie/generators:validate` | 0 | `Successfully ran target validate for project @genie/generators` |
+| `oxfmt --check .` | 0 | 155 files |
+
+### What no command could prove
+
+The affected run named test, lint and typecheck, never build, because no project declares a `build` target. The full target list is `lint`, `test`, `typecheck` everywhere, plus `test:integration` on core and the placeholder, `validate` on the generators, and the Storybook targets. There is no `build` target and no end-to-end target anywhere in the repository, so this ticket claims neither. The Storybook targets were not run: nothing in this change reaches them, and `build-storybook` is not the `build` target the definition of done names.
+
+App composition, two-database isolation, page mounting and transport or browser proof stay with S0-05. Adversarial multi-process contention stays with S0-07.
