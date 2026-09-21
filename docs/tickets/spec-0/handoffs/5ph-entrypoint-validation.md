@@ -1,6 +1,6 @@
 # Validate data-only module entrypoints: 5ph
 
-Proposed first-batch prompt. Send after the reviewed documentation baseline is integrated into develop. This lane can run beside S0-04 without its runtime dependencies.
+Historical first-batch prompt, integrated and closed at `bcd66e7`. Do not redispatch it. The separately filed inventory-ID diagnostic follow-up is `0ij`; the entrypoint repair remains accepted.
 
 ```text
 Fix only malformed or escaping module entrypoints, genie-ops-center-v2-5ph, using the full installed Superpowers workflow.

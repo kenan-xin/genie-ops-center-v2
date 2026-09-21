@@ -10,7 +10,7 @@ import { readModuleInventory } from "./inventory.ts";
 type TestManifest = {
   readonly name?: string;
   readonly genie?: {
-    readonly module?: { readonly id?: string; readonly entrypoint?: unknown };
+    readonly module?: { readonly id?: unknown; readonly entrypoint?: unknown };
   };
 };
 
@@ -171,6 +171,32 @@ describe("readModuleInventory", () => {
     expect(() => readModuleInventory(root)).toThrow(
       /must be "@genie\/module-beta"/
     );
+  });
+
+  // The id is compared for naming and emitted into generated text, so a value
+  // that is not a usable id must be stopped at discovery.
+  it.each([
+    { id: 7 },
+    { id: "" },
+    { id: "   " },
+    { id: null },
+    { id: ["alpha"] },
+    { id: { value: "alpha" } },
+  ])("rejects a malformed genie.module.id value: %j", ({ id }) => {
+    const root = workspaceHolding({
+      alpha: {
+        name: "@genie/module-alpha",
+        genie: { module: { id, entrypoint: "src/index.ts" } },
+      },
+    });
+
+    try {
+      expect(() => readModuleInventory(root)).toThrow(
+        /package\.json: genie\.module\.id must be a non-empty string/i
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   // The entrypoint is emitted as import text by registry generation, so a value

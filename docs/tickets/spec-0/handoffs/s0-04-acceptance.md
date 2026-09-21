@@ -1,6 +1,6 @@
 # Resume context and migrator acceptance: S0-04
 
-Proposed continuation prompt. Send only after the documentation baseline is integrated and the existing session is resumed or its claim explicitly transferred. Do not execute this file as part of the planning audit.
+Historical continuation prompt, completed through integration at `13800cd`. Do not redispatch it. Use the [integrated review](../04-context-migrator-and-placeholder/integrated-review.md) for the bounded repairs required after acceptance was reopened.
 
 ```text
 Complete only context/migrator/placeholder acceptance, genie-ops-center-v2-1rd.4, using the full installed Superpowers workflow.

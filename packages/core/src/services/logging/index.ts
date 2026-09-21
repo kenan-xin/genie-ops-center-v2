@@ -1,5 +1,13 @@
 import { pino } from "pino";
-import type { DestinationStream, LogFn, Logger, LoggerOptions } from "pino";
+import type {
+  Bindings,
+  ChildLoggerOptions,
+  DestinationStream,
+  LevelWithSilentOrString,
+  LogFn,
+  Logger,
+  LoggerOptions,
+} from "pino";
 
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
 
@@ -33,12 +41,39 @@ const SECRET_NAMES = [
 ] as const;
 
 /** Query parameters that turn a link into a credential, such as a set-password email link. */
-const SECRET_PARAMETERS = ["token", "code", "secret", "key", "signature"];
+const SECRET_PARAMETERS = [
+  "token",
+  "code",
+  "password",
+  "secret",
+  "key",
+  "signature",
+];
+
+/** Request header names whose value is a credential, however a message quotes one. */
+const AUTH_HEADER_NAMES = ["authorization", "proxy-authorization"] as const;
+
+/** Response and request cookie header names, whose whole value is credential material. */
+const COOKIE_HEADER_NAMES = ["cookie", "set-cookie"] as const;
 
 function isSecretName(name: string): boolean {
   const plain = name.toLowerCase();
 
   return SECRET_NAMES.some((secret) => plain.includes(secret));
+}
+
+/**
+ * True for a name that carries a credential wherever it is written: a structured field, a url
+ * query name or a bare pair. It reads a query name by the same rule as a structured field, so
+ * `Access_Token` and `client_secret` are classified like `access_token` and `password` (R-45).
+ */
+function isSecretParameter(name: string): boolean {
+  const plain = name.toLowerCase();
+
+  return (
+    isSecretName(plain) ||
+    SECRET_PARAMETERS.some((parameter) => parameter === plain)
+  );
 }
 
 /** True for a url carrying a credential, in its query or in its userinfo. */
@@ -49,27 +84,65 @@ function isSecretLink(value: string): boolean {
 
   if (url.username !== "" || url.password !== "") return true;
 
-  return SECRET_PARAMETERS.some((name) => url.searchParams.has(name));
+  return [...url.searchParams.keys()].some(isSecretParameter);
 }
 
-/** Every url inside a piece of text, however it is punctuated around them. */
-const URL_IN_TEXT = /\bhttps?:\/\/[^\s"'<>)\]]+/g;
+/**
+ * One `Authorization` header counted inside a message, to the end of its value. The scheme
+ * names a way of presenting a credential, not the credential, so the whole value is redacted
+ * whatever scheme it uses and however it is punctuated (R-45). The header name is kept, so the
+ * line still says what happened.
+ */
+const AUTH_HEADER = new RegExp(
+  `\\b(${AUTH_HEADER_NAMES.join("|")})\\b\\s*[:=]\\s*[^\\n]+`,
+  "gi"
+);
 
-/** A bare `token=value` pair, which a message can carry without a whole url. */
-const SECRET_PAIR = new RegExp(
-  `\\b(${SECRET_PARAMETERS.join("|")}|password)=[^\\s&"']+`,
+/** One `Cookie` header counted inside a message; its whole value runs to the line end. */
+const COOKIE_HEADER = new RegExp(
+  `\\b(${COOKIE_HEADER_NAMES.join("|")})\\b\\s*[:=]\\s*[^\\n]+`,
   "gi"
 );
 
 /**
- * Replaces the secrets inside one piece of text: a link that carries a token, and a bare
- * `token=value` pair. A message string reaches a log line as it was written, so the same rule
- * has to run on it and not only on the object beside it (R-45).
+ * Every url inside a piece of text, whatever its scheme. A credential-carrying url is not only
+ * an http one: a database, queue or cache connection string carries userinfo or a secret query
+ * parameter, so the scheme cannot be what decides (R-45).
+ */
+const URL_IN_TEXT = /\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\]]+/gi;
+
+/** A bare `name=value` pair, which a message can carry without a whole url. */
+const SECRET_PAIR = /\b([A-Za-z0-9_.-]+)=([^\s&"']+)/g;
+
+/**
+ * Replaces the credentials a message quotes in a header, leaving the header name in place. The
+ * value a header carries is a credential whenever it appears, not only when it sits in an
+ * object a call site logged (R-45).
+ */
+function redactHeaders(text: string): string {
+  return text
+    .replace(AUTH_HEADER, `$1: ${REDACTED}`)
+    .replace(COOKIE_HEADER, `$1: ${REDACTED}`);
+}
+
+/** Replaces the value of every bare `name=value` pair whose name carries a credential. */
+function redactPairs(text: string): string {
+  return text.replace(SECRET_PAIR, (pair, name: string) =>
+    isSecretParameter(name) ? `${name}=${REDACTED}` : pair
+  );
+}
+
+/**
+ * Replaces the secrets inside one piece of text: a quoted header, a url that carries a
+ * credential, and a bare `name=value` pair. A message string reaches a log line as it was
+ * written, so the same rule has to run on it and not only on the object beside it (R-45).
  */
 function redactText(text: string): string {
-  return text
-    .replace(URL_IN_TEXT, (link) => (isSecretLink(link) ? REDACTED : link))
-    .replace(SECRET_PAIR, REDACTED);
+  return redactPairs(
+    redactHeaders(text).replace(URL_IN_TEXT, (link) =>
+      isSecretLink(link) ? REDACTED : link
+    )
+  );
 }
 
 /** One error as a nested field of a log line: its own fields, then the fixed ones. */
@@ -246,6 +319,182 @@ function redactLogObject(object: PinoLogObject): PinoLogObject {
 }
 
 /**
+ * The brand that marks a logger this module built. It is the type-level contract that the
+ * logger redacts every public binding path, and it is what `forExecution` accepts (R-45).
+ */
+const REDACTING_LOGGER: unique symbol = Symbol("genie.redacting-logger");
+
+/**
+ * The child options the protected logger accepts. Three pino options are removed: `formatters`
+ * can replace the structured-object redactor; `serializers` run after that redactor, so one can
+ * inject a secret it produced; and `customLevels` installs methods that can overwrite the
+ * protected `child` and `setBindings`. Each is also declared `never`, so a pretyped or inferred
+ * `ChildLoggerOptions` value carrying one fails assignability and not only an inline literal.
+ * `level`, the built-in `redact` and `msgPrefix` remain; a prefix is redacted before delegation.
+ */
+export type RedactingChildOptions = Omit<
+  ChildLoggerOptions,
+  "formatters" | "serializers" | "customLevels"
+> & {
+  formatters?: never;
+  serializers?: never;
+  customLevels?: never;
+};
+
+/**
+ * The logger this module hands out. It is declared explicitly, not as `Omit<Logger, ...>`:
+ * pino's `Logger` also carries `onChild` and the EventEmitter `on('level-change', ...)` listener,
+ * whose callback logger parameters are raw `Logger` values with the original unsafe child
+ * overload. Leaving those members out means no callback can hand a caller a raw logger back, and
+ * a `RedactingLogger` is not assignable to a pino `Logger` in either direction.
+ *
+ * It holds pino's logging methods and safe extras a caller may need: the level, the msg prefix,
+ * `isLevelEnabled`, `bindings`, the protected `setBindings`, `flush`, the brand, and a `child`
+ * that accepts only `RedactingChildOptions` and answers a branded child.
+ */
+export interface RedactingLogger {
+  readonly [REDACTING_LOGGER]: true;
+
+  level: LevelWithSilentOrString;
+  fatal: LogFn;
+  error: LogFn;
+  warn: LogFn;
+  info: LogFn;
+  debug: LogFn;
+  trace: LogFn;
+  silent: LogFn;
+  readonly msgPrefix: string | undefined;
+
+  isLevelEnabled(level: LevelWithSilentOrString): boolean;
+  bindings(): Bindings;
+  setBindings(bindings: Bindings): void;
+  flush(callback?: (error?: Error) => void): void;
+
+  child(bindings: Bindings, options?: RedactingChildOptions): RedactingLogger;
+}
+
+/**
+ * True for a logger this module built. A child is `Object.create(parent)`, so it inherits the
+ * brand from the root; a raw pino logger has none.
+ */
+export function isRedactingLogger(
+  value: Logger | RedactingLogger
+): value is RedactingLogger {
+  // SAFETY: the brand is an optional own property this module puts on the loggers it builds, so
+  // a plain read of it answers whether that happened, whatever the caller passed.
+  return (
+    (value as { readonly [REDACTING_LOGGER]?: true })[REDACTING_LOGGER] === true
+  );
+}
+
+/** The pino `child` a logger carries, with the `this` its implementation runs against. */
+type ChildFactory = (
+  this: Logger,
+  bindings: Bindings,
+  options?: ChildLoggerOptions<never>
+) => Logger;
+
+/** The pino `setBindings` a logger carries, with the `this` its implementation runs against. */
+type SetBindingsFactory = (this: Logger, bindings: Bindings) => void;
+
+/**
+ * The options a protected child may hand to pino. `formatters`, `serializers` and `customLevels`
+ * are refused at runtime for a JavaScript caller the type does not cover, and `msgPrefix` is
+ * redacted because pino puts it on the line after the argument hook (R-45).
+ */
+function safeChildOptions(
+  options: ChildLoggerOptions<never>
+): ChildLoggerOptions<never> {
+  if (
+    Object.hasOwn(options, "formatters") ||
+    Object.hasOwn(options, "serializers") ||
+    Object.hasOwn(options, "customLevels")
+  ) {
+    throw new Error(
+      "A redacting logger does not accept child formatters, serializers or customLevels."
+    );
+  }
+
+  return options.msgPrefix === undefined
+    ? options
+    : { ...options, msgPrefix: redactText(options.msgPrefix) };
+}
+
+/**
+ * Reads the object `protectLogger` just finished wrapping as a redacting logger. The brand and
+ * both overrides are installed on this same object before the call, which is what the assertion
+ * records; the runtime brand is what `isRedactingLogger` checks.
+ */
+function asRedactingLogger<T extends object>(value: T): RedactingLogger {
+  // SAFETY: `protectLogger` installs the brand and replaces `child` and `setBindings` on this
+  // object before it reaches here, so it holds the redacting contract this type names.
+  return value as RedactingLogger;
+}
+
+/**
+ * Wraps a pino logger so both public binding paths redact: the bindings a child adds and the
+ * bindings `setBindings` adds. pino resets its own `bindings` formatter on a child built without
+ * options, so redaction has to happen where the bindings are handed over, not in that formatter.
+ *
+ * The overrides are own properties of this instance. A child is `Object.create(parent)`, so every
+ * child and grandchild inherits them and the whole tree is covered from this one wrap. Each
+ * override calls the captured pino function with `this`, so a grandchild keeps the bindings and
+ * level of its parents instead of being rebuilt from the root. The brand is non-enumerable, so
+ * it never reaches a log line.
+ */
+function protectLogger(logger: Logger): RedactingLogger {
+  const child: ChildFactory = logger.child;
+  const setBindings: SetBindingsFactory = logger.setBindings;
+
+  const redactingChild = function redactingChild(
+    this: Logger,
+    bindings: Bindings,
+    options?: ChildLoggerOptions<never>
+  ): Logger {
+    // SAFETY: pino serializes the bindings as json on the line, so `redact` walks them as the
+    // json they become and answers the shape a child takes.
+    const safe = redact(bindings as LogValue) as Bindings;
+
+    const safeOptions =
+      options === undefined ? undefined : safeChildOptions(options);
+
+    return child.call(this, safe, safeOptions);
+  };
+
+  const redactingSetBindings = function redactingSetBindings(
+    this: Logger,
+    bindings: Bindings
+  ): void {
+    // SAFETY: pino serializes the bindings as json on the line, so `redact` walks them as the
+    // json they become and answers the shape `setBindings` takes.
+    const safe = redact(bindings as LogValue) as Bindings;
+
+    setBindings.call(this, safe);
+  };
+
+  Object.defineProperty(logger, "child", {
+    value: redactingChild,
+    writable: true,
+    configurable: true,
+  });
+
+  Object.defineProperty(logger, "setBindings", {
+    value: redactingSetBindings,
+    writable: true,
+    configurable: true,
+  });
+
+  Object.defineProperty(logger, REDACTING_LOGGER, {
+    value: true,
+    enumerable: false,
+  });
+
+  // SAFETY: `protectLogger` installs the brand and both overrides on this object before it
+  // reaches here, so it holds the redacting contract this type names.
+  return asRedactingLogger(logger);
+}
+
+/**
  * The deployment's logger. It writes JSON lines at the level `LOG_LEVEL` names, and every line
  * carries the request, tenant and user ids of the execution that wrote it (R-44).
  *
@@ -255,7 +504,7 @@ function redactLogObject(object: PinoLogObject): PinoLogObject {
 export function createLogger(
   env: DeploymentEnvironment,
   destination?: DestinationStream
-): Logger {
+): RedactingLogger {
   const options = {
     level: env.logLevel,
     formatters: {
@@ -263,18 +512,34 @@ export function createLogger(
       log: redactLogObject,
     },
 
-    // The formatter above sees the object a call site logged. The message string, and any
-    // value interpolated into it, never reach it, so pino's own argument hook redacts those
+    // The formatter above sees the object a call site logged. The message string and every
+    // value interpolated into it never reach it, so pino's own argument hook redacts those
     // before the line is built (pino 10 `hooks.logMethod`).
     hooks: {
       logMethod(this: Logger, args: Parameters<LogFn>, method: LogFn): void {
         // A log method takes a message string, values interpolated into it, and an object or
         // an error beside them. Reading which is which is the hook's whole job.
         // oxlint-disable anti-slop/no-runtime-typeof
-        const safe = args.map((argument) => {
+        // pino takes a leading object as the merging object, which its `log` formatter
+        // receives and redacts. Every argument after it is a message or an interpolation
+        // value, and those never reach that formatter.
+        const merging = args[0] !== null && typeof args[0] === "object";
+
+        const safe = args.map((argument, index) => {
           if (typeof argument === "string") return redactText(argument);
 
-          return argument instanceof Error ? redactError(argument) : argument;
+          if (argument instanceof Error) return redactError(argument);
+
+          // The merging object is left to the formatter, which redacts it while keeping an
+          // error under `err` an error. An object interpolated into the message has no such
+          // path, so it is redacted here instead (R-45).
+          if (merging && index === 0) return argument;
+
+          // SAFETY: an interpolation value is whatever a call site logged, and a line holds
+          // json, which is the shape `redact` answers.
+          return argument !== null && typeof argument === "object"
+            ? redact(argument as LogValue)
+            : argument;
         });
         // oxlint-enable anti-slop/no-runtime-typeof
 
@@ -285,10 +550,25 @@ export function createLogger(
     },
   };
 
-  return destination === undefined ? pino(options) : pino(options, destination);
+  const logger =
+    destination === undefined ? pino(options) : pino(options, destination);
+
+  return protectLogger(logger);
 }
 
-/** The logger of one request or one job run, carrying its three ids. */
-export function forExecution(logger: Logger, bindings: LogBindings): Logger {
+/**
+ * The logger of one request or one job run, carrying its three ids. It takes only a logger
+ * `createLogger` built, so the whole execution tree redacts (R-45). A raw pino logger has no
+ * message redactor, and retrofitting one here would claim a safety it does not have.
+ */
+export function forExecution(
+  logger: RedactingLogger,
+  bindings: LogBindings
+): RedactingLogger {
+  // A caller from JavaScript can pass a raw pino logger the type refuses; it has no redactor.
+  if (!isRedactingLogger(logger)) {
+    throw new Error("forExecution needs a logger built by createLogger.");
+  }
+
   return logger.child({ ...bindings });
 }

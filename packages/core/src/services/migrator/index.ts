@@ -46,6 +46,8 @@ const LOCK_NOT_AVAILABLE = "55P03";
 export type MigrationLog = (event: {
   readonly event: string;
   readonly history?: string;
+  /** The original cleanup error, for the caller's redacting logger to record. */
+  readonly error?: unknown;
 }) => void;
 
 /** Applies one history on the run's own session. The default is Drizzle's own migrator. */
@@ -185,6 +187,7 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
 
   let settingApplied = false;
   let locked = false;
+  let migrationFailed = false;
   let failure: unknown;
 
   try {
@@ -229,21 +232,30 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
       log({ event: "migration-history-done", history: history.name });
     }
   } catch (error) {
+    migrationFailed = true;
     failure = error;
   }
 
-  const confirmed = await releaseSession(
-    client,
-    { settingApplied, locked },
-    log
-  );
+  let cleanupConfirmed = false;
 
-  // An uncertain session never goes back to the pool for another caller (R-26a).
-  client.release(releaseMode(confirmed) === "destroy");
+  try {
+    // A failed SET may have changed the session before the connection error surfaced. Since
+    // neither its state nor its health can be confirmed, this client is never reusable.
+    if (settingApplied) {
+      cleanupConfirmed = await releaseSession(
+        client,
+        { settingApplied, locked },
+        log
+      );
+    }
+  } finally {
+    // An uncertain session never goes back to the pool for another caller (R-26a).
+    client.release(releaseMode(cleanupConfirmed) === "destroy");
+  }
 
   const outcome = runFailure({
-    migrationFailed: failure !== undefined,
-    cleanupConfirmed: confirmed,
+    migrationFailed,
+    cleanupConfirmed,
   });
 
   // An earlier error stays the one the caller sees. Without one, a cleanup that did not
@@ -276,16 +288,39 @@ async function releaseSession(
     try {
       // Each step depends on the one before it, on this one session.
       // oxlint-disable-next-line no-await-in-loop
-      await client.query(
+      const result = await client.query<{ pg_advisory_unlock: boolean }>(
         CLEANUP_SQL[step],
         step === "unlock" ? [MIGRATION_LOCK_KEY.toString()] : []
       );
-    } catch {
-      log({ event: "migration-cleanup-failed", history: step });
+
+      if (step === "unlock" && result.rows[0]?.pg_advisory_unlock !== true) {
+        reportCleanupFailure(
+          log,
+          step,
+          new Error("the migration session did not hold the advisory lock")
+        );
+
+        return false;
+      }
+    } catch (error) {
+      reportCleanupFailure(log, step, error);
 
       return false;
     }
   }
 
   return true;
+}
+
+/** Reports the cleanup cause without allowing a broken logger to skip client destruction. */
+function reportCleanupFailure(
+  log: MigrationLog,
+  step: CleanupStep,
+  cause: unknown
+): void {
+  try {
+    log({ event: "migration-cleanup-failed", history: step, error: cause });
+  } catch {
+    // The migration outcome and release decision must not depend on the logging transport.
+  }
 }

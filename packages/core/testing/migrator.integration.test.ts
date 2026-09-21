@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Client } from "pg";
+import { Client, type Pool, type PoolClient, type QueryConfig } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -127,6 +127,187 @@ async function tableExists(
 
   return result.rowCount === 1;
 }
+
+/** The pid of one real session, the name Postgres knows it by everywhere else. */
+async function backendPidOf(client: Client): Promise<number | undefined> {
+  const result = await client.query<{ pid: number }>(
+    "select pg_backend_pid() as pid"
+  );
+
+  return result.rows[0]?.pid;
+}
+
+/** The session that owns this database's advisory lock, when one is held anywhere. */
+async function advisoryLockOwner(client: Client): Promise<number | undefined> {
+  const result = await client.query<{ pid: number }>(
+    "select pid from pg_locks where locktype = 'advisory' limit 1"
+  );
+
+  return result.rows[0]?.pid;
+}
+
+/** A statement as pg accepts it: plain text, or a config naming its text. */
+type PgStatement = string | QueryConfig;
+
+/** Whether the statement arrived as plain text rather than a config naming its text. */
+function isPgText(statement: PgStatement): statement is string {
+  return !(statement instanceof Object);
+}
+
+/** The text of a statement, whichever shape pg took it in. */
+function statementText(statement: PgStatement): string {
+  return isPgText(statement) ? statement : statement.text;
+}
+
+/**
+ * The run's own pool, watched. The wrapper hands out the real client pg reserved, records
+ * every statement the run and Drizzle's migrator send over it, and forwards each query and
+ * the release verbatim. Nothing is mocked: the database sees the run exactly as production
+ * sends it, and the test reads back which session carried it.
+ */
+function instrumentedPool(pool: Pick<Pool, "connect">) {
+  const statements: string[] = [];
+  const released: boolean[] = [];
+  let reservedCount = 0;
+  let backendPid: number | undefined;
+
+  // SAFETY: `Pick<Pool, "connect">` is the whole pool surface `runMigrations` reads, so the
+  // watched object below answers that one member and nothing else of the real pool is faked.
+  return {
+    statements,
+    released,
+    reservedCount: () => reservedCount,
+    backendPid: () => backendPid,
+    pool: {
+      connect: async () => {
+        reservedCount += 1;
+
+        const client = await pool.connect();
+
+        const identity = await client.query<{ pid: number }>(
+          "select pg_backend_pid() as pid"
+        );
+
+        backendPid = identity.rows[0]?.pid;
+
+        // SAFETY: the run and Drizzle's migrator call `query` with pg's own text and config
+        // shapes, which this wrapper records and forwards verbatim; the cast only restores
+        // pg's overloaded member type on the answer.
+        const reserved: Partial<PoolClient> = {
+          query: ((statement: PgStatement, values?: QueryConfig["values"]) => {
+            statements.push(statementText(statement));
+
+            return client.query(statement, values);
+          }) as PoolClient["query"],
+          release: (destroy?: boolean) => {
+            released.push(destroy === true);
+
+            client.release(destroy);
+          },
+        };
+
+        // SAFETY: the run uses `query` and `release` on the client it reserves and nothing
+        // else, so those two members are the whole surface this wrapper has to answer, and
+        // both reach the real session untouched.
+        return reserved as PoolClient;
+      },
+    } as Pick<Pool, "connect">,
+  };
+}
+
+describe("the migrator's one reserved session, watched on a real database", () => {
+  it("sends the setting, the lock, every history and the cleanup through one real session", async () => {
+    const context = await freshDeployment();
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    // A history that sleeps keeps the lock window open long enough for a second, real
+    // session to read who owns the lock while the run is inside it.
+    const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(0.5);");
+
+    const observer = new Client({ connectionString: context.env.databaseUrl });
+
+    await observer.connect();
+
+    cleanups.push(() => observer.end());
+
+    const watched = instrumentedPool(context.db.$client);
+
+    let lockOwner: Promise<number | undefined> = Promise.resolve(undefined);
+
+    await runMigrations({
+      env: context.env,
+      pool: watched.pool,
+      histories: migrationPlan([alpha, sleeper]),
+      log: (event) => {
+        if (event.event === "migration-lock-held") {
+          lockOwner = advisoryLockOwner(observer);
+        }
+      },
+    });
+
+    const owner = await lockOwner;
+
+    // One reservation, one pid, and pg_locks names that same pid as the lock's owner: the
+    // setting, the lock, Drizzle's ledger writes and the cleanup all crossed one session.
+    expect(watched.reservedCount()).toBe(1);
+    expect(watched.backendPid()).toBeDefined();
+    expect(owner).toBe(watched.backendPid());
+
+    expect(watched.statements[0]).toContain("SET lock_timeout");
+    expect(watched.statements[1]).toContain("pg_advisory_lock");
+    expect(
+      watched.statements.some((statement) =>
+        statement.includes('CREATE TABLE "alpha_record"')
+      )
+    ).toBe(true);
+    expect(
+      watched.statements.some((statement) =>
+        /insert into "drizzle"\."__drizzle_migrations/.test(statement)
+      )
+    ).toBe(true);
+    expect(watched.statements.at(-2)).toContain("pg_advisory_unlock");
+    expect(watched.statements.at(-1)).toBe("RESET lock_timeout");
+
+    expect(watched.released).toEqual([false]);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+
+  it("leaves the lock with the foreign session it could not take, and takes none itself (negative control)", async () => {
+    const context = await freshDeployment(250);
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    const holder = new Client({ connectionString: context.env.databaseUrl });
+
+    await holder.connect();
+
+    cleanups.push(() => holder.end());
+
+    await holder.query("SELECT pg_advisory_lock($1)", [
+      MIGRATION_LOCK_KEY.toString(),
+    ]);
+
+    const holderPid = await backendPidOf(holder);
+
+    const watched = instrumentedPool(context.db.$client);
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: watched.pool,
+        histories: migrationPlan([alpha]),
+      })
+    ).rejects.toMatchObject({ code: "migration-lock-timeout" });
+
+    // The pid comparison tells sessions apart, which is what makes the same-session proof
+    // above mean something: the run's own session never became the lock's owner, the lock
+    // stayed with the holder, and no unlock was sent from anywhere.
+    expect(watched.backendPid()).toBeDefined();
+    expect(watched.backendPid()).not.toBe(holderPid);
+    expect(await advisoryLockOwner(holder)).toBe(holderPid);
+    expect(watched.statements.join(" ")).not.toContain("pg_advisory_unlock");
+    expect(watched.released).toEqual([false]);
+  });
+});
 
 describe("the migrator against a real database", () => {
   it("applies core and then each module history on a fresh database", async () => {

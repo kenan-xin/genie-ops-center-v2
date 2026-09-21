@@ -17,20 +17,21 @@ export type ModuleInventoryEntry = {
 type ModulePackageManifest = {
   readonly name?: string;
   readonly genie?: {
-    readonly module?: { readonly id?: string; readonly entrypoint?: unknown };
+    readonly module?: { readonly id?: unknown; readonly entrypoint?: unknown };
   };
 };
 
 const MODULES_DIR = "packages/modules";
 
 /**
- * True for a usable entrypoint path. This guard is the boundary parse itself:
- * the generators package has no runtime dependency, so a hand-written predicate
- * is the parser that turns one parsed package.json field into a domain string.
+ * True for a usable non-empty string field, such as a module id or an entrypoint
+ * path. This guard is the boundary parse itself: the generators package has no
+ * runtime dependency, so a hand-written predicate is the parser that turns one
+ * parsed package.json field into a domain string.
  * The anti-slop `no-runtime-typeof` rule keeps `allowInTypeGuards` off
  * repository-wide, so the guard carries a local suppression.
  */
-function isEntrypointPath(value: unknown): value is string {
+function isNonEmptyString(value: unknown): value is string {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of package.json bytes
   return typeof value === "string" && value.trim() !== "";
 }
@@ -115,7 +116,13 @@ export function readModuleInventory(
 
     const manifestLabel = `${MODULES_DIR}/${folder}/package.json`;
 
-    if (!isEntrypointPath(declared.entrypoint)) {
+    if (!isNonEmptyString(declared.id)) {
+      throw new Error(
+        `${manifestLabel}: genie.module.id must be a non-empty string.`
+      );
+    }
+
+    if (!isNonEmptyString(declared.entrypoint)) {
       throw new Error(
         `${manifestLabel}: genie.module.entrypoint must be a non-empty string.`
       );

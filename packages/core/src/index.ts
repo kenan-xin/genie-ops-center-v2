@@ -84,3 +84,9 @@ export {
   moduleHistory,
   runMigrations,
 } from "./services/migrator/index.ts";
+
+export {
+  type LogBindings,
+  createLogger,
+  forExecution,
+} from "./services/logging/index.ts";

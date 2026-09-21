@@ -78,6 +78,14 @@ describe("resolution by package name", () => {
     expect(resolved.endsWith("/src/presentation/index.ts")).toBe(true);
   });
 
+  it("resolves the testing subpath to its own entry file", () => {
+    const resolved = runInConsumer(
+      `console.log(import.meta.resolve("@genie/module-placeholder/testing"));\n`
+    );
+
+    expect(resolved.endsWith("/testing/index.ts")).toBe(true);
+  });
+
   it("exposes no subpath the manifest does not declare", () => {
     expect(() =>
       runInConsumer(`import "@genie/module-placeholder/src/router.ts";\n`)

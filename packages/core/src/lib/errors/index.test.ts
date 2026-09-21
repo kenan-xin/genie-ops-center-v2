@@ -74,6 +74,19 @@ describe("AppError", () => {
 });
 
 describe("safeBodyFor", () => {
+  it("reports migration failure without promising cross-history rollback", () => {
+    const body = safeBodyFor(
+      new AppError(CORE_ERRORS["migration-failed"]),
+      REQUEST_ID
+    );
+
+    expect(body).toEqual({
+      code: "migration-failed",
+      message: "A database migration did not finish. The server did not start.",
+      requestId: REQUEST_ID,
+    });
+  });
+
   it("returns the code, the safe message and the request id", () => {
     const body = safeBodyFor(
       new AppError(CORE_ERRORS["migration-lock-timeout"]),

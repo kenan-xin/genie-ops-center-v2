@@ -70,3 +70,19 @@ describe("the declared presentation subpath", () => {
     }
   });
 });
+
+describe("the declared testing subpath", () => {
+  it("exports the factory for this module's own table", async () => {
+    const testing = await import(subpath("./testing"));
+
+    expect(testing.insertPlaceholderRecord).toBeTypeOf("function");
+  });
+
+  it("reaches no app-facing entry point, so the factory stays test-only", async () => {
+    const root = await import(subpath("."));
+    const presentation = await import(subpath("./presentation"));
+
+    expect(Object.hasOwn(root, "insertPlaceholderRecord")).toBe(false);
+    expect(Object.hasOwn(presentation, "insertPlaceholderRecord")).toBe(false);
+  });
+});

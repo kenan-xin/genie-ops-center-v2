@@ -14,7 +14,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "migration-lock-timeout":
     "The database migration lock was held by another start for too long.",
   "migration-failed":
-    "A database migration did not finish. The database is unchanged.",
+    "A database migration did not finish. The server did not start.",
   "not-found": "That item does not exist, or you may not see it.",
   "forbidden": "You may not do that.",
   "invalid-input": "The request was not valid.",

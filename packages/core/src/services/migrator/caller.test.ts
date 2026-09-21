@@ -28,10 +28,22 @@ const ENV: DeploymentEnvironment = {
   port: 3000,
 };
 
-type Failure = { readonly match: string; readonly error: Error };
+type Script = {
+  /** A fragment of the statement text this entry answers. */
+  readonly match: string;
+  /** The entry rejects with this error when it matches. */
+  readonly error?: Error;
+  /** The entry answers with these rows when it matches and has no error. */
+  readonly rows?: readonly unknown[];
+};
 
-/** A client that records its statements, fails the ones it was told to, and notes its release. */
-function recordingPool(failures: readonly Failure[] = []) {
+/**
+ * A client that records its statements, answers the ones it was scripted to, and notes its
+ * release. The rows are the only way to say what a real `pg_advisory_unlock` answers, so a
+ * test can describe an unlock that reports the lock was not held here. An unscripted unlock
+ * answers the one-row boolean PostgreSQL always gives: true, this session held the lock.
+ */
+function recordingPool(script: readonly Script[] = []) {
   const statements: string[] = [];
   const released: boolean[] = [];
 
@@ -40,9 +52,15 @@ function recordingPool(failures: readonly Failure[] = []) {
   const query = ((text: string) => {
     statements.push(text);
 
-    const failure = failures.find((entry) => text.includes(entry.match));
+    const entry = script.find((candidate) => text.includes(candidate.match));
 
-    if (failure !== undefined) return Promise.reject(failure.error);
+    if (entry?.error !== undefined) return Promise.reject(entry.error);
+
+    if (entry?.rows !== undefined) return Promise.resolve({ rows: entry.rows });
+
+    if (text.includes("pg_advisory_unlock")) {
+      return Promise.resolve({ rows: [{ pg_advisory_unlock: true }] });
+    }
 
     return Promise.resolve({ rows: [] });
   }) as PoolClient["query"];
@@ -70,6 +88,13 @@ function lockTimeout(): Error {
   return Object.assign(new Error("canceling statement due to lock timeout"), {
     code: "55P03",
   });
+}
+
+/** A logger that throws exactly when the run reports a cleanup failure, as a broken one would. */
+function brokenLogger(event: { readonly event: string }): void {
+  if (event.event === "migration-cleanup-failed") {
+    throw new Error("the logger is down");
+  }
 }
 
 describe("runMigrations, watched through a recording client", () => {
@@ -178,5 +203,112 @@ describe("runMigrations, watched through a recording client", () => {
     ).rejects.toMatchObject({ code: "migration-failed" });
 
     expect(recorder.released).toEqual([true]);
+  });
+
+  it("raises the setting's own error and destroys the client when the setting itself fails", async () => {
+    const setting = new Error("could not set lock_timeout");
+
+    const recorder = recordingPool([
+      { match: "SET lock_timeout", error: setting },
+    ]);
+
+    // The run never became valid on this session, so the error it started with is the one
+    // the caller sees, and the session is destroyed rather than handed back to the pool.
+    await expect(
+      runMigrations({
+        env: ENV,
+        pool: recorder.pool,
+        histories: [CORE_HISTORY],
+        apply: () => Promise.resolve(),
+      })
+    ).rejects.toBe(setting);
+
+    expect(recorder.released).toEqual([true]);
+  });
+
+  it("fails closed and destroys the client when the unlock answers false", async () => {
+    const recorder = recordingPool([
+      { match: "pg_advisory_unlock", rows: [{ pg_advisory_unlock: false }] },
+    ]);
+
+    let applied = 0;
+
+    // An unlock that answers false means this session does not hold, and so did not
+    // release, the one advisory lock of the application: the state of the session is
+    // unknown, the run cannot pass, and the client goes away.
+    await expect(
+      runMigrations({
+        env: ENV,
+        pool: recorder.pool,
+        histories: [CORE_HISTORY],
+        apply: () => {
+          applied += 1;
+
+          return Promise.resolve();
+        },
+      })
+    ).rejects.toMatchObject({ code: "migration-failed" });
+
+    expect(applied).toBe(1);
+    expect(recorder.released).toEqual([true]);
+  });
+
+  it("keeps the migration failure and still destroys the client when the cleanup cannot be logged", async () => {
+    const recorder = recordingPool([
+      { match: "RESET", error: new Error("connection terminated") },
+    ]);
+
+    const cause = new Error('relation "placeholder_record" does not exist');
+
+    const raised: Error | undefined = await runMigrations({
+      env: ENV,
+      pool: recorder.pool,
+      histories: [CORE_HISTORY],
+      log: brokenLogger,
+      apply: () => Promise.reject(cause),
+    }).then(
+      () => undefined,
+      (error: Error) => error
+    );
+
+    // A logger that throws during the cleanup report must not replace the migration error
+    // the caller already had, and the unusable session still goes away.
+    expect(raised).toBeInstanceOf(AppError);
+    expect(raised).toMatchObject({ code: "migration-failed", cause });
+    expect(recorder.released).toEqual([true]);
+  });
+
+  it("reports the cleanup error it swallowed to the log", async () => {
+    const reset = new Error("connection terminated");
+
+    const recorder = recordingPool([{ match: "RESET", error: reset }]);
+
+    const events: Array<{
+      event: string;
+      history?: string;
+      error?: unknown;
+    }> = [];
+
+    await expect(
+      runMigrations({
+        env: ENV,
+        pool: recorder.pool,
+        histories: [CORE_HISTORY],
+        log: (event) => {
+          events.push(event);
+        },
+        apply: () => Promise.resolve(),
+      })
+    ).rejects.toMatchObject({ code: "migration-failed" });
+
+    // The step that failed is named, and the original error is carried whole, so the
+    // operator sees the cleanup problem the run chose not to raise.
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "migration-cleanup-failed",
+        history: "reset",
+        error: reset,
+      })
+    );
   });
 });

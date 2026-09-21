@@ -12,7 +12,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. The [2026-09-21 audit](audit-2026-09-21.md) compares all twelve tickets with local develop `ea4890b` and Beads. S0-01/S0-02/S0-03 are integrated and closed. S0-04 is reviewed at `61b2408` but unmerged and awaiting real PostgreSQL acceptance; Docker now responds, which is not database proof. S0-05 onward remain unimplemented. [Prepared handoffs](handoffs/README.md) are proposals to dispatch, not implementation authorization from this audit.
+Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding and completed fresh real-database proof on `bugfix/spec0-integration-review`. S0-04 remains gated only on committing and integrating that reviewed repair union and recording the accepted revision. S0-01/S0-02/S0-03 and 5ph remain accepted. S0-05 onward remain unimplemented. Beads owns current status; do not redispatch either historical first-batch prompt.
 
 ## Execution authority and documentation
 
@@ -29,7 +29,7 @@ Use Superpowers in the existing ticket session/worktree. Refine only unresolved 
 | [S0-01](01-workspace-and-build-inputs/index.md) | `genie-ops-center-v2-1rd.1` | Planning baseline | Establish workspace, import boundaries and data-only build inputs |
 | [S0-02](02-storybook-compatibility-g1/index.md) | `genie-ops-center-v2-1rd.2` | S0-01 | Prove minimal Storybook and component-test compatibility (G1) |
 | [S0-03](03-module-contracts-and-build-safe-schemas/index.md) | `genie-ops-center-v2-1rd.3` | S0-01 | Define foundation module contracts and build-safe schemas |
-| [S0-04](04-context-migrator-and-placeholder/index.md) | `genie-ops-center-v2-1rd.4` | S0-02, S0-03; 2tc for acceptance | Build permanent tenant-context, migrator and placeholder foundation |
+| [S0-04](04-context-migrator-and-placeholder/index.md) | `genie-ops-center-v2-1rd.4` | S0-02, S0-03 | Build permanent tenant-context, migrator and placeholder foundation |
 | [S0-05](05-production-startup-and-csp-g2/index.md) | `genie-ops-center-v2-1rd.5` | S0-04, 5ph | Prove production startup, one context and minimal CSP (G2) |
 | [S0-06](06-selection-cache-and-build-graph/index.md) | `genie-ops-center-v2-1rd.6` | S0-05, 5ph | Complete selection-aware application build graph and local cache proof |
 | [S0-07](07-migration-concurrency-and-isolation/index.md) | `genie-ops-center-v2-1rd.7` | S0-05 | Complete migration concurrency, recovery and isolation proof |
@@ -87,11 +87,11 @@ The pure data-only resolver begins in S0-01 because G1 story discovery needs the
 
 ## Current dispatch recommendation
 
-First proposed batch: resume S0-04 acceptance on its retained branch and fix 5ph in a fresh worktree. S0-04 owns its dependency/config window; 5ph must not edit shared manifests/config. S0-04 verifies disposable database access through 2tc. Integrate 5ph first, then the reconciled S0-04 branch. Neither lane starts through this audit.
+Commit and integrate the independently reviewed [S0-04 repair union](04-context-migrator-and-placeholder/integrated-review.md), rerun its union gates and record the accepted revision before releasing further runtime work. The original S0-04/5ph first batch already integrated; do not recreate it.
 
-Then run S0-05 alone, including yt2. After integrated G2, S0-06/S0-07/S0-08/S0-09 may run together under the [shared-file schedule](handoffs/README.md). Preserve all eighteen original ticket-to-ticket edges.
+Once S0-04 is reaccepted on the repaired integrated revision, run S0-05 alone, including yt2 and 3yv. After integrated G2, S0-06/S0-07/S0-08/S0-09 may run together under the [shared-file schedule](handoffs/README.md). Preserve all eighteen original ticket-to-ticket edges.
 
-CSP logging yt2 is a child of S0-05, and cache identity 2cg is a child of S0-10. Parent sessions deliver these before closure; children are not pre-start dependencies on their own parent implementation. 2cg still requires S0-06. 2tc remains the S0-04 database prerequisite.
+CSP logging yt2 is a child of S0-05, and cache identity 2cg is a child of S0-10. Parent sessions deliver these before closure; children are not pre-start dependencies on their own parent implementation. 2cg still requires S0-06. The historical `2tc` database prerequisite is closed; the repair-union database proof is recorded with the integrated review.
 
 Keep owned children `yt2`, `3yv` and `2cg` manually `blocked` until their parent is claimed and all parent prerequisites are integrated. Parent-child links alone do not suppress `bd ready`. The parent owner then atomically transitions and assigns each unassigned child using `bd update <child-id> --if-status blocked --if-assignee '' --status in_progress --assignee <parent-session-actor>`. Record the parent claim and release reason; stop on a failed guard rather than forcing ownership. Do not briefly reopen a child for a separate session to claim.
 

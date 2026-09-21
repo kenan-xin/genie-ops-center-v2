@@ -2,7 +2,7 @@
 
 Bead: `genie-ops-center-v2-1rd.4`. Branch `feature/s0-04-context-migrator`, base `7890530`. Recorded 2026-09-21. The dependency window has [its own record](dependency-evidence.md).
 
-This file grows as the ticket does. It states what was run and what the run said. Nothing here claims a database proof: the Docker runtime gap is bead `genie-ops-center-v2-2tc`, and it still blocks the acceptance of this ticket.
+This file is chronological. Early sections predate database execution; the real-database and reconciled-union sections record later runs and integration at `13800cd`. The [subsequent integrated review](integrated-review.md) reopened acceptance for defects and missing same-session proof. Neither historical passes nor the current host-runtime failure replace that review disposition.
 
 ## Corrections to the first slice
 
@@ -291,3 +291,26 @@ At `387e2aa`, each Nx run with `--skip-nx-cache`.
 The affected run named test, lint and typecheck, never build, because no project declares a `build` target. The full target list is `lint`, `test`, `typecheck` everywhere, plus `test:integration` on core and the placeholder, `validate` on the generators, and the Storybook targets. There is no `build` target and no end-to-end target anywhere in the repository, so this ticket claims neither. The Storybook targets were not run: nothing in this change reaches them, and `build-storybook` is not the `build` target the definition of done names.
 
 App composition, two-database isolation, page mounting and transport or browser proof stay with S0-05. Adversarial multi-process contention stays with S0-07.
+
+## Integrated-review repair union, 2026-09-21
+
+Review of develop `f8b797f` reopened this ticket. The bounded repair branch fixes logger redaction and its public capability boundary, uncertain migrator cleanup, missing legal consumer exports, misleading migration text, missing AdminPage Storybook proof, malformed inventory-ID diagnostics and the absent same-backend-session observation.
+
+The logger now exposes an explicit redacting interface instead of a raw Pino `Logger`. Its tests cover structured objects, interpolation, errors and causes, authorization/cookie text, credential URLs and parameters, child/grandchild bindings, `setBindings`, `forExecution`, unsafe child option rejection and non-mutation. Independent review found no remaining actionable P1/P2 after the interface stopped exposing raw-Pino callbacks and child customization.
+
+The real migrator proof records the reserved client's backend PID and forwarded Postgres/Drizzle queries. It observes the same session for the setting, advisory lock, every history and ledger operation, unlock and reset. A foreign-holder negative control proves the PID comparison discriminates sessions.
+
+From `bugfix/spec0-integration-review`, with Nx cache disabled:
+
+| Command | Result |
+| --- | --- |
+| `pnpm nx run-many -t test lint typecheck -p @genie/core,@genie/generators,@genie/module-placeholder` | 9 of 9 targets passed; final core unit count 303 |
+| `pnpm nx run @genie/storybook:test-storybook` | 4 files, 12 tests passed |
+| `pnpm nx run @genie/core:test:integration` | 7 of 7 real-Postgres cases passed |
+| `pnpm nx run @genie/module-placeholder:test:integration` | 4 of 4 real-Postgres cases passed |
+| `npx supercov quality patch --base f8b797f --all` | completed; signals reviewed, no remaining actionable P1/P2 |
+| `git diff --check` | passed |
+
+An earlier seven-case core run passed six tests before one Testcontainers host-port startup timeout. The affected negative control passed alone and the full suite passed on the immediate serial rerun. This is environment flakiness evidence, not a migration assertion failure.
+
+These results clear the repair branch for integration. They do not by themselves reaccept S0-04: commit the branch, integrate it into current develop, rerun applicable union checks and record that revision in Beads before closing the findings and parent ticket.

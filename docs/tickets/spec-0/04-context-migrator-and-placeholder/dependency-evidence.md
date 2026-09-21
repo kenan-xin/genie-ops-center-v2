@@ -4,6 +4,8 @@ Bead: `genie-ops-center-v2-1rd.4`. Branch `feature/s0-04-context-migrator`, base
 
 Four dependencies were added, all named by [the technology stack](../../../core/tech-stack.md). No pin, alias, package extension or other pnpm setting changed.
 
+Historical dependency-adoption record. Later database execution is in [ticket evidence](evidence.md); current acceptance limits are in the [integrated review](integrated-review.md). The original `2tc` blocker mentioned below has since closed.
+
 ## The four packages
 
 | Package | Version | Canonical range | Published | Placement |
