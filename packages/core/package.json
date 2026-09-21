@@ -12,6 +12,7 @@
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src contracts testing",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json"
   },
   "dependencies": {

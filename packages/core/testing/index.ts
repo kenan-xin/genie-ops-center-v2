@@ -21,6 +21,29 @@ export type DisposableDeployment = {
   readonly stop: () => Promise<void>;
 };
 
+export type DisposablePostgres = {
+  /** The connection string of a database with nothing in it. */
+  readonly url: string;
+  /** Removes the container. Always call it, in a `finally` or an `afterEach`. */
+  readonly stop: () => Promise<void>;
+};
+
+/**
+ * One disposable Postgres with no history applied. A test that proves the migrator itself takes
+ * this, because it must decide when and how the histories run; every other test takes
+ * `startDisposableDeployment`, which applies them the way the image does.
+ */
+export async function startDisposablePostgres(): Promise<DisposablePostgres> {
+  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
+    POSTGRES_IMAGE
+  ).start();
+
+  return {
+    url: container.getConnectionUri(),
+    stop: () => container.stop().then(() => undefined),
+  };
+}
+
 /**
  * One disposable Postgres with the same histories the image applies, in the same order (R-28,
  * R-38). Every integration test takes one of these; none mocks the database.
@@ -31,14 +54,17 @@ export type DisposableDeployment = {
 export async function startDisposableDeployment(
   modules: readonly ModuleHistorySource[] = []
 ): Promise<DisposableDeployment> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
-    POSTGRES_IMAGE
-  ).start();
+  const postgres = await startDisposablePostgres();
 
   const context = createTenantContext({
-    DATABASE_URL: container.getConnectionUri(),
+    DATABASE_URL: postgres.url,
     PUBLIC_URL: "https://test.example.invalid",
   });
+
+  const stop = async () => {
+    await context.db.$client.end();
+    await postgres.stop();
+  };
 
   try {
     await runMigrations({
@@ -47,17 +73,10 @@ export async function startDisposableDeployment(
       histories: migrationPlan(modules.map(moduleHistory)),
     });
   } catch (error) {
-    await context.db.$client.end();
-    await container.stop();
+    await stop();
 
     throw error;
   }
 
-  return {
-    context,
-    stop: async () => {
-      await context.db.$client.end();
-      await container.stop();
-    },
-  };
+  return { context, stop };
 }
