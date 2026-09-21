@@ -94,6 +94,8 @@ The cause and the stack are untouched: a test asserts that an `AppError` keeps t
 
 The test reads each subpath out of the manifest and imports the file the manifest names. It does not import the package by name, because the import boundary forbids a module importing a module package, its own included, and reading the manifest is also what catches the real defect: an entry point that maps to a file exporting something else. A case also asserts that the presentation subpath exports no router, schema or declaration.
 
+The limit of that test, stated so no reader takes it for more: it proves that the file each subpath names exports the right members, and it does not prove that `@genie/module-placeholder` resolves to that file for a consumer. A by-name resolution proof belongs to a consumer outside this package, which is the app harness of R-20, and that harness is not this ticket's surface.
+
 The package and `src/` READMEs now describe the two surfaces and the imports the module really has.
 
 ## The migrator, the logger and the test helpers
@@ -122,5 +124,7 @@ From the worktree root, each Nx run with `--skip-nx-cache`.
 
 ## Not proved
 
-- Every real-database path: the migrator, the histories, the lock, the router read and the two-context isolation test. Bead `genie-ops-center-v2-2tc` holds the runtime gap.
-- The logger and the generic test helpers, which are the remaining slices of this ticket.
+- Every real-database path: the migrator's session behavior, the histories, the lock, the timeout, the cleanup, the router read and the two-context isolation test. Bead `genie-ops-center-v2-2tc` holds the runtime gap.
+- That a green unit run says anything about the database tests. It does not: the unit preset excludes `testing/`, so `packages/modules/placeholder/testing/router.integration.test.ts` has never run, on this host or any other. No target wires it yet, and the preset that would belongs to `packages/config`, which another ticket owns.
+- By-name resolution of `@genie/module-placeholder`, as stated above.
+- Two-context isolation, which R-20 places in the app harness and S0-05 completes.
