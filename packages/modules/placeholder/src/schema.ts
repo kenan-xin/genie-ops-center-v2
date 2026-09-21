@@ -39,5 +39,14 @@ const MIGRATION_FILES = {
   ),
 };
 
-/** This module's migration history, in journal order (R-24). */
-export const MIGRATIONS = migrationsFromJournal(journal, MIGRATION_FILES);
+/**
+ * This module's migration history, in journal order (R-24).
+ *
+ * A thunk, not an array: the SQL read is deferred to the first call, because a page's SSR
+ * compilation resolves the same SQL URL to a public asset path `readFileSync` cannot open, and a
+ * module-scope read would fail that compilation. The `new URL` declarations above stay at module
+ * scope on purpose: that spelling is what the bundler traces to copy the SQL into the image, so
+ * this thunk defers only the read, never the URL declarations. Called once per history at
+ * bootstrap.
+ */
+export const MIGRATIONS = () => migrationsFromJournal(journal, MIGRATION_FILES);

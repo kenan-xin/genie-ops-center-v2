@@ -37,7 +37,7 @@ export const schemaWithoutHistory: Module = {
   // @ts-expect-error migrationsTable is part of the schema point
   schema: {
     tables: validModule.schema.tables,
-    migrations: [],
+    migrations: () => [],
   },
 };
 

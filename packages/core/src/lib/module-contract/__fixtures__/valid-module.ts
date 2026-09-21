@@ -31,7 +31,7 @@ export const validModule = {
 
   schema: {
     tables: { fixtureRecord },
-    migrations: [],
+    migrations: () => [],
     migrationsTable: "fixture_migrations",
   },
 

@@ -87,7 +87,7 @@ describe("the placeholder module declaration", () => {
     // production image: the bundler follows no folder and copies no folder.
     expect(placeholderModule.schema).not.toHaveProperty("migrationsFolder");
 
-    expect(placeholderModule.schema.migrations).toHaveLength(1);
+    expect(placeholderModule.schema.migrations()).toHaveLength(1);
   });
 
   it("declares the same migrations drizzle's own folder reader produces", () => {
@@ -102,7 +102,7 @@ describe("the placeholder module declaration", () => {
       migrationsTable: placeholderModule.schema.migrationsTable,
     });
 
-    expect(placeholderModule.schema.migrations).toEqual(fromFolder);
+    expect(placeholderModule.schema.migrations()).toEqual(fromFolder);
   });
 
   it("carries the real SQL of the one migration on disk", () => {
@@ -111,7 +111,7 @@ describe("the placeholder module declaration", () => {
       "utf8"
     );
 
-    expect(placeholderModule.schema.migrations[0]?.sql.join("")).toBe(onDisk);
+    expect(placeholderModule.schema.migrations()[0]?.sql.join("")).toBe(onDisk);
   });
 
   it("contributes one https frame origin", async () => {

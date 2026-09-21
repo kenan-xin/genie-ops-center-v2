@@ -21,11 +21,14 @@ export type ModuleIdentity = {
 export type ModuleSchema = {
   readonly tables: Readonly<Record<string, PgTable>>;
   /**
-   * The module's migration history as data, built by core's `migrationsFromJournal` from the
-   * module's own drizzle-kit journal and one `new URL` per SQL file. It is not a folder path:
-   * a production bundler cannot follow a folder, so the SQL would never reach the image.
+   * The module's migration history, read on demand, built by core's `migrationsFromJournal` from
+   * the module's own drizzle-kit journal and one `new URL` per SQL file. A thunk, not an array,
+   * because the read is deferred: an SSR compilation resolves the same SQL URL to a public asset
+   * path `readFileSync` cannot open, so a page must never read at module scope. The `new URL`
+   * declarations stay at the module's own scope, because that spelling is what the bundler traces
+   * to copy the SQL into the image. Invoked once per history at bootstrap planning.
    */
-  readonly migrations: readonly MigrationMeta[];
+  readonly migrations: () => readonly MigrationMeta[];
   readonly migrationsTable: string;
 };
 

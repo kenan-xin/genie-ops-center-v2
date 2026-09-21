@@ -55,7 +55,7 @@ describe("the migration plan", () => {
     const history = moduleHistory({
       identity: { id: "alpha" },
       schema: {
-        migrations,
+        migrations: () => migrations,
         migrationsTable: "__drizzle_migrations_alpha",
       },
     });

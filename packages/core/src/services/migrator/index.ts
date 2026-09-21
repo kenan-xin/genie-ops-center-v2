@@ -132,7 +132,10 @@ export type ModuleHistorySource = {
 export function moduleHistory(module: ModuleHistorySource): MigrationHistory {
   return {
     name: module.identity.id,
-    migrations: module.schema.migrations,
+    // The declaration defers the SQL read to a thunk (module contract, Schema point), so the
+    // read happens here and nowhere else: once per history, at bootstrap planning, never in a
+    // hot path and never memoised (a cache would read at module scope on first bundle touch).
+    migrations: module.schema.migrations(),
     table: module.schema.migrationsTable,
   };
 }
