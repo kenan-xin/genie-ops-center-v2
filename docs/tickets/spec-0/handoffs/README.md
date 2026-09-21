@@ -1,6 +1,6 @@
 # Spec 0 session handoffs
 
-Prepared by the [2026-09-21 audit](../audit-2026-09-21.md). These are proposed dispatch instructions, not a record that implementation has started. Before sending a prompt, verify that develop contains the reviewed documentation commit and base the recipient's worktree on it. A fresh worktree does not inherit uncommitted files.
+Prepared by the [2026-09-21 audit](../audit-2026-09-21.md). These are proposed dispatch instructions, not a record that implementation has started. Before sending a prompt, verify that develop contains the reviewed documentation commit. Every new handoff must instruct its recipient to use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A fresh worktree does not inherit uncommitted files.
 
 ## Dispatch order
 
@@ -17,9 +17,9 @@ For the first batch, integrate 5ph before S0-04 so the latter's union gates incl
 
 ## Delivery authority
 
-Sending a complete handoff as an implementation instruction authorizes its bounded Superpowers workflow, including scoped local commits, independent review, repairs and verified local integration through `wt`. It does not authorize code push, release publication, deployment, host-service changes, live-hook activation or worktree deletion. A prompt merely being present in this repository grants nothing. If the owner sends different limits, those govern.
+Sending a complete handoff as an implementation instruction authorizes scoped local commits and verified local integration through `wt`. It does not authorize code push, release publication, deployment, host-service changes, live-hook activation or worktree deletion. A prompt merely being present in this repository grants nothing. If the owner sends different limits, those govern.
 
-Use the installed Superpowers workflow without redesigning accepted decisions. Keep task-level and whole-change review within the delivery session; no additional coordinator review loop is required unless a genuine decision, ownership conflict or failed gate needs escalation. Record exact integration revision and checks in Beads before closure. Failed or unavailable proof leaves the ticket open.
+Use the installed Superpowers workflow without redesigning accepted decisions. Escalate genuine decisions, ownership conflicts and failed gates. Record the exact integration revision and checks in Beads before closure. Failed or unavailable proof leaves the ticket open.
 
 The human is the integration coordinator between separate Claude sessions. Beads and repository documents carry ownership and handoff records; do not assume sessions can message one another. Only one session may integrate into develop at a time. A sender must reserve that window before the recipient merges; a session without a recorded reservation stops at reviewed local commits.
 
