@@ -96,4 +96,10 @@ describe("the config package lint scope", () => {
     expect(positionals).toContain("oxlint.config.ts");
     expect(positionals).toContain("oxfmt.config.ts");
   });
+
+  it("lints the authored boundary plugin, which is outside the config package's src", () => {
+    const positionals = positionalPaths(recordedLintArgv());
+
+    expect(positionals).toContain("packages/config/oxlint/boundaries");
+  });
 });
