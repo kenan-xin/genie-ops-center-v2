@@ -34,3 +34,14 @@ allowBuilds:
   # Vite's dependency. Its install script links the platform binary, and pnpm
   # fails the install with ERR_PNPM_IGNORED_BUILDS when the script is ignored.
   esbuild: true
+  # Three transitive dependencies of testcontainers, denied rather than run.
+  # Evidence and the read of each script: docs/tickets/spec-0/04-context-migrator-and-placeholder/dependency-evidence.md
+  # ssh2 1.17.0 `node install.js` builds its own optional sshcrypto binding, and
+  # lib/protocol/crypto.js requires that binding inside a try with an empty catch.
+  ssh2: false
+  # cpu-features 0.0.10 `node buildcheck.js > buildcheck.gypi && node-gyp rebuild`
+  # builds a native addon that ssh2 requires inside a try with an empty catch.
+  cpu-features: false
+  # protobufjs 7.6.6 `node scripts/postinstall` only prints a version-scheme
+  # warning for dependents. It generates nothing the package needs.
+  protobufjs: false
