@@ -222,10 +222,11 @@ function redactError(error: Error, seen = new WeakMap<Error, Error>()): Error {
 /**
  * The hook pino calls for every logged object, which is where redaction lives.
  *
- * The error pino put under `err` is left for pino's own error serializer, which is what keeps
- * an `AppError` logging as an `AppError` with its code beside it. That error is already a
- * redacted copy: the argument hook replaced it before pino ever saw it. Walking it here would
- * turn it into a plain object, and pino would then report its type as `Object`.
+ * The value under `err` stays an error rather than becoming a plain object, so pino's own
+ * error serializer keeps an `AppError` logging as an `AppError` with its code beside it. It is
+ * redacted here by the same clone the argument hook uses, because a call site can put an error
+ * there itself, as `logger.error({ err }, "message")` does, and that one never passed the hook.
+ * Cloning an error the hook already cloned changes nothing.
  */
 function redactLogObject(object: PinoLogObject): PinoLogObject {
   const { err, ...rest } = object;
@@ -234,7 +235,14 @@ function redactLogObject(object: PinoLogObject): PinoLogObject {
   // json already. `redact` walks it as json and answers the same shape.
   const safe = redact(rest as LogValue) as PinoLogObject;
 
-  return err === undefined ? safe : { ...safe, err };
+  if (err === undefined) return safe;
+
+  // An error keeps its kind through the clone, so pino's serializer still sees an error.
+  if (err instanceof Error) return { ...safe, err: redactError(err) };
+
+  // SAFETY: whatever else a call site put under `err` is json on the line, which is the
+  // shape `redact` walks and answers.
+  return { ...safe, err: redact(err as LogValue) };
 }
 
 /**

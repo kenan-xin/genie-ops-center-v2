@@ -139,14 +139,26 @@ Three paths reach a line, and all three are redacted. An object goes through the
 
 An error reaches a line with its kind and its own fields. Two paths get there, because pino treats the error it was handed differently from one nested in an object.
 
-The error pino puts under `err` is left to pino's own error serializer, so the line keeps `type: "AppError"` with `code` and `safeMessage` beside it. Walking that error here would turn it into a plain object, and pino would then report its type as `Object`, which is what the review found. Safety does not depend on skipping it: the argument hook already replaced it with a redacted copy, and that copy redacts every own field it carries, so a custom error's `password` or token-bearing endpoint is gone before pino sees it.
+The value under `err` stays an error rather than becoming a plain object, so pino's own serializer keeps `type: "AppError"` with `code` and `safeMessage` beside it. Walking it would make pino report its type as `Object`. It is redacted where it sits, by the same clone the argument hook uses, because a call site can put an error there itself with `logger.error({ err }, "message")`, and that error never passes the hook. An earlier version skipped it on the assumption that the hook had already cleaned it, which was true of one form only; that assumption is gone.
 
-An error nested inside a logged object has no serializer of its own, and its fields are not enumerable, so walking its entries would answer an empty object. It is turned into `{ type, message, stack, cause }` plus its own fields, each redacted.
+An error nested under any other name has no serializer of its own, and its fields are not enumerable, so walking its entries would answer an empty object. It becomes `{ type, message, stack, cause }` plus its own fields, each redacted.
+
+The four shapes a call site can use, each with a case on the emitted line:
+
+| Shape | What the line holds |
+| --- | --- |
+| `logger.error(error)` | the kind, the code, the safe message, the redacted cause |
+| `logger.error({ err: error }, "message")` | the same, and the custom `status` survives while `password` and a token-bearing endpoint do not |
+| `logger.warn({ attempt: { failure } }, "message")` | the nested error's message and `status`, with its token gone |
+| ordinary fields beside any of them | redacted by name at any depth |
+
+The error a call site passes is never changed: a case reads the original's `password` afterwards and finds it intact.
 
 | Mutation | Result |
 | --- | --- |
 | The logged error walked as a plain object again | 1 failed: the kind and the code are lost |
 | A custom error's own fields copied without redaction | 1 failed: the secret field reaches the line |
+| The object form restoring the original error | 2 failed: the secrets reach the line |
 
 The cases read the serialized line the destination received. They cover nested headers, an array of tokens, an emailed link, a url with a credential in its userinfo, a token link as the whole message, one inside a longer message, one interpolated with `%s`, a bare `token=` pair, a link inside a logged error, a redacted cause chain that keeps `ECONNREFUSED` while losing the token beside it, an `AppError` whose fields are not writable keeping its cause, a cause that points at its own error, an unchanged original, and an ordinary link that survives.
 

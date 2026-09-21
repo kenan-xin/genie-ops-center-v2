@@ -284,6 +284,65 @@ describe("the logger", () => {
     expect(written).toContain("401");
   });
 
+  // The four shapes a call site can log an error in. Each one reaches the same redaction.
+  it("redacts an error given in the object form, which no hook sees", () => {
+    const { lines, destination } = capture();
+
+    const failure = Object.assign(new Error("upstream refused"), {
+      password: "hunter2",
+      endpoint: "https://upstream.example.com/call?key=abc123",
+      status: 401,
+    });
+
+    createLogger(ENV, destination).error({ err: failure }, "the call failed");
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("hunter2");
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("401");
+    expect(written).toContain("upstream refused");
+    expect(failure.password).toBe("hunter2");
+  });
+
+  it("keeps an AppError's kind and code in the object form too", () => {
+    const { lines, destination } = capture();
+
+    const error = new AppError(CORE_ERRORS["migration-failed"], {
+      cause: new Error(
+        "pg auth failed, see https://db.example.com/r?token=abc123"
+      ),
+    });
+
+    createLogger(ENV, destination).error({ err: error }, "the start failed");
+
+    expect(lines[0]).toMatchObject({
+      err: { type: "AppError", code: "migration-failed" },
+    });
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("pg auth failed");
+  });
+
+  it("redacts an error nested under a name of the call site's choosing", () => {
+    const { lines, destination } = capture();
+
+    const failure = Object.assign(new Error("upstream refused"), {
+      token: "abc123",
+      status: 502,
+    });
+
+    createLogger(ENV, destination).warn({ attempt: { failure } }, "retrying");
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("502");
+    expect(written).toContain("upstream refused");
+  });
+
   it("survives a cause that points back at its own error", () => {
     const { lines, destination } = capture();
 
