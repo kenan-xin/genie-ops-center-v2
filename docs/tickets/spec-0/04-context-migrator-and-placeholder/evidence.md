@@ -202,3 +202,67 @@ From the worktree root, each Nx run with `--skip-nx-cache`.
 - That a green unit run says anything about the database tests. It does not: the unit preset excludes `testing/`, and the integration tests run under their own target.
 - A consumer that imports the package by name and mounts the module, which is the app harness of R-20.
 - Two-context isolation, which R-20 places in the app harness and S0-05 completes.
+
+## The real-database session, 2026-09-21
+
+Everything above this heading was written before any container ran. This section is the first run against a real Postgres. Bead `genie-ops-center-v2-2tc` is closed by it.
+
+### The endpoint
+
+The Docker context `desktop-linux` answers on `unix:///home/kenan/.docker/desktop/docker.sock`. No service was restarted, no credential changed and no alternative endpoint used.
+
+While the placeholder target was running, `docker ps` reported `postgres:18-alpine` on the random host port 55012. After the run it reported no Postgres container, so the container was removed. The first attempt took 18.5 seconds because Testcontainers pulled the image; later runs take about two seconds.
+
+### Two defects the container found
+
+The target had never run, so neither defect was visible.
+
+`CORE_HISTORY.folder` was `packages/core/drizzle` and the placeholder's was `packages/modules/placeholder/drizzle`. Drizzle resolves a relative folder against the working directory of the process, which is the package under Nx and the image root in production, so the journal was looked for in the wrong place. Both are now resolved from their own source file with `import.meta.url`.
+
+The test helper took a `MigrationHistory` and the caller passed `placeholderModule.schema`, a `ModuleSchema` whose fields are `migrationsFolder` and `migrationsTable`. Every history after core was therefore `undefined`. Core now owns one converter, `moduleHistory`, and the helper takes the declaration itself, so the wrong shape cannot be passed. The compiler had not caught this because `packages/modules/placeholder/tsconfig.json` included only `src`; it now includes `testing` and the integration configuration, and lint covers `testing` as well.
+
+The migrator surface is exported from the package root. It was unreachable through `@genie/core`, which is the same defect the first-slice review found in the tenant-context factory.
+
+| State | Result |
+| --- | --- |
+| The new folder assertions against the old relative paths | 2 failed |
+| `tsconfig` including `testing`, against the old helper signature | `error TS2739`, the schema is missing `name`, `folder` and `table` |
+| As written | both pass |
+
+### The migrator on a real database
+
+Core had a testing helper and no target that ran anything through it. `packages/core/vitest.integration.config.ts` and the `test:integration` script now exist beside the placeholder's. The helper gained `startDisposablePostgres`, which returns an empty database, because a test that proves the migrator must decide when the histories run.
+
+Core imports no module (R-39), so the second history is written to a temporary folder in the drizzle-kit layout rather than taken from a module package.
+
+| Case | What it proves |
+| --- | --- |
+| A fresh apply | both ledgers exist, the module table exists, the module ledger holds one row |
+| A second run over the same database | nothing is applied again; the statement creates a table, so a re-application would fail outright |
+| After a finished run | the database holds no advisory lock |
+| Another session holding the lock, limit 250 ms | `migration-lock-timeout`, no ledger, no table, and the only lock is the test's own |
+| A history whose folder is absent | `migration-failed` with the original error as its direct cause, and a later run still takes the lock and finishes |
+
+| Mutation | Result |
+| --- | --- |
+| Cleanup never unlocks | 3 of 5 failed |
+| The plan drops core's history | 2 of 5 failed |
+
+The wait limit is proved here and not in the unit tests, because it is Postgres that refuses to wait.
+
+### Gates
+
+From the worktree root at revision `37e5e4a`, each Nx run with `--skip-nx-cache`.
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `nx run-many -t lint typecheck test -p @genie/core @genie/module-placeholder` | 0 | `Successfully ran targets lint, typecheck, test for 2 projects` |
+| `nx run-many -t test:integration -p @genie/core @genie/module-placeholder` | 0 | `Successfully ran target test:integration for 2 projects`, 5 core cases and 4 placeholder cases |
+| `oxfmt --check packages/core packages/modules/placeholder` | 0 | 79 files |
+
+### Still not proved
+
+- A consumer that imports the package by name and mounts the module, which is the app harness of R-20.
+- Two-context isolation against two databases, which S0-05 completes.
+- Adversarial multi-process contention, which S0-07 broadens.
+- A build target and an end-to-end target: neither exists for these packages, so neither ran.
