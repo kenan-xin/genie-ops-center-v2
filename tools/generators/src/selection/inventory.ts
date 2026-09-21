@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { isAbsolute, normalize } from "node:path/posix";
 
 import { moduleNamingError } from "../workspace/module-naming.ts";
 
@@ -16,15 +17,60 @@ export type ModuleInventoryEntry = {
 type ModulePackageManifest = {
   readonly name?: string;
   readonly genie?: {
-    readonly module?: { readonly id?: string; readonly entrypoint?: string };
+    readonly module?: { readonly id?: string; readonly entrypoint?: unknown };
   };
 };
 
 const MODULES_DIR = "packages/modules";
 
 /**
+ * True for a usable entrypoint path. This guard is the boundary parse itself:
+ * the generators package has no runtime dependency, so a hand-written predicate
+ * is the parser that turns one parsed package.json field into a domain string.
+ * The anti-slop `no-runtime-typeof` rule keeps `allowInTypeGuards` off
+ * repository-wide, so the guard carries a local suppression.
+ */
+function isEntrypointPath(value: unknown): value is string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of package.json bytes
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/**
+ * The declared entrypoint as a module-relative path. Metadata only: the path is
+ * emitted as import text and is never loaded, resolved, or evaluated here.
+ */
+function moduleEntrypoint(value: string, manifestPath: string): string {
+  const trimmed = value.trim();
+  const normalized = normalize(trimmed);
+
+  // A backslash spelling is opaque to the posix normalizer and collapses into a
+  // different path on Windows, so it is refused rather than inspected.
+  if (
+    isAbsolute(trimmed) ||
+    trimmed.includes("\\") ||
+    normalized === ".." ||
+    normalized.startsWith("../")
+  ) {
+    throw new Error(
+      `${manifestPath}: genie.module.entrypoint "${value}" must stay inside the module package.`
+    );
+  }
+
+  if (normalized === "." || normalized.endsWith("/")) {
+    throw new Error(
+      `${manifestPath}: genie.module.entrypoint "${value}" must name a file rather than a folder.`
+    );
+  }
+
+  return normalized;
+}
+
+/**
  * Reads the data-only module inventory from package metadata under packages/modules.
  * Reads bytes and parses JSON. It never imports, evaluates, or resolves a module.
+ * Every entrypoint is a contained relative path here. Whether it also resolves to
+ * a file inside its own package is decided by resolveModuleSelection, which is the
+ * one place that touches the filesystem.
  */
 export function readModuleInventory(
   workspaceRoot: string
@@ -67,11 +113,21 @@ export function readModuleInventory(
       throw new Error(`${MODULES_DIR}/${folder}/package.json has no name.`);
     }
 
+    const manifestLabel = `${MODULES_DIR}/${folder}/package.json`;
+
+    if (!isEntrypointPath(declared.entrypoint)) {
+      throw new Error(
+        `${manifestLabel}: genie.module.entrypoint must be a non-empty string.`
+      );
+    }
+
+    const entrypoint = moduleEntrypoint(declared.entrypoint, manifestLabel);
+
     entries.push({
       id: declared.id,
       packageName: manifest.name,
       packageRoot: `${MODULES_DIR}/${folder}`,
-      entrypoint: `${MODULES_DIR}/${folder}/${declared.entrypoint}`,
+      entrypoint: `${MODULES_DIR}/${folder}/${entrypoint}`,
     });
   }
 

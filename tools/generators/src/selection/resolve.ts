@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { realpathSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
 
 import type { ModuleInventoryEntry } from "./inventory.ts";
 
@@ -18,6 +18,19 @@ export type ResolveInput = {
   readonly inventory: readonly ModuleInventoryEntry[];
   readonly workspaceRoot: string;
 };
+
+/**
+ * The real path, or undefined when the path cannot be reached at all. A cycle,
+ * an unreadable parent and a missing file are one answer to the caller, so none
+ * of them leaves this module as a raw system error.
+ */
+function realPathOrUndefined(path: string): string | undefined {
+  try {
+    return realpathSync(path);
+  } catch {
+    return undefined;
+  }
+}
 
 function parseIds(raw: string): readonly string[] {
   if (raw.trim() === "") {
@@ -70,11 +83,32 @@ export function resolveModuleSelection(input: ResolveInput): ModuleSelection {
       );
     }
 
-    const absolute = join(input.workspaceRoot, entry.entrypoint);
+    const real = realPathOrUndefined(
+      join(input.workspaceRoot, entry.entrypoint)
+    );
 
-    if (!existsSync(absolute)) {
+    if (real === undefined) {
       throw new Error(
         `Module "${id}" entrypoint ${entry.entrypoint} does not exist.`
+      );
+    }
+
+    if (!statSync(real).isFile()) {
+      throw new Error(
+        `Module "${id}" entrypoint ${entry.entrypoint} is not a file.`
+      );
+    }
+
+    // A contained path can still resolve outside the package through a symlink,
+    // so the real paths decide. Both are absolute and normalized, which makes the
+    // prefix test exact and keeps a sibling such as alpha-extra outside.
+    const packageRoot = realPathOrUndefined(
+      join(input.workspaceRoot, entry.packageRoot)
+    );
+
+    if (packageRoot === undefined || !real.startsWith(packageRoot + sep)) {
+      throw new Error(
+        `Module "${id}" entrypoint ${entry.entrypoint} escapes ${entry.packageRoot}.`
       );
     }
 
