@@ -6,8 +6,9 @@ import {
   createTenantContext,
 } from "../src/lib/tenant-context/index.ts";
 import {
-  type MigrationHistory,
+  type ModuleHistorySource,
   migrationPlan,
+  moduleHistory,
   runMigrations,
 } from "../src/services/migrator/index.ts";
 
@@ -24,11 +25,11 @@ export type DisposableDeployment = {
  * One disposable Postgres with the same histories the image applies, in the same order (R-28,
  * R-38). Every integration test takes one of these; none mocks the database.
  *
- * A module's history is passed in by the caller, because core imports no module (R-39). The
- * app harness composes this helper with the included modules' declarations.
+ * A module's declaration is passed in by the caller, because core imports no module (R-39).
+ * The app harness composes this helper with the included modules' declarations.
  */
 export async function startDisposableDeployment(
-  modules: readonly MigrationHistory[] = []
+  modules: readonly ModuleHistorySource[] = []
 ): Promise<DisposableDeployment> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     POSTGRES_IMAGE
@@ -43,7 +44,7 @@ export async function startDisposableDeployment(
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
-      histories: migrationPlan(modules),
+      histories: migrationPlan(modules.map(moduleHistory)),
     });
   } catch (error) {
     await context.db.$client.end();

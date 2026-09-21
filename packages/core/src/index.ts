@@ -73,3 +73,14 @@ export {
   validateModule,
   validateRegistry,
 } from "./lib/module-contract/validate.ts";
+
+export {
+  CORE_HISTORY,
+  MIGRATION_LOCK_KEY,
+  type MigrationHistory,
+  type MigrationRun,
+  type ModuleHistorySource,
+  migrationPlan,
+  moduleHistory,
+  runMigrations,
+} from "./services/migrator/index.ts";

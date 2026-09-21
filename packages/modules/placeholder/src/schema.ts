@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
@@ -22,5 +24,10 @@ export const placeholderRecord = pgTable("placeholder_record", {
 /** The module's own migration history table (R-24). */
 export const MIGRATIONS_TABLE = "__drizzle_migrations_placeholder";
 
-/** The folder holding this module's migration history, relative to the repository root. */
-export const MIGRATIONS_FOLDER = "packages/modules/placeholder/drizzle";
+/**
+ * The folder holding this module's migration history, resolved from this file. It is absolute
+ * so that the migrator finds it whatever the working directory of the process is.
+ */
+export const MIGRATIONS_FOLDER = fileURLToPath(
+  new URL("../drizzle", import.meta.url)
+);

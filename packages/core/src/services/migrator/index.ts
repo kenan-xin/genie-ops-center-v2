@@ -1,15 +1,26 @@
+import { fileURLToPath } from "node:url";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { Pool, PoolClient } from "pg";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import type {
+  ModuleIdentity,
+  ModuleSchema,
+} from "../../lib/module-contract/module.ts";
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
 
 /** One migration history: a folder of SQL files and the table that records what was applied. */
 export type MigrationHistory = {
   /** The name in a log line, `core` or the module id. */
   readonly name: string;
+  /**
+   * An absolute path to the folder of SQL files. Drizzle resolves a relative folder against
+   * the working directory of the process, and that directory differs between the image, a
+   * test run and a command, so a relative folder fails the start wherever it does not match.
+   */
   readonly folder: string;
   readonly table: string;
 };
@@ -17,7 +28,7 @@ export type MigrationHistory = {
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */
 export const CORE_HISTORY: MigrationHistory = {
   name: "core",
-  folder: "packages/core/drizzle",
+  folder: fileURLToPath(new URL("../../../drizzle", import.meta.url)),
   table: "__drizzle_migrations",
 };
 
@@ -65,6 +76,29 @@ const applyWithDrizzle: ApplyHistory = (db, history) =>
     migrationsFolder: history.folder,
     migrationsTable: history.table,
   });
+
+/**
+ * What the migrator needs from a module declaration. It is the declaration itself, never a
+ * part of it, so that a caller cannot hand over a shape that happens to compile.
+ */
+export type ModuleHistorySource = {
+  readonly identity: Pick<ModuleIdentity, "id">;
+  readonly schema: Pick<ModuleSchema, "migrationsFolder" | "migrationsTable">;
+};
+
+/**
+ * The history a module declares, in the shape the migrator applies. The contract names the
+ * folder and the table on the schema, and the migrator names them beside the module id, so a
+ * log line can say which history is running. Every caller converts here, so the app bootstrap
+ * and the test helper cannot disagree about the mapping.
+ */
+export function moduleHistory(module: ModuleHistorySource): MigrationHistory {
+  return {
+    name: module.identity.id,
+    folder: module.schema.migrationsFolder,
+    table: module.schema.migrationsTable,
+  };
+}
 
 /** The histories one run applies, core first, in registry order after it (R-25). */
 export function migrationPlan(
@@ -187,6 +221,8 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
         // oxlint-disable-next-line no-await-in-loop
         await (run.apply ?? applyWithDrizzle)(db, history);
       } catch (error) {
+        // The original error stays the direct cause. The log line before this one names the
+        // history that failed, so nothing is wrapped to carry that name.
         throw new AppError(CORE_ERRORS["migration-failed"], { cause: error });
       }
 

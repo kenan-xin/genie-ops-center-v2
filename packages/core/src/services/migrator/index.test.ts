@@ -1,9 +1,13 @@
+import { existsSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   CORE_HISTORY,
   MIGRATION_LOCK_KEY,
   migrationPlan,
+  moduleHistory,
   releaseMode,
   runFailure,
   sessionCleanupPlan,
@@ -34,9 +38,32 @@ describe("the migration plan", () => {
     expect(migrationPlan([])).toEqual([CORE_HISTORY]);
   });
 
-  it("gives core its own folder and the core ledger table", () => {
+  it("gives core its own ledger table", () => {
     expect(CORE_HISTORY.table).toBe("__drizzle_migrations");
-    expect(CORE_HISTORY.folder).toBe("packages/core/drizzle");
+  });
+
+  it("names core's folder so that it resolves from any working directory", () => {
+    expect(isAbsolute(CORE_HISTORY.folder)).toBe(true);
+
+    expect(existsSync(join(CORE_HISTORY.folder, "meta", "_journal.json"))).toBe(
+      true
+    );
+  });
+
+  it("reads a module's history from its declaration, not from its schema shape", () => {
+    const history = moduleHistory({
+      identity: { id: "alpha" },
+      schema: {
+        migrationsFolder: "/somewhere/alpha/drizzle",
+        migrationsTable: "__drizzle_migrations_alpha",
+      },
+    });
+
+    expect(history).toEqual({
+      name: "alpha",
+      folder: "/somewhere/alpha/drizzle",
+      table: "__drizzle_migrations_alpha",
+    });
   });
 });
 

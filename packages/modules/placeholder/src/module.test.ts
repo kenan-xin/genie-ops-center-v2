@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+
 import { type NavigationEntry, validateModule } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
@@ -76,10 +79,13 @@ describe("the placeholder module declaration", () => {
     expect(placeholderModule.schema.migrationsTable).toBe(
       "__drizzle_migrations_placeholder"
     );
+  });
 
-    expect(placeholderModule.schema.migrationsFolder).toBe(
-      "packages/modules/placeholder/drizzle"
-    );
+  it("names its history folder so that it resolves from any working directory", () => {
+    const folder = placeholderModule.schema.migrationsFolder;
+
+    expect(isAbsolute(folder)).toBe(true);
+    expect(existsSync(join(folder, "meta", "_journal.json"))).toBe(true);
   });
 
   it("contributes one https frame origin", async () => {

@@ -20,11 +20,12 @@ import { insertPlaceholderRecord } from "./factories.ts";
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 beforeAll(async () => {
-  deployment = await startDisposableDeployment([placeholderModule.schema]);
+  deployment = await startDisposableDeployment([placeholderModule]);
 }, 120000);
 
 afterAll(async () => {
-  await deployment.stop();
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await deployment?.stop();
 });
 
 function contextFor(read: Parameters<typeof createRequestPrincipal>[1]) {
@@ -58,11 +59,31 @@ describe("the placeholder read procedure against a real database", () => {
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
   });
 
-  it("applied the module history into its own ledger table", async () => {
-    const applied = await deployment.context.db.$client.query(
-      "select count(*)::int as count from __drizzle_migrations_placeholder"
+  it("keeps core's ledger and the module's ledger apart", async () => {
+    // Drizzle writes a ledger into its own `drizzle` schema, so the name is not searched for
+    // on the default path. The catalogue is asked instead, which is why the schema is read
+    // rather than assumed.
+    const ledgers = await deployment.context.db.$client.query<{
+      tablename: string;
+    }>(
+      `select tablename from pg_tables
+       where tablename in ('__drizzle_migrations', '__drizzle_migrations_placeholder')
+       order by tablename`
     );
 
-    expect(applied.rows[0]?.count).toBeGreaterThan(0);
+    expect(ledgers.rows.map((row) => row.tablename)).toEqual([
+      "__drizzle_migrations",
+      "__drizzle_migrations_placeholder",
+    ]);
+  });
+
+  it("recorded the module's one migration in the module's ledger", async () => {
+    const applied = await deployment.context.db.$client.query<{
+      count: number;
+    }>(
+      "select count(*)::int as count from drizzle.__drizzle_migrations_placeholder"
+    );
+
+    expect(applied.rows[0]?.count).toBe(1);
   });
 });

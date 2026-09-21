@@ -8,7 +8,7 @@
     "./presentation": "./src/presentation/index.ts"
   },
   "scripts": {
-    "lint": "oxlint --config ../../../oxlint.config.ts src",
+    "lint": "oxlint --config ../../../oxlint.config.ts src testing",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
