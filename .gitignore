@@ -24,6 +24,9 @@ storybook-static/
 # Agent scratch space. Holds the execution ledger and review packages, never source.
 .superpowers/
 
+# Coverage tool scratch space. Holds request and snapshot JSON, never source.
+.supercov/
+
 # Generated at build time from MODULE_INCLUDE. Never commit it (ADR 0008).
 apps/genie/src/modules.ts
 

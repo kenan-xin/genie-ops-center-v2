@@ -42,6 +42,8 @@ export const sharedOxlintConfig: OxlintConfig = {
     "**/dist/**",
     "**/.nx/**",
     "**/coverage/**",
+    // Scratch state a local coverage tool writes. It is JSON, never source.
+    ".supercov/**",
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
     // Test fixtures the resolver must never evaluate. The throwing fixture exists

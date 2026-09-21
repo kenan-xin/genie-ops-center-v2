@@ -32,6 +32,7 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     ".claude/**",
     ".agents/**",
     ".impeccable/**",
+    ".supercov/**",
     "graft/**",
 
     // Diagram sources and generated HTML live here beside the prose.
