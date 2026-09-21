@@ -8,8 +8,11 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "testing/**/*.ts",
+    "tools/**/*.ts",
     "next.config.ts",
     "tailwind.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.integration.config.ts"
   ]
 }
