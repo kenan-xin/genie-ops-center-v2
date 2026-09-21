@@ -186,6 +186,41 @@ async function pollHealth(port: number, attempts = 60) {
 const countLines = (logs: string, needle: string) =>
   logs.split("\n").filter((line) => line.includes(needle)).length;
 
+/**
+ * Reads the container log until it satisfies `ready`, or the budget expires.
+ *
+ * A single read races the logger's own flush. The server answers the request
+ * before pino has written the line, so a test that fetches and then reads once
+ * sees a log that is correct but not yet complete, and fails intermittently on
+ * an application that is behaving. Reproduced here with no modules compiled at
+ * all, which rules out anything the module path does.
+ *
+ * The final read is returned either way, so a genuine absence still fails the
+ * assertion that follows, with the whole log to look at.
+ */
+async function logsUntil(
+  image: { logs: () => Promise<string> },
+  ready: (logs: string) => boolean,
+  budgetMs = 15000
+): Promise<string> {
+  const deadline = Date.now() + budgetMs;
+
+  // Polling is sequential by definition: each read exists only because the
+  // previous one was incomplete. Running the reads in parallel would ask the
+  // same question of the same moment several times over.
+  /* eslint-disable no-await-in-loop */
+  let logs = await image.logs();
+
+  while (!ready(logs) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    logs = await image.logs();
+  }
+  /* eslint-enable no-await-in-loop */
+
+  return logs;
+}
+
 describe("the built image", () => {
   it("answers health only after migrations complete, and builds exactly one context", async () => {
     const image = await startImage(
@@ -280,7 +315,12 @@ describe("the built image", () => {
         true
       );
 
-      const logs = await image.logs();
+      const logs = await logsUntil(
+        image,
+        (seen) =>
+          seen.includes("bootstrap complete") &&
+          seen.slice(seen.indexOf("bootstrap complete")).includes("/api/health")
+      );
 
       expect(logs).toContain("bootstrap complete");
 
@@ -434,15 +474,28 @@ describe("the built image", () => {
 
       const paths = ["/", "/api/health"];
 
-      await Promise.all(
+      const statuses = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
-          fetch(`http://127.0.0.1:3402${paths[index % paths.length]}`).catch(
-            () => undefined
+          fetch(`http://127.0.0.1:3402${paths[index % paths.length]}`).then(
+            (response) => response.status,
+            (error: Error) => error.name
           )
         )
       );
 
-      const logs = await image.logs();
+      // Assert the responses, rather than swallowing them. Nothing else in this
+      // repository asserts that the ordinary document renders at all, so a `/`
+      // that threw would be invisible to every gate: the next-intl request
+      // configuration could be deleted and the suite would stay green.
+      expect(
+        statuses.every((status) => status === 200),
+        `not every response was 200: ${JSON.stringify(statuses)}`
+      ).toBe(true);
+
+      const logs = await logsUntil(
+        image,
+        (seen) => requestLinesIn(seen).length - before >= 24
+      );
 
       // Count request lines, not every line carrying a context id. The bootstrap
       // line carries one too, so matching the whole log would report a single id
