@@ -60,3 +60,9 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/02-storybook-compatibility-g1/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
+
+## Develop audit, 2026-09-21
+
+G1 is accepted at ae00f6b. Preserve official @nx/storybook inference, one Vitest-addon runner, accepted pins and compatibility bridges, ^default inputs, Docs/a11y/MCP and loopback defaults. Full selection/confidentiality proof and 2cg remain S0-10; do not repeat installation as new work.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

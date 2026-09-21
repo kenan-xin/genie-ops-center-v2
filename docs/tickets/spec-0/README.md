@@ -12,7 +12,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. Live claims/status remain in Beads. As verified on 2026-09-21, [S0-01](01-workspace-and-build-inputs/integrated-acceptance.md) is accepted at `cb5b010`, [S0-02/G1](02-storybook-compatibility-g1/integrated-acceptance.md) at `ae00f6b`, and S0-03 is in progress under its [delivered continuation authority](03-module-contracts-and-build-safe-schemas/continuation.md). S0-04 still requires S0-03 acceptance; G1 closure alone does not release it.
+Beads epic: `genie-ops-center-v2-1rd`. The [2026-09-21 audit](audit-2026-09-21.md) compares all twelve tickets with local develop `ea4890b` and Beads. S0-01/S0-02/S0-03 are integrated and closed. S0-04 is reviewed at `61b2408` but unmerged and awaiting real PostgreSQL acceptance; Docker now responds, which is not database proof. S0-05 onward remain unimplemented. [Prepared handoffs](handoffs/README.md) are proposals to dispatch, not implementation authorization from this audit.
 
 ## Execution authority and documentation
 
@@ -29,9 +29,9 @@ Use Superpowers in the existing ticket session/worktree. Refine only unresolved 
 | [S0-01](01-workspace-and-build-inputs/index.md) | `genie-ops-center-v2-1rd.1` | Planning baseline | Establish workspace, import boundaries and data-only build inputs |
 | [S0-02](02-storybook-compatibility-g1/index.md) | `genie-ops-center-v2-1rd.2` | S0-01 | Prove minimal Storybook and component-test compatibility (G1) |
 | [S0-03](03-module-contracts-and-build-safe-schemas/index.md) | `genie-ops-center-v2-1rd.3` | S0-01 | Define foundation module contracts and build-safe schemas |
-| [S0-04](04-context-migrator-and-placeholder/index.md) | `genie-ops-center-v2-1rd.4` | S0-02, S0-03 | Build permanent tenant-context, migrator and placeholder foundation |
-| [S0-05](05-production-startup-and-csp-g2/index.md) | `genie-ops-center-v2-1rd.5` | S0-04 | Prove production startup, one context and minimal CSP (G2) |
-| [S0-06](06-selection-cache-and-build-graph/index.md) | `genie-ops-center-v2-1rd.6` | S0-05 | Complete selection-aware application build graph and local cache proof |
+| [S0-04](04-context-migrator-and-placeholder/index.md) | `genie-ops-center-v2-1rd.4` | S0-02, S0-03; 2tc for acceptance | Build permanent tenant-context, migrator and placeholder foundation |
+| [S0-05](05-production-startup-and-csp-g2/index.md) | `genie-ops-center-v2-1rd.5` | S0-04, 5ph | Prove production startup, one context and minimal CSP (G2) |
+| [S0-06](06-selection-cache-and-build-graph/index.md) | `genie-ops-center-v2-1rd.6` | S0-05, 5ph | Complete selection-aware application build graph and local cache proof |
 | [S0-07](07-migration-concurrency-and-isolation/index.md) | `genie-ops-center-v2-1rd.7` | S0-05 | Complete migration concurrency, recovery and isolation proof |
 | [S0-08](08-module-and-tenant-generators/index.md) | `genie-ops-center-v2-1rd.8` | S0-05 | Deliver stage-appropriate module and tenant generators |
 | [S0-09](09-developer-experience-and-documentation/index.md) | `genie-ops-center-v2-1rd.9` | S0-05 | Complete developer diagnostics, i18n and UI workflow handoff |
@@ -61,6 +61,12 @@ flowchart TD
   A --> C
   B --> D
   C --> D
+  P["5ph Data-only entrypoint hardening"]
+  Q["2tc Disposable database endpoint proof"]
+  A --> P
+  Q --> D
+  P --> E
+  P --> F
   D --> E
   E --> F
   E --> G
@@ -79,7 +85,17 @@ flowchart TD
 
 The pure data-only resolver begins in S0-01 because G1 story discovery needs the same selection semantics. App-owned registry generation remains in the permanent pre-G2 slice; the full selection/cache matrix stays in S0-06/S0-10. No runtime module import moves into tooling.
 
-## Parallel launch waves
+## Current dispatch recommendation
+
+First proposed batch: resume S0-04 acceptance on its retained branch and fix 5ph in a fresh worktree. S0-04 owns its dependency/config window; 5ph must not edit shared manifests/config. S0-04 verifies disposable database access through 2tc. Integrate 5ph first, then the reconciled S0-04 branch. Neither lane starts through this audit.
+
+Then run S0-05 alone, including yt2. After integrated G2, S0-06/S0-07/S0-08/S0-09 may run together under the [shared-file schedule](handoffs/README.md). Preserve all eighteen original ticket-to-ticket edges.
+
+CSP logging yt2 is a child of S0-05, and cache identity 2cg is a child of S0-10. Parent sessions deliver these before closure; children are not pre-start dependencies on their own parent implementation. 2cg still requires S0-06. 2tc remains the S0-04 database prerequisite.
+
+Keep owned children `yt2`, `3yv` and `2cg` manually `blocked` until their parent is claimed and all parent prerequisites are integrated. Parent-child links alone do not suppress `bd ready`. The parent owner then atomically transitions and assigns each unassigned child using `bd update <child-id> --if-status blocked --if-assignee '' --status in_progress --assignee <parent-session-actor>`. Record the parent claim and release reason; stop on a failed guard rather than forcing ownership. Do not briefly reopen a child for a separate session to claim.
+
+## Parallel launch waves (whole-ticket gate order)
 
 | Start after integration of | Sessions that can run concurrently | Limit |
 | --- | --- | --- |
@@ -125,7 +141,7 @@ bd --actor <unique-session-name> update <bead-id> --claim
 
 If claim fails, stop; do not overwrite the owner or retry with forced reassignment. Check prerequisite revisions even if the bead is ready. Stop if the worktree cannot see the approved ticket or if its tracker differs from the shared database.
 
-Use writing-plans only for a bounded implementation plan inside this ticket, followed by the applicable executing-plans or subagent-driven-development workflow. Internal subagents stay within the same claimed ticket; don't let them claim sibling tickets or duplicate the coordinator. Repository Beads rules override any generic TodoWrite/second task tracker suggestion. Ticket-local execution plans/recovery notes are not a second status system; keep decisions/blockers/status on the bead.
+Use writing-plans only for a bounded implementation plan inside this ticket, followed by the applicable executing-plans or subagent-driven-development workflow. Internal subagents stay within the same claimed ticket; don't let them claim sibling tickets or duplicate the coordinator. The delivery owner may also claim explicitly named child obligations in its handoff; those are closure requirements, not separate prerequisite sessions. Repository Beads rules override any generic TodoWrite/second task tracker suggestion. Ticket-local execution plans/recovery notes are not a second status system; keep decisions/blockers/status on the bead.
 
 ## Copy-ready session prompt
 

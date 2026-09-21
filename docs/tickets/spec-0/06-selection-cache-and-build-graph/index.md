@@ -10,7 +10,7 @@ Traceability: R-3/R-3a, R-21–R-23a, R-52; AC-1/AC-5/AC-24; plan ownership tabl
 
 ## Dependencies and worktree ownership
 
-Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
+Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md) and `genie-ops-center-v2-5ph` (normally satisfied before G2).
 
 Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
 
@@ -53,3 +53,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Cover changed package metadata in graph, affected/cache and selected-output restoration; preserve empty/unset, ordering and concurrent-build isolation. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+The data-only inventory/selector/fingerprint and naming checks already exist. Consume integrated 5ph instead of implementing another path validator. Complete pre-Nx serialized selection/source-mode inputs, generation/build/image-prep edges, isolated customer roots and cache restoration/content proof. Raw MODULE_INCLUDE alone cannot represent unset/explicit identity. Publish the shared selection contract for S0-10/2cg; generator templates and Storybook host stay with their owners.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

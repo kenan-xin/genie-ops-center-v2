@@ -52,3 +52,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Reconcile active path/package command examples while retaining historical evidence and generator CLI identity. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+No production app devtools or next-intl mount exists on develop. S0-05 owns initial English runtime strings; complete catalogue/missing-key checks and development-only panels using its accepted app seam. Story-first instructions already exist: correct drift rather than recreate them. AGENTS.md/CLAUDE.md are ignored main-checkout files; coordinate exact edits with existing 3l5 ownership and the integration owner, never expect feature-worktree copies to be tracked.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

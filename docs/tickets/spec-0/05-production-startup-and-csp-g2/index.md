@@ -10,7 +10,7 @@ Traceability: R-19–R-23a, R-32/R-33/R-35/R-36/R-36a, R-40, R-46–R-50; AC-4/A
 
 ## Dependencies and worktree ownership
 
-Hard prerequisites: [S0-04](../04-context-migrator-and-placeholder/index.md).
+Hard prerequisites: [S0-04](../04-context-migrator-and-placeholder/index.md) and `genie-ops-center-v2-5ph`. Deliver child `yt2` within S0-05 before closure.
 
 Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
 
@@ -56,3 +56,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Generate registry/app imports from validated inventory packageName/packageRoot/entrypoint, preserving ID-based runtime behavior. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Develop has only an app skeleton: no production Next build/start, registry target, context composition, image or transport/header harness. Consume accepted S0-03 contracts and integrated S0-04 runtime. Entrypoint hardening (5ph) is a pre-G2 prerequisite. CSP provider failure logging (yt2) is an owned child delivered inside this ticket, not a separate prerequisite session. Preserve the pure CSP helper and denied policy; prove redacted correlated logging through the actual viewer path. Include by-name placeholder imports and actual TSX/page mounting; Node resolution alone is insufficient. The first real Tailwind consumer supplies preset-consumption proof (3yv), using actual compile behavior, not object-shape assertions.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

@@ -83,3 +83,9 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 ## Historical implementation plan
 
 The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/01-workspace-and-build-inputs/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
+
+## Develop audit, 2026-09-21
+
+Accepted at cb5b010; later boundary, probe, cache and lint-coverage repairs are integrated through ea4890b. Preserve them. No foundation rebuild. Live-hook proof (2o4), first Tailwind-consumer proof (3yv), and downstream naming completion (ygn) remain separate; this audit does not reopen acceptance.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

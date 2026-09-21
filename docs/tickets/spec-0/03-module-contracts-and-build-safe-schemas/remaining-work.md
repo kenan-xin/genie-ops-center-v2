@@ -1,5 +1,7 @@
 # S0-03 remaining work and acceptance map
 
+Historical execution record: S0-03 was integrated and closed at `9f67536`; see the [current audit](../audit-2026-09-21.md). Earlier pauses, remaining-task lists and exclusive writer windows below are not current dispatch instructions.
+
 Companion to the [delivered continuation authority](continuation.md). This map preserves Task 6–11 numbering used by the existing session without requiring its scratch plan. The [ticket](index.md), [Spec 0](../../../specs/00-monorepo-foundation.md), [module contract](../../../architecture/module-contract.md) and [branding requirements](../../../architecture/branding-seed.md) govern exact behavior. Check source and Beads before repeating work; reported completion is not integrated acceptance.
 
 | Task | Required result | Meaningful proof |

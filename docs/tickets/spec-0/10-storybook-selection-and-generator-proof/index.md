@@ -12,6 +12,8 @@ Traceability: R-41a–R-41e/R-3a, AC-27/AC-28/AC-29; UI development contract.
 
 Hard prerequisites: [S0-06](../06-selection-cache-and-build-graph/index.md), [S0-08](../08-module-and-tenant-generators/index.md), [S0-09](../09-developer-experience-and-documentation/index.md).
 
+Owned child `2cg` stays manually blocked until this parent is claimed and all three prerequisites are integrated. The parent owner transitions and assigns the unassigned child in one guarded update: `bd update genie-ops-center-v2-2cg --if-status blocked --if-assignee '' --status in_progress --assignee <parent-session-actor>`. Record the release reason and stop on a failed guard. Never launch it as an independent host-editing session; close it with evidence before parent closure.
+
 Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
 
 Owned surface: Storybook discovery/target inputs, browser-safe story fixtures and selection tests; package-local host configuration.
@@ -53,3 +55,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Use validated inventory roots for selected story discovery; test changed package metadata invalidation and excluded-story absence. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Selected discovery and representative stories already exist. Extend generated UI/headless/custom-app fixtures and full output/MCP confidentiality. 2cg is an owned child: fix unset/empty cache identity using the S0-06 shared pre-hash contract, not a competing format. The inventory is no longer empty: develop contains placeholder metadata. Preserve ^default source/story invalidation and nonempty/failure controls. Do not repeat G1 installation.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

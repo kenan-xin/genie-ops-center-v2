@@ -54,3 +54,9 @@ Report changed paths, commands and real outcomes, red/green evidence, unverified
 ## Naming revision, 2026-09-20
 
 Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Keep the <id> folder and generate @genie/module-<id> package names with unprefixed IDs; pass shared validation including hand-edited-manifest rejection. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+No module:new or tenant:new implementation exists on develop. Reuse core tenant/branding schemas and integrated placeholder/history/factory/app test conventions. Preserve omission-only branding until 1rd.3.3 is decided; do not invent null defaults, setup foreground derivation or shared font ownership. Emit seven tenant files and @genie/module-<id> at packages/modules/<id>. Generated modules prove denial under the unchanged stub. Supply ygn generator evidence without claiming downstream image/Storybook acceptance.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

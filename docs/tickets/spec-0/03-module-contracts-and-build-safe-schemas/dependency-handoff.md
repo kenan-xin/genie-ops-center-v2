@@ -1,5 +1,7 @@
 # S0-03 dependency slice and shared-file handoff
 
+Historical execution record: S0-03 was integrated and closed at `9f67536`; see the [current audit](../audit-2026-09-21.md). Earlier pauses, remaining-task lists and exclusive writer windows below are not current dispatch instructions.
+
 Prepared 2026-09-20 for `genie-ops-center-v2-lbt`. **Prepared, not accepted or transferred.** S0-02 adoption remains blocked until the integration owner accepts this slice on develop and explicitly transfers ownership. S0-03 remains in progress; Phase B has not started.
 
 ## Reconciled baseline

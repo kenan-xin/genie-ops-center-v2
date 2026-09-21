@@ -1,5 +1,7 @@
 # S0-03 Module Contracts and Build-Safe Schemas Implementation Plan
 
+Historical execution record: S0-03 was integrated and closed at `9f67536`; see the [current audit](../audit-2026-09-21.md). Earlier pauses, remaining-task lists and exclusive writer windows below are not current dispatch instructions.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give core the final public type surface for every module contract point, the strict tenant-configuration schemas, the request-owned authorization stub and the pure content security policy functions, with no runtime service behind any of them.
