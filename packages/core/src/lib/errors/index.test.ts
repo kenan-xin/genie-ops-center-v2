@@ -141,11 +141,43 @@ describe("safeBodyFor", () => {
   it("lets no caller put its own text into the response", () => {
     const upstream = 'duplicate key value violates unique constraint "x"';
 
-    // A definition built from upstream text is refused by its code: a code is a
-    // core catalogue entry or a module's `<id>:<code>`, never free text.
+    // A definition assembled at the throw site is refused: its code is neither a
+    // core catalogue entry nor a definition this module declared.
     expect(() => new AppError({ code: upstream, message: upstream })).toThrow(
-      "catalogue code"
+      "not a declared error"
     );
+
+    // A forged module code has the right shape and is still refused, because the
+    // mark a declared definition carries cannot be written by a caller.
+    expect(
+      () =>
+        new AppError({
+          code: "placeholder:record-locked",
+          message: upstream,
+        })
+    ).toThrow("not a declared error");
+
+    // A real core code with a caller's message keeps the catalogue's message.
+    const forgedCore = new AppError({
+      code: "internal-error",
+      message: upstream,
+    });
+
+    expect(forgedCore.safeMessage).toBe(CORE_ERROR_MESSAGES["internal-error"]);
+
+    expect(JSON.stringify(safeBodyFor(forgedCore, REQUEST_ID))).not.toContain(
+      "duplicate key"
+    );
+
+    // A copy of a declared module definition with the message replaced is
+    // refused as well: the copy loses the mark.
+    expect(
+      () =>
+        new AppError({
+          ...placeholderErrors["record-locked"],
+          message: upstream,
+        })
+    ).toThrow("not a declared error");
 
     // The path a transport takes: it hands over what it caught, and a caught
     // error becomes the generic entry with none of its text.

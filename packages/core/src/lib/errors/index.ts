@@ -26,6 +26,13 @@ export const GENERIC_ERROR_CODE = "internal-error";
 export type CoreErrorCode = keyof typeof CORE_ERROR_MESSAGES;
 
 /**
+ * The mark a definition built here carries. The symbol is module-private and exported by no
+ * entry point, so an object literal a caller writes cannot hold it. That is what separates a
+ * declared error from one assembled at a throw site out of whatever text was at hand.
+ */
+const DECLARED = Symbol("genie.error-definition");
+
+/**
  * One error a caller may raise: a stable code with its fixed safe message. A definition is
  * written where the error is declared, in this file for core and through `defineModuleErrors`
  * for a module. It never carries a value from a request, a database or an upstream service.
@@ -33,6 +40,7 @@ export type CoreErrorCode = keyof typeof CORE_ERROR_MESSAGES;
 export type ErrorDefinition = {
   readonly code: string;
   readonly message: string;
+  readonly [DECLARED]?: true;
 };
 
 /** The former name of `ErrorDefinition`, kept for the module-facing spelling. */
@@ -47,7 +55,23 @@ export type SafeErrorBody = {
 
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
-const MODULE_CODE = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
+/**
+ * Builds one frozen definition and marks it as declared. The mark is not enumerable, so an
+ * object spread of a definition does not carry it: a copy with the message replaced is refused
+ * like any other object a caller assembles.
+ */
+function declare(code: string, message: string): ErrorDefinition {
+  const definition = { code, message };
+
+  Object.defineProperty(definition, DECLARED, {
+    value: true,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
+
+  return Object.freeze(definition);
+}
 
 /**
  * The core catalogue as definitions, which is what an error is raised with. Every entry is
@@ -59,7 +83,7 @@ export const CORE_ERRORS = Object.freeze(
   Object.fromEntries(
     Object.entries(CORE_ERROR_MESSAGES).map(([code, message]) => [
       code,
-      Object.freeze({ code, message }),
+      declare(code, message),
     ])
   )
 ) as Readonly<Record<CoreErrorCode, ErrorDefinition>>;
@@ -102,10 +126,7 @@ export function defineModuleErrors<
       throw new Error(`Error code "${code}" has no message.`);
     }
 
-    return [
-      code,
-      Object.freeze({ code: moduleErrorCode(moduleId, code), message }),
-    ] as const;
+    return [code, declare(moduleErrorCode(moduleId, code), message)] as const;
   });
 
   // SAFETY: the entries are built from this object's own keys, one definition each, which is
@@ -128,25 +149,27 @@ export class AppError extends Error {
     definition: ErrorDefinition,
     options: { readonly cause?: unknown } = {}
   ) {
-    // A code reaches a client, so it may never be built from request, database or upstream
-    // text. It is a core catalogue code, or a module's `<id>:<code>` from defineModuleErrors.
-    if (
-      !MESSAGES_BY_CODE.has(definition.code) &&
-      !MODULE_CODE.test(definition.code)
-    ) {
+    // Both halves reach a client, so neither may be assembled at the throw site. A core code
+    // takes its message from the catalogue, whatever the caller supplied beside it. Any other
+    // code must carry the private mark, which only defineModuleErrors can put there.
+    const catalogued = MESSAGES_BY_CODE.get(definition.code);
+
+    if (catalogued === undefined && definition[DECLARED] !== true) {
       throw new Error(
-        `"${definition.code}" is not a catalogue code. Raise a core error from CORE_ERRORS, or a module error from defineModuleErrors.`
+        `"${definition.code}" is not a declared error. Raise a core error from CORE_ERRORS, or a module error from defineModuleErrors.`
       );
     }
 
+    const message = catalogued ?? definition.message;
+
     super(
-      definition.message,
+      message,
       options.cause === undefined ? undefined : { cause: options.cause }
     );
 
     this.name = "AppError";
     this.code = definition.code;
-    this.safeMessage = definition.message;
+    this.safeMessage = message;
   }
 }
 

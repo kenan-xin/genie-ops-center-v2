@@ -34,6 +34,27 @@ An error is now raised with a definition, a frozen `{ code, message }` pair. Cor
 
 A separate case proves the transport path: `safeBodyFor` given a caught `Error` whose message is `duplicate key value violates unique constraint "x"` answers the generic code and message, and the serialized body holds neither the constraint text nor the wrapped cause.
 
+### A valid code with a caller's message
+
+A valid code and a frozen object are not enough on their own, because a caller can write an object literal with a real code beside its own text. Two rules close that.
+
+A core code takes its message from the catalogue, whatever the caller supplied. A definition with any other code must carry a mark that `declare()` sets with `Object.defineProperty`, not enumerable, so an object spread of a real definition does not copy it. The symbol is module-private and no entry point exports it, so a caller cannot write it.
+
+The cases, all through the supported API:
+
+| What the caller does | What happens |
+| --- | --- |
+| `new AppError({ code: <database text>, message: <database text> })` | refused, `not a declared error` |
+| `new AppError({ code: "placeholder:record-locked", message: <database text> })`, the code spelled correctly by hand | refused, `not a declared error` |
+| `new AppError({ code: "internal-error", message: <database text> })` | accepted, and the message is the catalogue's; the serialized body holds none of the text |
+| `new AppError({ ...placeholderErrors["record-locked"], message: <database text> })` | refused: the spread drops the mark |
+
+| Mutation | Result |
+| --- | --- |
+| The mark made enumerable, so a spread carries it | 1 failed |
+| The caller's message trusted for a core code | 1 failed |
+| The mark replaced by a check of the code's shape | 1 failed |
+
 ### The package root exports the factory
 
 `packages/core/package.json` maps `.` to `src/index.ts`, and that file read `export {}`, so `createTenantContext` was unreachable through `@genie/core` however complete its implementation was. The root now exports the tenant-context factory and its types, the environment validator, the error catalogue, the authorization seam and the module-contract surface. `packages/core/src/index.test.ts` imports the package root, builds a context through it, and asserts that no `db`, `pool`, `settings`, `branding` or `storage` singleton is exported (R-17).
