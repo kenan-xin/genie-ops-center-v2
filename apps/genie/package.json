@@ -7,7 +7,7 @@
     "build": "next build",
     "generate-registry": "node tools/generate-registry.ts",
     "start": "node tools/start-standalone.mjs",
-    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "lint": "oxlint --config ../../oxlint.config.ts src testing tools",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"

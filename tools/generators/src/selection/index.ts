@@ -13,3 +13,5 @@ export type {
 } from "./resolve.ts";
 
 export { resolveModuleSelection } from "./resolve.ts";
+
+export { emitRegistryModule } from "../registry/emit.ts";

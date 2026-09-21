@@ -294,6 +294,22 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       },
     ]
   ),
+  // An app's own build tooling, which ADR 0008 requires: the app generates its
+  // registry, so the generation script must reach the selector. It runs at build
+  // time and ships nothing, so it reads the generators through their one public
+  // entrypoint and nothing else. Every other app ban holds, the database driver
+  // included. The glob is `tools/` only, so nothing under `src/` gains this.
+  restrict(
+    ["apps/*/tools/**", "customers/*/app/tools/**"],
+    [
+      { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
+      {
+        group: [...TOOLING, "!@genie/generators"],
+        message:
+          "an app's build tooling consumes only the public generators entrypoint (R-7a).",
+      },
+    ]
+  ),
   restrict(
     ["packages/config/**"],
     [

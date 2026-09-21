@@ -703,6 +703,53 @@ describe("the import direction, proved through the oxlint binary", () => {
     expect(result.output).toContain("never imports the shared configuration");
   });
 
+  it("lets an app's build tooling consume the public generators entrypoint", () => {
+    // ADR 0008 puts registry generation in the app, so this script has to reach
+    // the selector. It is build-time composition and ships nothing.
+    const result = lintAt(
+      "apps/genie/tools/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(false);
+
+    expect(result.output).not.toMatch(/no-restricted-imports/);
+  });
+
+  it("still stops an app's build tooling reaching a generator subpath", () => {
+    const result = lintAt(
+      "apps/genie/tools/__boundary__.ts",
+      `import "@genie/generators/selection";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain(
+      "consumes only the public generators entrypoint"
+    );
+  });
+
+  it("still stops an app's build tooling opening a database connection", () => {
+    // The exception widens one ban and no other. Without this the entry could
+    // drop the driver ban and every remaining test would still pass.
+    const result = lintAt("apps/genie/tools/__boundary__.ts", `import "pg";\n`);
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("an app opens no connection (DEC-34).");
+  });
+
+  it("keeps the ban for app source, which is not build tooling", () => {
+    const result = lintAt(
+      "apps/genie/src/tools/__boundary__.ts",
+      `import "@genie/generators";\n`
+    );
+
+    expect(result.failed).toBe(true);
+
+    expect(result.output).toContain("never imports a generator");
+  });
+
   it("rejects an app importing a generator by relative path", () => {
     const result = lintAt(
       "apps/genie/__boundary__/__boundary__.ts",
