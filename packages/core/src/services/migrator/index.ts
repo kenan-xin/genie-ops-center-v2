@@ -51,6 +51,42 @@ export function migrationPlan(
   return [CORE_HISTORY, ...modules];
 }
 
+/** What the run changed on its session, tracked apart, because each is undone on its own. */
+export type SessionState = {
+  /** `SET lock_timeout` succeeded, so the setting must be reset even if the lock never came. */
+  readonly settingApplied: boolean;
+  /** The advisory lock is held by this session, so it must be released. */
+  readonly locked: boolean;
+};
+
+/** One step of restoring a session, in the order it must run. */
+export type CleanupStep = "unlock" | "reset";
+
+/**
+ * What a session needs before it may go back to the pool. The lock is released first and the
+ * setting is reset after, and each is decided on its own: an acquisition that timed out leaves
+ * no lock to release and still leaves `lock_timeout` set on that session.
+ */
+export function sessionCleanupPlan(
+  state: SessionState
+): readonly CleanupStep[] {
+  const steps: CleanupStep[] = [];
+
+  if (state.locked) steps.push("unlock");
+
+  if (state.settingApplied) steps.push("reset");
+
+  return steps;
+}
+
+/**
+ * Whether a client may serve another caller. A session whose restoration did not confirm is
+ * destroyed instead, so no later caller inherits a lock or a changed setting (R-26a).
+ */
+export function releaseMode(cleanupConfirmed: boolean): "reuse" | "destroy" {
+  return cleanupConfirmed ? "reuse" : "destroy";
+}
+
 /** True when Postgres refused the lock because the wait limit expired. */
 function isLockTimeout(error: Error): boolean {
   return "code" in error && error.code === LOCK_NOT_AVAILABLE;
@@ -73,11 +109,12 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
   const log = run.log ?? (() => {});
   const client = await run.pool.connect();
 
+  let settingApplied = false;
   let locked = false;
-  let healthy = true;
 
   try {
     await client.query(`SET lock_timeout = ${run.env.lockTimeoutMs}`);
+    settingApplied = true;
 
     try {
       await client.query("SELECT pg_advisory_lock($1)", [
@@ -112,44 +149,53 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
           migrationsTable: history.table,
         });
       } catch (error) {
-        healthy = false;
-
         throw new AppError(CORE_ERRORS["migration-failed"], { cause: error });
       }
 
       log({ event: "migration-history-done", history: history.name });
     }
   } finally {
-    healthy = (await releaseSession(client, locked, log)) && healthy;
+    const confirmed = await releaseSession(
+      client,
+      { settingApplied, locked },
+      log
+    );
 
-    // An uncertain session never goes back to the pool for another caller (R-26a).
-    client.release(!healthy);
+    // An uncertain session never goes back to the pool for another caller (R-26a). A cleanup
+    // problem never replaces the error this block is already carrying, either.
+    client.release(releaseMode(confirmed) === "destroy");
   }
 }
 
+const CLEANUP_SQL: Readonly<Record<CleanupStep, string>> = {
+  unlock: "SELECT pg_advisory_unlock($1)",
+  reset: "RESET lock_timeout",
+};
+
 /**
- * Unlocks and restores the session, and answers whether the session is fit for reuse. A cleanup
- * failure is reported and swallowed here, so the migration error the caller is already raising
- * stays the one it sees.
+ * Runs the cleanup plan and answers whether every step confirmed. A cleanup failure is reported
+ * here and swallowed, so the migration error the caller is already raising stays the one it
+ * sees; the false answer is what sends the client away instead of back to the pool.
  */
 async function releaseSession(
   client: PoolClient,
-  locked: boolean,
+  state: SessionState,
   log: MigrationLog
 ): Promise<boolean> {
-  if (!locked) return true;
+  for (const step of sessionCleanupPlan(state)) {
+    try {
+      // Each step depends on the one before it, on this one session.
+      // oxlint-disable-next-line no-await-in-loop
+      await client.query(
+        CLEANUP_SQL[step],
+        step === "unlock" ? [MIGRATION_LOCK_KEY.toString()] : []
+      );
+    } catch {
+      log({ event: "migration-cleanup-failed", history: step });
 
-  try {
-    await client.query("SELECT pg_advisory_unlock($1)", [
-      MIGRATION_LOCK_KEY.toString(),
-    ]);
-
-    await client.query("RESET lock_timeout");
-
-    return true;
-  } catch {
-    log({ event: "migration-cleanup-failed" });
-
-    return false;
+      return false;
+    }
   }
+
+  return true;
 }

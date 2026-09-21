@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { CORE_HISTORY, MIGRATION_LOCK_KEY, migrationPlan } from "./index.ts";
+import {
+  CORE_HISTORY,
+  MIGRATION_LOCK_KEY,
+  migrationPlan,
+  releaseMode,
+  sessionCleanupPlan,
+} from "./index.ts";
 
 describe("the migration plan", () => {
   it("applies core first, then each module in registry order", () => {
@@ -30,6 +36,45 @@ describe("the migration plan", () => {
   it("gives core its own folder and the core ledger table", () => {
     expect(CORE_HISTORY.table).toBe("__drizzle_migrations");
     expect(CORE_HISTORY.folder).toBe("packages/core/drizzle");
+  });
+});
+
+describe("the session cleanup plan", () => {
+  it("resets the setting after a lock the run never got", () => {
+    // The failure the review found: `SET lock_timeout` succeeded, the lock timed
+    // out, and the old code left the setting on a client it returned to the pool.
+    expect(sessionCleanupPlan({ settingApplied: true, locked: false })).toEqual(
+      ["reset"]
+    );
+  });
+
+  it("unlocks first and resets after, when the run held the lock", () => {
+    expect(sessionCleanupPlan({ settingApplied: true, locked: true })).toEqual([
+      "unlock",
+      "reset",
+    ]);
+  });
+
+  it("does nothing when the setting never applied", () => {
+    expect(
+      sessionCleanupPlan({ settingApplied: false, locked: false })
+    ).toEqual([]);
+  });
+
+  it("still unlocks when the setting failed but the lock was taken", () => {
+    expect(sessionCleanupPlan({ settingApplied: false, locked: true })).toEqual(
+      ["unlock"]
+    );
+  });
+});
+
+describe("the release decision", () => {
+  it("returns a confirmed session to the pool", () => {
+    expect(releaseMode(true)).toBe("reuse");
+  });
+
+  it("destroys a session whose restoration did not confirm", () => {
+    expect(releaseMode(false)).toBe("destroy");
   });
 });
 
