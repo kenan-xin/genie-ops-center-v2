@@ -450,11 +450,11 @@ describe("the built image", () => {
       // pass on a process that built a second context for every request.
       const requestLines = requestLinesIn(logs);
 
-      // Half the load went to the health route, which is the one request-bound
-      // handler that exists at this task. Asserting the exact count is what
-      // keeps the set assertion below honest: an empty set has size zero, but a
-      // set built from one served request also has size one.
-      expect(requestLines.length - before).toBe(12);
+      // Both paths are request-bound now: the ordinary document renders per
+      // request and records a line, and the health route records one. Asserting
+      // the exact count is what keeps the set assertion below honest: an empty
+      // set has size zero, but one served request also has size one.
+      expect(requestLines.length - before).toBe(24);
 
       const contextIds = new Set(
         requestLines.map((line) => /"contextId":"([^"]+)"/.exec(line)?.[1])
