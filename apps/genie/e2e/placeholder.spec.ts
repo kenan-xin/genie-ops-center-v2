@@ -1,5 +1,5 @@
 import { AxeBuilder } from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The criterion is WCAG 2.1 AA (DEC-21, `docs/core/tech-stack.md`), which is a
@@ -86,37 +86,73 @@ test("the placeholder read procedure succeeds through the real transport", async
   expect(body.result).toBeDefined();
 });
 
-// The criterion is "the policy strips no stylesheet" (DEC-31 as amended: no
-// nonce). The value asserted must be one only the application stylesheet can
-// produce. Tailwind's preflight sets `body { margin: 0 }`, while the browser's
-// own user-agent stylesheet leaves `body` at `8px`. Both are non-empty, so an
-// emptiness check passes with no application CSS at all; the exact value is what
-// fails when the stylesheet is missing. `margin-top` is read rather than the
-// shorthand, so the assertion does not depend on how a browser formats a
-// four-sided shorthand.
-//
-// The hydration claim was removed. This page has no client-side behaviour to
-// observe: every component reachable here renders on the server, and the one
-// client component in the workspace is not mounted on any route, so no
-// interaction or marker can distinguish "React attached" from "React never
-// ran". The reload below still asserts the one client-side signal the page does
-// emit: no uncaught page error, which a hydration crash would produce.
-test("the application stylesheet is applied without a nonce", async ({
-  page,
-}) => {
+// The criterion is "the policy strips nothing" (DEC-31 as amended: no nonce, and
+// no `script-src`, `style-src` or `default-src` either). Both halves are observed
+// through the browser's own refusals, because the rendered page cannot show
+// either one: a policy that blocked the framework's inline bootstrap would leave
+// the server-rendered markup and the computed margin exactly as they are, with
+// hydration simply never running. That is the case this test exists for, and a
+// `pageerror` listener cannot see it — a refused script never executes, so it
+// never throws. The `securitypolicyviolation` events and the console refusals
+// are what the browser emits instead.
+declare global {
+  interface Window {
+    /** Written by the init script below and read back by `cspViolations`. */
+    genieCspViolations?: string[];
+  }
+}
+
+// The console wording this Chromium actually emits, measured against a policy
+// that blocks the framework's inline bootstrap: "Executing inline script violates
+// the following Content Security Policy directive 'script-src 'self'' … The
+// action has been blocked." The older "Refused to execute …" phrasing is kept
+// too, so a Chromium that reverts to it is still caught.
+const CSP_REFUSAL =
+  /violates the following Content Security Policy directive|Refused to (execute|apply|load)/i;
+
+const cspViolations = (page: Page): Promise<string[]> =>
+  page.evaluate(() => window.genieCspViolations ?? []);
+
+test("the policy strips no stylesheet and no script", async ({ page }) => {
+  // Installed before the document's first script runs, so a refusal on the first
+  // load cannot precede the listener.
+  await page.addInitScript(() => {
+    window.genieCspViolations = [];
+
+    document.addEventListener("securitypolicyviolation", (event) => {
+      window.genieCspViolations?.push(
+        `${event.violatedDirective} ${event.blockedURI}`
+      );
+    });
+  });
+
+  const refusals: string[] = [];
+
+  page.on("console", (message) => {
+    if (CSP_REFUSAL.test(message.text())) {
+      refusals.push(message.text());
+    }
+  });
+
   await page.goto("/");
 
+  // The stylesheet half. Tailwind's preflight sets `body { margin: 0 }` while the
+  // browser's own user-agent stylesheet leaves it at `8px`, so `0px` is a value
+  // only the application stylesheet produces. `margin-top` is read rather than
+  // the shorthand, so the assertion does not depend on how a browser formats a
+  // four-sided shorthand.
   const margin = await page
     .locator("body")
     .evaluate((node) => getComputedStyle(node).getPropertyValue("margin-top"));
 
   expect(margin).toBe("0px");
 
-  const errors: string[] = [];
+  expect(await cspViolations(page)).toEqual([]);
 
-  page.on("pageerror", (error) => errors.push(error.message));
-
+  // A second navigation, so a listener that had been installed too late to see
+  // the first load cannot carry the test.
   await page.reload();
 
-  expect(errors).toEqual([]);
+  expect(await cspViolations(page)).toEqual([]);
+  expect(refusals).toEqual([]);
 });

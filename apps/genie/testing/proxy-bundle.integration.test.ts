@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 /**
  * The claim, stated three times in the source (`src/proxy.ts`,
@@ -13,14 +13,21 @@ import { describe, expect, it } from "vitest";
  * may import anywhere: adding `import { moduleById } from "./registry.ts"` to
  * `src/proxy.ts` puts the driver back and no other gate notices.
  *
- * This runs against the built output in `apps/genie/.next`, which the integration
- * target builds first. `pg` is externalised from every chunk (Turbopack leaves it
- * a runtime require), so chunk text alone cannot see it; what grows when the
- * driver is pulled in is the build's file trace. Both are checked, and the trace
- * is what decides.
+ * This runs against the built output in `apps/genie/.next`. The detector is the
+ * build's file trace, and only the file trace. Chunk text cannot serve: `pg` is
+ * externalised from every chunk, so Turbopack leaves a runtime require and never
+ * writes the specifier into the emitted text. Measured on this build, the
+ * `/api/status` route reaches the driver through 63 traced files, and its own
+ * chunks — 498,777 bytes of them — contain zero driver tokens. A token search
+ * over chunk text therefore returns zero whether or not the proxy reaches the
+ * driver, which is why no such search is asserted here.
  */
 
-const NEXT_ROOT = resolve(import.meta.dirname, "../.next");
+const APP_ROOT = resolve(import.meta.dirname, "..");
+
+const WORKSPACE_ROOT = resolve(APP_ROOT, "../..");
+
+const NEXT_ROOT = join(APP_ROOT, ".next");
 
 /** The proxy's entry file, which the build emits for `src/proxy.ts`. */
 const PROXY_ENTRY = join(NEXT_ROOT, "server/middleware.js");
@@ -33,9 +40,6 @@ const DRIVER_CONTROL_TRACE = join(
   NEXT_ROOT,
   "server/app/api/status/route.js.nft.json"
 );
-
-/** A quoted `pg` or `pg-*` module specifier, or the driver's package name. */
-const DRIVER_TOKEN = /["']pg(?:-[a-z]+)*["']|node-postgres/;
 
 type Trace = { readonly files: readonly string[] };
 
@@ -55,40 +59,92 @@ function isDriverFile(filePath: string): boolean {
     );
 }
 
-/** The proxy's own chunk files, located from the entry file's requires. */
-function proxyChunks(): readonly string[] {
-  const entry = readFileSync(PROXY_ENTRY, "utf8");
+/** Every source tree whose change can alter the built proxy. */
+function sourceRoots(): readonly string[] {
+  const modulesRoot = join(WORKSPACE_ROOT, "packages/modules");
 
-  return [...entry.matchAll(/R\.c\("([^"]+)"\)/g)].flatMap((match) => {
-    const chunk = match[1] ?? "";
+  const moduleSources = readdirSync(modulesRoot, {
+    withFileTypes: true,
+  }).flatMap((entry) =>
+    entry.isDirectory() ? [join(modulesRoot, entry.name, "src")] : []
+  );
 
-    return chunk.length > 0 ? [join(NEXT_ROOT, chunk)] : [];
-  });
+  return [
+    join(APP_ROOT, "src"),
+    join(APP_ROOT, "tools"),
+    join(WORKSPACE_ROOT, "packages/core/src"),
+    join(WORKSPACE_ROOT, "packages/ui/src"),
+    ...moduleSources,
+  ];
 }
 
-const countTokens = (text: string): number =>
-  [...text.matchAll(new RegExp(DRIVER_TOKEN, "g"))].length;
+/**
+ * Files under the watched roots that are build outputs rather than hand-written
+ * source. `generate-registry` declares `src/modules.ts` as its output, so Nx
+ * restores it on a cache hit and writes it with a fresh modification time — its
+ * timestamp then says nothing about whether `.next` is current. Measured: without
+ * this exclusion the check fired on a correct tree under root `pnpm test`, where
+ * `build` was a cache hit and `generate-registry` was restored.
+ */
+const GENERATED_SOURCES = new Set([join(APP_ROOT, "src", "modules.ts")]);
+
+/** The newest modification time under a directory, in milliseconds. */
+function newestMtimeMs(root: string): number {
+  let newest = 0;
+
+  const walk = (current: string): void => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const child = join(current, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(child);
+      } else if (!GENERATED_SOURCES.has(child)) {
+        newest = Math.max(newest, statSync(child).mtimeMs);
+      }
+    }
+  };
+
+  walk(root);
+
+  return newest;
+}
+
+/**
+ * The artifact this test reads has to be the one the current source produces. A
+ * stale `.next` would let the driver assertion pass for the wrong reason: the
+ * build output would carry no driver because it predates the change that added
+ * one. `test:integration` depends on `build` through the Nx graph, but the
+ * documented gate runs vitest directly, and a cache hit restores nothing without
+ * a declared output, so the precondition is checked here rather than assumed.
+ *
+ * The verdict is modification time, and it is the right signal in this
+ * direction: the build reads every source before it emits the proxy entry, so a
+ * source newer than that entry means the entry does not reflect it. (This is the
+ * opposite of the image guard's situation, where the image builds its own `.next`
+ * and local timestamps are meaningless — see `image.startup.test.ts`.)
+ */
+beforeAll(() => {
+  let builtAt: number;
+
+  try {
+    builtAt = statSync(PROXY_ENTRY).mtimeMs;
+  } catch {
+    throw new Error(
+      `The build output is missing: ${PROXY_ENTRY} does not exist. Build it:\n  MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build`
+    );
+  }
+
+  const newestSource = Math.max(...sourceRoots().map(newestMtimeMs));
+
+  if (newestSource > builtAt) {
+    throw new Error(
+      `The built proxy at ${PROXY_ENTRY} is older than the source it is built from, so this test would read stale output. Rebuild it:\n  MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build`
+    );
+  }
+});
 
 describe("the proxy bundle's dependency closure", () => {
   it("reaches no database driver, while a database route does", () => {
-    // Locate the proxy's chunks from the build manifest, then read them. A
-    // locator that found nothing would make the token search vacuous, so its
-    // count is asserted and the proxy's own header string is required.
-    const chunks = proxyChunks();
-
-    expect(
-      chunks.length,
-      "no proxy chunks located from the build manifest"
-    ).toBeGreaterThan(0);
-
-    const chunkText = chunks
-      .map((chunk) => readFileSync(chunk, "utf8"))
-      .join("\n");
-
-    // The deny baseline the proxy writes. If this is absent the locator read the
-    // wrong files, and the driver search below would be reading nothing.
-    expect(chunkText).toContain("frame-ancestors");
-
     // 1. The trace. `pg` is externalised from every chunk, so the file trace is
     // what grows when the driver is pulled in. Zero driver files in the proxy's
     // closure.
@@ -99,32 +155,15 @@ describe("the proxy bundle's dependency closure", () => {
       `the proxy bundle traced database driver files: ${proxyDriverFiles.join(", ")}`
     ).toEqual([]);
 
-    // 2. The chunk text. No proxy chunk requires a driver module specifier.
-    expect(countTokens(chunkText), "a proxy chunk names the driver").toBe(0);
-
     // Positive control, in the same test. A route that imports the core root
-    // does reach the driver, so both halves of the check can see it: the trace
-    // lists driver files, and the driver's own bytes match the token search. A
-    // check that silently matched nothing fails here.
-    const controlDriverFiles = readTrace(DRIVER_CONTROL_TRACE).files.flatMap(
-      (file) =>
-        isDriverFile(file) ? [resolve(dirname(DRIVER_CONTROL_TRACE), file)] : []
-    );
+    // does reach the driver, so the detector can see one: its trace lists driver
+    // files. A detector that silently matched nothing fails here.
+    const controlDriverFiles =
+      readTrace(DRIVER_CONTROL_TRACE).files.filter(isDriverFile);
 
     expect(
       controlDriverFiles.length,
       "the positive control route traced no driver files"
-    ).toBeGreaterThan(0);
-
-    const driverText = controlDriverFiles
-      .flatMap((file) =>
-        file.endsWith("pg-pool/index.js") ? [readFileSync(file, "utf8")] : []
-      )
-      .join("\n");
-
-    expect(
-      countTokens(driverText),
-      "the token search matched no driver bytes"
     ).toBeGreaterThan(0);
   });
 });

@@ -127,7 +127,16 @@ Reverted, rebuilt, passes.
 
 The claim in `apps/genie/src/proxy.ts`, `src/viewer-routes.ts` and `src/context.ts` — that the proxy bundle carries no database driver — was measured zero times. It is an architecture claim (`pg` is banned outside core), so it now has an executable check.
 
-`apps/genie/testing/proxy-bundle.integration.test.ts` → **`the proxy bundle's dependency closure reaches no database driver, while a database route does`**, run against the built output. Chunk text alone cannot see the driver, because `pg` is externalised from every JS chunk; the detector is the Next node-file-trace manifests. The test locates the proxy's chunks from the `R.c("server/chunks/…")` lines in `.next/server/middleware.js` (asserting it found some, so the locator cannot silently find none), asserts those chunks contain `frame-ancestors` (proving they are the proxy), asserts the proxy trace's driver files are `[]` and its chunk text has zero driver tokens — and carries a **positive control**: the `/api/status` route trace must have driver files, and `pg-pool/index.js` must match the driver token. Without the control, a detector that matched nothing would pass vacuously.
+`apps/genie/testing/proxy-bundle.integration.test.ts` → **`the proxy bundle's dependency closure reaches no database driver, while a database route does`**, run against the built output. The detector is the Next node-file-trace manifests, and **only** the manifests: the proxy's trace must list zero driver files. It carries a **positive control** in the same test — the `/api/status` route's trace must list driver files, so a detector that silently matched nothing fails.
+
+A chunk-text token search was written first and **removed as dead**. `pg` is externalised from every chunk, so Turbopack never writes the specifier into the emitted text, and a token search over chunk text returns zero whether or not the driver is present. Measured on this build by repointing the control at the `/api/status` route's own chunks, which reach the driver through 63 traced files: 498,777 bytes of chunk text, **0 driver tokens**, asserted `> 0` and failing:
+
+```
+AssertionError: the status route's own chunks name the driver: expected 0 to be greater than 0
+  at testing/proxy-bundle.integration.test.ts:176
+```
+
+The earlier version's control did not cover this, because it ran the same search over `pg-pool`'s source bytes — a different corpus from bundle chunks. It proved the regex matched driver source and nothing about whether the search could see a driver inside a chunk.
 
 Watched able to fail by importing the module registry into `src/proxy.ts`, then rebuilding:
 
@@ -142,9 +151,18 @@ AssertionError: the proxy bundle traced database driver files:
 
 Reverted, rebuilt, passes.
 
+**The artifact it reads is guarded.** A stale `.next` would let the driver assertion pass for the wrong reason, so the test refuses to run against one: it fails when the built proxy entry is older than the newest file under the watched source roots (`apps/genie/src`, `apps/genie/tools`, `packages/core/src`, `packages/ui/src`, `packages/modules/*/src`), with the rebuild command in the message. Watched able to fail by touching `src/proxy.ts` and running vitest directly:
+
+```
+Error: The built proxy at …/apps/genie/.next/server/middleware.js is older than the source it is built from, so this test would read stale output. Rebuild it:
+  MODULE_INCLUDE=placeholder pnpm exec nx run @genie/app:build
+```
+
+`apps/genie/src/modules.ts` is excluded from the watch: `generate-registry` declares it as an Nx output, so on a cache hit Nx restores it with a fresh modification time, and without the exclusion the guard fired on a correct tree under root `pnpm test` (where `build` was a cache hit and `generate-registry` was restored).
+
 ### 7. The freshness guard on the test image
 
-`apps/genie/testing/image.startup.test.ts` refuses to run against an image older than the source, and that guard was unsound. It compared the image's creation time with the mtime of `apps/genie/.next/BUILD_ID`, which **false-positives on a warm Docker cache**: `.dockerignore` excludes `.next`, so the Dockerfile builds the app *inside* the image and the image's own `BUILD_ID` differs from the local one by construction, while the local `BUILD_ID` mtime moves on every `next build` even though the image consumes none of it. The result was that root `pnpm test` failed on its second and every later run, and the documented gate sequence 2 → 4 → 5 failed:
+`apps/genie/testing/image.startup.test.ts` refuses to run against an image older than the **build context**, and that guard was unsound. (The context, not the source: `.dockerignore` drops `docs`, `customers`, `deploy/stack`, `**/e2e` and the rest, so a change to any of those is correctly invisible to the guard. What it guarantees is "the image matches the build context", not "the image matches the repository".) It compared the image's creation time with the mtime of `apps/genie/.next/BUILD_ID`, which **false-positives on a warm Docker cache**: `.dockerignore` excludes `.next`, so the Dockerfile builds the app *inside* the image and the image's own `BUILD_ID` differs from the local one by construction, while the local `BUILD_ID` mtime moves on every `next build` even though the image consumes none of it. The result was that root `pnpm test` failed on its second and every later run, and the documented gate sequence 2 → 4 → 5 failed:
 
 ```
 Error: The image genie-s005:test is older than the app build at
@@ -213,13 +231,38 @@ Per file, per project:
 
 | Spec | Tests | What it proves |
 | --- | --- | --- |
-| `placeholder.spec.ts` | 5 | navigation renders, the module page and the admin page are refused to the anonymous caller, the read procedure succeeds through the real transport, the application stylesheet is applied with no nonce, and axe reports no violation |
+| `placeholder.spec.ts` | 5 | navigation renders, the module page and the admin page are refused to the anonymous caller, the read procedure succeeds through the real transport, the policy strips no stylesheet and no script, and axe reports no violation |
 | `security-headers.spec.ts` | 6 | the permitted frame visibly loads in the viewer; the same frame is blocked on an ordinary page; the viewer refuses an unlisted origin; another page cannot frame the app; `<object>` content is blocked; a cross-origin `<base>` cannot change URL resolution |
 | `context-sharing.spec.ts` | 1 | one context id from the home document, the viewer document and the tRPC response header |
 
 Two corrections to this table, both from the same defect class — a test claiming more than it could detect:
 
-- **The no-nonce test proved neither styles nor hydration.** It asserted `margin !== ""` (a browser default of `8px` and a Tailwind reset of `0px` are both non-empty) and `expect(html).toBeAttached()` (true before React runs). The test is renamed **"the application stylesheet is applied without a nonce"** and asserts a computed value only the application stylesheet can produce: `body { margin-top }` is `0px` (Tailwind 4 preflight) where the browser default is `8px`. Proved able to fail by removing `apps/genie/postcss.config.mjs`, rebuilding, and watching both viewports fail with `Expected: "0px" / Received: "8px"` at `placeholder.spec.ts:113`. The hydration half was removed, not weakened: the page has no client behaviour to observe — the only client component (`disclosure.tsx`) is unmounted on `/` — and the file now says so rather than asserting `toBeAttached()`.
+- **The no-nonce test proved neither styles nor hydration.** It asserted `margin !== ""` (a browser default of `8px` and a Tailwind reset of `0px` are both non-empty) and `expect(html).toBeAttached()` (true before React runs). The test is now **"the policy strips no stylesheet and no script"** and asserts two things the browser itself reports. Styles: `body { margin-top }` is `0px` (Tailwind 4 preflight) where the browser default is `8px`, a value only the application stylesheet produces. Refusals: no `securitypolicyviolation` event and no console refusal, which is the only signal that sees a policy stripping the framework's inline bootstrap — a blocked script never executes, so it never throws and never changes the rendered markup or the computed margin. `pageerror` could not see that case, and the earlier comment's claim that the page has no client boundary was wrong: the build's own `page_client-reference-manifest.js` lists next-intl's `NextIntlClientProvider`, so the page does hydrate. Proved able to fail by adding `script-src 'self'` to `BASELINE_POLICY`, rebuilding, and watching both viewports fail with 11 `script-src-elem inline` violations while `margin` was still `0px`:
+
+  ```
+  [phone]  › apps/genie/e2e/placeholder.spec.ts:108:1 › the policy strips no stylesheet and no script
+  [desktop]› apps/genie/e2e/placeholder.spec.ts:108:1 › the policy strips no stylesheet and no script
+  Error: expect(received).toEqual(expected) // deep equality
+    - Expected  -  1
+    + Received  + 11
+    - Array []
+    + Array [
+    +   "script-src-elem inline", … ×9
+    + ]
+    at apps/genie/e2e/placeholder.spec.ts:142:37
+  ```
+
+  With the console assertion put first, the same break fails on the console half too:
+
+  ```
+  + Received  + 11
+  + Array [
+  +   "Executing inline script violates the following Content Security Policy directive 'script-src 'self''. … The action has been blocked.",
+  +   … ×10
+  + ]
+  ```
+
+  That wording is the measured one. An earlier regex matching "Refused to execute" — the phrasing the finding named — matched **nothing** in this Chromium, so the console half would have been dead; measuring it against the broken image caught that before it shipped. Both halves are now observed failing.
 - **`failed-provider.spec.ts` was deleted.** Its two tests per viewport could never run again: they needed a disposable image and skipped unless `GENIE_FAILING_VIEWER=1` named it, so on every ordinary run they were 2 skipped per project and proved nothing. Step 3a2 below records the provider behaviour against a real disposable image and is the surviving proof. The spec was not made re-executable: both routes to that are worse than deletion — committing fixture modules into `packages/modules/` changes what the default `MODULE_INCLUDE` selects and breaks the placeholder-only assumption every other test rests on, and a generate/install/build/restore dance mutates `apps/genie/package.json` and `pnpm-lock.yaml` mid-suite. `installFrameFixture` is retained and still used by `security-headers.spec.ts`.
 
 Two deliberate deviations in the accessibility checks, both disclosed rather than hidden:
@@ -331,6 +374,10 @@ From the worktree root, in this order, each after the last code change.
 - **Two brief checks in Step 3c were replaced** with the three measured counts above.
 - **The image freshness guard was unsound and was replaced.** It compared the image's creation time with `.next/BUILD_ID`'s mtime and false-positived on a warm Docker cache, failing root `pnpm test` on every run after the first. It now asks Docker to reproduce the image and compares the creation time before and after. See Step 7. `test:integration` now depends on a `build-image` target through the nx graph, and `.dockerignore` excludes `test-results` and `playwright-report`.
 - **The accessibility assertion was scoped**, with an unscoped baseline added on `/`, as described in Step 3a.
+- **A chunk-text detector was written, measured dead, and removed.** The proxy-bundle test's token search over bundle chunks returned zero for a route that reaches the driver through 63 traced files. Its control had run the same search over `pg-pool`'s source bytes, a different corpus, so it never covered the assertion. See Step 6.
+- **The console half of the no-nonce test matched nothing until it was measured.** The finding named the phrase "Refused to execute"; this Chromium emits "Executing inline script violates the following Content Security Policy directive … The action has been blocked". The regex now matches the measured wording, with the older phrase kept as a fallback. See Step 3a.
+- **The proxy-bundle test now guards its own artifact.** It refuses to run when `.next/server/middleware.js` is older than the watched source, and excludes `apps/genie/src/modules.ts` from that watch because Nx restores it as a cached `generate-registry` output with a fresh mtime. See Step 6.
+- **`MODULE_INCLUDE=""` resolved differently in two places.** `build-image` used the shell `${MODULE_INCLUDE:-placeholder}`, which substitutes on empty, while the image guard used `?? "placeholder"`, which does not — so an explicitly empty selection built the placeholder image, then the guard rebuilt it empty, and the guard failed on every run. Both now use the empty-preserving form (`${MODULE_INCLUDE-placeholder}`), and the empty case was re-run end to end. See Step 7.
 
 ## Not proved
 
@@ -339,6 +386,9 @@ From the worktree root, in this order, each after the last code change.
 - **AC-26's "a request abandoned by its client during startup"** is proved by the widened loop in `image.startup.test.ts`, which shows all three paths handled after `bootstrap complete`. What is not proved is the exact moment the client disconnected, which the container cannot observe.
 - **The failure-budget guarantee at the image level.** The two hanging-cleanup cases are unit tests. The image proves the bounded nonzero exit, not that the bound comes from the budget rather than from the runtime's own exit path.
 - **Every count in this document is from this host, this session.** No result was reused from an earlier run of the same command.
+- **The proxy-bundle test's staleness verdict is modification time, not content.** It catches a source edited after the build; it cannot catch an edit that leaves every mtime unchanged, and a `touch` with no content change makes it fail until a rebuild. The alternative — declaring `apps/genie/.next` (141 MB, mostly the standalone bundle this test never reads) as the `build` target's Nx output — would fix the same thing at the cache layer but not for the documented gate command, which runs vitest directly. Not done; the mtime guard covers both paths.
+- **One transient integration failure was observed and not explained.** A full-suite run failed with `isolation.integration.test.ts` reporting its 2 tests skipped after 14.1 s, the signature of a `beforeAll` that threw on the Testcontainers port-bind timeout seen in the previous round. It did not reproduce in 8 isolated runs or 7 full-suite runs afterwards, and no leftover containers were present. Reported as a flake; not attributable to any change here.
+- **The image guard fails the first direct-vitest run after a change inside the Docker build context.** That run's own `docker build` is the one that rebuilds, so `Created` moves and the guard asks for a re-run. Under Nx it does not happen, because `build-image` rebuilds first. By design, but it makes the bare gate command order-sensitive.
 
 ## Open items
 

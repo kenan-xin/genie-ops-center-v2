@@ -462,9 +462,10 @@ describe("the built image", () => {
 
       const line = statusLines[0] ?? "";
 
-      // The request line, not the error line. This request produced no error, so
-      // a `request failed` line would belong to a different request.
-      expect(line).toContain('"msg":"request"');
+      // The `"path":` filter above is what already excludes an error line: error
+      // lines carry no path, so the only line this can be is the request line.
+      // An assertion on `"msg":"request"` here would be tautological, so the
+      // assertion that carries the claim is the id.
       expect(line).toContain(`"requestId":"${handed}"`);
     } finally {
       await image.stop();

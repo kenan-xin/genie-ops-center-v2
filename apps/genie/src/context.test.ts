@@ -1,22 +1,33 @@
 import { describe, expect, it } from "vitest";
 
-import { publishContext, readContext, requireContext } from "./context.ts";
+import {
+  publishContext,
+  readContext,
+  requireContext,
+  type AppContext,
+} from "./context.ts";
 
-// SAFETY: the seam only stores and returns whatever it is handed, and this test
-// reads nothing but the identity of that value. A real context would open a pool,
-// which the seam test must not do, so the fixture stands in for one. It carries
-// the full `AppContext` shape, including the two logger seams, because it is
-// published onto the real process global and a member left out would make this
-// fixture diverge from the type the bootstrap publishes.
-const fakeContext = {
-  tenant: {},
+// The seam only stores and returns whatever it is handed, and this test reads
+// nothing but the identity of that value. A real context would open a pool, which
+// the seam test must not do, so the fixture stands in for one.
+//
+// It is annotated `AppContext` rather than cast to it, so a member the bootstrap
+// adds is a compile error here until the fixture carries it too — which is the
+// property the earlier `as never` cast silently removed. The one member the seam
+// never reads, `tenant`, is the only one that is cast.
+//
+// SAFETY: the seam stores this value and hands it back without reading any
+// member, and this test asserts only its identity, so the empty `tenant` is
+// never dereferenced.
+const fakeContext: AppContext = {
+  tenant: {} as AppContext["tenant"],
   startedAt: 0,
   contextId: "ctx-test",
   viewerProviders: new Map(),
   reportProviderFailure: () => {},
   logRequest: () => {},
   logError: () => {},
-} as never;
+};
 
 describe("the application context seam", () => {
   it("has nothing published before the bootstrap runs", () => {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "build-image": "docker build -f ../../deploy/Dockerfile --build-arg MODULE_INCLUDE=${MODULE_INCLUDE:-placeholder} -t genie-s005:test ../..",
+    "build-image": "docker build -f ../../deploy/Dockerfile --build-arg MODULE_INCLUDE=${MODULE_INCLUDE-placeholder} -t genie-s005:test ../..",
     "generate-registry": "node tools/generate-registry.ts",
     "start": "node tools/start-standalone.mjs",
     "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e *.config.ts *.config.mjs",
