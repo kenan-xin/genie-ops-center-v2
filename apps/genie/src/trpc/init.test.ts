@@ -2,14 +2,14 @@ import { AppError, CORE_ERRORS } from "@genie/core";
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 
-import { formatTrpcError } from "./init.ts";
+import { type ErrorEnvelope, formatTrpcError } from "./init.ts";
 
 describe("formatTrpcError", () => {
   it("keeps the protocol code and adds the catalogue code and the request id", () => {
-    const envelope = {
+    const envelope: ErrorEnvelope = {
       message: "original",
       code: -32603,
-      data: { code: "INTERNAL_SERVER_ERROR" },
+      data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
     };
 
     const result = formatTrpcError({
@@ -23,16 +23,18 @@ describe("formatTrpcError", () => {
 
     expect(result.code).toBe(-32603);
     expect(result.data.code).toBe("INTERNAL_SERVER_ERROR");
+    // The status tRPC reads back to set the HTTP response status.
+    expect(result.data.httpStatus).toBe(500);
     expect(result.data.appCode).toBe("forbidden");
     expect(result.data.requestId).toBe("req-9");
     expect(result.message).toBe(CORE_ERRORS.forbidden.message);
   });
 
   it("maps an unknown cause to the generic entry and drops its text", () => {
-    const envelope = {
+    const envelope: ErrorEnvelope = {
       message: "original",
       code: -32603,
-      data: { code: "INTERNAL_SERVER_ERROR" },
+      data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
     };
 
     const result = formatTrpcError({
@@ -50,5 +52,35 @@ describe("formatTrpcError", () => {
     expect(result.data.requestId).toBe("req-10");
     expect(result.message).not.toContain("placeholder_pkey");
     expect(result.message).not.toContain("unique constraint");
+  });
+
+  it("drops the stack and the path tRPC adds to the envelope", () => {
+    // tRPC sets `data.stack` whenever NODE_ENV is not "production", and a
+    // TRPCError's stack begins with the wrapped cause's message, so the leak
+    // does not depend on the environment this formatter runs in.
+    const envelope: ErrorEnvelope = {
+      message: "original",
+      code: -32603,
+      data: {
+        code: "INTERNAL_SERVER_ERROR",
+        httpStatus: 500,
+        path: "placeholder.read",
+        stack:
+          'TRPCError: relation "placeholder_record" does not exist\n    at handle (server.js:1:2)',
+      },
+    };
+
+    const result = formatTrpcError({
+      envelope,
+      error: new TRPCError({ code: "INTERNAL_SERVER_ERROR" }),
+      requestId: "req-11",
+    });
+
+    const decoded = JSON.stringify(result);
+
+    expect(decoded).not.toContain("placeholder_record");
+    expect(decoded).not.toContain("server.js");
+    expect(result.data).not.toHaveProperty("stack");
+    expect(result.data).not.toHaveProperty("path");
   });
 });

@@ -1,10 +1,18 @@
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import "../styles/globals.css";
 
-export const metadata = { title: "Genie Ops Center" };
+/**
+ * The title comes from the catalogue rather than from a literal here, so the
+ * application's own strings have one home (DEC-13).
+ */
+export async function generateMetadata() {
+  const t = await getTranslations("app");
+
+  return { title: t("title") };
+}
 
 /**
  * The locale comes from the request configuration rather than from a route

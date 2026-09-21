@@ -23,6 +23,10 @@ function handler(request: Request): Promise<Response> {
     createContext: () => ({
       app,
       requestId,
+      // The one tenant context the bootstrap published. A module procedure
+      // reaches its data only through this, so omitting it makes every
+      // procedure throw before it reads anything (DEC-34).
+      tenant: app.tenant,
       // The Section 0 stub grants placeholder:read and nothing else (R-13).
       caller: createRequestPrincipal(
         { userId: "anonymous", groups: [] },

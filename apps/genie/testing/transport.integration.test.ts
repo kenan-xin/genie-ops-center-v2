@@ -1,10 +1,18 @@
-import { CORE_HISTORY } from "@genie/core";
+import { CORE_ERROR_MESSAGES, CORE_HISTORY } from "@genie/core";
 import { startDisposableDeployment } from "@genie/core/testing";
-import { placeholderModule } from "@genie/module-placeholder";
-import { createTRPCUntypedClient, httpBatchLink } from "@trpc/client";
+import {
+  type PlaceholderRouter,
+  placeholderModule,
+} from "@genie/module-placeholder";
+import {
+  type TRPCClientError,
+  createTRPCClient,
+  httpBatchLink,
+  isTRPCClientError,
+} from "@trpc/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { AppRouter } from "../src/trpc/root.ts";
+import { t } from "../src/trpc/init.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 // Drizzle creates its ledger in the `drizzle` schema, not `public`.
@@ -12,22 +20,27 @@ const LEDGER_SCHEMA = "drizzle";
 
 const LEDGER_TABLE = CORE_HISTORY.table;
 
+// The module's own table, the one `placeholder.read` reads.
+const MODULE_TABLE = "placeholder_record";
+
+// How long a log line may take to reach this process. The server writes it
+// before it answers, but it arrives over a pipe on the parent's event loop, so
+// reading the buffer synchronously after a response can miss the last line.
+const LOG_SETTLE_MS = 5000;
+
 /**
- * The envelope R-46 adds to the standard one, as a client receives it.
+ * The transport router, spelled at the type level from the application's own
+ * `t`, which is where the error formatter lives.
  *
- * It is written out rather than read from the router, because the registry types
- * every module router as `AnyTRPCRouter` (`readonly router: AnyTRPCRouter`,
- * module-contract.ts), which erases the formatter's return type before the
- * composed client is built.
+ * The registry types every module router as `AnyTRPCRouter` (`readonly router:
+ * AnyTRPCRouter`, module-contract.ts), and `Object.fromEntries` then yields an
+ * index signature, so `AppRouter` cannot carry a typed proxy. This recovers one
+ * without touching the contract: the runtime still calls the application router
+ * over the same batch link, and a typed path cannot be misspelled.
  */
-type DecodedError = {
-  readonly message: string;
-  readonly data?: {
-    readonly code?: string;
-    readonly appCode?: string;
-    readonly requestId?: string;
-  };
-};
+type PlaceholderTransportRouter = ReturnType<
+  typeof t.router<{ placeholder: PlaceholderRouter }>
+>;
 
 // Start the built application against the disposable database, then break the
 // objects it reads so every read fails inside the database rather than in
@@ -42,6 +55,41 @@ const baseUrl = () => server.baseUrl;
 // imported outside core.
 const pool = () => deployment.context.db.$client;
 
+function placeholderClient() {
+  return createTRPCClient<PlaceholderTransportRouter>({
+    links: [
+      httpBatchLink<PlaceholderTransportRouter>({
+        url: `${baseUrl()}/api/trpc`,
+      }),
+    ],
+  });
+}
+
+type PlaceholderClient = ReturnType<typeof placeholderClient>;
+
+/**
+ * The failure a standard client decoded, or `undefined` when the request
+ * succeeded.
+ *
+ * The rejection is narrowed rather than annotated: a network-level rejection is
+ * not a `TRPCClientError` and carries no `data`, so it stays `undefined` here
+ * and the assertions below fail loudly instead of reading a field the runtime
+ * never promised.
+ */
+async function readFailure(
+  client: PlaceholderClient
+): Promise<TRPCClientError<PlaceholderTransportRouter> | undefined> {
+  try {
+    await client.placeholder.read.query();
+
+    return undefined;
+  } catch (caught) {
+    return isTRPCClientError<PlaceholderTransportRouter>(caught)
+      ? caught
+      : undefined;
+  }
+}
+
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
   server = await startBuiltApp(deployment.context.env.databaseUrl, 3410);
@@ -52,12 +100,35 @@ afterAll(async () => {
   await deployment?.stop().catch(() => undefined);
 });
 
-describe("both transports on a database failure", () => {
+describe("both transports", () => {
+  it("the module transport answers a healthy read with its rows", async () => {
+    const admin = await pool().connect();
+
+    try {
+      await admin.query(`insert into ${MODULE_TABLE} (label) values ($1)`, [
+        "the first row",
+      ]);
+    } finally {
+      admin.release();
+    }
+
+    const logBefore = server.logs().length;
+    const rows = await placeholderClient().placeholder.read.query();
+
+    // The positive control for this transport. Without it, the failure case
+    // below would pass against a context that never reached the module's
+    // procedure at all, which is exactly how a missing `tenant` hid.
+    expect(rows.map((row) => row.label)).toContain("the first row");
+
+    // A read that reached the database logs no error line.
+    const served = server.logs().slice(logBefore);
+
+    expect(served).not.toContain("request failed");
+  });
+
   it("answers normally while the database is reachable", async () => {
     const response = await fetch(`${baseUrl()}/api/status`);
 
-    // The positive control. Without it, the failure assertions below could pass
-    // against a route that is broken for some unrelated reason.
     expect(response.status).toBe(200);
   });
 
@@ -98,6 +169,8 @@ describe("both transports on a database failure", () => {
       admin.release();
     }
 
+    const logBefore = server.logs().length;
+
     const response = await fetch(`${baseUrl()}/api/status`, {
       signal: AbortSignal.timeout(15000),
     });
@@ -115,6 +188,7 @@ describe("both transports on a database failure", () => {
     };
 
     expect(body.code).toBe("internal-error");
+    expect(body.message).toBe(CORE_ERROR_MESSAGES["internal-error"]);
     expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
     // No connection detail, no host, no port, no stack.
     expect(text).not.toMatch(
@@ -125,10 +199,11 @@ describe("both transports on a database failure", () => {
 
     // AC-15: the returned request id matches a redacted server log entry, and
     // the log holds the detail the response withheld.
-    const logs = server.logs();
+    await expect
+      .poll(() => server.logs().slice(logBefore), { timeout: LOG_SETTLE_MS })
+      .toContain("request failed");
 
-    expect(logs).toContain(body.requestId);
-    expect(logs).toContain("request failed");
+    expect(server.logs().slice(logBefore)).toContain(body.requestId);
   });
 
   it("a standard tRPC client decodes the failure with appCode and requestId", async () => {
@@ -137,37 +212,52 @@ describe("both transports on a database failure", () => {
     const admin = await pool().connect();
 
     try {
-      await admin.query("drop table if exists placeholder_record cascade");
+      const present = await admin.query(
+        "select 1 from information_schema.tables where table_schema = $1 and table_name = $2",
+        ["public", MODULE_TABLE]
+      );
+
+      // Positive control. `drop table if exists` is a silent no-op when the
+      // table is absent, and the assertions below would then pass against a
+      // procedure that failed for some other reason.
+      expect(present.rowCount, `no public.${MODULE_TABLE} table to break`).toBe(
+        1
+      );
+
+      await admin.query(`drop table ${MODULE_TABLE} cascade`);
     } finally {
       admin.release();
     }
 
-    // The standard client over the standard HTTP batch link, driven through its
-    // public untyped entry point: the composed router's procedures cannot be
-    // resolved statically, because every module's router reaches the registry as
-    // `AnyTRPCRouter` and the record is an index signature. The wire call, the
-    // batch link and the response parsing are the same ones the proxy client
-    // uses, which is what AC-15 asks this test to prove.
-    const client = createTRPCUntypedClient<AppRouter>({
-      links: [httpBatchLink({ url: `${baseUrl()}/api/trpc` })],
-    });
+    const logBefore = server.logs().length;
+    const failure = await readFailure(placeholderClient());
 
-    const failure = await client.query("placeholder.read").then(
-      () => undefined,
-      (error: DecodedError) => error
-    );
-
-    // The standard client decoded it without a custom transport, the protocol
-    // field survived, and the two additive fields are present.
-    expect(failure?.data?.code).toBeDefined();
+    // The standard client decoded it without a custom transport, and the
+    // protocol code says the server failed rather than that the path was
+    // unknown or the caller was refused.
+    expect(failure?.data?.code).toBe("INTERNAL_SERVER_ERROR");
     expect(failure?.data?.appCode).toBe("internal-error");
     expect(failure?.data?.requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(JSON.stringify(failure?.data)).not.toMatch(
+
+    // The whole decoded error, not just `data`. `message` is the field the
+    // formatter overwrites with `safeMessageFor`, so leaving it out would let
+    // raw database text reach the client with this test still green.
+    const decoded = JSON.stringify(failure);
+
+    expect(failure?.message).toBe(CORE_ERROR_MESSAGES["internal-error"]);
+    expect(decoded).not.toMatch(
       /ECONNREFUSED|ETIMEDOUT|127\.0\.0\.1|postgres:\/\//
     );
-    expect(JSON.stringify(failure?.data)).not.toContain("relation");
+    expect(decoded).not.toContain("relation");
+    expect(decoded).not.toContain(MODULE_TABLE);
+    expect(decoded).not.toMatch(/at .*\.js:\d+/);
 
-    // AC-15 for the second transport: the same correlation rule holds.
-    expect(server.logs()).toContain(failure?.data?.requestId);
+    // AC-15 for the second transport: the id the client received is in the
+    // error line this request wrote, not merely in its entry line.
+    await expect
+      .poll(() => server.logs().slice(logBefore), { timeout: LOG_SETTLE_MS })
+      .toContain("request failed");
+
+    expect(server.logs().slice(logBefore)).toContain(failure?.data?.requestId);
   });
 });

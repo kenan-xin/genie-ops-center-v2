@@ -292,12 +292,11 @@ describe("the built image", () => {
       const bootstrapAt = logs.indexOf("bootstrap complete");
       const afterBootstrap = logs.slice(bootstrapAt);
 
-      // Only the paths that have a request-bound handler today can be checked.
-      // `/api/trpc` and `/viewer/placeholder` are not routes yet, so a handler
-      // log line for them is unprovable by construction rather than absent; the
-      // loop covers them in Task 9, against the final image, once they exist.
-      // They stay in the blocked-request list above, because a request to a
-      // nonexistent route still has to be queued rather than answered early.
+      // `/api/trpc` is a route as of Task 4, and `/viewer/placeholder` arrives
+      // with the viewer in Task 9. The loop stays narrowed to the one path this
+      // section proves end to end; Task 9 widens it against the final image.
+      // Both stay in the blocked-request list above either way, because a
+      // request to them still has to be queued rather than answered early.
       for (const path of ["/api/health"]) {
         expect(
           afterBootstrap.includes(path),
