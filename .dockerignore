@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/.next
+**/storybook-static
+**/dist
+**/coverage
+.git
+.nx
+.beads
+docs
+plans
+apps/storybook
+**/*.stories.tsx
+**/e2e

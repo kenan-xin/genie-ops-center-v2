@@ -94,6 +94,7 @@ export {
 
 export {
   type LogBindings,
+  type RedactingLogger,
   createLogger,
   forExecution,
 } from "./services/logging/index.ts";

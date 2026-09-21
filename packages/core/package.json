@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./contracts": "./contracts/index.ts",
     "./tenant-config": "./src/lib/tenant-config/index.ts"
