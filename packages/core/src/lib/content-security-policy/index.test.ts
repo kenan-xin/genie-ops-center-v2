@@ -191,3 +191,33 @@ describe("collectFrameOrigins", () => {
     ).resolves.toEqual([]);
   });
 });
+
+describe("collectFrameOrigins failure reporting", () => {
+  it("reports a provider failure through the supplied callback and still denies frames", async () => {
+    const seen: unknown[] = [];
+    const boom = new Error("provider exploded");
+
+    const origins = await collectFrameOrigins(
+      { frameOrigins: () => Promise.reject(boom) },
+      { tenant: {} },
+      { onProviderError: (cause) => seen.push(cause) }
+    );
+
+    expect(origins).toEqual([]);
+    expect(seen).toEqual([boom]);
+  });
+
+  it("still denies frames when the failure callback itself throws", async () => {
+    const origins = await collectFrameOrigins(
+      { frameOrigins: () => Promise.reject(new Error("provider exploded")) },
+      { tenant: {} },
+      {
+        onProviderError: () => {
+          throw new Error("logger exploded");
+        },
+      }
+    );
+
+    expect(origins).toEqual([]);
+  });
+});

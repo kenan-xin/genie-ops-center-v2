@@ -98,3 +98,13 @@ export {
   createLogger,
   forExecution,
 } from "./services/logging/index.ts";
+
+export {
+  BASELINE_POLICY,
+  collectFrameOrigins,
+  type FrameOriginFailureOptions,
+  type FrameOriginProvider,
+  isFrameOrigin,
+  normalizeFrameOrigins,
+  serializeContentSecurityPolicy,
+} from "./lib/content-security-policy/index.ts";

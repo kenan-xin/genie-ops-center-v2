@@ -45,6 +45,11 @@ export type FrameOriginProvider<Ctx> = {
   frameOrigins(ctx: Ctx): Promise<readonly string[]>;
 };
 
+/** How a caller learns that a provider failed. Core imports no logger (yt2). */
+export type FrameOriginFailureOptions = {
+  readonly onProviderError?: (cause: unknown) => void;
+};
+
 /**
  * An omitted provider, an empty result and a provider failure all contribute nothing. A failure
  * never falls back to a wildcard or to the broad `https:` source (module contract, Content
@@ -52,15 +57,23 @@ export type FrameOriginProvider<Ctx> = {
  */
 export async function collectFrameOrigins<Ctx>(
   provider: FrameOriginProvider<Ctx> | undefined,
-  ctx: Ctx
+  ctx: Ctx,
+  options: FrameOriginFailureOptions = {}
 ): Promise<readonly string[]> {
   if (provider === undefined) return [];
 
   try {
     return normalizeFrameOrigins(await provider.frameOrigins(ctx));
-  } catch {
-    // A failed contribution must deny frames, so the error is swallowed here on purpose. S0-05
-    // owns the log line when it emits the header.
+  } catch (caught) {
+    // A failed contribution denies frames. The caller owns the log line, because
+    // this module stays pure and holds no logger. A reporter that throws must not
+    // change the policy, so its own failure is swallowed too.
+    try {
+      options.onProviderError?.(caught);
+    } catch {
+      // Reporting is best effort. The denied policy above is the guarantee.
+    }
+
     return [];
   }
 }
