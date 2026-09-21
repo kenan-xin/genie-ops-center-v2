@@ -58,6 +58,20 @@ const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const pathname = request.nextUrl.pathname;
 
+  // The one request id for this request (R-44). It is minted before the redirect
+  // branch, because a redirect is a request like any other and R-44 counts one
+  // line for it too. Minting it after the branch left `/home` with zero lines.
+  const requestId = newRequestId();
+
+  const app = readContext();
+
+  // One line per request (R-44), carrying the context id. It runs for every
+  // request class, the application redirect included, so "one line per request"
+  // is true literally rather than only for the paths that reach a handler. The
+  // proxy is the only request logger: handlers no longer write a line, so this
+  // count is exactly the request count.
+  app?.logRequest({ requestId, path: pathname });
+
   // Application redirects are emitted here, never through the framework's
   // redirect list, because that list produces a response with no headers at all.
   const destination = APPLICATION_REDIRECTS.get(pathname);
@@ -72,15 +86,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       redirect.headers.set(key, value);
     }
 
+    // The id reaches the client on the redirect too, so a redirect and any log
+    // line or error body about it share one value.
+    redirect.headers.set("x-request-id", requestId);
+
     return redirect;
   }
-
-  // The one request id for this request (R-44). It is minted here, set on the
-  // response, and forwarded upstream, so the response header, the log line and
-  // every handler's error body carry the same value. Handlers read this id
-  // instead of minting their own, which is what previously left the two halves
-  // of one request unjoinable.
-  const requestId = newRequestId();
 
   // Forwarded upstream through `NextResponse.next`, which the framework
   // documents as the way to pass headers to a page, route or server action.
@@ -96,17 +107,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   response.headers.set("x-request-id", requestId);
 
-  const app = readContext();
-
   // Before the bootstrap publishes, no viewer route exists, so frames stay
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
-
-  // One line per request (R-44), carrying the context id. This is also what the
-  // single-context acceptance check reads, so it must run on every request and
-  // not only on the viewer path. The proxy is the only request logger: handlers
-  // no longer write a line, so this count is exactly the request count.
-  app.logRequest({ requestId, path: pathname });
 
   const route = viewerRouteFor(pathname, new Set(app.viewerProviders.keys()));
 

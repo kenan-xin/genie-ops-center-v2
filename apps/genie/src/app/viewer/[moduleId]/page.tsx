@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation.js";
 
+import { requireContext } from "../../../context.ts";
 import { viewerModuleIds } from "../../../registry.ts";
 import { viewerRouteFor } from "../../../viewer-routes.ts";
 
@@ -27,8 +28,13 @@ export default async function ViewerPage({
 
   const t = await getTranslations("viewer");
 
+  // AC-26, across real bundles. This page's own server bundle stamps the id it
+  // read, so a second context in the viewer bundle shows up here rather than
+  // hiding behind the proxy's single, self-consistent log line.
+  const { contextId } = requireContext();
+
   return (
-    <main>
+    <main data-context-id={contextId}>
       <h1>{t("heading")}</h1>
       <iframe
         title={t("frameTitle")}

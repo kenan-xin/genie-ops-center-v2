@@ -7,7 +7,7 @@
     "build": "next build",
     "generate-registry": "node tools/generate-registry.ts",
     "start": "node tools/start-standalone.mjs",
-    "lint": "oxlint --config ../../oxlint.config.ts src testing tools",
+    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e *.config.ts *.config.mjs",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
@@ -23,8 +23,10 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@genie/config": "workspace:*",
     "@genie/generators": "workspace:*",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@trpc/client": "11.19.0",
     "@types/react": "19.3.0",

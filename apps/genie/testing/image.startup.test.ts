@@ -10,6 +10,8 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { CONTEXT_HEADER } from "../src/context.ts";
+
 const run = promisify(execFile);
 
 /** The image every test in this file drives. */
@@ -97,6 +99,28 @@ afterAll(async () => {
 });
 
 const HOST_ALIAS = "host.docker.internal";
+
+/**
+ * The paths whose abandoned requests must be answered and appear in the request
+ * log once the migration lock is released and the bootstrap completes.
+ *
+ * Task 3 narrowed this to `/api/health` because the other two routes did not
+ * exist yet. Task 9 widens it against the final image, where all three do. Each
+ * one is queued by the probe below, so each one has to be served rather than
+ * discarded.
+ */
+const ABANDONED_PATHS = [
+  "/api/health",
+  "/api/trpc/placeholder.read",
+  "/viewer/placeholder",
+] as const;
+
+/**
+ * What the probe actually issues. The ordinary document is added so the page
+ * class is exercised too; the log assertion above does not name it, because
+ * `/` is a substring of every other path and would assert nothing.
+ */
+const PROBED_PATHS = ["/", ...ABANDONED_PATHS];
 
 /**
  * Rewrites a host-side database URL into one the container can reach.
@@ -250,6 +274,42 @@ const countLines = (logs: string, needle: string) =>
   logs.split("\n").filter((line) => line.includes(needle)).length;
 
 /**
+ * The context id a response observed, and which bundle observed it.
+ *
+ * A route handler writes the id as a response header, from the bundle that ran
+ * the handler. A page cannot set a response header in this framework, so its
+ * server bundle renders the id into the document instead. Either way the value
+ * comes from the bundle that served the request, never from the proxy, which is
+ * what makes this a cross-bundle proof rather than a restatement of the proxy's
+ * one log line.
+ */
+async function contextIdOf(
+  response: Response
+): Promise<{ header: string | null; document: string | null }> {
+  const header = response.headers.get(CONTEXT_HEADER);
+
+  if (header !== null) return { header, document: null };
+
+  const body = await response.text();
+
+  return {
+    header: null,
+    document: /data-context-id="([^"]+)"/.exec(body)?.[1] ?? null,
+  };
+}
+
+/**
+ * The three route classes AC-26 names, one per real framework bundle: the page,
+ * the tRPC route handler and the viewer page. Twenty-four requests cycle through
+ * them, so each class is served eight times.
+ */
+const ROUTE_CLASSES = [
+  "/",
+  "/api/trpc/placeholder.read?input=%7B%7D",
+  "/viewer/placeholder",
+] as const;
+
+/**
  * Reads the container log until it satisfies `ready`, or the budget expires.
  *
  * A single read races the logger's own flush. The server answers the request
@@ -341,12 +401,7 @@ describe("the built image", () => {
       // be indistinguishable from a queued request.
       const { accepted, outcomes } = await probeFromInside(
         image.id,
-        [
-          "/api/health",
-          "/",
-          "/api/trpc/placeholder.read",
-          "/viewer/placeholder",
-        ],
+        [...PROBED_PATHS],
         60000
       );
 
@@ -382,7 +437,9 @@ describe("the built image", () => {
         image,
         (seen) =>
           seen.includes("bootstrap complete") &&
-          seen.slice(seen.indexOf("bootstrap complete")).includes("/api/health")
+          ABANDONED_PATHS.every((path) =>
+            seen.slice(seen.indexOf("bootstrap complete")).includes(path)
+          )
       );
 
       expect(logs).toContain("bootstrap complete");
@@ -395,12 +452,12 @@ describe("the built image", () => {
       const bootstrapAt = logs.indexOf("bootstrap complete");
       const afterBootstrap = logs.slice(bootstrapAt);
 
-      // `/api/trpc` is a route as of Task 4, and `/viewer/placeholder` arrives
-      // with the viewer in Task 9. The loop stays narrowed to the one path this
-      // section proves end to end; Task 9 widens it against the final image.
-      // Both stay in the blocked-request list above either way, because a
-      // request to them still has to be queued rather than answered early.
-      for (const path of ["/api/health"]) {
+      // Task 9 widened this from `/api/health` alone. `/api/trpc` and
+      // `/viewer/placeholder` exist now, and all three were queued above, so all
+      // three must be answered and logged once the bootstrap completes. A path
+      // that could not be proven here would be named as such rather than
+      // dropped silently.
+      for (const path of ABANDONED_PATHS) {
         expect(
           afterBootstrap.includes(path),
           `no request log for ${path} after the bootstrap completed. after: ${afterBootstrap.slice(0, 3000)}`
@@ -511,13 +568,13 @@ describe("the built image", () => {
     expect(result.output).not.toContain("not-a-url");
   }, 120000);
 
-  // Scope note. At Task 3 the tRPC route and the viewer route do not exist yet,
-  // so this test covers the paths that do: the ordinary document and health. It
-  // proves the mechanism early, which is why the image lands here. AC-26's full
-  // clause, concurrent page, tRPC and viewer requests sharing one context across
-  // real framework bundles, is proven in Task 9 against the final image, once
-  // every route exists. Do not record this test as satisfying AC-26.
-  it("shares one context across concurrent requests to the routes that exist", async () => {
+  // AC-26's concurrency clause, proven across real framework bundles rather
+  // than through the proxy's log alone. The proxy is one bundle, so its log
+  // lines can only ever show what the proxy saw; the route handler and each page
+  // report the context their own bundle read, which is what a second context
+  // would split. Twenty-four concurrent page, tRPC and viewer requests, and one
+  // id across every observation.
+  it("shares one context across concurrent page, tRPC and viewer requests", async () => {
     const image = await startImage(
       {
         DATABASE_URL: databaseUrl(),
@@ -535,13 +592,23 @@ describe("the built image", () => {
       // the test depend on how many polls the container needed to become ready.
       const before = requestLinesIn(await image.logs()).length;
 
-      const paths = ["/", "/api/health"];
-
-      const statuses = await Promise.all(
+      const responses = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
-          fetch(`http://127.0.0.1:3402${paths[index % paths.length]}`).then(
-            (response) => response.status,
-            (error: Error) => error.name
+          fetch(
+            `http://127.0.0.1:3402${ROUTE_CLASSES[index % ROUTE_CLASSES.length]}`
+          ).then(
+            async (response) => ({
+              status: response.status,
+              observed: await contextIdOf(response),
+            }),
+            (error: Error) => ({
+              // SAFETY: a rejected `fetch` narrows to `Error`, and the test
+              // below only compares this against the number 200, so widening
+              // the discriminant to the union the success branch also uses is
+              // what makes one array hold both outcomes.
+              status: error.name as string | number,
+              observed: { header: null, document: null },
+            })
           )
         )
       );
@@ -551,9 +618,32 @@ describe("the built image", () => {
       // that threw would be invisible to every gate: the next-intl request
       // configuration could be deleted and the suite would stay green.
       expect(
-        statuses.every((status) => status === 200),
-        `not every response was 200: ${JSON.stringify(statuses)}`
+        responses.every((response) => response.status === 200),
+        `not every response was 200: ${JSON.stringify(
+          responses.map((response) => response.status)
+        )}`
       ).toBe(true);
+
+      const headerIds = responses
+        .map((response) => response.observed.header)
+        .filter((id): id is string => id !== null);
+
+      const documentIds = responses
+        .map((response) => response.observed.document)
+        .filter((id): id is string => id !== null);
+
+      // Each class is observed through the bundle that served it. The eight tRPC
+      // responses carry the header the route-handler bundle wrote; the sixteen
+      // page responses carry the attribute their page bundle rendered. A zero in
+      // either half would shrink the set below and let it pass for the wrong
+      // reason, so both counts are asserted, not just the set size.
+      expect(
+        headerIds.length,
+        "no tRPC response carried the context header"
+      ).toBe(8);
+      expect(documentIds.length, "no page rendered the context attribute").toBe(
+        16
+      );
 
       const logs = await logsUntil(
         image,
@@ -569,26 +659,39 @@ describe("the built image", () => {
       // The proxy is the one request logger (R-44), so each of the twenty-four
       // requests produces exactly one request line. The count is exact, not
       // "at least": a second logger added back anywhere would double it, which
-      // is the defect this count exists to catch. It also keeps the set
-      // assertion below honest: an empty set has size zero, but one served
-      // request also has size one.
+      // is the defect this count exists to catch.
       expect(requestLines.length - before).toBe(24);
 
-      const contextIds = new Set(
-        requestLines.map((line) => /"contextId":"([^"]+)"/.exec(line)?.[1])
-      );
+      // All three route classes were served, so the batch really exercised the
+      // page, the tRPC handler and the viewer rather than one class three times.
+      for (const needle of ['"path":"/"', "api/trpc", "viewer/placeholder"]) {
+        expect(
+          requestLines.some((line) => line.includes(needle)),
+          `no request line for ${needle}`
+        ).toBe(true);
+      }
+
+      const logIds = requestLines
+        .map((line) => /"contextId":"([^"]+)"/.exec(line)?.[1])
+        .filter((id): id is string => id !== undefined);
 
       // One context for the whole process, however many bundles served the load.
-      expect(contextIds.size).toBe(1);
+      // The set mixes observations from the proxy's log, the tRPC handler's
+      // header and both pages' rendered attribute, so it cannot be satisfied by
+      // the proxy alone.
+      const observed = new Set([...headerIds, ...documentIds, ...logIds]);
+
+      expect(observed.size).toBe(1);
       expect(countLines(logs, "bootstrap complete")).toBe(1);
 
-      // The requests were served by the context the bootstrap published, not by
-      // a second one built later that happened to be consistent with itself.
+      // Every observation came from the context the bootstrap published, not
+      // from a second one built later that happened to be consistent with
+      // itself.
       const bootstrapId = /"contextId":"([^"]+)"[^\n]*bootstrap complete/.exec(
         logs
       )?.[1];
 
-      expect([...contextIds][0]).toBe(bootstrapId);
+      expect([...observed][0]).toBe(bootstrapId);
     } finally {
       await image.stop();
     }

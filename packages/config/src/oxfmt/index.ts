@@ -54,6 +54,12 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     "**/dist/**",
     "**/coverage/**",
     "**/.nx/**",
+
+    // Playwright's own output. Written by every browser run, so a `--check`
+    // after one would otherwise report formatting inside a JSON trace file
+    // the runner owns.
+    "**/test-results/**",
+    "**/playwright-report/**",
   ],
   // Built in, so it replaces an import-sorting lint plugin at no cost.
   sortImports: true,

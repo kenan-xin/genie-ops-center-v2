@@ -30,6 +30,11 @@ coverage/
 # Storybook host: the static build output, generated and never committed.
 storybook-static/
 
+# Playwright output: per-test trace and screenshot directories, plus the HTML
+# report. Written on every run, never source, and `--check` must not read them.
+test-results/
+playwright-report/
+
 # Coverage tool scratch space. Holds request and snapshot JSON, never source.
 .supercov/
 

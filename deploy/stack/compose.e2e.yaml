@@ -1,0 +1,27 @@
+# The smallest deployment R-40 asks for: the image and its database. It holds no
+# secret and no host-specific value, so it is committed. Section 1 replaces it
+# with the generated customer stack.
+services:
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: genie
+      POSTGRES_PASSWORD: genie
+      POSTGRES_DB: genie
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genie"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: ${GENIE_IMAGE:-genie-s005:test}
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://genie:genie@database:5432/genie
+      PUBLIC_URL: http://127.0.0.1:3400
+      PORT: "3400"
+    ports:
+      - "${GENIE_HOST_PORT:-3400}:3400"

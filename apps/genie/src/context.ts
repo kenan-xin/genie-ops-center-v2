@@ -58,6 +58,17 @@ export type AppContext = {
 
 type Slot = { context: AppContext; constructions: number };
 
+/**
+ * The name of the response header a route handler writes from the context it
+ * read, so AC-26 can be observed per bundle rather than only in the proxy's log.
+ *
+ * The proxy deliberately does not set this header. A response header the proxy
+ * wrote would prove only what the proxy bundle saw, which is exactly the
+ * weakness the log-line reading had. Each handler sets it itself, so a second
+ * context in that handler's bundle is visible as a different value.
+ */
+export const CONTEXT_HEADER = "x-genie-context-id";
+
 const KEY = Symbol.for("genie.app.context");
 
 function slot(): Slot | undefined {

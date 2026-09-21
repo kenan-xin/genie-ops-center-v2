@@ -42,6 +42,15 @@ async function raw(path: string) {
   };
 }
 
+/** The request lines the proxy wrote for one path (R-44, one line per request). */
+const requestLinesFor = (logs: string, path: string) =>
+  logs
+    .split("\n")
+    .filter(
+      (line) =>
+        line.includes('"msg":"request"') && line.includes(`"path":"${path}"`)
+    ).length;
+
 describe("header coverage on the built application", () => {
   // AC-25 names every response class, and a tRPC error is one of them. Its
   // success form is included too, so a broken route cannot make the error case
@@ -102,6 +111,22 @@ describe("header coverage on the built application", () => {
     for (const header of FIVE) {
       expect(response.headers.get(header)).not.toBeNull();
     }
+  });
+
+  // R-44 says one line per request, and a redirect is a request. The proxy used
+  // to emit the redirect before it reached the log call, so `/home` produced
+  // zero lines and the requirement was false for exactly this path. This asserts
+  // the fix: exactly one new line, not zero and not two.
+  it("the application redirect writes exactly one request line", async () => {
+    const before = requestLinesFor(server.logs(), "/home");
+
+    const response = await raw("/home");
+
+    expect(response.status).toBe(307);
+
+    await expect
+      .poll(() => requestLinesFor(server.logs(), "/home"), { timeout: 5000 })
+      .toBe(before + 1);
   });
 
   // Amendment B: the narrow exception, asserted rather than ignored.
