@@ -83,11 +83,29 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             expect(health.headers.get(key), `health ${key}`).toBe(value);
           }
 
-          // The placeholder page renders, and the document is an ordinary one.
+          // The placeholder route is a rendered document with the standard
+          // headers. Its workspace entry requires `placeholder:use`, and the
+          // Section 0 stub grants only `placeholder:read`, so the documented
+          // Section 0 result is the denial body, not the module's own content.
           const page = await fetch("http://127.0.0.1:3420/placeholder");
 
           expect(page.status).toBe(200);
-          expect(await page.text()).toContain("Placeholder");
+          expect(page.headers.get("content-type")).toContain("text/html");
+          expect(page.headers.get("content-security-policy")).toBe(
+            REQUIRED_HEADERS["content-security-policy"]
+          );
+          expect(await page.text()).toContain(
+            'data-testid="permission-denied"'
+          );
+
+          // The viewer is the placeholder page whose content does render under the
+          // stub, and it is the R-49 fixture.
+          const viewer = await fetch(
+            "http://127.0.0.1:3420/viewer/placeholder"
+          );
+
+          expect(viewer.status).toBe(200);
+          expect(await viewer.text()).toContain("Placeholder viewer");
         } finally {
           await image.stop();
         }
