@@ -128,6 +128,17 @@ export function validateModule(module: Module): readonly string[] {
     );
   }
 
+  // An admin entry is reached through a generic route that pins the permission
+  // to this module's own key, so an entry naming another module's key would
+  // gate its page on a grant this module never issued (DEC-23).
+  for (const entry of admin) {
+    if (entry.requiredPermission !== `${id}:admin`) {
+      problems.push(
+        `Admin entry "${entry.id}" must require "${id}:admin" (DEC-23).`
+      );
+    }
+  }
+
   // The landing entry is where a signed-in person arrives (DEC-49), so an admin
   // landing route would send everyone to a page gated on `<id>:admin`.
   for (const entry of admin) {

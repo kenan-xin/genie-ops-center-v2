@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   renameModule,
   withAdminLanding,
+  withForeignAdminPermission,
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
 import { validModule } from "./__fixtures__/valid-module.ts";
@@ -56,6 +57,23 @@ describe("validateModule", () => {
     };
 
     expect(validateModule(broken).join(" ")).toContain("fixture:admin");
+  });
+
+  it("rejects an admin entry that requires another module's admin key", () => {
+    const broken = withForeignAdminPermission(validModule);
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Admin entry "fixture-admin" must require "fixture:admin"'
+    );
+  });
+
+  it("accepts an admin entry that requires its own admin key", () => {
+    const admin = validModule.navigation.entries.find(
+      (entry) => entry.surface === "admin"
+    );
+
+    expect(admin?.requiredPermission).toBe("fixture:admin");
+    expect(validateModule(validModule)).toEqual([]);
   });
 
   it("rejects a pinned list of seven", () => {
