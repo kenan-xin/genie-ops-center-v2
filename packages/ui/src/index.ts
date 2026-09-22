@@ -12,3 +12,11 @@ export type {
   NavigationItem,
   NavigationListProps,
 } from "./navigation/navigation-list.tsx";
+
+export { ThemeProvider } from "./theme/theme-provider.tsx";
+
+export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
+
+export { themeTokens } from "./theme/tokens.ts";
+
+export type { ThemeName, ThemeToken } from "./theme/tokens.ts";

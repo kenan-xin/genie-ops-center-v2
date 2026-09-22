@@ -1,3 +1,4 @@
+import { ThemeProvider, type ThemeName } from "@genie/ui";
 import type { Preview } from "@storybook/nextjs-vite";
 
 const preview: Preview = {
@@ -26,10 +27,11 @@ const preview: Preview = {
   },
   decorators: [
     (Story, context) => (
-      // SAFETY: the theme globalType declares only the two string values above.
-      <div data-theme={context.globals.theme as string}>
+      // SAFETY: the theme globalType declares exactly the two ThemeName values
+      // above, so the toolbar cannot supply anything else.
+      <ThemeProvider theme={context.globals.theme as ThemeName}>
         <Story />
-      </div>
+      </ThemeProvider>
     ),
   ],
 };
