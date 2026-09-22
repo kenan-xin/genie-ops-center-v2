@@ -4,6 +4,7 @@ import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { UNIT_TEST_EXCLUDE } from "../vitest/unit.ts";
 import { WORKSPACE_ROOT, withFixture } from "./__testing__/lint-at.ts";
 
 /**
@@ -254,7 +255,10 @@ describe("lint fixtures and the lint that runs beside them", () => {
       ""
     );
 
-    const probe = "apps/genie/__boundary__.config.ts";
+    // A fresh, process-scoped path: the boundary suite owns
+    // `apps/genie/__boundary__.config.ts`, and reusing it here would race that
+    // suite's exclusive create under parallel collection.
+    const probe = `apps/genie/__boundary__probe-${process.pid}.config.ts`;
 
     withFixture(WORKSPACE_ROOT, probe, "export const probe = true;\n", () => {
       const expanded = execFileSync("sh", ["-c", `printf '%s\\n' ${command}`], {
@@ -264,5 +268,15 @@ describe("lint fixtures and the lint that runs beside them", () => {
 
       expect(expanded).not.toContain("__boundary__");
     });
+  });
+
+  // The unit collection is the vitest face of the same race: a fixture written
+  // into a package's `src` matches `src/**/*.test.ts`, so a concurrent unit run
+  // would import a file the suites already deleted. The shared preset excludes
+  // the prefixes every suite uses (genie-ops-center-v2-7lj).
+  it("keeps the transient fixture prefixes out of the unit collection", () => {
+    for (const prefix of COVERED_PREFIXES) {
+      expect(UNIT_TEST_EXCLUDE).toContain(`**/${prefix}*`);
+    }
   });
 });
