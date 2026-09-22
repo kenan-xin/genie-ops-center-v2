@@ -167,6 +167,18 @@ Two builds of `@genie/app` in one checkout can still mix one `apps/genie/.next`,
 
 This is not a property this ticket introduced. Every other target here writes shared outputs with no claim: `test`, `typecheck` and `build-storybook` are all exposed the same way, and Nx assumes one invocation per project at a time.
 
+### How much the registry checks actually cover
+
+The residue is smaller than "two builds can mix an output tree" suggests, and the difference matters when judging whether a claim is worth its failure modes.
+
+Two builds of the SAME selection produce the same registry and the same bundle. Interleaving them mixes two identical trees, so there is nothing to leak.
+
+Two builds of DIFFERENT selections each run their own `generate-registry` immediately before their own build, and each checks the registry before and after its bundler. Work through the orderings and at least one build fails in every one of them, because the second generation lands inside the first build's window, and nothing ever writes a registry back. That is not an argument from the design: it is what the recorded concurrent run did. Build A failed on its own boundary check when build B's generation landed, build B was refused, and neither cached anything.
+
+So the case that constitutes cross-customer leakage, two different selections, is caught. What is genuinely unguarded is chunk-level interleaving between two builds whose registries never disagree, which is the harmless case.
+
+A future mechanism should check the artifact rather than claim the root: compare the module identities present in the built server output against the selection. One trap is already known. The module id survives minification as a string literal, but a bare id is not a safe needle, because an id such as `placeholder` also occurs as an ordinary HTML attribute in bundled code. The package name does not survive minification outside source maps. A marker the application itself reads is needed, and designing one belongs with `genie-ops-center-v2-vst`, not with a rushed edit here.
+
 The supported way to build two selections at once is two build roots, which `generate-registry --root` exists for. That path is never denied.
 
 Three claim mechanisms were tried and rejected:
