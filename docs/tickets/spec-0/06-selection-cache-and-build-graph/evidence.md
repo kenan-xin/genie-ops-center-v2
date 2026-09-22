@@ -70,10 +70,12 @@ One revision, one workspace, isolated Nx cache and state. The digest is a sha256
 
 | Step | Selection | Cache | Registry | Bundle digest |
 | --- | --- | --- | --- | --- |
-| 1 | `placeholder` | 0/2 hit | imports the placeholder | `ead296ff0de1752d` |
-| 2 | explicitly empty | 0/2 hit | no import | `ee5077253219ad78` |
-| 3 | `placeholder` again | 2/2 hit | imports the placeholder | `ead296ff0de1752d` |
-| 4 | `placeholder`, after `rm -rf apps/genie/.next` | 2/2 hit | imports the placeholder | `ead296ff0de1752d` |
+| 1 | `placeholder` | 0/2 hit | imports the placeholder | `1a02078021b5ace6` |
+| 2 | explicitly empty | 0/2 hit | no import | `0e0dd37d8a7e1561` |
+| 3 | `placeholder` again | 2/2 hit | imports the placeholder | `1a02078021b5ace6` |
+| 4 | `placeholder`, after `rm -rf apps/genie/.next` | 2/2 hit | imports the placeholder | `1a02078021b5ace6` |
+
+These digests are from the final code. Earlier runs in this session reported different values because the build tooling itself changed between them; each run is internally consistent, and only the last one describes what is committed.
 
 Step 4 restored three `server.js` files under `.next/standalone`, so the standalone server came back out of the cache and not from a rebuild.
 
@@ -100,7 +102,9 @@ The limit, stated plainly: the second check proves the registry was the expected
 
 A second review found the deeper hole. The registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`, so a build can find its own registry intact at both boundaries while the other build writes the same output tree throughout. Nx then stores that mixed tree under a legitimate selection hash and restores it later. Declaring `.next` as an output, which this ticket did, is what made such a tree cacheable at all.
 
-No check on the registry can see that, so the application build now refuses the situation. `apps/genie/tools/build.ts` takes the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first.
+No check on the registry can see that, and this ticket does not close it. Three claim mechanisms were built and each failed review in a way worse than the hole, so the owner decided on 2026-09-22 to keep the registry checks, state the limit and track the rest separately (genie-ops-center-v2-vst). The attempts are recorded below because each names a trap worth not repeating. The superseded description of the mechanism follows.
+
+No check on the registry can see that, so the application build refused the situation. `apps/genie/tools/build.ts` takes the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first.
 
 The claim is a listening port on the loopback interface, derived from the application root. Two earlier mechanisms were wrong, and review found both.
 
@@ -156,6 +160,22 @@ The selection is explicit [placeholder]. Another build root, a restored cache
 entry or a hand edit left a different registry. Regenerate it.
 exit: 1
 ```
+
+## The residual hole, stated plainly
+
+Two builds of `@genie/app` in one checkout can still mix one `apps/genie/.next`, and Nx can cache the mixed tree. The registry checks catch the case where the generated registry itself changed, which is the cross-customer case they were built for, but they do not inspect the artifact.
+
+This is not a property this ticket introduced. Every other target here writes shared outputs with no claim: `test`, `typecheck` and `build-storybook` are all exposed the same way, and Nx assumes one invocation per project at a time.
+
+The supported way to build two selections at once is two build roots, which `generate-registry --root` exists for. That path is never denied.
+
+Three claim mechanisms were tried and rejected:
+
+- A lock file outlives a build killed by a signal, so a crash blocks every later build in that checkout until somebody deletes the file.
+- A socket file removes that staleness but needs a recovery step. Two builds can each judge one abandoned path dead, and the second removal deletes the first's live socket, so both end up listening and both believe they own the root.
+- A port derived from the root path has no staleness and no recovery, but it collides with unrelated programs and denies valid isolated builds, which attacks the supported path.
+
+Node exposes no advisory file lock, so the textbook mechanism needs a new dependency and a `docs/core/tech-stack.md` entry, which is a separate decision on a shared surface.
 
 ## Not proven here
 

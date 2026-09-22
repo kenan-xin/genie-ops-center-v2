@@ -75,7 +75,19 @@ The comparison is exact, because `emitRegistryModule` is deterministic given a s
 
 The guard closes the window between generation and bundling: a registry left by another selection, a registry restored for a different hash, or a hand-edited file all fail closed rather than being bundled.
 
-### 4a. One owner per application root, added after review
+### 4a. Why this ticket does not claim the application root
+
+Two builds of this project in one checkout share `apps/genie/.next`, so they can mix one output tree, and Nx can then cache the result. Three mechanisms were tried and each failed in a way worse than the hole.
+
+A lock file outlives a build killed by a signal, so a crash blocked every later build in that checkout. A socket file fixed that but needed a recovery step, and two builds could each judge one abandoned path dead, with the second removal deleting the first's live socket, leaving two owners. A port derived from the root path collided with unrelated programs and denied builds that were perfectly valid, which attacks the supported path: isolated roots must always work.
+
+Node has no advisory file lock, so the textbook mechanism needs a new dependency, which is a separate decision on a shared surface.
+
+Two builds of one project in one workspace are already unsupported for every other target here. `test`, `typecheck` and `build-storybook` all write shared outputs and nothing claims those either. The owner decided on 2026-09-22 to keep the registry checks, document the limit and track the residual hole separately (genie-ops-center-v2-vst).
+
+The superseded text follows, kept because the evidence refers to it.
+
+### 4a-superseded. One owner per application root, added after review
 
 Checking the registry is not enough, because the registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`. Each can find its own registry intact at both boundaries while the other writes the same output tree, and Nx then caches that mixed tree under a legitimate selection hash. Declaring `.next` as an output is what made such a tree cacheable.
 
