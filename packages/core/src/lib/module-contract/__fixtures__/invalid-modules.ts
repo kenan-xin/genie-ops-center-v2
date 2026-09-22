@@ -51,6 +51,28 @@ export function withAdminLanding(module: Module): Module {
 }
 
 /**
+ * Repoint every admin entry — and its pinned copy — at another module's admin
+ * key, leaving this module's own `<id>:admin` declared. That makes the pinned
+ * entry require a permission the module never grants, which DEC-23 forbids.
+ */
+export function withForeignAdminPermission(module: Module): Module {
+  const foreign = permissionKeyFor("other", "admin");
+
+  const repoint = (entry: NavigationEntry): NavigationEntry =>
+    entry.surface === "admin"
+      ? { ...entry, requiredPermission: foreign }
+      : entry;
+
+  return {
+    ...module,
+    navigation: {
+      pinned: module.navigation.pinned.map(repoint),
+      entries: module.navigation.entries.map(repoint),
+    },
+  };
+}
+
+/**
  * Flags one entry and its pinned copy together. The rail pins the entries a
  * module declares, so flagging only one of the two copies would break a second
  * rule and stop the transform from naming a single one.
