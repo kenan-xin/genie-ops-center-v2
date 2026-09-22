@@ -1,6 +1,6 @@
 # Spec 0 ticket breakdown
 
-Confidence: 8.0/10. Dependencies preserve the reviewed permanent G2 slice, and each parallel lane has a bounded owner. Pinned compatibility is accepted at G1; native production startup/header behavior remains unproven until G2; shared lockfile changes still need serialized integration.
+G1 and G2 have integrated acceptance. G2 landed at `3bafa24`; current planning baseline is `6b4edec`, which also includes the formatter-ignore correction. Shared configuration changes and integration still require a single writer. Beads owns current readiness and claims.
 
 Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. The breakdown is in execution; the original publication did not itself authorize implementation. Beads owns live status, claims and blocking edges. Markdown owns ticket scope and acceptance, not a second task tracker.
 
@@ -12,7 +12,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05 owns G2; later tickets remain gated until integrated acceptance. Read Beads for current claims and readiness. Beads owns current status; do not redispatch either historical first-batch prompt.
+Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05/G2 and its yt2/3yv obligations are integrated and closed at the recorded baseline; later tickets still require their own acceptance and integration. Read Beads for current claims and readiness. Beads owns current status; do not redispatch either historical first-batch prompt.
 
 ## Execution authority and documentation
 
@@ -87,13 +87,13 @@ The pure data-only resolver begins in S0-01 because G1 story discovery needs the
 
 ## Current dispatch recommendation
 
-Dispatch S0-05 alone from accepted develop revision `531e8af` using its [G2 handoff](handoffs/s0-05-g2.md). The original S0-04/5ph first batch and its repair union are integrated; do not recreate them.
+Prepare S0-06/S0-07/S0-08/S0-09 using the [post-G2 handoffs](handoffs/post-g2.md), after this documentation reconciliation is approved and integrated. Reuse the session's task-assigned worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify the accepted baseline, task ownership and Beads prerequisites. S0-04/5ph/S0-05 prompts are historical, not new dispatches.
 
-Once S0-04 is reaccepted on the repaired integrated revision, run S0-05 alone, including yt2 and 3yv. After integrated G2, S0-06/S0-07/S0-08/S0-09 may run together under the [shared-file schedule](handoffs/README.md). Preserve all eighteen original ticket-to-ticket edges.
+The four lanes may develop their owned files concurrently. Preserve the existing shared-file writer order and all eighteen original ticket-to-ticket edges. The coordinator records exact shared-file windows before dispatch and schedules heavy Docker acceptance separately from code ownership. This documentation does not claim any ticket or reserve a window.
 
 CSP logging yt2 is a child of S0-05, and cache identity 2cg is a child of S0-10. Parent sessions deliver these before closure; children are not pre-start dependencies on their own parent implementation. 2cg still requires S0-06. The historical `2tc` database prerequisite is closed; the repair-union database proof is recorded with the integrated review.
 
-Keep owned children `yt2`, `3yv` and `2cg` manually `blocked` until their parent is claimed and all parent prerequisites are integrated. Parent-child links alone do not suppress `bd ready`. The parent owner then atomically transitions and assigns each unassigned child using `bd update <child-id> --if-status blocked --if-assignee '' --status in_progress --assignee <parent-session-actor>`. Record the parent claim and release reason; stop on a failed guard rather than forcing ownership. Do not briefly reopen a child for a separate session to claim.
+`yt2` and `3yv` are integrated and closed; do not reopen or reclaim them. Keep `2cg` manually `blocked` until S0-10 is claimed and all parent prerequisites are integrated. Parent-child links alone do not suppress `bd ready`. The parent owner then atomically transitions and assigns each unassigned child using `bd update <child-id> --if-status blocked --if-assignee '' --status in_progress --assignee <parent-session-actor>`. Record the parent claim and release reason; stop on a failed guard rather than forcing ownership. Do not briefly reopen a child for a separate session to claim.
 
 ## Parallel launch waves (whole-ticket gate order)
 
@@ -126,7 +126,7 @@ First make the approved planning files available on the agreed integration basel
 
 The installed bd help states linked Git worktrees discover the shared database via Git common-directory discovery. Verify that claim in each new worktree using bd where and bd worktree info; do not run bd init or create separate issue stores there. Use the path reported by bd where; never hardcode a local database layout or treat JSONL as the database. Same-machine linked worktrees need no remote sync. Separate clones/machines use Dolt sync; routine sync is authorized, independently of code pushes.
 
-For a new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its assigned worktree. Verify the intended integration revision and baseline before making edits; preserve unrelated changes.
+Start in the session's assigned checkout. If it is already the task's dedicated worktree, including one created by Orca, reuse it. Only when outside a task worktree, use `wt` to create a dedicated branch/worktree from current local `develop`. Verify branch, accepted baseline and task ownership before editing. If the existing worktree belongs to another task or contains conflicting work, stop and ask; do not overwrite it or automatically create another worktree. A continuation preserves its assigned worktree and work. Preserve unrelated changes.
 
 Run these native commands in the worktree, with a unique session actor. Routine Beads sync is allowed. Use `--sandbox` only when a specific task explicitly forbids remote sync; it disables automatic Dolt pushes. Personal command wrappers such as RTK are optional locally and are not prerequisites for these instructions:
 
@@ -148,11 +148,11 @@ Internal subagents stay within the same claimed ticket and do not claim sibling 
 Replace `<S0-ticket>`, `<bead-id>` and `<workspace-path>` before sending; use the recipient’s actual checkout path.
 
 ```text
-Implement only <S0-ticket> / <bead-id>. Start at <workspace-path>.
+Implement only <S0-ticket> / <bead-id>. Start in the session's assigned checkout; use <workspace-path> only when no checkout is assigned.
 
 Read docs/tickets/spec-0/README.md and that ticket's index.md, approved Spec 0, its technical plan, AGENTS.md and CLAUDE.md. Verify all prerequisite beads are closed with integrated passing evidence, and the worktree base contains their changes plus the approved planning files.
 
-Use wt to create a new dedicated branch/worktree from current local develop, regardless of existing worktrees. Verify this worktree shares the coordinator's Beads database, then atomically claim exactly <bead-id> using a unique session actor. If already claimed, missing a dependency or missing the approved baseline, stop and report it.
+Start in the session's assigned checkout. If it is already the task's dedicated worktree, including one created by Orca, reuse it. Only when outside a task worktree, use wt to create a dedicated branch/worktree from current local develop. Verify branch, accepted baseline and task ownership before editing. If the existing worktree belongs to another task or contains conflicting work, stop and ask; do not overwrite it or automatically create another worktree. A continuation preserves its assigned worktree and work. Verify this worktree shares the coordinator's Beads database, then atomically claim exactly <bead-id> using a unique session actor. If already claimed, missing a dependency or missing the approved baseline, stop and report it.
 
 Preserve the repository TDD and Storybook-first UI requirements and G1/G2 stop gates; no silent dependency downgrade, skipped proof, extra pool/custom server, wider authorization, design import or later-section scope.
 
@@ -179,7 +179,7 @@ External publication is separate authority: S0-11 tests ordering without pushing
 
 Independent critique and bounded recheck passed on 2026-09-19 after separating S0-01's extension point from S0-02's exclusive Storybook implementation ownership. At publication, Beads had the same 18 blocking edges as this map, no cycles and only S0-01 ready. At that publication date, all twelve tickets were open/unclaimed; this is historical, not current readiness. Mechanical checks found all 75 numbered requirements and 30 acceptance IDs in the coverage map, valid local links and no whitespace errors. These checks validate the breakdown, not runtime implementation. Recheck current Beads state before dispatch.
 
-Assumptions: one shared same-machine Beads database and one human/coordinator integration owner; future implementation authorization is separate from this breakdown. G1 compatibility is now accepted; G2 native runtime/header composition remains an implementation gate. No remaining product question is decided here.
+Assumptions: one shared same-machine Beads database and one human/coordinator integration owner; future implementation authorization is separate from this breakdown. G1 compatibility is now accepted; G2 is accepted; G3–G5 remain separate acceptance gates. No remaining product question is decided here.
 
 ## Module naming revision, 2026-09-20
 

@@ -6,7 +6,7 @@ Enterprise application platform: one repository, one Dockerfile, shared core, bu
 
 Read the current ticket and owner authorization before acting. An approved scoped local commit does not require an integration window. Local integration into `develop` requires separate owner approval and a reserved single-writer window; code push, publication, deployment, host-service changes and worktree deletion remain separately authorized actions.
 
-For each new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its already-assigned worktree and work; it is not a new assignment. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
+Start in the session's assigned checkout. If it is already the task's dedicated worktree, including one created by Orca, reuse it. Only when outside a task worktree, use `wt` to create a dedicated branch/worktree from current local `develop`. Verify branch, accepted baseline and task ownership before editing. If the existing worktree belongs to another task or contains conflicting work, stop and ask; do not overwrite it or automatically create another worktree. A continuation preserves its assigned worktree and work. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
 
 Beads owns shared ticket status, claims, blockers and follow-up work. Task-local execution checklists, concrete plans and recovery ledgers may support the chosen workflow; they do not replace Beads or authorize sibling-ticket work.
 
@@ -82,7 +82,7 @@ These choices are settled. Do not substitute one without approval.
 
 ## Conventions (carried forward, apply once code exists)
 
-- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. Create the branch from the latest `develop`. Never commit straight to `develop` or `main`. Use `wt` as specified in Execution authority.
+- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. When a new task checkout is needed, create its branch from the latest `develop`; reuse an assigned task worktree as specified in Execution authority. Never commit straight to `develop` or `main`.
 - This file and `AGENTS.md` are tracked. Edit them in the assigned worktree and mirror substantive shared instructions across both.
 - Commits and pull request titles: Conventional Commits — `type(scope): subject`, imperative, under 72 characters; the body explains why. Allowed types and detailed rules are in the "Commits and Pull Request Titles" section of `AGENTS.md`.
 - Integration: use a pull request from the feature branch to `develop`, or owner-approved local integration through `wt` in the reserved window. When `develop` is ready for production, open a pull request from `develop` to `main`. `main` is the production branch and receives changes only through that pull request.

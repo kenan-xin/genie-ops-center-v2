@@ -1,10 +1,10 @@
 # Spec 0 session handoffs
 
-Prepared by the [2026-09-21 audit](../audit-2026-09-21.md). These are proposed dispatch instructions, not a record that implementation has started. Before sending a prompt, verify that develop contains the reviewed documentation commit. Every new handoff must instruct its recipient to use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A fresh worktree does not inherit uncommitted files.
+Prepared against integrated develop `6b4edec`. These are dispatch instructions, not a record that implementation has started. Before sending a prompt, verify that develop contains the approved documentation update. Start in the session's assigned checkout. If it is already the task's dedicated worktree, including one created by Orca, reuse it. Only when outside a task worktree, use `wt` to create a dedicated branch/worktree from current local `develop`. Verify branch, accepted baseline and task ownership before editing. If the existing worktree belongs to another task or contains conflicting work, stop and ask; do not overwrite it or automatically create another worktree. A continuation preserves its assigned worktree and work.
 
 ## Dispatch order
 
-The original first batch integrated at `bcd66e7` and `13800cd`; its [review repair union](../04-context-migrator-and-placeholder/integrated-review.md) integrated and reaccepted S0-04 at `531e8af`. Those prompts are historical. S0-05 owns G2 and runs alone until integrated acceptance; verify its current claim in Beads rather than treating this historical dispatch order as readiness. The table preserves the original lane boundaries.
+The original first batch integrated at `bcd66e7` and `13800cd`; its [review repair union](../04-context-migrator-and-placeholder/integrated-review.md) integrated and reaccepted S0-04 at `531e8af`. Those prompts are historical. S0-05/G2 integrated at `3bafa24` and is closed, as are yt2 and 3yv. Its prompt is historical; use the four post-G2 handoffs after verifying current Beads prerequisites and the approved documentation baseline. The table preserves the original lane boundaries.
 
 | Batch | Handoff | Release condition |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Preserve accepted decisions. Escalate genuine decisions, ownership conflicts and
 
 The human is the integration coordinator between separate Claude sessions. Beads and repository documents carry ownership and handoff records; do not assume sessions can message one another. Only one session may integrate into develop at a time. A sender must reserve that window before the recipient merges; a session without a recorded reservation stops at reviewed local commits.
 
-Before first dispatch, owned children `yt2`, `3yv` and `2cg` stay manually blocked until their parent is claimed with prerequisites satisfied. For a continuation, inspect current child state and preserve completed work; do not replay first-claim transitions. The parent owner transitions and assigns them in one guarded update as specified in the ticket map. Parent-child relationships gate closure but do not keep an open child out of the ready queue. Release no child as an independent lane.
+`yt2` and `3yv` are completed; do not reopen or reclaim them. Before S0-10 first dispatch, owned child `2cg` stays manually blocked until its parent is claimed with prerequisites satisfied. For a continuation, inspect current child state and preserve completed work; do not replay first-claim transitions. The parent owner transitions and assigns them in one guarded update as specified in the ticket map. Parent-child relationships gate closure but do not keep an open child out of the ready queue. Release no child as an independent lane.
 
 ## Shared-file schedule
 
@@ -35,6 +35,12 @@ Before first dispatch, owned children `yt2`, `3yv` and `2cg` stay manually block
 | Post-G2 windows 2, 3, 4 | S0-07, then S0-08, then S0-09 may each make their required shared configuration/dependency changes after the preceding writer releases the window | Each records exact paths and updates from integrated develop before touching shared files |
 
 The post-G2 windows are an agreed schedule to record on dispatch, not permission to race. If a lane needs an earlier shared change, the human explicitly transfers the window in the affected beads. This does not add whole-ticket prerequisite edges between the four lanes. Integration may follow review readiness, serialized by the human, while preserving the writer windows.
+
+The coordinator records the owner, exact paths and release revision in the affected beads before a shared-file window starts. A lane with no shared edits explicitly releases its turn; it does not hold later lanes until whole-ticket completion. Changes to a shared interface are integrated and communicated before consumers update their baselines. Independent work continues meanwhile.
+
+Reserve one heavy Docker acceptance run at a time across these sessions. Isolated worktrees still share the Docker daemon, image tags, Compose project names and published ports. Each run records its image identity and resource names, uses lane-specific names/ports where the harness supports them, and cleans up only resources it created. The reserved run may contain the concurrency required by its tests, including S0-06 isolated selections and S0-07 competing migrator processes; serialization between agents must not weaken those tests. Baseline harness changes for resource isolation follow the shared-file protocol.
+
+Shared app acceptance helpers, required-case manifests, fixture image tooling, and image preparation are also coordinated surfaces. S0-06 owns build/selection changes; S0-07 owns isolation/failure assertions. Agree the exact file owner before either edits a common harness file. Worktrees alone do not resolve that overlap.
 
 Shared surfaces include root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `nx.json`, shared presets, package export maps, app root/provider composition and root test configuration. S0-06 owns the selection contract; S0-08 consumes it rather than adding another resolver. S0-07 owns migrator/isolation internals. S0-09 owns devtools/messages. Storybook host changes belong to S0-10 after its prerequisites. Coordinate tracked AGENTS.md/CLAUDE.md changes with the existing `3l5` owner; edit in the assigned worktree.
 

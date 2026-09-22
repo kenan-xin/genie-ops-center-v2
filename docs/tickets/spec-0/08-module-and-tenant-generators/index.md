@@ -12,7 +12,7 @@ Traceability: R-29–R-31, R-39, R-41d, R-56; AC-7/AC-23/AC-27/AC-29 generated c
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
 Owned surface: tools/generators module:new and tenant:new implementations/templates and disposable generator fixtures; no resolver implementation ownership.
 
@@ -20,7 +20,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Scope
 
-Generate the migration contract accepted at integrated G2, including the owner's F2 packaging disposition. The current S0-05 branch's migration thunk and public-asset behavior are not independently approved generator conventions. Reuse the final accepted app/test seams; do not invent a template-only packaging workaround.
+Generate the migration contract accepted at integrated G2, including the owner's F2 packaging disposition. The integrated G2 contract uses a deferred migrations function and the standard app's verified server-only packaging. Follow the reconciled module-authoring documentation; no eager-array or public-SQL convention is accepted. Reuse the final accepted app/test seams; do not invent a template-only packaging workaround.
 
 - Scaffold module package with every declaration point, module tag, three-folder layout/READMEs, own schema/history/ledger/factories and ctx.tenant procedure/job signatures.
 - Use empty typed CSP provider and category/settings declaration coverage matching canonical contracts; no module runtime extension or new permission grants.

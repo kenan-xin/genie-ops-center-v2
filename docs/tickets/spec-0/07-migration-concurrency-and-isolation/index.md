@@ -12,7 +12,7 @@ Traceability: R-20, R-24–R-28, R-38/R-39; AC-4/AC-6/AC-9/AC-10; plan G3 databa
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
 Owned surface: Core migrator hardening and database test fixtures; app isolation test assertions/reporting. No app build graph or generator-template changes.
 
@@ -23,7 +23,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 - Extend the retained migrator from G2 with full multi-process and failure recovery matrix; no alternate test-only runner.
 - Assert one backend session owns fixed advisory lock across all history transactions and ledger operations; preserve fixed key and configured timeout.
 - Ensure failed/unhealthy startup never serves; later rerun applies missing work only. Preserve completed-history forward-only semantics.
-- Retain and extend G2's required-execution guard for app two-context isolation through final CI wiring. S0-05 must repair its known missing/skipped false-pass before G2 acceptance; this ticket does not defer or replace that prerequisite.
+- Retain and extend G2's required-execution guard for app two-context isolation through final CI wiring. The G2 required-execution guard is integrated and accepted. Preserve its mandatory-case enforcement while extending this ticket's matrix.
 
 ## Acceptance and tests
 
@@ -56,6 +56,6 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 ## Develop audit, 2026-09-21
 
-Extend the integrated S0-04 migrator and S0-05 image/isolation harness. Do not rebuild the unit cleanup state machine. Add real multi-process contention, connection loss, timeout, cleanup uncertainty and forward-only rerun cases; retain failure on missing/skipped isolation collection. S0-05 owns correction of the false-pass identified in its 2026-09-22 review before G2 closes. Consume its final accepted migration-packaging contract, including the owner's F2 disposition. This remains after G2 because startup failure and composed app isolation are in scope.
+Extend the integrated S0-04 migrator and S0-05 image/isolation harness. Do not rebuild the unit cleanup state machine. Add real multi-process contention, connection loss, timeout, cleanup uncertainty and forward-only rerun cases; retain failure on missing/skipped isolation collection. Current-baseline reconciliation, 2026-09-22: G2's required-execution guard is integrated and accepted. Preserve its enforcement and consume the accepted server-only F2 packaging repair. This remains after G2 because startup failure and composed app isolation are in scope.
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

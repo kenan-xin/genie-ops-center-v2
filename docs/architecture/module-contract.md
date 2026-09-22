@@ -11,7 +11,7 @@ Permission keys and default roles follow [Permission and system-role evolution](
 | Point | Shape | Core uses it for |
 | --- | --- | --- |
 | Identity | `id` (kebab-case), display name, version | Entitlements, navigation groups, permission key prefix |
-| Schema | One Drizzle schema file and its own migration history | Applied after the core history, only in images that include the module (`DEC-33`) |
+| Schema | Drizzle tables, `migrations: () => readonly MigrationMeta[]`, and `migrationsTable`; the module owns its drizzle-kit folder and journal | Applied after the core history, only in images that include the module (`DEC-33`) |
 | Router | One tRPC router | Mounted under the module id when the module is enabled, every procedure behind `can()` and reading only through `ctx.tenant` (`DEC-34`) |
 | Permission keys | `<id>:<action>` with labels. A module with a workspace entry declares `<id>:use` and requires it on every workspace entry (`DEC-50`). A module with admin pages declares `<id>:admin`, the key that enabling the entitlement appends to `Tenant administrator` and disabling removes (`DEC-23`; the solutions module's `solutions:admin` is the pattern) | Role editor, `can()`, the access column of the Modules page, the `Tenant administrator` append on enable |
 | Record types | Types a scope can point at, each with an optional list of parent types and a resolver from id to `{ label, path?, parents? }`, where `parents` lists the record's parent scopes as type and id pairs, one per declared parent type. Core renders a link only when `path` is present, and `path` must be a route the caller may open under `can()`. `can()` matches a resource against its own scope and the parents the resolver returns; `scopesFor()` returns parent scopes unchanged and the module filters on its parent columns (`DEC-39`) | The scope picker in role assignment, the Access overview, the audit reader's link to a target that still exists |
@@ -27,6 +27,14 @@ Permission keys and default roles follow [Permission and system-role evolution](
 | Integrations | Kinds of external system the module can connect to | `tenant_integration` records and secret resolution |
 | Content security policy | Optional `contentSecurityPolicy: { frameOrigins(ctx: { tenant: TenantContext }): Promise<readonly string[]> }`; origins computed per request from the module's own records through the supplied tenant context | The security headers set once in the app (`DEC-31`); see provider rules below |
 | Tests | Unit, integration, factories, one end-to-end main path. During Section 0, generated modules prove declarations/registration, real schema/migrations, and router/browser denial under the unchanged placeholder-only stub; only the original placeholder has an authorized success path. Section 2 item 6 adds real-role authorized success tests to the generator and existing generated fixtures while retaining denial coverage. Unit/integration/E2E run at both stages; modules with UI also ship documented Storybook stories and applicable browser interaction tests through the shared host. | CI gate |
+
+### Migration declaration and authoring
+
+The integrated Section 0 contract defers migration reads: `schema.migrations` is a function returning the module's migration metadata. Declare each journal entry's SQL file with a static `new URL(..., import.meta.url)` in the owning module, and call core's `migrationsFromJournal(journal, files)` inside that function. `moduleHistory` invokes it during bootstrap planning. Importing the declaration must not read SQL, connect to a database, or run migrations.
+
+After changing the schema, run the module's drizzle-kit generation command, then add each new journal tag and its corresponding file URL to the declaration in the same change. Keep journal order and existing history semantics. A missing declared file fails when the history is read. The module continues to own its drizzle-kit folder and ledger table; this is not a second registry or an eager import-time migration read. The accepted example is `packages/modules/placeholder/src/schema.ts`.
+
+Migration SQL is server-only. The standard app's build validates and removes generated public SQL duplicates while preserving server assets; authored public SQL fails the build. Keep migration declarations outside browser imports. Built-image acceptance must retain unavailable public SQL URLs, no migration contents in served assets/browser bundles, and correct real-database application with source/ledger hashes. Generator templates consume this contract, not the withdrawn raw/bytes-import alternatives. See the F2 decision and evidence in the S0-05 ticket.
 
 ### Content security policy provider
 

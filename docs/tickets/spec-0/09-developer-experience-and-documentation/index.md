@@ -12,7 +12,7 @@ Traceability: R-9/R-42/R-43/R-41d; AC-12/AC-13; docs/architecture/ui-development
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
 Owned surface: App devtools mount, English message integration, developer documentation and agent-instruction pointers; package-local devtool dependency declarations.
 
@@ -55,6 +55,6 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 ## Develop audit, 2026-09-21
 
-The 2026-09-21 develop audit preceded the S0-05 app. Its feature branch now supplies next-intl request configuration, the initial English catalogue and NextIntlClientProvider; these are not yet integrated G2 evidence. After G2 acceptance, complete catalogue/missing-key checks and development-only panels using that accepted app seam rather than recreating it. Story-first instructions already exist: correct drift rather than recreate them. AGENTS.md/CLAUDE.md are tracked; coordinate exact edits with existing 3l5 ownership and the integration owner, and edit them in the assigned worktree.
+The 2026-09-21 develop audit preceded the S0-05 app. Integrated G2 at `3bafa24` supplies next-intl request configuration, the initial English catalogue and NextIntlClientProvider. Extend these accepted seams with catalogue/missing-key checks and development-only panels rather than recreate them. Story-first instructions already exist: correct drift rather than recreate them. AGENTS.md/CLAUDE.md are tracked; coordinate exact edits with existing 3l5 ownership and the integration owner, and edit them in the assigned worktree.
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

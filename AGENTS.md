@@ -4,7 +4,7 @@
 
 Read the current ticket and owner authorization before acting. An approved scoped local commit does not require an integration window. Local integration into `develop` requires separate owner approval and a reserved single-writer window; code push, publication, deployment, host-service changes and worktree deletion remain separately authorized actions.
 
-For each new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its already-assigned worktree and work; it is not a new assignment. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
+Start in the session's assigned checkout. If it is already the task's dedicated worktree, including one created by Orca, reuse it. Only when outside a task worktree, use `wt` to create a dedicated branch/worktree from current local `develop`. Verify branch, accepted baseline and task ownership before editing. If the existing worktree belongs to another task or contains conflicting work, stop and ask; do not overwrite it or automatically create another worktree. A continuation preserves its assigned worktree and work. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
 
 Beads owns shared ticket status, claims, blockers and follow-up work. Task-local execution checklists, concrete plans and recovery ledgers may support the chosen workflow; they do not replace Beads or authorize sibling-ticket work.
 

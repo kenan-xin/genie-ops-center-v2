@@ -12,7 +12,7 @@ Traceability: R-3/R-3a, R-21–R-23a, R-52; AC-1/AC-5/AC-24; plan ownership tabl
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md) and `genie-ops-center-v2-5ph` (normally satisfied before G2).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
 Owned surface: tools/generators selection hardening, app registry/image-prep target metadata, isolated build-root plumbing and selection test fixtures. No module:new templates or Storybook host edits.
 
@@ -20,7 +20,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Scope
 
-Consume the integrated G2 baseline rather than recreating its generated registry or existing build, build-image and test:integration edges. Extend those targets with this ticket's selection/cache guarantees while preserving mandatory isolation execution and built-image acceptance. Record the accepted G2 revision before starting; the current S0-05 feature branch is not that acceptance.
+Consume the integrated G2 baseline rather than recreating its generated registry or existing build, build-image and test:integration edges. Extend those targets with this ticket's selection/cache guarantees while preserving mandatory isolation execution and built-image acceptance. Record the accepted G2 revision before starting; G2 is accepted at develop `3bafa24`; verify that revision and the current approved documentation baseline before starting.
 
 - Complete pre-hash resolver wrappers for every supported direct developer/Nx/customer entrypoint; pass serialized ordered selection and source mode, not only fingerprint.
 - Declare producer outputs and consumer inputs; generation/validation before app typecheck/build, build before image-prep. Read selected source bytes for hashing without tooling execution.
