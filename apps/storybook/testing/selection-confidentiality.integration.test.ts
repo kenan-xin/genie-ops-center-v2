@@ -817,3 +817,87 @@ describe("an owner input mutation", () => {
     }
   });
 });
+
+/** How many component tests the run reported as passed. */
+function passedCount(output: string): number {
+  const passed = /Tests\s+(\d+) passed/.exec(output)?.[1];
+
+  if (passed === undefined) {
+    throw new Error(`the run reported no test count:\n${output}`);
+  }
+
+  return Number(passed);
+}
+
+/**
+ * The real generator from S0-08, run into the stage. It is the strongest form
+ * of "appears and tests with no host or CI edit": nothing in the workspace
+ * names the new module, yet selection alone discovers its stories, builds them
+ * into the static output, and runs them as component tests.
+ *
+ * It runs last, because the generated module joins the unset selection while it
+ * exists. The stage's application manifest and the module folder are restored
+ * afterwards.
+ */
+describe("a module written by the generator", () => {
+  const GENERATED_ID = "generated-proof";
+
+  it("appears in the selected static build and runs without a host or CI edit", () => {
+    const appManifest = join(stage, "apps/genie/package.json");
+    const originalManifest = readFileSync(appManifest, "utf8");
+    const generatedRoot = join(stage, "packages/modules", GENERATED_ID);
+
+    try {
+      const generated = spawnSync(
+        join(stage, "node_modules/.bin/nx"),
+        ["g", "@genie/generators:module-new", GENERATED_ID],
+        { cwd: stage, encoding: "utf8", env: { ...process.env } }
+      );
+
+      expect(generated.status, `${generated.stdout}${generated.stderr}`).toBe(
+        0
+      );
+
+      // The module's stories import `@genie/ui`, so its own dependency tree has
+      // to be linked the way any module is linked. This is not a host or CI
+      // edit: nothing names the module, only the package manager links it. The
+      // stage is disposable, so its lockfile is allowed to move.
+      const install = spawnSync(
+        "pnpm",
+        ["install", "--ignore-scripts", "--silent"],
+        { cwd: stage, encoding: "utf8" }
+      );
+
+      expect(install.status, `${install.stdout}${install.stderr}`).toBe(0);
+
+      const prefix = `modules-${GENERATED_ID}-`;
+
+      const selected = ran(BUILD_TASK, GENERATED_ID);
+
+      expect(selected.status).toBe(0);
+      expect(
+        Object.keys(index().entries).some((id) => id.startsWith(prefix))
+      ).toBe(true);
+
+      // And it is absent from another selection's build.
+      ran(BUILD_TASK, "placeholder");
+
+      expect(
+        Object.keys(index().entries).some((id) => id.startsWith(prefix))
+      ).toBe(false);
+
+      // The component tests collect the generated stories as real tests: the
+      // count rises above the empty selection's, so the pass is not the host's
+      // own user-interface and core stories.
+      const empty = ran(TEST_TASK, "");
+      const withGenerated = ran(TEST_TASK, GENERATED_ID);
+
+      expect(passedCount(withGenerated.output)).toBeGreaterThan(
+        passedCount(empty.output)
+      );
+    } finally {
+      rmSync(generatedRoot, { recursive: true, force: true });
+      writeFileSync(appManifest, originalManifest);
+    }
+  });
+});
