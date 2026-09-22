@@ -41,6 +41,8 @@ function manifestEntry(file: string) {
 
 const isolation = manifestEntry("testing/isolation.integration.test.ts");
 
+const image = manifestEntry("testing/image.startup.test.ts");
+
 const viewer = manifestEntry("testing/viewer-background.integration.test.ts");
 
 function reportOf(
@@ -271,6 +273,31 @@ function runRunner(cwd: string, args: readonly string[]): number {
 }
 
 /**
+ * One manifest case by index, failing loudly rather than on an undefined read.
+ * The negative controls below name a case by position, so a manifest that
+ * shortens its case list fails here rather than testing nothing.
+ */
+function manifestCase(entry: RequiredCase, index: number): string {
+  const name = entry.cases[index];
+
+  if (name === undefined) {
+    throw new Error(`No case ${index} in ${entry.file}`);
+  }
+
+  return name;
+}
+
+/** One manifest case as a trivially passing top-level case. */
+function passingCase(name: string): string {
+  return `it(${JSON.stringify(name)}, () => {});`;
+}
+
+/** One manifest case as a skipped top-level case. */
+function skippedCase(name: string): string {
+  return `it.skip(${JSON.stringify(name)}, () => {});`;
+}
+
+/**
  * A trivially passing synthetic file for one manifest entry.
  *
  * The manifest records each mandatory case as its full collected name: the
@@ -282,9 +309,7 @@ function runRunner(cwd: string, args: readonly string[]): number {
  * entry enter the manifest while every synthetic workspace still omitted it.
  */
 function passingFile(entry: RequiredCase): string {
-  return entry.cases
-    .map((name) => `it(${JSON.stringify(name)}, () => {});`)
-    .join("\n");
+  return entry.cases.map((name) => passingCase(name)).join("\n");
 }
 
 /** Every manifest file as a trivially passing synthetic file. */
@@ -308,11 +333,7 @@ describe("the runner command line", () => {
   it("exits nonzero when one mandatory case is removed and another remains", () => {
     const workspace = makeWorkspace("half-isolation", {
       ...passingWorkspace(),
-      "testing/isolation.integration.test.ts": `
-describe("two tenant contexts in one process", () => {
-  it("the two databases are genuinely separate", () => {});
-});
-`,
+      [isolation.file]: passingCase(manifestCase(isolation, 1)),
     });
 
     try {
@@ -325,12 +346,10 @@ describe("two tenant contexts in one process", () => {
   it("exits nonzero when a mandatory case is skipped in source", () => {
     const workspace = makeWorkspace("skipped-isolation", {
       ...passingWorkspace(),
-      "testing/isolation.integration.test.ts": `
-describe("two tenant contexts in one process", () => {
-  it.skip("each read returns only its own database's row", () => {});
-  it("the two databases are genuinely separate", () => {});
-});
-`,
+      [isolation.file]: [
+        skippedCase(manifestCase(isolation, 0)),
+        passingCase(manifestCase(isolation, 1)),
+      ].join("\n"),
     });
 
     try {
@@ -341,11 +360,14 @@ describe("two tenant contexts in one process", () => {
   });
 
   it("exits nonzero when a mandatory file is missing entirely", () => {
-    const workspace = makeWorkspace("missing-file", {
-      "testing/image.startup.test.ts": passingFile(
-        manifestEntry("testing/image.startup.test.ts")
-      ),
-    });
+    const workspace = makeWorkspace(
+      "missing-file",
+      Object.fromEntries(
+        Object.entries(passingWorkspace()).filter(
+          ([file]) => file !== image.file
+        )
+      )
+    );
 
     try {
       expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
