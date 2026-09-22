@@ -75,7 +75,13 @@ The comparison is exact, because `emitRegistryModule` is deterministic given a s
 
 The guard closes the window between generation and bundling: a registry left by another selection, a registry restored for a different hash, or a hand-edited file all fail closed rather than being bundled.
 
-### 4a. Why this ticket does not claim the application root
+### 4a. The isolation contract, and what is outside it
+
+The contract is one build root per selection. Two selections that must be built at the same time get two roots, which `generate-registry --root` exists for. That path is proved positively in the evidence: two concurrent builds in two staged roots both succeed, and each artifact carries its own selection and no trace of the other's.
+
+Two builds of this project in ONE root are unsupported. They write into one `apps/genie/.next`, and nothing here claims otherwise. That is already true of every other target in this repository, because `test`, `typecheck` and `build-storybook` also write shared outputs and Nx assumes one invocation per project at a time. A test in which one shared-root build fails is a misuse check. It shows the failure is loud, and it is not an isolation proof.
+
+### 4b. Why this ticket does not claim the application root
 
 Two builds of this project in one checkout share `apps/genie/.next`, so they can mix one output tree, and Nx can then cache the result. Three mechanisms were tried and each failed in a way worse than the hole.
 
@@ -87,7 +93,7 @@ Two builds of one project in one workspace are already unsupported for every oth
 
 The superseded text follows, kept because the evidence refers to it.
 
-### 4a-superseded. One owner per application root, added after review
+### 4d-superseded. One owner per application root, added after review and then removed
 
 Checking the registry is not enough, because the registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`. Each can find its own registry intact at both boundaries while the other writes the same output tree, and Nx then caches that mixed tree under a legitimate selection hash. Declaring `.next` as an output is what made such a tree cacheable.
 
@@ -97,7 +103,7 @@ The claim is a listening port on the loopback interface, derived from the applic
 
 This reverses the rejection of a root lock recorded below. That rejection was about the registry file and predates the artifact hole, and its stated cost, stale-lock recovery, is the cost this mechanism does not carry.
 
-### 4b. The registry guard on both sides of the bundler
+### 4c. The registry guard on both sides of the bundler
 
 The `build` steps run it twice, before the bundler and after it. One check before the bundler settles nothing on its own, because the bundler reads the registry minutes later and a second build in the same checkout can rewrite it in between. The second check turns that race into a failed build. It proves the registry was the expected one at the start and at the end, not at every instant between, so two selections that must run at once still get two build roots.
 

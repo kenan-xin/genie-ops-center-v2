@@ -161,11 +161,51 @@ entry or a hand edit left a different registry. Regenerate it.
 exit: 1
 ```
 
+## The isolation contract, proved
+
+The supported way to build two selections at the same time is one build root each. This is the proof of that contract, and it is a positive one: both builds succeed, and each artifact carries its own selection and nothing of the other's.
+
+Two roots were staged from this checkout, each a full copy including `node_modules`, and both were built at the same time, `placeholder` in one and the explicitly empty selection in the other.
+
+```bash
+for n in rootA rootB; do
+  rsync -a --exclude='.next' --exclude='.git' --exclude='.nx' "$REPO/" "$STAGE/$n/"
+done
+
+# in each root, concurrently, with its own Nx cache and state:
+( cd "$STAGE/rootA" && MODULE_INCLUDE=placeholder ./node_modules/.bin/nx run @genie/app:build ) &
+( cd "$STAGE/rootB" && MODULE_INCLUDE= ./node_modules/.bin/nx run @genie/app:build ) &
+wait
+```
+
+Result:
+
+| Check | Root A, `placeholder` | Root B, explicitly empty |
+| --- | --- | --- |
+| Build exit | 0, succeeded | 0, succeeded |
+| Final registry | `explicit`, imports the placeholder | `explicit`, no import |
+| Files in `.next` carrying the placeholder module | 10 | 0 |
+| Standalone `server.js` | 3 | 3 |
+
+The artifact needle is `__drizzle_migrations_placeholder`, a string the placeholder module owns. It survives minification into the non-map server output, so the count is read from the built bundle and not from the registry that produced it. A bare module id would not do: an id such as `placeholder` also occurs as an ordinary HTML attribute in bundled code.
+
+The checkout itself was untouched: its registry still read `unset` afterwards.
+
+Neither build was denied, neither waited for the other, and neither artifact contains any trace of the other's selection. That is the isolation this ticket owes.
+
+## Two builds in one root, which is misuse and not a contract
+
+Two builds of `@genie/app` in one checkout write into one `apps/genie/.next`. This is unsupported. It is not a weaker form of the isolation contract above, and nothing here promises it works.
+
+The same is already true of every other target in this repository. `test`, `typecheck` and `build-storybook` all write shared outputs, nothing claims those either, and Nx assumes one invocation per project at a time.
+
+The earlier recorded run, where one shared-root build was refused and the other failed its own boundary check, is a misuse check. It shows the failure is loud rather than silent. It is not evidence of isolation, and it must not be read as such.
+
 ## The residual hole, stated plainly
 
 Two builds of `@genie/app` in one checkout can still mix one `apps/genie/.next`, and Nx can cache the mixed tree. The registry checks catch the case where the generated registry itself changed, which is the cross-customer case they were built for, but they do not inspect the artifact.
 
-This is not a property this ticket introduced. Every other target here writes shared outputs with no claim: `test`, `typecheck` and `build-storybook` are all exposed the same way, and Nx assumes one invocation per project at a time.
+This is deferred hardening of an unsupported path, not a gap in a supported one. The isolation contract is one root per selection, and it is proved above. Nothing documented promises that two builds may share one root.
 
 ### How much the registry checks actually cover
 
