@@ -62,18 +62,36 @@ type Run = {
 
 const registryPath = () => join(stage, "apps/genie/src/modules.ts");
 
+/** Built from the escape character rather than written literally, which no linter has to be told to allow. */
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+const stripAnsi = (text: string) => text.replace(ANSI, "");
+
 /**
  * Runs one Nx task for one selection, inside the stage. `undefined` means the
  * variable is unset, which is a different selection from an empty string and
  * must stay that way all the way to the hash.
  */
 function run(task: string, moduleInclude: string | undefined): Run {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    NX_CACHE_DIRECTORY: join(stage, ".nxcache"),
-    NX_WORKSPACE_DATA_DIRECTORY: join(stage, ".nxdata"),
-    NX_DAEMON: "false",
-  };
+  // Every inherited NX_ variable is dropped before the three this suite sets.
+  //
+  // This suite measures the cache, so it has to own every input to the cache
+  // decision. Nx puts its own task context into a child's environment, and
+  // `NX_SKIP_NX_CACHE` is among the values that reach here when these cases run
+  // inside `nx run @genie/app:test:integration`. Inheriting it turned every
+  // cache assertion false and made the suite report how it had been invoked
+  // rather than what the build graph does.
+  const env = { ...process.env };
+
+  for (const name of Object.keys(env)) {
+    if (name.startsWith("NX_")) delete env[name];
+  }
+
+  env.NX_CACHE_DIRECTORY = join(stage, ".nxcache");
+
+  env.NX_WORKSPACE_DATA_DIRECTORY = join(stage, ".nxdata");
+
+  env.NX_DAEMON = "false";
 
   if (moduleInclude === undefined) delete env.MODULE_INCLUDE;
   else env.MODULE_INCLUDE = moduleInclude;
@@ -84,7 +102,12 @@ function run(task: string, moduleInclude: string | undefined): Run {
     env,
   });
 
-  const output = `${result.stdout}${result.stderr}`;
+  // Nx colorizes when its parent asks for colour, which it does when these
+  // cases run inside `nx run @genie/app:test:integration`. The escape codes
+  // land between `nx run` and the project name, so a plain-text search for the
+  // task stopped matching and every cache assertion read false while the cache
+  // was in fact hitting. The codes are removed before anything is read.
+  const output = stripAnsi(`${result.stdout}${result.stderr}`);
 
   if (result.status !== 0) {
     throw new Error(`${task} failed for ${String(moduleInclude)}:\n${output}`);
@@ -154,7 +177,7 @@ describe("two selections on one revision", () => {
     // Back to the first selection: a hit, and the bytes are the first run's.
     const again = run(TASK, "placeholder");
 
-    expect(servedFromCache(again.output, TASK)).toBe(true);
+    expect(servedFromCache(again.output, TASK), again.output).toBe(true);
     expect(again.registry).toBe(placeholder.registry);
   });
 
@@ -162,7 +185,7 @@ describe("two selections on one revision", () => {
     const first = run(TASK, "placeholder");
     const second = run(TASK, "placeholder");
 
-    expect(servedFromCache(second.output, TASK)).toBe(true);
+    expect(servedFromCache(second.output, TASK), second.output).toBe(true);
     expect(second.registry).toBe(first.registry);
   });
 
@@ -172,7 +195,7 @@ describe("two selections on one revision", () => {
     const plain = run(TASK, "placeholder");
     const spaced = run(TASK, " placeholder ");
 
-    expect(servedFromCache(spaced.output, TASK)).toBe(true);
+    expect(servedFromCache(spaced.output, TASK), spaced.output).toBe(true);
     expect(spaced.registry).toBe(plain.registry);
   });
 });
@@ -219,17 +242,21 @@ describe("a consumer of the generated registry", () => {
    * registry it was given.
    */
   it("runs again when the selection changes", () => {
-    const task = "@genie/app:typecheck";
+    // The app's own test target, not typecheck. Both declare the selection as
+    // an input, and the defect applies to each the same way, but typecheck also
+    // depends on `^build`, which makes the staged workspace run an install that
+    // needs a git repository the stage deliberately does not have.
+    const task = "@genie/app:test";
 
     run(task, "placeholder");
 
     const empty = run(task, "");
 
-    expect(servedFromCache(empty.output, task)).toBe(false);
+    expect(servedFromCache(empty.output, task), empty.output).toBe(false);
     expect(empty.registry).not.toContain("@genie/module-placeholder");
 
     const repeat = run(task, "");
 
-    expect(servedFromCache(repeat.output, task)).toBe(true);
+    expect(servedFromCache(repeat.output, task), repeat.output).toBe(true);
   }, 600000);
 });
