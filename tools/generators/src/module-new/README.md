@@ -1,6 +1,6 @@
 # src/module-new
 
-The rendering half of `@genie/module:new <capability>`: a module package wired to
+The rendering half of `nx g @genie/generators:module <capability>`: a module package wired to
 every point of the module contract, produced as text (R-30).
 
 ## What belongs here

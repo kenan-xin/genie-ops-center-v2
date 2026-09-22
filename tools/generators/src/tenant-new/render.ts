@@ -1,4 +1,9 @@
 import {
+  brandingSeedSchema,
+  tenantYamlSchema,
+} from "@genie/core/tenant-config";
+
+import {
   envExample,
   realmOverrides,
   stackCompose,
@@ -14,7 +19,8 @@ const SLUG = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 export type TenantRenderInput = {
   readonly slug: string;
   readonly modules: readonly string[];
-  readonly onboardingMode: "invite" | "jit";
+  /** Checked by the core schema, which owns the documented set, not a copy of it here. */
+  readonly onboardingMode: string;
   readonly localAccounts: boolean;
   readonly firstAdministrators: readonly string[];
   readonly breakGlassEmail: string;
@@ -27,7 +33,7 @@ export type TenantRenderInput = {
 /** Exactly what `tenant.yaml` holds. */
 export type TenantYamlFile = {
   readonly modules: readonly string[];
-  readonly onboarding_mode: "invite" | "jit";
+  readonly onboarding_mode: string;
   readonly local_accounts: boolean;
   readonly first_administrators: readonly string[];
   readonly break_glass_email: string;
@@ -93,6 +99,17 @@ export function buildBrandingSeed(input: TenantRenderInput): BrandingSeedFile {
   };
 }
 
+/**
+ * The strict schemas core owns, which are the default. R-7a exposes exactly this
+ * entrypoint to tooling: importing it parses no environment value and starts no
+ * service. A caller may still pass its own, which is how a test drives the seam
+ * without the schemas under test.
+ */
+export const CORE_VALIDATORS: TenantValidators = {
+  tenantYaml: tenantYamlSchema,
+  brandingSeed: brandingSeedSchema,
+};
+
 function check(
   file: string,
   schema: StrictSchema,
@@ -150,7 +167,7 @@ function json(value: BrandingSeedDocument): string {
  */
 export function renderTenant(
   input: TenantRenderInput,
-  validators: TenantValidators
+  validators: TenantValidators = CORE_VALIDATORS
 ): ReadonlyMap<string, string> {
   if (!SLUG.test(input.slug)) {
     throw new Error(
