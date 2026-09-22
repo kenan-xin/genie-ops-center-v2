@@ -1,0 +1,79 @@
+name: release
+
+# R-51/R-54/R-55, every release tag: one image per customer folder, built with
+# that customer's include list, each of which must pass typecheck and the smoke
+# test before it is pushed. With no customer folder the job builds the default
+# every-module image and pushes it under a `development` tag instead, so the
+# build path is proved before the first customer exists. That image contains the
+# placeholder and is not a customer deliverable.
+#
+# Every publish goes through `scripts/build-customer-image.sh` (or the
+# development wrapper), which resolves the built image's immutable digest,
+# smoke-checks that digest, and only then pushes that exact identity. There is no
+# path here that pushes an image smoke did not verify.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      customers: ${{ steps.list.outputs.customers }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          set -eu
+          found=$(find customers -mindepth 3 -maxdepth 3 -path 'customers/*/deploy/modules.txt' 2>/dev/null \
+            | sed 's#^customers/\([^/]*\)/deploy/modules.txt$#\1#' \
+            | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "customers=$found" >> "$GITHUB_OUTPUT"
+
+  publish-customers:
+    needs: discover
+    if: needs.discover.outputs.customers != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.discover.outputs.customers) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: scripts/build-customer-image.sh "${{ matrix.slug }}" "${{ github.ref_name }}" --publish
+
+  publish-development:
+    needs: discover
+    if: needs.discover.outputs.customers == '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: scripts/build-development-image.sh "${{ github.ref_name }}" --publish

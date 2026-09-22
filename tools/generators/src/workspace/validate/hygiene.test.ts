@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { classifyProject } from "../classify-project.ts";
 import { moduleProjectNamingError } from "../module-naming.ts";
+import { moduleTestsError } from "../module-tests.ts";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
@@ -138,6 +139,17 @@ describe("repository hygiene", () => {
     ).toBeUndefined();
 
     expect(name).toBe(`@genie/module-${project.root.split("/").at(-1)}`);
+  });
+
+  // R-41: a module package that ships no test must fail continuous integration,
+  // not just report a green empty run. Runs over whatever modules exist; the
+  // failure path itself is proved in module-tests.test.ts.
+  it.each(
+    [...projects].filter(
+      ([, project]) => classifyProject(project.root) === "module"
+    )
+  )("%s ships at least one test file", (_name, project) => {
+    expect(moduleTestsError(project.root, WORKSPACE_ROOT)).toBeUndefined();
   });
 
   it.each([...projects])(

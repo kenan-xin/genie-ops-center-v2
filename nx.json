@@ -106,7 +106,11 @@
         "{workspaceRoot}/docs/runbooks/*.md",
         "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
         "{workspaceRoot}/**/.gitignore",
-        "{workspaceRoot}/**/.nxignore"
+        "{workspaceRoot}/**/.nxignore",
+        "{workspaceRoot}/apps/genie/tools/**/*",
+        "{workspaceRoot}/packages/modules/**/*",
+        "{workspaceRoot}/.github/**",
+        "{workspaceRoot}/scripts/**"
       ]
     }
   }
