@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "@genie/app",
+  "targets": {
+    "test:integration": {
+      "cache": false
+    }
+  }
+}
