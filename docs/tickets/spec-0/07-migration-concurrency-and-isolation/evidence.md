@@ -1,7 +1,7 @@
 # S0-07 evidence
 
 Bead: `genie-ops-center-v2-1rd.7`. Branch `kenan-xin/feature-s07-stage-appropriate-module-generator`.
-Baseline: branch merged local `develop` at merge `92c8f8c` (develop `4a9fd37`), then again at `7172698` (develop `ecd419f`). Code fixes at `dd49e5a` and `ece3333` (guard added at `3dc5618`).
+Baseline: branch merged local `develop` at `92c8f8c` (develop `4a9fd37`), `7172698` (develop `ecd419f`), then `b16fa10` (develop `cb35129`, S0-09 and the akh idle-pool repair). Code fixes at `dd49e5a` and `ece3333` (guard added at `3dc5618`).
 Recorded 2026-09-22. Every result below was observed on this host in this session; anything not proved is named under [Not proved](#not-proved).
 
 Gate: G3 database evidence. This ticket owns core migrator hardening, database test fixtures, and app isolation assertions/reporting. The app/image/CI wiring remains S0-11.
@@ -26,6 +26,12 @@ Observed green through the full mandatory runner at `7172698`, exit 0, after cle
 | --- | --- |
 | `nx run @genie/app:test:integration --skip-nx-cache` | exit 0, 10 files / 89 tests; isolation file 2/2 |
 
+At `b16fa10` the app runner is red on an S0-09 test-fixture defect, not on any S0-07 case: S0-09 added `testing/devtools-exclusion.test.ts` to the app manifest without adding the matching synthetic fixture in `apps/genie/testing/required-runner.test.ts`, so the runner's own healthy control fails. Filed as `genie-ops-center-v2-c74`; the isolation file still passed 2/2 inside the run.
+
+| Command | Result |
+| --- | --- |
+| `nx run @genie/app:test:integration --skip-nx-cache` | exit 1; 11 files, 98 tests, 1 failed (`required-runner.test.ts` healthy case, S0-09 fixture omission); isolation file 2/2 passed |
+
 RED shared-database mutation: `beforeAll` made to build one deployment and assign both contexts to it. Both cases failed exactly as the test intends, then the mutation was reverted and the file re-passed:
 
 ```
@@ -41,13 +47,13 @@ The no-skip guard is `apps/genie/testing/required-tests-guard.ts` plus `apps/gen
 
 ## Core migrator matrix and containment (AC-6, AC-9, R-25a–R-28)
 
-`packages/core/testing/migrator.integration.test.ts` (13 cases) and `packages/core/testing/tenant-context.integration.test.ts` (2 cases) are the matrix. The containment pair covers `wwc`, whose repair is `packages/core/src/lib/tenant-context/index.ts:56-60` (per-client `error` listener at checkout), verified at `15a5668`.
+`packages/core/testing/migrator.integration.test.ts` (13 cases) and `packages/core/testing/tenant-context.integration.test.ts` are the matrix. The containment cases cover `wwc`, whose repair is `packages/core/src/lib/tenant-context/index.ts:56-60` (per-client `error` listener at checkout), verified at `15a5668`. Develop's akh repair added a third tenant-context case (idle-client containment) at `b16fa10`; the manifest names the two `wwc` cases it was written for and leaves akh's case optional coverage, so S0-07 does not absorb akh.
 
 Observed green on the merged tree, all against real disposable Postgres:
 
 | Command | Result |
 | --- | --- |
-| `nx run @genie/core:test:integration --skip-nx-cache` | exit 0, 3 files / 31 tests |
+| `nx run @genie/core:test:integration --skip-nx-cache` | exit 0, 3 files / 32 tests |
 
 ## Core required-execution guard (this ticket)
 
@@ -58,12 +64,12 @@ Observed RED and GREEN on the merged tree:
 | Command | Result |
 | --- | --- |
 | `nx run @genie/core:test:integration --skip-nx-cache -- -t __s07_no_match__` | exit 1; all 15 mandatory cases named `mandatory case did not execute (status skipped)` |
-| `nx run @genie/core:test:integration --skip-nx-cache` | exit 0, 31/31 |
-| `pnpm run test:integration` (from `packages/core`) | exit 0, 31/31, including 16 runner controls |
+| `nx run @genie/core:test:integration --skip-nx-cache` | exit 0, 32/32 |
+| `pnpm run test:integration` (from `packages/core`) | exit 0, 32/32, including 16 runner controls |
 
 Before this change the same filter returned green: `vitest run --config vitest.integration.config.ts -t __s07_no_match__` exited 0 with 15 skipped.
 
-Re-proved after the review fixes at `dd49e5a`: `node tools/run-required-tests.ts -t __s07_no_match__` exits 1 naming every case with its file's clauses, and `pnpm run test:integration` exits 0 with 31/31. Re-proved again at `ece3333`, the final tip: RED exits 1 naming all 15 cases, GREEN exits 0 with 31/31.
+Re-proved after the review fixes at `dd49e5a`, again at `ece3333`, and finally at `b16fa10` after the second develop merge: RED exits 1 naming all 15 cases, GREEN exits 0 (32/32 at `b16fa10`, where develop's akh containment case joined the file).
 
 ## Independent review
 
@@ -71,23 +77,27 @@ A fresh-context semantic review of `92c8f8c..1897168` returned **PASS-with-findi
 
 Re-confirmation after both merges: the same reviewer returned **CONFIRMED-with-caveats** at `7172698`. Neither merge touched any of the six S0-07-owned files (`git log --merges` is empty for each), the three fixes are correct with no regression, no new false-green or false-red path was introduced, the 15 manifest names still match the unchanged acceptance files, and develop's new `packages/core/src/lib/module-contract/validate.ts` is not in the guard's or the integration collection's import graph. Its two caveats were resolved: the then-uncommitted evidence (now this record) and a second, misleading spawn-failure diagnostic, fixed at `ece3333` by short-circuiting the manifest check on the spawn-error path.
 
+Third re-confirmation after the S0-09/akh merge: the same reviewer returned **CONFIRMED-with-caveats** at `b16fa10`. The merge touched none of the six S0-07-owned files; the manifest was re-derived against the live report and still matches all 15 case names (the tenant-context file gained an akh case and kept both `wwc` names); the merge took develop's `apps/genie/package.json` wholesale, so `test:integration` retains `dependsOn: [build, build-image, test:e2e:fixture, test:e2e:dev]` and S0-07 introduced no app wiring change; the earlier fixes remain valid with no new false-green or false-red. Its caveats are informational: `genie-ops-center-v2-c74` (an S0-09 app-fixture defect, not S0-07), and the akh containment case being deliberate optional coverage in the core manifest.
+
 ## Gates on the merged baseline
 
-All at `ece3333`, the final tip (develop `ecd419f`).
+All at `b16fa10`, the final tip (develop `cb35129`).
 
 | Command | Result |
 | --- | --- |
-| `pnpm run test:integration` (from `packages/core`) | exit 0, 31/31 |
+| `pnpm install --frozen-lockfile` | exit 0 |
+| `pnpm run test:integration` (from `packages/core`) | exit 0, 32/32 |
 | `nx affected -t build test lint typecheck --base develop --skip-nx-cache` | exit 0, 16 tasks across 5 projects |
-| `pnpm exec oxfmt --check --disable-nested-config .` | pass, 267 files |
+| `pnpm exec oxfmt --check --disable-nested-config .` | pass, 282 files |
 | `npx supercov quality patch --base develop` | exit 0; advisories on the guard mirror the app harness (deep nesting, long method, boundary-driven duplication) |
-| `nx run @genie/app:test:integration --skip-nx-cache` | exit 0, 10 files / 89 tests |
+| `nx run @genie/app:test:integration --skip-nx-cache` | exit 1; blocked only by `genie-ops-center-v2-c74` (S0-09 app fixture); isolation file 2/2 passed |
 
 ## Corrections and limits
 
 - **`pnpm --filter @genie/core test:integration -- -t <filter>` inserts a literal `--`** before the forwarded args, which vitest treats as end-of-options and swallows the runner's reporter/output-file flags. The run still fails closed (`Failing closed.`), but the violation text is the wrong one. `pnpm run test:integration -t <filter>` and `nx run @genie/core:test:integration -- -t <filter>` forward cleanly and name the skipped cases. Left as the app harness behaves; not fixed to keep parity.
 - **The containment proof is the `wwc` repair's own verification**, recorded on `wwc`. This ticket does not close `wwc`.
 - **The full app mandatory runner is subject to the documented Testcontainers flake.** Earlier attempts at host load 13-19 exited 1 on the `testcontainers` 10s port-bind wait (`transport.integration.test.ts`, `viewer-background.integration.test.ts`) and once on `docker run -p 3412` "address already in use". The isolation file passed 2/2 in every attempt and the guard failed closed, so no S0-07 assertion was ever affected. After confirming no stale S0-07-owned containers and no listeners on ports 3400-3413, a clean retry at `7172698` passed the whole suite: exit 0, 10 files / 89 tests. No product or test code was changed to accommodate the host.
+- **The app runner is red at `b16fa10` on an S0-09 defect, not an S0-07 one.** S0-09 (00124d7/905f9bd) added `testing/devtools-exclusion.test.ts` to the app manifest without the matching synthetic fixture in `apps/genie/testing/required-runner.test.ts`, so the runner's own healthy control fails. Filed `genie-ops-center-v2-c74` (P1, owner S0-09); S0-07 did not edit the app file to avoid absorbing S0-09's surface. The isolation cases still pass 2/2 and the guard still fails closed.
 
 ## Not proved
 
