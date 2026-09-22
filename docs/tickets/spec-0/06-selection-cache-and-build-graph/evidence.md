@@ -2,7 +2,7 @@
 
 Bead: `genie-ops-center-v2-1rd.6`. Branch: `kenan-xin/feature-s06-slection-aware-application-build`.
 
-Baseline at implementation: develop `7a20b93`, which contains the accepted G2 revision `3bafa24`. **Integrated** into local develop by fast-forward, twice: `7a20b93 → 1bd039e` (commits `5f98706`..`1bd039e`) and `1bd039e → 01b8a5e` (commits `2ad3622`, `01b8a5e`), no squash or rebase. Develop has since advanced to `4a9fd37` on S0-08; `apps/genie/**` and `tools/generators/src/selection/**` are unchanged across `01b8a5e..4a9fd37`, so this proof transfers. This record covers the owned slice only.
+Baseline at implementation: develop `7a20b93`, which contains the accepted G2 revision `3bafa24`. **Integrated** into local develop by fast-forward, twice: `7a20b93 → 1bd039e` (commits `5f98706`..`1bd039e`) and `1bd039e → 01b8a5e` (commits `2ad3622`, `01b8a5e`), no squash or rebase. Develop has since advanced to `4a9fd37` on S0-08; `apps/genie/**` and `tools/generators/src/selection/**` are unchanged across `01b8a5e..4a9fd37`, so this proof transfers. The branch then merged local `develop` `4a9fd37` at merge commit `832ea0d` (merge, not rebase), so the tip carries this record plus S0-08; the merged tree is re-checked below. This record covers the owned slice only.
 
 Versions: Nx 23.2.1, Node v26.9.0, Vitest 4.1.11, pnpm 12.4.2.
 
@@ -39,6 +39,16 @@ The isolation contract was re-measured the same way, with two full copies of the
 | Standalone `server.js` | 3 | 3 |
 
 The checkout's own registry was byte-identical before and after. A first attempt that symlinked the root `node_modules` into the stage failed both builds with Turbopack's "symlink points out of the filesystem root" — a defect of that staging shortcut, not of the product; full copies reproduce the recorded result.
+
+### On the merged tree (develop `4a9fd37` + this record)
+
+The merge brought S0-08 in. The S0-06-owned files are still unchanged by it (`apps/genie/**`, `tools/generators/src/selection/**`), and the checks a generator/tooling change can invalidate were re-run on the merged tree:
+
+- `pnpm run format:check` → clean, 264 files.
+- `nx run-many -t test -p @genie/app @genie/generators --skip-nx-cache` → green, covering `print.test.ts` (naming and metadata-digest cases), `build-graph.test.ts` and `registry-roots.test.ts`.
+- `vitest run --config vitest.integration.config.ts testing/selection-cache.test.ts` → 6 passed, 17.3s.
+
+S0-08 changed `nx.json`'s `production` named input (added `CLAUDE.md`, `AGENTS.md`, `docs/**`) and `tools/generators` package metadata. Neither alters the selection runtime input, the app targets or the emitted registry, and the checks above confirm it.
 
 ## Two defects this work found
 
