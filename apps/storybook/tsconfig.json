@@ -5,5 +5,10 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": [".storybook/**/*.ts", ".storybook/**/*.tsx", "vitest.config.ts"]
+  "include": [
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "testing/**/*.ts",
+    "vitest.config.ts"
+  ]
 }
