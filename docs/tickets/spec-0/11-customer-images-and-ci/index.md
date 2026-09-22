@@ -59,3 +59,20 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 Production Dockerfile, customer wrapper and release CI are absent on develop; extend the retained S0-05 image rather than create another. Compose S0-06 through S0-10 proofs. Wire nonempty real integration/isolation and all four test layers, image/staging exclusion and exact-candidate smoke-before-publish. Actual remote publishing needs separate authorization; a stub publish test does not satisfy external acceptance.
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.
+
+## Implementation record, 2026-09-23
+
+Approach and tradeoffs: [design.md](design.md). Commands, outcomes and blocked items:
+[evidence.md](evidence.md). Beads owns status; the acceptance gate is not closed here.
+
+Two scope notes recorded explicitly:
+
+- **AC-1 carry from S0-06.** The S0-06 evidence transferred the config/schema
+  final-integration obligation of AC-1 to this ticket. It is carried here: the `validate`
+  suite pins that a change to the shared config preset and to the exposed core
+  tenant-config schema each mark their consumers affected, and the pull-request gate runs
+  `validate` on every change.
+- **Real image and publish proof is outstanding.** No Docker daemon was available in the
+  implementation session, so the customer image matrix, the release smoke and every
+  Testcontainers path are committed and mandatory but unrun; `evidence.md` labels each. Real
+  GHCR authentication and push remain separately authorized and were not performed.
