@@ -10,6 +10,7 @@ import {
   requiredViolations,
   type ReportAssertion,
   type ReportFileResult,
+  type RequiredCase,
   type TestReport,
 } from "./required-tests-guard.ts";
 
@@ -279,54 +280,57 @@ function runRunner(cwd: string, args: readonly string[]): RunnerResult {
   return { status: result.status ?? -1, stderr: result.stderr ?? "" };
 }
 
-/** The migrator matrix, as a trivially passing synthetic file. */
-const PASSING_MIGRATOR = `
-describe("the migrator's one reserved session, watched on a real database", () => {
-  it("sends the setting, the lock, every history and the cleanup through one real session", () => {});
-  it("leaves the lock with the foreign session it could not take, and takes none itself (negative control)", () => {});
-});
+/**
+ * One manifest case by index, failing loudly rather than on an undefined read.
+ * The negative controls below name a case by position, so a manifest that
+ * shortens its case list fails here rather than testing nothing.
+ */
+function manifestCase(entry: RequiredCase, index: number): string {
+  const name = entry.cases[index];
 
-describe("the migrator against a real database", () => {
-  it("applies core and then each module history on a fresh database", () => {});
-  it("applies nothing the second time it runs over the same database", () => {});
-  it("holds no advisory lock once a run has finished", () => {});
-  it("waits for the lock, gives up at the limit and applies nothing", () => {});
-  it("keeps the original error when a history fails, and blocks no later run", () => {});
-});
+  if (name === undefined) {
+    throw new Error(`No case ${index} in ${entry.file}`);
+  }
 
-describe("two migrator runs contending for the one lock", () => {
-  it("makes the second wait, apply nothing while it waits, and finish after the release", () => {});
-  it("gives the second run its lock timeout, and lets a later run finish the same plan", () => {});
-});
+  return name;
+}
 
-describe("the migrator recovering from a real database failure", () => {
-  it("keeps the original error and destroys the session when the connection is lost", () => {});
-  it("fails the start and destroys the session when the lock is gone by cleanup time", () => {});
-  it("rolls a failed history back whole, leaving no half applied table", () => {});
-});
+/** One manifest case as a trivially passing top-level case. */
+function passingCase(name: string): string {
+  return `it(${JSON.stringify(name)}, () => {});`;
+}
 
-describe("the migrator over an already migrated database", () => {
-  it("applies only what is missing, and applies it in registry order", () => {});
-});
-`;
+/** One manifest case as a skipped top-level case. */
+function skippedCase(name: string): string {
+  return `it.skip(${JSON.stringify(name)}, () => {});`;
+}
 
-/** The tenant-context containment proof, as a trivially passing synthetic file. */
-const PASSING_TENANT_CONTEXT = `
-describe("tenant context database clients", () => {
-  it("keeps an error listener while a client is checked out", () => {});
-  it("rejects the active query when its backend terminates", () => {});
-});
-`;
+/**
+ * A trivially passing synthetic file for one manifest entry.
+ *
+ * The manifest records each mandatory case as its full collected name: the
+ * describe and case names vitest joins with a space. The synthetic file
+ * declares each of those full names as a top-level case, which vitest reports
+ * with exactly that name, and the names are read from the manifest rather than
+ * transcribed here. A newly required file or case therefore cannot silently
+ * drift out of these controls — the failure that let the app's
+ * devtools-exclusion entry enter its manifest while every synthetic workspace
+ * still omitted it (`genie-ops-center-v2-c74`).
+ */
+function passingFile(entry: RequiredCase): string {
+  return entry.cases.map((name) => passingCase(name)).join("\n");
+}
 
-/** The manifest's two files, both passing. */
-const PASSING_REMAINDER = {
-  "testing/migrator.integration.test.ts": PASSING_MIGRATOR,
-  "testing/tenant-context.integration.test.ts": PASSING_TENANT_CONTEXT,
-};
+/** Every manifest file as a trivially passing synthetic file. */
+function passingWorkspace(): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    REQUIRED_TESTS.map((entry) => [entry.file, passingFile(entry)] as const)
+  );
+}
 
 describe("the core integration runner command line", () => {
   it("exits zero when every mandatory case runs and passes", () => {
-    const workspace = makeWorkspace("healthy", PASSING_REMAINDER);
+    const workspace = makeWorkspace("healthy", passingWorkspace());
 
     try {
       expect(
@@ -339,12 +343,8 @@ describe("the core integration runner command line", () => {
 
   it("exits nonzero when one mandatory case is removed and another remains", () => {
     const workspace = makeWorkspace("half-migrator", {
-      "testing/migrator.integration.test.ts": `
-describe("two migrator runs contending for the one lock", () => {
-  it("makes the second wait, apply nothing while it waits, and finish after the release", () => {});
-});
-`,
-      "testing/tenant-context.integration.test.ts": PASSING_TENANT_CONTEXT,
+      ...passingWorkspace(),
+      [migrator.file]: passingCase(manifestCase(migrator, 1)),
     });
 
     try {
@@ -358,11 +358,11 @@ describe("two migrator runs contending for the one lock", () => {
 
   it("exits nonzero when a mandatory case is skipped in source", () => {
     const workspace = makeWorkspace("skipped-migrator", {
-      "testing/migrator.integration.test.ts": PASSING_MIGRATOR.replace(
-        '  it("makes the second wait, apply nothing while it waits, and finish after the release", () => {});',
-        '  it.skip("makes the second wait, apply nothing while it waits, and finish after the release", () => {});'
-      ),
-      "testing/tenant-context.integration.test.ts": PASSING_TENANT_CONTEXT,
+      ...passingWorkspace(),
+      [migrator.file]: [
+        skippedCase(manifestCase(migrator, 0)),
+        passingCase(manifestCase(migrator, 1)),
+      ].join("\n"),
     });
 
     try {
@@ -375,9 +375,14 @@ describe("two migrator runs contending for the one lock", () => {
   });
 
   it("exits nonzero when a mandatory file is missing entirely", () => {
-    const workspace = makeWorkspace("missing-file", {
-      "testing/migrator.integration.test.ts": PASSING_MIGRATOR,
-    });
+    const workspace = makeWorkspace(
+      "missing-file",
+      Object.fromEntries(
+        Object.entries(passingWorkspace()).filter(
+          ([file]) => file !== tenantContext.file
+        )
+      )
+    );
 
     try {
       expect(
@@ -401,8 +406,6 @@ describe("two migrator runs contending for the one lock", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("mandatory case did not execute");
-    expect(result.stderr).toContain(
-      "the migrator's one reserved session, watched on a real database sends the setting, the lock, every history and the cleanup through one real session"
-    );
+    expect(result.stderr).toContain(manifestCase(migrator, 0));
   }, 120000);
 });
