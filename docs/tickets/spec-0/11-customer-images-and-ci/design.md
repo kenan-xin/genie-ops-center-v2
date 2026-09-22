@@ -66,8 +66,15 @@ placeholder and an explicit empty list — and:
 - asserts the explicitly-empty image renders no placeholder route, creates no
   `placeholder_record` table and no `__drizzle_migrations_placeholder` ledger, and carries
   no placeholder path in its filesystem;
-- scans the image history for a second build argument or a secret, and the filesystem for
-  an excluded module, publicly served migration SQL, development-only tooling and secrets.
+- scans the image history for a second build argument or a secret, and the whole application
+  tree — every regular file's real bytes, pnpm symlinks followed and de-duplicated — for an
+  excluded module, publicly served migration SQL, development-only tooling and secrets. A
+  file above the scanner's 4 MiB cap is reported and fails the proof rather than being
+  skipped, so the content rules cannot be evaded by size.
+
+The build-argument check derives what our Dockerfile declares from the Dockerfile text and
+treats every other `ARG` in the image history as inherited, so no base image is pulled and a
+clean CI daemon does not fail on a missing one.
 
 `apps/genie/testing/image-scan.ts` holds the needles and the rules as pure functions, unit
 tested against controlled fixtures with a non-vacuous control (the same scanner finds an
@@ -115,7 +122,11 @@ affected, alongside the existing shared-preset edge.
 - No Docker daemon was available in this session, so the image matrix, the release smoke and
   every Testcontainers path are encoded but **not run**. [evidence.md](evidence.md) labels
   each.
-- The image filesystem scan is a path inventory plus the served-corpus content scan. It
-  detects verbatim, escaped and base64-carried content; it does not decode compressed assets
-  or exotic encodings, and it cannot see a secret assembled at run time.
+- The image filesystem scan reads real file bytes with a 4 MiB per-file cap and fails closed
+  above it. It detects verbatim, escaped and base64-carried content; it does not decode
+  compressed assets or exotic encodings, and it cannot see a secret assembled at run time.
+- `docker tag` and `docker push` are two commands, so a second process with Docker access can
+  retag the published ref between them. Closing that needs registry-side promotion by digest,
+  which needs registry access this ticket does not have. Tracked as
+  `genie-ops-center-v2-3aa` and stated as a limit rather than hidden.
 - Real GHCR authentication and push remain separately authorized. Nothing here pushed.
