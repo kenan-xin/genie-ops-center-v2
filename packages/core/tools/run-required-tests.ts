@@ -54,11 +54,17 @@ const child = spawn(
   }
 );
 
+let spawnFailed = false;
+
 const vitestExit = await new Promise<number>((settle) => {
   // A spawn that never starts vitest emits `error` and `close`, not `exit`, so
   // this settle keeps the runner from hanging and names the real cause instead
-  // of an opaque unhandled error.
+  // of an opaque unhandled error. There is no report to validate in that case,
+  // so the branch below exits before the manifest check could add a second,
+  // misleading "report is missing" violation.
   child.on("error", (error) => {
+    spawnFailed = true;
+
     process.stderr.write(`Could not start vitest: ${String(error)}\n`);
 
     settle(1);
@@ -66,6 +72,10 @@ const vitestExit = await new Promise<number>((settle) => {
 
   child.on("exit", (code) => settle(code ?? 1));
 });
+
+if (spawnFailed) {
+  process.exit(1);
+}
 
 let report: TestReport;
 
