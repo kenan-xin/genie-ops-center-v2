@@ -117,7 +117,8 @@
         "dependsOn": [
           "build",
           "build-image",
-          "test:e2e:fixture"
+          "test:e2e:fixture",
+          "test:e2e:dev"
         ]
       },
       "build-fixture-image": {

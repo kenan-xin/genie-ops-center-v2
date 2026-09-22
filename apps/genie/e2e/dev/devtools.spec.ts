@@ -1,37 +1,34 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The development panels, in a real browser.
  *
  * The ordinary end-to-end run drives the built image, where the devtools are
  * excluded on purpose, so it can never show a panel. This file is the other
- * half of that proof and runs against `next dev`.
+ * half of that proof and runs against `next dev`, which `global-setup.ts`
+ * starts on the host with `--hostname 127.0.0.1`.
  *
- * STATUS: red, on an upstream fault, measured as follows.
+ * That hostname is load-bearing. Next refuses its development-only resources,
+ * `/_next/hmr` among them, for an origin it does not consider its own, and it
+ * treats `127.0.0.1` as a different origin from the `localhost` it binds by
+ * default. The browser reaches this server at `127.0.0.1`, so without it the
+ * HMR socket is refused, the development client reconnects and reloads in a
+ * loop, and the page never hydrates. The devtools mount is `ssr: false`, so it
+ * is client-only: no hydration means the shell never renders at all. That is
+ * the whole of a failure once misread here as an upstream defect in the shell.
  *
- * With `ssr: false`, which the plan requires, the shell's container never
- * reaches the document at all: 120 seconds against a warm development server.
- * With that option removed, the container attaches within seconds and then
- * stays empty for a further 90 seconds, with no child and no shadow root.
+ * Two interface notes, both true of `@tanstack/react-devtools` 0.10.12 with the
+ * core 0.14.2 it pins, on Next 16.3.5 and React 19.3:
  *
- * The cause is in the shell, not here. `TanStackDevtoolsCore.mount()` resolves
- * a dynamic import and swallows every failure in a `.catch`, so a load that
- * fails reports nothing: no console error, no page error, no failed request, no
- * response over 400 and no policy violation. All five were checked.
+ * - The shell's panel switches are plain buttons, not ARIA tabs, so they are
+ *   reached by their accessible button name.
+ * - The Genie Ops Center panel is the only panel whose content this application
+ *   supplies. Query, Form and Pacer mount their own panels and are asserted for
+ *   availability, not content.
  *
- * Versions: @tanstack/react-devtools 0.10.12, which is its latest, with the
- * core 0.14.2 that it pins exactly, on Next 16.3.5 and React 19.3.
- *
- * The assertions below are what the acceptance clause asks for and are written
- * against the documented interface, not against a rendering anyone has seen
- * here, so treat their selectors as unverified until the shell renders once.
- *
- * Do not weaken these into a check that the empty container exists. That would
- * turn a known failure into a passing gate.
+ * Do not weaken these into a check that the empty shell container exists. That
+ * would turn a mount failure into a passing gate.
  */
-
-/** The shell's own container. */
-const CONTAINER = 'body > div[style*="absolute"]';
 
 /**
  * A development server compiles a dynamic chunk when it is first asked for, so
@@ -41,65 +38,49 @@ const CONTAINER = 'body > div[style*="absolute"]';
  */
 const FIRST_PAINT = { timeout: 120000 };
 
+/** The shell's launcher, then the named panel inside it. */
+async function openPanel(page: Page, name: string): Promise<void> {
+  await page.goto("/");
+
+  const trigger = page.getByRole("button", { name: /tanstack devtools/i });
+
+  // The mount itself. This is a precondition, not the acceptance: the
+  // assertions that follow are what the clause requires.
+  await expect(trigger).toBeVisible(FIRST_PAINT);
+  await trigger.click();
+
+  await page.getByRole("button", { name }).click();
+}
+
+/** One value, read through the term that labels it rather than by position. */
+function fact(page: Page, label: string) {
+  return page.locator("dt", { hasText: label }).locator("+ dd");
+}
+
 test("the devtools open and report this deployment truthfully", async ({
   page,
 }) => {
   test.setTimeout(180000);
 
-  await page.goto("/");
+  await openPanel(page, "Genie Ops Center");
 
-  // The boundary really mounted: the shell put its container in the document.
-  // This is a precondition, not the acceptance, and the assertions below are
-  // what the clause actually requires.
-  await expect(page.locator(CONTAINER)).toBeAttached(FIRST_PAINT);
+  await expect(page.getByRole("heading", { name: "Deployment" })).toBeVisible();
 
-  const trigger = page.getByRole("button", { name: /tanstack devtools/i });
-
-  await expect(trigger).toBeVisible(FIRST_PAINT);
-  await trigger.click();
-
-  // The Genie Ops Center panel, by its accessible name.
-  const genie = page.getByRole("tab", { name: "Genie Ops Center" });
-
-  await expect(genie).toBeVisible();
-  await genie.click();
-
-  const panel = page.getByRole("heading", { name: "Deployment" });
-
-  await expect(panel).toBeVisible();
-
-  // Truthful diagnostics: the database this deployment really runs against, the
-  // module compiled into it, the one key the stub grants, and the sentence that
-  // says nobody is signed in. Read through the terms that label them.
-  const database = page.getByText("Database", { exact: true });
-
-  await expect(database).toBeVisible();
-  await expect(
-    page.locator("dd").filter({ hasText: "genie" }).first()
-  ).toBeVisible();
-
-  await expect(page.getByText("placeholder", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("placeholder:read", { exact: true })
-  ).toBeVisible();
-  await expect(
-    page.getByText("No user is signed in. Section 0 has no identity yet.")
-  ).toBeVisible();
-
-  // No secret is on the screen. The connection string carries a password and a
-  // host, and neither may appear anywhere in the panel.
-  const shown = await page.locator(CONTAINER).innerText();
-
-  expect(shown).not.toContain("genie:genie");
-  expect(shown).not.toContain("5432");
+  // The database this deployment really runs against, the module compiled into
+  // it, the one key the stub grants, and the sentence that says nobody is
+  // signed in. Every one is read from the running context, not from a fixture.
+  await expect(fact(page, "Database")).toHaveText("genie");
+  await expect(fact(page, "Modules")).toHaveText("placeholder");
+  await expect(fact(page, "Permissions")).toHaveText("placeholder:read");
+  await expect(fact(page, "User")).toHaveText(
+    "No user is signed in. Section 0 has no identity yet."
+  );
 });
 
 test("the Query, Form and Pacer panels are available", async ({ page }) => {
   test.setTimeout(180000);
 
   await page.goto("/");
-
-  await expect(page.locator(CONTAINER)).toBeAttached(FIRST_PAINT);
 
   const trigger = page.getByRole("button", { name: /tanstack devtools/i });
 
@@ -110,7 +91,25 @@ test("the Query, Form and Pacer panels are available", async ({ page }) => {
   // repository's lint refuses `await` inside a loop.
   await Promise.all(
     ["TanStack Query", "TanStack Form", "TanStack Pacer"].map((name) =>
-      expect(page.getByRole("tab", { name })).toBeVisible()
+      expect(page.getByRole("button", { name })).toBeVisible()
     )
   );
+});
+
+test("puts no secret on the screen", async ({ page }) => {
+  test.setTimeout(180000);
+
+  await openPanel(page, "Genie Ops Center");
+
+  await expect(page.getByRole("heading", { name: "Deployment" })).toBeVisible();
+
+  const shown = await page.locator("body").innerText();
+
+  // The connection string this deployment really runs on carries a user, a
+  // password, a host and a port. The panel reports the database name alone, and
+  // none of the rest may be anywhere on the page.
+  expect(shown).not.toContain("genie:genie");
+  expect(shown).not.toContain("5432");
+  expect(shown).not.toContain("postgres://");
+  expect(shown).not.toContain("127.0.0.1");
 });
