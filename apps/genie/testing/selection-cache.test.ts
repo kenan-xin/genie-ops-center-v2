@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
 import {
+  cpSync,
   existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
-  writeFileSync,
+  symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -18,58 +19,95 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * proves nothing: the question this ticket asks is whether the file a consumer
  * then compiles belongs to the selection that was asked for.
  *
- * The whole matrix runs against a temporary Nx cache and a temporary Nx state
- * directory, so it neither reads nor writes the developer's own cache. Both are
- * needed: Nx 23 keeps its cache metadata in a database under the state
- * directory, and pointing only NX_CACHE_DIRECTORY at a fresh path still reports
- * hits from the checkout's database.
+ * The whole matrix runs inside a staged workspace, never the checkout. An
+ * earlier version drove Nx in the checkout itself and passed whenever it ran
+ * alone, then failed inside `pnpm test`: `nx run-many` runs sibling targets at
+ * the same time, those tasks regenerate the registry and touch the same inputs,
+ * and the cache hits this suite asserts stop being reachable. A suite that
+ * needs the whole workspace to itself is a suite that reports the state of the
+ * machine, not the state of the build graph.
  *
- * `apps/genie/src/modules.ts` is a generated artifact and this suite rewrites
- * it. The checkout's copy is captured before the first case and written back
- * after the last one.
+ * The stage is a copy of the checkout with the root `node_modules` symlinked
+ * back, which is read-only during these tasks. `apps/genie/node_modules` is
+ * copied as it stands, because its entries are relative symlinks and therefore
+ * resolve to the stage's own packages.
  */
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../..");
 
-const NX = resolve(WORKSPACE_ROOT, "node_modules/.bin/nx");
-
-const REGISTRY = resolve(WORKSPACE_ROOT, "apps/genie/src/modules.ts");
+/** Build output, version control, caches and bulk documents: none is an input here. */
+const PRUNED = new Set([
+  ".git",
+  ".next",
+  ".nx",
+  ".beads",
+  ".impeccable",
+  ".turbo",
+  "storybook-static",
+  "test-results",
+  "playwright-report",
+  "coverage",
+  "dist",
+  "docs",
+  "plans",
+]);
 
 const TASK = "@genie/app:generate-registry";
 
-let cacheDirectory = "";
-
-let stateDirectory = "";
-
-let original: string | undefined;
+let stage = "";
 
 type Run = {
   readonly output: string;
   readonly registry: string;
 };
 
+const registryPath = () => join(stage, "apps/genie/src/modules.ts");
+
+/** Built from the escape character rather than written literally, which no linter has to be told to allow. */
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+const stripAnsi = (text: string) => text.replace(ANSI, "");
+
 /**
- * Runs one Nx task for one selection. `undefined` means the variable is unset,
- * which is a different selection from an empty string and must stay that way
- * all the way to the hash.
+ * Runs one Nx task for one selection, inside the stage. `undefined` means the
+ * variable is unset, which is a different selection from an empty string and
+ * must stay that way all the way to the hash.
  */
 function run(task: string, moduleInclude: string | undefined): Run {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    NX_CACHE_DIRECTORY: cacheDirectory,
-    NX_WORKSPACE_DATA_DIRECTORY: stateDirectory,
-    NX_DAEMON: "false",
-  };
+  // Every inherited NX_ variable is dropped before the three this suite sets.
+  //
+  // This suite measures the cache, so it has to own every input to the cache
+  // decision. Nx puts its own task context into a child's environment, and
+  // `NX_SKIP_NX_CACHE` is among the values that reach here when these cases run
+  // inside `nx run @genie/app:test:integration`. Inheriting it turned every
+  // cache assertion false and made the suite report how it had been invoked
+  // rather than what the build graph does.
+  const env = { ...process.env };
+
+  for (const name of Object.keys(env)) {
+    if (name.startsWith("NX_")) delete env[name];
+  }
+
+  env.NX_CACHE_DIRECTORY = join(stage, ".nxcache");
+
+  env.NX_WORKSPACE_DATA_DIRECTORY = join(stage, ".nxdata");
+
+  env.NX_DAEMON = "false";
 
   if (moduleInclude === undefined) delete env.MODULE_INCLUDE;
   else env.MODULE_INCLUDE = moduleInclude;
 
-  const result = spawnSync(NX, ["run", task], {
-    cwd: WORKSPACE_ROOT,
+  const result = spawnSync(join(stage, "node_modules/.bin/nx"), ["run", task], {
+    cwd: stage,
     encoding: "utf8",
     env,
   });
 
-  const output = `${result.stdout}${result.stderr}`;
+  // Nx colorizes when its parent asks for colour, which it does when these
+  // cases run inside `nx run @genie/app:test:integration`. The escape codes
+  // land between `nx run` and the project name, so a plain-text search for the
+  // task stopped matching and every cache assertion read false while the cache
+  // was in fact hitting. The codes are removed before anything is read.
+  const output = stripAnsi(`${result.stdout}${result.stderr}`);
 
   if (result.status !== 0) {
     throw new Error(`${task} failed for ${String(moduleInclude)}:\n${output}`);
@@ -77,7 +115,9 @@ function run(task: string, moduleInclude: string | undefined): Run {
 
   return {
     output,
-    registry: existsSync(REGISTRY) ? readFileSync(REGISTRY, "utf8") : "",
+    registry: existsSync(registryPath())
+      ? readFileSync(registryPath(), "utf8")
+      : "",
   };
 }
 
@@ -95,18 +135,30 @@ function servedFromCache(output: string, task: string): boolean {
 }
 
 beforeAll(() => {
-  cacheDirectory = mkdtempSync(join(tmpdir(), "genie-selection-cache-"));
-  stateDirectory = mkdtempSync(join(tmpdir(), "genie-selection-state-"));
+  stage = mkdtempSync(join(tmpdir(), "genie-selection-cache-"));
 
-  original = existsSync(REGISTRY) ? readFileSync(REGISTRY, "utf8") : undefined;
-});
+  cpSync(WORKSPACE_ROOT, stage, {
+    recursive: true,
+    filter: (source) => {
+      const name = source.split(/[\\/]/).pop() ?? "";
+
+      // The root node_modules is replaced by a symlink below. A nested one, such
+      // as the app's, is copied: its entries are relative symlinks into the
+      // workspace, so inside the stage they point at the stage's own packages.
+      if (source === join(WORKSPACE_ROOT, "node_modules")) return false;
+
+      return !PRUNED.has(name);
+    },
+  });
+
+  symlinkSync(
+    join(WORKSPACE_ROOT, "node_modules"),
+    join(stage, "node_modules")
+  );
+}, 300000);
 
 afterAll(() => {
-  for (const directory of [cacheDirectory, stateDirectory]) {
-    if (directory !== "") rmSync(directory, { recursive: true, force: true });
-  }
-
-  if (original !== undefined) writeFileSync(REGISTRY, original, "utf8");
+  if (stage !== "") rmSync(stage, { recursive: true, force: true });
 });
 
 describe("two selections on one revision", () => {
@@ -125,7 +177,7 @@ describe("two selections on one revision", () => {
     // Back to the first selection: a hit, and the bytes are the first run's.
     const again = run(TASK, "placeholder");
 
-    expect(servedFromCache(again.output, TASK)).toBe(true);
+    expect(servedFromCache(again.output, TASK), again.output).toBe(true);
     expect(again.registry).toBe(placeholder.registry);
   });
 
@@ -133,7 +185,7 @@ describe("two selections on one revision", () => {
     const first = run(TASK, "placeholder");
     const second = run(TASK, "placeholder");
 
-    expect(servedFromCache(second.output, TASK)).toBe(true);
+    expect(servedFromCache(second.output, TASK), second.output).toBe(true);
     expect(second.registry).toBe(first.registry);
   });
 
@@ -143,7 +195,7 @@ describe("two selections on one revision", () => {
     const plain = run(TASK, "placeholder");
     const spaced = run(TASK, " placeholder ");
 
-    expect(servedFromCache(spaced.output, TASK)).toBe(true);
+    expect(servedFromCache(spaced.output, TASK), spaced.output).toBe(true);
     expect(spaced.registry).toBe(plain.registry);
   });
 });
@@ -168,9 +220,9 @@ describe("a deleted output", () => {
   it("is restored from the cache before any consumer reads it", () => {
     const first = run(TASK, "placeholder");
 
-    rmSync(REGISTRY);
+    rmSync(registryPath());
 
-    expect(existsSync(REGISTRY)).toBe(false);
+    expect(existsSync(registryPath())).toBe(false);
 
     const restored = run(TASK, "placeholder");
 
@@ -190,17 +242,21 @@ describe("a consumer of the generated registry", () => {
    * registry it was given.
    */
   it("runs again when the selection changes", () => {
-    const task = "@genie/app:typecheck";
+    // The app's own test target, not typecheck. Both declare the selection as
+    // an input, and the defect applies to each the same way, but typecheck also
+    // depends on `^build`, which makes the staged workspace run an install that
+    // needs a git repository the stage deliberately does not have.
+    const task = "@genie/app:test";
 
     run(task, "placeholder");
 
     const empty = run(task, "");
 
-    expect(servedFromCache(empty.output, task)).toBe(false);
+    expect(servedFromCache(empty.output, task), empty.output).toBe(false);
     expect(empty.registry).not.toContain("@genie/module-placeholder");
 
     const repeat = run(task, "");
 
-    expect(servedFromCache(repeat.output, task)).toBe(true);
+    expect(servedFromCache(repeat.output, task), repeat.output).toBe(true);
   }, 600000);
 });
