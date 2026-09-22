@@ -1,7 +1,7 @@
 # S0-07 evidence
 
 Bead: `genie-ops-center-v2-1rd.7`. Branch `kenan-xin/feature-s07-stage-appropriate-module-generator`.
-Baseline: branch merged local `develop` `4a9fd37` at merge commit `92c8f8c`. Code head: `dd49e5a` (guard added at `3dc5618`, review fixes at `dd49e5a`).
+Baseline: branch merged local `develop` at merge `92c8f8c` (develop `4a9fd37`), then again at `7172698` (develop `ecd419f`). Code fixes at `dd49e5a` and `ece3333` (guard added at `3dc5618`).
 Recorded 2026-09-22. Every result below was observed on this host in this session; anything not proved is named under [Not proved](#not-proved).
 
 Gate: G3 database evidence. This ticket owns core migrator hardening, database test fixtures, and app isolation assertions/reporting. The app/image/CI wiring remains S0-11.
@@ -20,11 +20,11 @@ Observed green at `15a5668`:
 | --- | --- |
 | `pnpm --filter @genie/app exec vitest run --config vitest.integration.config.ts testing/isolation.integration.test.ts` | exit 0, 2/2 |
 
-Observed green inside the full mandatory runner at `92c8f8c` (exit 1 on the suite as a whole, from unrelated files — see [Corrections and limits](#corrections-and-limits)):
+Observed green through the full mandatory runner at `7172698`, exit 0, after clearing the host's stale Testcontainers:
 
 | Command | Result |
 | --- | --- |
-| `nx run @genie/app:test:integration --skip-nx-cache` | isolation file 2/2 passed, twice |
+| `nx run @genie/app:test:integration --skip-nx-cache` | exit 0, 10 files / 89 tests; isolation file 2/2 |
 
 RED shared-database mutation: `beforeAll` made to build one deployment and assign both contexts to it. Both cases failed exactly as the test intends, then the mutation was reverted and the file re-passed:
 
@@ -63,24 +63,31 @@ Observed RED and GREEN on the merged tree:
 
 Before this change the same filter returned green: `vitest run --config vitest.integration.config.ts -t __s07_no_match__` exited 0 with 15 skipped.
 
-Re-proved after the review fixes at `dd49e5a`: `node tools/run-required-tests.ts -t __s07_no_match__` exits 1 naming every case with its file's clauses, and `pnpm run test:integration` exits 0 with 31/31.
+Re-proved after the review fixes at `dd49e5a`: `node tools/run-required-tests.ts -t __s07_no_match__` exits 1 naming every case with its file's clauses, and `pnpm run test:integration` exits 0 with 31/31. Re-proved again at `ece3333`, the final tip: RED exits 1 naming all 15 cases, GREEN exits 0 with 31/31.
 
 ## Independent review
 
 A fresh-context semantic review of `92c8f8c..1897168` returned **PASS-with-findings**: no false-green and no false-red path found. It confirmed the 15 manifest names match vitest's `fullName` exactly (15 checked, 0 mismatches), that absolute report paths resolve correctly under `node`, `nx run` and `pnpm --filter`, that the widened include is a safe superset, and that the runner nesting is bounded. Three confirmed defects were fixed at `dd49e5a`: a per-file skip reason (was hardcoded to the migrator matrix), a stderr assertion in the real-config negative control (was exit-code only), and a spawn `error` listener (was an opaque crash on a missing vitest binary). One out-of-scope gap was filed: module packages carry no required-execution guard on their own `test:integration` (`genie-ops-center-v2-atz`).
 
+Re-confirmation after both merges: the same reviewer returned **CONFIRMED-with-caveats** at `7172698`. Neither merge touched any of the six S0-07-owned files (`git log --merges` is empty for each), the three fixes are correct with no regression, no new false-green or false-red path was introduced, the 15 manifest names still match the unchanged acceptance files, and develop's new `packages/core/src/lib/module-contract/validate.ts` is not in the guard's or the integration collection's import graph. Its two caveats were resolved: the then-uncommitted evidence (now this record) and a second, misleading spawn-failure diagnostic, fixed at `ece3333` by short-circuiting the manifest check on the spawn-error path.
+
 ## Gates on the merged baseline
+
+All at `ece3333`, the final tip (develop `ecd419f`).
 
 | Command | Result |
 | --- | --- |
+| `pnpm run test:integration` (from `packages/core`) | exit 0, 31/31 |
+| `nx affected -t build test lint typecheck --base develop --skip-nx-cache` | exit 0, 16 tasks across 5 projects |
 | `pnpm exec oxfmt --check --disable-nested-config .` | pass, 267 files |
-| `nx run-many -t lint typecheck --projects @genie/core --skip-nx-cache` | pass |
+| `npx supercov quality patch --base develop` | exit 0; advisories on the guard mirror the app harness (deep nesting, long method, boundary-driven duplication) |
+| `nx run @genie/app:test:integration --skip-nx-cache` | exit 0, 10 files / 89 tests |
 
 ## Corrections and limits
 
 - **`pnpm --filter @genie/core test:integration -- -t <filter>` inserts a literal `--`** before the forwarded args, which vitest treats as end-of-options and swallows the runner's reporter/output-file flags. The run still fails closed (`Failing closed.`), but the violation text is the wrong one. `pnpm run test:integration -t <filter>` and `nx run @genie/core:test:integration -- -t <filter>` forward cleanly and name the skipped cases. Left as the app harness behaves; not fixed to keep parity.
 - **The containment proof is the `wwc` repair's own verification**, recorded on `wwc`. This ticket does not close `wwc`.
-- **The full app mandatory runner flaked on host contention, not on S0-07.** `nx run @genie/app:test:integration --skip-nx-cache` was run twice at host load 13-19. The isolation file passed 2/2 both times, but the suite exited 1 on the documented `testcontainers` 10s port-bind wait (`transport.integration.test.ts`, `viewer-background.integration.test.ts`), the second run also hitting `docker run -p 3412` "address already in use". The guard failed closed as designed; no S0-07 assertion failed. The same flake class is recorded in the bead notes.
+- **The full app mandatory runner is subject to the documented Testcontainers flake.** Earlier attempts at host load 13-19 exited 1 on the `testcontainers` 10s port-bind wait (`transport.integration.test.ts`, `viewer-background.integration.test.ts`) and once on `docker run -p 3412` "address already in use". The isolation file passed 2/2 in every attempt and the guard failed closed, so no S0-07 assertion was ever affected. After confirming no stale S0-07-owned containers and no listeners on ports 3400-3413, a clean retry at `7172698` passed the whole suite: exit 0, 10 files / 89 tests. No product or test code was changed to accommodate the host.
 
 ## Not proved
 
