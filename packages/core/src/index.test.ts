@@ -1,19 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import * as core from "./index.ts";
+import { silentLogger } from "./services/logging/index.ts";
 
-/** `createLogger` reads only the level, but the type wants the whole environment. */
-const MINIMAL_ENV = {
-  databaseUrl: "postgres://genie:secret@db.invalid:5432/genie",
-  publicUrl: "https://genie.example.com",
-  fileStorageAdapter: "postgres",
-  fileMaxBytes: 15728640,
-  chatAllowedOrigins: [],
-  authTrustedProxies: [],
-  lockTimeoutMs: 120000,
-  logLevel: "info",
-  port: 3000,
-} as const;
+/** `createLogger` reads only the level. */
+const MINIMAL_ENV = { logLevel: "info" } as const;
 
 /**
  * The package root is what an app and a module import. A member missing here is unreachable
@@ -26,10 +17,13 @@ describe("the core package root", () => {
   });
 
   it("builds a context through the package root and holds its two members", async () => {
-    const context = core.createTenantContext({
-      DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
-      PUBLIC_URL: "https://genie.example.com",
-    });
+    const context = core.createTenantContext(
+      {
+        DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
+        PUBLIC_URL: "https://genie.example.com",
+      },
+      silentLogger()
+    );
 
     try {
       expect(Object.keys(context).toSorted()).toEqual(["db", "env"]);
@@ -73,7 +67,7 @@ describe("the core package root", () => {
     };
 
     const logger = core.forExecution(
-      core.createLogger({ ...MINIMAL_ENV, logLevel: "info" }, destination),
+      core.createLogger(MINIMAL_ENV, destination),
       bindings
     );
 

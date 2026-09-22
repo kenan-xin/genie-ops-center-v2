@@ -8,6 +8,11 @@ const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e/fixture",
+  // Its own artifact directory beside the dev run's `test-results/dev`.
+  // Playwright empties its `outputDir` recursively at run start, and the
+  // mandatory gate runs the two browser suites in parallel, so sharing the
+  // default `test-results` would delete the other's artifacts mid-run.
+  outputDir: "test-results/fixture",
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: BASE_URL },

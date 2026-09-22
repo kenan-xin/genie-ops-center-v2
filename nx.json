@@ -30,6 +30,14 @@
       "{workspaceRoot}/oxfmt.config.ts",
       "{workspaceRoot}/pnpm-lock.yaml",
       "{workspaceRoot}/tsconfig.base.json"
+    ],
+    "storybookOwners": [
+      "{workspaceRoot}/packages/ui/src/**/*",
+      "{workspaceRoot}/packages/core/src/**/*",
+      "{workspaceRoot}/packages/modules/*/src/**/*",
+      "{workspaceRoot}/packages/modules/*/package.json",
+      "{workspaceRoot}/packages/modules/*/tsconfig.json",
+      "{workspaceRoot}/packages/config/src/**/*"
     ]
   },
   "targetDefaults": {
@@ -61,12 +69,22 @@
     "build-storybook": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^default", { "env": "MODULE_INCLUDE" }],
+      "inputs": [
+        "default",
+        "^default",
+        "storybookOwners",
+        { "runtime": "node tools/generators/src/selection/print.ts" }
+      ],
       "outputs": ["{projectRoot}/storybook-static"]
     },
     "test-storybook": {
       "cache": true,
-      "inputs": ["default", "^default", { "env": "MODULE_INCLUDE" }]
+      "inputs": [
+        "default",
+        "^default",
+        "storybookOwners",
+        { "runtime": "node tools/generators/src/selection/print.ts" }
+      ]
     },
     "validate": {
       "cache": true,

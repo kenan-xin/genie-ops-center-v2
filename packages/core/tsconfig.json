@@ -4,6 +4,7 @@
     "src/**/*.ts",
     "contracts/**/*.ts",
     "testing/**/*.ts",
+    "tools/**/*.ts",
     "vitest.config.ts",
     "vitest.integration.config.ts"
   ]

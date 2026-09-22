@@ -21,7 +21,18 @@ No umbrella, new scope, alias resolver, loader or dependency upgrade is part of 
 - Consumers use validated `packageRoot`, `packageName` and `entrypoint`; they must not derive `packages/modules/<id>` from an ID. Keep selection ordered and distinguish unset from explicitly empty.
 - Update manifests, workspace references and applicable lockfile links atomically in implementation. Retain Nx project edges, affected selection and cache invalidation when package/folder metadata changes. No blanket cache reset substitutes for regression proof.
 
-Current source evidence: `tools/generators/src/selection/inventory.ts` accepts a present manifest name without checking this invariant; `tools/generators/src/workspace/classify-project.ts` classifies any direct module folder by path. These are observations from the main checkout, not proof of branch rework. S0-01's reported reviewed repair head is `5327afb`; S0-02's recorded correction head is `6c6c056`; verify live heads before implementation. Historical tests and reviews prove their original revisions only.
+Current-revision evidence, 2026-09-22, develop `4a9fd37` (verified in the `docs/ygn-module-naming-closure` worktree; superseded by later revisions): the paragraph this replaces reported the invariant missing from `inventory.ts`, an observation that no longer holds. The rework is integrated and enforced end to end.
+
+| Invariant leg | Evidence at `4a9fd37` |
+| --- | --- |
+| Folder `packages/modules/<id>`, package `@genie/module-<id>` | `packages/modules/placeholder/` declares `@genie/module-placeholder` with ID `placeholder` |
+| Shared validation before selection, metadata only | `moduleNamingError` in `tools/generators/src/workspace/module-naming.ts`, applied to every discovered manifest in `tools/generators/src/selection/inventory.ts` before selection or cache lookup, without evaluating declarations |
+| Singular root and public-subpath protections, mutation proof | `packages/config/src/oxlint/boundaries.ts` restricts `@genie/module-*` and `@genie/module-*/**` in every forbidden direction and keeps the defensive plural, slash and relative patterns; `packages/config/src/oxlint/boundaries.test.ts` proves each against the real oxlint binary, permitted app composition included |
+| S0-08 generator emission | `tools/generators/src/module-new/render.ts` emits `modulePackageName(id)` and re-validates its own output; the hyphenated `contract-data` case is covered by its tests |
+| Identity preservation | ID `placeholder` is identical on both sides of naming-rework merge `ee44c66`; permission keys and migration tag `0000_boring_gargoyle` are unchanged since introducing commit `68a4acb`; include lists keep the bare ID (`MODULE_INCLUDE-placeholder` default) |
+| Canonical docs agreement | [Module package naming](../architecture/repository-layout.md#module-package-naming), the [module contract](../architecture/module-contract.md) and Spec 0 R-7/R-30 state one invariant; plural spellings survive only in historical plan bodies, as this plan's preservation rule allows |
+
+Checks at this revision, all green: `nx run-many -t test lint typecheck --projects=@genie/generators,@genie/config`, `nx run-many -t test lint typecheck --projects=@genie/module-placeholder`, `npx oxfmt --check .`, `npx supercov quality patch --base develop`. Generator proof at the integration revision is S0-08's own record, not duplicated here: [S0-08 evidence](../tickets/spec-0/08-module-and-tenant-generators/evidence.md).
 
 ## Approved rework sequence and remaining consumers
 

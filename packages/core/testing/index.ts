@@ -5,6 +5,7 @@ import {
   type TenantContext,
   createTenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import {
   type ModuleHistorySource,
   migrationPlan,
@@ -56,10 +57,13 @@ export async function startDisposableDeployment(
 ): Promise<DisposableDeployment> {
   const postgres = await startDisposablePostgres();
 
-  const context = createTenantContext({
-    DATABASE_URL: postgres.url,
-    PUBLIC_URL: "https://test.example.invalid",
-  });
+  const context = createTenantContext(
+    {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: "https://test.example.invalid",
+    },
+    silentLogger()
+  );
 
   const stop = async () => {
     await context.db.$client.end();

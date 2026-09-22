@@ -1,0 +1,25 @@
+# The database alone, for the development browser run.
+#
+# `compose.e2e.yaml` runs the built image, where the devtools are excluded by
+# design, so it cannot prove that the development panels work. This stack
+# supplies only the database, and the run starts `next dev` on the host against
+# it. The port is published for that reason: the development server is a host
+# process, not a container.
+#
+# Disposable and local, created and destroyed by the run, never reachable
+# off-host, so the fixed credential below is a throwaway for that stack and not
+# a secret.
+services:
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: genie
+      POSTGRES_PASSWORD: genie
+      POSTGRES_DB: genie
+    ports:
+      - "${GENIE_DEV_DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genie"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "oxlint --config ../../oxlint.config.ts .storybook",
+    "lint": "oxlint --config ../../oxlint.config.ts .storybook testing",
+    "test": "vitest run --project=unit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

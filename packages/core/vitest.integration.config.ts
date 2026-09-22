@@ -6,13 +6,16 @@ import { defineConfig } from "vitest/config";
  * disposable Postgres; none mocks the database (R-38).
  *
  * `passWithNoTests` stays false, so a file that stops matching fails this target rather than
- * reporting a quiet success. The timeout is the container start, not the assertions.
+ * reporting a quiet success. The include covers every `testing/*.test.ts`, which adds the
+ * runner's own controls beside the real-database files, matching the app harness.
+ *
+ * The timeout is the container start, not the assertions.
  */
 export default defineConfig({
   test: {
     name: "integration",
     environment: "node",
-    include: ["testing/**/*.integration.test.ts"],
+    include: ["testing/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     passWithNoTests: false,
     testTimeout: 120000,
