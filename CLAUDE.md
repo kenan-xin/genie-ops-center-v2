@@ -90,7 +90,7 @@ These choices are settled. Do not substitute one without approval.
 - Gates: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build` pass on the pull request before merge, and end-to-end tests pass on `develop` before the pull request to `main`.
 - State: server state in TanStack Query, complex client state in zustand, trivial local state in `useState`.
 - Forms: TanStack Form, with the procedure's zod schema passed directly as the validator (Standard Schema, no adapter). Tables: TanStack Table. Debounce, throttle, rate limit, and queues: TanStack Pacer. Stateless helpers: es-toolkit.
-- Devtools: TanStack Devtools is mounted once in `apps/genie` for development. Add a panel for new client state rather than logging to the console.
+- Devtools: TanStack Devtools is mounted once in `apps/genie/src/devtools/` for development. Add a panel for new client state rather than logging to the console. The packages stay development dependencies and `apps/genie/testing/devtools-exclusion.test.ts` fails if one reaches the production build; that folder's `README.md` holds the detail.
 - Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
 
 

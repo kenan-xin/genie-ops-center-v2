@@ -19,7 +19,9 @@ import { resolve } from "node:path";
  * - the two-database isolation proof (R-20, AC-4),
  * - the one-context proof across real framework bundles (AC-26),
  * - the viewer provider-count proof (R-49a, AC-25), zero calls on background
- *   requests at the viewer URL and exactly one for a normal viewer document.
+ *   requests at the viewer URL and exactly one for a normal viewer document,
+ * - the devtools exclusion proof (S0-09), which is the only thing standing
+ *   between a development diagnostic and the image a customer runs.
  */
 export type RequiredCase = {
   readonly file: string;
@@ -64,6 +66,19 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the prune-public-migration-sql tool fails closed on symlinks under served outputs and preserves link and target",
       "the prune-public-migration-sql tool fails closed when build roots are symlinked",
       "the prune-public-migration-sql tool the cli exits 0 on success and 1 on validation failure",
+    ],
+  },
+  {
+    file: "testing/devtools-exclusion.test.ts",
+    cases: [
+      "the production build and the devtools reads a real build, so an empty scan cannot pass",
+      "the production build and the devtools finds application code by the same search, so the method works",
+      "the production build and the devtools ships no executable code carrying hideUntilHover",
+      "the production build and the devtools ships no executable code carrying TanStack Pacer",
+      "the production build and the devtools ships no executable code carrying TanStack Form",
+      "the production build and the devtools ships no executable code carrying No user is signed in. Section 0 has no identity yet.",
+      "the production build and the devtools ships no executable code carrying deploymentDiagnostics",
+      "the production build and the devtools installs no devtools package in the image it runs from",
     ],
   },
   {

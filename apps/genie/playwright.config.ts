@@ -11,7 +11,7 @@ export default defineConfig({
   // `playwright.fixture.config.ts`. Collecting it here would run it against an
   // image whose fixture routes do not exist, so the ordinary run never picks it
   // up, and the fixture gate is what runs it.
-  testIgnore: ["**/e2e/fixture/**"],
+  testIgnore: ["**/e2e/fixture/**", "**/e2e/dev/**"],
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: BASE_URL },

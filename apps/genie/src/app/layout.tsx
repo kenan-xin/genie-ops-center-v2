@@ -2,6 +2,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
+import { readContext } from "../context.ts";
+import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
+import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
+import { QueryProvider } from "../providers.tsx";
+
 import "../styles/globals.css";
 
 /**
@@ -28,12 +33,29 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  // Read, not required. A page that renders before the bootstrap published has
+  // nothing true to report, and this layout is not the place to decide that a
+  // request cannot be served.
+  //
+  // The development check is here, on the server, and not only inside the
+  // client component. A guard inside the client component suppresses the
+  // rendering but not the props: they would cross the boundary first and be
+  // serialized into the flight payload of every page, so a production visitor
+  // could read the database name, the module ids and the permission keys out of
+  // the HTML. Deciding here means the element is never created in production and
+  // nothing is sent.
+  const context =
+    process.env.NODE_ENV === "development" ? readContext() : undefined;
+
   return (
     <html lang={locale}>
       <body>
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
         </NextIntlClientProvider>
+        {context === undefined ? null : (
+          <DevtoolsMount {...deploymentDiagnostics(context)} />
+        )}
       </body>
     </html>
   );

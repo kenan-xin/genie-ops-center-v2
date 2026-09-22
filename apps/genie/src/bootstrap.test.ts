@@ -6,6 +6,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import { runBootstrap } from "./bootstrap.ts";
+import type { AppContext } from "./context.ts";
 
 const VALID_SOURCE = {
   DATABASE_URL: "postgres://u:p@h:5432/d",
@@ -211,5 +212,55 @@ describe("runBootstrap failure handling", () => {
     });
 
     expect(order).toEqual(["connect", "migrate", "publish"]);
+  });
+});
+
+/**
+ * The real composition root, with no `connect` injected, so `buildContext` calls
+ * `createTenantContext` the way the image does. This is the wiring the pool's
+ * idle-error containment depends on: the context is built with the process
+ * logger, so a dropped idle connection reaches the log instead of exiting.
+ */
+describe("runBootstrap production wiring", () => {
+  it("builds the tenant context with the process logger, so an idle pool error is recorded", async () => {
+    const lines: unknown[] = [];
+
+    const logger = createLogger(
+      { logLevel: "info" },
+      {
+        write(line: string) {
+          lines.push(JSON.parse(line));
+        },
+      }
+    );
+
+    let published: AppContext | undefined;
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      logger,
+      // The source names a database this test never opens, so migration is stubbed;
+      // the pool itself stays lazy, and nothing here connects.
+      migrate: async () => {},
+      publish: (context) => {
+        published = context;
+      },
+      exit: () => {
+        throw new Error("a successful bootstrap must not exit");
+      },
+      budgetMs: 500,
+    });
+
+    const pool = published?.tenant.db.$client;
+
+    expect(pool?.listenerCount("error")).toBeGreaterThan(0);
+
+    pool?.emit("error", new Error("the backend went away"));
+
+    expect(lines).toContainEqual(
+      expect.objectContaining({ msg: "idle database client error" })
+    );
+
+    await pool?.end();
   });
 });

@@ -499,10 +499,11 @@ function protectLogger(logger: Logger): RedactingLogger {
  * carries the request, tenant and user ids of the execution that wrote it (R-44).
  *
  * One is built per process from the validated environment. A request or a job run takes a
- * child of it through `forExecution`, which is what puts the three ids on the line.
+ * child of it through `forExecution`, which is what puts the three ids on the line. Only the
+ * level is read, so a caller that has no destination may pass just that; `silentLogger` does.
  */
 export function createLogger(
-  env: DeploymentEnvironment,
+  env: Pick<DeploymentEnvironment, "logLevel">,
   destination?: DestinationStream
 ): RedactingLogger {
   const options = {
@@ -554,6 +555,15 @@ export function createLogger(
     destination === undefined ? pino(options) : pino(options, destination);
 
   return protectLogger(logger);
+}
+
+/**
+ * A redacting logger that writes nothing. It is for a caller that must supply the required
+ * logger but has no destination, such as a test or a test helper. It redacts like every logger
+ * this module builds, so it can never leak a secret, and it is not a deployment's logger.
+ */
+export function silentLogger(): RedactingLogger {
+  return createLogger({ logLevel: "silent" });
 }
 
 /**
