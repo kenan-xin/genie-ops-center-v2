@@ -17,9 +17,10 @@ const PORT = Number(process.env.GENIE_DEV_PORT ?? "3401");
  */
 export default defineConfig({
   testDir: "./e2e/dev",
-  // Its own artifact directory. The mandatory gate runs this beside the
-  // fixture browser run, and Playwright empties its `outputDir` at the start of
-  // a run, so two runs sharing the default would delete each other's failures.
+  // A sibling of the fixture run's `test-results/fixture`, not `test-results`
+  // itself: Playwright empties its `outputDir` recursively at the start of a
+  // run, and the mandatory gate runs this beside the fixture browser run, so a
+  // directory that contains the other's artifacts would be deleted mid-run.
   outputDir: "test-results/dev",
   forbidOnly: true,
   reporter: [["list"]],
