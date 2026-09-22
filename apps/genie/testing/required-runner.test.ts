@@ -10,6 +10,7 @@ import {
   requiredViolations,
   type ReportAssertion,
   type ReportFileResult,
+  type RequiredCase,
   type TestReport,
 } from "./required-tests-guard.ts";
 
@@ -269,62 +270,33 @@ function runRunner(cwd: string, args: readonly string[]): number {
   return result.status ?? -1;
 }
 
-/** Both isolation cases as a trivially passing synthetic file. */
-const PASSING_ISOLATION = `
-describe("two tenant contexts in one process", () => {
-  it("each read returns only its own database's row", () => {});
-  it("the two databases are genuinely separate", () => {});
-});
-`;
+/**
+ * A trivially passing synthetic file for one manifest entry.
+ *
+ * The manifest records each mandatory case as its full collected name: the
+ * describe and case names vitest joins with a space. The synthetic file
+ * declares each of those full names as a top-level case, which vitest reports
+ * with exactly that name, and the names are read from the manifest rather than
+ * transcribed here. A newly required file or case therefore cannot silently
+ * drift out of these controls — the failure that let the devtools-exclusion
+ * entry enter the manifest while every synthetic workspace still omitted it.
+ */
+function passingFile(entry: RequiredCase): string {
+  return entry.cases
+    .map((name) => `it(${JSON.stringify(name)}, () => {});`)
+    .join("\n");
+}
 
-/** The manifest's image cases, as trivially passing synthetic files. */
-const PASSING_REMAINDER = {
-  "testing/image.startup.test.ts": `
-describe("the built image", () => {
-  it("shares one context across concurrent page, tRPC and viewer requests", () => {});
-  it("serves no migration SQL url", () => {});
-  it("exposes no migration SQL content in its public corpus", () => {});
-  it("detects the repository migration SQL in a public corpus, raw, JSON-escaped and base64 encoded, and only that SQL", () => {});
-  it("fails closed when a migration SQL file is empty", () => {});
-  it("rejects symlinked public corpus entries with a named diagnostic", () => {});
-  it("migrates the real database from the repository SQL", () => {});
-});
-`,
-  "testing/prune-public-migration-sql.test.ts": `
-describe("the prune-public-migration-sql tool", () => {
-  it("prunes a public migration sql that is byte-identical to a server asset", () => {});
-  it("fails and preserves everything when public sql bytes match a server asset", () => {});
-  it("fails and preserves everything when standalone public sql bytes match a server asset", () => {});
-  it("rejects static sql with no byte-identical server asset and deletes nothing", () => {});
-  it("rejects authored sql under public and deletes nothing", () => {});
-  it("throws when the build output is missing or malformed", () => {});
-  it("throws when the standalone tree has zero or multiple server.js roots", () => {});
-  it("succeeds as a no-op when the build contains no migration sql", () => {});
-  it("ignores sql under node_modules outside the served outputs", () => {});
-  it("treats node_modules inside served static as served bytes", () => {});
-  it("collects uppercase sql spellings", () => {});
-  it("unlinks only the collected files and preserves server bytes", () => {});
-  it("fails closed on symlinks under served outputs and preserves link and target", () => {});
-  it("fails closed when build roots are symlinked", () => {});
-  it("the cli exits 0 on success and 1 on validation failure", () => {});
-});
-`,
-  "testing/viewer-background.integration.test.ts": `
-describe("the viewer URL", () => {
-  it("a normal viewer document invokes the frame origin provider exactly once", () => {});
-  it("an RSC request at the viewer URL invokes no provider", () => {});
-  it("a next-router-prefetch request at the viewer URL invokes no provider", () => {});
-  it("a purpose-prefetch request at the viewer URL invokes no provider", () => {});
-});
-`,
-};
+/** Every manifest file as a trivially passing synthetic file. */
+function passingWorkspace(): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    REQUIRED_TESTS.map((entry) => [entry.file, passingFile(entry)] as const)
+  );
+}
 
 describe("the runner command line", () => {
   it("exits zero when every mandatory case runs and passes", () => {
-    const workspace = makeWorkspace("healthy", {
-      "testing/isolation.integration.test.ts": PASSING_ISOLATION,
-      ...PASSING_REMAINDER,
-    });
+    const workspace = makeWorkspace("healthy", passingWorkspace());
 
     try {
       expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(0);
@@ -335,12 +307,12 @@ describe("the runner command line", () => {
 
   it("exits nonzero when one mandatory case is removed and another remains", () => {
     const workspace = makeWorkspace("half-isolation", {
+      ...passingWorkspace(),
       "testing/isolation.integration.test.ts": `
 describe("two tenant contexts in one process", () => {
   it("the two databases are genuinely separate", () => {});
 });
 `,
-      ...PASSING_REMAINDER,
     });
 
     try {
@@ -352,13 +324,13 @@ describe("two tenant contexts in one process", () => {
 
   it("exits nonzero when a mandatory case is skipped in source", () => {
     const workspace = makeWorkspace("skipped-isolation", {
+      ...passingWorkspace(),
       "testing/isolation.integration.test.ts": `
 describe("two tenant contexts in one process", () => {
   it.skip("each read returns only its own database's row", () => {});
   it("the two databases are genuinely separate", () => {});
 });
 `,
-      ...PASSING_REMAINDER,
     });
 
     try {
@@ -370,8 +342,9 @@ describe("two tenant contexts in one process", () => {
 
   it("exits nonzero when a mandatory file is missing entirely", () => {
     const workspace = makeWorkspace("missing-file", {
-      "testing/image.startup.test.ts":
-        PASSING_REMAINDER["testing/image.startup.test.ts"] ?? "",
+      "testing/image.startup.test.ts": passingFile(
+        manifestEntry("testing/image.startup.test.ts")
+      ),
     });
 
     try {
