@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import type { RedactingLogger } from "../../services/logging/index.ts";
 import {
   type EnvironmentSource,
   validateEnvironment,
@@ -45,9 +46,15 @@ export type TenantContext = {
  * One process builds one context, once, and passes it down. Core exports this factory and no
  * global context, no pool and no `db`, `settings`, `branding` or `storage` singleton (DEC-34).
  * Close the pool through `context.db.$client.end()` when the process ends or a test finishes.
+ *
+ * `logger` is the deployment's redacting logger, which the image builds once and passes here. A
+ * pool error that no one is awaiting is still recorded, so a database that keeps dropping idle
+ * sessions is visible instead of silent (R-45). It stays optional for the test and helper paths
+ * that build a context without a logger; production always passes one.
  */
 export function createTenantContext(
-  source: EnvironmentSource = process.env
+  source: EnvironmentSource = process.env,
+  logger?: Pick<RedactingLogger, "error">
 ): TenantContext {
   const env = validateEnvironment(source);
 
@@ -57,6 +64,15 @@ export function createTenantContext(
     // A checked-out pg client has no pool error listener. Keep the error handled while the
     // caller's query rejects through its normal path, preserving that operation's original error.
     client.on("error", () => {});
+  });
+
+  pool.on("error", (error) => {
+    // pg-pool raises this only for an IDLE client it has already dropped, so no caller's query is
+    // in flight and the next query opens a fresh connection. That is a blip, not a failed start
+    // (R-27), so the broken client is discarded and the process stays up. Without this listener
+    // Node turns the event into an uncaught exception and the process exits
+    // (genie-ops-center-v2-akh).
+    logger?.error({ err: error }, "idle database client error");
   });
 
   return { db: drizzle(pool), env };

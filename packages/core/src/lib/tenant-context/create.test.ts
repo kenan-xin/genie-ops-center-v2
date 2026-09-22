@@ -66,6 +66,19 @@ describe("createTenantContext", () => {
     }
   });
 
+  it("keeps an error listener on the pool, so an idle client's failure cannot exit the process", async () => {
+    // pg-pool emits `error` on the Pool itself when an idle client dies, and Node turns an
+    // `error` event with no listener into an uncaught exception. The checked-out listener is
+    // per client and cannot contain that one (genie-ops-center-v2-akh).
+    const context = createTenantContext(MINIMAL);
+
+    try {
+      expect(context.db.$client.listenerCount("error")).toBeGreaterThan(0);
+    } finally {
+      await context.db.$client.end();
+    }
+  });
+
   it("refuses an invalid environment and names the variable", () => {
     expect(() =>
       createTenantContext({ PUBLIC_URL: MINIMAL.PUBLIC_URL })

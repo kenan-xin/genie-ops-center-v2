@@ -144,7 +144,7 @@ function buildContext(
   const contextId = randomUUID();
 
   return {
-    tenant: createTenantContext(source),
+    tenant: createTenantContext(source, logger),
     startedAt: Date.now(),
     contextId,
     viewerProviders: buildViewerProviders(logger),
