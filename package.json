@@ -11,7 +11,7 @@
     "validate": "nx run @genie/generators:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck test-storybook test:integration validate"
+    "affected": "nx affected -t build test lint typecheck test-storybook test:integration && pnpm run validate"
   },
   "devDependencies": {
     "@nx/storybook": "23.2.1",
