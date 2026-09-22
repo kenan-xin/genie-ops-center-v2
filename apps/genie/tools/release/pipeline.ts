@@ -255,7 +255,14 @@ export function runRelease(
   }
 
   // The exact identity is tagged and pushed in the same step, so the pushed ref
-  // is bound to the candidate bytes rather than to whatever the tag held before.
+  // is bound to the candidate digest rather than to whatever the tag held before
+  // this run resolved it.
+  //
+  // Residual, tracked as genie-ops-center-v2-3aa: `docker tag` and `docker push`
+  // are two commands, so a second process with Docker access can retag the ref
+  // between them. Closing that needs registry-side promotion by digest, which
+  // needs registry access this ticket does not have; real publication is
+  // separately authorized. The supported bound is one local writer per registry.
   const tagged = runner("docker", ["tag", identity, publishedRef], {
     cwd: request.repoRoot,
   });

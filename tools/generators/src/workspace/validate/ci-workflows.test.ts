@@ -50,12 +50,17 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).toContain("pnpm run ci:pr");
   });
 
-  it("runs the merge gates on develop", () => {
+  it("runs the merge gates on develop, based on the pushed commit's parent", () => {
     const workflow = read(`${WORKFLOWS}/develop.yml`);
 
     expect(workflow).toContain("branches:");
     expect(workflow).toContain("- develop");
     expect(workflow).toContain("pnpm run ci:develop");
+    // `origin/develop` is HEAD on a develop push, so the base must be the
+    // pushed commit's parent, with the all-zero first push falling back.
+    expect(workflow).toContain("github.event.before");
+    expect(workflow).toContain("NX_BASE");
+    expect(workflow).toContain("0000000000000000000000000000000000000000");
   });
 
   it("builds one image per customer and falls back to the development image", () => {
