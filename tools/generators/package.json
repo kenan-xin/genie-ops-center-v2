@@ -9,7 +9,7 @@
     "./generators.json": "./generators.json"
   },
   "scripts": {
-    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "lint": "oxlint --config ../../oxlint.config.ts src scripts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate": "vitest run --config vitest.validate.config.ts"

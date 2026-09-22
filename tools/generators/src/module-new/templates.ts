@@ -334,7 +334,7 @@ const configurationSchema = z.object({
 const home = {
   id: "${names.id}-home",
   label: "${names.displayName}",
-  path: "/${names.id}",
+  path: "/m/${names.id}",
   surface: "workspace",
   requiredPermission: "${names.id}:use",
 } as const;
@@ -342,7 +342,7 @@ const home = {
 const settings = {
   id: "${names.id}-settings",
   label: "${names.displayName} settings",
-  path: "/admin/${names.id}",
+  path: "/admin/m/${names.id}",
   surface: "admin",
   requiredPermission: "${names.id}:admin",
 } as const;
@@ -379,7 +379,7 @@ export const ${names.camel}Module = {
       type: "${names.id}-record",
       resolve: async (id: string) => ({
         label: \`${names.displayName} record \${id}\`,
-        path: \`/${names.id}/\${id}\`,
+        path: \`/m/${names.id}/\${id}\`,
       }),
     },
   ],
@@ -413,11 +413,13 @@ export const ${names.camel}Module = {
         .select()
         .from(${names.camel}Record);
 
-      return rows.map((row) => ({
-        id: row.id,
-        label: row.label,
-        categoryId: row.categoryId ?? undefined,
-      }));
+      // An unplaced record omits the key rather than carrying an explicit
+      // undefined, which the contract's optional property does not accept.
+      return rows.map((row) =>
+        row.categoryId === null
+          ? { id: row.id, label: row.label }
+          : { id: row.id, label: row.label, categoryId: row.categoryId }
+      );
     },
 
     assign: async (ctx, recordId: string, categoryId: string) => {
@@ -476,7 +478,7 @@ export const ${names.camel}Module = {
 `;
 
 const declarationTest: Template = (names) =>
-  `import { validateModule } from "@genie/core";
+  `import { type NavigationEntry, validateModule } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import { ${names.camel}Module } from "./module.ts";
@@ -507,7 +509,12 @@ describe("the ${names.id} module declaration", () => {
   });
 
   it("claims no landing route, so an include list stays valid (DEC-49)", () => {
-    for (const entry of ${names.camel}Module.navigation.entries) {
+    // Read through the contract's own type: the declaration is narrower than it,
+    // and a literal that never carries the flag has no property to read.
+    const entries: readonly NavigationEntry[] =
+      ${names.camel}Module.navigation.entries;
+
+    for (const entry of entries) {
       expect(entry.landing).toBeUndefined();
     }
   });
@@ -519,10 +526,19 @@ describe("the ${names.id} module declaration", () => {
   });
 
   it("hands core a migration declaration it has not read yet", () => {
-    expect(typeof ${names.camel}Module.schema.migrations).toBe("function");
+    expect(${names.camel}Module.schema.migrations).toBeInstanceOf(Function);
     expect(${names.camel}Module.schema.migrationsTable).toBe(
       "${names.migrationsTable}"
     );
+  });
+
+  it("reads its own SQL when core calls the declaration", () => {
+    // Calling it proves the static URLs resolve to real files, which is what the
+    // deferred read defers. Nothing reads them at import time.
+    const history = ${names.camel}Module.schema.migrations();
+
+    expect(history).toHaveLength(1);
+    expect(history[0]?.sql.join("")).toContain("${names.table}");
   });
 });
 `;
@@ -915,7 +931,7 @@ describe("the ${names.id} schema against a real database", () => {
        where tablename in ('__drizzle_migrations', '${names.migrationsTable}')\`
     );
 
-    expect(ledgers.rows.map((entry) => entry.tablename).sort()).toEqual([
+    expect(ledgers.rows.map((entry) => entry.tablename).toSorted()).toEqual([
       "__drizzle_migrations",
       "${names.migrationsTable}",
     ]);

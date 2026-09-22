@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { moduleGenerator } from "./generator.ts";
 import { renderModule } from "./render.ts";
 
+const APP_MANIFEST = "apps/genie/package.json";
+
 /**
  * An empty workspace already carries its own scaffolding, so every assertion below
  * reads the paths this generator added and not the ones the helper created.
@@ -34,14 +36,62 @@ describe("nx g @genie/generators:module", () => {
     }
   });
 
-  it("writes nothing outside the module's own folder", async () => {
+  it("writes nothing outside the module's folder and the app manifest", async () => {
     const { tree, added } = emptyTree();
+
+    tree.write(APP_MANIFEST, JSON.stringify({ dependencies: {} }));
 
     await moduleGenerator(tree, { name: "demo" });
 
     expect(
-      added().filter((path) => !path.startsWith("packages/modules/demo/"))
+      added().filter(
+        (path) =>
+          !path.startsWith("packages/modules/demo/") && path !== APP_MANIFEST
+      )
     ).toEqual([]);
+  });
+
+  it("adds itself to the application's dependencies, in order", async () => {
+    const { tree } = emptyTree();
+
+    tree.write(
+      APP_MANIFEST,
+      `${JSON.stringify(
+        {
+          name: "@genie/app",
+          dependencies: {
+            "@genie/core": "workspace:*",
+            "@genie/module-placeholder": "workspace:*",
+            "@genie/ui": "workspace:*",
+          },
+        },
+        undefined,
+        2
+      )}\n`
+    );
+
+    await moduleGenerator(tree, { name: "demo" });
+
+    // SAFETY: the bytes are the manifest this test just wrote, then rewritten by
+    // the generator; every field read below is asserted.
+    const manifest = JSON.parse(tree.read(APP_MANIFEST, "utf-8") ?? "{}") as {
+      dependencies: Record<string, string>;
+    };
+
+    expect(Object.keys(manifest.dependencies)).toEqual([
+      "@genie/core",
+      "@genie/module-demo",
+      "@genie/module-placeholder",
+      "@genie/ui",
+    ]);
+
+    expect(manifest.dependencies["@genie/module-demo"]).toBe("workspace:*");
+  });
+
+  it("leaves the application alone when it has no manifest to edit", async () => {
+    const { tree, added } = emptyTree();
+
+    await moduleGenerator(tree, { name: "demo" });
 
     expect(added()).toHaveLength(renderModule({ id: "demo" }).size);
   });
