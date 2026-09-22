@@ -286,8 +286,11 @@ describe("the display name guard", () => {
     ).toThrow(/display name/);
   });
 
-  it("renders a name with an ampersand as a literal, not as JSX text", () => {
-    const rendered = renderModule({ id: "demo", displayName: "R&D; Ops" });
+  it("renders a name holding a named entity as a literal, not as JSX text", () => {
+    // `&copy;` is a real named entity, so JSX text would decode it to `©` and the
+    // label would stop saying what was asked for. A name such as `R&D; Ops`
+    // names no entity and would transpile unchanged, so it proves nothing here.
+    const rendered = renderModule({ id: "demo", displayName: "R&copy; Ops" });
 
     const workspace = rendered.get(
       "packages/modules/demo/src/presentation/workspace-page.tsx"
@@ -299,10 +302,11 @@ describe("the display name guard", () => {
 
     // JSX text decodes an HTML entity, so a bare name between tags would render
     // as something other than what was asked for.
-    expect(workspace).toContain('<h1>{"R&D; Ops"}</h1>');
-    expect(workspace).not.toContain("<h1>R&D; Ops</h1>");
-    expect(admin).toContain('<h1>{"R&D; Ops settings"}</h1>');
-    expect(admin).toContain('{"R&D; Ops"} records.');
+    expect(workspace).toContain('<h1>{"R&copy; Ops"}</h1>');
+    expect(workspace).not.toContain("<h1>R&copy; Ops</h1>");
+    expect(admin).toContain('<h1>{"R&copy; Ops settings"}</h1>');
+    expect(admin).not.toContain("<h1>R&copy; Ops settings</h1>");
+    expect(admin).toContain('{"R&copy; Ops"} records.');
   });
 
   it("renders an accented name with punctuation without breaking a file", () => {
