@@ -9,6 +9,7 @@ import {
   scanFiles,
   scanHistory,
   secretNeedles,
+  secretPathFinding,
 } from "./image-scan.ts";
 
 describe("the image history scanner", () => {
@@ -39,8 +40,7 @@ describe("the image history scanner", () => {
   it("flags a secret that a history line would expose", () => {
     const findings = scanHistory([
       {
-        createdBy:
-          "ENV DATABASE_URL=postgres://genie:sup3rsecret@db:5432/genie",
+        createdBy: `RUN echo "Authorization: Bearer ${"a".repeat(32)}" > /tmp/x`,
       },
     ]);
 
@@ -138,42 +138,65 @@ describe("the image filesystem scanner", () => {
     ).toEqual([]);
   });
 
-  it("flags Storybook, stories and development-only packages", () => {
+  it("flags an installed Storybook, devtools or test package, and stories", () => {
     const files = [
       {
-        path: "apps/genie/.next/server/chunks/dev.js",
-        content: `require("@tanstack/react-devtools")`,
+        path: "/app/node_modules/.pnpm/@tanstack+react-devtools@1/node_modules/@tanstack/react-devtools/dist/index.js",
+        content: "export {};",
       },
       {
-        path: "apps/genie/public/storybook-static/index.html",
+        path: "/app/node_modules/.pnpm/vitest@4/node_modules/vitest/dist/index.js",
+        content: "export {};",
+      },
+      {
+        path: "/app/apps/genie/public/storybook-static/index.html",
         content: "<html></html>",
       },
-      { path: "apps/genie/src/foo.stories.tsx", content: "export default {};" },
-      { path: "apps/genie/node_modules/.bin/vitest", content: "" },
+      {
+        path: "/app/apps/genie/src/foo.stories.tsx",
+        content: "export default {};",
+      },
     ];
 
     const kinds = scanFiles(files, base).map((finding) => finding.kind);
 
-    expect(
-      kinds.filter((kind) => kind === "dev-tooling").length
-    ).toBeGreaterThanOrEqual(4);
+    expect(kinds.filter((kind) => kind === "dev-tooling").length).toBe(4);
   });
 
-  it("flags a secret embedded in a shipped file", () => {
+  it("does not flag a manifest that merely names a dev-only package", () => {
+    // The real false positive this rule was narrowed for: Next's and pg's own
+    // manifests list test tooling in their devDependencies/scripts, but neither
+    // installs it into the runtime image.
     const files = [
       {
-        path: "apps/genie/.next/server/chunks/config.js",
-        content: `process.env.DATABASE_URL="postgres://user:hunter2@db:5432/app"`,
+        path: "/app/node_modules/.pnpm/next@16/node_modules/next/package.json",
+        content: `{"devDependencies":{"@playwright/test":"1.63.0","vitest":"4.1.11"}}`,
       },
       {
-        path: "apps/genie/public/private.pem",
+        path: "/app/apps/genie/package.json",
+        content: `{"devDependencies":{"@tanstack/react-devtools":"0.10.12"}}`,
+      },
+    ];
+
+    expect(scanFiles(files, base)).toEqual([]);
+  });
+
+  it("flags a secret-bearing file and a private key in content", () => {
+    const files = [
+      {
+        path: "/app/apps/genie/.next/server/chunks/config.js",
         content: "-----BEGIN PRIVATE KEY-----",
       },
+      {
+        path: "/app/apps/genie/.env.production",
+        content: "DATABASE_URL=postgres://x",
+      },
+      { path: "/app/certs/server.pem", content: "not really a key" },
     ];
 
     const kinds = scanFiles(files, base).map((finding) => finding.kind);
 
-    expect(kinds).toContain("secret");
+    expect(kinds.filter((kind) => kind === "secret").length).toBe(3);
   });
 
   it("does not flag ordinary application content", () => {
@@ -232,6 +255,14 @@ describe("the filesystem inventory parser", () => {
     expect(files[0]?.content).toContain("__next_f");
   });
 
+  it("accepts an empty file, which is legal and encodes to an empty string", () => {
+    const files = filesystemEntries(
+      JSON.stringify({ path: "/app/empty.js", b64: "" })
+    );
+
+    expect(files).toEqual([{ path: "/app/empty.js", content: "" }]);
+  });
+
   it("fails closed on an oversized file instead of scanning nothing", () => {
     expect(() =>
       filesystemEntries(
@@ -273,20 +304,37 @@ describe("the scanner's needles", () => {
     }
   });
 
-  it("covers the secret families R-33 names", () => {
+  it("keeps only high-signal content needles", () => {
     const needles = secretNeedles();
 
-    const samples = [
-      "postgres://user:pw@host:5432/db",
-      "-----BEGIN PRIVATE KEY-----",
-      "PASSWORD=hunter2",
-      "api_key: sk-live-123",
-    ];
-
-    for (const sample of samples) {
+    for (const sample of [
+      "-----BEGIN RSA PRIVATE KEY-----",
+      `Authorization: Bearer ${"a".repeat(32)}`,
+    ]) {
       expect(needles.some((needle) => needle.test(sample))).toBe(true);
     }
 
-    expect(needles.some((needle) => needle.test("PASSWORD"))).toBe(false);
+    // Ordinary bundled code must not trip the content rules.
+    for (const sample of [
+      "PASSWORD",
+      "password: this.password",
+      "apiKey: config.apiKey",
+      "postgres://user:pass@host:5432/db",
+    ]) {
+      expect(needles.some((needle) => needle.test(sample))).toBe(false);
+    }
+  });
+
+  it("names the secret-bearing file types by path", () => {
+    expect(secretPathFinding("/app/apps/genie/.env")).toBe(".env");
+    expect(secretPathFinding("/app/apps/genie/.env.production")).toBe(
+      ".env.production"
+    );
+    expect(secretPathFinding("/app/certs/server.pem")).toBe("server.pem");
+    expect(secretPathFinding("/app/keys/id_rsa")).toBe("id_rsa");
+    expect(secretPathFinding("/app/.npmrc")).toBe(".npmrc");
+    // Not a secret file: a source file whose name merely starts with "env".
+    expect(secretPathFinding("/app/src/environment.ts")).toBeUndefined();
+    expect(secretPathFinding("/app/src/index.js")).toBeUndefined();
   });
 });

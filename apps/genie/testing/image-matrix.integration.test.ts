@@ -267,7 +267,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
         try {
           await pollHealth(3424);
 
-          const history = await dockerHistory(image.id);
+          // History is an image property; the container id would not resolve.
+          const history = await dockerHistory(DEVELOPMENT_IMAGE);
 
           // Our Dockerfile declares one build argument, and the built image's
           // history carries no other argument of ours. Base-image arguments and

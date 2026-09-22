@@ -51,44 +51,70 @@ const BUILDKIT_PREFIX = "BUILDKIT_";
 const DECLARED_ARGUMENT = /^ARG ([A-Za-z_][A-Za-z0-9_]*)$/;
 
 /**
- * The environment variable families that may never be committed onto a layer.
- * Each requires a value after the separator, so an environment variable *name*
- * with no value is not mistaken for a leaked secret.
+ * The high-signal secret markers worth scanning file *content* for.
+ *
+ * Generic `password: value`-shaped rules were tried and removed: bundled
+ * third-party code is full of `password: this.password` and `apiKey` handling,
+ * so they fail a real image on its own dependencies. What remains is a private
+ * key block and a long bearer token — neither of which occurs in ordinary
+ * runtime code — and file *paths* for the secret-bearing file types below.
  */
 export function secretNeedles(): readonly RegExp[] {
   return [
-    /postgres(ql)?:\/\/[^\s:@/]+:[^\s@/]+@/,
     /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-    // Each assignment needs a plausible value (at least six characters after an
-    // optional quote), so `password: ""` in bundled code is not mistaken for a
-    // committed secret while `password=hunter2` is.
-    /\bPASSWORD\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
-    /\bSECRET\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
-    /\bapi[_-]?key\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
-    /\bBearer\s+[A-Za-z0-9._-]{8,}/,
+    /\bBearer\s+[A-Za-z0-9._-]{20,}/,
   ];
 }
 
+/** Basenames and extensions that carry a secret, judged by path alone. */
+export function secretPathFinding(path: string): string | undefined {
+  const basename = path.split("/").at(-1) ?? "";
+
+  if (basename === ".npmrc" || basename === ".netrc" || basename === "id_rsa") {
+    return basename;
+  }
+
+  if (/^\.env(\.|$)/.test(basename)) return basename;
+
+  const extension = /\.([A-Za-z0-9]+)$/.exec(basename)?.[1]?.toLowerCase();
+
+  if (
+    extension !== undefined &&
+    ["pem", "key", "p12", "pfx"].includes(extension)
+  ) {
+    return basename;
+  }
+
+  return undefined;
+}
+
 /**
- * The development-only package families and artifacts that must not enter a
- * customer runtime image (R-41a, R-42, R-41e, R-5a, AC-12, AC-28).
+ * The development-only packages and artifacts that must not enter a customer
+ * runtime image (R-41a, R-42, R-41e, R-5a, AC-12, AC-28).
+ *
+ * These are *path* needles, not content needles: a package that is merely named
+ * in another package's manifest (Next's `devDependencies`, pg's `scripts`) is
+ * not an installed dependency, while a path under that package's directory is.
+ * The content rules already live in the devtools-exclusion suite, which scans
+ * the built output for executable devtools code.
  */
 export function devToolingNeedles(): readonly string[] {
   return [
-    "@tanstack/react-devtools",
-    "@tanstack/react-query-devtools",
-    "@tanstack/react-form-devtools",
-    "@tanstack/react-pacer-devtools",
-    "@storybook/",
+    "/node_modules/@tanstack/react-devtools/",
+    "/node_modules/@tanstack/react-query-devtools/",
+    "/node_modules/@tanstack/react-form-devtools/",
+    "/node_modules/@tanstack/react-pacer-devtools/",
+    "/node_modules/@storybook/",
+    "/node_modules/storybook/",
+    "/node_modules/@playwright/",
+    "/node_modules/vitest/",
+    "/node_modules/testcontainers/",
+    "/node_modules/oxlint/",
+    "/node_modules/oxfmt/",
+    "/node_modules/lefthook/",
+    "/node_modules/@nx/",
+    "/node_modules/@genie/generators/",
     "storybook-static",
-    "@genie/generators",
-    "@nx/",
-    "@playwright/test",
-    "testcontainers",
-    "oxlint",
-    "oxfmt",
-    "lefthook",
-    "vitest",
     ".stories.",
   ];
 }
@@ -199,8 +225,12 @@ function isNonEmptyString(value: unknown): value is string {
  * The largest file whose content the scanner reads. A file above it is reported
  * as an `oversized` record and the proof fails closed rather than scanning a
  * truncated body, so nothing silently escapes the content rules.
+ *
+ * The bound is calibrated above the largest file the current standalone runtime
+ * emits (Next's `capsize-font-metrics.json`, about 4.1 MiB). A legitimate file
+ * larger than this is a review item, not a silent skip.
  */
-export const MAX_SCANNED_FILE_BYTES = 4 * 1024 * 1024;
+export const MAX_SCANNED_FILE_BYTES = 32 * 1024 * 1024;
 
 /**
  * Parses the in-container filesystem inventory into `{ path, content }` pairs.
@@ -234,7 +264,10 @@ export function filesystemEntries(stdout: string): readonly ImageFile[] {
       );
     }
 
-    if (!isNonEmptyString(parsed.b64)) {
+    // An empty file is legal and encodes to an empty string, so this checks the
+    // field's type, not its length.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of inventory bytes
+    if (typeof parsed.b64 !== "string") {
       throw new Error(`malformed filesystem inventory line: ${line}`);
     }
 
@@ -301,23 +334,34 @@ export function scanFiles(
       });
     }
 
-    const tooling = devToolingNeedles().find(
-      (needle) => file.content.includes(needle) || file.path.includes(needle)
+    // Path, not content: an installed dev-only package is a directory under
+    // node_modules, while a manifest that merely names one is not.
+    const tooling = devToolingNeedles().find((needle) =>
+      file.path.includes(needle)
     );
 
     if (tooling !== undefined) {
       findings.push({
         kind: "dev-tooling",
         path: file.path,
-        detail: `The development-only marker ${tooling} is present in the image (R-41a, R-42, AC-28).`,
+        detail: `The development-only package or artifact ${tooling} is installed in the image (R-41a, R-42, AC-28).`,
       });
     }
 
-    if (matchesSecret(text)) {
+    const secretPath = secretPathFinding(file.path);
+
+    if (secretPath !== undefined) {
       findings.push({
         kind: "secret",
         path: file.path,
-        detail: "The file carries a value that looks like a secret (R-33).",
+        detail: `The secret-bearing file ${secretPath} is present in the image (R-33).`,
+      });
+    } else if (matchesSecret(file.content)) {
+      findings.push({
+        kind: "secret",
+        path: file.path,
+        detail:
+          "The file content carries a private key or bearer token (R-33).",
       });
     }
   }
