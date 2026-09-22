@@ -41,6 +41,13 @@ Run of 2026-09-22, all layers, exit 0:
 | Storybook component tests | `nx run @genie/storybook:test-storybook` with `MODULE_INCLUDE=generated-proof` | 5 files, 14 tests passed |
 | Denied route in a browser | `playwright test --config apps/genie/playwright.config.ts generated-module` | 6 passed, three cases at a phone and a desktop viewport |
 
+Provenance disclosure: the table shows the current spelling. The 2026-09-22 run
+itself executed the pre-rename forms `@genie/generators:module` and
+`@genie/generators:tenant`; `4a9fd37` later re-spelled the commands here to the
+canonical `@genie/generators:module-new` and `@genie/generators:tenant-new`.
+That correction renamed only; every count and result above is the original
+recorded run, unchanged.
+
 Story discovery was measured by difference, not asserted from a log line. An
 explicitly empty selection runs 3 story files and 9 tests; the same command with
 `MODULE_INCLUDE=generated-proof` runs 5 files and 14 tests. The generated module
