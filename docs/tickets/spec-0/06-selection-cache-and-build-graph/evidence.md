@@ -2,11 +2,43 @@
 
 Bead: `genie-ops-center-v2-1rd.6`. Branch: `kenan-xin/feature-s06-slection-aware-application-build`.
 
-Baseline: develop `7a20b93`, which contains the accepted G2 revision `3bafa24`. Not integrated. This record covers the owned slice only.
+Baseline at implementation: develop `7a20b93`, which contains the accepted G2 revision `3bafa24`. **Integrated** into local develop by fast-forward, twice: `7a20b93 → 1bd039e` (commits `5f98706`..`1bd039e`) and `1bd039e → 01b8a5e` (commits `2ad3622`, `01b8a5e`), no squash or rebase. Develop has since advanced to `4a9fd37` on S0-08; `apps/genie/**` and `tools/generators/src/selection/**` are unchanged across `01b8a5e..4a9fd37`, so this proof transfers. This record covers the owned slice only.
 
 Versions: Nx 23.2.1, Node v26.9.0, Vitest 4.1.11, pnpm 12.4.2.
 
 The approach is in [design.md](design.md).
+
+## Integrated re-verification, closure review 2026-09-22
+
+Re-run on the integrated revision (`01b8a5e`) by an independent reviewer, on this branch, to decide acceptance. Nothing here is a new plan; it is the same evidence, re-measured.
+
+```bash
+nx run-many -t lint typecheck test -p @genie/app @genie/generators --skip-nx-cache   # green, 7 tasks
+nx run @genie/generators:validate --skip-nx-cache                                    # 31 passed
+vitest run --config vitest.integration.config.ts testing/selection-cache.test.ts     # 6 passed, 16.8s
+```
+
+The recorded build matrix was re-measured end to end on one revision with one isolated `NX_CACHE_DIRECTORY`/`NX_WORKSPACE_DATA_DIRECTORY`, digesting every file under `apps/genie/.next` (excluding Next's own cache):
+
+| Step | Selection | Cache | Registry | Needle files in `.next` | `standalone/server.js` | Digest |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `placeholder` | 0/2 hit | imports the placeholder | 15 | 3 | `1e22b4afe8acf483` |
+| 2 | explicitly empty | 0/2 hit | no import | 0 | 3 | `f47cfb574298d5ab` |
+| 3 | `placeholder` again | 2/2 hit | imports the placeholder | 15 | 3 | `1e22b4afe8acf483` |
+| 4 | `placeholder`, after `rm -rf apps/genie/.next` | 2/2 hit | imports the placeholder | 15 | 3 | `1e22b4afe8acf483` |
+
+The absolute digest strings differ from the earlier table because the digest command is not frozen; the properties are what the run re-establishes: two selections give different trees, an identical selection restores its own tree byte for byte, and deleting the output restores it from the cache before any consumer reads it (`[local cache]` on both tasks). The needle is `__drizzle_migrations_placeholder`; the count here includes source maps, unlike the earlier non-map count.
+
+The isolation contract was re-measured the same way, with two full copies of the checkout (including `node_modules`) built concurrently, `placeholder` in one root and the explicitly empty selection in the other:
+
+| Check | Root A, `placeholder` | Root B, explicitly empty |
+| --- | --- | --- |
+| Build exit | 0 | 0 |
+| Final registry | imports the placeholder | no import |
+| Files in `.next` carrying the needle | 15 | 0 |
+| Standalone `server.js` | 3 | 3 |
+
+The checkout's own registry was byte-identical before and after. A first attempt that symlinked the root `node_modules` into the stage failed both builds with Turbopack's "symlink points out of the filesystem root" — a defect of that staging shortcut, not of the product; full copies reproduce the recorded result.
 
 ## Two defects this work found
 
@@ -52,7 +84,7 @@ All green. The selection cases are:
 
 - `tools/generators/src/selection/print.test.ts`, 13 cases. Unset, explicitly empty, one module and every module print four distinct values. Two spellings of one selection print one value. Order changes the value. An entrypoint move changes the digest. A module the selection excludes changes nothing. A package name that no longer matches its id is refused while the inventory is read, before any hash. An unknown id exits non-zero with nothing on standard output.
 - `apps/genie/tools/registry-roots.test.ts`, 10 cases. `--root` without a path is refused. Two concurrent child processes generate into two staged roots, and neither root holds the other's module. The guard passes on a fresh registry and fails on another selection's registry, on a hand edit, on a missing registry, and between unset and explicitly empty when both import the same packages.
-- `apps/genie/tools/build-graph.test.ts`, 6 cases. Read from `nx show project @genie/app --json`: generation precedes build, typecheck and test; build precedes the image; generation declares its output and is cached; the image target is not cached; all four targets declare the selection input; none hashes a raw `MODULE_INCLUDE` value.
+- `apps/genie/tools/build-graph.test.ts`, 7 cases. Read from `nx show project @genie/app --json`: generation precedes build, typecheck and test; build precedes the image; generation declares its output and is cached; the image target is not cached; all four targets declare the selection input; the registry guard sits on both sides of the bundler in `BUILD_STEPS`; none hashes a raw `MODULE_INCLUDE` value.
 
 ## Real cache matrix
 
@@ -231,8 +263,12 @@ Node exposes no advisory file lock, so the textbook mechanism needs a new depend
 
 ## Not proven here
 
-- The customer image matrix stays open. S0-11 owns it. Nothing in this record closes it.
-- `readModulesFile` still has no caller. The customer entrypoint in this repository is the `MODULE_INCLUDE` build argument, which the runtime input covers. A `modules.txt` consumer belongs to S0-11.
-- The Storybook selection inputs in `nx.json` are unchanged. S0-10 and `2cg` own them.
-- The real cache suite is not in the mandatory integration manifest in `apps/genie/testing/required-tests-guard.ts`. That manifest belongs to the S0-05 harness, so adding an entry needs its owner.
-- No image was built for this record. The recorded runs are host builds.
+Each item below is named in the ticket's acceptance text or its scope, and each is owned by another ticket. None is an S0-06 obligation, and none is closed by this record.
+
+- The customer image matrix stays open. S0-11 owns it (`coverage.md` R-3a "S0-11 images"; R-21..R-23a "S0-11 customer smoke"; AC-5 and AC-24 "S0-11 image"). This covers the fresh-image/database routes/tables/migration-history clause and the "staging histories" clause of the acceptance text; the image is built from the S0-06-declared `generate-registry → build → build-image` edge, which this ticket proves and does not cache.
+- No image was built for this record. The recorded runs are host builds, so the *bundle* artifact is inspected and the *image* filesystem/migration files are S0-11's.
+- "Change modules.txt" is untested because no task reads a `modules.txt` yet. `readModulesFile` still has no caller; R-3a makes the file input conditional on a reader, and the reader is S0-11's customer wrapper. The customer entrypoint in this repository is the `MODULE_INCLUDE` build argument, which the runtime input covers.
+- The Storybook selection inputs in `nx.json` are unchanged and still hash raw `MODULE_INCLUDE`. S0-10 and its child `2cg` own them (`coverage.md` R-41b "S0-10"; design.md §2). `2cg` also owns the unset/empty artifact-content proof (`coverage.md` auxiliary table).
+- The residual same-root artifact hole is deferred hardening of an unsupported path, tracked as `genie-ops-center-v2-vst` (task P3). The supported contract — one build root per selection — is proved above and is never denied.
+- The real cache suite is collected and runs in `@genie/app:test:integration`, but is not named in the mandatory manifest in `apps/genie/testing/required-tests-guard.ts`. That manifest is the S0-05-owned acceptance helper (`07-.../index.md`: "Retain and extend G2's required-execution guard"); wiring the integration suite into CI is S0-11.
+- Config/schema invalidation beyond the selection metadata digest (shared presets, exposed generator schemas) is AC-1, whose final integration is S0-11/S0-12.
