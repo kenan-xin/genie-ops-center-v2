@@ -77,6 +77,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the production build and the devtools ships no executable code carrying TanStack Pacer",
       "the production build and the devtools ships no executable code carrying TanStack Form",
       "the production build and the devtools ships no executable code carrying No user is signed in. Section 0 has no identity yet.",
+      "the production build and the devtools ships no executable code carrying deploymentDiagnostics",
       "the production build and the devtools installs no devtools package in the image it runs from",
     ],
   },

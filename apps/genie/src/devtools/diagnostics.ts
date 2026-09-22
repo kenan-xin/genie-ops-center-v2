@@ -22,11 +22,19 @@ export function databaseName(connectionString: string): string {
   try {
     const url = new URL(connectionString);
 
-    // The protocol check is the guard, not a formality. `new URL` accepts an
-    // opaque string such as `user:password@nowhere`, and its "path" is then the
-    // password. Requiring the scheme this deployment really uses makes that
-    // input fall through to the fixed word instead of being printed.
-    if (!DATABASE_PROTOCOLS.has(url.protocol)) return UNKNOWN;
+    // Two guards, and both are load-bearing.
+    //
+    // The scheme, because `new URL` accepts an opaque string such as
+    // `user:password@nowhere` and calls the password its path.
+    //
+    // The host, because a known scheme without an authority is opaque too:
+    // `postgres:user:pw@host:5432/db`, one missing pair of slashes, parses with
+    // protocol `postgres:` and puts the user, the password, the host and the
+    // port in the path. Requiring a host is what makes that fall through to the
+    // fixed word rather than being printed.
+    if (!DATABASE_PROTOCOLS.has(url.protocol) || url.host === "") {
+      return UNKNOWN;
+    }
 
     return url.pathname.replace(/^\//, "") || UNKNOWN;
   } catch {

@@ -53,6 +53,21 @@ export default async function globalSetup(): Promise<void> {
     );
   }
 
+  // A pid file left by a killed run names a process this run did not start, and
+  // the pid may since have been reused. Remove it before anything writes a new
+  // one, so teardown can never signal a stranger's process group.
+  rmSync(PID_FILE, { force: true });
+
+  // Next shifts to the next free port when the one it is given is busy, and
+  // says so only on its own output. The readiness probe would then get a 200
+  // from whatever already held this port, and every spec would drive that
+  // server instead. Refusing to start is the only safe answer.
+  if (await isReady(`http://127.0.0.1:${DEV_PORT}/api/health`)) {
+    throw new Error(
+      `Something is already serving 127.0.0.1:${DEV_PORT}. Stop it, or set GENIE_DEV_PORT to a free port. This run will not use a server it did not start.`
+    );
+  }
+
   await run("docker", [...COMPOSE, "up", "-d", "--wait"]);
 
   const appRoot = resolve(import.meta.dirname, "../..");
@@ -115,14 +130,22 @@ export async function stopEverything(): Promise<void> {
       const pid = Number(readFileSync(PID_FILE, "utf8"));
 
       try {
+        // Terminate, then make sure. A child that ignores the first signal
+        // would otherwise keep the port while the database is already gone.
         process.kill(-pid, "SIGTERM");
-      } catch {
-        // Already gone, which is the same end state.
-      }
 
-      rmSync(PID_FILE, { force: true });
+        await new Promise((settle) => setTimeout(settle, 2000));
+
+        process.kill(-pid, "SIGKILL");
+      } catch {
+        // Already gone, which is the end state this wanted.
+      }
     }
   } finally {
+    // Removed whatever happened above, so a later run cannot read a pid that
+    // the operating system has since given to something else.
+    rmSync(PID_FILE, { force: true });
+
     await run("docker", [...COMPOSE, "down", "-v"]).catch(() => undefined);
   }
 }

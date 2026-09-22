@@ -54,6 +54,17 @@ const DEVTOOLS_PROBES = [
   // The diagnostics panel's own sentence, so the panel is covered as well as
   // the packages around it.
   "No user is signed in. Section 0 has no identity yet.",
+  // The diagnostics reader itself. An independent review found the
+  // production server chunk calling `deploymentDiagnostics` and handing the
+  // result to the client component, because the development check lived only
+  // inside that component: the props crossed the boundary and were serialized
+  // into every page's payload while the panel itself rendered nothing. The
+  // check now sits in the layout, and this probe is what holds it there.
+  //
+  // The export name, not a string inside the reader. `postgresql:` was tried
+  // and dropped: core's environment validation carries that literal and ships
+  // in production for its own reasons, so the probe failed on a clean build.
+  "deploymentDiagnostics",
 ];
 
 /**
@@ -66,7 +77,17 @@ const COPIED_MANIFEST = "standalone/apps/genie/package.json";
 /** Next's own client console module, which mentions the browser extension. */
 const NEXT_OWN = join("node_modules", "next", "dist");
 
-/** Every JavaScript file the build produced in the served trees. */
+/**
+ * What a deployment serves: code, and the payloads that reach a browser as
+ * data.
+ *
+ * `.js` alone was not enough. A value can leave the server in a prerendered
+ * document or a flight payload without appearing in any script, which is how
+ * the diagnostics leak above escaped an earlier version of this file.
+ */
+const SERVED_PAYLOAD = /\.(?:[cm]?js|html|rsc|json|txt)$/;
+
+/** Every served file the build produced in those trees. */
 function servedScripts(): readonly string[] {
   const found: string[] = [];
 
@@ -77,7 +98,7 @@ function servedScripts(): readonly string[] {
     })) {
       const absolute = join(entry.parentPath, entry.name);
 
-      if (!entry.isFile() || !/\.[cm]?js$/.test(entry.name)) continue;
+      if (!entry.isFile() || !SERVED_PAYLOAD.test(entry.name)) continue;
 
       if (absolute.includes(NEXT_OWN)) continue;
 
@@ -117,13 +138,24 @@ describe("the production build and the devtools", () => {
   });
 
   it("installs no devtools package in the image it runs from", () => {
-    const scoped = join(BUILD_ROOT, "standalone/node_modules/@tanstack");
+    const root = join(BUILD_ROOT, "standalone");
 
-    // An absent folder is the ordinary result and means nothing scoped was
-    // traced into the image. When it exists, every entry in it is read, so a
-    // devtools package traced in later fails here.
-    const installed = existsSync(scoped)
-      ? readdirSync(scoped).filter((name) => name.includes("devtools"))
+    // The whole standalone tree, not one folder inside it. An earlier version
+    // looked at `standalone/node_modules/@tanstack`, which this build layout
+    // never creates: pnpm traces land under `node_modules/.pnpm/<name>@<ver>/`
+    // and the app's own tree is at `standalone/apps/genie/node_modules`. That
+    // folder was always absent, so the case always passed and proved nothing.
+    const installed = existsSync(root)
+      ? readdirSync(root, { recursive: true, withFileTypes: true })
+          .filter(
+            (entry) =>
+              entry.isDirectory() &&
+              /devtools/.test(entry.name) &&
+              entry.parentPath.includes("node_modules")
+          )
+          .map((entry) =>
+            relative(BUILD_ROOT, join(entry.parentPath, entry.name))
+          )
       : [];
 
     expect(installed).toEqual([]);
