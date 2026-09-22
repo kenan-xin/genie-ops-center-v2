@@ -144,6 +144,25 @@ describe("the customer image release wrapper", () => {
     expect(log).toContain(`ENV=${IDENTITY}`);
   });
 
+  it("accepts an explicit --publish, which the release workflow passes", () => {
+    const workspace = stubWorkspace(0);
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+      "--publish",
+    ]);
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    expect(outcome.status, `${outcome.stderr}\nLOG:\n${log}`).toBe(0);
+    expect(log).toContain("docker push");
+  });
+
   it("publishes nothing when a gate fails", () => {
     const workspace = stubWorkspace(1);
 

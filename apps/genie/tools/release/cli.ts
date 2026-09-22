@@ -36,6 +36,8 @@ exact candidate identity. MODULE_INCLUDE is the only build argument.
 Options:
   --registry <ref>         Registry repository to publish to.
                            Default: $GENIE_IMAGE_REGISTRY or ghcr.io/$GITHUB_REPOSITORY
+  --publish                Publish after the smoke passes. This is the default;
+                           the flag states the intent explicitly.
   --no-publish             Gates, build and smoke, but do not publish.
   --dry-run                Alias of --no-publish.
   --publish-command <argv> A local/test sink that replaces the docker push. It
@@ -107,6 +109,11 @@ export function parseArgv(
         break;
       case "--development-fallback":
         developmentFallback = true;
+        break;
+      case "--publish":
+        // Publishing is the default; the flag is accepted so the release
+        // workflow can state its intent explicitly rather than rely on it.
+        publish = true;
         break;
       case "--no-publish":
       case "--dry-run":
