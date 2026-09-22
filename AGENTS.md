@@ -1,5 +1,13 @@
 # Agent Instructions
 
+## Execution authority
+
+Read the current ticket and owner authorization before acting. An approved scoped local commit does not require an integration window. Local integration into `develop` requires separate owner approval and a reserved single-writer window; code push, publication, deployment, host-service changes and worktree deletion remain separately authorized actions.
+
+For each new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its already-assigned worktree and work; it is not a new assignment. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
+
+Beads owns shared ticket status, claims, blockers and follow-up work. Task-local execution checklists, concrete plans and recovery ledgers may support the chosen workflow; they do not replace Beads or authorize sibling-ticket work.
+
 ## Portable tooling
 
 Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
@@ -75,7 +83,7 @@ These choices are settled. Do not substitute one without approval.
 - Typecheck with **tsc** in strict mode, run as `tsc --noEmit` per package. oxlint does not replace it. A linter checks patterns and a compiler checks types, so both run.
 - Run all three through Nx, never as a bare package script across the repository: `nx affected -t build test lint typecheck`.
 
-This file and `CLAUDE.md` are ignored by the user's global `~/.gitignore`, so they live only in the main checkout and never travel with a branch or a worktree. Edit them at the main checkout path. Mirror any substantive change across both.
+This file and `CLAUDE.md` are tracked. Edit them in the assigned worktree and mirror substantive shared instructions across both.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->
 ## Beads Issue Tracker
@@ -93,7 +101,7 @@ bd close <id>         # Complete work
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Use `bd` for shared project task tracking. Task-local execution plans and recovery ledgers follow the Execution authority section.
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
@@ -103,7 +111,7 @@ bd close <id>         # Complete work
 
 The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
 
-- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits, git pushes, or Dolt remote sync unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
+- **Conservative (default)**: Use `bd` for shared task tracking. Honor existing scoped commit and sync grants from the current dispatch; otherwise request authorization. Code push remains separate. At handoff, report changed files, validation and any outstanding authorization.
 - **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
 - **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
 
@@ -149,7 +157,7 @@ bd prime                # Refresh Beads context
 
 ### Rules
 
-- Use `bd` for all task tracking; do not create markdown TODO lists.
+- Use `bd` for shared project task tracking; task-local execution plans and recovery ledgers do not replace it.
 - Run `bd prime` when Beads context is missing or stale. Codex 0.129.0+ can load Beads context automatically through native hooks; use `/hooks` to inspect or toggle them.
 - Keep persistent project memory in Beads via `bd remember`; do not create ad hoc memory files.
 

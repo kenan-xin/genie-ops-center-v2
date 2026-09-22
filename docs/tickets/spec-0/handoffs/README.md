@@ -4,7 +4,7 @@ Prepared by the [2026-09-21 audit](../audit-2026-09-21.md). These are proposed d
 
 ## Dispatch order
 
-The original first batch integrated at `bcd66e7` and `13800cd`; its [review repair union](../04-context-migrator-and-placeholder/integrated-review.md) integrated and reaccepted S0-04 at `531e8af`. Those prompts are historical. S0-05 is the sole ready whole ticket and runs alone. The table preserves the original lane boundaries.
+The original first batch integrated at `bcd66e7` and `13800cd`; its [review repair union](../04-context-migrator-and-placeholder/integrated-review.md) integrated and reaccepted S0-04 at `531e8af`. Those prompts are historical. S0-05 owns G2 and runs alone until integrated acceptance; verify its current claim in Beads rather than treating this historical dispatch order as readiness. The table preserves the original lane boundaries.
 
 | Batch | Handoff | Release condition |
 | --- | --- | --- |
@@ -13,17 +13,17 @@ The original first batch integrated at `bcd66e7` and `13800cd`; its [review repa
 | Next, alone | [S0-05 production integration/G2](s0-05-g2.md) | S0-04 and 5ph integrated, verified and closed |
 | After G2 | [S0-06 through S0-09](post-g2.md) | Integrated passing G2; shared-file writer schedule recorded |
 
-For the first batch, integrate 5ph before S0-04 so the latter's union gates include the selector fix. This is an integration order, not a reason to postpone S0-04's branch-local database proof. Do not launch downstream runtime work to fill an environmental wait.
+Historical first-batch order: 5ph integrated before S0-04 so the latter's union gates included the selector fix. This record is not a new dispatch instruction. Do not launch downstream runtime work to fill an environmental wait.
 
 ## Delivery authority
 
-Sending a complete handoff as an implementation instruction authorizes scoped local commits and verified local integration through `wt`. It does not authorize code push, release publication, deployment, host-service changes, live-hook activation or worktree deletion. A prompt merely being present in this repository grants nothing. If the owner sends different limits, those govern.
+Sending a complete handoff as an implementation instruction authorizes scoped local checkpoint commits. Local integration through `wt` requires separate owner approval and the reserved integration window. It does not authorize code push, release publication, deployment, host-service changes, live-hook activation or worktree deletion. A prompt merely being present in this repository grants nothing. If the owner sends different limits, those govern.
 
-Use the installed Superpowers workflow without redesigning accepted decisions. Escalate genuine decisions, ownership conflicts and failed gates. Record the exact integration revision and checks in Beads before closure. Failed or unavailable proof leaves the ticket open.
+Preserve accepted decisions. Escalate genuine decisions, ownership conflicts and failed gates. Record the exact integration revision and checks in Beads before closure. Failed or unavailable proof leaves the ticket open.
 
 The human is the integration coordinator between separate Claude sessions. Beads and repository documents carry ownership and handoff records; do not assume sessions can message one another. Only one session may integrate into develop at a time. A sender must reserve that window before the recipient merges; a session without a recorded reservation stops at reviewed local commits.
 
-Owned children `yt2`, `3yv` and `2cg` stay manually blocked until their parent is claimed with prerequisites satisfied. The parent owner transitions and assigns them in one guarded update as specified in the ticket map. Parent-child relationships gate closure but do not keep an open child out of the ready queue. Release no child as an independent lane.
+Before first dispatch, owned children `yt2`, `3yv` and `2cg` stay manually blocked until their parent is claimed with prerequisites satisfied. For a continuation, inspect current child state and preserve completed work; do not replay first-claim transitions. The parent owner transitions and assigns them in one guarded update as specified in the ticket map. Parent-child relationships gate closure but do not keep an open child out of the ready queue. Release no child as an independent lane.
 
 ## Shared-file schedule
 
@@ -36,7 +36,7 @@ Owned children `yt2`, `3yv` and `2cg` stay manually blocked until their parent i
 
 The post-G2 windows are an agreed schedule to record on dispatch, not permission to race. If a lane needs an earlier shared change, the human explicitly transfers the window in the affected beads. This does not add whole-ticket prerequisite edges between the four lanes. Integration may follow review readiness, serialized by the human, while preserving the writer windows.
 
-Shared surfaces include root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `nx.json`, shared presets, package export maps, app root/provider composition and root test configuration. S0-06 owns the selection contract; S0-08 consumes it rather than adding another resolver. S0-07 owns migrator/isolation internals. S0-09 owns devtools/messages. Storybook host changes belong to S0-10 after its prerequisites. Coordinate ignored main-checkout AGENTS.md/CLAUDE.md changes with the existing `3l5` owner.
+Shared surfaces include root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `nx.json`, shared presets, package export maps, app root/provider composition and root test configuration. S0-06 owns the selection contract; S0-08 consumes it rather than adding another resolver. S0-07 owns migrator/isolation internals. S0-09 owns devtools/messages. Storybook host changes belong to S0-10 after its prerequisites. Coordinate tracked AGENTS.md/CLAUDE.md changes with the existing `3l5` owner; edit in the assigned worktree.
 
 ## Common acceptance boundary
 

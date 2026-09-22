@@ -1,6 +1,14 @@
 # Genie Ops Center v2
 
-Enterprise application platform: one repository, one Dockerfile, shared core, business modules. Every customer runs its own deployment from its own image, which carries core plus only that customer's modules, with one database and one Keycloak realm, hosted by Genie or by the customer (ADR 0007, `DEC-33`). Status: planning, no application code yet.
+Enterprise application platform: one repository, one Dockerfile, shared core, business modules. Every customer runs its own deployment from its own image, which carries core plus only that customer's modules, with one database and one Keycloak realm, hosted by Genie or by the customer (ADR 0007, `DEC-33`). Read Beads and the current ticket evidence for implementation and acceptance status.
+
+## Execution authority
+
+Read the current ticket and owner authorization before acting. An approved scoped local commit does not require an integration window. Local integration into `develop` requires separate owner approval and a reserved single-writer window; code push, publication, deployment, host-service changes and worktree deletion remain separately authorized actions.
+
+For each new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its already-assigned worktree and work; it is not a new assignment. This local-dispatch requirement does not make `wt` a prerequisite for project scripts, tests, CI or portable setup instructions.
+
+Beads owns shared ticket status, claims, blockers and follow-up work. Task-local execution checklists, concrete plans and recovery ledgers may support the chosen workflow; they do not replace Beads or authorize sibling-ticket work.
 
 ## Read first
 
@@ -74,10 +82,10 @@ These choices are settled. Do not substitute one without approval.
 
 ## Conventions (carried forward, apply once code exists)
 
-- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. Create the branch from the latest `develop`. Never commit straight to `develop` or `main`. Create the worktree with `git worktree add -b <branch> <worktree-path> develop`; replace both placeholders for the local checkout.
-- This file and `AGENTS.md` are ignored by the user's global `~/.gitignore`, so they live only in the main checkout and never travel with a branch or a worktree. Edit them at the main checkout path. Mirror any substantive change across both.
+- Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. Create the branch from the latest `develop`. Never commit straight to `develop` or `main`. Use `wt` as specified in Execution authority.
+- This file and `AGENTS.md` are tracked. Edit them in the assigned worktree and mirror substantive shared instructions across both.
 - Commits and pull request titles: Conventional Commits — `type(scope): subject`, imperative, under 72 characters; the body explains why. Allowed types and detailed rules are in the "Commits and Pull Request Titles" section of `AGENTS.md`.
-- Integration: open a pull request from the feature branch to `develop`. When `develop` is ready for production, open a pull request from `develop` to `main`. `main` is the production branch and receives changes only through that pull request.
+- Integration: use a pull request from the feature branch to `develop`, or owner-approved local integration through `wt` in the reserved window. When `develop` is ready for production, open a pull request from `develop` to `main`. `main` is the production branch and receives changes only through that pull request.
 - Merging: pull requests into `main` are squash-merged, so `main` history is one commit per release carrying the pull request's Conventional Commits title. Pull requests into `develop` keep their commits.
 - Gates: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build` pass on the pull request before merge, and end-to-end tests pass on `develop` before the pull request to `main`.
 - State: server state in TanStack Query, complex client state in zustand, trivial local state in `useState`.
@@ -102,7 +110,7 @@ bd close <id>         # Complete work
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Use `bd` for shared project task tracking. Task-local execution plans and recovery ledgers follow the Execution authority section.
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
@@ -112,7 +120,7 @@ bd close <id>         # Complete work
 
 The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
 
-- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits, git pushes, or Dolt remote sync unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
+- **Conservative (default)**: Use `bd` for shared task tracking. Honor existing scoped commit and sync grants from the current dispatch; otherwise request authorization. Code push remains separate. At handoff, report changed files, validation and any outstanding authorization.
 - **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
 - **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
 

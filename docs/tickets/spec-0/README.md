@@ -12,7 +12,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
 - Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
-Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05 is the sole ready whole ticket; later tickets remain gated. Beads owns current status; do not redispatch either historical first-batch prompt.
+Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05 owns G2; later tickets remain gated until integrated acceptance. Read Beads for current claims and readiness. Beads owns current status; do not redispatch either historical first-batch prompt.
 
 ## Execution authority and documentation
 
@@ -20,7 +20,7 @@ Use the repository ticket and its current continuation/authorization record. Spe
 
 Keep approved requirements, shared-file rules and durable handoffs in `docs/` with relative links. A session may keep scratch recovery notes, but no other session should need them to discover the approved contract or acceptance result. A fresh worktree must receive the current documentation baseline before implementation; never overwrite newer documentation during integration. Product decisions flow into specifications, then plans/tickets; status and claims remain in Beads.
 
-Use Superpowers in the existing ticket session/worktree. Refine only unresolved design questions, preserve completed work and use the workflow supported by the installed skill version. Routine implementation fixes remain with the delivery owner; escalate genuine product/architecture choices, conflicting writers or incompatible requirements. Do not add a second coordinator review loop to S0-03's authorized review workflow.
+Preserve accepted decisions and completed work. Routine implementation fixes remain with the delivery owner; escalate genuine product/architecture choices, conflicting writers or incompatible requirements.
 
 ## Ticket index
 
@@ -118,7 +118,7 @@ Before editing a shared surface, name the paths in the bead and coordinate with 
 
 S0-01 reserves only a Storybook configuration extension point; S0-02 exclusively owns its actual pins, first shared preset, host and related lockfile/Nx edits. S0-03 owns core public types. S0-06 owns selection/registry/build inputs; S0-07 owns migrator/isolation internals; S0-08 owns generator templates (not the resolver); S0-09 owns devtools/messages. If a public interface must change, synchronize its owner and consumers before implementation continues.
 
-## Starting a Claude Code / Superpowers session
+## Starting a ticket session
 
 Accepted S0-02/S0-03 shared-file sequence (2026-09-20): follow [S0-03's accepted planning decisions](03-module-contracts-and-build-safe-schemas/index.md#accepted-planning-decisions--2026-09-20). After S0-01 is integrated, validated and closed, agree overlapping dependency pins first. S0-03 prepares the minimal contract dependencies; following separate approval and integration of that change, S0-02 updates its baseline and takes over Storybook dependency/configuration edits. Record the writer, paths and integrated revision in both beads. This does not add a whole-ticket S0-03 prerequisite to S0-02 or close either gate; disjoint owned-file work may proceed in parallel. Exports, boundaries and configuration changes also obey the single-writer protocol.
 
@@ -126,7 +126,7 @@ First make the approved planning files available on the agreed integration basel
 
 The installed bd help states linked Git worktrees discover the shared database via Git common-directory discovery. Verify that claim in each new worktree using bd where and bd worktree info; do not run bd init or create separate issue stores there. Use the path reported by bd where; never hardcode a local database layout or treat JSONL as the database. Same-machine linked worktrees need no remote sync. Separate clones/machines use Dolt sync; routine sync is authorized, independently of code pushes.
 
-Use Superpowers using-git-worktrees to create or verify one isolated worktree per ticket, never a second nested worktree. Verify the intended integration revision and clean baseline before making edits. [Primary-source notes](superpowers-source-notes.md) describe the verified upstream skills; Beads rules here are the project's coordination overlay.
+For a new assignment, use `wt` to create a new dedicated branch/worktree from current local `develop`, regardless of existing worktrees. A continuation preserves its assigned worktree. Verify the intended integration revision and baseline before making edits; preserve unrelated changes.
 
 Run these native commands in the worktree, with a unique session actor. Routine Beads sync is allowed. Use `--sandbox` only when a specific task explicitly forbids remote sync; it disables automatic Dolt pushes. Personal command wrappers such as RTK are optional locally and are not prerequisites for these instructions:
 
@@ -141,20 +141,20 @@ bd --actor <unique-session-name> update <bead-id> --claim
 
 If claim fails, stop; do not overwrite the owner or retry with forced reassignment. Check prerequisite revisions even if the bead is ready. Stop if the worktree cannot see the approved ticket or if its tracker differs from the shared database.
 
-Use writing-plans only for a bounded implementation plan inside this ticket, followed by the applicable executing-plans or subagent-driven-development workflow. Internal subagents stay within the same claimed ticket; don't let them claim sibling tickets or duplicate the coordinator. The delivery owner may also claim explicitly named child obligations in its handoff; those are closure requirements, not separate prerequisite sessions. Repository Beads rules override any generic TodoWrite/second task tracker suggestion. Ticket-local execution plans/recovery notes are not a second status system; keep decisions/blockers/status on the bead.
+Internal subagents stay within the same claimed ticket and do not claim sibling tickets. The delivery owner may also claim explicitly named child obligations in its handoff; those are closure requirements, not separate prerequisite sessions. Task-local execution plans and recovery ledgers support the chosen workflow; shared decisions, blockers and status remain on the bead.
 
 ## Copy-ready session prompt
 
 Replace `<S0-ticket>`, `<bead-id>` and `<workspace-path>` before sending; use the recipient’s actual checkout path.
 
 ```text
-Implement only <S0-ticket> / <bead-id> in <workspace-path> using Superpowers.
+Implement only <S0-ticket> / <bead-id>. Start at <workspace-path>.
 
 Read docs/tickets/spec-0/README.md and that ticket's index.md, approved Spec 0, its technical plan, AGENTS.md and CLAUDE.md. Verify all prerequisite beads are closed with integrated passing evidence, and the worktree base contains their changes plus the approved planning files.
 
-Use one isolated worktree and feature branch from the agreed integration baseline. Verify this worktree shares the coordinator's Beads database, then atomically claim exactly <bead-id> using a unique session actor. If already claimed, missing a dependency or missing the approved baseline, stop and report it.
+Use wt to create a new dedicated branch/worktree from current local develop, regardless of existing worktrees. Verify this worktree shares the coordinator's Beads database, then atomically claim exactly <bead-id> using a unique session actor. If already claimed, missing a dependency or missing the approved baseline, stop and report it.
 
-Create only the bounded implementation plan this ticket needs. Follow Superpowers execution/review, repository TDD and the Storybook-first UI workflow. Preserve G1/G2 stop gates; no silent dependency downgrade, skipped proof, extra pool/custom server, wider authorization, design import or later-section scope.
+Preserve the repository TDD and Storybook-first UI requirements and G1/G2 stop gates; no silent dependency downgrade, skipped proof, extra pool/custom server, wider authorization, design import or later-section scope.
 
 Respect owned paths and coordinate shared manifest/lockfile/config changes with the integration owner before editing. Follow the ticket-specific execution authority for scoped commits, local merge and closure; do not ask again for actions it already authorizes. Routine Beads sync is allowed. No code push, publication, deployment, hook activation or worktree deletion without explicit authority.
 
