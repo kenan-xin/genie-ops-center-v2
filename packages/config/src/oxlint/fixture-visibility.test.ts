@@ -235,4 +235,34 @@ describe("lint fixtures and the lint that runs beside them", () => {
       }
     );
   });
+
+  // The app's lint command is the one target that named files by shell glob, so
+  // a fixture present when the shell expanded the glob was handed to oxlint and
+  // could vanish before oxlint opened it (genie-ops-center-v2-7lj). The command
+  // must name its config files, so it can never receive a transient fixture.
+  it("never hands a transient fixture to the app lint command", () => {
+    // SAFETY: `apps/genie/package.json` is a package manifest, and the
+    // assertion below fails loudly when its lint script is absent.
+    const manifest = JSON.parse(
+      readFileSync(join(WORKSPACE_ROOT, "apps/genie/package.json"), "utf8")
+    ) as { readonly scripts: { readonly lint: string } };
+
+    // The config flag is named separately so the rest of the command, globs and
+    // all, is what the shell expands below.
+    const command = manifest.scripts.lint.replace(
+      /^\S+\s+--config\s+\S+\s+/,
+      ""
+    );
+
+    const probe = "apps/genie/__boundary__.config.ts";
+
+    withFixture(WORKSPACE_ROOT, probe, "export const probe = true;\n", () => {
+      const expanded = execFileSync("sh", ["-c", `printf '%s\\n' ${command}`], {
+        cwd: join(WORKSPACE_ROOT, "apps/genie"),
+        encoding: "utf8",
+      });
+
+      expect(expanded).not.toContain("__boundary__");
+    });
+  });
 });
