@@ -167,12 +167,20 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
           expect(names).not.toContain("placeholder_record");
           expect(names).not.toContain("__drizzle_migrations_placeholder");
 
-          // No placeholder migration file travels in the image filesystem.
+          // The excluded module's package, folder and ledger are absent from the
+          // image. The bare word "placeholder" is not the needle: the app owns a
+          // `/placeholder` dispatch route that always compiles, and it is the
+          // 404 above — not a path check — that proves no module route answers.
           const files = await imageFilePaths(image.id);
 
-          expect(
-            files.filter(({ path }) => path.includes("placeholder"))
-          ).toEqual([]);
+          const moduleArtifacts = files.filter(
+            ({ path }) =>
+              path.includes("@genie/module-placeholder") ||
+              path.includes("packages/modules/placeholder/") ||
+              path.includes("__drizzle_migrations_placeholder")
+          );
+
+          expect(moduleArtifacts).toEqual([]);
         } finally {
           await image.stop();
         }
@@ -265,9 +273,10 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
 
           const files = await imageFilePaths(image.id);
 
-          // The control: the included module really is present, so the clean
-          // exclusion scan below is not the scanner matching nothing.
-          expect(files.some(({ path }) => path.includes("placeholder"))).toBe(
+          // The inventory is real, not an empty walk: the standalone server
+          // entry is present. The scanner's own non-vacuity control (it finds an
+          // included module when one is excluded) is proved in image-scan.test.ts.
+          expect(files.some(({ path }) => path.endsWith("server.js"))).toBe(
             true
           );
 
