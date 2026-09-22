@@ -82,6 +82,36 @@ administrator list and an onboarding mode outside the documented set each fail t
 command and leave nothing written. Seven files, no secret, no hosting mode, and
 branding seeded with the four required values only.
 
+## Independent review
+
+An independent reviewer read the two implementation commits against the module
+contract, Spec 0 and this ticket. It confirmed that authorization stays the
+application's single decision, that no stub was widened and no layer skipped, that
+no caller-supplied value escapes its quoting in a generated file, and that the
+tenant generator validates against core's own schemas.
+
+It raised nine defects in the work itself. Every one is fixed:
+
+| Finding | What was wrong | Fix |
+| --- | --- | --- |
+| Destructive restore | The proof script reverted `pnpm-lock.yaml` and `apps/genie/package.json` with `git checkout`, which would have thrown away an operator's own uncommitted work in either file | It reads both files before it starts and writes those bytes back |
+| Interrupt | `finally` does not run on a signal, so an interrupted run left a stale module that later builds would compile | Handlers for `SIGINT` and `SIGTERM` restore and exit |
+| A restore that fails | An error inside the restore replaced the real gate result | The restore reports its own failure and names what is left behind |
+| Storybook claimed a scoped pass | The host always contributes the user-interface and core stories, so the layer passed even if the generated module contributed none | The script runs the empty selection too and fails unless the generated selection runs more stories |
+| Scripts not typechecked | `scripts/` was linted but excluded from `tsconfig`, hiding four implicit `any` parameters and an `unknown` catch binding | `scripts/**/*.ts` is typechecked |
+| A comment that lied | The browser spec said it fails when its variable is unset; it skips | The comment says what the code does, and names the run that does prove it |
+| A brittle assertion | The spec hardcoded one display name | It derives the label from the id under test |
+| Manifest edit | An unparsable manifest threw an opaque error, a non-object `dependencies` was spread character by character, and keys were sorted by locale | Named errors, a shape check, and a code-point sort, each with a test |
+| Four stale doc comments | They described the code as it was before registration | They describe what it does |
+
+Two further findings are real but belong elsewhere, and are filed rather than
+fixed here: `genie-ops-center-v2-zsw`, the contract validator does not pin an
+admin entry to `<id>:admin`, and `genie-ops-center-v2-5wj`, the viewer route
+answers for every module that declares a frame-origin provider. The first was
+reachable through the new generic routes, so those routes now match an entry only
+when it requires this module's own key; nothing is reachable today, and the
+validator gap stays open in core.
+
 ## Gates
 
 - `nx affected -t build test lint typecheck build-storybook test-storybook test:integration --base=3f928ea --parallel=1`: exit 0 over 7 projects.
