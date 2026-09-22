@@ -577,9 +577,23 @@ import type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
 
 export type WorkspacePageProps = {
   readonly records: readonly ${names.pascal}RecordView[];
+  /**
+   * False when \`can()\` refused the caller. The page then names the refusal and renders no
+   * record, so a refused person sees no protected value (R-30).
+   */
+  readonly permitted?: boolean;
 };
 
 export function WorkspacePage(props: WorkspacePageProps) {
+  if (props.permitted === false) {
+    return (
+      <main>
+        <h1>${names.displayName}</h1>
+        <p>You do not have access to ${names.displayName}.</p>
+      </main>
+    );
+  }
+
   return (
     <main>
       <h1>${names.displayName}</h1>
@@ -698,6 +712,32 @@ export const Empty: Story = {
   args: { records: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No records yet.")).toBeInTheDocument();
+  },
+};
+
+// Denied access, proved in the browser at both viewports (R-30). The rows stay in
+// args, so each story proves the page withholds a record it was handed, not that
+// none was supplied. The Section 0 stub refuses this module's key, so this is the
+// state a real caller reaches.
+export const DeniedDesktop: Story = {
+  args: { permitted: false },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByText("You do not have access to ${names.displayName}.")
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText("First record")).not.toBeInTheDocument();
+  },
+};
+
+export const DeniedPhone: Story = {
+  args: { permitted: false },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByText("You do not have access to ${names.displayName}.")
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText("First record")).not.toBeInTheDocument();
   },
 };
 `;

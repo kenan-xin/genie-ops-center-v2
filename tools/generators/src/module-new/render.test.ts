@@ -211,6 +211,22 @@ describe("the rendered user interface", () => {
     expect(story).toContain("await expect(");
   });
 
+  it("proves denied access at both viewports, with no protected row shown", () => {
+    const story = read(
+      "packages/modules/demo/src/presentation/workspace-page.stories.tsx"
+    );
+
+    expect(story).toContain("export const DeniedDesktop");
+    expect(story).toContain("export const DeniedPhone");
+    expect(story).toContain("permitted: false");
+
+    // The refused stories keep the fixture rows in args, so the assertion proves
+    // the page withholds them rather than that none were supplied.
+    expect(
+      story.match(/queryByText\("First record"\)\)\.not\.toBeInTheDocument/g)
+    ).toHaveLength(2);
+  });
+
   it("keeps fixtures free of a server import", () => {
     const fixtures = read(
       "packages/modules/demo/src/presentation/__fixtures__/records.ts"
