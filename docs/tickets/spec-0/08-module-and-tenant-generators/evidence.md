@@ -5,7 +5,7 @@ merged into the ticket branch. Beads owns status; this file records what ran.
 
 ## What the generators are
 
-`nx g @genie/generators:module <capability>` and `nx g @genie/generators:tenant
+`nx g @genie/generators:module-new <capability>` and `nx g @genie/generators:tenant-new
 <slug>`, registered in `tools/generators/generators.json` and written through an
 Nx devkit `Tree`, so both support `--dry-run` and write nothing when a value is
 refused.
@@ -33,7 +33,7 @@ Run of 2026-09-22, all layers, exit 0:
 
 | Layer | Command the script ran | Result |
 | --- | --- | --- |
-| Scaffold | `nx g @genie/generators:module generated-proof` | 28 files, no hand edit |
+| Scaffold | `nx g @genie/generators:module-new generated-proof` | 28 files, no hand edit |
 | Link | `pnpm install` | the package resolves; no other manifest edited |
 | Lint, typecheck, unit | `nx run-many -t lint typecheck test --projects=@genie/module-generated-proof` | passed |
 | Selection and story discovery | `node tools/generators/scripts/assert-discovered.ts generated-proof` | reached by the unset selection and by an explicit one, absent from a selection that excludes it, and its story glob appears and disappears with it |

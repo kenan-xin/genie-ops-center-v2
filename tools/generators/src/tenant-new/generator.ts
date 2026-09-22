@@ -2,7 +2,7 @@ import type { Tree } from "@nx/devkit";
 
 import { renderTenant, type TenantRenderInput } from "./render.ts";
 
-/** What `nx g @genie/generators:tenant <name>` accepts. */
+/** What `nx g @genie/generators:tenant-new <name>` accepts. */
 export type TenantGeneratorSchema = Omit<TenantRenderInput, "slug"> & {
   readonly name: string;
 };

@@ -1,6 +1,6 @@
 # src/tenant-new
 
-The rendering half of `nx g @genie/generators:tenant <slug>`: the seven files of a customer's
+The rendering half of `nx g @genie/generators:tenant-new <slug>`: the seven files of a customer's
 `deploy/` folder, produced as text (R-31).
 
 ## What belongs here

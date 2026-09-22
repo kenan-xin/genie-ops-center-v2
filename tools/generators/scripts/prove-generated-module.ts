@@ -165,7 +165,11 @@ function storiesRunFor(moduleInclude: string): number {
 let failure: unknown;
 
 try {
-  run("pnpm", ["exec", "nx", "g", "@genie/generators:module", id], "generate");
+  run(
+    "pnpm",
+    ["exec", "nx", "g", "@genie/generators:module-new", id],
+    "generate"
+  );
 
   // Linking is the rest of its registration: the generator named the package in
   // the application's manifest, and nothing else in the workspace names it.

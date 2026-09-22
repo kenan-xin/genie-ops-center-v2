@@ -35,7 +35,7 @@ function emptyTree() {
   };
 }
 
-describe("nx g @genie/generators:tenant", () => {
+describe("nx g @genie/generators:tenant-new", () => {
   it("writes the seven files under the customer's deploy folder", async () => {
     const { tree, added } = emptyTree();
 

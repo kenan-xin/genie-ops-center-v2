@@ -79,7 +79,7 @@ function addToApplication(tree: Tree, packageName: string): void {
   );
 }
 
-/** What `nx g @genie/generators:module <name>` accepts. */
+/** What `nx g @genie/generators:module-new <name>` accepts. */
 export type ModuleGeneratorSchema = {
   readonly name: string;
   readonly displayName?: string;

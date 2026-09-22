@@ -25,7 +25,7 @@ function emptyTree() {
   };
 }
 
-describe("nx g @genie/generators:module", () => {
+describe("nx g @genie/generators:module-new", () => {
   it("writes every rendered file into the tree, byte for byte", async () => {
     const { tree } = emptyTree();
 

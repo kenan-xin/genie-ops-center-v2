@@ -3,12 +3,12 @@
   "name": "@genie/generators",
   "version": "0.0.0",
   "generators": {
-    "module": {
+    "module-new": {
       "factory": "./src/module-new/generator",
       "schema": "./src/module-new/schema.json",
       "description": "Scaffold a capability module wired to every point of the module contract"
     },
-    "tenant": {
+    "tenant-new": {
       "factory": "./src/tenant-new/generator",
       "schema": "./src/tenant-new/schema.json",
       "description": "Scaffold a customer's seven deployment files"
