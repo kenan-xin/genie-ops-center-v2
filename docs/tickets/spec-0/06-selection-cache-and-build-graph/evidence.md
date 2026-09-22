@@ -102,20 +102,28 @@ A second review found the deeper hole. The registry is not the artifact. Two bui
 
 No check on the registry can see that, so the application build now refuses the situation. `apps/genie/tools/build.ts` takes the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first.
 
-The claim is a listening socket, not a file holding a process id. A third review found the reason: a lock file outlives the process that wrote it, so a build killed by a signal, a full disk or a lost machine leaves every later build in that checkout failing until somebody deletes the file by hand. The operating system closes a socket whatever ends the process, so a crash leaves nothing to clean up. The path may remain, and the next build finds nothing listening on it, clears it and takes the root. The socket lives in the operating system's temporary directory, keyed by the application root, so it is never a repository file and never reaches a cached output. Windows has no filesystem socket, and a named pipe is the same resource there.
+The claim is a listening port on the loopback interface, derived from the application root. Two earlier mechanisms were wrong, and review found both.
+
+A lock file outlives the process that wrote it. A build killed by a signal, a full disk or a lost machine left every later build in that checkout failing until somebody deleted the file by hand.
+
+A socket file fixed that but needed a recovery step, and the recovery is what broke it. Two builds could each find the same abandoned path, each judge it dead, and the second removal would delete the first's live socket. Both would then be listening, on different inodes, and both would believe they owned the root. That is the exact situation the claim exists to prevent.
+
+A port has no filesystem entry, so there is nothing to leave behind and nothing to clean up. Binding is the whole mechanism: the kernel grants the address to one process, refuses everybody else, and takes it back however that process ends. There is no recovery path, because there is no state that can go stale. The one cost is that an unrelated program holding that port refuses the build, and the error message says so.
 
 Measured deterministically, with one process holding the root and a second selection then asking to build:
 
 ```text
-owner holds the root
+held on port 62305
 second build exit: 1
 Error: Another build already owns .../apps/genie. Two builds in one checkout share
 .next, so the cached bundle would mix both selections. Build each selection in its
-own root. Nothing needs cleaning up: /tmp/genie-app-build-b361dc6fb5435701.sock is
-released when that build ends, however it ends.
+own root. Nothing needs cleaning up: port 62305 is released when that build ends,
+however it ends. If no build is running, an unrelated program holds that port.
 ```
 
-The owner was then killed with `SIGKILL`, so none of its own cleanup ran. The next build took the root and succeeded. A unit case covers the same crash in `apps/genie/tools/registry-roots.test.ts`.
+The owner was then killed with `SIGKILL`, so none of its own cleanup ran. The next build took the root and succeeded.
+
+Two unit cases in `apps/genie/tools/registry-roots.test.ts` hold the property directly. One kills an owner with `SIGKILL` and takes the root afterwards. The other asks for one root from eight builds at once and requires that exactly one is granted, which is the case the socket file failed.
 
 An earlier attempt to measure this by starting two builds four seconds apart was invalid: an incremental build finished in 4.1 seconds, so the two never overlapped. Both reported success and neither proved anything. The recorded run below is the cold-build version of the same pair, where the windows did overlap.
 

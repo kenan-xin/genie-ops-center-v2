@@ -81,7 +81,7 @@ Checking the registry is not enough, because the registry is not the artifact. T
 
 `apps/genie/tools/build.ts` therefore owns the build: it takes the application root, runs the steps, and releases it in a `finally`. A second build fails at once instead of waiting.
 
-The claim is a listening socket rather than a file holding a process id. A lock file outlives the process that wrote it, so a build killed by a signal or a lost machine would block every later build in that checkout until somebody deleted the file. The operating system closes a socket whatever ends the process, so a crash leaves nothing to clean up. The socket lives in the operating system's temporary directory, never in the repository and never in a cached output.
+The claim is a listening port on the loopback interface, derived from the application root. A lock file outlives the process that wrote it, so a crashed build would block every later build until somebody deleted the file. A socket file fixed that but needed a recovery step, and two builds could each judge one abandoned path dead, with the second removal deleting the first's live socket, leaving two owners. A port has no filesystem entry: binding either wins or fails, nothing is inspected or removed, and the kernel takes the address back however the process ends. The one cost is that an unrelated program holding that port refuses the build, which the error message states.
 
 This reverses the rejection of a root lock recorded below. That rejection was about the registry file and predates the artifact hole, and its stated cost, stale-lock recovery, is the cost this mechanism does not carry.
 

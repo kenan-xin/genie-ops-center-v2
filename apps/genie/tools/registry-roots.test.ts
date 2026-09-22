@@ -12,7 +12,7 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { acquireBuildLock, lockPathFor, releaseBuildLock } from "./build.ts";
+import { acquireBuildLock, lockPortFor, releaseBuildLock } from "./build.ts";
 import { registryMismatch } from "./check-registry.ts";
 import { generateRegistry, rootFromArgv } from "./generate-registry.ts";
 
@@ -167,15 +167,44 @@ describe("the exclusive build marker", () => {
     locks.push(await acquireBuildLock(one));
     locks.push(await acquireBuildLock(other));
 
-    expect(lockPathFor(one)).not.toBe(lockPathFor(other));
+    expect(lockPortFor(one)).not.toBe(lockPortFor(other));
   });
 
   // The claim must never travel in the build output, or a cache entry would
-  // carry another run's identity back into a later checkout.
+  // carry another run's identity back into a later checkout. A port leaves no
+  // file at all, which is the strongest form of that.
   it("keeps the claim out of the repository and out of the build output", () => {
     const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
 
-    expect(lockPathFor(appRoot).startsWith(tmpdir())).toBe(true);
+    expect(lockPortFor(appRoot)).toBeGreaterThanOrEqual(49152);
+    expect(lockPortFor(appRoot)).toBeLessThan(65536);
+  });
+
+  /**
+   * The race that broke the previous mechanism. It claimed an abandoned socket
+   * file by removing it first, so two builds could each judge the same path
+   * dead, and the second removal would delete the first's live socket. Both
+   * would then be listening and both would believe they owned the root.
+   *
+   * Binding has no such step, so this asserts the property directly: however
+   * many builds ask at once, exactly one is granted.
+   */
+  it("grants the root to exactly one of many builds asking at once", async () => {
+    const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 8 }, () => acquireBuildLock(appRoot))
+    );
+
+    const granted = attempts.filter(
+      (attempt) => attempt.status === "fulfilled"
+    );
+
+    expect(granted).toHaveLength(1);
+
+    for (const attempt of granted) {
+      if (attempt.status === "fulfilled") locks.push(attempt.value);
+    }
   });
 
   /**

@@ -1,9 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { rmSync } from "node:fs";
-import { connect, createServer, type Server } from "node:net";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { createServer, type Server } from "node:net";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 /**
@@ -22,15 +20,31 @@ import { pathToFileURL } from "node:url";
  * first, and the supported way to build two selections at the same time is two
  * build roots (`--root`).
  *
- * The claim is a listening socket, not a file holding a process id. A lock file
- * outlives the process that wrote it, so a build killed by a signal, a full
- * disk or a lost machine leaves every later build in that checkout failing
- * until somebody deletes the file by hand. The operating system closes a socket
- * when its process ends, however the process ends, so a crash leaves nothing to
- * clean up: the path may remain, but nothing listens on it, and the next build
- * sees a refused connection and takes the root.
+ * The claim is a listening port on the loopback interface, derived from the
+ * application root. Two earlier mechanisms were wrong, and both failures are
+ * worth keeping in view:
+ *
+ * A lock file outlives the process that wrote it, so a build killed by a signal
+ * or a lost machine blocked every later build until somebody deleted the file.
+ *
+ * A socket file fixed that but needed a recovery step, and the recovery is what
+ * broke it: two builds could each find the same abandoned path, each judge it
+ * dead, and the second removal would delete the first's live socket. Both would
+ * then be listening, on different inodes, and both would believe they owned the
+ * root. That is the exact situation the claim exists to prevent.
+ *
+ * A port has no filesystem entry, so there is nothing to leave behind and
+ * nothing to clean up. Binding is the whole mechanism: the kernel grants the
+ * address to one process and refuses everybody else, and it takes the address
+ * back however that process ends. There is no recovery path here, because there
+ * is no state that can go stale.
  */
 const APP_ROOT = resolve(import.meta.dirname, "..");
+
+/** The dynamic port range, which is reserved for exactly this kind of use. */
+const FIRST_PRIVATE_PORT = 49152;
+
+const PRIVATE_PORT_COUNT = 16384;
 
 export const BUILD_STEPS: readonly (readonly [string, readonly string[]])[] = [
   // Before: the registry on disk must be the one this selection generates.
@@ -41,24 +55,19 @@ export const BUILD_STEPS: readonly (readonly [string, readonly string[]])[] = [
   ["node", ["tools/prune-public-migration-sql.mjs"]],
 ];
 
-export function lockPathFor(appRoot: string): string {
-  const key = createHash("sha256")
-    .update(appRoot, "utf8")
-    .digest("hex")
-    .slice(0, 16);
+export function lockPortFor(appRoot: string): number {
+  const digest = createHash("sha256").update(appRoot, "utf8").digest();
 
-  // Windows has no filesystem socket. A named pipe is the same resource there,
-  // and it is released with the process in the same way.
-  return process.platform === "win32"
-    ? `\\\\.\\pipe\\genie-app-build-${key}`
-    : join(tmpdir(), `genie-app-build-${key}.sock`);
+  return FIRST_PRIVATE_PORT + (digest.readUInt16BE(0) % PRIVATE_PORT_COUNT);
 }
 
-function listenOn(server: Server, path: string): Promise<void> {
+function listenOn(server: Server, port: number): Promise<void> {
   return new Promise((settle, fail) => {
     server.once("error", fail);
 
-    server.listen(path, () => {
+    // Loopback only. The claim is about this machine, and binding a routable
+    // address would offer it to the network for no reason.
+    server.listen(port, "127.0.0.1", () => {
       server.removeListener("error", fail);
 
       settle();
@@ -67,64 +76,28 @@ function listenOn(server: Server, path: string): Promise<void> {
 }
 
 /**
- * Whether a build still holds this path.
+ * Takes the application root for this build, or refuses when it is taken.
  *
- * A connection completes as soon as the kernel accepts it, so an owner that is
- * blocked running the bundler still answers. Only an owner that no longer
- * exists refuses.
+ * The bind either wins or fails. Nothing is inspected, removed or retried, so
+ * no ordering of concurrent builds can produce two owners.
  */
-function ownerIsAlive(path: string): Promise<boolean> {
-  return new Promise((settle) => {
-    const probe = connect(path);
-
-    probe.once("connect", () => {
-      probe.destroy();
-
-      settle(true);
-    });
-
-    probe.once("error", () => {
-      probe.destroy();
-
-      settle(false);
-    });
-  });
-}
-
-const refused = (appRoot: string, path: string) =>
-  new Error(
-    `Another build already owns ${appRoot}. Two builds in one checkout share .next, so the cached bundle would mix both selections. ` +
-      `Build each selection in its own root. Nothing needs cleaning up: ${path} is released when that build ends, however it ends.`
-  );
-
-/** Takes the application root for this build, or refuses when a build holds it. */
 export async function acquireBuildLock(appRoot: string): Promise<Server> {
-  const path = lockPathFor(appRoot);
+  const port = lockPortFor(appRoot);
 
   const server = createServer();
 
   try {
-    await listenOn(server, path);
+    await listenOn(server, port);
 
     return server;
   } catch {
-    if (await ownerIsAlive(path)) {
-      throw refused(appRoot, path);
-    }
+    server.close();
 
-    // Nothing listens, so the path is the remains of a build that died. Clearing
-    // it is the whole recovery a crash needs.
-    rmSync(path, { force: true });
-
-    try {
-      await listenOn(server, path);
-
-      return server;
-    } catch {
-      // Another build cleared and took it first. One of the two wins, and this
-      // is the one that did not.
-      throw refused(appRoot, path);
-    }
+    throw new Error(
+      `Another build already owns ${appRoot}. Two builds in one checkout share .next, so the cached bundle would mix both selections. ` +
+        `Build each selection in its own root. Nothing needs cleaning up: port ${port} is released when that build ends, however it ends. ` +
+        `If no build is running, an unrelated program holds that port.`
+    );
   }
 }
 
