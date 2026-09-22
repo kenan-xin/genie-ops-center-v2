@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
+import { silentLogger } from "../../services/logging/index.ts";
 import { createTenantContext } from "./index.ts";
 
 const MINIMAL = {
@@ -43,7 +44,7 @@ function runProbe(source: string) {
 
 describe("createTenantContext", () => {
   it("holds the two fixed members and nothing else (R-18)", async () => {
-    const context = createTenantContext(MINIMAL);
+    const context = createTenantContext(MINIMAL, silentLogger());
 
     try {
       expect(Object.keys(context).toSorted()).toEqual(["db", "env"]);
@@ -55,8 +56,8 @@ describe("createTenantContext", () => {
   });
 
   it("gives each call its own pool, so two contexts share nothing", async () => {
-    const first = createTenantContext(MINIMAL);
-    const second = createTenantContext(MINIMAL);
+    const first = createTenantContext(MINIMAL, silentLogger());
+    const second = createTenantContext(MINIMAL, silentLogger());
 
     try {
       expect(first.db).not.toBe(second.db);
@@ -70,7 +71,7 @@ describe("createTenantContext", () => {
     // pg-pool emits `error` on the Pool itself when an idle client dies, and Node turns an
     // `error` event with no listener into an uncaught exception. The checked-out listener is
     // per client and cannot contain that one (genie-ops-center-v2-akh).
-    const context = createTenantContext(MINIMAL);
+    const context = createTenantContext(MINIMAL, silentLogger());
 
     try {
       expect(context.db.$client.listenerCount("error")).toBeGreaterThan(0);
@@ -81,7 +82,7 @@ describe("createTenantContext", () => {
 
   it("refuses an invalid environment and names the variable", () => {
     expect(() =>
-      createTenantContext({ PUBLIC_URL: MINIMAL.PUBLIC_URL })
+      createTenantContext({ PUBLIC_URL: MINIMAL.PUBLIC_URL }, silentLogger())
     ).toThrow("DATABASE_URL");
   });
 
@@ -92,8 +93,11 @@ describe("createTenantContext", () => {
 import { createTenantContext } from ${JSON.stringify(
       join(WORKSPACE_ROOT, "packages/core/src/lib/tenant-context/index.ts")
     )};
+import { silentLogger } from ${JSON.stringify(
+      join(WORKSPACE_ROOT, "packages/core/src/services/logging/index.ts")
+    )};
 
-const context = createTenantContext(${JSON.stringify(MINIMAL)});
+const context = createTenantContext(${JSON.stringify(MINIMAL)}, silentLogger());
 
 await context.db.$client.end();
 `);
@@ -107,9 +111,12 @@ await context.db.$client.end();
 import { createTenantContext } from ${JSON.stringify(
       join(WORKSPACE_ROOT, "packages/core/src/lib/tenant-context/index.ts")
     )};
+import { silentLogger } from ${JSON.stringify(
+      join(WORKSPACE_ROOT, "packages/core/src/services/logging/index.ts")
+    )};
 
 try {
-  createTenantContext({ PUBLIC_URL: "https://genie.example.com" });
+  createTenantContext({ PUBLIC_URL: "https://genie.example.com" }, silentLogger());
 } catch {
   console.log("refused");
 }

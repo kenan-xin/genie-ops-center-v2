@@ -9,7 +9,8 @@ It imports the Drizzle node-postgres types.
 
 The factory owns the pool's two error listeners: a per-client one for a checked-out client, and a
 pool-level one for an idle client pg-pool has dropped. The pool-level one records the failure
-through the deployment's redacting logger; neither listener exits a serving process.
+through the deployment's redacting logger; neither listener exits a serving process. The factory
+requires that logger, so no construction can omit it and swallow the error by accident.
 
 ## What must not go here
 

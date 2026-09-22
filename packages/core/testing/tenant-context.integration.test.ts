@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { validateEnvironment } from "../src/lib/environment/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import type { LogValue } from "../src/services/logging/index.ts";
-import { createLogger } from "../src/services/logging/index.ts";
+import { createLogger, silentLogger } from "../src/services/logging/index.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -92,10 +92,13 @@ describe("tenant context database clients", () => {
   it("keeps an error listener while a client is checked out", async () => {
     const postgres = await startDisposablePostgres();
 
-    const context = createTenantContext({
-      DATABASE_URL: postgres.url,
-      PUBLIC_URL: "https://test.example.invalid",
-    });
+    const context = createTenantContext(
+      {
+        DATABASE_URL: postgres.url,
+        PUBLIC_URL: "https://test.example.invalid",
+      },
+      silentLogger()
+    );
 
     cleanups.push(async () => {
       await context.db.$client.end();
@@ -114,10 +117,13 @@ describe("tenant context database clients", () => {
   it("rejects the active query when its backend terminates", async () => {
     const postgres = await startDisposablePostgres();
 
-    const context = createTenantContext({
-      DATABASE_URL: postgres.url,
-      PUBLIC_URL: "https://test.example.invalid",
-    });
+    const context = createTenantContext(
+      {
+        DATABASE_URL: postgres.url,
+        PUBLIC_URL: "https://test.example.invalid",
+      },
+      silentLogger()
+    );
 
     const terminator = new Client({ connectionString: postgres.url });
 

@@ -47,14 +47,15 @@ export type TenantContext = {
  * global context, no pool and no `db`, `settings`, `branding` or `storage` singleton (DEC-34).
  * Close the pool through `context.db.$client.end()` when the process ends or a test finishes.
  *
- * `logger` is the deployment's redacting logger, which the image builds once and passes here. A
- * pool error that no one is awaiting is still recorded, so a database that keeps dropping idle
- * sessions is visible instead of silent (R-45). It stays optional for the test and helper paths
- * that build a context without a logger; production always passes one.
+ * `logger` is required, not optional. The image builds one redacting logger per process and
+ * passes it here, and a pool error that no one is awaiting is recorded through it, so a database
+ * that keeps dropping idle sessions is visible instead of silent (R-45). A test or helper that
+ * needs no output passes `silentLogger()`; requiring the argument means no production path can
+ * omit it and swallow the error by accident.
  */
 export function createTenantContext(
-  source: EnvironmentSource = process.env,
-  logger?: Pick<RedactingLogger, "error">
+  source: EnvironmentSource,
+  logger: Pick<RedactingLogger, "error">
 ): TenantContext {
   const env = validateEnvironment(source);
 
@@ -72,7 +73,7 @@ export function createTenantContext(
     // (R-27), so the broken client is discarded and the process stays up. Without this listener
     // Node turns the event into an uncaught exception and the process exits
     // (genie-ops-center-v2-akh).
-    logger?.error({ err: error }, "idle database client error");
+    logger.error({ err: error }, "idle database client error");
   });
 
   return { db: drizzle(pool), env };

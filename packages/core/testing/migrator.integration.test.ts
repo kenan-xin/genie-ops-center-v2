@@ -10,6 +10,7 @@ import {
   type TenantContext,
   createTenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import {
   MIGRATION_LOCK_KEY,
   type MigrationHistory,
@@ -40,11 +41,14 @@ afterEach(async () => {
 async function freshDeployment(lockTimeoutMs = 120000): Promise<TenantContext> {
   const postgres = await startDisposablePostgres();
 
-  const context = createTenantContext({
-    DATABASE_URL: postgres.url,
-    PUBLIC_URL: "https://test.example.invalid",
-    LOCK_TIMEOUT_MS: String(lockTimeoutMs),
-  });
+  const context = createTenantContext(
+    {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: "https://test.example.invalid",
+      LOCK_TIMEOUT_MS: String(lockTimeoutMs),
+    },
+    silentLogger()
+  );
 
   cleanups.push(async () => {
     await context.db.$client.end();
