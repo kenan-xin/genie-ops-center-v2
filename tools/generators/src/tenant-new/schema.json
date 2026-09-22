@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "GenieTenantNew",
+  "title": "Scaffold a customer's deployment files",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The customer slug, which names the folder",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "What is the customer's slug?"
+    },
+    "modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The module ids this customer's image carries",
+      "default": []
+    },
+    "onboardingMode": {
+      "type": "string",
+      "description": "How people first reach the deployment",
+      "default": "invite"
+    },
+    "localAccounts": {
+      "type": "boolean",
+      "description": "Whether the deployment allows local accounts",
+      "default": false
+    },
+    "firstAdministrators": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Email addresses of the first administrators, at least one"
+    },
+    "breakGlassEmail": {
+      "type": "string",
+      "description": "The break-glass account's address"
+    },
+    "companyName": { "type": "string", "description": "The customer's name" },
+    "productName": {
+      "type": "string",
+      "description": "What the deployment is called in its own branding"
+    },
+    "defaultLocale": {
+      "type": "string",
+      "description": "The deployment's locale, for example en"
+    },
+    "defaultTimeZone": {
+      "type": "string",
+      "description": "The deployment's time zone, for example Europe/Berlin"
+    }
+  },
+  "required": [
+    "name",
+    "firstAdministrators",
+    "breakGlassEmail",
+    "companyName",
+    "productName",
+    "defaultLocale",
+    "defaultTimeZone"
+  ],
+  "additionalProperties": false
+}

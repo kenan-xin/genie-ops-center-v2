@@ -23,7 +23,7 @@
   ],
   "mainPath": ["generate", "fill", "build", "start", "setup", "idp", "first_signin"],
   "nodes": [
-    { "id": "generate", "lane": "repo", "col": 0, "type": "frontend", "label": "Generate folder", "sublabel": "nx g tenant:new", "width": 140 },
+    { "id": "generate", "lane": "repo", "col": 0, "type": "frontend", "label": "Generate folder", "sublabel": "nx g @genie/generators:tenant-new", "width": 180 },
     { "id": "fill", "lane": "repo", "col": 1, "type": "frontend", "label": "Fill tenant.yaml", "sublabel": "modules, admins", "width": 140 },
     { "id": "build", "lane": "repo", "col": 2, "type": "backend", "label": "Build, push image", "sublabel": "build script", "tag": "no secret inside", "width": 140 },
     { "id": "start", "lane": "host", "col": 3, "type": "cloud", "label": ".env, compose up", "sublabel": "migrates at start", "width": 140 },
