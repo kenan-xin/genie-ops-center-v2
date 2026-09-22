@@ -20,6 +20,25 @@ export type CatalogueNode =
   | string
   | { readonly [segment: string]: CatalogueNode };
 
+/**
+ * What the catalogue file can really hold once parsed, before it is checked.
+ * `CatalogueNode` is what a correct catalogue looks like, so the check reads
+ * this wider type and reports every value the narrow one rules out.
+ */
+export type ParsedNode =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly ParsedNode[]
+  | { readonly [segment: string]: ParsedNode };
+
+/** A catalogue read: its leaf keys, and anything in it that is not a message. */
+export type CatalogueScan = {
+  readonly leaves: readonly string[];
+  readonly violations: readonly string[];
+};
+
 const NEXT_INTL_MODULES = new Set(["next-intl", "next-intl/server"]);
 
 /**
@@ -59,18 +78,20 @@ function walk(node: ts.Node, visit: (node: ts.Node) => void): void {
 }
 
 /**
- * The sole argument of a call, when it is one plain string literal.
+ * The first argument of a call, when it is a plain string literal.
  *
- * A template literal, a variable, a spread, a second argument or no argument at
- * all returns `undefined`, which every caller turns into a violation. That is
- * what makes a dynamic namespace or key fail rather than disappear.
+ * Later arguments are ignored, because `t("greeting", { name })` is next-intl's
+ * ordinary interpolation form and the key is still the first argument. A
+ * template literal, a variable, a spread or no argument at all returns
+ * `undefined`, which every caller turns into a violation. That is what makes a
+ * dynamic namespace or key fail rather than disappear.
  */
 function literalArgument(call: ts.CallExpression): string | undefined {
-  const [only] = call.arguments;
+  const [first] = call.arguments;
 
-  if (call.arguments.length !== 1 || only === undefined) return undefined;
+  if (first === undefined) return undefined;
 
-  return ts.isStringLiteral(only) ? only.text : undefined;
+  return ts.isStringLiteral(first) ? first.text : undefined;
 }
 
 /**
@@ -79,6 +100,12 @@ function literalArgument(call: ts.CallExpression): string | undefined {
  *
  * Every other next-intl import is either inventoried as keyless or reported.
  * Type-only imports are skipped: they bind no value and can reference no key.
+ *
+ * A re-export of next-intl is reported rather than followed. This check reads
+ * one file at a time with no type checker, so a file that passes a translator
+ * on under another module's name would make every key reached through it
+ * invisible. Reporting the re-export keeps that indirection from being built
+ * quietly.
  */
 function factoryBindings(
   source: ts.SourceFile,
@@ -87,6 +114,22 @@ function factoryBindings(
   const bindings = new Map<string, string>();
 
   for (const statement of source.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      const from = statement.moduleSpecifier;
+
+      if (
+        from !== undefined &&
+        ts.isStringLiteral(from) &&
+        NEXT_INTL_MODULES.has(from.text)
+      ) {
+        violations.push(
+          `${where(source, statement)}: "${from.text}" is re-exported from here. A translator reached through another module is invisible to this check, so import it directly instead.`
+        );
+      }
+
+      continue;
+    }
+
     if (!ts.isImportDeclaration(statement)) continue;
 
     const specifier = statement.moduleSpecifier;
@@ -209,6 +252,12 @@ function translatorBindings(
         `${where(source, node.name)}: "${local}" is bound to a translator twice in one file, so its namespace is ambiguous.`
       );
 
+      // Dropped rather than left pointing at the first namespace. Two client
+      // components in one file each binding `t` is ordinary code, and keeping
+      // the first binding would attribute the second component's keys to the
+      // wrong namespace if this violation were ever downgraded.
+      bindings.delete(local);
+
       return;
     }
 
@@ -260,10 +309,6 @@ export function analyseSource(path: string, text: string): SourceAnalysis {
   const violations: string[] = [];
   const factories = factoryBindings(source, violations);
 
-  if (factories.size === 0) {
-    return { keys: [], violations };
-  }
-
   const accounted = new Set<ts.Node>();
   const declared = new Set<ts.Node>();
 
@@ -278,12 +323,41 @@ export function analyseSource(path: string, text: string): SourceAnalysis {
   const keys: string[] = [];
 
   walk(source, (node) => {
+    // `await import("next-intl/server")` reaches the same factories without an
+    // import declaration, so it is reported for the same reason a re-export is.
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      const [target] = node.arguments;
+
+      if (
+        target !== undefined &&
+        ts.isStringLiteral(target) &&
+        NEXT_INTL_MODULES.has(target.text)
+      ) {
+        violations.push(
+          `${where(source, node)}: "${target.text}" is imported dynamically. Import it with an import declaration, or the keys it reaches are invisible here.`
+        );
+      }
+    }
+
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
       const name = node.expression.text;
 
       if (factories.has(name) && !accounted.has(node)) {
         violations.push(
           `${where(source, node)}: "${name}" is called outside a variable declaration, so its translator has no name to follow.`
+        );
+      }
+
+      // A factory name that this file did not import from next-intl. The
+      // translator reached another way, so the keys under it cannot be read
+      // here. Without this the file would contribute no key and no problem,
+      // which is the one failure that reads as success.
+      if (TRANSLATOR_FACTORIES.has(name) && !factories.has(name)) {
+        violations.push(
+          `${where(source, node)}: "${name}" is called but was not imported from next-intl in this file, so the keys it reads are invisible here.`
         );
       }
     }
@@ -340,13 +414,26 @@ export function analyseSource(path: string, text: string): SourceAnalysis {
  * deterministic: a key a source references and the catalogue lacks, and a
  * catalogue entry no source references, are each one exact string difference.
  */
-export function catalogueLeafKeys(catalogue: CatalogueNode): readonly string[] {
+export function scanCatalogue(catalogue: ParsedNode): CatalogueScan {
   const leaves: string[] = [];
+  const violations: string[] = [];
 
-  function descend(node: CatalogueNode, prefix: string): void {
+  function descend(node: ParsedNode, prefix: string): void {
     // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary read of catalogue JSON, whose leaves and namespaces are distinguished by nothing else
     if (typeof node === "string") {
       leaves.push(prefix);
+
+      return;
+    }
+
+    // The file is JSON, so the declared type is a claim about it rather than a
+    // guarantee. A number, a boolean, a null or an array would otherwise
+    // disappear from both directions, or crash the walk, so each is reported.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the same boundary read
+    if (node === null || typeof node !== "object" || Array.isArray(node)) {
+      violations.push(
+        `${prefix === "" ? "the catalogue root" : prefix} is neither a message nor a namespace, so nothing can resolve against it.`
+      );
 
       return;
     }
@@ -358,16 +445,35 @@ export function catalogueLeafKeys(catalogue: CatalogueNode): readonly string[] {
 
   descend(catalogue, "");
 
-  return leaves.toSorted();
+  return { leaves: leaves.toSorted(), violations };
 }
 
-/** A file this check reads: application source, never a test, story or fixture. */
-function isProductionSource(name: string, path: string): boolean {
-  if (!name.endsWith(".ts") && !name.endsWith(".tsx")) return false;
+/** The catalogue's fully qualified leaf keys, ignoring any malformed entry. */
+export function catalogueLeafKeys(catalogue: ParsedNode): readonly string[] {
+  return scanCatalogue(catalogue).leaves;
+}
 
-  if (/\.(?:test|stories)\.tsx?$/.test(name)) return false;
+/** Every extension an application source can carry. */
+const SOURCE_EXTENSIONS = /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/;
 
-  return !path.includes("__fixtures__") && !path.includes("__testing__");
+/** A name that marks a file as a test rather than application source. */
+const TEST_NAME = /\.(?:test|spec|stories)\.[cm]?[jt]sx?$/;
+
+/** A folder that holds tests or fixtures rather than application source. */
+const TEST_FOLDER =
+  /(?:^|[/\\])(?:__fixtures__|__tests__|__testing__|__mocks__)(?:[/\\]|$)/;
+
+/**
+ * A file this check reads: application source, never a test, story or fixture.
+ *
+ * `relativePath` is relative to the scan root on purpose. Testing the absolute
+ * path would let a checkout whose own directory name matched one of these
+ * patterns exclude the whole tree.
+ */
+function isProductionSource(relativePath: string): boolean {
+  if (!SOURCE_EXTENSIONS.test(relativePath)) return false;
+
+  return !TEST_NAME.test(relativePath) && !TEST_FOLDER.test(relativePath);
 }
 
 /** Every production source under `root`, with paths relative to it. */
@@ -379,13 +485,11 @@ export function productionSources(root: string): readonly SourceText[] {
     withFileTypes: true,
   })) {
     const absolute = join(entry.parentPath, entry.name);
+    const path = relative(root, absolute);
 
-    if (!entry.isFile() || !isProductionSource(entry.name, absolute)) continue;
+    if (!entry.isFile() || !isProductionSource(path)) continue;
 
-    sources.push({
-      path: relative(root, absolute),
-      text: readFileSync(absolute, "utf8"),
-    });
+    sources.push({ path, text: readFileSync(absolute, "utf8") });
   }
 
   return sources.toSorted((left, right) => left.path.localeCompare(right.path));
@@ -398,7 +502,7 @@ export function productionSources(root: string): readonly SourceText[] {
  */
 export function catalogueViolations(
   sources: readonly SourceText[],
-  catalogue: CatalogueNode
+  catalogue: ParsedNode
 ): readonly string[] {
   const violations: string[] = [];
   const referenced = new Set<string>();
@@ -411,7 +515,11 @@ export function catalogueViolations(
     for (const key of analysis.keys) referenced.add(key);
   }
 
-  const leaves = catalogueLeafKeys(catalogue);
+  const catalogueRead = scanCatalogue(catalogue);
+  const leaves = catalogueRead.leaves;
+
+  violations.push(...catalogueRead.violations);
+
   const known = new Set(leaves);
 
   for (const key of [...referenced].toSorted()) {

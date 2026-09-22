@@ -8,6 +8,7 @@ import {
   catalogueLeafKeys,
   catalogueViolations,
   productionSources,
+  scanCatalogue,
 } from "./catalogue-coverage.ts";
 
 // A dynamic import for the same reason `request.ts` uses one: this package's
@@ -49,6 +50,25 @@ describe("reading catalogue keys out of a source file", () => {
 
     expect(analysis.violations).toEqual([]);
     expect(analysis.keys).toEqual(["app.title"]);
+  });
+
+  // next-intl's ordinary interpolation form. The key is still the first
+  // argument, so the values object must not turn a valid call into a problem.
+  it("reads a key from a call that also passes values", () => {
+    const analysis = analyseSource(
+      "app/page.tsx",
+      `import { getTranslations } from "next-intl/server";
+
+export default async function Page(props: { readonly name: string }) {
+  const t = await getTranslations("app");
+
+  return <h1>{t("greeting", { name: props.name })}</h1>;
+}
+`
+    );
+
+    expect(analysis.violations).toEqual([]);
+    expect(analysis.keys).toEqual(["app.greeting"]);
   });
 
   it("reads the client shape, which binds without an await", () => {
@@ -213,6 +233,57 @@ export default async function Page() {
     expect(analysis.violations[0]).toMatch(/namespace import/);
   });
 
+  // The serious class: a shape that would contribute no key AND no problem.
+  // A file like this one reaches a translator without importing it from
+  // next-intl, so a key typed wrongly inside it would otherwise pass green.
+  it("reports a factory that reached the file some other way", () => {
+    const analysis = analyseSource(
+      "app/page.tsx",
+      `import { getTranslations } from "../lib/i18n.ts";
+
+export default async function Page() {
+  const t = await getTranslations("app");
+
+  return <h1>{t("nope")}</h1>;
+}
+`
+    );
+
+    expect(analysis.keys).toEqual([]);
+    expect(analysis.violations).toHaveLength(1);
+    expect(analysis.violations[0]).toMatch(
+      /was not imported from next-intl in this file/
+    );
+  });
+
+  it("reports a file that re-exports next-intl, rather than following it", () => {
+    const analysis = analyseSource(
+      "lib/i18n.ts",
+      `export { getTranslations } from "next-intl/server";\n`
+    );
+
+    expect(analysis.violations).toHaveLength(1);
+    expect(analysis.violations[0]).toMatch(/is re-exported from here/);
+  });
+
+  it("reports a dynamic import of next-intl", () => {
+    const analysis = analyseSource(
+      "app/page.tsx",
+      `export default async function Page() {
+  const { getTranslations } = await import("next-intl/server");
+  const t = await getTranslations("app");
+
+  return <h1>{t("title")}</h1>;
+}
+`
+    );
+
+    expect(analysis.keys).toEqual([]);
+    expect(
+      analysis.violations.some((line) => /imported dynamically/.test(line))
+    ).toBe(true);
+  });
+
   it("reports a factory called outside a variable declaration", () => {
     const analysis = analyseSource(
       "app/page.tsx",
@@ -252,6 +323,33 @@ export default async function Page() {
     ).toBe(true);
   });
 
+  // Two components in one file each binding `t` is ordinary code. The keys must
+  // not be attributed to the first component's namespace.
+  it("attributes no key when one name carries two namespaces", () => {
+    const analysis = analyseSource(
+      "app/pages.tsx",
+      `import { useTranslations } from "next-intl";
+
+export function A() {
+  const t = useTranslations("app");
+
+  return <h1>{t("title")}</h1>;
+}
+
+export function B() {
+  const t = useTranslations("viewer");
+
+  return <h1>{t("heading")}</h1>;
+}
+`
+    );
+
+    expect(analysis.keys).toEqual([]);
+    expect(analysis.violations.some((line) => /ambiguous/.test(line))).toBe(
+      true
+    );
+  });
+
   it("reports one namespace bound twice to the same name", () => {
     const analysis = analyseSource(
       "app/page.tsx",
@@ -273,6 +371,19 @@ export default async function Page() {
 });
 
 describe("comparing references against the catalogue", () => {
+  it("reports a catalogue value that is neither a message nor a namespace", () => {
+    // The catalogue is read from JSON, so a number or a null really can appear
+    // where a message belongs. `ParsedNode` is that wider boundary type, which
+    // is why this fixture needs no assertion to express.
+    const scan = scanCatalogue({ app: { count: 5, missing: null } });
+
+    expect(scan.leaves).toEqual([]);
+    expect(scan.violations).toEqual([
+      "app.count is neither a message nor a namespace, so nothing can resolve against it.",
+      "app.missing is neither a message nor a namespace, so nothing can resolve against it.",
+    ]);
+  });
+
   it("flattens the catalogue to fully qualified leaf keys", () => {
     expect(
       catalogueLeafKeys({ app: { title: "Genie" }, access: "flat" })
@@ -346,6 +457,13 @@ describe("the application's own sources against the English catalogue", () => {
         noModules: en.app.noModules,
       },
     };
+
+    // The fixture lists the surviving keys by hand, so this guard fails loudly
+    // if the catalogue grows and the fixture quietly stops being en.json minus
+    // exactly one leaf.
+    expect(catalogueLeafKeys(withoutTitle)).toEqual(
+      catalogueLeafKeys(en).filter((key) => key !== "app.title")
+    );
 
     expect(catalogueViolations(sources, withoutTitle)).toContain(
       "app.title is read from the catalogue and is not in it. Add the message or correct the key."

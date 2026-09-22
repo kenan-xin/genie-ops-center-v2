@@ -39,15 +39,32 @@ contributes no key, and an aliased import such as
 
 It reads the shapes that exist in `apps/genie/src` today: a named import of
 `getTranslations` or `useTranslations` from `next-intl` or `next-intl/server`,
-assigned to one name, called with one string literal. Every other shape is a
-reported violation, including a computed namespace or key, a namespace import, a
-translator passed as a value, and a next-intl import the inventory does not
-name. To use a shape the check refuses, add it to the inventory in
-`catalogue-coverage.ts` and to the tests beside it, in the same change.
+assigned to one name, called with a string literal as its first argument. Later
+arguments are the interpolation values and do not change the key. Every other
+shape is a reported violation, including a computed namespace or key, a
+namespace import, a translator passed as a value, and a next-intl import the
+inventory does not name. To use a shape the check refuses, add it to the
+inventory in `catalogue-coverage.ts` and to the tests beside it, in the same
+change.
 
-The check reads application sources only. Tests, stories and fixtures are
-excluded, so a string that exists only in a test can never satisfy a catalogue
-entry.
+## What the check cannot see
+
+The check reads one file at a time and runs no type checker, so it cannot
+follow a translator that reaches a file under another module's name. Three
+guards stop that from happening quietly. A file that re-exports next-intl is a
+violation. A dynamic `import("next-intl")` is a violation. A call to
+`getTranslations` or `useTranslations` that this file did not import from
+next-intl is a violation. A translator re-exported under a different name still
+escapes all three, so do not build that indirection.
+
+The scan covers `apps/genie/src` only. Strings that `packages/ui` or a module
+renders belong to that package and are not in this catalogue, so this check says
+nothing about them. Navigation labels, for example, come from each module's own
+declaration.
+
+Files named `*.test.*`, `*.spec.*` and `*.stories.*`, and files under
+`__tests__`, `__fixtures__`, `__testing__` or `__mocks__`, are excluded, so a
+string that exists only in a test cannot satisfy a catalogue entry.
 
 The check imports `typescript`, which this repository declares once at the root
 and every package already uses for `tsc`. `apps/genie/package.json` does not
