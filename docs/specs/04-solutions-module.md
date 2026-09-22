@@ -151,9 +151,9 @@ R-38. Every administration action on a module record writes one `audit_event` ro
 
 R-39. The module's tests run in the three layers through the shared presets in `packages/config` with no module-specific continuous integration configuration. The module ships unit tests, integration tests for its router and schema, factories for its tables, and at least one end-to-end test for its main path. Source: `../core/roadmap.md` Section 4 item 5 and Section 0 item 6.
 
-R-40. A second, empty module generated with `nx g @genie/module:new` mounts through the same registry with no change to any file in `packages/core` or `apps/genie` other than the generated registry file. Source: `../core/roadmap.md` Section 4 done-when, `DEC-22`.
+R-40. A second, empty module generated with `nx g @genie/generators:module-new` mounts through the same registry with no change to any file in `packages/core` or `apps/genie` other than the generated registry file. Source: `../core/roadmap.md` Section 4 done-when, `DEC-22`.
 
-R-40a. The generator `nx g @genie/module:new` produces that second module, so the generator is the proof that a new module needs no hand wiring. A folder without a `README.md` fails continuous integration. Source: `../architecture/repository-layout.md`, the paragraph on folder readme files, `DEC-22`.
+R-40a. The generator `nx g @genie/generators:module-new` produces that second module, so the generator is the proof that a new module needs no hand wiring. A folder without a `README.md` fails continuous integration. Source: `../architecture/repository-layout.md`, the paragraph on folder readme files, `DEC-22`.
 
 R-41. The standing two-context isolation test keeps passing with the module compiled in, and gains the module's router as a second real read beside the placeholder module's. Source: `DEC-34` enforcement point 3.
 
