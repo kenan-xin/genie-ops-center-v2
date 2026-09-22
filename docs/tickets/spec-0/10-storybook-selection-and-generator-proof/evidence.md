@@ -2,7 +2,8 @@
 
 Bead: `genie-ops-center-v2-1rd.10`. Owned child: `genie-ops-center-v2-2cg`.
 Branch: `feature/s0-10-storybook-selection-confidentiality`, from develop
-`cb35129`. Beads owns status; this file records what ran.
+`cb35129`, later merged with local develop `3bf3efb` as merge commit `563920b`.
+Beads owns status; this file records what ran.
 
 Versions: Nx 23.2.1, Node v26.9.0, pnpm 12.4.2, Storybook 10.6.0, Vitest
 4.1.11, Vite 8.3.0, Playwright 1.63.0.
@@ -15,7 +16,12 @@ Commits (local, not pushed):
 | `777c474` | `feat(ui): add the shared theme token and provider seam` |
 | `2b088cc` | `test(storybook): prove the selection, confidentiality and cache matrix` |
 | `0396503` | `test(storybook): exercise the generated module through the matrix` |
+| `fdde9ff` | `fix(storybook): cover module package metadata in the story-owner inputs` |
+| `e1c5d9f` | `test(storybook): drive the MCP tool and prove the headless path` |
+| `563920b` | `Merge branch 'develop' into feature/s0-10-storybook-selection-confidentiality` |
+| `df36965` | `docs(s0-10): record the merged-tree re-verification` |
 
+Two earlier `docs(s0-10)` commits record the design and the review disposition.
 The approach is in [design.md](design.md).
 
 ## The `2cg` fix
@@ -165,8 +171,8 @@ Re-run on `563920b`:
 | `npx supercov quality patch --base 3bf3efb` | "Nothing introduced across 5 changed files. 13 changed files not reviewed." |
 
 The same independent reviewer confirmed the merge resolution and the theme and
-provider seam introduce no new scope or confidentiality issue; the confirmation
-is recorded in the session report.
+provider seam introduce no new scope or confidentiality issue, with no finding
+(artifact `s0-10-merge-confirmation` in the epic).
 
 ## Not proven here, and the limits
 
