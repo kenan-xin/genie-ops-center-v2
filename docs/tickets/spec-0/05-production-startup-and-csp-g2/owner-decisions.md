@@ -263,7 +263,13 @@ To overturn: revert to the URL form and decide F2 below on its merits.
 
 ### F2. The built image publishes its migration DDL
 
-**OPEN — BLOCKS G2.** The owner has requested this decision separately from the confirmed proxy, isolation, shutdown and repeatable-evidence repairs. No packaging remedy or acceptance exception is authorized by that repair request. The previously withdrawn raw-module approach remains withdrawn. After the owner selects a platform rule, record its canonical consequences and required proof before acceptance or downstream dispatch.
+**DECIDED 2026-09-22 — REPAIR VERIFIED, INTEGRATION PENDING.** The owner requires migration SQL to remain server-only and rejects public/frontend exposure. The owner authorized investigation and the smallest contract-preserving packaging repair, verified against the built image before requesting integration. This supersedes the policy alternatives below, which remain historical context. The previously withdrawn raw-module approach remains withdrawn; the app-owned build-output repair below is now verified.
+
+Required proof: no migration SQL in publicly served assets or browser bundles; previously exposed SQL URLs no longer return SQL; the same image still applies the correct migrations against a real database with ledger hashes matching the source SQL. Preserve selected-module exclusion, the module contract, one registry, and startup/context guarantees. Authentication or an obscure asset name is not a server-only fix. Integration and downstream dispatch remain blocked pending verified repair and owner approval.
+
+Repair implemented, 2026-09-22: the app build runs `tools/prune-public-migration-sql.mjs` after `next build`. It validates generated public SQL against byte-identical preserved server assets before unlinking only those generated copies. Authored public SQL, unexpected SQL, ambiguous standalone roots and symlinked output paths fail the build. No module contract, migration reader, registry, dependency or server routing change was needed. Byte imports were rejected after a disposable probe demonstrated broken direct Node imports and possible base64 SQL in client chunks.
+
+The final formatted-snapshot image gate passed 83/83 tests, fixture browser 6/6, and ordinary browser 24/24; the recorded SQL URL returns 404 and the same image applies the source SQL with its original ledger hash. See the F2 repair evidence section in [evidence](evidence.md). Independent final scoped review passed, including runtime evidence and the separately recorded empty-selection proof. This is not integration approval.
 
 Measured, not suspected. Against the built image, running against a real
 database:
@@ -283,7 +289,7 @@ page imported the registry, so no public copy existed. The runtime still reads
 the server copy, which I verified: the ledger hash equals the sha256 of
 /app/apps/genie/.next/server/assets/... and not of the public one.
 
-Why I did not fix it. Every fix is an architecture change you should make:
+Historical alternatives before the owner decision (not current authorization or a verified exhaustive list):
 
 - Stop pages importing anything that carries migrations, through a
   bootstrap-only subpath. Medium size. Removes the public copy at the source,

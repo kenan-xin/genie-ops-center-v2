@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { resolve as resolvePath } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -229,3 +230,357 @@ export const countLines = (logs: string, needle: string) =>
 
 /** The repository root, which holds the Dockerfile and the context it builds from. */
 export const WORKSPACE_ROOT = resolvePath(import.meta.dirname, "../../..");
+
+/**
+ * F2: no migration SQL may be publicly downloadable or travel in browser
+ * bundles, while the same image must still migrate a real database from the
+ * repository's SQL. These cases are mechanism-independent: they derive what to
+ * look for from the repository's own journals and SQL files, probe the URLs
+ * and corpus the built image actually serves, and pin the real-database ledger
+ * hashes against the repository sources — so any repair that hides the SQL by
+ * breaking migrations, or any repair that leaves it reachable in any encoding,
+ * fails here.
+ *
+ * The corpus is what the image actually serves, not a glob of the build
+ * output: the home document, the static assets and chunks it references, and
+ * the assets those chunks reference in turn. The scanner checks raw bodies,
+ * newline-escaped bodies (SQL carried as a JavaScript string literal), and
+ * base64-encoded tokens (SQL carried as encoded bytes), and the control case
+ * proves the scanner sees both a raw and an encoded form in the same corpus
+ * shape — a scan that could never match anything proves nothing.
+ */
+
+/** True for a usable non-empty string field of a checked-in journal. */
+export function isNonEmptyJournalField(value: unknown): value is string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of journal bytes
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/** Every module journal entry's SQL in the repository, with its module and tag. */
+export function moduleMigrationSources(): readonly {
+  module: string;
+  tag: string;
+  sql: string;
+}[] {
+  const modulesRoot = join(WORKSPACE_ROOT, "packages/modules");
+  const sources: { module: string; tag: string; sql: string }[] = [];
+
+  if (!existsSync(modulesRoot)) return sources;
+
+  for (const entry of readdirSync(modulesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    const module = entry.name;
+
+    const journalPath = join(modulesRoot, module, "drizzle/meta/_journal.json");
+
+    if (!existsSync(journalPath)) continue;
+
+    // SAFETY: the journal is this repository's own checked-in drizzle-kit
+    // output; the one field read is `entries[].tag`, validated as a string
+    // before it names a file.
+    const journal = JSON.parse(readFileSync(journalPath, "utf8")) as {
+      entries?: { tag?: unknown }[];
+    };
+
+    for (const journalEntry of journal.entries ?? []) {
+      const tag = journalEntry.tag;
+
+      if (!isNonEmptyJournalField(tag)) continue;
+
+      const sqlPath = join(modulesRoot, module, "drizzle", `${tag}.sql`);
+
+      if (!existsSync(sqlPath)) continue;
+
+      sources.push({ module, tag, sql: readFileSync(sqlPath, "utf8") });
+    }
+  }
+
+  return sources;
+}
+
+/**
+ * Whitespace-normalized text. The scanner compares this form of the repository
+ * SQL against this form of the served bodies, so reformatted, minified, or
+ * newline-escaped (string-literal) SQL still matches its source.
+ */
+export const normalizeSqlText = (text: string): string =>
+  text.replace(/\\s+/g, " ").trim();
+
+type MigrationSqlSource = {
+  readonly module: string;
+  readonly tag: string;
+  /** The repository's SQL bytes as written, before any normalization. */
+  readonly raw: string;
+  readonly normalized: string;
+};
+
+/**
+ * The repository's migration SQL in normalized form — the scanner's needles.
+ *
+ * Fail-closed precondition: a journal entry whose SQL normalizes to empty is
+ * a malformed migration file, and scanning with no needle would be a vacuous
+ * contract, so the proof refuses to run. Short-but-nonempty SQL is legal —
+ * SELECT 1; is a migration — and stays covered by the same containment scan.
+ */
+export function asScannerSource(
+  module: string,
+  tag: string,
+  sql: string
+): MigrationSqlSource {
+  const normalized = normalizeSqlText(sql);
+
+  // Honest risk: a very short needle (SELECT 1;) can match incidental build
+  // strings, so a corpus-scan failure on a short migration names the URL for
+  // review rather than silently widening the contract.
+  if (normalized === "") {
+    throw new Error(
+      `the migration SQL of ${module}/${tag} is empty; scanning it would be a vacuous contract, so the proof fails closed`
+    );
+  }
+
+  return { module, tag, raw: sql, normalized };
+}
+
+export const SQL_SOURCES: readonly MigrationSqlSource[] =
+  moduleMigrationSources().map(({ module, tag, sql }) =>
+    asScannerSource(module, tag, sql)
+  );
+
+/** The migration URL the F2 evidence recorded against this defect. */
+export const F2_RECORDED_URL =
+  "/_next/static/media/0000_boring_gargoyle.3-bu8-fe23s4p.sql";
+
+/**
+ * The image's complete public corpus, read from the container itself: every
+ * file under the standalone server's `.next/static` and `public` directories,
+ * keyed by the URL path it is served at, plus the served home document. A
+ * home-page crawl is not completeness — today's defect URL is referenced by
+ * nothing — so the inventory is the container's real file list, read in one
+ * exec and bounded only by what the build actually emitted. A symlink under
+ * the scanned roots is rejected with a named diagnostic — an inventory that
+ * silently skipped links would not be complete, and a link out of the roots
+ * must never be traversed — so the current artifact, which has none, passes
+ * unchanged.
+ *
+ * Honest scope: this detects SQL carried verbatim, as escaped string
+ * literals, or as base64-encoded tokens. It does not decompress compressed
+ * assets or decode arbitrary encodings; if the repair ships SQL behind an
+ * exotic encoding, this scanner will not see it — say so in review rather
+ * than widening the contract silently.
+ */
+export type InventoryEntry = { readonly url: string; readonly b64: string };
+
+/**
+ * Parses the inventory exec's output into corpus entries. A symlink record —
+ * emitted by the container walk for any link under the scanned roots — fails
+ * here with its path and target named: the corpus would be incomplete if the
+ * link were silently skipped, and untraversable if it were followed.
+ */
+/**
+ * True for a usable non-empty string field of an inventory line. The same
+ * boundary parse as the manifest validator's report fields, for the same
+ * reason.
+ */
+export function isNonEmptyInventoryField(value: unknown): value is string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of inventory bytes
+  return typeof value === "string" && value.trim() !== "";
+}
+
+export function inventoryEntries(stdout: string): readonly InventoryEntry[] {
+  return stdout
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      // SAFETY: each line is one JSON object emitted by the container's own
+      // walk; the fields are used exactly as produced and re-validated below.
+      const parsed = JSON.parse(line) as {
+        url?: unknown;
+        b64?: unknown;
+        symlink?: unknown;
+        target?: unknown;
+      };
+
+      if (isNonEmptyInventoryField(parsed.symlink)) {
+        throw new Error(
+          `the public corpus contains a symlink (${parsed.symlink} -> ${String(parsed.target)}); the inventory would be incomplete, so the proof fails closed`
+        );
+      }
+
+      if (
+        !isNonEmptyInventoryField(parsed.url) ||
+        !isNonEmptyInventoryField(parsed.b64)
+      ) {
+        throw new Error(`malformed inventory line: ${line}`);
+      }
+
+      return { url: parsed.url, b64: parsed.b64 };
+    });
+}
+
+export async function collectImagePublicCorpus(
+  containerId: string,
+  baseUrl: string
+): Promise<Map<string, string>> {
+  const script = `
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const { execFileSync } = require("node:child_process");
+    const found = execFileSync("find", ["/app", "-maxdepth", "4", "-name", "server.js", "-not", "-path", "*/node_modules/*"], { encoding: "utf8" }).trim().split("\\n").filter(Boolean);
+    if (found.length !== 1) { throw new Error("expected exactly one standalone server.js, found " + found.length); }
+    const root = path.dirname(found[0]);
+    const files = [];
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isSymbolicLink()) { console.log(JSON.stringify({ symlink: p, target: fs.readlinkSync(p) })); continue; }
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile()) files.push(p);
+      }
+    };
+    for (const dir of [path.join(root, ".next", "static"), path.join(root, "public")]) {
+      if (fs.existsSync(dir)) walk(dir);
+    }
+    const relative = path.relative.bind(path);
+    for (const file of files) {
+      const rel = relative(root, file).split(path.sep).join("/");
+      const url = rel.startsWith("public/")
+        ? "/" + rel.slice("public/".length)
+        : "/_next" + rel.slice(".next".length);
+      console.log(JSON.stringify({ url, b64: fs.readFileSync(file).toString("base64") }));
+    }
+  `.trim();
+
+  const { stdout } = await run(
+    "docker",
+    ["exec", containerId, "node", "-e", script],
+    { maxBuffer: 64 * 1024 * 1024 }
+  );
+
+  const corpus = new Map<string, string>();
+
+  // The home document is served public content too, and the URL probes below
+  // are sent from its origin.
+  corpus.set(
+    "/",
+    await fetch(`${baseUrl}/`).then((response) => response.text())
+  );
+
+  for (const entry of inventoryEntries(stdout)) {
+    corpus.set(entry.url, Buffer.from(entry.b64, "base64").toString("utf8"));
+  }
+
+  return corpus;
+}
+
+/**
+ * The corpus URLs whose file paths name a migration or carry a SQL spelling.
+ * Derived from the inventory itself, so the probes stay honest about what the
+ * image actually contains.
+ */
+export function sqlUrlsInCorpus(
+  corpus: Map<string, string>
+): readonly string[] {
+  const tags = SQL_SOURCES.map(({ tag }) => tag);
+
+  return [...corpus.keys()].filter(
+    (url) =>
+      url.endsWith(".sql") ||
+      url.endsWith(".SQL") ||
+      tags.some((tag) => url.includes(tag))
+  );
+}
+
+/**
+ * The corpus URLs whose served body contains migration SQL — verbatim,
+ * newline-escaped, or base64-encoded — with the normalized repository SQL as
+ * the needles. Returned per URL so a failure names the exact artifact.
+ */
+export function scanCorpusForMigrationSql(
+  corpus: Map<string, string>
+): readonly string[] {
+  const offenders: string[] = [];
+
+  for (const [url, body] of corpus) {
+    // Candidate set one: the body verbatim, and the body with JavaScript
+    // string-literal newline escapes resolved (SQL carried unquoted).
+    const candidates = [body, body.replaceAll("\\n", "\n")];
+
+    let hit = candidates.some((candidate) => {
+      const normalized = normalizeSqlText(candidate);
+
+      return SQL_SOURCES.some(({ normalized: needle }) =>
+        normalized.includes(needle)
+      );
+    });
+
+    // Candidate set two: JSON string literals in the body, decoded with
+    // JSON.parse — never eval — so SQL carried as an escaped JavaScript or
+    // JSON string (newlines, quotes, tabs) is seen in its true form.
+    if (!hit) {
+      const literals = body.match(/"(?:[^"\\\n]|\\.)*"/g) ?? [];
+
+      // Budgets are calibrated above the largest observed production chunk
+      // (2115 string literals measured in the current build); exceeding them
+      // is an anomalous artifact and fails the proof with the URL named.
+      if (literals.length > 25000) {
+        throw new Error(
+          `${url}: ${literals.length} string literals exceed the scanner's 25000-literal budget; the remainder would be silently unscanned, so the proof fails closed`
+        );
+      }
+
+      hit = literals.some((literal) => {
+        if (literal.length > 1048576) {
+          throw new Error(
+            `${url}: a ${literal.length}-character string literal exceeds the scanner's 1048576-character budget; the proof fails closed rather than skip it`
+          );
+        }
+
+        let decoded: string;
+
+        try {
+          // SAFETY: the literal is one double-quoted JSON-shaped token taken
+          // from the body; JSON.parse of a quoted token yields the decoded
+          // string or throws, and the throw path is the skip below.
+          decoded = JSON.parse(literal) as string;
+        } catch {
+          // Not a valid JSON string literal, so it carries no escaped form
+          // to decode; the raw body was already scanned above.
+          return false;
+        }
+
+        const normalized = normalizeSqlText(decoded);
+
+        return SQL_SOURCES.some(({ normalized: needle }) =>
+          normalized.includes(needle)
+        );
+      });
+    }
+
+    // Candidate set three: base64-shaped tokens (SQL carried as encoded
+    // bytes).
+    if (!hit) {
+      const encoded = body.match(/[A-Za-z0-9+/=]{64,}/g) ?? [];
+
+      if (encoded.length > 25000) {
+        throw new Error(
+          `${url}: ${encoded.length} base64-shaped tokens exceed the scanner's 25000-token budget; the remainder would be silently unscanned, so the proof fails closed`
+        );
+      }
+
+      hit = encoded.some((token) => {
+        const decoded = normalizeSqlText(
+          Buffer.from(token, "base64").toString("utf8")
+        );
+
+        return SQL_SOURCES.some(({ normalized: needle }) =>
+          decoded.includes(needle)
+        );
+      });
+    }
+
+    if (hit) offenders.push(url);
+  }
+
+  return offenders;
+}

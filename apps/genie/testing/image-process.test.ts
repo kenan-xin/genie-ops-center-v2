@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { countInWindow, logsUntilOrThrow } from "./image-process.ts";
+import {
+  SQL_SOURCES,
+  countInWindow,
+  logsUntilOrThrow,
+  scanCorpusForMigrationSql,
+} from "./image-process.ts";
 
 /**
  * Controls for the log barrier and the checkpoint window (the viewer
@@ -42,6 +47,46 @@ describe("the log barrier", () => {
     await expect(
       logsUntilOrThrow(image, '"requestId":"never-1"', 600)
     ).rejects.toThrow(/never observed/);
+  });
+});
+
+describe("the migration SQL scanner", () => {
+  const [source] = SQL_SOURCES;
+
+  it("detects the repository SQL carried as a JSON-escaped string literal", () => {
+    expect(source).toBeDefined();
+
+    const sql = source === undefined ? "" : source.raw;
+
+    const corpus = new Map([
+      ["/_next/static/chunks/escaped.js", `const m=${JSON.stringify(sql)};`],
+    ]);
+
+    expect(scanCorpusForMigrationSql(corpus)).toEqual([
+      "/_next/static/chunks/escaped.js",
+    ]);
+  });
+
+  it("does not flag unrelated SQL carried the same way", () => {
+    const corpus = new Map([
+      [
+        "/_next/static/chunks/unrelated.js",
+        `const m=${JSON.stringify("insert into f2_control values (1);\nselect 1;")};`,
+      ],
+      ["/f2-negative.sql", "insert into f2_control values (1);\nselect 1;"],
+    ]);
+
+    expect(scanCorpusForMigrationSql(corpus)).toEqual([]);
+  });
+
+  it("fails closed when a body exceeds the literal budget", () => {
+    const flooded = new Map([
+      ["_next/static/chunks/flooded.js", '"a"'.repeat(25001)],
+    ]);
+
+    expect(() => scanCorpusForMigrationSql(flooded)).toThrow(
+      /25000-literal budget/
+    );
   });
 });
 

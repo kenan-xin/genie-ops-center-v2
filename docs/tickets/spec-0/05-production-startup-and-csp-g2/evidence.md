@@ -434,8 +434,25 @@ From the worktree root, in this order, each after the last code change.
 - **One transient integration failure was observed and not explained.** A full-suite run failed with `isolation.integration.test.ts` reporting its 2 tests skipped after 14.1 s, the signature of a `beforeAll` that threw on the Testcontainers port-bind timeout seen in the previous round. It did not reproduce in 8 isolated runs or 7 full-suite runs afterwards, and no leftover containers were present. Reported as a flake; not attributable to any change here.
 - **The image guard fails the first direct-vitest run after a change inside the Docker build context.** That run's own `docker build` is the one that rebuilds, so `Created` moves and the guard asks for a re-run. Under Nx it does not happen, because `build-image` rebuilds first. By design, but it makes the bare gate command order-sensitive.
 
-## Open items
+## F2 repair verification, 2026-09-22
 
-- **F2, the image publishes its module migration DDL** at `/_next/static/media/0000_boring_gargoyle.3-bu8-fe23s4p.sql`, 200, `application/x-sql`, 247 bytes, `CREATE TABLE "placeholder_record"`. Measured in Step 4 above. Left open deliberately: it is the ticket owner's decision, and closing it means changing how the module's SQL is carried into the image, which touches `DEC-33`.
+The owner rejected public migration DDL. The app build now removes generated public SQL duplicates only after verifying their server copies; it leaves the native migration contract and registry unchanged. Authored public SQL and unsafe/ambiguous output paths cause a build failure rather than deletion.
+
+Corrected-snapshot evidence (before final documentation/formatting handback):
+
+- `pnpm exec nx run @genie/app:test:integration --skip-nx-cache`: exit 0, 9 files, 83 tests passed, none skipped; required fixture browser prerequisite also passed.
+- `pnpm exec playwright test --config apps/genie/playwright.config.ts`: exit 0, 24 passed across phone and desktop.
+- Tested image: `sha256:dd922fd789a334bd174f4ca7c917ef08e3fa9a8ea8f9e871e960f0211bb03461`; fixture image: `sha256:2c64199aef67f8a5a58afd6c443d3b15633bb8df5641e61b7e8261070769a75b`.
+- The historical SQL URL returns exactly 404. The served-file inventory contains no SQL files or detected migration contents; the scanner covers verbatim, JSON-string-escaped and base64 forms, with positive and negative controls on the same corpus. This is not a claim of arbitrary encoding detection.
+- The same image creates `placeholder_record`; its migration ledger hash equals the repository SQL SHA-256, `54788414f476dad941fb2f8159fedaea18b943fd31c25e53700b2381f5098fe2`. The server-side SQL remains packaged.
+- Empty-selection build passed as `sha256:d58f501db5773e424c63ad623bf43a22ab35c69691d3982844757f0873e4d569`; acceptance agent reports no SQL, no placeholder tables, and 404 for excluded routes. Final review verifies its separate runtime evidence.
+
+Logs: `/tmp/opencode/final-gate5.log`, `/tmp/opencode/final-browser.log`, `/tmp/opencode/empty-build.log`, and `/tmp/opencode/empty-selection-runtime-proof.log`. Decisive outputs are retained in the Traycer F2 review's evidence artifact. Earlier failed runs are retained, not counted as passes. The review found and repaired an escaped-SQL control defect and a test-container cleanup defect before this green run.
+
+The coordinator reran the final formatted code/test snapshot: uncached required Nx gate passed 9 files / 83 tests, fixture browser passed 6/6, and ordinary browser passed 24/24; the combined command exited 0. Log: `/home/kenan/.traycer/commands/4ed26496-66e3-401d-b817-4126538afdba/251ea1cd-998b-436e-8897-55a17614a63a/output.log`. Final normal image: `sha256:e165d423bebcefb4338065443db51da55d0cef5f2c1c594dc729c29fdf2789b5`; fixture: `sha256:1fe827e03b86d4c02ab221dfc0c9494730e1f8fac408d89d5f92b4ecdf2a62aa`. The startup suite's freshness check rebuilds the normal image after the Nx dependency build, explaining the earlier build-log digest. Independent scoped F2 review passed with no remaining evidence gap. Empty-selection proof remains the separate earlier `d58f501db577` run, not a claim that it was rebuilt in this final command. These record-only updates follow verification; no source/test changes followed it. Integration and downstream dispatch still require owner approval.
+
+## Historical open items before the F2 repair
+
+- **F2 originally published migration DDL** at `/_next/static/media/0000_boring_gargoyle.3-bu8-fe23s4p.sql`, 200, `application/x-sql`, 247 bytes, `CREATE TABLE "placeholder_record"`. This historical observation is superseded by the owner decision and repair evidence above, not erased.
 - **`@playwright/test` and `@axe-core/playwright` versions.** `@playwright/test` is pinned to `1.63.0` to hold lockstep with the root `playwright` devDependency, whose browser build the runner refuses to mix. `@axe-core/playwright` is `4.13.0`. Both were published before the workspace's 1440-minute `minimumReleaseAge` window, so no exception was needed and the policy was not relaxed. Both have rows in `docs/core/tech-stack.md`, added in the same change.
 - **The `no-await-in-loop` suppression** in `apps/genie/e2e/global-setup.ts` is a genuine sequential poll for readiness. It carries a comment saying why, and the rule stays on everywhere else.

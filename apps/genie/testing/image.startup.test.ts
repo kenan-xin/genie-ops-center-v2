@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 
 import { MIGRATION_LOCK_KEY } from "@genie/core";
@@ -15,8 +16,18 @@ import {
   WORKSPACE_ROOT,
   countLines,
   logsUntil,
+  normalizeSqlText,
   pollHealth,
   startImage,
+  type RunningImage,
+  asScannerSource,
+  collectImagePublicCorpus,
+  inventoryEntries,
+  moduleMigrationSources,
+  scanCorpusForMigrationSql,
+  sqlUrlsInCorpus,
+  F2_RECORDED_URL,
+  SQL_SOURCES,
 } from "./image-process.ts";
 
 const run = promisify(execFile);
@@ -687,10 +698,206 @@ describe("the built image", () => {
         expect(logs).toContain("bootstrap complete");
         expect(logs).not.toContain(databaseUrl());
       } finally {
+        // This test's own container, stopped exactly once here — stopping the
+        // database instead leaked the image container on its port.
         await image.stop();
       }
     } finally {
       await second.stop();
     }
+  }, 240000);
+});
+
+describe("the built image", () => {
+  const F2_PORT = 3413;
+
+  const f2BaseUrl = `http://127.0.0.1:${F2_PORT}`;
+
+  let f2Image: RunningImage;
+
+  let corpus: Map<string, string>;
+
+  beforeAll(async () => {
+    f2Image = await startImage(
+      {
+        DATABASE_URL: databaseUrl(),
+        PUBLIC_URL: "https://example.invalid",
+      },
+      F2_PORT
+    );
+
+    const observations = await pollHealth(F2_PORT);
+
+    expect(observations.some((observation) => observation.status === 200)).toBe(
+      true
+    );
+
+    corpus = await collectImagePublicCorpus(f2Image.id, f2BaseUrl);
+
+    // Completeness is asserted, not assumed: the inventory must contain the
+    // home document and at least the build's own asset tree. A corpus of one
+    // would mean the inventory found nothing and every zero below would be
+    // vacuous.
+    expect(corpus.size).toBeGreaterThanOrEqual(2);
+  }, 240000);
+
+  afterAll(async () => {
+    await f2Image?.stop();
+  });
+
+  it("serves no migration SQL url", async () => {
+    // The probes are the inventory's own SQL-spelled URLs plus the URL the F2
+    // evidence recorded and the plain journal-tag spellings a naive repair
+    // might re-serve. Every probe must answer exactly 404: a 500, an auth
+    // wall, or a redirect would be masking, not removal, and the body must
+    // carry neither SQL nor an error dump.
+    const probes = new Set<string>([
+      F2_RECORDED_URL,
+      ...SQL_SOURCES.map(({ tag }) => `/_next/static/media/${tag}.sql`),
+      ...sqlUrlsInCorpus(corpus),
+    ]);
+
+    expect(probes.size).toBeGreaterThanOrEqual(1);
+
+    const masked: string[] = [];
+
+    // Sequential probes: each answer is asserted against the same contract.
+    /* eslint-disable no-await-in-loop */
+    for (const probe of probes) {
+      const response = await fetch(`${f2BaseUrl}${probe}`, {
+        redirect: "manual",
+      }).catch(() => undefined);
+
+      const body = response === undefined ? "" : await response.text();
+
+      if (response?.status !== 404)
+        masked.push(`${probe} -> ${response?.status ?? "no response"}`);
+
+      if (
+        SQL_SOURCES.some(({ normalized }) =>
+          normalizeSqlText(body).includes(normalized)
+        )
+      ) {
+        masked.push(`${probe} -> body carries migration SQL`);
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    expect(masked).toEqual([]);
+  }, 240000);
+
+  it("exposes no migration SQL content in its public corpus", () => {
+    expect(scanCorpusForMigrationSql(corpus)).toEqual([]);
+  }, 240000);
+
+  it("detects the repository migration SQL in a public corpus, raw, JSON-escaped and base64 encoded, and only that SQL", () => {
+    // Control, not contract: the injected files go through the SAME
+    // inventory-corpus scanner the real assertion uses. Positives carry the
+    // repository's own migration SQL — verbatim, as a JSON-escaped string
+    // literal, and as base64 — and every encoding must be flagged. Negatives
+    // carry unrelated SQL in the same encodings and must NOT be flagged: the
+    // scanner matches this repository's migrations, not SQL in general.
+    const [first] = SQL_SOURCES;
+
+    expect(first).toBeDefined();
+
+    // The RAW repository SQL, not the normalized form: normalization strips
+    // the newlines and tabs the escaped encoding must be proven against.
+    const realSql = first === undefined ? "" : first.raw;
+    const unrelated = "insert into f2_control values (1);\nselect 1;";
+
+    const controlled = new Map(corpus);
+
+    controlled.set(`/_next/static/media/${first?.tag ?? "f2"}.sql`, realSql);
+    controlled.set(
+      "/_next/static/chunks/f2-positive-escaped.js",
+      `const m=${JSON.stringify(realSql)};`
+    );
+    controlled.set(
+      "/_next/static/chunks/f2-positive-base64.js",
+      `const m=${JSON.stringify(Buffer.from(realSql).toString("base64"))};`
+    );
+    controlled.set(
+      "/_next/static/chunks/f2-negative-escaped.js",
+      `const m=${JSON.stringify(unrelated)};`
+    );
+    controlled.set("/f2-negative.sql", unrelated);
+
+    const offenders = scanCorpusForMigrationSql(controlled);
+
+    expect(offenders.toSorted()).toEqual(
+      [
+        `/_next/static/media/${first?.tag ?? "f2"}.sql`,
+        "/_next/static/chunks/f2-positive-escaped.js",
+        "/_next/static/chunks/f2-positive-base64.js",
+      ].toSorted()
+    );
+  }, 240000);
+
+  it("fails closed when a migration SQL file is empty", () => {
+    // Empty: malformed, and a contract with no needle is vacuous.
+    expect(() => asScannerSource("f2", "0000_tiny", "")).toThrow(/empty/);
+
+    // Short but real: legal, and covered by the same containment scan.
+    expect(asScannerSource("f2", "0000_tiny", "select 1").normalized).toBe(
+      "select 1"
+    );
+  }, 240000);
+
+  it("rejects symlinked public corpus entries with a named diagnostic", () => {
+    // An inventory that skipped links would be incomplete, and one that
+    // followed them could leave the static roots; the proof fails closed
+    // naming the link and its target instead.
+    expect(() =>
+      inventoryEntries(
+        '{"symlink":"/app/apps/genie/public/linked.sql","target":"/outside/x.sql"}'
+      )
+    ).toThrow(/symlink/);
+
+    expect(() =>
+      inventoryEntries(
+        '{"symlink":"/app/apps/genie/public/linked.sql","target":"/outside/x.sql"}\n{"url":"/_next/static/chunks/a.js","b64":"aGk="}'
+      )
+    ).toThrow(/symlink/);
+
+    const entries = inventoryEntries(
+      '{"url":"/_next/static/chunks/a.js","b64":"aGk="}'
+    );
+
+    expect(entries).toEqual([
+      { url: "/_next/static/chunks/a.js", b64: "aGk=" },
+    ]);
+  }, 240000);
+
+  it("migrates the real database from the repository SQL", async () => {
+    // The repair must not break what F2 was about to break: the same image
+    // still applies the module history to a real database, and the ledger
+    // rows it writes hash the repository's own SQL bytes — the ledger is in
+    // the migrator's `drizzle` schema, one table per module history.
+    const sources = moduleMigrationSources();
+
+    expect(sources.length).toBeGreaterThanOrEqual(1);
+
+    for (const { module, sql } of sources) {
+      const expected = createHash("sha256").update(sql).digest("hex");
+
+      // One query per module history, in journal order; the assertions read
+      // better sequential and the count is the module count.
+      /* eslint-disable no-await-in-loop */
+      const applied = await pool().query<{ hash: string }>(
+        `select hash from drizzle.__drizzle_migrations_${module}`
+      );
+      /* eslint-enable no-await-in-loop */
+
+      expect(applied.rowCount).toBeGreaterThanOrEqual(1);
+      expect(applied.rows.map((row) => row.hash)).toContain(expected);
+    }
+
+    // The history did more than write a ledger: the module's own table exists.
+    const table = await pool().query<{ present: boolean }>(
+      "select exists (select 1 from information_schema.tables where table_name = 'placeholder_record') as present"
+    );
+
+    expect(table.rows[0]?.present).toBe(true);
   }, 240000);
 });
