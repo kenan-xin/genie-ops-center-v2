@@ -30,12 +30,15 @@ import { resolve } from "node:path";
  */
 export type RequiredCase = {
   readonly file: string;
+  /** The acceptance clauses this file's cases serve, quoted in a skip violation. */
+  readonly reason: string;
   readonly cases: readonly string[];
 };
 
 export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/migrator.integration.test.ts",
+    reason: "AC-6 and AC-9, R-25a-R-28, require the migrator matrix to run",
     cases: [
       "the migrator's one reserved session, watched on a real database sends the setting, the lock, every history and the cleanup through one real session",
       "the migrator's one reserved session, watched on a real database leaves the lock with the foreign session it could not take, and takes none itself (negative control)",
@@ -54,6 +57,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   },
   {
     file: "testing/tenant-context.integration.test.ts",
+    reason:
+      "R-26a's production cross-check, held by genie-ops-center-v2-wwc, requires the containment proof to run",
     cases: [
       "tenant context database clients keeps an error listener while a client is checked out",
       "tenant context database clients rejects the active query when its backend terminates",
@@ -146,7 +151,7 @@ export function requiredViolations(
 
   const violations: string[] = [];
 
-  for (const { file, cases } of required) {
+  for (const { file, reason, cases } of required) {
     const absolute = resolve(workingDirectory, file);
     const entry = collected.get(absolute);
 
@@ -200,7 +205,7 @@ export function requiredViolations(
         violations.push(`${file}: mandatory case failed: ${name}.`);
       } else if (isNonEmptyString(seen) && NOT_EXECUTED.has(seen)) {
         violations.push(
-          `${file}: mandatory case did not execute (status ${seen}): ${name}. The migrator matrix forbids skipping it.`
+          `${file}: mandatory case did not execute (status ${seen}): ${name}. ${reason}.`
         );
       } else {
         violations.push(

@@ -263,14 +263,20 @@ function makeWorkspace(
   return root;
 }
 
-function runRunner(cwd: string, args: readonly string[]): number {
+/** The status and stderr of one runner invocation, so a case can prove the reason. */
+type RunnerResult = {
+  readonly status: number;
+  readonly stderr: string;
+};
+
+function runRunner(cwd: string, args: readonly string[]): RunnerResult {
   const result = spawnSync("node", [RUNNER, ...args], {
     cwd,
     env: { ...process.env, GENIE_RUNNER_QUIET: "1" },
     encoding: "utf8",
   });
 
-  return result.status ?? -1;
+  return { status: result.status ?? -1, stderr: result.stderr ?? "" };
 }
 
 /** The migrator matrix, as a trivially passing synthetic file. */
@@ -323,7 +329,9 @@ describe("the core integration runner command line", () => {
     const workspace = makeWorkspace("healthy", PASSING_REMAINDER);
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(0);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(0);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -340,7 +348,9 @@ describe("two migrator runs contending for the one lock", () => {
     });
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -356,7 +366,9 @@ describe("two migrator runs contending for the one lock", () => {
     });
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -368,7 +380,9 @@ describe("two migrator runs contending for the one lock", () => {
     });
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -376,13 +390,19 @@ describe("two migrator runs contending for the one lock", () => {
 
   // The reviewed negative control, against the real configuration: a filter
   // that matches nothing anywhere skips every file, so no container starts and
-  // the run must still fail here rather than report green.
-  it("exits nonzero for a filtered run of the real config", () => {
-    expect(
-      runRunner(resolve(import.meta.dirname, ".."), [
-        "-t",
-        "__review_no_case_matches__",
-      ])
-    ).toBe(1);
+  // the run must fail here rather than report green. The stderr assertion is
+  // the point: exit 1 alone would also come from a missing config or a
+  // collection error, which would not prove the skip path.
+  it("exits nonzero for a filtered run of the real config, naming the skipped case", () => {
+    const result = runRunner(resolve(import.meta.dirname, ".."), [
+      "-t",
+      "__review_no_case_matches__",
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("mandatory case did not execute");
+    expect(result.stderr).toContain(
+      "the migrator's one reserved session, watched on a real database sends the setting, the lock, every history and the cleanup through one real session"
+    );
   }, 120000);
 });

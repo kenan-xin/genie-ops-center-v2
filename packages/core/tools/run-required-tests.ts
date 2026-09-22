@@ -55,6 +55,15 @@ const child = spawn(
 );
 
 const vitestExit = await new Promise<number>((settle) => {
+  // A spawn that never starts vitest emits `error` and `close`, not `exit`, so
+  // this settle keeps the runner from hanging and names the real cause instead
+  // of an opaque unhandled error.
+  child.on("error", (error) => {
+    process.stderr.write(`Could not start vitest: ${String(error)}\n`);
+
+    settle(1);
+  });
+
   child.on("exit", (code) => settle(code ?? 1));
 });
 
