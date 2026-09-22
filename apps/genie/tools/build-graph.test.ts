@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
+
+import { BUILD_STEPS } from "./build.ts";
 
 /**
  * The declared selection-aware build graph, read from Nx itself.
@@ -99,22 +100,13 @@ describe("the selection-aware task graph", () => {
    * race fails the build instead of shipping another selection's bundle.
    */
   it("guards the registry on both sides of the bundler", () => {
-    // SAFETY: the bytes are the app's own package.json, and the one field read
-    // below is the build script, which the assertions check step by step.
-    const build = JSON.parse(
-      readFileSync(resolve(WORKSPACE_ROOT, "apps/genie/package.json"), "utf8")
-    ) as { scripts: Record<string, string> };
+    const steps = BUILD_STEPS.map(([command, args]) => `${command} ${args[0]}`);
 
-    const steps = build.scripts.build?.split("&&").map((step) => step.trim());
-
-    expect(
-      steps?.filter((step) => step.includes("check-registry"))
-    ).toHaveLength(2);
-
-    const bundler = steps?.findIndex((step) => step.startsWith("next build"));
+    const bundler = steps.findIndex((step) => step === "next build");
 
     expect(bundler).toBeGreaterThan(0);
-    expect(steps?.[(bundler ?? 0) + 1]).toContain("check-registry");
+    expect(steps[bundler - 1]).toContain("check-registry");
+    expect(steps[bundler + 1]).toContain("check-registry");
   });
 
   // The raw value it replaced cannot tell an unset variable from an empty one.

@@ -75,7 +75,17 @@ The comparison is exact, because `emitRegistryModule` is deterministic given a s
 
 The guard closes the window between generation and bundling: a registry left by another selection, a registry restored for a different hash, or a hand-edited file all fail closed rather than being bundled.
 
-The app `build` script runs it twice, before the bundler and after it. One check before the bundler settles nothing on its own, because the bundler reads the registry minutes later and a second build in the same checkout can rewrite it in between. The second check turns that race into a failed build. It proves the registry was the expected one at the start and at the end, not at every instant between, so two selections that must run at once still get two build roots.
+### 4a. One owner per application root, added after review
+
+Checking the registry is not enough, because the registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`. Each can find its own registry intact at both boundaries while the other writes the same output tree, and Nx then caches that mixed tree under a legitimate selection hash. Declaring `.next` as an output is what made such a tree cacheable.
+
+`apps/genie/tools/build.ts` therefore owns the build: it takes an exclusive marker for the application root, runs the steps, and releases the marker in a `finally`. A second build fails at once instead of waiting. The marker is created with `wx`, so the create either wins or fails, and it lives in the operating system's temporary directory rather than in the repository.
+
+This reverses the rejection of a root lock recorded below. That rejection was about the registry file and predates the artifact hole. A crashed build leaves a marker, and the error names the path to remove.
+
+### 4b. The registry guard on both sides of the bundler
+
+The `build` steps run it twice, before the bundler and after it. One check before the bundler settles nothing on its own, because the bundler reads the registry minutes later and a second build in the same checkout can rewrite it in between. The second check turns that race into a failed build. It proves the registry was the expected one at the start and at the end, not at every instant between, so two selections that must run at once still get two build roots.
 
 ### 5. The customer entrypoint stays `MODULE_INCLUDE`
 

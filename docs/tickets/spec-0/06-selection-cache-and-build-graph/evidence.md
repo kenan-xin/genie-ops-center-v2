@@ -94,7 +94,32 @@ registry. Give each selection its own build root, then regenerate.
 
 The build failed, so Nx cached nothing and no bundle from the wrong selection was stored.
 
-The limit, stated plainly: the second check proves the registry was the expected one when the bundler started and when it finished. It does not prove every instant in between. A run that overwrote the registry and restored it inside the window would pass. Two selections that must run at the same time get two build roots, which is what `--root` is for. This check makes the unsupported case fail loudly instead of quietly.
+The limit, stated plainly: the second check proves the registry was the expected one when the bundler started and when it finished. It does not prove every instant in between. A run that overwrote the registry and restored it inside the window would pass.
+
+### Why checking the registry was still not enough
+
+A second review found the deeper hole. The registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`, so a build can find its own registry intact at both boundaries while the other build writes the same output tree throughout. Nx then stores that mixed tree under a legitimate selection hash and restores it later. Declaring `.next` as an output, which this ticket did, is what made such a tree cacheable at all.
+
+No check on the registry can see that, so the application build now refuses the situation. `apps/genie/tools/build.ts` takes an exclusive marker for the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first. The marker is created with the `wx` flag, so the create either wins or fails with no window between asking and taking. It lives in the operating system's temporary directory, keyed by the application root, so it is never a repository file and never reaches a cached output.
+
+Measured: build A with `placeholder` and build B with the empty selection, started four seconds apart in one checkout.
+
+```text
+B exit: 1
+Error: Another build already owns .../apps/genie (pid 1146393 selection placeholder
+at 2026-09-22T09:59:46.241Z). Two builds in one checkout share .next, so the cached
+bundle would mix both selections. Build each selection in its own root, or remove
+/tmp/genie-app-build-b361dc6fb5435701.lock if no build is running.
+
+A exit: 1
+ NX   Running target build for project @genie/app and 1 task it depends on failed
+```
+
+A failed too, and that is the correct outcome rather than a second defect. B was refused before it could write any bundle, but B's `generate-registry` task runs before its build step and had already rewritten the registry, so A's second boundary check caught it. Nothing was cached by either run. In every ordering the artifact is safe: while A holds the marker, B cannot reach the bundler at all.
+
+An ordinary build is unaffected. After the concurrent pair, a clean `placeholder` build succeeded, `rm -rf apps/genie/.next` followed by the same build restored `81ef946f2bbac44d` from the cache with three `server.js` files under `.next/standalone`, and no marker was left behind.
+
+This reverses an earlier choice in [design.md](design.md), where locking the shared root was rejected. That choice was made about the registry file, before the artifact hole was known. It is recorded here so the owner can overrule it.
 
 ### The guard, on the real checkout
 

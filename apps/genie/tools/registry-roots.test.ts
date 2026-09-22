@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
+import { acquireBuildLock, lockPathFor, releaseBuildLock } from "./build.ts";
 import { registryMismatch } from "./check-registry.ts";
 import { generateRegistry, rootFromArgv } from "./generate-registry.ts";
 
@@ -56,7 +57,11 @@ function stagedRoot(ids: readonly string[]): string {
 const registryIn = (root: string) =>
   readFileSync(join(root, "apps/genie/src/modules.ts"), "utf8");
 
+const locks: string[] = [];
+
 afterAll(() => {
+  for (const lock of locks) releaseBuildLock(lock);
+
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
@@ -114,6 +119,64 @@ describe("the build root the registry is generated into", () => {
 
     expect(registryIn(other)).toContain(`from "@genie/module-beta"`);
     expect(registryIn(other)).not.toContain("module-alpha");
+  });
+});
+
+describe("the exclusive build marker", () => {
+  /**
+   * The hole the registry checks cannot cover: two builds in one checkout write
+   * into one `.next`. Each can find its own registry intact at both boundaries
+   * while the other is writing the same output tree, and the mixed tree is then
+   * cached under a legitimate selection hash.
+   */
+  it("lets only one build own an application root", () => {
+    const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
+
+    const held = acquireBuildLock(appRoot);
+
+    locks.push(held);
+
+    expect(() => acquireBuildLock(appRoot)).toThrow(
+      /Another build already owns/
+    );
+  });
+
+  it("names the root to build in instead of telling the caller to wait", () => {
+    const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
+
+    locks.push(acquireBuildLock(appRoot));
+
+    expect(() => acquireBuildLock(appRoot)).toThrow(/its own root/);
+  });
+
+  it("frees the root when the build finishes", () => {
+    const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
+
+    releaseBuildLock(acquireBuildLock(appRoot));
+
+    const again = acquireBuildLock(appRoot);
+
+    locks.push(again);
+
+    expect(again).toBe(lockPathFor(appRoot));
+  });
+
+  it("keeps two application roots independent", () => {
+    const one = join(stagedRoot(["alpha"]), "apps/genie");
+    const other = join(stagedRoot(["alpha"]), "apps/genie");
+
+    locks.push(acquireBuildLock(one));
+    locks.push(acquireBuildLock(other));
+
+    expect(lockPathFor(one)).not.toBe(lockPathFor(other));
+  });
+
+  // The marker must never travel in the build output, or a cache entry would
+  // carry another run's identity back into a later checkout.
+  it("keeps the marker out of the repository and out of the build output", () => {
+    const appRoot = join(stagedRoot(["alpha"]), "apps/genie");
+
+    expect(lockPathFor(appRoot).startsWith(tmpdir())).toBe(true);
   });
 });
 
