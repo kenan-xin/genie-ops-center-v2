@@ -199,24 +199,14 @@ function statementText(statement: PgStatement): string {
 function instrumentedPool(pool: Pick<Pool, "connect">) {
   const statements: string[] = [];
   const released: boolean[] = [];
-  const sessionErrors: Error[] = [];
   let reservedCount = 0;
   let backendPid: number | undefined;
-  let reportError: (error: Error) => void = UNRESOLVED;
-
-  // Resolves with the first error the reserved session raises outside a query, so a test can
-  // wait for a loss rather than guess when it lands.
-  const firstSessionError = new Promise<Error>((resolve) => {
-    reportError = resolve;
-  });
 
   // SAFETY: `Pick<Pool, "connect">` is the whole pool surface `runMigrations` reads, so the
   // watched object below answers that one member and nothing else of the real pool is faked.
   return {
     statements,
     released,
-    sessionErrors,
-    firstSessionError,
     reservedCount: () => reservedCount,
     backendPid: () => backendPid,
     pool: {
@@ -224,17 +214,6 @@ function instrumentedPool(pool: Pick<Pool, "connect">) {
         reservedCount += 1;
 
         const client = await pool.connect();
-
-        // A terminated backend makes pg emit `error` on the client itself, and Node turns an
-        // `error` event with no listener into an uncaught exception. This listener keeps the
-        // loss inside the test. It is a harness listener, not a production one: nothing
-        // attaches the same listener beside `new Pool` in `createTenantContext`, so a killed
-        // session in production crashes the process instead of exiting through the
-        // migrator's own error. That gap is reported, not repaired, by this ticket.
-        client.on("error", (error: Error) => {
-          sessionErrors.push(error);
-          reportError(error);
-        });
 
         const identity = await client.query<{ pid: number }>(
           "select pg_backend_pid() as pid"
@@ -670,11 +649,11 @@ describe("the migrator recovering from a real database failure", () => {
       histories: migrationPlan([]),
     });
 
-    // The session itself reported the loss, which is what the harness listener caught and
-    // what production has no listener for.
-    expect((await watched.firstSessionError).message).toContain(
-      "Connection terminated"
-    );
+    // No listener is attached here on purpose. A terminated backend makes pg emit `error` on
+    // the client itself, and Node turns an `error` event with no listener into an uncaught
+    // exception. `createTenantContext` now attaches a per-client listener at checkout, so this
+    // case passing with no unhandled error is the proof that production, not the harness,
+    // contains the lost session (genie-ops-center-v2-wwc).
   });
 
   it("fails the start and destroys the session when the lock is gone by cleanup time", async () => {
