@@ -527,6 +527,45 @@ describe("the ${names.id} module declaration", () => {
 });
 `;
 
+const accessTest: Template = (names) =>
+  `import {
+  can,
+  createRequestPrincipal,
+  createStubGrantReader,
+} from "@genie/core";
+import { describe, expect, it } from "vitest";
+
+/**
+ * The authorization half of this module's denial proof, against the real seam.
+ *
+ * \`can()\` is the only permission check there is (DEC-39), and the Section 0 stub grants one
+ * key that belongs to another module, so every caller is refused here. The workspace page's
+ * \`canUse\` prop is this value, and the refused stories render what a person then sees.
+ *
+ * A caller who is granted \`${names.id}:use\` arrives with real roles in Section 2. Until then a
+ * failing expectation here is a real change in the seam, and widening the stub is never the fix.
+ */
+const identity = { userId: "u1", groups: [] };
+
+describe("the ${names.id} access decision", () => {
+  it("refuses a caller who holds no key at all", async () => {
+    const caller = createRequestPrincipal(identity, () =>
+      Promise.resolve({ keys: new Set(), scopes: new Map() })
+    );
+
+    expect(await can(caller, "${names.id}:use")).toBe(false);
+    expect(await can(caller, "${names.id}:read")).toBe(false);
+    expect(await can(caller, "${names.id}:admin")).toBe(false);
+  });
+
+  it("refuses the Section 0 stub principal, which holds another module's key", async () => {
+    const caller = createRequestPrincipal(identity, createStubGrantReader());
+
+    expect(await can(caller, "${names.id}:use")).toBe(false);
+  });
+});
+`;
+
 const index: Template = (names) =>
   `/**
  * The module-facing declaration. The application imports this and nothing else: the registry
@@ -578,14 +617,17 @@ import type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
 export type WorkspacePageProps = {
   readonly records: readonly ${names.pascal}RecordView[];
   /**
-   * False when \`can()\` refused the caller. The page then names the refusal and renders no
+   * The answer \`can(caller, "${names.id}:use")\` gave for this request. The page never asks:
+   * \`can()\` is server-only and is the one authorization seam (DEC-39), so the decision is
+   * made where the page is mounted and handed in here. It carries no default, because a page
+   * that guesses would guess open. When it is false the page names the refusal and renders no
    * record, so a refused person sees no protected value (R-30).
    */
-  readonly permitted?: boolean;
+  readonly canUse: boolean;
 };
 
 export function WorkspacePage(props: WorkspacePageProps) {
-  if (props.permitted === false) {
+  if (!props.canUse) {
     return (
       <main>
         <h1>${names.displayName}</h1>
@@ -639,12 +681,18 @@ import { WorkspacePage } from "./workspace-page.tsx";
 
 /**
  * What the module registers under \`pages\`. Core mounts a page with no props, so each entry
- * here is the component the shell renders. The read that fills these from \`ctx.tenant\` arrives
- * with the shell, so each entry renders its empty state for now. The components stay in their
- * own files, with their stories and their tests.
+ * here is the component the shell renders. The loader that reads \`ctx.tenant\` and asks
+ * \`can()\` per request arrives with the shell; until then each entry renders the state the
+ * seam actually produces. The components stay in their own files, with their stories and
+ * their tests.
+ *
+ * \`canUse\` is false on purpose: the Section 0 authorization stub grants one key and it is not
+ * this module's, so \`can(caller, "${names.id}:use")\` refuses every caller today, which
+ * \`src/access.test.ts\` proves against the real seam. The loader replaces this literal with
+ * that call's result; widening the stub to make the page open is not the fix.
  */
 export function ${names.pascal}WorkspacePage() {
-  return <WorkspacePage records={[]} />;
+  return <WorkspacePage records={[]} canUse={false} />;
 }
 
 export function ${names.pascal}AdminPage() {
@@ -684,7 +732,7 @@ const meta = {
       },
     },
   },
-  args: { records: ${names.camel}Records },
+  args: { records: ${names.camel}Records, canUse: true },
 } satisfies Meta<typeof WorkspacePage>;
 
 export default meta;
@@ -715,12 +763,14 @@ export const Empty: Story = {
   },
 };
 
-// Denied access, proved in the browser at both viewports (R-30). The rows stay in
-// args, so each story proves the page withholds a record it was handed, not that
-// none was supplied. The Section 0 stub refuses this module's key, so this is the
-// state a real caller reaches.
+// Denied access, proved in the browser at both viewports (R-30). A story cannot call
+// \`can()\`, which is server-only, so it renders the page with the value that call
+// returns. \`src/access.test.ts\` proves the seam returns exactly this for every caller
+// in Section 0, and the router integration test proves the refusal on the server; these
+// two stories prove what the refused person then sees. The rows stay in args, so each
+// one proves the page withholds a record it was handed, not that none was supplied.
 export const DeniedDesktop: Story = {
-  args: { permitted: false },
+  args: { canUse: false },
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(
@@ -731,7 +781,7 @@ export const DeniedDesktop: Story = {
 };
 
 export const DeniedPhone: Story = {
-  args: { permitted: false },
+  args: { canUse: false },
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(
@@ -1057,6 +1107,7 @@ export const MODULE_TEMPLATES = {
   "src/index.ts": index,
   "src/module.ts": declaration,
   "src/module.test.ts": declarationTest,
+  "src/access.test.ts": accessTest,
   "src/router.ts": router,
   "src/schema.ts": schema,
   "src/presentation/README.md": presentationReadme,

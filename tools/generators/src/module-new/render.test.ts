@@ -23,6 +23,7 @@ const EXPECTED_FILES = [
   "packages/modules/demo/drizzle/meta/_journal.json",
   "packages/modules/demo/package.json",
   "packages/modules/demo/src/README.md",
+  "packages/modules/demo/src/access.test.ts",
   "packages/modules/demo/src/index.ts",
   "packages/modules/demo/src/module.test.ts",
   "packages/modules/demo/src/module.ts",
@@ -218,7 +219,7 @@ describe("the rendered user interface", () => {
 
     expect(story).toContain("export const DeniedDesktop");
     expect(story).toContain("export const DeniedPhone");
-    expect(story).toContain("permitted: false");
+    expect(story).toContain("canUse: false");
 
     // The refused stories keep the fixture rows in args, so the assertion proves
     // the page withholds them rather than that none were supplied.
@@ -227,12 +228,49 @@ describe("the rendered user interface", () => {
     ).toHaveLength(2);
   });
 
+  it("takes the decision from the seam rather than inventing one", () => {
+    const page = read(
+      "packages/modules/demo/src/presentation/workspace-page.tsx"
+    );
+
+    // No default: a page that guesses would guess open.
+    expect(page).toContain("readonly canUse: boolean;");
+    expect(page).not.toContain("canUse?:");
+    expect(page).toContain('can(caller, "demo:use")');
+
+    // The mounted page shows what the seam actually answers today, and says so.
+    const mounted = read(
+      "packages/modules/demo/src/presentation/module-pages.tsx"
+    );
+
+    expect(mounted).toContain("canUse={false}");
+  });
+
   it("keeps fixtures free of a server import", () => {
     const fixtures = read(
       "packages/modules/demo/src/presentation/__fixtures__/records.ts"
     );
 
     expect(fixtures).not.toContain("import");
+  });
+});
+
+describe("the rendered authorization proof", () => {
+  const access = read("packages/modules/demo/src/access.test.ts");
+
+  it("asks the real seam, not a stand-in", () => {
+    expect(access).toContain('from "@genie/core"');
+    expect(access).toContain("can(caller,");
+    expect(access).not.toContain("vi.mock");
+  });
+
+  it("expects every one of its own keys to be refused in Section 0", () => {
+    for (const key of ["demo:use", "demo:read", "demo:admin"]) {
+      expect(access).toContain(`can(caller, "${key}")`);
+    }
+
+    expect(access).toContain("createStubGrantReader()");
+    expect(access).not.toContain("toBe(true)");
   });
 });
 
