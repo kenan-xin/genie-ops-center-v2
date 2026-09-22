@@ -25,11 +25,11 @@ const dynamic = nextDynamic.default.default;
  * `testing/devtools-exclusion.test.ts` is what proves it rather than assuming
  * it.
  *
- * `ssr: false` is required rather than cosmetic. The devtools core publishes a
- * `browser` and a `node` build through its exports map, and the node build's
- * mount cannot run in a browser: it swallows its own failure, so the panel
- * renders an empty container and reports nothing. Keeping the module out of the
- * server graph is what makes the browser resolve the browser build.
+ * `ssr: false` is required rather than cosmetic. The shell is a browser-only
+ * surface, and the devtools core publishes a `browser` and a `node` build
+ * through its exports map. Keeping this module out of the server graph is what
+ * makes the bundler resolve the browser condition and stops the panel from
+ * taking part in server rendering at all.
  */
 const Panels =
   process.env.NODE_ENV === "development"
