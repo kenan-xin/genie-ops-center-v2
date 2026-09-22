@@ -9,6 +9,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
@@ -124,6 +125,24 @@ export const Default: Story = {
   },
 };
 `;
+
+/** A module with no UI. It must be selectable and contribute no dummy story. */
+const HEADLESS_ID = "headless-fixture";
+
+const HEADLESS_MANIFEST = `${JSON.stringify(
+  {
+    name: "@genie/module-headless-fixture",
+    version: "0.0.0",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    genie: { module: { id: HEADLESS_ID, entrypoint: "src/index.ts" } },
+  },
+  undefined,
+  2
+)}\n`;
+
+const HEADLESS_ENTRYPOINT = "export {};\n";
 
 let stage = "";
 
@@ -255,6 +274,15 @@ function removeSecondFixture(): void {
   rmSync(secondRoot(), { recursive: true, force: true });
 }
 
+/** A module package with an entrypoint and no stories at all. */
+function writeHeadlessFixture(): void {
+  const root = join(stage, "packages/modules", HEADLESS_ID);
+
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "package.json"), HEADLESS_MANIFEST);
+  writeFileSync(join(root, "src/index.ts"), HEADLESS_ENTRYPOINT);
+}
+
 beforeAll(() => {
   stage = mkdtempSync(join(tmpdir(), "genie-storybook-matrix-"));
 
@@ -295,6 +323,7 @@ beforeAll(() => {
   }
 
   writeSecondFixture();
+  writeHeadlessFixture();
 }, 300000);
 
 afterAll(() => {
@@ -517,6 +546,31 @@ describe("an inventory change", () => {
   });
 });
 
+describe("a headless module", () => {
+  // ui-development.md: a headless module receives no dummy story. It still has
+  // to be a valid selection that builds.
+  it("is selectable and contributes no story of its own", () => {
+    const result = ran(BUILD_TASK, HEADLESS_ID);
+
+    expect(result.status).toBe(0);
+
+    const built = index();
+
+    expect(
+      Object.keys(built.entries).some((id) =>
+        id.startsWith(`modules-${HEADLESS_ID}-`)
+      )
+    ).toBe(false);
+
+    // The host's own stories are still collected, so the run is nonempty, and
+    // no other module was pulled in by selecting the headless one.
+    expect(Object.keys(built.entries).length).toBeGreaterThan(0);
+    expect(
+      moduleEntries(built).some((id) => id.startsWith("modules-placeholder-"))
+    ).toBe(false);
+  });
+});
+
 describe("the static artifact and source maps", () => {
   it("reads a real build, so an empty scan cannot pass", () => {
     ran(BUILD_TASK, SECOND_ID);
@@ -540,6 +594,11 @@ describe("the static artifact and source maps", () => {
     expect(found["Modules/Placeholder"]?.length).toBeGreaterThan(0);
   });
 
+  // The static build emits no source map at all, and that absence is the
+  // confidentiality property: a map carries the original text of every story,
+  // component and fixture, including an excluded module's. A future build that
+  // starts emitting maps fails here, so the change is examined rather than
+  // shipped, and a map that does appear has to be scanned like any other file.
   it("publishes no source map that could carry excluded source", () => {
     ran(BUILD_TASK, "");
 
@@ -552,18 +611,162 @@ describe("the static artifact and source maps", () => {
 });
 
 /**
- * The development server's story index. It is the same selection-resolved
- * index the `@storybook/addon-mcp` toolset reads, so proving what this endpoint
- * serves is what proves the addon cannot expose an excluded module's content.
- *
- * The `/mcp` endpoint itself is a streaming HTTP endpoint and is not driven
- * here; the content boundary is upstream of it, in `.storybook/main.ts`, which
- * resolves the selection before any story is collected.
+ * A port the kernel just confirmed is free, so two runs never collide and no
+ * leftover process can answer a later case with stale content.
  */
-async function devServerEntries(
-  moduleInclude: string,
-  port: number
-): Promise<readonly string[]> {
+function freePort(): Promise<number> {
+  return new Promise((fulfil, reject) => {
+    const probe = createServer();
+
+    probe.on("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      // SAFETY: the probe listens on a TCP port, so `address()` is an
+      // AddressInfo rather than a string or null.
+      const port = (probe.address() as AddressInfo).port;
+
+      probe.close(() => fulfil(port));
+    });
+  });
+}
+
+/** One MCP message. Only the two fields this suite reads are typed. */
+type McpMessage = {
+  readonly id?: number;
+  readonly result?: {
+    readonly content?: readonly { readonly text?: string }[];
+  };
+};
+
+type McpInitialize = {
+  readonly jsonrpc: "2.0";
+  readonly id: number;
+  readonly method: "initialize";
+  readonly params: {
+    readonly protocolVersion: string;
+    readonly capabilities: Record<string, never>;
+    readonly clientInfo: { readonly name: string; readonly version: string };
+  };
+};
+
+type McpInitialized = {
+  readonly jsonrpc: "2.0";
+  readonly method: "notifications/initialized";
+};
+
+type McpToolsCall = {
+  readonly jsonrpc: "2.0";
+  readonly id: number;
+  readonly method: "tools/call";
+  readonly params: {
+    readonly name: string;
+    readonly arguments: { readonly withStoryIds: boolean };
+  };
+};
+
+type McpRequest = McpInitialize | McpInitialized | McpToolsCall;
+
+/**
+ * One request over the addon's streamable HTTP endpoint. A notification answers
+ * with an empty body; a request answers either as JSON or as a server-sent
+ * event.
+ */
+async function mcpPost(
+  port: number,
+  session: string | undefined,
+  body: McpRequest
+): Promise<{
+  readonly session: string | undefined;
+  readonly messages: readonly McpMessage[];
+}> {
+  const accept = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream",
+  };
+
+  const headers =
+    session === undefined ? accept : { ...accept, "mcp-session-id": session };
+
+  const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  const text = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+
+  // SAFETY: the bytes are the endpoint's own JSON-RPC reply, and each parsed
+  // value is read only for its id and its tool-result content below.
+  const messages: McpMessage[] =
+    text.trim() === ""
+      ? []
+      : contentType.includes("text/event-stream")
+        ? text
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => JSON.parse(line.slice(5)) as McpMessage)
+        : [JSON.parse(text) as McpMessage];
+
+  return {
+    session: response.headers.get("mcp-session-id") ?? session,
+    messages,
+  };
+}
+
+/**
+ * The addon's `docs-list` tool, driven over the real MCP protocol: initialize,
+ * the initialized notification, then the tool call. Its text is the component
+ * and documentation list the addon returns to an agent.
+ */
+async function mcpDocsList(port: number): Promise<string> {
+  const init = await mcpPost(port, undefined, {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "genie-storybook-matrix", version: "1" },
+    },
+  });
+
+  if (init.session === undefined) {
+    throw new Error("the MCP endpoint answered no session id");
+  }
+
+  await mcpPost(port, init.session, {
+    jsonrpc: "2.0",
+    method: "notifications/initialized",
+  });
+
+  const call = await mcpPost(port, init.session, {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/call",
+    params: { name: "docs-list", arguments: { withStoryIds: true } },
+  });
+
+  const content =
+    call.messages.find((message) => message.id === 2)?.result?.content ?? [];
+
+  return content.map((item) => item.text ?? "").join("\n");
+}
+
+type DevSurface = {
+  readonly entries: readonly string[];
+  readonly docs: string;
+};
+
+/**
+ * Starts the development server for one selection and reads what it serves: the
+ * story index, and the content the `@storybook/addon-mcp` `docs-list` tool
+ * returns over the real MCP protocol. Reading the index alone would leave the
+ * tool response unproved, so both are read.
+ */
+async function devSurface(moduleInclude: string): Promise<DevSurface> {
+  const port = await freePort();
+
   const child = spawn(
     join(stage, "node_modules/.bin/storybook"),
     [
@@ -584,12 +787,15 @@ async function devServerEntries(
         STORYBOOK_DISABLE_TELEMETRY: "1",
       },
       stdio: "ignore",
+      // Its own process group, so the whole group can be signalled below.
+      detached: true,
     }
   );
 
   try {
     const deadline = Date.now() + 90000;
     let lastError: unknown;
+    let entries: readonly string[] | undefined;
 
     /* eslint-disable no-await-in-loop -- a poll must finish one attempt before the next */
     while (Date.now() < deadline) {
@@ -600,7 +806,7 @@ async function devServerEntries(
 
         if (response.ok) {
           // SAFETY: the bytes are Storybook's own index.json, and only the
-          // entry keys are read below.
+          // entry keys are read.
           const body = (await response.json()) as {
             entries: Record<
               string,
@@ -608,7 +814,9 @@ async function devServerEntries(
             >;
           };
 
-          return Object.keys(body.entries);
+          entries = Object.keys(body.entries);
+
+          break;
         }
       } catch (error) {
         lastError = error;
@@ -618,24 +826,49 @@ async function devServerEntries(
     }
     /* eslint-enable no-await-in-loop */
 
-    throw new Error(
-      `the Storybook development server did not answer on ${port}: ${String(lastError)}`
-    );
+    if (entries === undefined) {
+      throw new Error(
+        `the Storybook development server did not answer on ${port}: ${String(lastError)}`
+      );
+    }
+
+    return { entries, docs: await mcpDocsList(port) };
   } finally {
+    // The dev server starts a Vite child. Killing only the parent leaves that
+    // child holding the port and serving its own selection to the next case, so
+    // the whole process group is signalled and the port is given back.
+    if (child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        // The group is already gone.
+      }
+    }
+
     child.kill("SIGKILL");
   }
 }
 
-describe("the development server the MCP addon reads", () => {
-  it("serves no excluded module's stories", async () => {
-    const entries = await devServerEntries("", 6181);
+describe("the development server and the MCP addon", () => {
+  it("serves no excluded module's stories or documentation", async () => {
+    const { entries, docs } = await devSurface("");
 
     expect(entries.length).toBeGreaterThan(0);
     expect(entries.filter((id) => id.startsWith("modules-"))).toEqual([]);
+
+    // The real MCP tool call, not only the index. The UI content is present, so
+    // the tool answered, and no module content is.
+    expect(docs).toContain("Disclosure");
+    expect(docs).not.toContain("modules-");
+    expect(docs).not.toContain("placeholder:");
+
+    for (const needle of PLACEHOLDER_NEEDLES) {
+      expect(docs, needle).not.toContain(needle);
+    }
   });
 
-  it("serves exactly the selected module's stories and no other module's", async () => {
-    const entries = await devServerEntries(SECOND_ID, 6182);
+  it("exposes exactly the selected module's content through the MCP tool", async () => {
+    const { entries, docs } = await devSurface(SECOND_ID);
 
     expect(entries.some((id) => id.startsWith("modules-second-fixture-"))).toBe(
       true
@@ -643,6 +876,10 @@ describe("the development server the MCP addon reads", () => {
     expect(entries.some((id) => id.startsWith("modules-placeholder-"))).toBe(
       false
     );
+
+    expect(docs).toContain("modules-second-fixture-");
+    expect(docs).not.toContain("modules-placeholder-");
+    expect(docs).not.toContain("placeholder:");
   });
 });
 
@@ -810,6 +1047,36 @@ describe("an owner input mutation", () => {
       const changed = ran(TEST_TASK, "placeholder");
 
       expect(servedFromCache(changed.output, TEST_TASK), changed.output).toBe(
+        false
+      );
+    } finally {
+      writeFileSync(path, original);
+    }
+  });
+
+  /**
+   * Discovery reads module package metadata, and a module is not a declared
+   * dependency of this host. The runtime digest covers only the id, package
+   * name and entrypoint path, so a metadata-only change such as a version bump
+   * moves nothing the digest sees: only a manifest input catches it.
+   */
+  it("invalidates the build when a module's package metadata changes", () => {
+    const path = join(stage, "packages/modules", SECOND_ID, "package.json");
+    const original = readFileSync(path, "utf8");
+
+    ran(BUILD_TASK, "placeholder");
+
+    try {
+      // The fixture manifest is a known-valid constant, so the version is
+      // changed by a string substitution rather than by re-encoding it.
+      writeFileSync(
+        path,
+        SECOND_MANIFEST.replace('"version": "0.0.0"', '"version": "0.0.1"')
+      );
+
+      const changed = ran(BUILD_TASK, "placeholder");
+
+      expect(servedFromCache(changed.output, BUILD_TASK), changed.output).toBe(
         false
       );
     } finally {

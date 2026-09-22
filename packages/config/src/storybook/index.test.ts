@@ -35,6 +35,19 @@ describe("sharedStorybookConfig", () => {
     ).toBe(false);
   });
 
+  // R-41b: a customer application's composition stories require explicit
+  // selection, never a blanket glob. The host has no customer input yet, so the
+  // guard is the absence of any customer glob.
+  it("never globs a customer application folder", () => {
+    const config = sharedStorybookConfig({
+      moduleRoots: ["packages/modules/placeholder"],
+    });
+
+    expect(config.stories.some((glob) => glob.includes("customers"))).toBe(
+      false
+    );
+  });
+
   it("names the framework and the required addons", () => {
     const config = sharedStorybookConfig({ moduleRoots: [] });
 
