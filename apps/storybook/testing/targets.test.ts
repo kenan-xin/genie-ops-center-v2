@@ -32,6 +32,11 @@ const OWNER_INPUTS = [
   "{workspaceRoot}/packages/ui/src/**/*",
   "{workspaceRoot}/packages/core/src/**/*",
   "{workspaceRoot}/packages/modules/*/src/**/*",
+  // Discovery reads module package metadata, and a module is not a declared
+  // dependency of this host, so its manifest and its TypeScript config are
+  // inputs in their own right.
+  "{workspaceRoot}/packages/modules/*/package.json",
+  "{workspaceRoot}/packages/modules/*/tsconfig.json",
   "{workspaceRoot}/packages/config/src/**/*",
 ];
 

@@ -33,6 +33,8 @@
       "{workspaceRoot}/packages/ui/src/**/*",
       "{workspaceRoot}/packages/core/src/**/*",
       "{workspaceRoot}/packages/modules/*/src/**/*",
+      "{workspaceRoot}/packages/modules/*/package.json",
+      "{workspaceRoot}/packages/modules/*/tsconfig.json",
       "{workspaceRoot}/packages/config/src/**/*"
     ]
   },
