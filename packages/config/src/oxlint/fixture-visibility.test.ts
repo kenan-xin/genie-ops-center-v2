@@ -101,6 +101,28 @@ function resolvedFiles(project: string): readonly string[] {
   return files;
 }
 
+/** The checkout's own oxlint, the binary the product lint targets run. */
+const OXLINT = join(WORKSPACE_ROOT, "node_modules", ".bin", "oxlint");
+
+/**
+ * Runs one oxlint invocation the way a lint target does and returns its report,
+ * exit code folded into the text so a non-zero run is still readable here.
+ */
+function lintReport(args: readonly string[]): string {
+  try {
+    return execFileSync(OXLINT, ["--config", "oxlint.config.ts", ...args], {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    // SAFETY: execFileSync throws an Error that carries the child's output.
+    const failure = error as { stdout?: string; stderr?: string };
+
+    return `${failure.stdout ?? ""}${failure.stderr ?? ""}`;
+  }
+}
+
 const COVERED_PREFIXES = ["__boundary__", "__wiring__", "__antislop__"];
 
 /** The real fixture paths a project's own include would take. */
@@ -185,4 +207,32 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
       expect(covered || !atRisk).toBe(true);
     }
   );
+});
+
+describe("lint fixtures and the lint that runs beside them", () => {
+  // The lint counterpart of the typecheck race above. A directory scan over a
+  // project's `src` lists a fixture the suites wrote and already removed, then
+  // fails to open it. The root `.eslintignore` excludes the shared prefixes, and
+  // the harness lints an explicit fixture path with `--no-ignore`, so the rules
+  // are still exercised.
+  it("keeps a transient fixture out of a directory scan, and still lints it on request", () => {
+    const probe = `packages/core/src/__boundary__probe-${process.pid}.ts`;
+
+    withFixture(
+      WORKSPACE_ROOT,
+      probe,
+      `import "@genie/module-placeholder";\n`,
+      () => {
+        const scanned = lintReport(["packages/core/src"]);
+
+        expect(scanned).not.toContain(probe);
+
+        // The same file, named explicitly with ignores off, is a real violation,
+        // so the scan above excludes it rather than finding nothing to report.
+        const explicit = lintReport(["--no-ignore", probe]);
+
+        expect(explicit).toContain("core never imports a module");
+      }
+    );
+  });
 });

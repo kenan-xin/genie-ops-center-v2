@@ -178,7 +178,11 @@ async function runOxlint(
   try {
     const { stdout } = await execFileAsync(
       "oxlint",
-      ["--config", "oxlint.config.ts", relativePath],
+      // `--no-ignore` is what lets a fixture the root `.eslintignore` excludes be
+      // linted on its explicit path: that file is the product scan's guard against
+      // a fixture vanishing mid-walk, not this harness's. The config's own
+      // `ignorePatterns` are not ignore-file entries and stay in force.
+      ["--config", "oxlint.config.ts", "--no-ignore", relativePath],
       {
         cwd: root,
         encoding: "utf8",
