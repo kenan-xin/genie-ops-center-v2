@@ -616,26 +616,16 @@ import type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
 
 export type WorkspacePageProps = {
   readonly records: readonly ${names.pascal}RecordView[];
-  /**
-   * The answer \`can(caller, "${names.id}:use")\` gave for this request. The page never asks:
-   * \`can()\` is server-only and is the one authorization seam (DEC-39), so the decision is
-   * made where the page is mounted and handed in here. It carries no default, because a page
-   * that guesses would guess open. When it is false the page names the refusal and renders no
-   * record, so a refused person sees no protected value (R-30).
-   */
-  readonly canUse: boolean;
 };
 
+/**
+ * The workspace page. It renders records and nothing else: the app mounts it behind the
+ * entry's \`requiredPermission\` through the one authorization seam, so this component runs
+ * only for a person who may see it, and a refused person gets the app's denied response
+ * instead. A second check here would be a second seam (DEC-39), and a refusal rendered here
+ * would say what the denied response deliberately does not.
+ */
 export function WorkspacePage(props: WorkspacePageProps) {
-  if (!props.canUse) {
-    return (
-      <main>
-        <h1>${names.displayName}</h1>
-        <p>You do not have access to ${names.displayName}.</p>
-      </main>
-    );
-  }
-
   return (
     <main>
       <h1>${names.displayName}</h1>
@@ -681,18 +671,18 @@ import { WorkspacePage } from "./workspace-page.tsx";
 
 /**
  * What the module registers under \`pages\`. Core mounts a page with no props, so each entry
- * here is the component the shell renders. The loader that reads \`ctx.tenant\` and asks
- * \`can()\` per request arrives with the shell; until then each entry renders the state the
- * seam actually produces. The components stay in their own files, with their stories and
- * their tests.
+ * here is the component the app renders. The read that fills these from \`ctx.tenant\` arrives
+ * with the shell, so each entry renders its empty state for now. The components stay in their
+ * own files, with their stories and their tests.
  *
- * \`canUse\` is false on purpose: the Section 0 authorization stub grants one key and it is not
- * this module's, so \`can(caller, "${names.id}:use")\` refuses every caller today, which
- * \`src/access.test.ts\` proves against the real seam. The loader replaces this literal with
- * that call's result; widening the stub to make the page open is not the fix.
+ * Neither entry asks whether the person may be here. The app's page loader already asked, with
+ * the entry's \`requiredPermission\`, and renders its own denied response instead of this
+ * component when the answer is no. In Section 0 that answer is always no, because the stub
+ * grants one key and it belongs to another module, which \`src/access.test.ts\` proves against
+ * the real seam.
  */
 export function ${names.pascal}WorkspacePage() {
-  return <WorkspacePage records={[]} canUse={false} />;
+  return <WorkspacePage records={[]} />;
 }
 
 export function ${names.pascal}AdminPage() {
@@ -732,7 +722,7 @@ const meta = {
       },
     },
   },
-  args: { records: ${names.camel}Records, canUse: true },
+  args: { records: ${names.camel}Records },
 } satisfies Meta<typeof WorkspacePage>;
 
 export default meta;
@@ -763,33 +753,12 @@ export const Empty: Story = {
   },
 };
 
-// Denied access, proved in the browser at both viewports (R-30). A story cannot call
-// \`can()\`, which is server-only, so it renders the page with the value that call
-// returns. \`src/access.test.ts\` proves the seam returns exactly this for every caller
-// in Section 0, and the router integration test proves the refusal on the server; these
-// two stories prove what the refused person then sees. The rows stay in args, so each
-// one proves the page withholds a record it was handed, not that none was supplied.
-export const DeniedDesktop: Story = {
-  args: { canUse: false },
-  globals: { viewport: { value: "desktop", isRotated: false } },
-  play: async ({ canvas }) => {
-    await expect(
-      canvas.getByText("You do not have access to ${names.displayName}.")
-    ).toBeInTheDocument();
-    await expect(canvas.queryByText("First record")).not.toBeInTheDocument();
-  },
-};
-
-export const DeniedPhone: Story = {
-  args: { canUse: false },
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  play: async ({ canvas }) => {
-    await expect(
-      canvas.getByText("You do not have access to ${names.displayName}.")
-    ).toBeInTheDocument();
-    await expect(canvas.queryByText("First record")).not.toBeInTheDocument();
-  },
-};
+// A refused person never reaches this component: the app's page loader answers
+// \`can()\` first and renders its own denied response instead. So no story here shows a
+// refusal, and none may, because that response is the app's and says nothing about
+// what it would have shown. \`src/access.test.ts\` proves the seam refuses every key this
+// module owns, and the router test proves the refusal on the server. The denial seen in
+// a browser at both viewports is the app route's end-to-end proof.
 `;
 
 const adminStories: Template = (names) =>

@@ -212,38 +212,28 @@ describe("the rendered user interface", () => {
     expect(story).toContain("await expect(");
   });
 
-  it("proves denied access at both viewports, with no protected row shown", () => {
-    const story = read(
-      "packages/modules/demo/src/presentation/workspace-page.stories.tsx"
+  it("checks no permission of its own, in any presentation file", () => {
+    // The app mounts a module page behind the entry's requiredPermission through
+    // the one seam, and renders its own denied response when it refuses. A check
+    // here would be a second seam (DEC-39), and a refusal rendered here would say
+    // what that response deliberately withholds.
+    const presentation = [...files].filter(([path]) =>
+      path.includes("/src/presentation/")
     );
 
-    expect(story).toContain("export const DeniedDesktop");
-    expect(story).toContain("export const DeniedPhone");
-    expect(story).toContain("canUse: false");
+    expect(presentation.length).toBeGreaterThan(0);
 
-    // The refused stories keep the fixture rows in args, so the assertion proves
-    // the page withholds them rather than that none were supplied.
-    expect(
-      story.match(/queryByText\("First record"\)\)\.not\.toBeInTheDocument/g)
-    ).toHaveLength(2);
-  });
+    for (const [path, content] of presentation) {
+      // Prose may name the seam; code may not reach for it.
+      const code = content
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\/?\*)/.test(line))
+        .join("\n");
 
-  it("takes the decision from the seam rather than inventing one", () => {
-    const page = read(
-      "packages/modules/demo/src/presentation/workspace-page.tsx"
-    );
-
-    // No default: a page that guesses would guess open.
-    expect(page).toContain("readonly canUse: boolean;");
-    expect(page).not.toContain("canUse?:");
-    expect(page).toContain('can(caller, "demo:use")');
-
-    // The mounted page shows what the seam actually answers today, and says so.
-    const mounted = read(
-      "packages/modules/demo/src/presentation/module-pages.tsx"
-    );
-
-    expect(mounted).toContain("canUse={false}");
+      expect(code, path).not.toMatch(/\bcan\(/);
+      expect(code, path).not.toMatch(/permitted|canUse|forbidden/i);
+      expect(code, path).not.toContain("@genie/core");
+    }
   });
 
   it("keeps fixtures free of a server import", () => {
