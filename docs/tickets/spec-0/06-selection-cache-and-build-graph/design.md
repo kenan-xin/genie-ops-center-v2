@@ -79,9 +79,11 @@ The guard closes the window between generation and bundling: a registry left by 
 
 Checking the registry is not enough, because the registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`. Each can find its own registry intact at both boundaries while the other writes the same output tree, and Nx then caches that mixed tree under a legitimate selection hash. Declaring `.next` as an output is what made such a tree cacheable.
 
-`apps/genie/tools/build.ts` therefore owns the build: it takes an exclusive marker for the application root, runs the steps, and releases the marker in a `finally`. A second build fails at once instead of waiting. The marker is created with `wx`, so the create either wins or fails, and it lives in the operating system's temporary directory rather than in the repository.
+`apps/genie/tools/build.ts` therefore owns the build: it takes the application root, runs the steps, and releases it in a `finally`. A second build fails at once instead of waiting.
 
-This reverses the rejection of a root lock recorded below. That rejection was about the registry file and predates the artifact hole. A crashed build leaves a marker, and the error names the path to remove.
+The claim is a listening socket rather than a file holding a process id. A lock file outlives the process that wrote it, so a build killed by a signal or a lost machine would block every later build in that checkout until somebody deleted the file. The operating system closes a socket whatever ends the process, so a crash leaves nothing to clean up. The socket lives in the operating system's temporary directory, never in the repository and never in a cached output.
+
+This reverses the rejection of a root lock recorded below. That rejection was about the registry file and predates the artifact hole, and its stated cost, stale-lock recovery, is the cost this mechanism does not carry.
 
 ### 4b. The registry guard on both sides of the bundler
 

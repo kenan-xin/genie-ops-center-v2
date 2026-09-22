@@ -100,9 +100,26 @@ The limit, stated plainly: the second check proves the registry was the expected
 
 A second review found the deeper hole. The registry is not the artifact. Two builds in one checkout write into one `apps/genie/.next`, so a build can find its own registry intact at both boundaries while the other build writes the same output tree throughout. Nx then stores that mixed tree under a legitimate selection hash and restores it later. Declaring `.next` as an output, which this ticket did, is what made such a tree cacheable at all.
 
-No check on the registry can see that, so the application build now refuses the situation. `apps/genie/tools/build.ts` takes an exclusive marker for the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first. The marker is created with the `wx` flag, so the create either wins or fails with no window between asking and taking. It lives in the operating system's temporary directory, keyed by the application root, so it is never a repository file and never reaches a cached output.
+No check on the registry can see that, so the application build now refuses the situation. `apps/genie/tools/build.ts` takes the application root before it runs any step, and releases it in a `finally`. A second build fails at once rather than waiting, because waiting would only queue a second writer behind the first.
 
-Measured: build A with `placeholder` and build B with the empty selection, started four seconds apart in one checkout.
+The claim is a listening socket, not a file holding a process id. A third review found the reason: a lock file outlives the process that wrote it, so a build killed by a signal, a full disk or a lost machine leaves every later build in that checkout failing until somebody deletes the file by hand. The operating system closes a socket whatever ends the process, so a crash leaves nothing to clean up. The path may remain, and the next build finds nothing listening on it, clears it and takes the root. The socket lives in the operating system's temporary directory, keyed by the application root, so it is never a repository file and never reaches a cached output. Windows has no filesystem socket, and a named pipe is the same resource there.
+
+Measured deterministically, with one process holding the root and a second selection then asking to build:
+
+```text
+owner holds the root
+second build exit: 1
+Error: Another build already owns .../apps/genie. Two builds in one checkout share
+.next, so the cached bundle would mix both selections. Build each selection in its
+own root. Nothing needs cleaning up: /tmp/genie-app-build-b361dc6fb5435701.sock is
+released when that build ends, however it ends.
+```
+
+The owner was then killed with `SIGKILL`, so none of its own cleanup ran. The next build took the root and succeeded. A unit case covers the same crash in `apps/genie/tools/registry-roots.test.ts`.
+
+An earlier attempt to measure this by starting two builds four seconds apart was invalid: an incremental build finished in 4.1 seconds, so the two never overlapped. Both reported success and neither proved anything. The recorded run below is the cold-build version of the same pair, where the windows did overlap.
+
+Measured: build A with `placeholder` and build B with the empty selection, started four seconds apart in one checkout, on a cold build.
 
 ```text
 B exit: 1
