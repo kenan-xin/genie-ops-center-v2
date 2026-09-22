@@ -135,6 +135,39 @@ S0-11's.
 | `oxfmt --check --disable-nested-config` | clean, 286 files |
 | `npx supercov quality patch --base develop` | "Nothing introduced across 5 changed files. 10 changed files not reviewed." |
 
+## Merged-tree re-verification
+
+Local `develop` `3bf3efb` was merged into the branch as merge commit `563920b`
+(parents `d2d026b` and `3bf3efb`), a merge and not a rebase; all seven S0-10
+commits are preserved. develop's changes are present (the S0-07 core required
+runner under `packages/core/testing` and `packages/core/tools`, the app runner
+fixtures under `apps/genie/testing`, and the core script changes), and the S0-10
+paths are intact.
+
+Structural check on the merged tree, from `nx show project @genie/storybook
+--json`: `storybook` cache false and continuous; `build-storybook` cache true,
+inputs `["default","^default","storybookOwners",{"runtime":"node
+tools/generators/src/selection/print.ts"}]`, output `storybook-static`;
+`test-storybook` cache true with the same inputs; `static-storybook`
+continuous. `@genie/app` and `@genie/core` `test:integration` both resolve to
+`node tools/run-required-tests.ts`, cache false, with the app's `dependsOn`
+unchanged.
+
+Re-run on `563920b`:
+
+| Command | Result |
+| --- | --- |
+| `nx run @genie/storybook:test:integration --skip-nx-cache` | 29 passed (1 file) |
+| `nx run-many -t build-storybook test-storybook -p @genie/storybook --skip-nx-cache` | build succeeded; 7 files, 20 tests |
+| explicit cache proof, isolated cache and state | unset cold `0/1`, empty cold `0/1`, unset again `1/1` `[local cache]` restoring 27 entries / 7 modules, unknown id fails |
+| `nx affected -t build test lint typecheck --base=3bf3efb --parallel=1` | Success, 7 projects, 23 tasks |
+| `oxfmt --check --disable-nested-config` | clean, 289 files |
+| `npx supercov quality patch --base 3bf3efb` | "Nothing introduced across 5 changed files. 13 changed files not reviewed." |
+
+The same independent reviewer confirmed the merge resolution and the theme and
+provider seam introduce no new scope or confidentiality issue; the confirmation
+is recorded in the session report.
+
 ## Not proven here, and the limits
 
 - The MCP tool call covers the addon's `docs-list` tool, which is the content
