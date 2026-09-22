@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
     "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
+    "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -120,6 +121,9 @@
         ]
       },
       "build-fixture-image": {
+        "cache": false
+      },
+      "test:e2e:dev": {
         "cache": false
       },
       "test:e2e:fixture": {

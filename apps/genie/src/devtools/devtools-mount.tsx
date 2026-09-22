@@ -1,7 +1,19 @@
 "use client";
 
 import type { DeploymentDiagnosticsProps } from "@genie/ui";
-import { Suspense, lazy } from "react";
+import * as nextDynamic from "next/dynamic.js";
+
+/**
+ * `next/dynamic`, reached through the module object.
+ *
+ * The package is CommonJS and this repository does not set `esModuleInterop`,
+ * so a default import resolves to the module namespace rather than the
+ * function. The namespace's own `default` is that same namespace, and the
+ * function sits one level further in. No type assertion is involved: this
+ * expression is typed as
+ * `<P>(options, options?) => ComponentType<P>` on its own.
+ */
+const dynamic = nextDynamic.default.default;
 
 /**
  * The development-only boundary.
@@ -13,22 +25,17 @@ import { Suspense, lazy } from "react";
  * `testing/devtools-exclusion.test.ts` is what proves it rather than assuming
  * it.
  *
- * `React.lazy` rather than `next/dynamic`, which the plan named. `next/dynamic`
- * is CommonJS, this repository does not set `esModuleInterop`, and reaching its
- * default would need the chained type assertion the lint rules ban. `lazy` is
- * what `next/dynamic` wraps, so the boundary and the split chunk are the same;
- * only the spelling differs. The `ssr: false` behaviour comes from this file
- * being a client component whose panels mount after hydration.
+ * `ssr: false` is required rather than cosmetic. The devtools core publishes a
+ * `browser` and a `node` build through its exports map, and the node build's
+ * mount cannot run in a browser: it swallows its own failure, so the panel
+ * renders an empty container and reports nothing. Keeping the module out of the
+ * server graph is what makes the browser resolve the browser build.
  */
 const Panels =
   process.env.NODE_ENV === "development"
-    ? lazy(() => import("./devtools-panels.tsx"))
+    ? dynamic(() => import("./devtools-panels.tsx"), { ssr: false })
     : () => null;
 
 export function DevtoolsMount(props: DeploymentDiagnosticsProps) {
-  return (
-    <Suspense fallback={null}>
-      <Panels {...props} />
-    </Suspense>
-  );
+  return <Panels {...props} />;
 }
