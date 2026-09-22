@@ -25,6 +25,27 @@ const settledContext = {
   tenant: { db: { $client: { end: async () => {} } } },
 } as never;
 
+// SAFETY: as `settledContext`, but `end` throws before a promise exists, so the
+// failure is the cleanup step itself rather than an unsettled one. Nothing else
+// of the context is read.
+const syncThrowingEndContext = {
+  tenant: {
+    db: {
+      $client: {
+        end: () => {
+          throw new Error("pool end failed");
+        },
+      },
+    },
+  },
+} as never;
+
+// SAFETY: as `settledContext`, but `end` is a counted spy that settles at
+// once, so the test observes the cleanup attempt; nothing else of the context
+// is read.
+const spiedSettledContext = (end: () => Promise<void>) =>
+  ({ tenant: { db: { $client: { end } } } }) as never;
+
 /**
  * A logger whose `flush` never calls back, so the flush half of the one total
  * budget can be exercised. The image never injects one, so no fault-injection
@@ -36,6 +57,22 @@ function stuckLogger(): RedactingLogger {
   // A real logger settles its flush. This one deliberately never calls back, so
   // the flush half of the budget is what the test measures.
   logger.flush = () => {};
+
+  return logger;
+}
+
+/**
+ * A real logger whose failure diagnostic throws, the way a broken or closed
+ * transport can. The failure handler's contract is never-throws/always-exits,
+ * so a diagnostic that fails must not be the thing that decides whether the
+ * process exits.
+ */
+function diagnosticThrowingLogger(): RedactingLogger {
+  const logger = createLogger(validateEnvironment(VALID_SOURCE));
+
+  logger.error = () => {
+    throw new Error("diagnostic failed");
+  };
 
   return logger;
 }
@@ -106,6 +143,46 @@ describe("runBootstrap failure handling", () => {
       source: VALID_SOURCE,
       logger: stuckLogger(),
       connect: () => settledContext,
+      migrate: () => Promise.reject(new Error("migration failed")),
+      exit,
+      budgetMs: 500,
+    });
+
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(Date.now() - started).toBeLessThan(900);
+  });
+
+  // The failure handler promises never-throws/always-exits, so a secondary
+  // failure on the failure path itself — the diagnostic, or the cleanup it
+  // calls — must not be what decides whether the process exits. Each test
+  // below breaks one secondary step while the migration failure is the real
+  // cause, and the same shared-budget bound as the hanging tests applies.
+  it("reaches cleanup and exit when the failure diagnostic throws", async () => {
+    const exit = vi.fn();
+    const end = vi.fn(async () => {});
+    const started = Date.now();
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      logger: diagnosticThrowingLogger(),
+      connect: () => spiedSettledContext(end),
+      migrate: () => Promise.reject(new Error("migration failed")),
+      exit,
+      budgetMs: 500,
+    });
+
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(Date.now() - started).toBeLessThan(900);
+  });
+
+  it("reaches exit when the pool end throws synchronously", async () => {
+    const exit = vi.fn();
+    const started = Date.now();
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      connect: () => syncThrowingEndContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
       budgetMs: 500,

@@ -20,6 +20,8 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Scope
 
+Generate the migration contract accepted at integrated G2, including the owner's F2 packaging disposition. The current S0-05 branch's migration thunk and public-asset behavior are not independently approved generator conventions. Reuse the final accepted app/test seams; do not invent a template-only packaging workaround.
+
 - Scaffold module package with every declaration point, module tag, three-folder layout/READMEs, own schema/history/ledger/factories and ctx.tenant procedure/job signatures.
 - Use empty typed CSP provider and category/settings declaration coverage matching canonical contracts; no module runtime extension or new permission grants.
 - Generated UI includes documented stories, browser-safe fixtures and meaningful component assertions; headless modules get no dummy story.

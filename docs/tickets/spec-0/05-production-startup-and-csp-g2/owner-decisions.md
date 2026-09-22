@@ -263,6 +263,8 @@ To overturn: revert to the URL form and decide F2 below on its merits.
 
 ### F2. The built image publishes its migration DDL
 
+**OPEN — BLOCKS G2.** The owner has requested this decision separately from the confirmed proxy, isolation, shutdown and repeatable-evidence repairs. No packaging remedy or acceptance exception is authorized by that repair request. The previously withdrawn raw-module approach remains withdrawn. After the owner selects a platform rule, record its canonical consequences and required proof before acceptance or downstream dispatch.
+
 Measured, not suspected. Against the built image, running against a real
 database:
 

@@ -20,6 +20,8 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Scope
 
+Consume the integrated G2 baseline rather than recreating its generated registry or existing build, build-image and test:integration edges. Extend those targets with this ticket's selection/cache guarantees while preserving mandatory isolation execution and built-image acceptance. Record the accepted G2 revision before starting; the current S0-05 feature branch is not that acceptance.
+
 - Complete pre-hash resolver wrappers for every supported direct developer/Nx/customer entrypoint; pass serialized ordered selection and source mode, not only fingerprint.
 - Declare producer outputs and consumer inputs; generation/validation before app typecheck/build, build before image-prep. Read selected source bytes for hashing without tooling execution.
 - Prove isolated customer workspaces/output roots prevent registry overwrite. MODULE_INCLUDE remains only Docker argument; publishing is never cached.

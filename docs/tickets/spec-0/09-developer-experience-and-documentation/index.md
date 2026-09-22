@@ -55,6 +55,6 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 
 ## Develop audit, 2026-09-21
 
-No production app devtools or next-intl mount exists on develop. S0-05 owns initial English runtime strings; complete catalogue/missing-key checks and development-only panels using its accepted app seam. Story-first instructions already exist: correct drift rather than recreate them. AGENTS.md/CLAUDE.md are ignored main-checkout files; coordinate exact edits with existing 3l5 ownership and the integration owner, never expect feature-worktree copies to be tracked.
+The 2026-09-21 develop audit preceded the S0-05 app. Its feature branch now supplies next-intl request configuration, the initial English catalogue and NextIntlClientProvider; these are not yet integrated G2 evidence. After G2 acceptance, complete catalogue/missing-key checks and development-only panels using that accepted app seam rather than recreating it. Story-first instructions already exist: correct drift rather than recreate them. AGENTS.md/CLAUDE.md are tracked; coordinate exact edits with existing 3l5 ownership and the integration owner, and edit them in the assigned worktree.
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

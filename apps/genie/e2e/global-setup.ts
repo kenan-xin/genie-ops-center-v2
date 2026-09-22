@@ -13,7 +13,11 @@ const run = promisify(execFile);
  */
 const COMPOSE_FILE = "deploy/stack/compose.e2e.yaml";
 
-const READY_URL = "http://127.0.0.1:3400/api/health";
+const READY_PORT = Number(
+  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? "3400"
+);
+
+const READY_URL = `http://127.0.0.1:${READY_PORT}/api/health`;
 
 export const COMPOSE = ["compose", "-p", "genie-s005-e2e", "-f", COMPOSE_FILE];
 

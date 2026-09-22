@@ -6,6 +6,12 @@ const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  // The failed/invalid-provider browser proof needs the fixture image
+  // (`genie-s005:fixture`, built by `build-fixture-image`) and runs through
+  // `playwright.fixture.config.ts`. Collecting it here would run it against an
+  // image whose fixture routes do not exist, so the ordinary run never picks it
+  // up, and the fixture gate is what runs it.
+  testIgnore: ["**/e2e/fixture/**"],
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: BASE_URL },

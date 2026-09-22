@@ -1,5 +1,4 @@
 import { execFile } from "node:child_process";
-import { resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
 import { MIGRATION_LOCK_KEY } from "@genie/core";
@@ -10,18 +9,21 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { CONTEXT_HEADER } from "../src/context.ts";
+import {
+  HOST_ALIAS,
+  IMAGE,
+  WORKSPACE_ROOT,
+  countLines,
+  logsUntil,
+  pollHealth,
+  startImage,
+} from "./image-process.ts";
 
 const run = promisify(execFile);
-
-/** The image every test in this file drives. */
-const IMAGE = "genie-s005:test";
 
 /** Named in the staleness failures below, so the fix is one copy-paste away. */
 const REBUILD_IMAGE =
   "docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .";
-
-/** The repository root, which holds the Dockerfile and the context it builds from. */
-const WORKSPACE_ROOT = resolvePath(import.meta.dirname, "../../..");
 
 /** The image's creation time, or `undefined` when the image does not exist. */
 async function imageCreatedAt(): Promise<string | undefined> {
@@ -141,8 +143,6 @@ afterAll(async () => {
   await database?.stop();
 });
 
-const HOST_ALIAS = "host.docker.internal";
-
 /**
  * The paths whose abandoned requests must be answered and appear in the request
  * log once the migration lock is released and the bootstrap completes.
@@ -164,75 +164,6 @@ const ABANDONED_PATHS = [
  * `/` is a substring of every other path and would assert nothing.
  */
 const PROBED_PATHS = ["/", ...ABANDONED_PATHS];
-
-/**
- * Rewrites a host-side database URL into one the container can reach.
- *
- * The disposable database is published on this host, so inside a container
- * `localhost` is the container itself and the connection is refused. The alias
- * is mapped to the host gateway on the command line below, which works on a
- * plain Linux daemon and on Docker Desktop alike.
- */
-function reachableFromContainer(url: string): string {
-  const parsed = new URL(url);
-
-  if (["localhost", "127.0.0.1", "::1"].includes(parsed.hostname)) {
-    parsed.hostname = HOST_ALIAS;
-  }
-
-  return parsed.toString();
-}
-
-/**
- * Starts the image and returns its container id and a log reader.
- *
- * `--rm` is deliberately absent. A container started with `--rm` is removed the
- * instant it exits, so `docker logs` on a failed bootstrap returns nothing and
- * every log assertion passes vacuously. The container is removed explicitly in
- * `stop()` after the logs have been read.
- *
- * The port is published rather than shared with `--network=host`. Host
- * networking only shares this host's namespace on a plain Linux daemon. Under
- * Docker Desktop it joins the daemon's own virtual machine instead, so the
- * container starts and migrates correctly while every assertion that fetches it
- * fails to connect. That failure reads exactly like a broken application, which
- * cost this ticket a full debugging cycle.
- */
-async function startImage(env: Record<string, string>, port: number) {
-  const args = [
-    "run",
-    "-d",
-    "-p",
-    `${port}:3000`,
-    "--add-host",
-    `${HOST_ALIAS}:host-gateway`,
-  ];
-
-  for (const [key, value] of Object.entries(env)) {
-    const reachable =
-      key === "DATABASE_URL" ? reachableFromContainer(value) : value;
-
-    args.push("-e", `${key}=${reachable}`);
-  }
-
-  args.push(IMAGE);
-
-  const { stdout } = await run("docker", args);
-  const id = stdout.trim();
-
-  return {
-    id,
-    logs: async () => {
-      const result = await run("docker", ["logs", id]).catch(() => ({
-        stdout: "",
-        stderr: "",
-      }));
-
-      return result.stdout + result.stderr;
-    },
-    stop: () => run("docker", ["rm", "-f", id]).catch(() => undefined),
-  };
-}
 
 /**
  * Waits for the server's own socket to accept, then issues every request from
@@ -288,34 +219,6 @@ async function probeFromInside(
   return JSON.parse(stdout.trim()) as { accepted: boolean; outcomes: string[] };
 }
 
-async function pollHealth(port: number, attempts = 60) {
-  const seen: { elapsed: number; status: number | null }[] = [];
-  const startedAt = Date.now();
-
-  // Polling is sequential by definition: each attempt exists only because the
-  // previous one did not answer 200, and the elapsed time it records is the
-  // measurement. Running the attempts in parallel would fire every request at
-  // once and destroy the timeline this test reads.
-  /* eslint-disable no-await-in-loop */
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const status = await fetch(`http://127.0.0.1:${port}/api/health`)
-      .then((response) => response.status)
-      .catch(() => null);
-
-    seen.push({ elapsed: Date.now() - startedAt, status });
-
-    if (status === 200) break;
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  /* eslint-enable no-await-in-loop */
-
-  return seen;
-}
-
-const countLines = (logs: string, needle: string) =>
-  logs.split("\n").filter((line) => line.includes(needle)).length;
-
 /**
  * The context id a response observed, and which bundle observed it.
  *
@@ -351,41 +254,6 @@ const ROUTE_CLASSES = [
   "/api/trpc/placeholder.read?input=%7B%7D",
   "/viewer/placeholder",
 ] as const;
-
-/**
- * Reads the container log until it satisfies `ready`, or the budget expires.
- *
- * A single read races the logger's own flush. The server answers the request
- * before pino has written the line, so a test that fetches and then reads once
- * sees a log that is correct but not yet complete, and fails intermittently on
- * an application that is behaving. Reproduced here with no modules compiled at
- * all, which rules out anything the module path does.
- *
- * The final read is returned either way, so a genuine absence still fails the
- * assertion that follows, with the whole log to look at.
- */
-async function logsUntil(
-  image: { logs: () => Promise<string> },
-  ready: (logs: string) => boolean,
-  budgetMs = 15000
-): Promise<string> {
-  const deadline = Date.now() + budgetMs;
-
-  // Polling is sequential by definition: each read exists only because the
-  // previous one was incomplete. Running the reads in parallel would ask the
-  // same question of the same moment several times over.
-  /* eslint-disable no-await-in-loop */
-  let logs = await image.logs();
-
-  while (!ready(logs) && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    logs = await image.logs();
-  }
-  /* eslint-enable no-await-in-loop */
-
-  return logs;
-}
 
 describe("the built image", () => {
   it("becomes healthy, logs one bootstrap line, and invokes no provider before it", async () => {

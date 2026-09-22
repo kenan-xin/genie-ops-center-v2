@@ -1,6 +1,28 @@
 # S0-05 evidence
 
-Bead: `genie-ops-center-v2-1rd.5`. Branch `feature/s0-05-production-startup-csp`, base `2d3692b`. Recorded 2026-09-22.
+Bead: `genie-ops-center-v2-1rd.5`. Branch `feature/s0-05-production-startup-csp`; branch point / merge base with the reviewed `develop`: `1ac2aa0`. The original evidence snapshot named `2d3692b`, a feature commit, not the branch base. The current-readiness review inspected feature tip `a62b7f1` against `develop` `a0cf9a2`. No integrated S0-05 revision is accepted. Recorded 2026-09-22.
+
+## Current-readiness correction, 2026-09-22
+
+The results below are historical branch-local observations, not integrated acceptance. Review at `a62b7f1` reopened AC-25's provider-count proof: the matrix omitted RSC/prefetch requests to the viewer URL, and those requests do invoke the provider. AC-4's positive two-database run does not prove mandatory execution: filtering out both isolation tests exits successfully because the suite's own guard never runs. The failed/invalid-provider browser fixture was deleted, so its historical result cannot be rerun on an integrated revision. Bootstrap's failure handler can also escape before nonzero exit if its logger throws synchronously.
+
+The repair history and final branch-local verification follow; historical pass labels do not supersede that chronology. F2 remains **OPEN — BLOCKS G2**, awaiting the owner's platform decision. Downstream dispatch and integration acceptance remain blocked.
+
+### Repair regression baseline
+
+The independent test-writing agent ran `pnpm exec vitest run src/proxy.test.ts src/bootstrap.test.ts` from `apps/genie` against the unrepaired source: **5 failed, 11 passed**. Each of the three viewer-path header cases (`rsc: 1`, `next-router-prefetch: 1`, `purpose: prefetch`) observed one provider call instead of zero. A throwing failure diagnostic and a synchronously throwing pool close each escaped before the exit callback. The ordinary-viewer positive control still invoked exactly once with the expanded policy. Scoped lint and typecheck passed. This is reported RED evidence, not repaired or integrated acceptance; the combined GREEN result remains to be recorded after verification.
+
+### Source repair verification
+
+After the proxy/background guard and failure-shutdown repair, the coordinator independently reran the same focused command: **2 files, 16 tests passed**, exit 0. A separate Traycer reviewer also reran it and returned PASS for the four changed source/test files against `a62b7f1`, confirming installed Next 16.3.5/Pino 10.3.1 behavior, baseline-header ownership, synchronous secondary-failure containment and the shared shutdown deadline. This clears the targeted source findings, not composed-image/browser or whole-ticket acceptance.
+
+`npx --yes supercov quality patch apps/genie/src/proxy.ts apps/genie/src/bootstrap.ts --base develop --all` completed successfully. It reported long-method/conditional/magic-value/message-chain advisories on the introduced files; independent semantic review found no correctness issue in the repair. No unrelated structural rewrite was undertaken. Image-level provider counts, required-isolation controls and repeatable failed-provider browser proof remain pending.
+
+### Composed-image repair check: provider finding reopened
+
+The acceptance agent's subsequent fresh-image run disproved the proxy-boundary assumption behind the source-level verdict above. In installed Next 16.3.5, the web adapter removes the flight headers before constructing the proxy request. Synthetic `NextRequest` unit tests do not exercise that adapter. On the rebuilt ordinary image `a591336dfb4a`, RSC and `next-router-prefetch` requests still invoke the provider and receive the viewer policy; `purpose: prefetch` correctly retains baseline with zero calls. R-49a remains open; the two failing cases are retained without weakening their inputs.
+
+Reported execution: `pnpm exec nx run @genie/app:test:integration` exited 1 with **51/53 integration tests passed**, failing only those two viewer-background cases. Its required fixture-image/browser dependency passed **6/6** across phone/desktop, including failing/invalid-provider denial and a permitted-provider positive control on the same image (`d21f6e7b7799`). The ordinary Playwright command passed **24/24**. Required-runner controls passed **16/16**. These are branch-local results reported by the acceptance agent, not integrated G2 acceptance. A supported framework-boundary repair and fresh rerun are pending; F2 is unchanged.
 
 This file records what was run and watched, in the worktree above, against built images and a real browser. Every result below was observed on this host in this session. Nothing here is inferred from a green unit run, and anything not proved is named in [Not proved](#not-proved) and [Open items](#open-items).
 
@@ -12,7 +34,29 @@ Images used:
 | `genie-s005:empty` | `MODULE_INCLUDE=` (explicitly empty) | R-22 / AC-5 exclusion proof |
 | `genie-s005:failing` | `MODULE_INCLUDE=failing-viewer,invalid-viewer` | R-50 / AC-25 failed and invalid provider proof, from a disposable module |
 
-## The four obligations this task added to the brief
+## Final repair gate, 2026-09-22
+
+The supported `skipProxyUrlNormalize: true` option now preserves flight headers at the real Next proxy boundary. No internal environment switch, custom server, extra pool or altered RSC/prefetch test input was used. The exact original background requests now cause zero provider calls and retain the deny baseline; an ordinary viewer document still calls its owner once and expands only its frame policy. Normalization redirects and both viewer slash spellings retain the approved Amendment B behavior.
+
+The integration runner now checks named mandatory cases in Vitest's assertion-level report, requiring status exactly `passed`. Missing files/cases, filtered or skipped cases, malformed results and unknown statuses fail closed. Provider-count proof uses an awaited response followed by a unique health-log sentinel on the same ordered sink; the sentinel must arrive, and only the checkpoint-to-sentinel window is counted. Missing-marker controls fail rather than asserting a false zero.
+
+Failed/invalid/permitted-provider fixtures are retained outside production module inventory. The fixture build injects their app dependencies and lockfile entries only in an allocated temporary workspace, uses the unchanged frozen-install Dockerfile, removes its own stage on success and explicitly retains failed stages. The fixture browser target is a required dependency of app integration, not an optional historical command. Each denial proves a real 200 viewer document, expected iframe and provider log; the same-image permitted fixture visibly loads at both viewports.
+
+Coordinator-run final checks on the formatted repair snapshot:
+
+| Command | Result |
+| --- | --- |
+| `pnpm exec nx run-many -t lint typecheck test --skip-nx-cache` | all applicable targets passed across seven projects, plus registry generation |
+| `pnpm run format:check` | passed, 235 files |
+| `git diff --check` | passed |
+| `pnpm exec nx run @genie/app:test:integration --skip-nx-cache` | exit 0; 8 files / 59 integration tests passed; required fixture browser dependency 6/6 passed; all six Nx tasks executed uncached |
+| `pnpm exec playwright test --config apps/genie/playwright.config.ts` | exit 0; 24/24 ordinary browser tests across phone and desktop, against the final image |
+
+Final gate image IDs: ordinary `sha256:d807ba680e38d1414f7434d7c3ed292a3f99aaca974e689ce650e19cde3b1ca6`; fixture `sha256:4ccd877efd21cfe25fb43cd2da00a1df2a0feb4a48825cf077ed44c66ad0966b`. Durable coordinator logs: Traycer command `6366dc81-48d0-45ac-9fac-f36065089695` for the required gate and `41f46d8f-7462-4bdd-bafd-584332863aea` for ordinary browsers. Earlier agent run `gate-run6.log` passed the same 59 integration and 6 fixture tests; `ordinary-browser2.log` passed 24 ordinary browser tests.
+
+These results repair the confirmed local implementation/evidence findings; they do not accept F2 or establish integrated G2. Current develop's six-file instruction cleanup `a0cf9a2` is preserved verbatim in this feature worktree, without integrating the feature into develop. Exact repair commit is recorded in Beads and the review handback after checkpoint creation.
+
+## Historical implementation evidence: the four obligations
 
 ### 1. AC-26 across real bundles, not through the request log
 
@@ -214,7 +258,7 @@ Counted from the image log, not from the code. `frame origin provider invoked` i
 | `/`, `/api/health`, `/api/trpc/placeholder.read`, `/probe.txt`, `/definitely-missing`, `/viewer/placeholder/extra`, an RSC prefetch of `/placeholder`, an RSC prefetch of `/` | 0 |
 | one `/viewer/placeholder` | exactly 1 |
 
-R-49a holds: zero provider calls outside the viewer, one per viewer document.
+This historical sample showed zero provider calls on the listed non-viewer requests and one on a viewer document. It did not establish R-49a: the 2026-09-22 review found nonzero provider calls on viewer-path RSC/prefetch requests. That obligation is reopened pending repair and a complete executable matrix.
 
 ## Step 3a: the browser run at both viewports
 
@@ -342,15 +386,15 @@ Each asserted the response's own `content-security-policy` header equals the den
 
 | Criterion | Where its executable check ran | Result |
 | --- | --- | --- |
-| AC-4 two-context isolation | `apps/genie/testing/isolation.integration.test.ts` | pass, 2 tenant contexts, 2 databases, one process |
+| AC-4 two-context isolation | `apps/genie/testing/isolation.integration.test.ts` | historical positive run passed; mandatory missing/skipped execution guard failed review and is open |
 | AC-5 excluded modules | Step 3c above | pass, with the corrected counts |
 | AC-11 two viewports | Step 3a, 12 tests per project | pass, `phone` and `desktop` |
 | AC-15 both transports | `apps/genie/testing/transport.integration.test.ts` | pass, real HTTP and a real `@trpc/client` round trip |
 | AC-16 viewer policy and framing | Step 3b2 plus `security-headers.spec.ts` | pass, exactly one policy, baseline replaced at `frame-src` only |
 | AC-23 provider contract | `packages/core/src/lib/content-security-policy/index.test.ts` | pass at the unit layer; the same cases at the response layer are Step 3a2 |
-| AC-25 headers, providers, redirects, failed provider | Steps 3b, 3b2, 3a2 | pass |
+| AC-25 headers, providers, redirects, failed provider | Steps 3b, 3b2, 3a2 | reopened: viewer-background provider calls and non-repeatable failed/invalid-provider browser proof |
 | AC-26 one context under load | Step 1 above, three layers | pass |
-| AC-26 startup exit, migrations gate readiness, failure budget | `apps/genie/src/bootstrap.test.ts`, `apps/genie/testing/image.startup.test.ts` | pass. The failure-budget cases are unit-level on purpose: they hang the pool close and the logger flush, and the image proves the observable consequence, a bounded nonzero exit. The split is stated, not blurred |
+| AC-26 startup exit, migrations gate readiness, failure budget | `apps/genie/src/bootstrap.test.ts`, `apps/genie/testing/image.startup.test.ts` | historical hanging-operation and image results retained; reopened for synchronous diagnostic/cleanup exceptions that bypass nonzero exit |
 | R-36 no host-header read | `grep -rn "headers().get(\"host\")\|headers.get('host')" apps/genie/src` | no match |
 
 ## Gates

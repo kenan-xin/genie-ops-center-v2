@@ -14,6 +14,8 @@
 
 ## Revision 3: adversarial review disposition
 
+Historical planning disposition follows. The 2026-09-22 current-readiness review disproved the `afterAll` isolation guard described below: when every test is skipped, that hook does not run. S0-05 must enforce required collection/execution outside the skippable suite before G2 acceptance. Current observed status and repair evidence live in [the evidence record](evidence.md#current-readiness-correction-2026-09-22); this note does not replace or shorten the concrete plan.
+
 Two independent adversarial reviews have run. Revision 2 answered the first. Revision 3 answers the second, which found that revision 2 was not ready.
 
 ### What the second review found, and what revision 3 did

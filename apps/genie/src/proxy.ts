@@ -55,6 +55,44 @@ const STANDARD_HEADERS = [
 /** Every redirect the application owns, so each one is header-capable. */
 const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
 
+/**
+ * The framework's flight headers. Next 16 attaches one or more of these to every
+ * router flight, prefetch or HMR-refresh request, and a full document navigation
+ * to the same URL carries none of them, so their absence is the document test
+ * R-49 and R-49a need. Names verified against the installed next 16.3.5
+ * `client/components/app-router-headers.js`.
+ */
+const BACKGROUND_HEADERS = [
+  "rsc",
+  "next-router-state-tree",
+  "next-router-prefetch",
+  "next-router-segment-prefetch",
+  "next-hmr-refresh",
+] as const;
+
+/** `purpose: prefetch` / `sec-purpose: prefetch` name a background request. */
+function namesBackgroundPurpose(value: string | null): boolean {
+  if (value === null) return false;
+
+  return value
+    .toLowerCase()
+    .split(",")
+    .some((part) => {
+      const directive = part.split(";")[0]?.trim();
+
+      return directive === "prefetch" || directive === "prerender";
+    });
+}
+
+/** True for a router flight or prefetch request; false for a document request. */
+function isBackgroundRequest(headers: Headers): boolean {
+  return (
+    BACKGROUND_HEADERS.some((name) => headers.has(name)) ||
+    namesBackgroundPurpose(headers.get("purpose")) ||
+    namesBackgroundPurpose(headers.get("sec-purpose"))
+  );
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const pathname = request.nextUrl.pathname;
 
@@ -111,10 +149,17 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
 
+  // R-49a: a background navigation request must not invoke a provider either,
+  // whatever the pathname. A full document navigation is the one request class
+  // that carries none of the framework's flight or prefetch headers, so it is
+  // the only one that reaches the provider below; the background request keeps
+  // the deny baseline the header configuration already set.
+  if (isBackgroundRequest(request.headers)) return response;
+
   const route = viewerRouteFor(pathname, new Set(app.viewerProviders.keys()));
 
-  // Ordinary documents, route handlers, health, assets and background requests
-  // reach no provider at all, which is what R-49a counts.
+  // Ordinary documents, route handlers, health and assets reach no provider at
+  // all, which is what R-49a counts.
   if (route === undefined) return response;
 
   const policy = await buildViewerPolicy({

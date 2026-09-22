@@ -80,6 +80,58 @@ function withinBudget<T>(
 }
 
 /**
+ * Best-effort shutdown after a failed bootstrap. Its one job is to leave the
+ * caller able to exit, so it never throws: a secondary failure in the failure
+ * diagnostic or in cleanup must not become the thing that decides whether the
+ * process exits. Diagnostics, cleanup and log flushing share the single deadline
+ * of R-19b, taken once so a hanging step cannot spend a per-phase budget.
+ */
+async function runFailureShutdown(input: {
+  logger: RedactingLogger | undefined;
+  context: AppContext | undefined;
+  failure: unknown;
+  budgetMs: number;
+}): Promise<void> {
+  const deadline = Date.now() + input.budgetMs;
+  const remaining = () => Math.max(0, deadline - Date.now());
+
+  // A logger whose transport is broken or closed can throw here; the primary
+  // failure is already known, so the diagnostic is best-effort.
+  try {
+    input.logger?.error({ err: input.failure }, "bootstrap failed");
+  } catch {
+    // Secondary failure: swallowed on purpose, the shutdown continues.
+  }
+
+  const context = input.context;
+
+  if (context !== undefined) {
+    // Started inside the promise chain so a synchronous throw from `end`
+    // becomes a rejection `withinBudget` already swallows.
+    await withinBudget(
+      Promise.resolve().then(() => context.tenant.db.$client.end()),
+      remaining()
+    );
+  }
+
+  const logger = input.logger;
+
+  if (logger !== undefined) {
+    // `flush` can throw synchronously (pino proto.js); inside the executor that
+    // is a rejection, which `withinBudget` bounds like any other failure.
+    await withinBudget(
+      Promise.resolve().then(
+        () =>
+          new Promise<void>((resolve) => {
+            logger.flush(() => resolve());
+          })
+      ),
+      remaining()
+    );
+  }
+}
+
+/**
  * Builds the one application context from the validated environment. It is kept
  * apart from `runBootstrap` so the ordering there stays readable, and it is only
  * reached when no test injected a context of its own.
@@ -134,6 +186,8 @@ export async function runBootstrap(
 
   let logger: RedactingLogger | undefined;
   let context: AppContext | undefined;
+  let failure: unknown;
+  let failed = false;
 
   try {
     const env = validateEnvironment(source);
@@ -169,26 +223,18 @@ export async function runBootstrap(
       "bootstrap complete"
     );
   } catch (caught) {
-    const deadline = Date.now() + budgetMs;
-
-    logger?.error({ err: caught }, "bootstrap failed");
-
-    if (context !== undefined) {
-      await withinBudget(
-        Promise.resolve(context.tenant.db.$client.end()),
-        Math.max(0, deadline - Date.now())
-      );
+    failed = true;
+    failure = caught;
+  } finally {
+    // The failure path runs from `finally`, not the catch body, so no secondary
+    // failure in diagnostics or cleanup can skip the exit below. `exit` is the
+    // last statement of an inner `finally` for the same reason.
+    if (failed) {
+      try {
+        await runFailureShutdown({ logger, context, failure, budgetMs });
+      } finally {
+        exit(1);
+      }
     }
-
-    if (logger !== undefined) {
-      await withinBudget(
-        new Promise<void>((resolve) => {
-          logger?.flush(() => resolve());
-        }),
-        Math.max(0, deadline - Date.now())
-      );
-    }
-
-    exit(1);
   }
 }

@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
   // removing it makes both spellings of a route ordinary responses with full
   // coverage (R-47, as amended 2026-09-21).
   skipTrailingSlashRedirect: true,
+  // R-49a counts zero provider calls on background navigation requests, but the
+  // real proxy boundary is not the raw request: `server/web/adapter.js` deletes
+  // Next's internal flight headers (`rsc`, `next-router-prefetch`, and the rest
+  // of FLIGHT_HEADERS) before the proxy runs unless this is set. Only the
+  // supported flag can expose them, and the classification in proxy.ts depends
+  // on seeing them. It changes nothing else that matters here: filesystem
+  // routing, `redirects` and `rewrites` are untouched, and the 308
+  // repeated-slash/backslash normalization still runs in `base-server` before
+  // any proxy code.
+  skipProxyUrlNormalize: true,
   async headers() {
     return [{ source: "/(.*)", headers: STANDARD_HEADERS }];
   },

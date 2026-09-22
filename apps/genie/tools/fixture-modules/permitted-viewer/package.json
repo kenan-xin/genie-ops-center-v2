@@ -1,0 +1,19 @@
+{
+  "name": "@genie/module-permitted-viewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "@trpc/server": "11.19.0"
+  },
+  "genie": {
+    "module": {
+      "id": "permitted-viewer",
+      "entrypoint": "src/index.ts"
+    }
+  }
+}
