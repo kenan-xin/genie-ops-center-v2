@@ -39,6 +39,15 @@
   "nx": {
     "tags": [
       "module"
-    ]
+    ],
+    "targets": {
+      "test:integration": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production"
+        ]
+      }
+    }
   }
 }
