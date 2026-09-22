@@ -14,7 +14,7 @@ Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
 Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
-Owned surface: tools/generators module:new and tenant:new implementations/templates and disposable generator fixtures; no resolver implementation ownership.
+Owned surface: tools/generators module-new and tenant-new implementations/templates and disposable generator fixtures; no resolver implementation ownership.
 
 Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfile/manifests/Nx configuration and shared exports require the documented single-writer handoff even between logically independent tickets. Do not change another ticket's interfaces silently.
 

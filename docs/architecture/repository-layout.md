@@ -58,7 +58,7 @@ genie-ops-center/
         e2e/                        At least one Playwright main-path test.
         README.md                   Points to docs/modules/<capability>/.
   tools/
-    generators/                     Tagged tooling: Nx local plugin, module:new and tenant:new.
+    generators/                     Tagged tooling: Nx local plugin, module-new and tenant-new.
                                     Uses config and exposed build-safe core schemas/types only; generated
                                     modules/apps follow their destination tags and import rules.
   scripts/
@@ -126,7 +126,7 @@ Work down this list and stop at the first level that satisfies the requirement. 
 3. Entitlements. Which modules the customer has: the include list decides what is compiled into their image, and `tenant_module.enabled` switches a compiled module off without a rebuild. No code.
 4. Module configuration. A module declares a zod schema for its per-tenant settings, stored in `tenant_module.config` and edited on the Tenant Settings page. A module that two customers use with different rules exposes those rules here: thresholds, default values, which optional fields show, which steps an approval chain has. No code for the second customer.
 5. Integrations. A module that connects to a customer system reads a `tenant_integration` record: the customer's file share, document system, or bucket. Configuration and a secret reference, no code.
-6. A new module. When the requirement is a capability that does not exist, `nx g @genie/module:new <capability>` scaffolds it under `packages/modules/`, named by what it does. It is entitled to the customer who asked. It becomes generic by entitlement, not by moving.
+6. A new module. When the requirement is a capability that does not exist, `nx g @genie/generators:module-new <capability>` scaffolds it under `packages/modules/`, named by what it does. It is entitled to the customer who asked. It becomes generic by entitlement, not by moving.
 7. Hosting. Every customer has its own deployment from its own image (ADR 0007). The choice here is where it runs and who operates it: on Genie's servers, in the customer's infrastructure with Genie operating it, or in the customer's infrastructure with the customer operating it (`DEC-33`). Other customers' modules are absent from the image, code and schema alike, and the customer never receives source.
 8. A custom application. When the customer needs an experience the standard shell cannot express: a different navigation model, a purpose-built landing experience, a kiosk or embedded surface, or a portal that combines modules in its own way. An app is created under `customers/<slug>/app/` in the same monorepo. It composes `packages/core` (tenant routing, auth, authz, services, routers) and `packages/ui` (primitives and shell parts) with the modules it wants, and ships as that customer's image. It is still owned by Genie Ops Center, still tested in the same CI against the same core, and still forbidden from containing business logic: what it owns is composition, layout, and screens. The cost is maintaining that app's screens as core evolves, and only that customer pays it.
 

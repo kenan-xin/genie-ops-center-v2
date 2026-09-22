@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,62 @@ import { classifyProject } from "../classify-project.ts";
 import { moduleProjectNamingError } from "../module-naming.ts";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+
+/**
+ * The active canonical documentation, by location: the requirement specs, the
+ * architecture and core decision docs, the runbooks, the S0-08 ticket, and the
+ * root agent guidance plus the two generator-related READMEs. Historical
+ * records stay out — the ticket audits and handoffs, `docs/design/history`,
+ * `plans` and the transcript exports — so they keep their original spelling.
+ */
+const CANONICAL_DOC_DIRECTORIES = [
+  "docs/specs",
+  "docs/architecture",
+  "docs/core",
+  "docs/runbooks",
+  "docs/tickets/spec-0/08-module-and-tenant-generators",
+] as const;
+
+const CANONICAL_DOC_FILES = [
+  "CLAUDE.md",
+  "AGENTS.md",
+  "packages/modules/README.md",
+  "tools/generators/README.md",
+] as const;
+
+/**
+ * The superseded generator collection specifiers. The canonical commands are
+ * `nx g @genie/generators:module-new <capability>` and
+ * `nx g @genie/generators:tenant-new <slug>`: one collection in
+ * `@genie/generators`, never `@genie/module` or `@genie/tenant`. Matching the
+ * collection specifier rather than the full command also catches a bare
+ * `` `@genie/module:new` `` reference.
+ */
+const SUPERSEDED_GENERATOR_SPECIFIERS = [
+  "@genie/module:new",
+  "@genie/tenant:new",
+] as const;
+
+/**
+ * Every active canonical markdown document, as repository-relative paths. Only
+ * the top level of each directory is read, so the `*.md` validate inputs cover
+ * exactly these files.
+ */
+function canonicalDocPaths(): readonly string[] {
+  const paths: string[] = [...CANONICAL_DOC_FILES];
+
+  for (const directory of CANONICAL_DOC_DIRECTORIES) {
+    for (const entry of readdirSync(join(WORKSPACE_ROOT, directory), {
+      withFileTypes: true,
+    })) {
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        paths.push(join(directory, entry.name));
+      }
+    }
+  }
+
+  return paths.toSorted();
+}
 
 type NxProject = { readonly root: string; readonly tags?: readonly string[] };
 
@@ -94,4 +150,20 @@ describe("repository hygiene", () => {
       expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
     }
   );
+
+  // The single collection is `@genie/generators`; `@genie/module:new` and
+  // `@genie/tenant:new` were superseded before S0-08 implemented them, so no
+  // active canonical document may advertise them. Historical evidence is
+  // outside `canonicalDocPaths`, which is why only the active set is read.
+  it("advertises no superseded generator collection in the active canonical docs", () => {
+    const offenders = canonicalDocPaths().flatMap((path) => {
+      const contents = readFileSync(join(WORKSPACE_ROOT, path), "utf8");
+
+      return SUPERSEDED_GENERATOR_SPECIFIERS.flatMap((specifier) =>
+        contents.includes(specifier) ? [`${path}: ${specifier}`] : []
+      );
+    });
+
+    expect(offenders).toEqual([]);
+  });
 });

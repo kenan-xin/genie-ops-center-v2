@@ -516,6 +516,12 @@ importers:
       '@genie/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@genie/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@nx/devkit':
+        specifier: 23.2.1
+        version: 23.2.1(nx@23.2.1(@swc/core@1.16.2(@swc/helpers@0.5.23)))
       oxlint:
         specifier: 1.83.0
         version: 1.83.0
