@@ -41,7 +41,7 @@ async function isReady(url: string): Promise<boolean> {
 }
 
 /**
- * Whether anything at all holds the port.
+ * Whether anything holds the loopback IPv4 address the server binds.
  *
  * A raw connection rather than an HTTP probe, because the thing to keep this
  * run away from is not only a healthy server. A process still shutting down,
@@ -49,6 +49,9 @@ async function isReady(url: string): Promise<boolean> {
  * would call the port free; `next dev` then fails to bind with `EADDRINUSE`,
  * which reads as the server "never becoming ready". A refused connection is the
  * only proof the port is free.
+ *
+ * The IPv4 loopback only, which is the one address this run binds and probes.
+ * A listener on `::1` alone is invisible here and does not conflict.
  */
 function isListening(port: number): Promise<boolean> {
   return new Promise((settle) => {
@@ -113,13 +116,13 @@ export default async function globalSetup(): Promise<void> {
 
   // `--hostname 127.0.0.1` is load-bearing, not tidiness. Next blocks its
   // development-only resources, `/_next/hmr` included, unless the request's
-  // origin is one it considers its own, and it treats `127.0.0.1` as a different
-  // origin from the `localhost` it binds by default. The browser reaches the
-  // server at `127.0.0.1`, so without this the HMR socket is refused, the
-  // development client reconnects and reloads in a loop, and the page never
-  // hydrates. A `client-only` subtree such as the `ssr: false` devtools mount
-  // then never renders at all, which is the failure this harness once mistook
-  // for a defect inside the devtools shell.
+  // origin is one it considers its own, and its allowlist carries `localhost`
+  // but not the bare `127.0.0.1`. The browser reaches the server at
+  // `127.0.0.1`, so without this the HMR socket is refused, the development
+  // client reconnects and reloads in a loop, and the page never hydrates. A
+  // `client-only` subtree such as the `ssr: false` devtools mount then never
+  // renders at all, which is the failure this harness once mistook for a defect
+  // inside the devtools shell.
   //
   // `next dev` rather than the built server, because the development branch of
   // the mount is the whole subject of these specs. NODE_ENV is set by `next

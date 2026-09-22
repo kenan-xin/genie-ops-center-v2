@@ -9,13 +9,13 @@ import { expect, test, type Page } from "@playwright/test";
  * starts on the host with `--hostname 127.0.0.1`.
  *
  * That hostname is load-bearing. Next refuses its development-only resources,
- * `/_next/hmr` among them, for an origin it does not consider its own, and it
- * treats `127.0.0.1` as a different origin from the `localhost` it binds by
- * default. The browser reaches this server at `127.0.0.1`, so without it the
- * HMR socket is refused, the development client reconnects and reloads in a
- * loop, and the page never hydrates. The devtools mount is `ssr: false`, so it
- * is client-only: no hydration means the shell never renders at all. That is
- * the whole of a failure once misread here as an upstream defect in the shell.
+ * `/_next/hmr` among them, for an origin it does not consider its own, and its
+ * allowlist carries `localhost` but not the bare `127.0.0.1`. The browser
+ * reaches this server at `127.0.0.1`, so without the flag the HMR socket is
+ * refused, the development client reconnects and reloads in a loop, and the
+ * page never hydrates. The devtools mount is `ssr: false`, so it is client-only:
+ * no hydration means the shell never renders at all. That is the whole of a
+ * failure once misread here as an upstream defect in the shell.
  *
  * Two interface notes, both true of `@tanstack/react-devtools` 0.10.12 with the
  * core 0.14.2 it pins, on Next 16.3.5 and React 19.3:
@@ -52,9 +52,14 @@ async function openPanel(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name }).click();
 }
 
-/** One value, read through the term that labels it rather than by position. */
+/** One value, read through the exact term that labels it rather than by position. */
 function fact(page: Page, label: string) {
-  return page.locator("dt", { hasText: label }).locator("+ dd");
+  // An exact XPath match, not `hasText`: Playwright's `hasText` is a
+  // case-insensitive substring, so a later term such as "Database schema" would
+  // satisfy a lookup for "Database" and this would assert the wrong value.
+  return page.locator(
+    `xpath=//dt[normalize-space(.)="${label}"]/following-sibling::dd[1]`
+  );
 }
 
 test("the devtools open and report this deployment truthfully", async ({
@@ -106,10 +111,10 @@ test("puts no secret on the screen", async ({ page }) => {
   const shown = await page.locator("body").innerText();
 
   // The connection string this deployment really runs on carries a user, a
-  // password, a host and a port. The panel reports the database name alone, and
-  // none of the rest may be anywhere on the page.
+  // password, a host and a port. None of them may be on the page; 5433 is the
+  // port this run's database is published on (`compose.dev-e2e.yaml`).
   expect(shown).not.toContain("genie:genie");
-  expect(shown).not.toContain("5432");
+  expect(shown).not.toContain("5433");
   expect(shown).not.toContain("postgres://");
   expect(shown).not.toContain("127.0.0.1");
 });
