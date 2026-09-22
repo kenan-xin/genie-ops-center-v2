@@ -88,6 +88,46 @@ describe("nx g @genie/generators:module", () => {
     expect(manifest.dependencies["@genie/module-demo"]).toBe("workspace:*");
   });
 
+  it("adds the first dependency to a manifest that declares none", async () => {
+    const { tree } = emptyTree();
+
+    tree.write(APP_MANIFEST, `${JSON.stringify({ name: "@genie/app" })}\n`);
+
+    await moduleGenerator(tree, { name: "demo" });
+
+    // SAFETY: the bytes are the manifest the generator just rewrote; both fields
+    // read below are asserted.
+    const manifest = JSON.parse(tree.read(APP_MANIFEST, "utf-8") ?? "{}") as {
+      name?: string;
+      dependencies?: Record<string, string>;
+    };
+
+    expect(manifest.name).toBe("@genie/app");
+    expect(manifest.dependencies).toEqual({
+      "@genie/module-demo": "workspace:*",
+    });
+  });
+
+  it("names the file when the manifest is not valid JSON", async () => {
+    const { tree } = emptyTree();
+
+    tree.write(APP_MANIFEST, "{ not json");
+
+    await expect(moduleGenerator(tree, { name: "demo" })).rejects.toThrow(
+      /apps\/genie\/package\.json is not valid JSON/
+    );
+  });
+
+  it("refuses a manifest whose dependencies field is not an object", async () => {
+    const { tree } = emptyTree();
+
+    tree.write(APP_MANIFEST, JSON.stringify({ dependencies: "none" }));
+
+    await expect(moduleGenerator(tree, { name: "demo" })).rejects.toThrow(
+      /not an object/
+    );
+  });
+
   it("leaves the application alone when it has no manifest to edit", async () => {
     const { tree, added } = emptyTree();
 

@@ -19,9 +19,13 @@ export default async function ModuleAdminRoute(props: {
 
   if (module === undefined) notFound();
 
+  // Pinned to this module's own admin key, for the reason the workspace route
+  // beside this one records.
   const entry = module.navigation.entries.find(
     (candidate) =>
-      candidate.surface === "admin" && candidate.path === `/admin/m/${moduleId}`
+      candidate.surface === "admin" &&
+      candidate.path === `/admin/m/${moduleId}` &&
+      candidate.requiredPermission === `${moduleId}:admin`
   );
 
   if (entry === undefined) notFound();

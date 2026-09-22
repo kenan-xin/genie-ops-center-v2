@@ -32,18 +32,44 @@ function addToApplication(tree: Tree, packageName: string): void {
 
   if (current === null) return;
 
-  // SAFETY: the bytes come from the manifest just read, and the only field used
-  // below is checked for absence first.
-  const manifest = JSON.parse(current) as AppManifest;
+  let manifest: AppManifest;
 
-  const dependencies = {
-    ...manifest.dependencies,
-    [packageName]: "workspace:*",
-  };
+  try {
+    // SAFETY: the parse is guarded below; nothing is read from it before its
+    // shape is checked.
+    manifest = JSON.parse(current) as AppManifest;
+  } catch (error) {
+    throw new Error(
+      `${APP_MANIFEST} is not valid JSON, so the new module cannot be added to it.`,
+      { cause: error }
+    );
+  }
 
+  const existing = manifest.dependencies;
+
+  // A manifest is a file anyone can edit, so the one field this function writes
+  // is checked before it is spread. Spreading a string here would write its
+  // characters into the manifest as index-keyed dependencies.
+  if (existing !== undefined && Object(existing) !== existing) {
+    throw new Error(
+      `${APP_MANIFEST} has a "dependencies" field that is not an object, so the new module cannot be added to it.`
+    );
+  }
+
+  if (Array.isArray(existing)) {
+    throw new Error(
+      `${APP_MANIFEST} has a "dependencies" field that is a list, not an object, so the new module cannot be added to it.`
+    );
+  }
+
+  const dependencies = { ...existing, [packageName]: "workspace:*" };
+
+  // Sorted by code point, which is what a manifest formatter uses. A
+  // locale-sensitive comparison would order two names differently on two
+  // machines and show up as a diff on the next format.
   const sorted = Object.fromEntries(
     Object.entries(dependencies).toSorted(([left], [right]) =>
-      left.localeCompare(right)
+      left < right ? -1 : left > right ? 1 : 0
     )
   );
 
@@ -63,9 +89,10 @@ export type ModuleGeneratorSchema = {
  * Writes a new module package into the workspace (R-29, R-30).
  *
  * Rendering happens first and in full, so a refused id or display name fails the
- * command before a single file is written. The generator writes inside
- * `packages/modules/<id>/` and nowhere else: registering the package is pnpm's
- * `packages/modules/*` glob and Nx's inference, not an edit to a shared file.
+ * command before a single file is written. The generator writes the module's own
+ * folder and one line of the standard application's manifest, which
+ * `addToApplication` above explains; nothing else in the workspace is touched,
+ * because pnpm's `packages/modules/*` glob and Nx's inference do the rest.
  *
  * An existing folder is never overwritten. Regenerating over a module that people
  * have edited would destroy their work, and a module is scaffolded once.

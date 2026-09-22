@@ -55,11 +55,12 @@ export type ConfigurationFile = TenantYamlFile | BrandingSeedFile;
  * answer is no.
  *
  * The authoritative schemas are `tenantYamlSchema` and `brandingSeedSchema` in
- * `packages/core/src/lib/tenant-config/` (R-31, DEC-35). This package's manifest
- * does not declare `@genie/core`, so it cannot import them, and copying them here
- * would create a second source of truth for what a customer may write. They are
- * passed in instead. A zod schema satisfies this type as it stands, with no
- * adapter at the call site.
+ * `packages/core/src/lib/tenant-config/` (R-31, DEC-35), and `CORE_VALIDATORS`
+ * below binds exactly those as the default. The parameter stays because a test of
+ * this renderer must be able to drive the seam without the schemas under test,
+ * and because copying a schema here would create a second source of truth for
+ * what a customer may write. A zod schema satisfies this type as it stands, with
+ * no adapter at the call site.
  */
 export type StrictSchema = {
   safeParse(value: ConfigurationFile): {

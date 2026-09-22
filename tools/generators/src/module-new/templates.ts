@@ -555,8 +555,9 @@ import { describe, expect, it } from "vitest";
  * The authorization half of this module's denial proof, against the real seam.
  *
  * \`can()\` is the only permission check there is (DEC-39), and the Section 0 stub grants one
- * key that belongs to another module, so every caller is refused here. The workspace page's
- * \`canUse\` prop is this value, and the refused stories render what a person then sees.
+ * key that belongs to another module, so every caller is refused here. The application's page
+ * loader asks the same question before it mounts a page of this module, and answers a refused
+ * person with its own denied response.
  *
  * A caller who is granted \`${names.id}:use\` arrives with real roles in Section 2. Until then a
  * failing expectation here is a real change in the seam, and widening the stub is never the fix.

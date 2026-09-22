@@ -31,9 +31,15 @@ export default async function ModuleWorkspaceRoute(props: {
 
   if (module === undefined) notFound();
 
+  // The permission is pinned to this module's own key rather than taken from the
+  // entry as declared. A generic route answers for every compiled module, so a
+  // declaration naming another module's key would otherwise reach this page with
+  // a grant it was never given.
   const entry = module.navigation.entries.find(
     (candidate) =>
-      candidate.surface === "workspace" && candidate.path === `/m/${moduleId}`
+      candidate.surface === "workspace" &&
+      candidate.path === `/m/${moduleId}` &&
+      candidate.requiredPermission === `${moduleId}:use`
   );
 
   if (entry === undefined) notFound();

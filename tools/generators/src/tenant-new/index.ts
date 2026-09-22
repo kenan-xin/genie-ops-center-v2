@@ -1,8 +1,8 @@
 /**
  * The `@genie/tenant:new <slug>` rendering contract (R-31).
  *
- * The Nx generator entry point that writes these bytes and passes the core schemas
- * in is not here yet; it arrives with workspace registration.
+ * `generator.ts` beside this file is the Nx entry point that writes these bytes,
+ * registered in `generators.json` as `nx g @genie/generators:tenant`.
  */
 
 export {

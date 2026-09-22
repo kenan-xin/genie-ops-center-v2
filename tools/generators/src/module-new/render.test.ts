@@ -227,7 +227,8 @@ describe("the rendered user interface", () => {
       // Prose may name the seam; code may not reach for it.
       const code = content
         .split("\n")
-        .filter((line) => !/^\s*(\/\/|\/?\*)/.test(line))
+        // A JSX comment opens with `{/*`, so it is stripped too.
+        .filter((line) => !/^\s*(\{?\/\/|\{?\/?\*)/.test(line))
         .join("\n");
 
       expect(code, path).not.toMatch(/\bcan\(/);
