@@ -1,10 +1,15 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { startDisposableDeployment } from "@genie/core/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   REQUIRED_HEADERS,
+  WORKSPACE_ROOT,
   argNamesInHistory,
   buildImageWith,
+  collectImageFilesystem,
   collectImagePublicCorpus,
   dockerHistory,
   imageFilePaths,
@@ -13,7 +18,11 @@ import {
   scanCorpusForMigrationSql,
   startImage,
 } from "./image-process.ts";
-import { scanFiles, scanHistory } from "./image-scan.ts";
+import {
+  declaredBuildArguments,
+  scanFiles,
+  scanHistory,
+} from "./image-scan.ts";
 import {
   RELEASE_MATRIX_CASES,
   RELEASE_MATRIX_DESCRIBE,
@@ -38,15 +47,14 @@ const DEVELOPMENT_IMAGE = "genie-s011:development";
 
 const EMPTY_IMAGE = "genie-s011:empty";
 
-const BASE_IMAGE = "node:26-alpine";
+/** The Dockerfile's own declared arguments, R-32's authority. */
+const DECLARED_ARGUMENTS = declaredBuildArguments(
+  readFileSync(join(WORKSPACE_ROOT, "deploy/Dockerfile"), "utf8")
+);
 
 describe(RELEASE_MATRIX_DESCRIBE, () => {
-  let baseArgs: readonly string[] = [];
-
   beforeAll(async () => {
     await requireDocker();
-
-    baseArgs = argNamesInHistory(await dockerHistory(BASE_IMAGE));
   }, 120000);
 
   it(
@@ -261,8 +269,18 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
 
           const history = await dockerHistory(image.id);
 
+          // Our Dockerfile declares one build argument, and the built image's
+          // history carries no other argument of ours. Base-image arguments and
+          // BuildKit metadata are derived from the history as "every ARG this
+          // Dockerfile does not declare", so no base image needs to be pulled.
+          expect(DECLARED_ARGUMENTS).toEqual(["MODULE_INCLUDE"]);
+
+          const inherited = argNamesInHistory(history).filter(
+            (name) => !DECLARED_ARGUMENTS.includes(name)
+          );
+
           expect(
-            scanHistory(history, { ignoreArgs: baseArgs }).filter(
+            scanHistory(history, { ignoreArgs: inherited }).filter(
               ({ kind }) => kind === "build-argument"
             )
           ).toEqual([]);
@@ -271,16 +289,21 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             scanHistory(history).filter(({ kind }) => kind === "secret")
           ).toEqual([]);
 
-          const files = await imageFilePaths(image.id);
+          const files = await collectImageFilesystem(image.id);
 
           // The inventory is real, not an empty walk: the standalone server
-          // entry is present. The scanner's own non-vacuity control (it finds an
-          // included module when one is excluded) is proved in image-scan.test.ts.
-          expect(files.some(({ path }) => path.endsWith("server.js"))).toBe(
-            true
-          );
+          // entry is present with non-empty content, so the content rules below
+          // are not running over an empty corpus. The scanner's own non-vacuity
+          // control (it finds an included module when one is excluded) is proved
+          // in image-scan.test.ts.
+          const server = files.find(({ path }) => path.endsWith("server.js"));
 
-          // Publicly served migration SQL must not travel (F2).
+          expect(server).toBeDefined();
+          expect((server?.content ?? "").length).toBeGreaterThan(0);
+
+          // Publicly served migration SQL must not travel (F2). This uses the
+          // bytes the image serves; the filesystem scan below uses the bytes it
+          // holds, so the two are independent.
           const corpus = await collectImagePublicCorpus(
             image.id,
             "http://127.0.0.1:3424"
@@ -288,8 +311,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
 
           expect(scanCorpusForMigrationSql(corpus)).toEqual([]);
 
-          // No development-only tooling or secret on the filesystem. Content is
-          // empty here by design: the corpus scan above reads the served bytes.
+          // No development-only tooling, publicly served migration file or
+          // secret in the filesystem, over the real file bytes.
           const findings = scanFiles(files, {
             includedModules: ["placeholder"],
             excludedModules: [],

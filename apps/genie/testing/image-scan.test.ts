@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   EXCLUDED_MODULE_PATH_NEEDLE,
+  MAX_SCANNED_FILE_BYTES,
+  declaredBuildArguments,
   devToolingNeedles,
+  filesystemEntries,
   scanFiles,
   scanHistory,
   secretNeedles,
@@ -186,6 +189,65 @@ describe("the image filesystem scanner", () => {
     ];
 
     expect(scanFiles(files, base)).toEqual([]);
+  });
+});
+
+describe("the Dockerfile argument parser", () => {
+  it("reads the declared argument names and ignores comments and ENV", () => {
+    const dockerfile = [
+      "# ARG NOT_A_DECLARATION",
+      "FROM node:26-alpine AS builder",
+      "",
+      "ARG MODULE_INCLUDE",
+      "ENV MODULE_INCLUDE=${MODULE_INCLUDE}",
+      "ARG   SPACED_NAME  ",
+    ].join("\n");
+
+    expect(declaredBuildArguments(dockerfile)).toEqual([
+      "MODULE_INCLUDE",
+      "SPACED_NAME",
+    ]);
+  });
+
+  it("returns nothing for a Dockerfile that declares no argument", () => {
+    expect(declaredBuildArguments("FROM scratch\n")).toEqual([]);
+  });
+});
+
+/** One in-container inventory line for a file whose content is `content`. */
+const inventoryLine = (path: string, content: string) =>
+  JSON.stringify({ path, b64: Buffer.from(content).toString("base64") });
+
+describe("the filesystem inventory parser", () => {
+  it("decodes content and de-duplicates a path read twice", () => {
+    const files = filesystemEntries(
+      [
+        inventoryLine("/app/server.js", "self.__next_f.push()"),
+        inventoryLine("/app/server.js", "self.__next_f.push()"),
+        inventoryLine("/app/modules.ts", 'import "@genie/module-placeholder";'),
+      ].join("\n")
+    );
+
+    expect(files).toHaveLength(2);
+    expect(files[0]?.content).toContain("__next_f");
+  });
+
+  it("fails closed on an oversized file instead of scanning nothing", () => {
+    expect(() =>
+      filesystemEntries(
+        JSON.stringify({
+          path: "/app/big.js",
+          oversized: MAX_SCANNED_FILE_BYTES + 1,
+        })
+      )
+    ).toThrow(/fails closed/);
+  });
+
+  it("fails closed on a malformed line", () => {
+    expect(() => filesystemEntries("{not json")).toThrow();
+    expect(() => filesystemEntries(JSON.stringify({ b64: "aGk=" }))).toThrow(
+      /malformed/
+    );
   });
 });
 

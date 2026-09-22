@@ -59,9 +59,12 @@ export function secretNeedles(): readonly RegExp[] {
   return [
     /postgres(ql)?:\/\/[^\s:@/]+:[^\s@/]+@/,
     /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-    /\bPASSWORD\s*[=:]\s*\S/i,
-    /\bSECRET\s*[=:]\s*\S/i,
-    /\bapi[_-]?key\s*[=:]\s*\S/i,
+    // Each assignment needs a plausible value (at least six characters after an
+    // optional quote), so `password: ""` in bundled code is not mistaken for a
+    // committed secret while `password=hunter2` is.
+    /\bPASSWORD\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
+    /\bSECRET\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
+    /\bapi[_-]?key\s*[=:]\s*["']?[A-Za-z0-9!@#$%^&*_+.-]{6,}/i,
     /\bBearer\s+[A-Za-z0-9._-]{8,}/,
   ];
 }
@@ -111,6 +114,26 @@ export function EXCLUDED_MODULE_PATH_NEEDLE(id: string): string {
 
 const matchesSecret = (text: string) =>
   secretNeedles().some((needle) => needle.test(text));
+
+const DECLARED_DOCKERFILE_ARGUMENT = /^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)/;
+
+/**
+ * The `ARG` names a Dockerfile declares, in file order. This is the authority
+ * R-32 speaks about: the arguments our file declares. `docker history` also
+ * carries the base image's own arguments and BuildKit metadata, which are not
+ * ours, so the two sets are compared rather than one inferred from the image.
+ */
+export function declaredBuildArguments(dockerfile: string): readonly string[] {
+  const names: string[] = [];
+
+  for (const line of dockerfile.split("\n")) {
+    const declared = DECLARED_DOCKERFILE_ARGUMENT.exec(line);
+
+    if (declared !== null && declared[1] !== undefined) names.push(declared[1]);
+  }
+
+  return names;
+}
 
 export type HistoryScanOptions = {
   /**
@@ -164,6 +187,68 @@ export function scanHistory(
   }
 
   return findings;
+}
+
+/** A usable non-empty string field of a gathered inventory line. */
+function isNonEmptyString(value: unknown): value is string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of inventory bytes
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/**
+ * The largest file whose content the scanner reads. A file above it is reported
+ * as an `oversized` record and the proof fails closed rather than scanning a
+ * truncated body, so nothing silently escapes the content rules.
+ */
+export const MAX_SCANNED_FILE_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Parses the in-container filesystem inventory into `{ path, content }` pairs.
+ *
+ * The container emits one JSON object per regular file: `{ path, b64 }` inside
+ * the size cap, or `{ path, oversized }` above it. An oversized record throws
+ * with the path named — a bounded scan that skipped the file would be a false
+ * negative, which is exactly what this collection exists to prevent. Duplicate
+ * paths (a pnpm symlink and its target) are read once.
+ */
+export function filesystemEntries(stdout: string): readonly ImageFile[] {
+  const seen = new Set<string>();
+  const files: ImageFile[] = [];
+
+  for (const line of stdout.split("\n").filter((entry) => entry !== "")) {
+    // SAFETY: each line is one JSON object the container's own walk emitted; the
+    // fields are re-validated below before use.
+    const parsed = JSON.parse(line) as {
+      path?: unknown;
+      b64?: unknown;
+      oversized?: unknown;
+    };
+
+    if (!isNonEmptyString(parsed.path)) {
+      throw new Error(`malformed filesystem inventory line: ${line}`);
+    }
+
+    if (Number.isFinite(parsed.oversized) && Number(parsed.oversized) > 0) {
+      throw new Error(
+        `the image carries an unscanned file of ${String(parsed.oversized)} bytes at ${parsed.path}; it exceeds the scanner's ${MAX_SCANNED_FILE_BYTES}-byte cap, so the proof fails closed rather than skip it (F2, R-33).`
+      );
+    }
+
+    if (!isNonEmptyString(parsed.b64)) {
+      throw new Error(`malformed filesystem inventory line: ${line}`);
+    }
+
+    if (seen.has(parsed.path)) continue;
+
+    seen.add(parsed.path);
+
+    files.push({
+      path: parsed.path,
+      content: Buffer.from(parsed.b64, "base64").toString("utf8"),
+    });
+  }
+
+  return files;
 }
 
 export type FileScanOptions = {

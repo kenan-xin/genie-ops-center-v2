@@ -3,6 +3,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
+import {
+  MAX_SCANNED_FILE_BYTES,
+  filesystemEntries,
+  type ImageFile,
+} from "./image-scan.ts";
+
 const run = promisify(execFile);
 
 /** The image every integration test drives. */
@@ -131,6 +137,47 @@ export async function imageFilePaths(
     .map((line) => line.trim())
     .filter((line) => line !== "")
     .map((path) => ({ path, content: "" }));
+}
+
+/**
+ * Every regular file in the image's application tree with its content, so the
+ * exclusion, secret and dev-tooling rules run against real bytes rather than
+ * paths alone.
+ *
+ * `find -L` follows the pnpm symlinks in a standalone tree and detects loops;
+ * the walk reports each real file once. A file above the scanner's cap is
+ * emitted as `oversized` and the parser fails closed, so nothing is silently
+ * left unscanned. Binary files are still read (their bytes decoded as UTF-8);
+ * the needles are ASCII, so a match survives the decode.
+ */
+export async function collectImageFilesystem(
+  id: string
+): Promise<readonly ImageFile[]> {
+  const script = `
+    const fs = require("node:fs");
+    const { execFileSync } = require("node:child_process");
+    const roots = execFileSync("find", ["-L", "/app", "-type", "f"], { encoding: "utf8" })
+      .trim().split("\\n").filter(Boolean);
+    const seen = new Set();
+    for (const candidate of roots) {
+      let real;
+      try { real = fs.realpathSync(candidate); } catch { continue; }
+      if (seen.has(real)) continue;
+      seen.add(real);
+      const size = fs.statSync(real).size;
+      if (size > ${MAX_SCANNED_FILE_BYTES}) {
+        console.log(JSON.stringify({ path: real, oversized: size }));
+        continue;
+      }
+      console.log(JSON.stringify({ path: real, b64: fs.readFileSync(real).toString("base64") }));
+    }
+  `.trim();
+
+  const { stdout } = await run("docker", ["exec", id, "node", "-e", script], {
+    maxBuffer: 512 * 1024 * 1024,
+  });
+
+  return filesystemEntries(stdout);
 }
 
 /**
