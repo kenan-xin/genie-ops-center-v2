@@ -15,18 +15,20 @@ import {
 } from "./required-tests-guard.ts";
 
 /**
- * The runner's own controls (R-20, AC-4): the mandatory guard must be able to
- * fail. A guard that cannot fail is decoration, and the reviewed bypass —
- * filtering the isolation case away while the command stayed green — is exactly
- * what these controls disprove, at the validator level and through the real
- * runner command line.
+ * The core integration runner's own controls (AC-6, AC-9, R-25a–R-28).
+ *
+ * The migrator matrix and the tenant-context containment proof are the S0-07
+ * acceptance evidence, and `passWithNoTests: false` cannot see a case that was
+ * filtered away while the other integration files still collect. These controls
+ * prove the guard beside `tools/run-required-tests.ts` can fail — at the
+ * validator level and through the real runner command line — so an
+ * all-skipped or miscollected run cannot return green.
  *
  * The command-line cases run against synthetic workspaces under the operating
  * system's temporary directory: the manifest stays fixed in the runner, and the
  * synthetic `--config` is an ordinary vitest flag, so no invocation switch that
- * disables the manifest exists to misuse. The one real-config case below is the
- * reviewed negative control itself, which starts no container because its
- * filter matches nothing anywhere.
+ * disables the manifest exists to misuse. The one real-config case below starts
+ * no container because its filter matches nothing anywhere.
  */
 /** One manifest entry by file, failing loudly rather than on an index guess. */
 function manifestEntry(file: string) {
@@ -39,11 +41,11 @@ function manifestEntry(file: string) {
   return entry;
 }
 
-const isolation = manifestEntry("testing/isolation.integration.test.ts");
+const migrator = manifestEntry("testing/migrator.integration.test.ts");
 
-const image = manifestEntry("testing/image.startup.test.ts");
-
-const viewer = manifestEntry("testing/viewer-background.integration.test.ts");
+const tenantContext = manifestEntry(
+  "testing/tenant-context.integration.test.ts"
+);
 
 function reportOf(
   files: readonly {
@@ -77,7 +79,7 @@ function violationFor(report: TestReport): string {
   return violations.join(" | ");
 }
 
-describe("the manifest validator", () => {
+describe("the core integration manifest validator", () => {
   it("accepts a report that proves every mandatory case", () => {
     expect(violationFor(healthyReport())).toBe("");
   });
@@ -90,8 +92,8 @@ describe("the manifest validator", () => {
   });
 
   it("fails a mandatory file vitest never collected", () => {
-    const withoutViewer = reportOf(
-      REQUIRED_TESTS.filter((entry) => entry.file !== viewer.file).map(
+    const withoutTenantContext = reportOf(
+      REQUIRED_TESTS.filter((entry) => entry.file !== tenantContext.file).map(
         (entry) => ({
           file: entry.file,
           assertions: entry.cases.map((fullName) => ({
@@ -102,22 +104,22 @@ describe("the manifest validator", () => {
       )
     );
 
-    expect(violationFor(withoutViewer)).toContain(
-      `${viewer.file}: was never collected`
+    expect(violationFor(withoutTenantContext)).toContain(
+      `${tenantContext.file}: was never collected`
     );
   });
 
   it("fails one removed mandatory case while another in the file remains", () => {
-    const [first, second] = isolation.cases;
+    const [first, second] = migrator.cases;
 
-    const halfIsolation = reportOf([
+    const halfMigrator = reportOf([
       {
-        file: isolation.file,
+        file: migrator.file,
         assertions: [{ fullName: second ?? "", status: "passed" }],
       },
     ]);
 
-    expect(violationFor(halfIsolation)).toContain(
+    expect(violationFor(halfMigrator)).toContain(
       `mandatory case was never collected: ${first}`
     );
   });
@@ -128,7 +130,7 @@ describe("the manifest validator", () => {
         file: entry.file,
         assertions: entry.cases.map((fullName) => ({
           fullName,
-          status: entry.file === viewer.file ? "skipped" : "passed",
+          status: entry.file === migrator.file ? "skipped" : "passed",
         })),
       }))
     );
@@ -143,7 +145,7 @@ describe("the manifest validator", () => {
           file: entry.file,
           assertions: entry.cases.map((fullName) => ({
             fullName,
-            status: entry.file === viewer.file ? status : "passed",
+            status: entry.file === migrator.file ? status : "passed",
           })),
         }))
       );
@@ -159,7 +161,7 @@ describe("the manifest validator", () => {
         assertions: entry.cases.map((fullName, index) => ({
           fullName,
           status:
-            entry.file === isolation.file && index === 0 ? "failed" : "passed",
+            entry.file === migrator.file && index === 0 ? "failed" : "passed",
         })),
       }))
     );
@@ -170,8 +172,8 @@ describe("the manifest validator", () => {
   it("fails a present mandatory case whose status is absent", () => {
     const absent = reportOf([
       {
-        file: isolation.file,
-        assertions: [{ fullName: isolation.cases[0] ?? "" }],
+        file: migrator.file,
+        assertions: [{ fullName: migrator.cases[0] ?? "" }],
       },
     ]);
 
@@ -182,9 +184,9 @@ describe("the manifest validator", () => {
   it("fails a present mandatory case whose status is unrecognized", () => {
     const unknown = reportOf([
       {
-        file: isolation.file,
+        file: migrator.file,
         assertions: [
-          { fullName: isolation.cases[0] ?? "", status: "flaky-green" },
+          { fullName: migrator.cases[0] ?? "", status: "flaky-green" },
         ],
       },
     ]);
@@ -203,23 +205,23 @@ describe("the manifest validator", () => {
     );
 
     expect(violations).toContain(
-      `${isolation.file}: was never collected. A mandatory file cannot silently go missing.`
+      `${migrator.file}: was never collected. A mandatory file cannot silently go missing.`
     );
   });
 
   it("ignores a null-named assertion without losing the real cases", () => {
     const mixed = reportOf([
       {
-        file: isolation.file,
+        file: migrator.file,
         assertions: [
           { fullName: null },
-          ...isolation.cases.map((fullName) => ({
+          ...migrator.cases.map((fullName) => ({
             fullName,
             status: "passed",
           })),
         ],
       },
-      ...REQUIRED_TESTS.filter((entry) => entry.file !== isolation.file).map(
+      ...REQUIRED_TESTS.filter((entry) => entry.file !== migrator.file).map(
         (entry) => ({
           file: entry.file,
           assertions: entry.cases.map((fullName) => ({
@@ -242,7 +244,7 @@ function makeWorkspace(
   name: string,
   files: Readonly<Record<string, string>>
 ): string {
-  const root = join(tmpdir(), `genie-runner-${name}`);
+  const root = join(tmpdir(), `genie-core-runner-${name}`);
 
   rmSync(root, { recursive: true, force: true });
 
@@ -262,14 +264,20 @@ function makeWorkspace(
   return root;
 }
 
-function runRunner(cwd: string, args: readonly string[]): number {
+/** The status and stderr of one runner invocation, so a case can prove the reason. */
+type RunnerResult = {
+  readonly status: number;
+  readonly stderr: string;
+};
+
+function runRunner(cwd: string, args: readonly string[]): RunnerResult {
   const result = spawnSync("node", [RUNNER, ...args], {
     cwd,
     env: { ...process.env, GENIE_RUNNER_QUIET: "1" },
     encoding: "utf8",
   });
 
-  return result.status ?? -1;
+  return { status: result.status ?? -1, stderr: result.stderr ?? "" };
 }
 
 /**
@@ -305,8 +313,9 @@ function skippedCase(name: string): string {
  * declares each of those full names as a top-level case, which vitest reports
  * with exactly that name, and the names are read from the manifest rather than
  * transcribed here. A newly required file or case therefore cannot silently
- * drift out of these controls — the failure that let the devtools-exclusion
- * entry enter the manifest while every synthetic workspace still omitted it.
+ * drift out of these controls — the failure that let the app's
+ * devtools-exclusion entry enter its manifest while every synthetic workspace
+ * still omitted it (`genie-ops-center-v2-c74`).
  */
 function passingFile(entry: RequiredCase): string {
   return entry.cases.map((name) => passingCase(name)).join("\n");
@@ -319,41 +328,47 @@ function passingWorkspace(): Readonly<Record<string, string>> {
   );
 }
 
-describe("the runner command line", () => {
+describe("the core integration runner command line", () => {
   it("exits zero when every mandatory case runs and passes", () => {
     const workspace = makeWorkspace("healthy", passingWorkspace());
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(0);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(0);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it("exits nonzero when one mandatory case is removed and another remains", () => {
-    const workspace = makeWorkspace("half-isolation", {
+    const workspace = makeWorkspace("half-migrator", {
       ...passingWorkspace(),
-      [isolation.file]: passingCase(manifestCase(isolation, 1)),
+      [migrator.file]: passingCase(manifestCase(migrator, 1)),
     });
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it("exits nonzero when a mandatory case is skipped in source", () => {
-    const workspace = makeWorkspace("skipped-isolation", {
+    const workspace = makeWorkspace("skipped-migrator", {
       ...passingWorkspace(),
-      [isolation.file]: [
-        skippedCase(manifestCase(isolation, 0)),
-        passingCase(manifestCase(isolation, 1)),
+      [migrator.file]: [
+        skippedCase(manifestCase(migrator, 0)),
+        passingCase(manifestCase(migrator, 1)),
       ].join("\n"),
     });
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -364,13 +379,15 @@ describe("the runner command line", () => {
       "missing-file",
       Object.fromEntries(
         Object.entries(passingWorkspace()).filter(
-          ([file]) => file !== image.file
+          ([file]) => file !== tenantContext.file
         )
       )
     );
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -378,14 +395,17 @@ describe("the runner command line", () => {
 
   // The reviewed negative control, against the real configuration: a filter
   // that matches nothing anywhere skips every file, so no container starts and
-  // the run must still fail here rather than report green.
-  it("exits nonzero for the reviewed filtered run of the real config", () => {
-    expect(
-      runRunner(import.meta.dirname, [
-        "testing/isolation.integration.test.ts",
-        "-t",
-        "__review_no_case_matches__",
-      ])
-    ).toBe(1);
+  // the run must fail here rather than report green. The stderr assertion is
+  // the point: exit 1 alone would also come from a missing config or a
+  // collection error, which would not prove the skip path.
+  it("exits nonzero for a filtered run of the real config, naming the skipped case", () => {
+    const result = runRunner(resolve(import.meta.dirname, ".."), [
+      "-t",
+      "__review_no_case_matches__",
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("mandatory case did not execute");
+    expect(result.stderr).toContain(manifestCase(migrator, 0));
   }, 120000);
 });

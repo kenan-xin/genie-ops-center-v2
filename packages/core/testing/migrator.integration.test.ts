@@ -31,6 +31,9 @@ import { startDisposablePostgres } from "./index.ts";
  */
 const ALPHA_TABLE = 'CREATE TABLE "alpha_record" ("id" integer PRIMARY KEY);';
 
+/** What a deferred resolver holds until the promise beside it hands over the real one. */
+const UNRESOLVED = () => {};
+
 const cleanups: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
@@ -157,6 +160,25 @@ async function advisoryLockOwner(client: Client): Promise<number | undefined> {
   );
 
   return result.rows[0]?.pid;
+}
+
+/**
+ * A latch that opens the first time a run reports one named event. A second run starts on it,
+ * so the contention is real: the first run is inside its lock window when the second begins.
+ */
+function eventLatch(name: string) {
+  let open: () => void = UNRESOLVED;
+
+  const reached = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+
+  return {
+    reached,
+    hit: (event: string) => {
+      if (event === name) open();
+    },
+  };
 }
 
 /** A statement as pg accepts it: plain text, or a config naming its text. */
@@ -456,6 +478,297 @@ describe("the migrator against a real database", () => {
 
     expect(await appliedCount(context, "__drizzle_migrations_broken")).toBe(0);
     expect(await tableExists(context, "broken_record")).toBe(false);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+});
+
+/**
+ * Two real migrator runs against one database, each on its own reserved session. The earlier
+ * tests hold the lock from a plain `pg.Client`, which proves the wait but not that a second
+ * migrator behaves. These start `runMigrations` twice and read what the loser did (R-26).
+ */
+describe("two migrator runs contending for the one lock", () => {
+  it("makes the second wait, apply nothing while it waits, and finish after the release", async () => {
+    const context = await freshDeployment();
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    // The sleep keeps the first run inside its lock window while the second one starts.
+    const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(0.5);");
+
+    const plan = migrationPlan([alpha, sleeper]);
+    const trace: string[] = [];
+    const first = instrumentedPool(context.db.$client);
+    const second = instrumentedPool(context.db.$client);
+    const held = eventLatch("migration-lock-held");
+
+    const firstRun = runMigrations({
+      env: context.env,
+      pool: first.pool,
+      histories: plan,
+      log: (event) => {
+        trace.push(`first:${event.event}`);
+        held.hit(event.event);
+      },
+    });
+
+    await held.reached;
+
+    const secondRun = runMigrations({
+      env: context.env,
+      pool: second.pool,
+      histories: plan,
+      log: (event) => {
+        trace.push(`second:${event.event}`);
+      },
+    });
+
+    await Promise.all([firstRun, secondRun]);
+
+    // The second run reached its lock only after the first had applied every history, so it
+    // executed no history for as long as the first held the lock.
+    expect(trace).toContain("second:migration-lock-held");
+    expect(trace.indexOf("second:migration-lock-held")).toBeGreaterThan(
+      trace.lastIndexOf("first:migration-history-done")
+    );
+
+    // Two sessions, not one reused, and the loser applied nothing when its turn came.
+    expect(first.backendPid()).not.toBe(second.backendPid());
+    expect(second.statements.join("\n")).not.toContain(
+      'CREATE TABLE "alpha_record"'
+    );
+
+    expect(await appliedCount(context, alpha.table)).toBe(1);
+    expect(await tableExists(context, "alpha_record")).toBe(true);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+
+  it("gives the second run its lock timeout, and lets a later run finish the same plan", async () => {
+    const context = await freshDeployment(250);
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    // A second of sleep against a quarter second of patience: the loser must give up.
+    const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(1);");
+
+    const plan = migrationPlan([alpha, sleeper]);
+    const held = eventLatch("migration-lock-held");
+
+    const firstRun = runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: plan,
+      log: (event) => {
+        held.hit(event.event);
+      },
+    });
+
+    await held.reached;
+
+    const second = instrumentedPool(context.db.$client);
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: second.pool,
+        histories: plan,
+      })
+    ).rejects.toMatchObject({ code: "migration-lock-timeout" });
+
+    // It never held the lock, so it sent no unlock, and its session goes back intact.
+    expect(second.statements.join("\n")).not.toContain("pg_advisory_unlock");
+    expect(second.released).toEqual([false]);
+
+    await firstRun;
+
+    // The lock is free again, so a later start of the same image succeeds and adds nothing.
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: plan,
+    });
+
+    expect(await appliedCount(context, alpha.table)).toBe(1);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+});
+
+/**
+ * The recovery paths, caused by the database rather than scripted on a double (R-26a, R-27).
+ * A backend is terminated for real, a history releases the session's locks for real, and a
+ * failed statement is rolled back by Postgres itself.
+ */
+describe("the migrator recovering from a real database failure", () => {
+  it("keeps the original error and destroys the session when the connection is lost", async () => {
+    const context = await freshDeployment();
+    const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(2);");
+
+    const executioner = new Client({
+      connectionString: context.env.databaseUrl,
+    });
+
+    await executioner.connect();
+
+    cleanups.push(() => executioner.end());
+
+    const watched = instrumentedPool(context.db.$client);
+    const kills: Array<Promise<unknown>> = [];
+
+    const raised: Error | undefined = await runMigrations({
+      env: context.env,
+      pool: watched.pool,
+      histories: migrationPlan([sleeper]),
+      log: (event) => {
+        if (
+          event.event !== "migration-history-start" ||
+          event.history !== "sleeper"
+        ) {
+          return;
+        }
+
+        const pid = watched.backendPid();
+
+        if (pid !== undefined) {
+          kills.push(
+            executioner.query("SELECT pg_terminate_backend($1)", [pid])
+          );
+        }
+      },
+    }).then(
+      () => undefined,
+      (error: Error) => error
+    );
+
+    await Promise.all(kills);
+
+    // The database killed the session mid-history. The caller still sees the migration error
+    // with its original cause, and the unusable session is destroyed rather than pooled.
+    expect(raised).toMatchObject({ code: "migration-failed" });
+    expect(raised?.cause).toBeInstanceOf(Error);
+    expect(watched.released).toEqual([true]);
+    expect(await advisoryLocks(context)).toBe(0);
+
+    // A later start is not blocked by the session that died.
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+    });
+
+    // No listener is attached here on purpose. A terminated backend makes pg emit `error` on
+    // the client itself, and Node turns an `error` event with no listener into an uncaught
+    // exception. `createTenantContext` now attaches a per-client listener at checkout, so this
+    // case passing with no unhandled error is the proof that production, not the harness,
+    // contains the lost session (genie-ops-center-v2-wwc).
+  });
+
+  it("fails the start and destroys the session when the lock is gone by cleanup time", async () => {
+    const context = await freshDeployment();
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    // A session-level advisory lock is not transactional, so this release outlives drizzle's
+    // migration transaction. By cleanup the run no longer holds the lock it took, and the
+    // unlock answers false: the same uncertainty a lost and retaken lock would leave.
+    const saboteur = await writeHistory(
+      "saboteur",
+      "SELECT pg_advisory_unlock_all();"
+    );
+
+    const watched = instrumentedPool(context.db.$client);
+
+    const raised: Error | undefined = await runMigrations({
+      env: context.env,
+      pool: watched.pool,
+      histories: migrationPlan([alpha, saboteur]),
+    }).then(
+      () => undefined,
+      (error: Error) => error
+    );
+
+    // Every history applied and the start still fails, because a container must not serve on
+    // a session nobody can account for (R-27).
+    expect(raised).toMatchObject({ code: "migration-failed" });
+    expect(raised?.cause).toBeInstanceOf(Error);
+    expect(String(raised?.cause)).toContain("could not be restored");
+    expect(watched.released).toEqual([true]);
+    expect(await appliedCount(context, alpha.table)).toBe(1);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+
+  it("rolls a failed history back whole, leaving no half applied table", async () => {
+    const context = await freshDeployment();
+
+    const partial = await writeHistory(
+      "partial",
+      [
+        'CREATE TABLE "kept_record" ("id" integer PRIMARY KEY);',
+        "--> statement-breakpoint",
+        'CREATE TABLE "lost_record" ("id" no_such_type);',
+      ].join("\n")
+    );
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([partial]),
+      })
+    ).rejects.toMatchObject({ code: "migration-failed" });
+
+    // The first statement of the history succeeded and the second did not. Drizzle runs a
+    // history in one transaction, so the rollback must take the first one back with it.
+    expect(await tableExists(context, "kept_record")).toBe(false);
+    expect(await tableExists(context, "lost_record")).toBe(false);
+    expect(await appliedCount(context, partial.table)).toBe(0);
+    expect(await advisoryLocks(context)).toBe(0);
+  });
+});
+
+/**
+ * The forward-only rerun a rolling start performs: the same image, then an image carrying one
+ * more module, against a database that is already migrated (R-28).
+ */
+describe("the migrator over an already migrated database", () => {
+  it("applies only what is missing, and applies it in registry order", async () => {
+    const context = await freshDeployment();
+    const alpha = await writeHistory("alpha", ALPHA_TABLE);
+
+    const beta = await writeHistory(
+      "beta",
+      'CREATE TABLE "beta_record" ("id" integer PRIMARY KEY);'
+    );
+
+    const gamma = await writeHistory(
+      "gamma",
+      'CREATE TABLE "gamma_record" ("id" integer PRIMARY KEY);'
+    );
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([alpha]),
+    });
+
+    const watched = instrumentedPool(context.db.$client);
+
+    await runMigrations({
+      env: context.env,
+      pool: watched.pool,
+      histories: migrationPlan([alpha, beta, gamma]),
+    });
+
+    const sent = watched.statements.join("\n");
+
+    // The history the database already carries is not applied again, and the two new ones
+    // arrive in the order the plan names them, which is the order the image includes them.
+    expect(sent).not.toContain('CREATE TABLE "alpha_record"');
+    expect(sent.indexOf('CREATE TABLE "beta_record"')).toBeGreaterThan(-1);
+    expect(sent.indexOf('CREATE TABLE "gamma_record"')).toBeGreaterThan(
+      sent.indexOf('CREATE TABLE "beta_record"')
+    );
+
+    expect(await appliedCount(context, alpha.table)).toBe(1);
+    expect(await appliedCount(context, beta.table)).toBe(1);
+    expect(await appliedCount(context, gamma.table)).toBe(1);
+    expect(await tableExists(context, "alpha_record")).toBe(true);
     expect(await advisoryLocks(context)).toBe(0);
   });
 });
