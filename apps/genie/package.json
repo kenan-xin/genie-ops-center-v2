@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build && node tools/prune-public-migration-sql.mjs",
+    "build": "node tools/check-registry.ts && next build && node tools/prune-public-migration-sql.mjs",
     "build-image": "docker build -f ../../deploy/Dockerfile --build-arg MODULE_INCLUDE=${MODULE_INCLUDE-placeholder} -t genie-s005:test ../..",
     "build-fixture-image": "node tools/build-fixture-image.ts",
     "generate-registry": "node tools/generate-registry.ts",
@@ -49,7 +49,7 @@
           "production",
           "^production",
           {
-            "env": "MODULE_INCLUDE"
+            "runtime": "node tools/generators/src/selection/print.ts"
           }
         ],
         "outputs": [
@@ -60,6 +60,17 @@
         "dependsOn": [
           "generate-registry",
           "^build"
+        ],
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/.next",
+          "!{projectRoot}/.next/cache"
         ]
       },
       "build-image": {
@@ -72,11 +83,25 @@
         "dependsOn": [
           "generate-registry",
           "^build"
+        ],
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
         ]
       },
       "test": {
         "dependsOn": [
           "generate-registry"
+        ],
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
         ]
       },
       "test:integration": {
