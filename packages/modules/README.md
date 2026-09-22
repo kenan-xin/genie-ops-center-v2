@@ -4,7 +4,7 @@ One folder per capability module.
 
 ## What belongs here
 
-A capability module, named by what it does and never by the customer who asked for it. Generate a module with `nx g @genie/module:new <capability>`.
+A capability module, named by what it does and never by the customer who asked for it. Generate a module with `nx g @genie/generators:module-new <capability>`.
 
 ## What must not go here
 

@@ -45,11 +45,42 @@ describe("the validate target's inputs", () => {
     ).toEqual([]);
   });
 
-  it("excludes the module container README, which is not a project root", () => {
+  it("includes the module container README, which the canonical-doc check reads", () => {
     const inputs = validateInputs();
 
-    // `packages/*/README.md` also matches `packages/modules/README.md`, which no
-    // check reads; only a module's own `packages/modules/<id>/README.md` is one.
-    expect(inputs).toContain("!{workspaceRoot}/packages/modules/README.md");
+    // `packages/*/README.md` also matches `packages/modules/README.md`. The
+    // canonical generator-command check in `hygiene` reads that container
+    // README, so it is a real input now and the earlier exclusion is gone.
+    expect(inputs).toContain("{workspaceRoot}/packages/*/README.md");
+    expect(inputs).not.toContain("!{workspaceRoot}/packages/modules/README.md");
+  });
+
+  it("declares the active canonical docs the generator-command check reads", () => {
+    const inputs = validateInputs();
+
+    for (const input of [
+      "{workspaceRoot}/CLAUDE.md",
+      "{workspaceRoot}/AGENTS.md",
+      "{workspaceRoot}/docs/specs/*.md",
+      "{workspaceRoot}/docs/architecture/*.md",
+      "{workspaceRoot}/docs/core/*.md",
+      "{workspaceRoot}/docs/runbooks/*.md",
+      "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
+    ]) {
+      expect(inputs).toContain(input);
+    }
+  });
+
+  it("keeps the doc inputs to the active canonical locations, never every doc", () => {
+    const inputs = validateInputs();
+
+    // A broad `docs/**` glob would pull historical audits, handoffs, design
+    // history and transcripts into the cache key. The check reads one ticket
+    // folder, so that is the only `docs/tickets` input allowed.
+    expect(inputs.filter((input) => input.includes("docs/tickets"))).toEqual([
+      "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
+    ]);
+    expect(inputs).not.toContain("{workspaceRoot}/docs/**/*.md");
+    expect(inputs).not.toContain("{workspaceRoot}/docs/**");
   });
 });

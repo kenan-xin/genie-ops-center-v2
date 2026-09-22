@@ -77,10 +77,16 @@
         "{workspaceRoot}/**/tsconfig*.json",
         "{workspaceRoot}/apps/*/README.md",
         "{workspaceRoot}/packages/*/README.md",
-        "!{workspaceRoot}/packages/modules/README.md",
         "{workspaceRoot}/packages/modules/*/README.md",
         "{workspaceRoot}/tools/*/README.md",
         "{workspaceRoot}/customers/*/app/README.md",
+        "{workspaceRoot}/CLAUDE.md",
+        "{workspaceRoot}/AGENTS.md",
+        "{workspaceRoot}/docs/specs/*.md",
+        "{workspaceRoot}/docs/architecture/*.md",
+        "{workspaceRoot}/docs/core/*.md",
+        "{workspaceRoot}/docs/runbooks/*.md",
+        "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
         "{workspaceRoot}/**/.gitignore",
         "{workspaceRoot}/**/.nxignore"
       ]

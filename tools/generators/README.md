@@ -4,7 +4,7 @@ The Nx local plugin for this repository: the code and project generators, and th
 
 ## What belongs here
 
-The `@genie/module:new` and `@genie/tenant:new` generators, and the resolver that turns a customer's module include list into build-time selection inputs. The classifier that maps a project root to its architectural tag lives here too.
+The `@genie/generators:module-new` and `@genie/generators:tenant-new` generators, and the resolver that turns a customer's module include list into build-time selection inputs. The classifier that maps a project root to its architectural tag lives here too.
 
 ## What must not go here
 

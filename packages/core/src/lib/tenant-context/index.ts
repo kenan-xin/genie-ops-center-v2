@@ -53,5 +53,11 @@ export function createTenantContext(
 
   const pool = new Pool({ connectionString: env.databaseUrl });
 
+  pool.on("connect", (client) => {
+    // A checked-out pg client has no pool error listener. Keep the error handled while the
+    // caller's query rejects through its normal path, preserving that operation's original error.
+    client.on("error", () => {});
+  });
+
   return { db: drizzle(pool), env };
 }

@@ -4,19 +4,24 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/selection/index.ts"
+    ".": "./src/selection/index.ts",
+    "./package.json": "./package.json",
+    "./generators.json": "./generators.json"
   },
   "scripts": {
-    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "lint": "oxlint --config ../../oxlint.config.ts src scripts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate": "vitest run --config vitest.validate.config.ts"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "@genie/core": "workspace:*",
+    "@nx/devkit": "23.2.1",
     "oxlint": "1.83.0",
     "vitest": "4.1.11"
   },
+  "generators": "./generators.json",
   "nx": {
     "tags": [
       "tooling"

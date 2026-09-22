@@ -35,7 +35,7 @@ Boundary with what comes after: nothing in the core roadmap follows Section 5. I
 
 R-1. Section 5 delivers one runbook per procedure, all under `../runbooks/`, all naming no customer: the new-customer runbook, one runbook per hosting mode, the upgrade runbook, the backup and restore runbook, and the retirement runbook. `../runbooks/deployment.md` stays the single reference that the others link to for the steps they share, and no runbook repeats a step that `deployment.md` already holds (`../runbooks/README.md`).
 
-R-2. No runbook step may depend on a deployment panel. Every step is a command that a person can type: `nx g @genie/tenant:new`, `scripts/build-customer-image.sh`, `docker compose`, and `genie-ops` (`DEC-38`, `../runbooks/deployment.md`, "The shape of one deployment"). A runbook may name a panel only as one way to reach a host, and only where the same paragraph gives the equivalent command.
+R-2. No runbook step may depend on a deployment panel. Every step is a command that a person can type: `nx g @genie/generators:tenant-new`, `scripts/build-customer-image.sh`, `docker compose`, and `genie-ops` (`DEC-38`, `../runbooks/deployment.md`, "The shape of one deployment"). A runbook may name a panel only as one way to reach a host, and only where the same paragraph gives the equivalent command.
 
 R-3. The automation seam stays open and unfilled. Whatever tool `OPEN-7` later chooses runs the same build script, the same compose file, and the same `genie-ops` commands with no step of its own, so a runbook written now stays complete (`DEC-38`). No requirement here names or assumes a tool.
 
@@ -43,7 +43,7 @@ R-4. Every runbook carries a status date and the release it was last rehearsed a
 
 ### Item 1: the new-customer runbook
 
-R-5. The new-customer runbook covers the path from the filled checklist to the first administrator's sign-in, in this order (`../core/roadmap.md`, Section 5, item 1, and `../runbooks/deployment.md`, "Set up a new customer"): `nx g @genie/tenant:new <slug>`, fill `tenant.yaml` and `branding.seed.json`, run `scripts/build-customer-image.sh <slug> <version>`, deliver and run the stack, run `genie-ops setup` with the bootstrap credential in the environment of that one command (`DEC-37`), set the identity provider with `genie-ops idp set` unless `local_accounts` is on (`DEC-36`), smoke test, and hand branding to the tenant administrator.
+R-5. The new-customer runbook covers the path from the filled checklist to the first administrator's sign-in, in this order (`../core/roadmap.md`, Section 5, item 1, and `../runbooks/deployment.md`, "Set up a new customer"): `nx g @genie/generators:tenant-new <slug>`, fill `tenant.yaml` and `branding.seed.json`, run `scripts/build-customer-image.sh <slug> <version>`, deliver and run the stack, run `genie-ops setup` with the bootstrap credential in the environment of that one command (`DEC-37`), set the identity provider with `genie-ops idp set` unless `local_accounts` is on (`DEC-36`), smoke test, and hand branding to the tenant administrator.
 
 R-6. The runbook states which of its steps the customer must do and which Genie must do, per hosting mode, because in a customer-hosted mode the customer's platform team types the Keycloak server administrator credential and Genie never holds it (`DEC-37`).
 

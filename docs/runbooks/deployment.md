@@ -50,7 +50,7 @@ Make sure that the target host has the following. The customer's platform team s
 
 ## Set up a new customer
 
-1. In the repository, run `nx g @genie/tenant:new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, `.env.example`, and `values.yaml`.
+1. In the repository, run `nx g @genie/generators:tenant-new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, `.env.example`, and `values.yaml`.
 2. Fill `tenant.yaml`: the module list, the onboarding mode, `local_accounts`, the first administrators, and the break-glass email. Every field is read by the generator or by setup (`DEC-35`, `DEC-36`). Keep the onboarding mode at `invite` unless the customer asked for `jit`. In `jit` mode the identity provider is the only gate: every person the provider lets sign in gets an active account. Before a customer switches to `jit`, make sure that the customer restricted the application assignment in their provider to the people who must have access (`DEC-7`).
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
 4. Copy `compose.yaml` to the host. It is committed and holds no secret and no host value.
