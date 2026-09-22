@@ -1,6 +1,8 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "neverConnectToCloud": true,
+  "defaultBase": "develop",
+  "parallel": 4,
   "plugins": [
     {
       "plugin": "@nx/storybook/plugin",

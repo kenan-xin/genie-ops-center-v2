@@ -66,7 +66,13 @@ function canonicalDocPaths(): readonly string[] {
   return paths.toSorted();
 }
 
-type NxProject = { readonly root: string; readonly tags?: readonly string[] };
+type NxTarget = { readonly cache?: boolean };
+
+type NxProject = {
+  readonly root: string;
+  readonly tags?: readonly string[];
+  readonly targets?: Readonly<Record<string, NxTarget>>;
+};
 
 function readProjectGraph(): ReadonlyMap<string, NxProject> {
   const raw = execFileSync(
@@ -111,6 +117,16 @@ describe("repository hygiene", () => {
 
   it("finds every workspace project", () => {
     expect(projects.size).toBeGreaterThan(0);
+  });
+
+  // A real-database integration run proves mandatory execution through its
+  // runner, so a cache hit would replay that proof instead of re-establishing
+  // it. Every project that declares the target keeps it uncached; no database
+  // target is special-cased (bead genie-ops-center-v2-7lj).
+  it.each(
+    [...projects].filter(([, project]) => project.targets?.["test:integration"])
+  )("%s keeps test:integration uncached", (_name, project) => {
+    expect(project.targets?.["test:integration"]?.cache).toBe(false);
   });
 
   it.each([...projects])(

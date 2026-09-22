@@ -4,6 +4,7 @@ import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { UNIT_TEST_EXCLUDE } from "../vitest/unit.ts";
 import { WORKSPACE_ROOT, withFixture } from "./__testing__/lint-at.ts";
 
 /**
@@ -101,6 +102,28 @@ function resolvedFiles(project: string): readonly string[] {
   return files;
 }
 
+/** The checkout's own oxlint, the binary the product lint targets run. */
+const OXLINT = join(WORKSPACE_ROOT, "node_modules", ".bin", "oxlint");
+
+/**
+ * Runs one oxlint invocation the way a lint target does and returns its report,
+ * exit code folded into the text so a non-zero run is still readable here.
+ */
+function lintReport(args: readonly string[]): string {
+  try {
+    return execFileSync(OXLINT, ["--config", "oxlint.config.ts", ...args], {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    // SAFETY: execFileSync throws an Error that carries the child's output.
+    const failure = error as { stdout?: string; stderr?: string };
+
+    return `${failure.stdout ?? ""}${failure.stderr ?? ""}`;
+  }
+}
+
 const COVERED_PREFIXES = ["__boundary__", "__wiring__", "__antislop__"];
 
 /** The real fixture paths a project's own include would take. */
@@ -185,4 +208,75 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
       expect(covered || !atRisk).toBe(true);
     }
   );
+});
+
+describe("lint fixtures and the lint that runs beside them", () => {
+  // The lint counterpart of the typecheck race above. A directory scan over a
+  // project's `src` lists a fixture the suites wrote and already removed, then
+  // fails to open it. The root `.eslintignore` excludes the shared prefixes, and
+  // the harness lints an explicit fixture path with `--no-ignore`, so the rules
+  // are still exercised.
+  it("keeps a transient fixture out of a directory scan, and still lints it on request", () => {
+    const probe = `packages/core/src/__boundary__probe-${process.pid}.ts`;
+
+    withFixture(
+      WORKSPACE_ROOT,
+      probe,
+      `import "@genie/module-placeholder";\n`,
+      () => {
+        const scanned = lintReport(["packages/core/src"]);
+
+        expect(scanned).not.toContain(probe);
+
+        // The same file, named explicitly with ignores off, is a real violation,
+        // so the scan above excludes it rather than finding nothing to report.
+        const explicit = lintReport(["--no-ignore", probe]);
+
+        expect(explicit).toContain("core never imports a module");
+      }
+    );
+  });
+
+  // The app's lint command is the one target that named files by shell glob, so
+  // a fixture present when the shell expanded the glob was handed to oxlint and
+  // could vanish before oxlint opened it (genie-ops-center-v2-7lj). The command
+  // must name its config files, so it can never receive a transient fixture.
+  it("never hands a transient fixture to the app lint command", () => {
+    // SAFETY: `apps/genie/package.json` is a package manifest, and the
+    // assertion below fails loudly when its lint script is absent.
+    const manifest = JSON.parse(
+      readFileSync(join(WORKSPACE_ROOT, "apps/genie/package.json"), "utf8")
+    ) as { readonly scripts: { readonly lint: string } };
+
+    // The config flag is named separately so the rest of the command, globs and
+    // all, is what the shell expands below.
+    const command = manifest.scripts.lint.replace(
+      /^\S+\s+--config\s+\S+\s+/,
+      ""
+    );
+
+    // A fresh, process-scoped path: the boundary suite owns
+    // `apps/genie/__boundary__.config.ts`, and reusing it here would race that
+    // suite's exclusive create under parallel collection.
+    const probe = `apps/genie/__boundary__probe-${process.pid}.config.ts`;
+
+    withFixture(WORKSPACE_ROOT, probe, "export const probe = true;\n", () => {
+      const expanded = execFileSync("sh", ["-c", `printf '%s\\n' ${command}`], {
+        cwd: join(WORKSPACE_ROOT, "apps/genie"),
+        encoding: "utf8",
+      });
+
+      expect(expanded).not.toContain("__boundary__");
+    });
+  });
+
+  // The unit collection is the vitest face of the same race: a fixture written
+  // into a package's `src` matches `src/**/*.test.ts`, so a concurrent unit run
+  // would import a file the suites already deleted. The shared preset excludes
+  // the prefixes every suite uses (genie-ops-center-v2-7lj).
+  it("keeps the transient fixture prefixes out of the unit collection", () => {
+    for (const prefix of COVERED_PREFIXES) {
+      expect(UNIT_TEST_EXCLUDE).toContain(`**/${prefix}*`);
+    }
+  });
 });
