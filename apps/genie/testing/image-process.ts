@@ -8,6 +8,145 @@ const run = promisify(execFile);
 /** The image every integration test drives. */
 export const IMAGE = "genie-s005:test";
 
+/**
+ * Fails closed when the Docker daemon is unreachable.
+ *
+ * The image matrix is the only proof the customer image contract has, and a run
+ * that quietly passed because the daemon was down would report the opposite of
+ * the truth. This throws a named, actionable diagnostic instead, so a red run
+ * says exactly what is missing rather than surfacing a confusing container
+ * error. It never skips.
+ */
+export async function requireDocker(): Promise<string> {
+  try {
+    const { stdout } = await run("docker", [
+      "info",
+      "--format",
+      "{{.ServerVersion}}",
+    ]);
+
+    const version = stdout.trim();
+
+    if (version === "") {
+      throw new Error("docker info returned no server version");
+    }
+
+    return version;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+
+    throw new Error(
+      `Docker is not available, so the image matrix cannot run and must not pass. Start the Docker daemon (for example, launch Docker Desktop) and re-run. Underlying error: ${detail}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Builds one selection into one tag and reports whether the build succeeded.
+ * The Dockerfile copies the whole workspace, so an unchanged context is a
+ * content-addressed cache hit; a changed one rebuilds.
+ */
+export async function buildImageWith(
+  moduleInclude: string,
+  tag: string
+): Promise<boolean> {
+  try {
+    await run(
+      "docker",
+      [
+        "build",
+        "--quiet",
+        "-f",
+        "deploy/Dockerfile",
+        "--build-arg",
+        `MODULE_INCLUDE=${moduleInclude}`,
+        "-t",
+        tag,
+        ".",
+      ],
+      { cwd: WORKSPACE_ROOT, maxBuffer: 64 * 1024 * 1024 }
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The `ARG` names a history declares, so a base image's own args can be ignored. */
+export function argNamesInHistory(
+  history: readonly { readonly createdBy: string }[]
+): readonly string[] {
+  const names: string[] = [];
+
+  for (const entry of history) {
+    const declared = /^ARG ([A-Za-z_][A-Za-z0-9_]*)$/.exec(
+      entry.createdBy.trim()
+    );
+
+    if (declared !== null && declared[1] !== undefined) names.push(declared[1]);
+  }
+
+  return names;
+}
+
+/** The committed history lines of an image, one per layer. */
+export async function dockerHistory(
+  id: string
+): Promise<readonly { readonly createdBy: string }[]> {
+  const { stdout } = await run(
+    "docker",
+    ["history", "--no-trunc", "--format", "{{.CreatedBy}}", id],
+    { maxBuffer: 32 * 1024 * 1024 }
+  );
+
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((createdBy) => ({ createdBy }));
+}
+
+/**
+ * Every file path in the image's application tree, as `{ path, content: "" }`.
+ *
+ * This is a path inventory: the exclusion and dev-tooling contract is decided by
+ * what is present, and the migration and secret content checks reuse the public
+ * corpus scan, which reads the bytes the image actually serves. Reading every
+ * file body here would ship the whole runtime tree out of the container for no
+ * extra assurance.
+ */
+export async function imageFilePaths(
+  id: string
+): Promise<readonly { readonly path: string; readonly content: string }[]> {
+  const { stdout } = await run(
+    "docker",
+    ["exec", id, "find", "/app", "-type", "f"],
+    { maxBuffer: 64 * 1024 * 1024 }
+  );
+
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((path) => ({ path, content: "" }));
+}
+
+/**
+ * The five security headers R-47 fixes, and the one health body R-36a fixes.
+ * The values are the contract, not a shape: a header present with a weaker value
+ * must fail.
+ */
+export const REQUIRED_HEADERS = {
+  "content-security-policy":
+    "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'",
+  "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+} as const;
+
 /** Alias mapped to the host gateway, so a container can reach the host database. */
 export const HOST_ALIAS = "host.docker.internal";
 

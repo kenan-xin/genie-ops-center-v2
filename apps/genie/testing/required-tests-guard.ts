@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 
+import { RELEASE_MATRIX_FULL_NAMES } from "./release-matrix-cases.ts";
+
 /**
  * The mandatory manifest and the validator behind it.
  *
@@ -21,7 +23,12 @@ import { resolve } from "node:path";
  * - the viewer provider-count proof (R-49a, AC-25), zero calls on background
  *   requests at the viewer URL and exactly one for a normal viewer document,
  * - the devtools exclusion proof (S0-09), which is the only thing standing
- *   between a development diagnostic and the image a customer runs.
+ *   between a development diagnostic and the image a customer runs,
+ * - the customer image matrix (S0-11, R-53/AC-17/AC-18/AC-19): the development
+ *   and explicitly-empty images start on fresh disposable databases, the empty
+ *   image renders no placeholder route or table, and the image history and
+ *   filesystem carry only MODULE_INCLUDE. A missing Docker daemon fails these
+ *   cases rather than skipping them.
  */
 export type RequiredCase = {
   readonly file: string;
@@ -80,6 +87,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the production build and the devtools ships no executable code carrying deploymentDiagnostics",
       "the production build and the devtools installs no devtools package in the image it runs from",
     ],
+  },
+  {
+    file: "testing/image-matrix.integration.test.ts",
+    cases: RELEASE_MATRIX_FULL_NAMES,
   },
   {
     file: "testing/viewer-background.integration.test.ts",
