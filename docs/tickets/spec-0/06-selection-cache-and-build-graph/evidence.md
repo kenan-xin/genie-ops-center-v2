@@ -77,7 +77,26 @@ One revision, one workspace, isolated Nx cache and state. The digest is a sha256
 
 Step 4 restored three `server.js` files under `.next/standalone`, so the standalone server came back out of the cache and not from a rebuild.
 
-The guard, on the real checkout:
+### A concurrent build in one checkout
+
+A review found that one check before the bundler settles nothing on its own. The bundler reads the registry minutes later, so a second build in the same checkout can rewrite it inside that window and the first build bundles the other selection. The build script now runs the guard again after the bundler.
+
+Measured: a `placeholder` build, with a second process rewriting the registry for the empty selection every two seconds throughout.
+
+```text
+nx exit: 1
+.../apps/genie/src/modules.ts is not the registry this selection generates.
+The selection is explicit [placeholder]. A concurrent build in this checkout,
+another build root, a restored cache entry or a hand edit left a different
+registry. Give each selection its own build root, then regenerate.
+ NX   Running target build for project @genie/app and 1 task it depends on failed
+```
+
+The build failed, so Nx cached nothing and no bundle from the wrong selection was stored.
+
+The limit, stated plainly: the second check proves the registry was the expected one when the bundler started and when it finished. It does not prove every instant in between. A run that overwrote the registry and restored it inside the window would pass. Two selections that must run at the same time get two build roots, which is what `--root` is for. This check makes the unsupported case fail loudly instead of quietly.
+
+### The guard, on the real checkout
 
 ```text
 $ MODULE_INCLUDE= node tools/generate-registry.ts

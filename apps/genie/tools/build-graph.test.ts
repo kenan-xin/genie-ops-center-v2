@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -89,6 +90,31 @@ describe("the selection-aware task graph", () => {
         true
       );
     }
+  });
+
+  /**
+   * One check before the bundler cannot settle which registry was bundled: the
+   * bundler reads the file minutes later, and a second build in this checkout
+   * can rewrite it in between. The check runs again after the bundler, so that
+   * race fails the build instead of shipping another selection's bundle.
+   */
+  it("guards the registry on both sides of the bundler", () => {
+    // SAFETY: the bytes are the app's own package.json, and the one field read
+    // below is the build script, which the assertions check step by step.
+    const build = JSON.parse(
+      readFileSync(resolve(WORKSPACE_ROOT, "apps/genie/package.json"), "utf8")
+    ) as { scripts: Record<string, string> };
+
+    const steps = build.scripts.build?.split("&&").map((step) => step.trim());
+
+    expect(
+      steps?.filter((step) => step.includes("check-registry"))
+    ).toHaveLength(2);
+
+    const bundler = steps?.findIndex((step) => step.startsWith("next build"));
+
+    expect(bundler).toBeGreaterThan(0);
+    expect(steps?.[(bundler ?? 0) + 1]).toContain("check-registry");
   });
 
   // The raw value it replaced cannot tell an unset variable from an empty one.

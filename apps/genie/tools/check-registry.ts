@@ -21,6 +21,14 @@ const CHECKOUT_ROOT = resolve(import.meta.dirname, "../../..");
  * container's load-time identity check cannot see any of those, because it reads
  * the same generated file it is checking against.
  *
+ * The build script runs this twice, before the bundler and after it. One check
+ * before the bundler cannot settle the question on its own: the bundler reads
+ * the registry minutes later, and a second build in the same checkout can
+ * rewrite it in between. Running it again afterwards turns that race into a
+ * failed build instead of a bundle built from another customer's selection.
+ * Two selections that must run at the same time get two build roots, which is
+ * what `--root` is for; this check is what makes the unsupported case loud.
+ *
  * The comparison is the whole emitted text, byte for byte. `emitRegistryModule`
  * is deterministic given a selection, so an exact comparison needs no header
  * field to parse and cannot drift from what generation would have written. It
@@ -53,7 +61,7 @@ export function registryMismatch(
   return (
     `${target} is not the registry this selection generates. ` +
     `The selection is ${selection.source} [${selection.ids.join(", ")}]. ` +
-    `Another build root, a restored cache entry or a hand edit left a different registry. Regenerate it.`
+    `A concurrent build in this checkout, another build root, a restored cache entry or a hand edit left a different registry. Give each selection its own build root, then regenerate.`
   );
 }
 

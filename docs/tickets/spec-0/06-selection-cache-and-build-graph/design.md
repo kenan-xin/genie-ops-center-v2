@@ -73,7 +73,9 @@ A new script `apps/genie/tools/check-registry.ts` resolves the selection again, 
 
 The comparison is exact, because `emitRegistryModule` is deterministic given a selection. No header field is added and no comment is parsed.
 
-The guard closes the window between generation and bundling: a registry left by another selection, a registry restored for a different hash, or a hand-edited file all fail closed rather than being bundled. The app `build` script runs it before `next build`.
+The guard closes the window between generation and bundling: a registry left by another selection, a registry restored for a different hash, or a hand-edited file all fail closed rather than being bundled.
+
+The app `build` script runs it twice, before the bundler and after it. One check before the bundler settles nothing on its own, because the bundler reads the registry minutes later and a second build in the same checkout can rewrite it in between. The second check turns that race into a failed build. It proves the registry was the expected one at the start and at the end, not at every instant between, so two selections that must run at once still get two build roots.
 
 ### 5. The customer entrypoint stays `MODULE_INCLUDE`
 
