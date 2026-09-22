@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import {
-  existsSync,
   mkdirSync,
   mkdtempSync,
   rmdirSync,
@@ -60,21 +59,40 @@ const MAX_CONCURRENT_LINTS = Math.max(2, Math.ceil(availableParallelism() / 4));
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
 /**
- * Removes one directory, and only while it is still empty. `rmdirSync` is the
- * only removal here on purpose: a recursive removal would take unrelated content
- * that appeared after the fixture was created along with the directory.
+ * Removes the directory chain a fixture sits under, leaf first, and only while
+ * each directory is still empty. `rmdirSync` is the only removal here on
+ * purpose: a recursive removal would take unrelated content that appeared after
+ * the fixture was created along with the directory, and it would follow a
+ * symlink.
+ *
+ * The walk starts at the fixture's own directory and climbs to `root`. It is not
+ * restricted to directories that were absent when the fixture was planned: two
+ * concurrent fixtures can share a directory, one removing it while the other
+ * recreates it, and a plan made in that window would otherwise leave the
+ * directory behind. Removing only empty directories is what keeps this safe.
  */
-function removeIfEmpty(directory: string): void {
-  try {
-    rmdirSync(directory);
-  } catch (error) {
-    // SAFETY: rmdirSync throws a NodeJS.ErrnoException, whose `code` is the only
-    // field read here.
-    const { code } = error as { code?: string };
+function removeEmptyAncestors(absolute: string, root: string): void {
+  for (
+    let cursor = dirname(absolute);
+    cursor !== root;
+    cursor = dirname(cursor)
+  ) {
+    try {
+      rmdirSync(cursor);
+    } catch (error) {
+      // SAFETY: rmdirSync throws a NodeJS.ErrnoException, whose `code` is the
+      // only field read here.
+      const { code } = error as { code?: string };
 
-    // ENOTEMPTY: the directory holds something this invocation did not create, so
-    // it is no longer ours to remove. ENOENT: a concurrent run removed it first.
-    if (code !== "ENOTEMPTY" && code !== "ENOENT") throw error;
+      // ENOTEMPTY: the directory holds something this invocation did not create,
+      // so it and every ancestor are no longer ours to remove. ENOTDIR: an
+      // ancestor is a file, which no removal may touch. Either way, stop.
+      if (code === "ENOTEMPTY" || code === "ENOTDIR") return;
+
+      // ENOENT: a concurrent run removed it first. Keep climbing, because its
+      // parent may now be empty.
+      if (code !== "ENOENT") throw error;
+    }
   }
 }
 
@@ -82,18 +100,12 @@ function removeIfEmpty(directory: string): void {
 type FixturePlan = {
   readonly relativePath: string;
   readonly absolute: string;
-  /**
-   * The directories between the fixture and its root that did not exist when the
-   * plan was made, deepest first, so cleanup removes exactly what this fixture
-   * brought into being and never an ancestor of it.
-   */
-  readonly createdDirectories: readonly string[];
 };
 
 /**
- * Validates one fixture path against its root and records what the fixture would
- * have to create. The validation throws before any fixture is queued, so a bad
- * path stays a synchronous refusal even though the lint itself is awaited.
+ * Validates one fixture path against its root. The validation throws before any
+ * fixture is queued, so a bad path stays a synchronous refusal even though the
+ * lint itself is awaited.
  */
 function planFixture(root: string, relativePath: string): FixturePlan {
   const absolute = join(root, relativePath);
@@ -110,25 +122,12 @@ function planFixture(root: string, relativePath: string): FixturePlan {
     );
   }
 
-  // Collected before anything is created, deepest first, so cleanup removes exactly
-  // the directories this invocation owns and never an ancestor of them.
-  const createdDirectories: string[] = [];
-
-  for (
-    let cursor = dirname(absolute);
-    cursor !== root && !existsSync(cursor);
-    cursor = dirname(cursor)
-  ) {
-    createdDirectories.push(cursor);
-  }
-
-  return { relativePath, absolute, createdDirectories };
+  return { relativePath, absolute };
 }
 
 /**
  * Creates one fixture file exclusively, hands control to `body`, then removes
- * that file and every directory this invocation created, deepest first, and only
- * while still empty.
+ * that file and the empty directories it sat under, deepest first.
  *
  * A path that already exists is refused: never overwritten, never deleted. The
  * exclusive `wx` create is what makes that atomic, because an `existsSync` check
@@ -153,8 +152,7 @@ export function withFixture<T>(
   } finally {
     if (created) rmSync(plan.absolute, { force: true });
 
-    // Leaf first, so each directory is empty when its turn comes.
-    for (const dir of plan.createdDirectories) removeIfEmpty(dir);
+    removeEmptyAncestors(plan.absolute, root);
   }
 }
 
@@ -222,10 +220,9 @@ async function lintFixtureAt(
   } finally {
     if (created) rmSync(plan.absolute, { force: true });
 
-    // Leaf first, so each directory is empty when its turn comes. A concurrent
-    // fixture sharing a planned directory keeps it standing: `removeIfEmpty`
+    // A concurrent fixture sharing the directory keeps it standing: the walk
     // leaves a directory it does not find empty exactly where it is.
-    for (const dir of plan.createdDirectories) removeIfEmpty(dir);
+    removeEmptyAncestors(plan.absolute, root);
   }
 }
 

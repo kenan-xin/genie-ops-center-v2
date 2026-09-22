@@ -120,6 +120,20 @@ describe("the fixture lifecycle", () => {
     expect(existsSync(join(root, "packages/ui/scout.ts"))).toBe(true);
   });
 
+  it("removes an empty directory that already existed, which a sibling fixture can recreate", () => {
+    // Two concurrent fixtures can share a directory: one removes it while the
+    // other recreates it, so a fixture that saw the directory present must still
+    // clean it up. An empty directory is never tracked content, so this is safe.
+    mkdirSync(join(root, "packages/ui/__boundary__"), { recursive: true });
+
+    withFixture(root, FIXTURE, SOURCE, () => "ran");
+
+    expect(existsSync(join(root, FIXTURE))).toBe(false);
+    expect(existsSync(join(root, "packages/ui/__boundary__"))).toBe(false);
+    expect(existsSync(join(root, "packages"))).toBe(false);
+    expect(existsSync(root)).toBe(true);
+  });
+
   it("refuses when an ancestor of the fixture path is a file", () => {
     const blocker = place("packages", "not a directory\n");
 
