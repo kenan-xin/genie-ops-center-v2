@@ -15,6 +15,24 @@ import { MODULE_TEMPLATES } from "./templates.ts";
  */
 const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
+/**
+ * What a display name may not hold. The name is free text from a command argument,
+ * and it is written into generated string literals, JSX text and story titles, so a
+ * quote, a backslash, a backtick, a template hole, a brace, an angle bracket or a
+ * line break would end the literal it sits in and produce a file that does not
+ * parse. A label needs none of them, so the generator refuses them rather than
+ * escaping each destination and missing one.
+ */
+const UNSAFE_IN_DISPLAY_NAME = /["\\`${}<>]/;
+
+/** A control character, including a line break, ends a literal just as surely. */
+function holdsControlCharacter(value: string): boolean {
+  return [...value].some((character) => (character.codePointAt(0) ?? 0) < 0x20);
+}
+
+/** Long enough for a real label, short enough to stay one line in a sidebar. */
+const DISPLAY_NAME_MAX = 60;
+
 export type ModuleRenderInput = {
   readonly id: string;
   /** Defaults to the id in sentence case, for example `contract-data` to `Contract data`. */
@@ -79,7 +97,28 @@ export function renderModule(
     );
   }
 
-  const names = namesFor(input);
+  const displayName = input.displayName?.trim();
+
+  if (displayName !== undefined) {
+    if (displayName.length === 0 || displayName.length > DISPLAY_NAME_MAX) {
+      throw new Error(
+        `a display name is between 1 and ${DISPLAY_NAME_MAX} characters, and "${input.displayName}" is not`
+      );
+    }
+
+    if (
+      UNSAFE_IN_DISPLAY_NAME.test(displayName) ||
+      holdsControlCharacter(displayName)
+    ) {
+      throw new Error(
+        `a display name holds no quote, backslash, backtick, dollar sign, brace, angle bracket or line break, and "${input.displayName}" does`
+      );
+    }
+  }
+
+  const names = namesFor(
+    displayName === undefined ? { id: input.id } : { id: input.id, displayName }
+  );
 
   // The generator renders the folder, the package name and the metadata id from
   // one id, so they agree by construction. Asking the shared invariant anyway

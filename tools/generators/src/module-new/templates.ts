@@ -659,7 +659,9 @@ export function AdminPage(props: AdminPageProps) {
   return (
     <main>
       <h1>${names.displayName} settings</h1>
-      <p>This deployment holds {props.recordCount} ${names.displayName} records.</p>
+      <p data-testid="${names.id}-record-count">
+        This deployment holds {props.recordCount} ${names.displayName} records.
+      </p>
     </main>
   );
 }
@@ -798,7 +800,12 @@ export const Desktop: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(/2 ${names.displayName} records/)).toBeInTheDocument();
+    // The count is read from its own element rather than matched inside a
+    // sentence, so a display name can carry any punctuation without changing
+    // what this asserts.
+    await expect(canvas.getByTestId("${names.id}-record-count")).toHaveTextContent(
+      "2"
+    );
   },
 };
 `;

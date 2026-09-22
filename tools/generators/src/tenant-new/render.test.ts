@@ -191,6 +191,32 @@ describe("the strict validation seam", () => {
     ).toThrow(/branding\.seed\.json/);
   });
 
+  it("keeps free text out of every unquoted position", () => {
+    // A company or product name is free text a customer supplies. It reaches the
+    // two validated files as a quoted JSON scalar, and nothing else, so a name
+    // carrying a line break cannot add a line to a YAML file.
+    const awkward = renderTenant(
+      {
+        ...INPUT,
+        companyName: 'Demo\nservices:\n  rogue: "yes"',
+        productName: "Demo: Ops",
+      },
+      VALIDATORS
+    );
+
+    for (const [path, content] of awkward) {
+      if (path.endsWith(".yaml") || path.endsWith(".env.example")) {
+        expect(content, path).not.toContain("Demo");
+      }
+    }
+
+    expect(
+      JSON.parse(
+        awkward.get("customers/demo-co/deploy/branding.seed.json") ?? "{}"
+      )
+    ).toMatchObject({ company_name: 'Demo\nservices:\n  rogue: "yes"' });
+  });
+
   it("refuses a slug that is not kebab-case", () => {
     expect(() =>
       renderTenant({ ...INPUT, slug: "Demo Co" }, VALIDATORS)

@@ -27,7 +27,7 @@ export function realmOverrides(input: TenantRenderInput): string {
  * from the customer's own `.env`, so this file is committed and holds no secret.
  */
 export function stackCompose(input: TenantRenderInput): string {
-  return `# The deployment stack for ${input.companyName}. Generated from the module include
+  return `# The deployment stack for ${input.slug}. Generated from the module include
 # list in tenant.yaml; committed, and free of every secret (DEC-33, DEC-35).
 # The worker and the identity provider services arrive with Section 1.
 services:
@@ -70,7 +70,7 @@ volumes:
  * (`docs/architecture/environment-contract.md`).
  */
 export function envExample(input: TenantRenderInput): string {
-  return `# ${input.companyName}: copy to .env and fill in. Never commit the filled file.
+  return `# ${input.slug}: copy to .env and fill in. Never commit the filled file.
 # The image reads every value at run time; it carries none of them (DEC-33).
 
 # Required. Validated before any connection opens.
@@ -103,7 +103,7 @@ GENIE_IMAGE=
  * defined here.
  */
 export function helmValues(input: TenantRenderInput): string {
-  return `# Helm values for ${input.companyName}. Used only when this customer runs
+  return `# Helm values for ${input.slug}. Used only when this customer runs
 # Kubernetes; the compose file serves every other deployment.
 nameOverride: ${JSON.stringify(input.slug)}
 replicaCount: 1

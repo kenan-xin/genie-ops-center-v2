@@ -264,6 +264,48 @@ describe("the rendered authorization proof", () => {
   });
 });
 
+describe("the display name guard", () => {
+  it.each([
+    ['a double quote: Demo"', 'Demo"'],
+    ["a backslash: Demo\\", "Demo\\"],
+    ["a backtick: Demo`", "Demo`"],
+    ["a template hole: Demo${id}", "Demo${id}"],
+    ["a tag: Demo<b>", "Demo<b>"],
+    ["a brace: Demo{", "Demo{"],
+    ["a newline: Demo\nOps", "Demo\nOps"],
+    ["nothing at all", "   "],
+  ])("refuses %s", (_case, displayName) => {
+    expect(() => renderModule({ id: "demo", displayName })).toThrow(
+      /display name/
+    );
+  });
+
+  it("refuses a name too long to be a label", () => {
+    expect(() =>
+      renderModule({ id: "demo", displayName: "D".repeat(61) })
+    ).toThrow(/display name/);
+  });
+
+  it("renders an accented name with punctuation without breaking a file", () => {
+    const rendered = renderModule({
+      id: "demo",
+      displayName: "Contrats (UE) & Cœur",
+    });
+
+    const module = rendered.get("packages/modules/demo/src/module.ts") ?? "";
+
+    expect(module).toContain('displayName: "Contrats (UE) & Cœur",');
+    expect(module).toContain('{ name: "Contrats (UE) & Cœur user"');
+
+    // A name is never written into a pattern, so its punctuation cannot change
+    // what an assertion matches.
+    for (const [path, content] of rendered) {
+      expect(content, path).not.toContain("getByText(/");
+      expect(content, path).not.toContain("toMatch(/");
+    }
+  });
+});
+
 describe("the identifier guard", () => {
   it.each(["Demo", "demo_module", "-demo", "demo-", "", "@genie/module-demo"])(
     "refuses the id %s",
