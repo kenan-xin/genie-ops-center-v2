@@ -1,46 +1,84 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
 const REGISTRY = "apps/genie/src/modules.ts";
 
-type Run = { readonly status: number; readonly stdout: string };
+const GENERATE = "apps/genie/tools/generate-registry.ts";
+
+const roots: string[] = [];
 
 /**
- * Runs the app-owned registry generator as a child process, which is how the
- * build runs it. The selectors package must not import the app, so a
- * child-process invocation is the only honest way for this check to exercise
- * the real generation path.
+ * A staged build root holding one synthetic module. The generator reads its
+ * inventory from `--root` and writes there, so the check never mutates the
+ * checkout's own generated registry — a side effect that would change the
+ * Docker build context and race concurrent tasks.
  */
-function generate(moduleInclude: string): Run {
-  try {
-    const stdout = execFileSync(
-      "node",
-      ["apps/genie/tools/generate-registry.ts"],
-      {
-        cwd: WORKSPACE_ROOT,
-        encoding: "utf8",
-        env: { ...process.env, MODULE_INCLUDE: moduleInclude },
-      }
+function stagedRoot(ids: readonly string[]): string {
+  const root = mkdtempSync(join(tmpdir(), "genie-clean-checkout-"));
+
+  roots.push(root);
+
+  for (const id of ids) {
+    const packageRoot = join(root, "packages/modules", id);
+
+    mkdirSync(join(packageRoot, "src"), { recursive: true });
+
+    writeFileSync(
+      join(packageRoot, "package.json"),
+      `${JSON.stringify({
+        name: `@genie/module-${id}`,
+        genie: { module: { id, entrypoint: "src/index.ts" } },
+      })}\n`,
+      "utf8"
     );
 
-    return { status: 0, stdout };
+    writeFileSync(join(packageRoot, "src/index.ts"), "export {};\n", "utf8");
+  }
+
+  return root;
+}
+
+type Run = { readonly status: number };
+
+/** Runs the real generator against a staged root, as the build does. */
+function generate(root: string, moduleInclude: string): Run {
+  try {
+    execFileSync("node", [GENERATE, "--root", root], {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+      env: { ...process.env, MODULE_INCLUDE: moduleInclude },
+    });
+
+    return { status: 0 };
   } catch (error) {
     // SAFETY: execFileSync rejects with an Error augmented with a numeric
-    // `status`. A signal-terminated run reports null, which the fallback keeps
-    // from reading as success.
+    // status; a signal-terminated run reports null, which must not read green.
     const status = (error as { status?: number | null }).status ?? 1;
 
-    return { status, stdout: "" };
+    return { status };
   }
 }
 
-const registryBytes = () =>
-  readFileSync(join(WORKSPACE_ROOT, REGISTRY), "utf8");
+const registryIn = (root: string) =>
+  readFileSync(join(root, "apps/genie/src", "modules.ts"), "utf8");
+
+afterAll(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 /**
  * R-21: a clean checkout generates the selected registry before its consumers
@@ -66,35 +104,30 @@ describe("the clean-checkout registry generation", () => {
   });
 
   it("generates the same bytes for the same selection twice", () => {
-    const first = generate("placeholder");
+    const root = stagedRoot(["placeholder"]);
 
-    expect(first.status).toBe(0);
+    expect(generate(root, "placeholder").status).toBe(0);
 
-    const once = registryBytes();
+    const once = registryIn(root);
 
-    const second = generate("placeholder");
-
-    expect(second.status).toBe(0);
-    expect(registryBytes()).toBe(once);
+    expect(generate(root, "placeholder").status).toBe(0);
+    expect(registryIn(root)).toBe(once);
     expect(once).toContain("@genie/module-placeholder");
   });
 
   it("keeps an unset selection distinct from an explicitly empty one", () => {
-    // An explicit empty list and the development default both import no module
-    // in this inventory, yet they are different selections; the emitted text
-    // records the source so a cache cannot confuse them.
-    generate("placeholder");
+    const root = stagedRoot(["placeholder"]);
 
-    const explicitEmpty = generate("");
+    generate(root, "placeholder");
 
-    expect(explicitEmpty.status).toBe(0);
+    expect(generate(root, "").status).toBe(0);
 
-    const emptyBytes = registryBytes();
-
-    expect(emptyBytes).not.toContain("@genie/module-placeholder");
+    expect(registryIn(root)).not.toContain("@genie/module-placeholder");
   });
 
   it("fails on an unknown module id instead of widening the selection", () => {
-    expect(generate("does-not-exist").status).not.toBe(0);
+    const root = stagedRoot(["placeholder"]);
+
+    expect(generate(root, "does-not-exist").status).not.toBe(0);
   });
 });

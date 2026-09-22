@@ -14,3 +14,10 @@ plans
 apps/storybook
 **/*.stories.tsx
 **/e2e
+# Transient lint fixtures the boundary/wiring/anti-slop suites write into a real
+# `src` and delete again (genie-ops-center-v2-7lj). They are excluded from the
+# lint, typecheck and unit collections; excluding them from the image context as
+# well keeps a run that overlaps an image build from changing its context hash.
+**/__boundary__*
+**/__wiring__*
+**/__antislop__*
