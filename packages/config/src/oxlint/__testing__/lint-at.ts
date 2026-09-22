@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -8,10 +8,24 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
+import { availableParallelism, tmpdir } from "node:os";
+import {
+  delimiter,
+  dirname,
+  isAbsolute,
+  join,
+  normalize,
+  relative,
+  sep,
+} from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+
+/** The checkout's own oxlint, the one `node_modules/.bin` holds. */
+const WORKSPACE_BIN = join(WORKSPACE_ROOT, "node_modules", ".bin");
 
 /**
  * The entries an isolated root needs before the repository's own
@@ -34,6 +48,15 @@ const ISOLATED_ROOT_ANCHORS: readonly string[] = [
  */
 export const ISOLATED_ROOT_PREFIX = `oxlint-boundary-${process.pid}-`;
 
+/**
+ * How many oxlint runs this worker may have in flight. The boundary suites mark
+ * themselves concurrent, so the harness, not vitest, owns this ceiling: every
+ * run is a whole node process, and one per test at once would thrash a small
+ * machine. A quarter of the machine, at least two, overlaps most of the suite
+ * on any size of host while leaving the machine to the rest of the run.
+ */
+const MAX_CONCURRENT_LINTS = Math.max(2, Math.ceil(availableParallelism() / 4));
+
 export type LintOutcome = { readonly failed: boolean; readonly output: string };
 
 /**
@@ -55,6 +78,53 @@ function removeIfEmpty(directory: string): void {
   }
 }
 
+/** Everything needed to create one fixture and to clean up after it. */
+type FixturePlan = {
+  readonly relativePath: string;
+  readonly absolute: string;
+  /**
+   * The directories between the fixture and its root that did not exist when the
+   * plan was made, deepest first, so cleanup removes exactly what this fixture
+   * brought into being and never an ancestor of it.
+   */
+  readonly createdDirectories: readonly string[];
+};
+
+/**
+ * Validates one fixture path against its root and records what the fixture would
+ * have to create. The validation throws before any fixture is queued, so a bad
+ * path stays a synchronous refusal even though the lint itself is awaited.
+ */
+function planFixture(root: string, relativePath: string): FixturePlan {
+  const absolute = join(root, relativePath);
+  const inside = relative(root, absolute);
+
+  if (
+    inside === "" ||
+    inside === ".." ||
+    inside.startsWith(`..${sep}`) ||
+    isAbsolute(inside)
+  ) {
+    throw new Error(
+      `A fixture path must name a file inside its root: ${relativePath}`
+    );
+  }
+
+  // Collected before anything is created, deepest first, so cleanup removes exactly
+  // the directories this invocation owns and never an ancestor of them.
+  const createdDirectories: string[] = [];
+
+  for (
+    let cursor = dirname(absolute);
+    cursor !== root && !existsSync(cursor);
+    cursor = dirname(cursor)
+  ) {
+    createdDirectories.push(cursor);
+  }
+
+  return { relativePath, absolute, createdDirectories };
+}
+
 /**
  * Creates one fixture file exclusively, hands control to `body`, then removes
  * that file and every directory this invocation created, deepest first, and only
@@ -70,66 +140,55 @@ export function withFixture<T>(
   source: string,
   body: () => T
 ): T {
-  const absolute = join(root, relativePath);
-  const inside = relative(root, absolute);
-
-  if (
-    inside === "" ||
-    inside === ".." ||
-    inside.startsWith(`..${sep}`) ||
-    isAbsolute(inside)
-  ) {
-    throw new Error(
-      `A fixture path must name a file inside its root: ${relativePath}`
-    );
-  }
-
-  const directory = dirname(absolute);
-  // Collected before anything is created, deepest first, so cleanup removes exactly
-  // the directories this invocation owns and never an ancestor of them.
-  const createdDirectories: string[] = [];
-
-  for (
-    let cursor = directory;
-    cursor !== root && !existsSync(cursor);
-    cursor = dirname(cursor)
-  ) {
-    createdDirectories.push(cursor);
-  }
-
+  const plan = planFixture(root, relativePath);
   let created = false;
 
   try {
-    mkdirSync(directory, { recursive: true });
+    mkdirSync(dirname(plan.absolute), { recursive: true });
 
-    writeFileSync(absolute, source, { encoding: "utf8", flag: "wx" });
+    writeFileSync(plan.absolute, source, { encoding: "utf8", flag: "wx" });
     created = true;
 
     return body();
   } finally {
-    if (created) rmSync(absolute, { force: true });
+    if (created) rmSync(plan.absolute, { force: true });
 
     // Leaf first, so each directory is empty when its turn comes.
-    for (const dir of createdDirectories) removeIfEmpty(dir);
+    for (const dir of plan.createdDirectories) removeIfEmpty(dir);
   }
 }
 
+/**
+ * The child `PATH` for a lint run: the caller's first, the checkout's `.bin`
+ * behind it. The lookup order is the seam the tests stand a scripted oxlint in
+ * with, and the appended entry is what makes a bare `vitest` invocation find
+ * this checkout's binary at all, since nothing else puts `.bin` on `PATH`.
+ */
+function childPath(): string {
+  const base = process.env.PATH ?? "";
+
+  return base === "" ? WORKSPACE_BIN : `${base}${delimiter}${WORKSPACE_BIN}`;
+}
+
 /** Runs the repository's own oxlint configuration from `root` against one path. */
-function runOxlint(root: string, relativePath: string): LintOutcome {
+async function runOxlint(
+  root: string,
+  relativePath: string
+): Promise<LintOutcome> {
   try {
-    const output = execFileSync(
-      "pnpm",
-      ["exec", "oxlint", "--config", "oxlint.config.ts", relativePath],
+    const { stdout } = await execFileAsync(
+      "oxlint",
+      ["--config", "oxlint.config.ts", relativePath],
       {
         cwd: root,
         encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, PATH: childPath() },
       }
     );
 
-    return { failed: false, output };
+    return { failed: false, output: stdout };
   } catch (error) {
-    // SAFETY: execFileSync throws an Error that also carries stdout and stderr. Only
+    // SAFETY: execFile rejects with an Error that also carries stdout and stderr. Only
     // the output fields are read, so the narrow shape holds for every error this call
     // raises.
     const failure = error as { stdout?: string; stderr?: string };
@@ -141,6 +200,76 @@ function runOxlint(root: string, relativePath: string): LintOutcome {
   }
 }
 
+/** Writes one planned fixture, lints it, and cleans up exactly what it created. */
+async function lintFixtureAt(
+  root: string,
+  plan: FixturePlan,
+  source: string
+): Promise<LintOutcome> {
+  let created = false;
+
+  try {
+    mkdirSync(dirname(plan.absolute), { recursive: true });
+
+    writeFileSync(plan.absolute, source, { encoding: "utf8", flag: "wx" });
+    created = true;
+
+    return await runOxlint(root, plan.relativePath);
+  } finally {
+    if (created) rmSync(plan.absolute, { force: true });
+
+    // Leaf first, so each directory is empty when its turn comes. A concurrent
+    // fixture sharing a planned directory keeps it standing: `removeIfEmpty`
+    // leaves a directory it does not find empty exactly where it is.
+    for (const dir of plan.createdDirectories) removeIfEmpty(dir);
+  }
+}
+
+let runningLints = 0;
+
+const lintWaiters: Array<() => void> = [];
+
+/** Runs `task`, but at most `MAX_CONCURRENT_LINTS` of these at any moment. */
+async function withLintSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (runningLints >= MAX_CONCURRENT_LINTS) {
+    await new Promise<void>((resolve) => {
+      lintWaiters.push(resolve);
+    });
+  }
+
+  runningLints += 1;
+
+  try {
+    return await task();
+  } finally {
+    runningLints -= 1;
+    lintWaiters.shift()?.();
+  }
+}
+
+const PATH_CHAINS = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs `task` only after every task already queued for `key` has settled.
+ * Fixtures that reuse a path with different sources would otherwise race their
+ * exclusive writes; one chain per path keeps those runs in order while different
+ * paths still overlap. Chains hold settled promises, never rejections, so one
+ * failing fixture cannot poison the next run on the same path.
+ */
+function serializeByPath<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const previous = PATH_CHAINS.get(key) ?? Promise.resolve();
+  const run = previous.then(task);
+  const recorded = run.catch(() => undefined);
+
+  PATH_CHAINS.set(key, recorded);
+
+  void recorded.then(() => {
+    if (PATH_CHAINS.get(key) === recorded) PATH_CHAINS.delete(key);
+  });
+
+  return run;
+}
+
 /**
  * Lints one source string at a chosen repository-relative path, then deletes the file.
  * The path decides which layer override applies, so a caller picks the path on purpose.
@@ -148,13 +277,23 @@ function runOxlint(root: string, relativePath: string): LintOutcome {
  * working tree stays clean. A path that already exists is refused rather than
  * overwritten, which keeps one test from silently consuming another's fixture.
  *
+ * The lint resolves through a per-path chain and a machine-sized slot pool, so a
+ * suite of these runs concurrently where the paths differ and in order where a
+ * path repeats. A refused path still throws synchronously, before anything is
+ * queued.
+ *
  * For a path the product itself owns, use `lintAtIsolated` instead. This function
  * refuses such a path once the real file lands, which is correct and is why the
  * isolated variant exists.
  */
-export function lintAt(relativePath: string, source: string): LintOutcome {
-  return withFixture(WORKSPACE_ROOT, relativePath, source, () =>
-    runOxlint(WORKSPACE_ROOT, relativePath)
+export function lintAt(
+  relativePath: string,
+  source: string
+): Promise<LintOutcome> {
+  const plan = planFixture(WORKSPACE_ROOT, relativePath);
+
+  return serializeByPath(`${WORKSPACE_ROOT}:${relativePath}`, () =>
+    withLintSlot(() => lintFixtureAt(WORKSPACE_ROOT, plan, source))
   );
 }
 
@@ -169,6 +308,10 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
  * the repository's real `oxlint.config.ts` through one of them, so the rule values
  * under test are the production ones and cannot drift from them.
  *
+ * Every call owns a fresh root, so no two isolated fixtures can collide on a
+ * path; only the slot pool bounds their load. A bad path throws synchronously,
+ * before anything is queued.
+ *
  * No path under `packages/` can be served, because `packages` is one of those
  * symlinks. Most boundary rules key there, so if such a path ever needs a
  * fixture, reopen this by making `root/packages` a real directory holding one
@@ -177,7 +320,7 @@ export function lintAt(relativePath: string, source: string): LintOutcome {
 export function lintAtIsolated(
   relativePath: string,
   source: string
-): LintOutcome {
+): Promise<LintOutcome> {
   if (isAbsolute(relativePath)) {
     throw new Error(
       `An isolated fixture path must be relative: ${relativePath}`
@@ -201,22 +344,24 @@ export function lintAtIsolated(
 
   const root = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
 
-  try {
-    for (const anchor of ISOLATED_ROOT_ANCHORS) {
-      symlinkSync(join(WORKSPACE_ROOT, anchor), join(root, anchor));
-    }
+  return withLintSlot(async () => {
+    try {
+      for (const anchor of ISOLATED_ROOT_ANCHORS) {
+        symlinkSync(join(WORKSPACE_ROOT, anchor), join(root, anchor));
+      }
 
-    return withFixture(root, safePath, source, () => runOxlint(root, safePath));
-  } finally {
-    // Node unlinks a symlink-to-directory rather than descending into it, so the
-    // recursive removal below is already safe. Every anchor is unlinked by name
-    // first anyway: the cost is three lines, and the cost of that behaviour ever
-    // changing is the checkout. `recursive` covers the case where an anchor name
-    // is a real directory, which would otherwise throw here and hide a live error.
-    for (const anchor of ISOLATED_ROOT_ANCHORS) {
-      rmSync(join(root, anchor), { force: true, recursive: true });
-    }
+      return await lintFixtureAt(root, planFixture(root, safePath), source);
+    } finally {
+      // Node unlinks a symlink-to-directory rather than descending into it, so the
+      // recursive removal below is already safe. Every anchor is unlinked by name
+      // first anyway: the cost is three lines, and the cost of that behaviour ever
+      // changing is the checkout. `recursive` covers the case where an anchor name
+      // is a real directory, which would otherwise throw here and hide a live error.
+      for (const anchor of ISOLATED_ROOT_ANCHORS) {
+        rmSync(join(root, anchor), { force: true, recursive: true });
+      }
 
-    rmSync(root, { recursive: true, force: true });
-  }
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 }

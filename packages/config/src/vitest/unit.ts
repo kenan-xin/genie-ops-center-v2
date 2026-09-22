@@ -29,5 +29,10 @@ export const unitTestPreset: ViteUserConfig = {
     exclude: [...UNIT_TEST_EXCLUDE],
     restoreMocks: true,
     passWithNoTests: false,
+    // A share of the machine, not a count: vitest would otherwise fork one worker
+    // per CPU inside every project, and Nx already runs several projects at once,
+    // so the two layers multiply into heavy oversubscription. A quarter share
+    // under Nx's four concurrent tasks saturates any machine without thrashing.
+    maxWorkers: "25%",
   },
 };

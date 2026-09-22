@@ -151,10 +151,10 @@ describe("the fixture lifecycle", () => {
 // refuses an existing file rather than overwrite one. The isolated root is how
 // a rule keyed to such a path is still reachable from a test.
 describe("lintAtIsolated over a path the checkout already owns", () => {
-  it("creates a discoverable root and removes the actual root it used", () => {
+  it("creates a discoverable root and removes the actual root it used", async () => {
     const bin = join(root, "bin");
     mkdirSync(bin);
-    const command = join(bin, "pnpm");
+    const command = join(bin, "oxlint");
     writeFileSync(
       command,
       `#!${process.execPath}\nprocess.stdout.write(process.cwd());\n`
@@ -165,7 +165,7 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
 
     try {
       process.env.PATH = `${bin}${delimiter}${priorPath ?? ""}`;
-      const result = lintAtIsolated("apps/probe.ts", SOURCE);
+      const result = await lintAtIsolated("apps/probe.ts", SOURCE);
       observedRoot = result.output;
       expect(result.failed).toBe(false);
       expect(basename(result.output).startsWith(ISOLATED_ROOT_PREFIX)).toBe(
@@ -186,29 +186,31 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
   // reaches is a production one rather than one invented for this test.
   const OWNED = "apps/genie/src/index.ts";
 
-  it("refuses the same path through lintAt, which is why the isolated root exists", () => {
+  it("refuses the same path through lintAt, which is why the isolated root exists", async () => {
     // Asserted first, so that a rename of the real file blames the rename rather
     // than looking like the refusal stopped working.
     expect(existsSync(join(WORKSPACE_ROOT, OWNED))).toBe(true);
 
-    expect(() => lintAt(OWNED, SOURCE)).toThrow("EEXIST");
+    // The refusal fires when the fixture is written, which now happens inside
+    // the queued lint, so the rejection carries the refusal instead of a throw.
+    await expect(lintAt(OWNED, SOURCE)).rejects.toThrow("EEXIST");
   });
 
-  it("reaches the app restriction and leaves the real file byte-identical", () => {
+  it("reaches the app restriction and leaves the real file byte-identical", async () => {
     const absolute = join(WORKSPACE_ROOT, OWNED);
     const before = readFileSync(absolute, "utf8");
 
-    const result = lintAtIsolated(OWNED, `import "pg";\n`);
+    const result = await lintAtIsolated(OWNED, `import "pg";\n`);
 
     expect(result.failed).toBe(true);
     expect(result.output).toContain("an app opens no connection (DEC-34).");
     expect(readFileSync(absolute, "utf8")).toBe(before);
   });
 
-  it("removes its temporary root and leaves the checkout's anchors in place", () => {
+  it("removes its temporary root and leaves the checkout's anchors in place", async () => {
     const before = strayRoots();
 
-    lintAtIsolated(OWNED, SOURCE);
+    await lintAtIsolated(OWNED, SOURCE);
 
     expect(strayRoots()).toEqual(before);
 
@@ -295,9 +297,9 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
 // hands it is observable: a normalized path lints, a raw one never reaches a
 // rule. The fixture path is spelled with a `..` segment that normalizes away.
 describe("the path lintAtIsolated hands to oxlint", () => {
-  it("is normalized, so oxlint lints the file instead of refusing the argument", () => {
+  it("is normalized, so oxlint lints the file instead of refusing the argument", async () => {
     // The process id keeps two vitest workers out of each other's directory.
-    const result = lintAtIsolated(
+    const result = await lintAtIsolated(
       `a/../__normalized__-${process.pid}/__normalized__.ts`,
       "export function fixture() {\n  debugger;\n}\n"
     );
@@ -310,11 +312,11 @@ describe("the path lintAtIsolated hands to oxlint", () => {
 });
 
 describe("lintAt through the hardened lifecycle", () => {
-  it("removes the fixture and its directory after a lint run that fails", () => {
+  it("removes the fixture and its directory after a lint run that fails", async () => {
     // No other suite uses this path, and the process id keeps two workers apart,
     // so this invocation is the only possible owner of the directory it removes.
     const relativePath = `packages/config/__wiring__-${process.pid}/__wiring__.ts`;
-    const result = lintAt(relativePath, `import "pg";\n`);
+    const result = await lintAt(relativePath, `import "pg";\n`);
 
     expect(result.failed).toBe(true);
     expect(result.output).toContain(
@@ -325,12 +327,12 @@ describe("lintAt through the hardened lifecycle", () => {
 });
 
 /**
- * A `pnpm` stand-in that lands on `PATH` for one `lintAtIsolated` call. It runs
+ * An `oxlint` stand-in that lands on `PATH` for one `lintAtIsolated` call. It runs
  * with the isolated root as its working directory, records what it saw there,
  * then replaces one anchor symlink with a real directory holding a file. It
  * unlinks the link by name, so the checkout the link points at is never touched.
  */
-const PNPM_STUB = `#!/usr/bin/env node
+const OXLINT_STUB = `#!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -367,14 +369,14 @@ describe("the anchor cleanup", () => {
   // per-anchor removal has to recurse into it or the isolated root leaks.
   const REPLACED_ANCHOR = "node_modules";
 
-  it("removes a real directory that replaced an anchor symlink and never follows the link", () => {
+  it("removes a real directory that replaced an anchor symlink and never follows the link", async () => {
     const sandbox = mkdtempSync(join(tmpdir(), "lint-at-pnpm-"));
     const report = join(sandbox, "report.json");
-    const stub = join(sandbox, "pnpm");
+    const stub = join(sandbox, "oxlint");
     const previousPath = process.env.PATH ?? "";
     let isolatedRoot = "";
 
-    writeFileSync(stub, PNPM_STUB, "utf8");
+    writeFileSync(stub, OXLINT_STUB, "utf8");
     chmodSync(stub, 0o755);
 
     try {
@@ -382,7 +384,7 @@ describe("the anchor cleanup", () => {
       process.env.ANCHOR = REPLACED_ANCHOR;
       process.env.REPORT = report;
 
-      const outcome = lintAtIsolated("apps/genie/src/index.ts", SOURCE);
+      const outcome = await lintAtIsolated("apps/genie/src/index.ts", SOURCE);
 
       expect(outcome.failed).toBe(false);
 

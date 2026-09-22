@@ -15,6 +15,11 @@ describe("unitTestPreset", () => {
     expect(unitTestPreset.test?.passWithNoTests).toBe(false);
   });
 
+  it("caps workers at a share of the machine, so Nx and vitest do not multiply", () => {
+    // A count would assume one machine shape; the percentage scales with it.
+    expect(unitTestPreset.test?.maxWorkers).toBe("25%");
+  });
+
   it("collects unit tests from src and from the top-level contracts folder", () => {
     expect(unitTestPreset.test?.include).toEqual([...UNIT_TEST_INCLUDE]);
     expect(UNIT_TEST_INCLUDE).toContain("src/**/*.test.ts");
