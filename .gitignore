@@ -1,6 +1,9 @@
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
 
+# Local editor/agent configuration and generated hooks.
+.cursor/
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

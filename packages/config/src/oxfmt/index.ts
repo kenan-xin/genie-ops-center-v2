@@ -30,6 +30,7 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // State owned by other tools.
     ".beads/**",
     ".claude/**",
+    ".cursor/**",
     ".agents/**",
     ".impeccable/**",
     ".supercov/**",
