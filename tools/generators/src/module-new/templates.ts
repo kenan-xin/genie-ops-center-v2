@@ -628,7 +628,9 @@ export type WorkspacePageProps = {
 export function WorkspacePage(props: WorkspacePageProps) {
   return (
     <main>
-      <h1>${names.displayName}</h1>
+      {/* The name is a string literal, not JSX text: text decodes an HTML entity,
+          so a name such as \`R&D; Ops\` would render as something else. */}
+      <h1>{"${names.displayName}"}</h1>
       {props.records.length === 0 ? (
         <p>No records yet.</p>
       ) : (
@@ -658,9 +660,11 @@ const adminPage: Template = (names) =>
 export function AdminPage(props: AdminPageProps) {
   return (
     <main>
-      <h1>${names.displayName} settings</h1>
+      {/* Each name is a string literal, not JSX text: text decodes an HTML entity,
+          so a name such as \`R&D; Ops\` would render as something else. */}
+      <h1>{"${names.displayName} settings"}</h1>
       <p data-testid="${names.id}-record-count">
-        This deployment holds {props.recordCount} ${names.displayName} records.
+        This deployment holds {props.recordCount} {"${names.displayName}"} records.
       </p>
     </main>
   );

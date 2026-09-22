@@ -286,6 +286,25 @@ describe("the display name guard", () => {
     ).toThrow(/display name/);
   });
 
+  it("renders a name with an ampersand as a literal, not as JSX text", () => {
+    const rendered = renderModule({ id: "demo", displayName: "R&D; Ops" });
+
+    const workspace = rendered.get(
+      "packages/modules/demo/src/presentation/workspace-page.tsx"
+    );
+
+    const admin = rendered.get(
+      "packages/modules/demo/src/presentation/admin-page.tsx"
+    );
+
+    // JSX text decodes an HTML entity, so a bare name between tags would render
+    // as something other than what was asked for.
+    expect(workspace).toContain('<h1>{"R&D; Ops"}</h1>');
+    expect(workspace).not.toContain("<h1>R&D; Ops</h1>");
+    expect(admin).toContain('<h1>{"R&D; Ops settings"}</h1>');
+    expect(admin).toContain('{"R&D; Ops"} records.');
+  });
+
   it("renders an accented name with punctuation without breaking a file", () => {
     const rendered = renderModule({
       id: "demo",
