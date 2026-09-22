@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -13,8 +14,16 @@ const run = promisify(execFile);
  * database, runs `next dev` against it on the host, and leaves the server for
  * the specs. That is the only way to see the development branch of the mount in
  * a real browser.
+ *
+ * The compose file is resolved from this file's own location rather than from
+ * `process.cwd()`, so the run does not depend on where it was launched from and
+ * the Nx target, which starts in the project directory, works like the package
+ * script.
  */
-const COMPOSE_FILE = "deploy/stack/compose.dev-e2e.yaml";
+const COMPOSE_FILE = resolve(
+  import.meta.dirname,
+  "../../../../deploy/stack/compose.dev-e2e.yaml"
+);
 
 export const COMPOSE = ["compose", "-p", "genie-s009-dev", "-f", COMPOSE_FILE];
 
@@ -29,6 +38,35 @@ async function isReady(url: string): Promise<boolean> {
   return fetch(url)
     .then((response) => response.status === 200)
     .catch(() => false);
+}
+
+/**
+ * Whether anything at all holds the port.
+ *
+ * A raw connection rather than an HTTP probe, because the thing to keep this
+ * run away from is not only a healthy server. A process still shutting down,
+ * or one serving something else, answers no `/api/health` and an HTTP probe
+ * would call the port free; `next dev` then fails to bind with `EADDRINUSE`,
+ * which reads as the server "never becoming ready". A refused connection is the
+ * only proof the port is free.
+ */
+function isListening(port: number): Promise<boolean> {
+  return new Promise((settle) => {
+    const socket = createConnection({ host: "127.0.0.1", port });
+
+    socket.once("connect", () => {
+      socket.destroy();
+      settle(true);
+    });
+    socket.once("error", () => {
+      socket.destroy();
+      settle(false);
+    });
+    socket.setTimeout(2000, () => {
+      socket.destroy();
+      settle(false);
+    });
+  });
 }
 
 /**
@@ -47,9 +85,9 @@ async function waitForReady(url: string, deadline: number): Promise<boolean> {
 }
 
 export default async function globalSetup(): Promise<void> {
-  if (!existsSync(resolve(process.cwd(), COMPOSE_FILE))) {
+  if (!existsSync(COMPOSE_FILE)) {
     throw new Error(
-      `No ${COMPOSE_FILE} under ${process.cwd()}. Run Playwright from the workspace root.`
+      `No compose file at ${COMPOSE_FILE}. The development harness cannot start its database.`
     );
   }
 
@@ -58,13 +96,14 @@ export default async function globalSetup(): Promise<void> {
   // one, so teardown can never signal a stranger's process group.
   rmSync(PID_FILE, { force: true });
 
-  // Next shifts to the next free port when the one it is given is busy, and
-  // says so only on its own output. The readiness probe would then get a 200
-  // from whatever already held this port, and every spec would drive that
-  // server instead. Refusing to start is the only safe answer.
-  if (await isReady(`http://127.0.0.1:${DEV_PORT}/api/health`)) {
+  // Anything already holding the port is refused, not tolerated. Next does not
+  // move to another port on its own here, so a run that ignored a held port
+  // would fail to bind rather than silently drive a stranger's server, and the
+  // refusal below says which happened instead of leaving an `EADDRINUSE` in the
+  // server's output.
+  if (await isListening(DEV_PORT)) {
     throw new Error(
-      `Something is already serving 127.0.0.1:${DEV_PORT}. Stop it, or set GENIE_DEV_PORT to a free port. This run will not use a server it did not start.`
+      `Something is already listening on 127.0.0.1:${DEV_PORT}. Stop it, or set GENIE_DEV_PORT to a free port. This run will not start beside a server it did not start.`
     );
   }
 
@@ -72,12 +111,22 @@ export default async function globalSetup(): Promise<void> {
 
   const appRoot = resolve(import.meta.dirname, "../..");
 
+  // `--hostname 127.0.0.1` is load-bearing, not tidiness. Next blocks its
+  // development-only resources, `/_next/hmr` included, unless the request's
+  // origin is one it considers its own, and it treats `127.0.0.1` as a different
+  // origin from the `localhost` it binds by default. The browser reaches the
+  // server at `127.0.0.1`, so without this the HMR socket is refused, the
+  // development client reconnects and reloads in a loop, and the page never
+  // hydrates. A `client-only` subtree such as the `ssr: false` devtools mount
+  // then never renders at all, which is the failure this harness once mistook
+  // for a defect inside the devtools shell.
+  //
   // `next dev` rather than the built server, because the development branch of
   // the mount is the whole subject of these specs. NODE_ENV is set by `next
   // dev` itself; setting it here would be the test arranging its own result.
   const child = spawn(
     resolve(appRoot, "node_modules/.bin/next"),
-    ["dev", "--port", String(DEV_PORT)],
+    ["dev", "--hostname", "127.0.0.1", "--port", String(DEV_PORT)],
     {
       cwd: appRoot,
       env: {
