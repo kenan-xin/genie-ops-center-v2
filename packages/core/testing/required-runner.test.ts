@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -281,6 +281,48 @@ function runRunner(cwd: string, args: readonly string[]): RunnerResult {
 }
 
 /**
+ * A synthetic workspace holding a byte-for-byte copy of this runner and its
+ * guard, so the runner's own fixed `../node_modules/.bin/vitest` resolves to a
+ * path that does not exist. The absent executable is the deterministic spawn
+ * failure: the operating system reports ENOENT, which the runner must turn into
+ * its own named diagnostic instead of an unhandled `error` event.
+ *
+ * The copy is how the real runner is reached without touching its fixed path:
+ * `import.meta.dirname` moves with the file, so relocating the runner relocates
+ * the binary it spawns. The `package.json` gives the copy the module type its
+ * real neighbours in packages/core provide.
+ */
+function makeRelocatedRunnerWorkspace(name: string): string {
+  const root = join(tmpdir(), `genie-core-runner-${name}`);
+
+  rmSync(root, { recursive: true, force: true });
+
+  mkdirSync(join(root, "tools"), { recursive: true });
+  mkdirSync(join(root, "testing"), { recursive: true });
+
+  cpSync(RUNNER, join(root, "tools/run-required-tests.ts"));
+  cpSync(
+    resolve(import.meta.dirname, "required-tests-guard.ts"),
+    join(root, "testing/required-tests-guard.ts")
+  );
+  writeFileSync(join(root, "package.json"), '{"type":"module"}\n', "utf8");
+
+  return root;
+}
+
+/**
+ * The runner's own report directories currently under the temporary directory.
+ * The runner names them `genie-core-required-*`, and the spawn-failure path must
+ * leave none of them behind: a snapshot taken before and after one invocation
+ * shows exactly the directory that one failed run leaked.
+ */
+function reportDirectories(): readonly string[] {
+  return readdirSync(tmpdir())
+    .filter((entry) => entry.startsWith("genie-core-required-"))
+    .toSorted();
+}
+
+/**
  * One manifest case by index, failing loudly rather than on an undefined read.
  * The negative controls below name a case by position, so a manifest that
  * shortens its case list fails here rather than testing nothing.
@@ -408,4 +450,42 @@ describe("the core integration runner command line", () => {
     expect(result.stderr).toContain("mandatory case did not execute");
     expect(result.stderr).toContain(manifestCase(migrator, 0));
   }, 120000);
+
+  // A spawn that never starts vitest — its binary is missing — must fail the
+  // run with the runner's own named diagnostic, without an unhandled `error`
+  // event, and without leaking the report directory it created before the
+  // spawn (genie-ops-center-v2-eoe). The leak is the whole point: the core
+  // runner settled the error path but never removed its owned temp directory,
+  // unlike the app runner fixed at 11078e8.
+  it("exits nonzero with a named diagnostic and leaves no report directory when vitest cannot start", () => {
+    const workspace = makeRelocatedRunnerWorkspace("spawn-failure");
+    const before = reportDirectories();
+
+    try {
+      const result = spawnSync(
+        "node",
+        [
+          join(workspace, "tools/run-required-tests.ts"),
+          "--config",
+          "vitest.config.mjs",
+        ],
+        {
+          cwd: workspace,
+          env: { ...process.env, GENIE_RUNNER_QUIET: "1" },
+          encoding: "utf8",
+        }
+      );
+
+      const leaked = reportDirectories().filter(
+        (entry) => !before.includes(entry)
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Could not start vitest");
+      expect(result.stderr).not.toContain("Unhandled 'error' event");
+      expect(leaked).toEqual([]);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
 });

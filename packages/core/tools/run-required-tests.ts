@@ -74,6 +74,10 @@ const vitestExit = await new Promise<number>((settle) => {
 });
 
 if (spawnFailed) {
+  // Vitest never ran, so the report directory holds nothing to read; remove it
+  // here rather than leak it on the way out.
+  rmSync(reportDir, { recursive: true, force: true });
+
   process.exit(1);
 }
 
