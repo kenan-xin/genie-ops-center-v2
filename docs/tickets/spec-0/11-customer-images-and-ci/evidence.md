@@ -333,3 +333,22 @@ Rerun: `pnpm exec nx affected -t build test lint typecheck`, success for 7 proje
 Still partial: item 8 has no customer-image release smoke, because no `customers/<slug>/`
 folder exists in the repository. Once one exists, `scripts/build-customer-image.sh <slug>
 <version> --no-publish` closes it without publishing.
+
+### Item 8 closed: customer-image release smoke, 2026-09-23
+
+The checkout gained no customer folder. The workspace at `8c24d5e` was staged with
+`stageWorkspace` from `apps/genie/testing/stage-workspace.ts` into
+`/tmp/s011-customer-smoke-CE4bZI`, and only the stage got a probe customer.
+
+```bash
+mkdir -p $STAGE/customers/s011-g5probe/deploy
+printf 'placeholder\n' > $STAGE/customers/s011-g5probe/deploy/modules.txt
+cd $STAGE && pnpm install --frozen-lockfile
+NX_DAEMON=false ./scripts/build-customer-image.sh s011-g5probe 0.0.0-s011-g5 --no-publish --repo-root $STAGE
+# candidate sha256:1fb6764c47a0148019c19e499b7fe8af06efdd89d1a15b1c545ceb0e1653a048 passed smoke; no publish was requested
+```
+
+The first run stopped at the `validate` gate with `ENOENT ... docs/specs`, because
+`stageWorkspace` leaves out `docs` and one hygiene test reads it. After `docs` was copied
+into the stage, the rerun passed every gate, built the image with `MODULE_INCLUDE=placeholder`
+and smoke-checked that exact candidate. Nothing was published and the stage was deleted.
