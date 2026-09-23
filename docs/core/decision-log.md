@@ -4,7 +4,7 @@ Status: 2026-09-16. Questions that had no owner answer and were decided by defau
 
 ## DEC-12. Background jobs
 
-Question: reminders, group syncs, AI extraction, migration retries, and email retries all need a scheduler and a queue, and the tech stack had none.
+Question: email retries, slow or retryable event handlers with their dead-letter queues, and the jobs and schedules that modules declare through the Jobs contract point all need a scheduler and a queue, and the tech stack had none.
 
 Decision: pg-boss, a Postgres-backed job queue, in the deployment's own database in its own schema. No new infrastructure, jobs survive restarts, and one worker process from the same image handles them (ADR 0007).
 
