@@ -45,14 +45,20 @@ function makeWorkspace(
   return root;
 }
 
-function runRunner(cwd: string, args: readonly string[]): number {
+/** The status and stderr of one runner invocation, so a case can prove the reason. */
+type RunnerResult = {
+  readonly status: number;
+  readonly stderr: string;
+};
+
+function runRunner(cwd: string, args: readonly string[]): RunnerResult {
   const result = spawnSync("node", [RUNNER, ...args], {
     cwd,
     env: { ...process.env, GENIE_RUNNER_QUIET: "1" },
     encoding: "utf8",
   });
 
-  return result.status ?? -1;
+  return { status: result.status ?? -1, stderr: result.stderr ?? "" };
 }
 
 /** Every manifest file as a trivially passing synthetic file. */
@@ -95,7 +101,9 @@ describe("the app integration runner fails closed", () => {
     );
 
     try {
-      expect(runRunner(workspace, ["--config", "vitest.config.mjs"])).toBe(1);
+      expect(
+        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
+      ).toBe(1);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -103,14 +111,20 @@ describe("the app integration runner fails closed", () => {
 
   // The reviewed negative control, against the real app configuration: a filter
   // that matches nothing anywhere skips every file, so no container starts and
-  // the run must still fail here rather than report green.
-  it("exits nonzero for the reviewed filtered run of the real app config", () => {
-    expect(
-      runRunner(import.meta.dirname, [
-        "testing/isolation.integration.test.ts",
-        "-t",
-        "__review_no_case_matches__",
-      ])
-    ).toBe(1);
+  // the run must still fail here rather than report green. The stderr assertion
+  // is the point: exit 1 alone would also come from a spawn failure, which would
+  // prove nothing about the app manifest.
+  it("exits nonzero for the reviewed filtered run of the real app config, naming the skipped case", () => {
+    // The app root, where `vitest.integration.config.ts` resolves, so the run
+    // really collects the file and skips its cases rather than failing to find
+    // the config and reporting a missing report.
+    const result = runRunner(resolve(import.meta.dirname, ".."), [
+      "testing/isolation.integration.test.ts",
+      "-t",
+      "__review_no_case_matches__",
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("mandatory case did not execute");
   }, 120000);
 });
