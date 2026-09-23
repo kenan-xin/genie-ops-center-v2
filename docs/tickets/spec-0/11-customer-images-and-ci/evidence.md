@@ -303,3 +303,33 @@ code is not caught by the prune (documented). The prune removes unselected modul
 meaning folders with a module manifest. Any other folder under `packages/modules/` fails the
 check instead of being removed, which is stricter than "removes every folder" and is what
 gives the stray-folder negative test a real target.
+
+### Review follow-up, 2026-09-23
+
+Owner-approved cold review (no blockers; the four deviations above accepted). Three minors
+fixed test-first:
+
+1. `apps/genie/tsconfig.build.json` set its own `exclude`, which replaced the root's
+   transient-fixture markers (`64a`/`5hq`). `fixture-visibility.test.ts` now also resolves the
+   build tsconfig. RED: `apps/genie tsconfig.build.json compiles no fixture it would otherwise
+   include` failed with `expected [ …(32) ] to not include 'apps/genie/src/__boundary__probe-…'`.
+   GREEN after restoring `**/*__boundary__*`, `**/*__wiring__*` and `**/*__antislop__*`:
+   `pnpm exec vitest run src/oxlint/fixture-visibility.test.ts` in `packages/config`, 63 passed.
+2. Prune wording change: a folder under `packages/modules/` that holds no file (for example one
+   a branch switch left with only an ignored `node_modules`, which the image context delivers
+   empty) is now removed and logged as `[module-prune] removed empty folder: <name>`. A
+   non-empty folder without a module manifest still fails the check. Symlinks are never treated
+   as empty folders. RED: the empty-folder case failed with `packages/modules holds old, which
+   the selection does not name`, and the CLI case exited 1. GREEN: `prune.test.ts` 10 passed.
+   Dated clarifications were added to the Spec 0 pg4 note and this ticket's pg4 addendum.
+3. `image-prune.integration.test.ts` now removes the tags it built in `afterAll` (`docker rmi
+   -f`, a missing tag ignored). Before one run: `genie-s011:prune-import-control`,
+   `prune-empty`, `prune-control` present from earlier runs. The run: 7 passed (84s). After:
+   no `genie-s011:prune-*` image. Other images (`genie-s005:test`, `genie-s011:development`,
+   release candidates) were untouched.
+
+Rerun: `pnpm exec nx affected -t build test lint typecheck`, success for 7 projects.
+
+Still partial: item 8 has no customer-image release smoke, because no `customers/<slug>/`
+folder exists in the repository. Once one exists, `scripts/build-customer-image.sh <slug>
+<version> --no-publish` closes it without publishing.
