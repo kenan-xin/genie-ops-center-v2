@@ -104,11 +104,11 @@ Finish development-only devtools, i18n and root scripts under shared presets, re
 
 ### 5. Close image and CI acceptance
 
-Complete the one secret-free image introduced before G2, extending it to every required selection with only selected modules, histories and runtime assets. Exclude Storybook, stories, fixtures and development dependencies. Runtime dispatch implements the app path only; worker/CLI execution arrives in Section 1. Customer selection is explicit and may be empty.
+Complete the one secret-free image introduced before G2, extending it to every required selection with only selected modules, histories and runtime assets. Exclude Storybook, stories, fixtures and development dependencies. Prove module exclusion at the build input (`pg4`, 2026-09-23): the release build context holds only the `MODULE_INCLUDE` module packages, a context check compares the module folders in the context with `MODULE_INCLUDE` and fails the build on any other module folder, and a test proves that a direct import of an excluded module fails the build. The context check exists because a frozen install passes and only leaves a dangling link when a listed module folder is missing. The image scan keeps its secret and build-argument checks and does not search built chunks for excluded code, because the bundler output does not preserve package origin. Runtime dispatch implements the app path only; worker/CLI execution arrives in Section 1. Customer selection is explicit and may be empty.
 
 Wire the Spec 0 PR/merge/release gates. Smoke the actual candidate image before pushing: development image proves placeholder behavior; customer image proves health and absence of excluded routes/tables/migration files without requiring placeholder. With no customer folders, use the development fallback, never label it a customer deliverable. Publishing occurs only in the authorized release workflow, not while implementing/testing this plan.
 
-**Gate G5:** AC-16–AC-22 and all remaining Spec 0 acceptance criteria have recorded evidence. Include phone/desktop E2E, response coverage, image content/history inspection and failure-path assertions. Passing Storybook is not deployment proof.
+**Gate G5:** AC-16–AC-22 and all remaining Spec 0 acceptance criteria have recorded evidence. Include phone/desktop E2E, response coverage, build-input exclusion checks, image secret/history inspection and failure-path assertions. Passing Storybook is not deployment proof.
 
 ## Later-section compatibility and exclusions
 

@@ -28,7 +28,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 ## Acceptance and tests
 
 - Development image placeholder page and headers; customer image health/headers and absence of excluded routes/tables/history files. Explicit empty customer selection boots core-only. Fresh disposable databases per case.
-- Inspect image filesystem/history for secrets, excluded modules, migration files and dev-only tooling; two selections start. Publication must consume same smoke-tested image identity.
+- Inspect image filesystem/history for secrets, the build argument, excluded migration files and dev-only tooling; two selections start. Excluded-module code absence is proved at the build input, as the pg4 addendum below states, not by scanning built chunks. Publication must consume same smoke-tested image identity.
 - Inject failed smoke/typecheck/test/missing README/no module tests/skipped isolation and verify pipeline fails and no publish command executes.
 - Exercise publish ordering in a safe local/test sink or stub external publish boundary; actual GHCR authentication/push evidence requires separate release authorization, never claim it ran.
 
@@ -59,3 +59,13 @@ Follow [the module naming revision](../../../tech-plans/module-naming-revision.m
 Production Dockerfile, customer wrapper and release CI are absent on develop; extend the retained S0-05 image rather than create another. Compose S0-06 through S0-10 proofs. Wire nonempty real integration/isolation and all four test layers, image/staging exclusion and exact-candidate smoke-before-publish. Actual remote publishing needs separate authorization; a stub publish test does not satisfy external acceptance.
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.
+
+## Build-input exclusion (pg4), 2026-09-23
+
+Owner decision in Bead `genie-ops-center-v2-pg4`, recorded in Spec 0 AC-24 and DEC-33. It supersedes every earlier instruction in this ticket to find excluded modules by package-name, path or source-marker needles in built output.
+
+- The release build uses a pruned Docker context that holds only the `MODULE_INCLUDE` module packages.
+- A context check compares the module folders present in the context with `MODULE_INCLUDE` and fails the build on any other module folder. Install failure is not the check, because a frozen install passes and leaves a dangling link when a listed module folder is missing.
+- A test proves that a direct import of an excluded module fails the build.
+- The excluded-module needle scan of built chunks is removed. The image scan keeps its secret and build-argument checks (`MODULE_INCLUDE` is the only build argument, R-32).
+- The smoke test keeps its excluded route, table and migration-history checks. No bundler migration is part of this ticket.

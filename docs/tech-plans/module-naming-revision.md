@@ -55,7 +55,7 @@ The sequence was authorized and executed for S0-01/S0-02: shared validation and 
 | S0-08 | Generator accepts an unprefixed capability, emits the capability folder/ID and prefixed package-name mapping and passes the same validation. Tenant include lists retain IDs. |
 | S0-09 | Update active commands/examples for paths and package targets; preserve the documented generator CLI identity. |
 | S0-10 | Discover selected stories from inventory roots; prove module package-metadata and story/source/config invalidation and excluded-story absence. |
-| S0-11 | Inspect images/staging for excluded package names, folders, source markers and migration histories; a package-name change or tree-shaking claim is not exclusion proof. |
+| S0-11 | Prove the image build context holds only the selected module folders (context check and failing-import test, `pg4`, 2026-09-23) and inspect images for excluded migration histories. A package-name change or tree-shaking claim is not exclusion proof, and a source-marker scan of built chunks is not either. |
 | S0-12 | Aggregate exact integrated naming/validation/boundary/generator/selection/image evidence; preserve all existing G1–G5 obligations. |
 
 ## Documentation propagation and preservation

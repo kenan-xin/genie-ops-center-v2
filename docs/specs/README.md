@@ -144,3 +144,4 @@ Each call below follows an existing decision or convention and was made by the c
 | --- | --- | --- |
 | 2026-09-18 | Drafting round: six specifications, common format, readiness report, realm runbook | Drafts complete after one integration pass, one mechanical check, and one independent cross-specification review (13 findings, all closed). |
 | 2026-09-18 | Decisions round with the product owner, then a Codex review of the working tree | All eleven deferred decisions settled and recorded in their canonical documents; five review findings fixed. No specification has an open question. The reverse proxy runbook added. Awaiting the product owner's approval of the six drafts. |
+| 2026-09-23 | Spec 1 approval by the product owner | `01-deployment-and-setup.md` approved for ticket breakdown, with Nodemailer confirmed as the SMTP client and the DEC-50 registration owner decided. Specs 2 to 5 remain drafts. |
