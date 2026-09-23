@@ -104,6 +104,36 @@ describe("the image filesystem scanner", () => {
     expect(kinds).toContain("migration-file");
   });
 
+  // pg4: bundler output does not preserve package origin, so a route string in a
+  // built chunk proves nothing about which package it came from. Exclusion is
+  // proved at the build input instead (the builder-stage prune).
+  it("does not treat an excluded module's route strings in a built chunk as a finding", () => {
+    const files = [
+      {
+        path: "/app/apps/genie/.next/server/chunks/routes.js",
+        content: `const routes = ["/m/solutions", "/admin/m/solutions"];`,
+      },
+    ];
+
+    expect(scanFiles(files, base)).toEqual([]);
+  });
+
+  // AC-17 keeps its input after pg4: the path needles still mark an excluded
+  // module's installed package, so its SQL is still a migration-file finding.
+  it("still flags excluded-module migration SQL under its installed package", () => {
+    const files = [
+      {
+        path: "/app/node_modules/.pnpm/@genie+module-solutions@0/node_modules/@genie/module-solutions/drizzle/0000_x.sql",
+        content: "create table solutions_row (id uuid);",
+      },
+    ];
+
+    const kinds = scanFiles(files, base).map((finding) => finding.kind);
+
+    expect(kinds).toContain("excluded-module");
+    expect(kinds).toContain("migration-file");
+  });
+
   it("does not flag a manifest that names an excluded module", () => {
     // The real false positive the strengthened release smoke found: the app's
     // own package.json declares every workspace module, so it names an excluded
@@ -308,6 +338,7 @@ describe("the scanner's needles", () => {
     expect(needle).toContain("@genie/module-solutions");
     expect(needle).toContain("packages/modules/solutions/");
     expect(needle).toContain("__drizzle_migrations_solutions");
+    expect(needle).not.toContain("/m/solutions");
   });
 
   it("covers the development-only tooling families this project uses", () => {

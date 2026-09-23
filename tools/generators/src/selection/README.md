@@ -4,7 +4,7 @@ The one build-time module selection resolver. The application registry generatio
 
 ## What belongs here
 
-Reading the data-only module inventory, resolving an ordered selection from `MODULE_INCLUDE` or a customer `modules.txt`, and producing the canonical serialized selection and its fingerprint.
+Reading the data-only module inventory, resolving an ordered selection from `MODULE_INCLUDE` or a customer `modules.txt`, and producing the canonical serialized selection and its fingerprint. Pruning an image build's `packages/modules/` folders to that selection, which the Dockerfile builder stage runs before install.
 
 ## What must not go here
 

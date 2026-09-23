@@ -131,12 +131,16 @@ export function excludedModulePathNeedles(id: string): readonly string[] {
 }
 
 /**
- * An excluded module's high-signal content markers: its migration ledger, and
- * its workspace and admin route strings. These appear in a built bundle only
- * when the module's code or schema was compiled in.
+ * An excluded module's content marker: its migration ledger name.
+ *
+ * The workspace and admin route strings (`"/m/<id>"`, `"/admin/m/<id>"`) were
+ * removed on 2026-09-23 (`pg4`): bundler output does not preserve package
+ * origin, so a string in a built chunk cannot prove which package it came from.
+ * Exclusion is proved at the build input by the builder-stage prune
+ * (`tools/generators/src/selection/prune.ts`, Spec 0 AC-24).
  */
 export function excludedModuleContentNeedles(id: string): readonly string[] {
-  return [`__drizzle_migrations_${id}`, `"/m/${id}"`, `"/admin/m/${id}"`];
+  return [`__drizzle_migrations_${id}`];
 }
 
 /**
