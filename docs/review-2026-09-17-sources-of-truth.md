@@ -1,5 +1,7 @@
 # Source-of-truth cleanup inside `docs/`, 2026-09-17
 
+Record, not current. This cleanup was applied in September 2026. Read `README.md` in this folder for the current map of `docs/`.
+
 Scope: this repository only. After the first design handover, `docs/design/` holds files that repeat what `core/`, `architecture/`, and `modules/` already own. `docs/` is the source of truth. This is the verdict per file, with what must be rescued before anything is deleted.
 
 Counts: 5 files to delete, 1 to trim, 7 to move out, 1 to promote, 12 to keep.

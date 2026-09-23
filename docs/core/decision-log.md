@@ -497,6 +497,8 @@ Amended 2026-09-23: the registration owner is decided in the next entry. Removal
 
 ### Registration reconciliation owner (decided 2026-09-23)
 
+Read the amendments below in date order. A bracketed `[Superseded ...]`, `[... corrected ...]` or `[settled ...]` clause marks text that the next amendment overrides, not current guidance.
+
 Question: which code writes the disabled `tenant_module` row for a module that an upgrade introduces, and in which transaction relative to migrations and the omission check of Section 1 R-79.
 
 Decision: the migrator run owns it, under the advisory lock that the migrator already holds, before the process serves requests or consumes jobs. Inside the lock, the migrator first runs the omission check and stops on an unauthorized omission. After the migrations commit, it inserts one `enabled: false` row for each compiled module without a row, in one transaction, with `ON CONFLICT DO NOTHING`, so a repeated start changes nothing. Permission changes stay as versioned migration files under the DEC-23 addendum.
