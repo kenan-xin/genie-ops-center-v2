@@ -10,6 +10,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
+    // Vitest reads this from the root only. Its 60 s default failed develop run
+    // 35883152097 when an image build shared the runner with a story run.
+    browser: { connectTimeout: 120_000 },
     projects: [
       // The host's own configuration assertions. They read Nx's resolved
       // project graph and need no browser, so they run as an ordinary unit
