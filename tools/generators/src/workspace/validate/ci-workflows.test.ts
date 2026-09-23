@@ -248,6 +248,42 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // The image suites build many full app images on one hosted runner, and the
+  // default runner ran out of disk inside `pnpm install` (release run
+  // 35865015903). Every job that runs gates frees the preinstalled toolchains
+  // first (genie-ops-center-v2-1rd.12.2).
+  it("frees runner disk space before any gate runs", () => {
+    const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
+
+    for (const name of ["pull-request", "develop", "release"]) {
+      const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
+
+      const gates = lines.flatMap((line, index) =>
+        gate.test(line) ? [index] : []
+      );
+
+      expect(gates.length, name).toBeGreaterThan(0);
+
+      for (const at of gates) {
+        const job = lines.slice(0, at);
+
+        const start = job.findLastIndex((line) => /^ {2}[\w-]+:$/.test(line));
+
+        const freed = job
+          .slice(start)
+          .some((line) =>
+            line.includes(
+              "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
+            )
+          );
+
+        expect(freed, `${name}:${at + 1} frees disk space in its job`).toBe(
+          true
+        );
+      }
+    }
+  });
+
   it("never pushes an image except through the smoke-then-publish wrapper", () => {
     for (const name of ["pull-request", "develop", "release"]) {
       expect(read(`${WORKFLOWS}/${name}.yml`)).not.toContain("docker push");

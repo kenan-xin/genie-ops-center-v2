@@ -27,6 +27,9 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The image suites build many full images; free the preinstalled toolchains
+      # this repository never uses, or the runner runs out of disk.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The runner has no browser; Storybook and E2E launch the pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
       # A push to develop has `origin/develop` at HEAD, so an affected run based
