@@ -74,11 +74,11 @@ R-14. A customer's read credential is revoked as part of retirement (R-26) and i
 
 ### Item 3: health checks, log shipping, and backups
 
-R-15. Every Genie-operated stack is polled on `GET /api/health`, which is unauthenticated and returns only `ok` or `degraded` and never error text (`../specs/README.md`, "Cross-section calls", row "Health endpoint", and `../core/roadmap.md`, Section 1, item 4). An alert fires when a stack reports `degraded` or fails to answer for more than five minutes.
+R-15. Every Genie-operated stack is polled on `GET /api/health`, which is unauthenticated and returns only `ok` or `degraded` and never error text (`../specs/README.md`, "Cross-section calls", row "Health endpoint", and `../core/roadmap.md`, Section 1, item 4). An alert fires when a stack reports `degraded` or fails to answer for more than five minutes. Amended 2026-09-23: the endpoint answers HTTP 503 while the database is unreachable (Spec 1 R-11), and a 503 alerts the same way as no answer.
 
 R-15a. Genie has no access to a customer-managed stack, so its runbook states what the customer must watch and why: the health endpoint, the container restart count, the disk the database sits on, and the backup job. It also states what the customer must send Genie when they ask for support, which is the container log around the failure and the image version, and that the log carries no secret by design (`DEC-31`, `DEC-33`).
 
-R-16. The stack template's application and worker services carry a container health check on the same path, so a failed migration keeps the container unhealthy and the previous version serving (`DEC-9`).
+R-16. The stack template's application and worker services carry a container health check on the same path, so a failed migration keeps the container unhealthy and the previous version serving (`DEC-9`). Amended 2026-09-23: the worker serves no HTTP, so it writes a heartbeat file inside its container after each successful database round trip of its job loop, and its container health check fails when that file is older than a fixed limit. The heartbeat is not a `genie-ops` command, so it writes no audit row (Spec 1 R-64). It also catches a worker whose job loop hangs. The application keeps the HTTP check on `/api/health`.
 
 R-17. Logs stay on the host. The stack template sets the `json-file` log driver on every service with rotation at 50 MB per file and 20 files per container, and the hosting runbooks say who reads them and how, with `docker compose logs` or the host's tools. No log aggregation service exists in any hosting mode. Logs are pino JSON with request, tenant, and user ids and carry no secret, no session token, and no emailed link (`DEC-31` as amended 2026-09-18, `../core/roadmap.md`, Section 0, item 10).
 

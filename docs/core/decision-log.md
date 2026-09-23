@@ -224,6 +224,8 @@ How the image is delivered: one private image per customer on GitHub Container R
 
 How the image is run: one stack per customer from the compose file or Helm values that `nx g @genie/generators:tenant-new <slug>` generates into `customers/<slug>/deploy/` from the template in `deploy/stack/`. The stack is the application, the job worker from the same image, and Keycloak, unless the customer already runs Keycloak. Postgres and SMTP come from the host: Genie's servers for a Genie-hosted stack, the customer's for a customer-hosted one. `genie-ops` is inside the image and runs with `docker exec` or as a second entrypoint, so no separate tool is installed. A migration failure keeps the container unhealthy and the previous version serving.
 
+Amended 2026-09-23 (owner decision, Section 1 D-8): the tenant generator owns the stack template. It renders the compose file, the Helm values and `.env.example` from its own templates in `tools/generators/src/tenant-new/`, so the sentence above that names "the template in `deploy/stack/`" is superseded. `deploy/stack/` holds only the end-to-end test stacks. Reason: the generator already writes all seven customer files and is tested, and a template file it would read adds a second place to change.
+
 Where a stack runs and who operates it, chosen per customer in the contract and recorded in the customer's runbook, never in `tenant.yaml` (`DEC-35`):
 
 - Genie-hosted. The stack runs on Genie's Coolify servers. Genie operates it and holds the break-glass secret.
