@@ -57,7 +57,7 @@
       "col": 3,
       "type": "backend",
       "label": "Migrate",
-      "sublabel": "core, then modules"
+      "sublabel": "each history commits"
     },
     {
       "id": "seed_done",
@@ -72,14 +72,14 @@
       "col": 4,
       "type": "database",
       "label": "Register",
-      "sublabel": "new rows, disabled"
+      "sublabel": "disabled rows, commits"
     },
     {
       "id": "serve",
       "lane": "startup",
       "col": 5,
       "type": "cloud",
-      "label": "Commit",
+      "label": "Unlock",
       "sublabel": "then serve, run jobs"
     }
   ],

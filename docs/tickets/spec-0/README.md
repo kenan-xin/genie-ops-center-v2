@@ -10,7 +10,7 @@ Spec 0 and its technical plan were approved for ticket breakdown on 2026-09-19. 
 - [ADR 0008](../../adr/0008-foundation-integration-and-generated-registry.md), [module contract](../../architecture/module-contract.md), [environment contract](../../architecture/environment-contract.md), [UI story-first workflow](../../architecture/ui-development.md).
 - Twelve work tickets. G1 is S0-02 and G2 is S0-05, not late release checks. G3 is the joined S0-06/S0-07 evidence; G4 combines S0-03/S0-08/S0-09/S0-10 plus preceding gates; G5 is S0-12.
 - No design import, application implementation, dependency installation, new worktree, commit, push, publication or Dolt remote sync is performed by this breakdown.
-- Sections 1–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
+- Section 1 is approved for ticket breakdown (2026-09-23). Sections 2–5 remain unapproved for breakdown. Open design/product questions stay open. Reference-design rechecks are separate work.
 
 Beads epic: `genie-ops-center-v2-1rd`. The [initial audit](audit-2026-09-21.md) records the earlier baseline. Both first-batch lanes integrated: entrypoint repair at `bcd66e7`, S0-04 at `13800cd`. The [integrated review and repair record](04-context-migrator-and-placeholder/integrated-review.md) reopened S0-04, repaired every confirmed finding, completed fresh real-database proof and reaccepted S0-04 at `531e8af`. S0-01 through S0-04 and 5ph are accepted. S0-05/G2 and its yt2/3yv obligations are integrated and closed at the recorded baseline; later tickets still require their own acceptance and integration. Read Beads for current claims and readiness. Beads owns current status; do not redispatch either historical first-batch prompt.
 
