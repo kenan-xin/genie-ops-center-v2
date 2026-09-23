@@ -152,7 +152,9 @@ function planFixture(root: string, relativePath: string): FixturePlan {
  * Unsupported: two processes running these suites against one checkout at once.
  * The paths are fixed because each must match one exact override glob, so the
  * second process meets the first one's file and fails with `EEXIST`. One process
- * is safe, because `serializeByPath` orders same-path calls, and Nx runs
+ * is safe: the checkout suite takes at most one job per distinct path per batch
+ * (`takeUniquePathBatch`) and drains those batches in order (`drainBatches`), so
+ * two calls for one path are never written at once, and Nx runs
  * `@genie/config:test` once. Run a second copy from its own worktree
  * (genie-ops-center-v2-20z).
  */
