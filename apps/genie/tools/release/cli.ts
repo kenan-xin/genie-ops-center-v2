@@ -209,5 +209,9 @@ if (
   process.argv[1] !== undefined &&
   resolve(process.argv[1]) === resolve(import.meta.filename)
 ) {
-  process.exit(main(process.argv.slice(2)));
+  // Set the exit code rather than calling `process.exit`: on a pipe, stdout and
+  // stderr are asynchronous, and `process.exit` discards whatever has not
+  // flushed yet. A failed gate's tail is large, so exiting here would cut off
+  // both the tail and the status line that follows it.
+  process.exitCode = main(process.argv.slice(2));
 }

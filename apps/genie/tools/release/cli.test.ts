@@ -27,7 +27,7 @@ const temporary: string[] = [];
  * handoff at the wrapper boundary, which the pipeline's own unit tests cannot
  * see.
  */
-function stubWorkspace(pnpmExit: number) {
+function stubWorkspace(pnpmExit: number, pnpmExtra = "") {
   const root = mkdtempSync(join(tmpdir(), "genie-release-cli-"));
 
   temporary.push(root);
@@ -60,7 +60,7 @@ function stubWorkspace(pnpmExit: number) {
 
   stub(
     "pnpm",
-    `printf 'pnpm %s ENV=%s MODULE_INCLUDE=%s\\n' "$*" "$GENIE_SMOKE_IMAGE" "$MODULE_INCLUDE" >> "$STUB_LOG"\nprintf 'gate stdout marker\\n'\nprintf 'gate stderr marker\\n' >&2\nexit ${pnpmExit}`
+    `printf 'pnpm %s ENV=%s MODULE_INCLUDE=%s\\n' "$*" "$GENIE_SMOKE_IMAGE" "$MODULE_INCLUDE" >> "$STUB_LOG"\nprintf 'gate stdout marker\\n'\nprintf 'gate stderr marker\\n' >&2\n${pnpmExtra}\nexit ${pnpmExit}`
   );
   stub(
     "docker",
@@ -205,6 +205,29 @@ describe("the customer image release wrapper", () => {
     expect(gateAt).toBeGreaterThan(-1);
     expect(outcome.stderr).toContain("gate stdout marker");
     expect(statusAt).toBeGreaterThan(gateAt);
+  });
+
+  it("flushes the whole tail and the status line when the gate is chatty", () => {
+    // One gate line far larger than a pipe buffer. A runner that exits before
+    // its stderr drains loses the tail and the status line together, which is
+    // exactly the blindness this Bead exists to remove.
+    const workspace = stubWorkspace(
+      1,
+      "head -c 200000 /dev/zero | tr '\\0' 'x'; printf '\\n'"
+    );
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("xxxx");
+    expect(outcome.stderr).toContain("release failed at typecheck");
   });
 
   it("publishes nothing for a missing customer", () => {
