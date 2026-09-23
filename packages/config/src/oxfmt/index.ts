@@ -52,12 +52,18 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // them, while a concurrent `format:check` walks the same tree and reads what
     // it finds. The anti-slop suite's chained-assertion body is not oxfmt-clean,
     // so a check overlapping it fails on the fixture itself
-    // (genie-ops-center-v2-bew). The prefixes are the same ones the root tsconfig,
+    // (genie-ops-center-v2-bew). The markers are the same ones the root tsconfig,
     // `.eslintignore` and the shared Vitest preset exclude, and no tracked file
-    // carries them, so the guard hides no source.
-    "**/__boundary__*",
-    "**/__wiring__*",
-    "**/__antislop__*",
+    // carries one, so the guard hides no source.
+    //
+    // Each pattern matches the marker anywhere inside a path segment, not only
+    // at its start, because a suite may name a fixture mid-basename: the config
+    // probes are `vitest.__boundary__.config.ts`, whose marker follows the dot.
+    // A `**/*` prefix covers the leading and the mid-basename shape alike, so one
+    // entry per marker is enough (genie-ops-center-v2-5hq).
+    "**/*__boundary__*",
+    "**/*__wiring__*",
+    "**/*__antislop__*",
 
     // Generated at build time from MODULE_INCLUDE (ADR 0008).
     "apps/genie/src/modules.ts",
