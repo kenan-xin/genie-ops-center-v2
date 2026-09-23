@@ -60,7 +60,7 @@ function stubWorkspace(pnpmExit: number) {
 
   stub(
     "pnpm",
-    `printf 'pnpm %s ENV=%s MODULE_INCLUDE=%s\\n' "$*" "$GENIE_SMOKE_IMAGE" "$MODULE_INCLUDE" >> "$STUB_LOG"\nexit ${pnpmExit}`
+    `printf 'pnpm %s ENV=%s MODULE_INCLUDE=%s\\n' "$*" "$GENIE_SMOKE_IMAGE" "$MODULE_INCLUDE" >> "$STUB_LOG"\nprintf 'gate stdout marker\\n'\nprintf 'gate stderr marker\\n' >&2\nexit ${pnpmExit}`
   );
   stub(
     "docker",
@@ -181,6 +181,30 @@ describe("the customer image release wrapper", () => {
 
     expect(log).not.toContain("docker push");
     expect(log).not.toContain("docker build");
+  });
+
+  it("prints a failed gate's captured output before the status line", () => {
+    const workspace = stubWorkspace(1);
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+
+    const gateAt = outcome.stderr.indexOf("gate stderr marker");
+    const statusAt = outcome.stderr.indexOf("release failed at typecheck");
+
+    // Both halves of the failure reach the log, in the order a reader needs:
+    // the gate's own output first, the status line that concludes it after.
+    expect(gateAt).toBeGreaterThan(-1);
+    expect(outcome.stderr).toContain("gate stdout marker");
+    expect(statusAt).toBeGreaterThan(gateAt);
   });
 
   it("publishes nothing for a missing customer", () => {

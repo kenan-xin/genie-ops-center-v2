@@ -180,6 +180,13 @@ export function main(argv: readonly string[]): number {
   const outcome = runRelease(request, spawnRunner);
 
   if (!outcome.ok) {
+    // The gate's own output, bounded and redacted, comes first so the status
+    // line that names the failed step reads as its conclusion. A success
+    // carries no output, so a passing release stays quiet.
+    if (outcome.gateOutput !== undefined && outcome.gateOutput !== "") {
+      process.stderr.write(`${outcome.gateOutput}\n`);
+    }
+
     process.stderr.write(
       `release failed at ${outcome.failedStep ?? "unknown"}: ${outcome.reason ?? ""}\n`
     );

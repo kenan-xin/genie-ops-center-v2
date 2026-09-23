@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { redact } from "@genie/core";
 import { readModuleInventory, readModulesFile } from "@genie/generators";
 
 /** One command the pipeline runs, with its working directory and environment. */
@@ -49,10 +50,53 @@ export type ReleaseOutcome = {
   readonly publishedRef?: string;
   readonly failedStep?: string;
   readonly reason?: string;
+  /**
+   * The bounded, redacted tail of a failed gate's captured output, when a gate
+   * failed. Present only on failure, so a successful run stays quiet; the CLI
+   * prints it before the status line that names the failed step.
+   */
+  readonly gateOutput?: string;
 };
 
 /** The digest shape `docker image inspect -f {{.Id}}` prints for a real image. */
 const IMMUTABLE_IDENTITY = /^sha256:[0-9a-f]{64}$/;
+
+/**
+ * How many trailing lines of a failed gate's captured output the release log
+ * keeps. Enough to hold a stack trace and the lines that give it context, short
+ * enough that a chatty gate cannot bury the status line printed after it.
+ */
+const GATE_OUTPUT_TAIL_LINES = 200;
+
+/** The last `lines` lines of one captured stream, newline-joined. */
+function tailLines(text: string, lines: number): string {
+  const all = text.split("\n");
+
+  return all.slice(Math.max(0, all.length - lines)).join("\n");
+}
+
+/**
+ * A failed gate's captured stdout and stderr, each bounded to its own trailing
+ * lines and redacted.
+ *
+ * Each stream is bounded on its own so a long stdout cannot push a short
+ * stderr's cause out of the log. The result runs through the logger's redaction
+ * rule, so a credential a gate printed (a database url, a token) never reaches
+ * the release log.
+ */
+function gateOutputTail(result: {
+  readonly stdout: string;
+  readonly stderr: string;
+}): string {
+  const tail = [
+    tailLines(result.stdout, GATE_OUTPUT_TAIL_LINES),
+    tailLines(result.stderr, GATE_OUTPUT_TAIL_LINES),
+  ]
+    .filter((part) => part.trim() !== "")
+    .join("\n");
+
+  return String(redact(tail));
+}
 
 /**
  * Docker tag components allow only `[A-Za-z0-9_.-]`, so a version or slug that
@@ -75,8 +119,16 @@ function nxArgs(target: string): readonly string[] {
   return ["exec", "nx", "run", target, "--skip-nx-cache"];
 }
 
-function fail(failedStep: string, reason: string): ReleaseOutcome {
-  return { ok: false, failedStep, reason };
+function fail(
+  failedStep: string,
+  reason: string,
+  gateOutput?: string
+): ReleaseOutcome {
+  // `exactOptionalPropertyTypes` forbids writing an explicit `undefined`, so an
+  // absent tail omits the field rather than carrying one.
+  return gateOutput === undefined
+    ? { ok: false, failedStep, reason }
+    : { ok: false, failedStep, reason, gateOutput };
 }
 
 /**
@@ -161,7 +213,8 @@ export function runRelease(
     if (result.status !== 0) {
       return fail(
         step,
-        `${label} failed with exit ${result.status}. The candidate is not built and nothing is published.`
+        `${label} failed with exit ${result.status}. The candidate is not built and nothing is published.`,
+        gateOutputTail(result)
       );
     }
   }

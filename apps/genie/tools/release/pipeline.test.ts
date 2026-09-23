@@ -264,6 +264,50 @@ describe("the customer image release pipeline", () => {
     expect(has(calls, "build")).toBe(true);
   });
 
+  it("reports a bounded, redacted tail of a failed gate's captured output", () => {
+    const root = repoWithModules("placeholder\n");
+
+    // The head of each stream is longer than the tail that is kept, so a case
+    // that forgot to bound would carry the head and fail the absence below.
+    const stdoutHead = Array.from({ length: 300 }, (_, i) => `out ${i}`);
+    const stderrHead = Array.from({ length: 300 }, (_, i) => `err ${i}`);
+
+    const runner: CommandRunner = (command, args) =>
+      stepOf(command, args) === "typecheck"
+        ? {
+            status: 1,
+            stdout: `${stdoutHead.join("\n")}\nDATABASE_URL=postgres://u:hunter2@db/app\n`,
+            stderr: `${stderrHead.join("\n")}\n`,
+          }
+        : { status: 0, stdout: "", stderr: "" };
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(false);
+
+    // Both streams keep their tail...
+    expect(outcome.gateOutput).toContain("out 299");
+    expect(outcome.gateOutput).toContain("err 299");
+
+    // ...and drop their head, so a chatty gate cannot bury the status line.
+    expect(outcome.gateOutput).not.toContain("out 0\n");
+    expect(outcome.gateOutput).not.toContain("err 0\n");
+
+    // A credential the gate printed never reaches the release log.
+    expect(outcome.gateOutput).not.toContain("hunter2");
+    expect(outcome.gateOutput).toContain("[redacted]");
+  });
+
+  it("carries no gate output when the gate succeeds", () => {
+    const root = repoWithModules("placeholder\n");
+    const { runner } = recordingRunner();
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.gateOutput).toBeUndefined();
+  });
+
   it("fails closed when the identity probe is not an immutable digest", () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner([], "acme:latest");

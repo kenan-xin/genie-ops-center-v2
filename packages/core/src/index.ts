@@ -97,6 +97,7 @@ export {
   type RedactingLogger,
   createLogger,
   forExecution,
+  redact,
 } from "./services/logging/index.ts";
 
 export {

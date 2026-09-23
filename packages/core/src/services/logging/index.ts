@@ -185,11 +185,18 @@ export type LogValue =
 /**
  * Replaces every secret value in one logged object, however deeply it sits. Redaction is a
  * property of the logger: no call site decides what is safe to log (R-45).
+ *
+ * Exported so a surface that must show captured child output, such as the release
+ * pipeline's failed-gate tail, redacts it with the same rule as a log line instead of
+ * re-deriving one. A string is redacted as the message text it is.
  */
 // A logger's serializer is the one place that must read a value's representation: it is handed
 // whatever a call site logged, on its way to json. The two checks below are that inspection.
 // oxlint-disable anti-slop/no-runtime-typeof
-function redact(value: LogValue, seen = new WeakSet<object>()): LogValue {
+export function redact(
+  value: LogValue,
+  seen = new WeakSet<object>()
+): LogValue {
   if (typeof value === "string") {
     return isSecretLink(value) ? REDACTED : redactText(value);
   }
