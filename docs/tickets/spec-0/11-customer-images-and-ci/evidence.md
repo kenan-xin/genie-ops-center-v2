@@ -170,6 +170,10 @@ dev-tooling, develop NX_BASE, declared-argument derivation, the `ci:pr` split, a
 first two matrix cases before Docker Desktop vanished, then failed the rest closed — which
 is the fail-closed behavior the fix to `buildImageWith` now reports with a cause.
 
+> Superseded 2026-09-23: the post-merge Docker re-verification ran at the branch tip after
+> the develop merge `feb7d29`, and every suite passed. See "Final tip verification" at the
+> end of this file. The paragraph below is kept as history.
+
 **Post-merge Docker re-verification is BLOCKED.** Docker Desktop stopped after the first
 real run (`docker info` fails with ENOENT for `/home/kenan/.docker/desktop/docker.sock`).
 The blocker fix and the merge of develop `c0c7399` are committed, but the candidate-specific
@@ -352,3 +356,50 @@ The first run stopped at the `validate` gate with `ENOENT ... docs/specs`, becau
 `stageWorkspace` leaves out `docs` and one hygiene test reads it. After `docs` was copied
 into the stage, the rerun passed every gate, built the image with `MODULE_INCLUDE=placeholder`
 and smoke-checked that exact candidate. Nothing was published and the stage was deleted.
+
+## Final tip verification, 2026-09-23
+
+Develop merged again (`feb7d29`; develop `86c04c1` and `566bfc5`). One conflict, in the
+Spec 0 pg4 note: develop's builder-stage line was taken, and the S0-11 empty-folder
+clarification line (`7404139`) was re-added, because develop lacks it. The spec now differs
+from develop only by that line. The ticket index auto-merged and differs from develop only
+by S0-11 additions. `pnpm install --frozen-lockfile`: lockfile up to date.
+
+### Injected-failure acceptance
+
+"Inject failed smoke/typecheck/test/missing README/no module tests/skipped isolation and
+verify pipeline fails and no publish command executes." The cause side proves that each
+defect fails its gate. The pipeline side proves that a failed gate runs no `docker tag`, no
+`docker push` and no `--publish-command` sink.
+
+| Case | Cause: the defect fails its gate | Pipeline: no publish command | Result |
+| --- | --- | --- | --- |
+| failed smoke | release smoke fails closed without a candidate (`release-smoke.integration.test.ts`) | `pipeline.test.ts` "does not publish when the candidate smoke fails"; "runs no publish command after a failed smoke, with the docker / sink boundary" | pass |
+| failed typecheck | gate is `@genie/app:typecheck` per customer | "does not build or publish after a failed per-customer typecheck"; "runs no publish command after a failed typecheck, with the docker / sink boundary" | pass |
+| failed test | gate is `@genie/app:test` | "does not build or publish after a failed unit test"; "runs no publish command after a failed test, …" | pass |
+| missing README | **new** `project-readme.test.ts` "fails a project that holds no README.md" and "fails a README that does not say what the project imports"; the `validate` hygiene case now calls `projectReadmeError` | "does not build or publish after a failed repository validate (missing README or a module with no tests)"; "runs no publish command after a failed validate, …" | pass |
+| no module tests | `module-tests.test.ts` "fails a module package that ships no test file"; hygiene "%s ships at least one test file" | same validate cases | pass |
+| skipped isolation | `required-runner.test.ts` "exits nonzero when a mandatory case is skipped in source" (the isolation cases are in `REQUIRED_TESTS`) | "does not build or publish after a skipped isolation run"; "runs no publish command after a failed integration, …" | pass |
+| end to end through the CLI | stub gate exits 1 | `cli.test.ts` "publishes nothing when a gate fails" (no `docker build`, no `docker push`) | pass |
+
+TDD: the README rule was RED on the missing module and GREEN at 3 passed. The ten new
+pipeline cases are characterisation of behaviour that already existed, so they were shown to
+be able to fail by mutation. With `pipeline.ts` ignoring a failed gate and a failed smoke, all
+10 failed. After restoring it, `pipeline.test.ts` passed 23 of 23, and `pipeline.ts` is
+unchanged (commit `f0db9ac`).
+
+### Reruns at the tip
+
+| Command | Result |
+| --- | --- |
+| `pnpm exec vitest run --config vitest.integration.config.ts testing/image-matrix.integration.test.ts` (apps/genie) | 4 passed, 45.8s |
+| `pnpm exec vitest run --config vitest.integration.config.ts testing/image-prune.integration.test.ts` (apps/genie) | 7 passed, 94.4s |
+| `pnpm exec nx run @genie/app:test:integration --skip-nx-cache` | 14 files, 134 passed; fixture and dev Playwright 6 each |
+| `pnpm exec nx run @genie/core:test:integration --skip-nx-cache` | 3 files, 33 passed |
+| `pnpm exec nx run @genie/module-placeholder:test:integration --skip-nx-cache` | 1 file, 4 passed |
+| `NX_BASE=develop pnpm run ci:pr` | exit 0: lint/typecheck/test/build/build-storybook/test-storybook for 7 projects, test:integration for 4 projects, validate 51 passed |
+| `pnpm run ci:develop` | exit 0: the same, plus `test:e2e:fixture` 6 passed (3 phone, 3 desktop) |
+
+No Docker Desktop flake occurred at the tip. The `Unknown module id: does-not-exist` stack
+trace in the `ci:pr` log is the expected negative case of the clean-checkout registry
+validate test.
