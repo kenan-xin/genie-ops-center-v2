@@ -89,11 +89,18 @@ function isIncludedBy(path: string, project: string): boolean {
 }
 
 /** The files a project's resolved configuration hands to the compiler. */
-function resolvedFiles(project: string): readonly string[] {
-  const raw = execFileSync("pnpm", ["exec", "tsc", "--showConfig"], {
-    cwd: join(WORKSPACE_ROOT, project),
-    encoding: "utf8",
-  });
+function resolvedFiles(
+  project: string,
+  tsconfig = "tsconfig.json"
+): readonly string[] {
+  const raw = execFileSync(
+    "pnpm",
+    ["exec", "tsc", "-p", tsconfig, "--showConfig"],
+    {
+      cwd: join(WORKSPACE_ROOT, project),
+      encoding: "utf8",
+    }
+  );
 
   // SAFETY: `tsc --showConfig` prints one JSON document, and the one field read
   // below is optional here and asserted non-empty by the caller.
@@ -270,6 +277,25 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
       for (const probe of probes) {
         withProbe(probe, "export const probe = true;\n", () => {
           expect(resolvedFiles(project)).not.toContain(probe);
+        });
+      }
+    }
+  );
+
+  // A second tsconfig in a typechecked project is a second compiler surface.
+  // `next build` type-checks through the app's build tsconfig (pg4), and a
+  // project's own `exclude` replaces the inherited one, so it must repeat the
+  // markers itself.
+  it.each([["apps/genie", "tsconfig.build.json"]])(
+    "%s %s compiles no fixture it would otherwise include",
+    (project, tsconfig) => {
+      const probes = probesInside(project);
+
+      expect(probes.length).toBeGreaterThan(0);
+
+      for (const probe of probes) {
+        withProbe(probe, "export const probe = true;\n", () => {
+          expect(resolvedFiles(project, tsconfig)).not.toContain(probe);
         });
       }
     }

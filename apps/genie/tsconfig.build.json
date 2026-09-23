@@ -10,5 +10,13 @@
     "next.config.ts",
     "tailwind.config.ts"
   ],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  // This `exclude` replaces the inherited one, so it repeats the root's
+  // transient-fixture markers (genie-ops-center-v2-64a, -5hq).
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "**/*__boundary__*",
+    "**/*__wiring__*",
+    "**/*__antislop__*"
+  ]
 }
