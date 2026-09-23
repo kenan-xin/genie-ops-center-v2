@@ -1,4 +1,15 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -336,6 +347,15 @@ describe("the Spec 0 CI gates", () => {
     }
 
     expect(pr).toContain("validate");
+
+    // The integration tasks run in parallel. Without bail, Nx waits for every
+    // sibling after one fails, so a slow or stalled sibling kept ci:develop
+    // silent for 14 minutes after a failure (develop run 35867486208).
+    const integration = pr
+      .split("&&")
+      .find((segment) => segment.includes("test:integration"));
+
+    expect(integration).toContain("--nx-bail");
     expect(rootScript("ci:develop")).toContain("test:e2e:fixture");
     expect(rootScript("ci:release:customer")).toContain(
       "scripts/build-customer-image.sh"
@@ -344,6 +364,66 @@ describe("the Spec 0 CI gates", () => {
       "scripts/build-development-image.sh"
     );
   });
+
+  // What `--nx-bail` does is Nx behavior, so it is proved against the installed
+  // Nx rather than assumed: one task fails, and its running sibling, including
+  // a background grandchild, is stopped rather than awaited.
+  it("bail stops a running sibling and its children once one task fails", () => {
+    const stage = mkdtempSync(join(tmpdir(), "genie-nx-bail-"));
+
+    try {
+      symlinkSync(
+        join(WORKSPACE_ROOT, "node_modules"),
+        join(stage, "node_modules")
+      );
+      writeFileSync(
+        join(stage, "nx.json"),
+        JSON.stringify({ neverConnectToCloud: true, parallel: 2 })
+      );
+      writeFileSync(
+        join(stage, "package.json"),
+        JSON.stringify({ name: "stage", private: true, workspaces: ["a", "b"] })
+      );
+
+      const project = (name: string, script: string) => {
+        mkdirSync(join(stage, name));
+        writeFileSync(
+          join(stage, name, "package.json"),
+          JSON.stringify({ name, scripts: { t: script } })
+        );
+      };
+
+      project("a", "sleep 2; exit 1");
+      project("b", "sleep 120 & echo $! > ../grandchild.pid; sleep 120");
+
+      const started = Date.now();
+
+      const result = spawnSync(
+        join(stage, "node_modules/.bin/nx"),
+        ["run-many", "-t", "t", "--nx-bail"],
+        {
+          cwd: stage,
+          encoding: "utf8",
+          env: { ...process.env, NX_DAEMON: "false", CI: "true" },
+          // A missing bail would wait the full 120 seconds; this bound turns
+          // that into a failure below instead of a stalled suite.
+          timeout: 60000,
+        }
+      );
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.status).not.toBeNull();
+      expect(Date.now() - started).toBeLessThan(30000);
+
+      const grandchild = Number(
+        readFileSync(join(stage, "grandchild.pid"), "utf8")
+      );
+
+      expect(() => process.kill(grandchild, 0)).toThrow();
+    } finally {
+      rmSync(stage, { recursive: true, force: true });
+    }
+  }, 90000);
 
   it("runs the ordinary app E2E suite on develop beside the fixture suite", () => {
     const develop = rootScript("ci:develop");
