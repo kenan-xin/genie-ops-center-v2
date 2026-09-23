@@ -27,7 +27,7 @@ Deliver Section 1 on the Section 0 foundation as built: the deployment tables an
 
 **D-3 and D-13, the migrator run.** `MigrationRun` gains the omission check before the histories and the conditional registration insert after they commit, as injectable steps like the existing `apply?` seam, reading the compiled list of D-12. R-7 and DEC-46 make the readers the only code that reads `tenant_module`; the named exceptions are the migrator run (R-27, R-79), the `seed` step (R-20) and the enable procedure (R-68). A test proves that nothing else touches the table.
 
-**D-11, pg-boss connections.** Build pg-boss over the context pool through its `db` option, as a fixed context member, and call `boss.start()` only after the migrator run returns. The application instance sets `supervise: false` and `schedule: false`; only the worker supervises and schedules. Keep `useListenNotify` off, because its connection sits outside the pool. Pin the version when it is added (12.33.6 was checked on 2026-09-23). Before a job runs, the worker checks the entitlement of the module that owns it.
+**D-11, pg-boss connections.** Build pg-boss over the context pool through its `db` option, as a fixed context member, and call `boss.start()` only after the migrator run returns. The application instance sets `supervise: false` and `schedule: false`; only the worker supervises and schedules. Keep `useListenNotify` off, because its connection sits outside the pool. `packages/core` pins 12.33.5, installed on 2026-09-24. Newer releases were younger than the workspace `minimumReleaseAge` of 24 hours. Before a job runs, the worker checks the entitlement of the module that owns it.
 
 **D-5 and D-6, transactions.** A core `withTransaction(ctx, fn)` gives callers one transaction. Durable event handlers are enqueued through pg-boss inside that transaction (`send(..., { db: fromDrizzle(tx, sql) })`), so a job commits or rolls back with the data (R-54, R-55). Fast in-process handlers run after commit and are best effort: a crash between commit and dispatch loses them, so a handler that must not be lost uses the durable channel (R-53). The file store writes the `file` row and the bytes in the caller's transaction (R-33). The later `s3` adapter writes the object before the row commits, so a rollback can leave an orphan object; that is its known ceiling.
 
@@ -70,7 +70,7 @@ Stop and seek a revised decision when bundling an entry needs a second image, a 
 
 ## Assumptions
 
-- pg-boss 12.33.6 or later keeps the constructor `db` option and `fromDrizzle(tx, sql)` for `send` inside a transaction. Checked against its documentation on 2026-09-23; the repository does not install pg-boss yet.
+- Confirmed on 2026-09-24 against the published 12.33.5 and 12.33.7 type declarations: the constructor takes `db: IDatabase`, an object with `executeSql(text, values)`, and `fromDrizzle(tx, sql)` wraps a drizzle transaction for `send`. pg-boss takes its locks with `pg_advisory_xact_lock` inside one multi-statement transaction text, so an `executeSql` over the context pool keeps each lock on one connection. A custom `db` without `beginTransaction` and `listen` rules out transactional workers and LISTEN/NOTIFY, and D-11 needs neither.
 - The Next proxy of `apps/genie/src/proxy.ts` runs on the Node runtime and can read the process-global context slot, as the Section 0 viewer override already does.
 - Node `util.parseArgs` behaves as documented for Node 26, including the value echo in `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL`.
 
