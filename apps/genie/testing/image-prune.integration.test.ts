@@ -3,7 +3,12 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { dockerBuild, removeImage, requireDocker } from "./image-process.ts";
+import {
+  type DockerBuildResult,
+  dockerBuild,
+  removeImage,
+  requireDocker,
+} from "./image-process.ts";
 import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
 
 /**
@@ -16,6 +21,10 @@ import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
  * something to remove even when placeholder is selected and every case can
  * fail. The builder stage is discarded, so the prune's own log lines are how
  * these cases observe it.
+ *
+ * The two cases that succeed with placeholder share one build, so a passing
+ * selection is proved once. The fail-fast cases keep their own builds, because
+ * their whole assertion is that their build does not succeed.
  *
  * The import cases import placeholder, because it is the one module the app
  * lists as a fixed workspace dependency with a real lockfile importer. The
@@ -90,6 +99,24 @@ const build = (
 /** The end of a build log, where the failing step is. */
 const tail = (log: string) => log.slice(-6000);
 
+let placeholderBuild: Promise<DockerBuildResult> | undefined;
+
+/**
+ * The one image the two placeholder-success cases share. It carries the imports
+ * the positive control needs and the fixture module every case needs, and the
+ * prune-lines case asserts the same build's log. The first caller builds it; the
+ * second awaits the same promise.
+ */
+function sharedPlaceholderBuild(): Promise<DockerBuildResult> {
+  placeholderBuild ??= build(
+    stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT)),
+    "placeholder",
+    "genie-s011:prune-control"
+  );
+
+  return placeholderBuild;
+}
+
 describe("the builder-stage module prune", () => {
   beforeAll(async () => {
     await requireDocker();
@@ -104,11 +131,7 @@ describe("the builder-stage module prune", () => {
   }, 120000);
 
   it("keeps the selected module and removes every other module folder, as the build log shows", async () => {
-    const result = await build(
-      stage(),
-      "placeholder",
-      "genie-s011:prune-control"
-    );
+    const result = await sharedPlaceholderBuild();
 
     expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: placeholder"));
@@ -152,13 +175,7 @@ describe("the builder-stage module prune", () => {
   }, 900000);
 
   it("resolves a direct and a subpath import of a selected module", async () => {
-    const root = stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT));
-
-    const result = await build(
-      root,
-      "placeholder",
-      "genie-s011:prune-import-control"
-    );
+    const result = await sharedPlaceholderBuild();
 
     expect(result.ok, tail(result.log)).toBe(true);
   }, 900000);
