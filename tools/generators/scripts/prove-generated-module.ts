@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 /**
  * Proves a generated module with no hand edit (AC-7).
@@ -151,7 +152,10 @@ function storiesRunFor(moduleInclude: string): number {
 
   process.stdout.write(output);
 
-  const passed = /Tests\s+(\d+) passed/.exec(output)?.[1];
+  // Under CI=true the output carries color codes between the words.
+  const passed = /Tests\s+(\d+) passed/.exec(
+    stripVTControlCharacters(output)
+  )?.[1];
 
   if (passed === undefined) {
     throw new Error(
