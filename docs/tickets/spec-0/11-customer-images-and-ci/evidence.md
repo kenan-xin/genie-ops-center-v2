@@ -1,10 +1,11 @@
 # S0-11 evidence — customer image matrix and Spec 0 CI gates
 
-Bead: `genie-ops-center-v2-1rd.11`. Branch: `feature/s0-11-customer-images-ci-gates`, from
-develop `ff47d4a`. Beads owns status; this file records what ran and what could not.
+Bead: `genie-ops-center-v2-1rd.11`. Branch: `feature/s0-11-customer-images-ci-gates`.
+Baseline develop `ff47d4a`; local develop `d7b5103` merged as merge commit `99dc975`
+(merge, not rebase), preserving every reviewed commit. Beads owns status.
 
-Versions: Nx 23.2.1, Node v26.9.0, pnpm 12.4.2, Vitest 4.1.11, Playwright 1.63.0,
-Storybook 10.6.0.
+Versions: Docker 29.8.0, Nx 23.2.1, Node v26.9.0, pnpm 12.4.2, Vitest 4.1.11,
+Playwright 1.63.0, Storybook 10.6.0.
 
 Commits (local, not pushed):
 
@@ -13,137 +14,162 @@ Commits (local, not pushed):
 | `96e485f` | `feat(release): add the customer image and development wrappers` |
 | `aae7977` | `test(image): add the customer image matrix and exclusion scanners` |
 | `8c9a79e` | `feat(ci): wire the Spec 0 gates and repository checks` |
-| `41a5bc8` | `docs(s0-11): record the design and evidence` |
+| `41a5bc8` | `docs(s0-11): record the design, evidence and AC-1 carry` |
 | `2642d56` | `fix(image): assert the placeholder denial and the viewer` |
 | `44ad661` | `fix(image): use module needles for the empty-image exclusion` |
 | `62c73e1` | `fix(release): accept the explicit --publish flag` |
 | `6cbe7c9` | `fix(image): scan real bytes and derive the declared build arguments` |
 | `39b3529` | `fix(ci): base the develop gates on the pushed commit` |
-| (this record) | `docs(s0-11): finalise the evidence and review disposition` |
+| `15ce412` | `docs(s0-11): record the review disposition and residual` |
+| `99dc975` | `Merge branch 'develop' into feature/s0-11-customer-images-ci-gates` |
+| `cb0b44d` | `fix(image): make the real-image scan precise` |
+| `c3871b7` | `fix(s0-11): stop the checks mutating the image context` |
+| `79906bb` | `ci: sequence the pull-request gates as two affected runs` |
+| (this record) | `docs(s0-11): record the real Docker proof` |
 
-The two `fix(image)` commits correct the unrun matrix assertions: the placeholder
-workspace route renders the R-13 stub denial, so the development case asserts the denial
-document with its headers plus the viewer page; and the app's own `/placeholder` dispatch
-route always compiles, so the empty-image case asserts the excluded module's package,
-folder and ledger needles rather than the bare word.
+The approach is in [design.md](design.md). Docker was unavailable in the first
+implementation session; the user then started the daemon, and everything below is a real
+run on Docker 29.8.0.
 
-The approach, the identity handoff and the AC-1 carry are in [design.md](design.md).
-
-## Docker is not available in this session
-
-The image matrix, the release smoke and every Testcontainers path need a Docker daemon,
-and none was running. The exact failure, reproduced five times:
-
-```text
-$ docker info --format '{{.ServerVersion}}'
-failed to connect to the docker API at unix:///home/kenan/.docker/desktop/docker.sock;
-check if the path is correct and if the daemon is running: dial unix
-/home/kenan/.docker/desktop/docker.sock: connect: no such file or directory
-```
-
-`/var/run/docker.sock` is absent, `systemctl is-active docker` is `inactive`, Docker Desktop
-is installed at `/opt/docker-desktop` but no process is running, and passwordless sudo is
-unavailable. Starting it is a host-service change and was deferred by the coordinator.
-
-Consequence, stated plainly: **every item below is BLOCKED / NOT RUN.** The tests and
-workflows that carry them are committed and fail closed — a missing daemon throws a named
-diagnostic rather than skipping — but they have not executed against a real image.
-
-| Item | Owner in this ticket | Status |
-| --- | --- | --- |
-| R-53 development image smoke (placeholder page, health, headers) | `testing/image-matrix.integration.test.ts` | BLOCKED — NOT RUN |
-| R-53/AC-17 customer image (selected and explicit empty) absence of routes/tables/migration files | `testing/image-matrix.integration.test.ts` | BLOCKED — NOT RUN |
-| AC-18/AC-19 two selections start; core-only boots | `testing/image-matrix.integration.test.ts` | BLOCKED — NOT RUN |
-| AC-8/R-33 image history and filesystem scan on a real image | `testing/image-matrix.integration.test.ts` | BLOCKED — NOT RUN |
-| Release smoke on the exact candidate identity | `testing/release-smoke.integration.test.ts` | BLOCKED — NOT RUN |
-| `nx run @genie/app:test:integration` (isolation, image startup, matrix) | required-tests manifest | BLOCKED — NOT RUN |
-| Real GHCR authentication and push | release workflow | NOT RUN — separate release authority |
+## The real image matrix (AC-17/AC-18/AC-19, R-53)
 
 ```bash
-# The commands that would run the blocked matrix, once a daemon is up:
-docker info --format '{{.ServerVersion}}'
-pnpm exec nx run @genie/app:test:integration --skip-nx-cache
-pnpm exec nx run @genie/app:test:e2e:fixture          # phone + desktop E2E
-scripts/build-customer-image.sh <slug> <version> --no-publish
+cd apps/genie
+pnpm exec vitest run --config vitest.integration.config.ts testing/image-matrix.integration.test.ts
+# Test Files 1 passed (1); Tests 4 passed (4); ~47s
 ```
 
-## What was proved (non-Docker)
+- **development image** (placeholder): boots on a fresh disposable Postgres, `GET
+  /api/health` is exactly `ok` with all five R-47 headers; `/placeholder` is a 200 document
+  carrying the standard headers and the documented R-13 denial (the entry needs
+  `placeholder:use`, the stub grants only `placeholder:read`); `/viewer/placeholder`
+  renders.
+- **explicitly empty selection**: boots core-only, health `ok` with the baseline policy,
+  `/placeholder` returns **404**, no `placeholder_record` table and no
+  `__drizzle_migrations_placeholder` ledger on the database it migrated itself, and no
+  `@genie/module-placeholder` package, `packages/modules/placeholder/` folder or
+  `__drizzle_migrations_placeholder` path in the image filesystem.
+- **two selections both build and start** on their own fresh databases.
+- **history and filesystem**: the Dockerfile declares exactly `["MODULE_INCLUDE"]`; the
+  image history carries no other argument of ours and no secret; the whole application tree
+  (real bytes, pnpm symlinks followed and de-duplicated) has no installed dev-only package
+  (`@tanstack/*-devtools`, `@playwright/`, `vitest`, `@storybook/`, `@nx/`,
+  `@genie/generators`, `oxlint`, `oxfmt`, `lefthook`, `testcontainers`), no `storybook-static`
+  or `.stories.`, no publicly served migration SQL, and no secret-bearing file or private key.
 
-The release pipeline is pure over an injected command runner, so its ordering and identity
-handoff are proved twice: by unit tests over a recording runner, and by an integration test
-that spawns the real CLI and wrapper against stub `docker`/`pnpm` binaries on `PATH`.
+The four cases are in the anti-skip manifest, so a filtered run fails, and a missing daemon
+throws a named diagnostic instead of skipping.
+
+## The full mandatory integration layer
+
+```bash
+pnpm exec nx run @genie/app:test:integration --skip-nx-cache
+# Test Files 13 passed (13); Tests 123 passed (123); ~2m
+```
+
+Includes `image.startup.test.ts` (13), `image-matrix` (4), `isolation` (2),
+`selection-cache` (6), `devtools-exclusion` (9), `viewer-background` (4), `headers` (19),
+`transport` (4), `prune-public-migration-sql` (15), `required-runner` (16), `image-scan`
+(21), `image-process` (9), `proxy-bundle` (1). The Playwright fixture and dev suites run as
+dependencies, six cases each at a phone and a desktop viewport.
+
+Per-project integration:
+
+| Project | Command | Result |
+| --- | --- | --- |
+| app | `nx run @genie/app:test:integration --skip-nx-cache` | 13 files, **123 passed** |
+| core | `nx run @genie/core:test:integration --skip-nx-cache` | 3 files, **32 passed** |
+| module-placeholder | `nx run @genie/module-placeholder:test:integration --skip-nx-cache` | 1 file, **4 passed** |
+| Storybook | `nx run @genie/storybook:test:integration --skip-nx-cache` | 1 file, **29 passed** |
+
+## Release wrapper, identity handoff and safe publish boundary
+
+```bash
+./scripts/build-development-image.sh 0.0.0-s011 --no-publish
+# candidate sha256:aced6b71cfc0a13b9252a38c58edb1d976b43e7d9211daa376f6ba66e67e01ce passed smoke; no publish was requested
+```
+
+```bash
+mkdir -p customers/s011-probe/deploy && printf 'placeholder\n' > customers/s011-probe/deploy/modules.txt
+GENIE_SINK_FILE=/tmp/s011-sink.log \
+  ./scripts/build-customer-image.sh s011-probe 0.0.0-s011 \
+  --publish-command "node apps/genie/tools/release/local-sink.ts"
+# candidate sha256:db6ffc4ad48429a544b57b588572f1714068e52d6185a0aaebce8b29ba59c337 passed smoke; published ghcr.io/genie-ops-center/genie-ops-center:s011-probe-0.0.0-s011
+# sink log: sha256:db6ffc4a…  ghcr.io/genie-ops-center/genie-ops-center:s011-probe-0.0.0-s011
+```
+
+Both runs executed the real gates (typecheck, validate, unit, integration), built the image
+with `MODULE_INCLUDE` from the explicit list, resolved the immutable digest, ran the real
+`vitest.release-smoke.config.ts` against that digest, and only then reached the publish
+boundary — which was disabled for the first run and a safe local sink for the second. No
+GHCR authentication or push happened. The fixture customer was removed afterwards (exact
+paths, then `rmdir`).
+
+## CI gates
+
+```bash
+NX_BASE=develop pnpm run ci:pr
+# nx affected -t lint typecheck test build build-storybook test-storybook  -> Success, 7 projects
+# nx affected -t test:integration                                          -> Success, 4 projects, 6 tasks
+# nx run @genie/generators:validate                                        -> 50 passed
+```
+
+`ci:pr` runs the non-integration gates and the integration layer as two sequenced affected
+runs: the S0-05 image-freshness guard rebuilds `genie-s005:test` inside the integration
+suite and fails when the Docker context moved since the `build-image` dependency, which
+happens in one combined invocation (filed `genie-ops-center-v2-453`). Same targets, same
+proof, no weakening. The AC-1 gate `nx affected -t build test lint typecheck` is green
+separately, as is `nx affected -t test:integration` alone.
+
+`ci:develop` adds the full Playwright fixture suite; `release.yml` runs the customer wrapper
+per discovered `customers/*/deploy/modules.txt`, or the development wrapper when none
+exists. No workflow contains a bare `docker push`.
+
+## Unit, format and quality
 
 | Command | Result |
 | --- | --- |
-| `pnpm exec nx run @genie/app:test --skip-nx-cache` | 18 files, **136 passed** |
-| `pnpm exec nx run @genie/generators:test --skip-nx-cache` | 14 files, **183 passed** |
-| `pnpm exec nx run @genie/generators:validate --skip-nx-cache` | 7 files, **46 passed** |
-| `pnpm exec nx affected -t lint typecheck test build build-storybook --base=develop --parallel=1 --skip-nx-cache` | Success, 7 projects, 25 tasks |
-| `pnpm exec nx run @genie/storybook:test-storybook --skip-nx-cache` | 7 files, **20 passed** |
+| `nx run @genie/app:test` | 18 files, 139 passed |
+| `nx run @genie/generators:test` | 14 files, 183 passed |
+| `nx run @genie/generators:validate` | 7 files, 50 passed |
+| `nx run @genie/storybook:test-storybook` | 7 files, 20 passed |
 | `pnpm run format:check` | clean, 307 files |
-| `npx supercov quality patch --all --base develop` | 21 files assessed; property scores only, no introduced blocker |
-
-The release-specific cases:
-
-- `tools/release/pipeline.test.ts`, 13 cases — modules.txt drives `MODULE_INCLUDE`; a changed
-  file changes the build argument; an empty file is an explicit empty selection; a missing
-  file fails before any Docker call; a failed typecheck, validate, unit, integration or
-  smoke does not build or publish; a non-digest identity fails closed; `publish:false` builds
-  and smokes but publishes nothing; the injected sink receives the identity; and the R-55
-  fallback builds the every-module image tagged `development`.
-- `tools/release/cli.test.ts`, 4 cases — the real wrapper and CLI run against stub binaries:
-  smoke runs on the digest before `docker tag <digest>` and `docker push`; the explicit
-  `--publish` the workflow passes is accepted; and neither a failed gate nor a missing
-  customer publishes anything.
-- `testing/image-scan.test.ts` (unit, in the fast run), 19 cases — history build arguments
-  and secrets, excluded-module package/path/ledger, publicly served migration SQL, dev-only
-  tooling and secrets, with a non-vacuous control; the Dockerfile declared-argument parser;
-  and the filesystem inventory parser, including a fail-closed oversized file, de-duplication
-  and malformed-line rejection.
-- `testing/required-runner.test.ts`, 16 cases — the manifest including the four image-matrix
-  cases.
-- `tools/generators/src/workspace/module-tests.test.ts` + hygiene — R-41 fails a module with
-  no test file, proved against a disposable package.
-- `validate/clean-checkout-registry.test.ts` — R-21: the registry is never committed,
-  identical input is byte-identical, explicit empty differs from populated, unknown id fails.
-- `validate/ci-workflows.test.ts` — the three workflow triggers, the root scripts, and that
-  no workflow contains a bare `docker push`.
-- `validate/affected.test.ts` — AC-1: the shared config preset and the exposed core
-  tenant-config schema both mark their consumers affected.
-
-## Preserved from earlier tickets
-
-- S0-09 production exclusion: `@genie/app:test` still includes the devtools-exclusion case,
-  and the image matrix's filesystem scan would flag any devtools package or Storybook output.
-- S0-10 Storybook confidentiality: `build-storybook` and `test-storybook` ran green; the
-  selection/confidentiality suite is untouched.
-- S0-06 selection contract: the release wrapper consumes the same data-only inventory and
-  `MODULE_INCLUDE` is still the only build argument.
+| `npx supercov quality patch --all --base develop` | changed files assessed; property scores only, no introduced blocker |
 
 ## Independent review
 
 One independent semantic/security review (openrouter GPT Sol, artifact
-`s0-11-independent-semantic-security-review` in the epic). One blocker and four majors, all
-valid, all fixed in this change; the reviewer confirmed the two earlier matrix fixes
-(`2642d56`, `44ad661`) and that a missing Docker daemon fails closed.
+`s0-11-independent-semantic-security-review`). One blocker and four majors, all valid, all
+fixed except one filed. The reviewer confirmed the two earlier matrix fixes (`2642d56`,
+`44ad661`), that a missing Docker daemon fails closed, the manifest join, the
+unset/empty/R-55 handling, `--no-publish` ordering, and that no workflow contains a bare
+`docker push`.
 
 | Finding | Severity | Disposition |
 | --- | --- | --- |
-| `release.yml` passed an unsupported `--publish`, so both release paths exited at argument parsing before any gate | blocker | Fixed: `--publish` is accepted explicitly and `cli.test.ts` drives it |
-| `docker tag <identity>` then `docker push <ref>` is not atomic; a second Docker user can retag between them | major | Residual, filed as `genie-ops-center-v2-3aa`: robust closure needs registry-side promotion by digest, which needs registry access this ticket excludes. Recorded in `design.md`, `evidence.md` and a code comment |
-| `imageFilePaths` supplied empty content, so the scanner's content rules never ran on a real image | major | Fixed: `collectImageFilesystem` reads bounded real bytes, and `filesystemEntries` fails closed on an oversized file |
-| `ci:develop` based affected on `origin/develop`, which is HEAD on a develop push, so affected could be empty | major | Fixed: the workflow bases on `github.event.before` with a zero-SHA fallback, and the wiring test pins it |
-| the matrix inspected `node:26-alpine` before any build, which a clean CI daemon lacks | major | Fixed: the Dockerfile's declared arguments are the authority, inherited args are derived from the built image's history, and no base image is pulled |
+| `release.yml` passed an unsupported `--publish`, so both release paths exited at argument parsing | blocker | Fixed `62c73e1`; `--publish` is accepted and driven by `cli.test.ts` |
+| `docker tag <identity>` then `docker push <ref>` is not atomic | major | Residual, filed `genie-ops-center-v2-3aa` (P1, blocks the first real registry release, not the stub-boundary acceptance); recorded in `design.md` and a code comment |
+| `imageFilePaths` supplied empty content, so content rules never ran | major | Fixed `6cbe7c9`; `collectImageFilesystem` reads bounded real bytes and fails closed on an oversized file |
+| `ci:develop` based affected on `origin/develop`, which is HEAD on a develop push | major | Fixed `39b3529`; bases on `github.event.before` with a zero-SHA fallback |
+| the matrix inspected `node:26-alpine` before any build | major | Fixed `6cbe7c9`; declared args come from the Dockerfile, inherited args from history |
 
-Confirmed sound by the reviewer: the required-cases manifest join, the explicit-empty/unset
-and R-55 handling, `--no-publish` returning before any sink, no workflow literal
-`docker push`, and the truthfulness of the blocked/not-run labels.
+A re-review after the real Docker proof and merge is requested.
+
+## Findings filed during the work
+
+| Bead | Finding |
+| --- | --- |
+| `genie-ops-center-v2-3aa` | registry tag can be retagged between `docker tag` and `docker push` (P1, first real release) |
+| `genie-ops-center-v2-453` | the S0-05 image-freshness guard fails in a combined affected invocation (worked around by sequencing `ci:pr`) |
+| `genie-ops-center-v2-w7u` | config lint raced config test on the `__antislop__` probe; develop's `7lj` fixture-ignore work appears to fix it, and the S0-11 image context now ignores the prefixes too |
 
 ## Limits
 
-- No Docker: every image, Testcontainers and browser-served item above is BLOCKED.
-- The filesystem scan is a path inventory plus the served-corpus content scan; it does not
-  decode compressed or exotic encodings and cannot see a run-time-assembled secret.
-- The CI workflows are pinned by a wiring test, not executed by a runner here.
-- SuperCov without `--all` reported "No changed source files to review" in this worktree;
-  the `--all` run above assessed the 21 changed files.
+- Real GHCR authentication and push remain separately authorized. Nothing was pushed.
+- The residual tag/push race (`3aa`) is the one publish hardening not closed here.
+- The filesystem scan reads real bytes with a 32 MiB per-file cap and fails closed above it;
+  it does not decode compressed or exotic encodings and cannot see a run-time-assembled
+  secret. Generic `password:`-shaped content rules were removed because bundled third-party
+  code false-positives on them.
+- Testcontainers can report a host port-bind timeout on a long-lived Docker Desktop; the
+  remedy is `docker rm -f $(docker ps -aq)` and `docker network prune -f`, then retry.

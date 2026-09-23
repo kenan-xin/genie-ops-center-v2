@@ -72,7 +72,10 @@ Two scope notes recorded explicitly:
   suite pins that a change to the shared config preset and to the exposed core
   tenant-config schema each mark their consumers affected, and the pull-request gate runs
   `validate` on every change.
-- **Real image and publish proof is outstanding.** No Docker daemon was available in the
-  implementation session, so the customer image matrix, the release smoke and every
-  Testcontainers path are committed and mandatory but unrun; `evidence.md` labels each. Real
-  GHCR authentication and push remain separately authorized and were not performed.
+- **Real image proof ran; real publication did not.** After the user started Docker, the
+  customer image matrix (development, selected and explicitly-empty selections), the release
+  smoke against the immutable candidate identity, and the app/core/module/Storybook
+  integration and phone/desktop browser suites all passed on Docker 29.8.0. Publication was
+  exercised only at the safe local-sink boundary. Real GHCR authentication and push remain
+  separately authorized and were not performed; the registry tag/push residual is
+  `genie-ops-center-v2-3aa` (first real release).

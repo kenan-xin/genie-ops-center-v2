@@ -69,8 +69,16 @@ placeholder and an explicit empty list — and:
 - scans the image history for a second build argument or a secret, and the whole application
   tree — every regular file's real bytes, pnpm symlinks followed and de-duplicated — for an
   excluded module, publicly served migration SQL, development-only tooling and secrets. A
-  file above the scanner's 4 MiB cap is reported and fails the proof rather than being
+  file above the scanner's 32 MiB cap is reported and fails the proof rather than being
   skipped, so the content rules cannot be evaded by size.
+
+Dev-only tooling is judged by installed **path**, not by content: a manifest that merely
+names `@playwright/test` or `vitest` in its `devDependencies` is not an installed dependency,
+while a directory under `/node_modules/<package>/` is. Secret content rules are limited to a
+private-key block and a long bearer token, plus secret-bearing file types by path (`.env`,
+`*.pem`, `*.key`, `*.p12`, `id_rsa`, `.npmrc`). Generic `password: value`-shaped rules were
+tried and removed: bundled pg code contains `password: this.password`, so they fail a real
+image on its own dependencies.
 
 The build-argument check derives what our Dockerfile declares from the Dockerfile text and
 treats every other `ARG` in the image history as inherited, so no base image is pulled and a
@@ -89,9 +97,13 @@ Docker daemon throws a named diagnostic in `beforeAll` rather than skipping.
 `.github/workflows/{pull-request,develop,release}.yml` call root scripts so the gate logic
 is testable without a workflow runner:
 
-- `ci:pr` — `nx affected -t lint typecheck test build build-storybook test-storybook
-  test:integration --base=origin/develop` plus `validate` (README, module-has-tests,
-  clean-checkout registry generation, canonical docs, workflow wiring).
+- `ci:pr` — `nx affected -t lint typecheck test build build-storybook test-storybook`
+  then `nx affected -t test:integration`, then `validate` (README, module-has-tests,
+  clean-checkout registry generation, canonical docs, workflow wiring). The two affected
+  runs are sequenced because the S0-05 image-freshness guard rebuilds `genie-s005:test`
+  inside the integration suite and fails when the Docker context moved since the
+  `build-image` dependency, which a single combined invocation triggers
+  (`genie-ops-center-v2-453`). Same targets, same proof.
 - `ci:develop` — `ci:pr` plus the full Playwright fixture suite at both viewports.
 - `release.yml` — discovers `customers/*/deploy/modules.txt`, runs the customer wrapper per
   slug, or the development wrapper when none exists. No workflow contains a bare
@@ -119,10 +131,7 @@ affected, alongside the existing shared-preset edge.
 
 ## Limits
 
-- No Docker daemon was available in this session, so the image matrix, the release smoke and
-  every Testcontainers path are encoded but **not run**. [evidence.md](evidence.md) labels
-  each.
-- The image filesystem scan reads real file bytes with a 4 MiB per-file cap and fails closed
+- The image filesystem scan reads real file bytes with a 32 MiB per-file cap and fails closed
   above it. It detects verbatim, escaped and base64-carried content; it does not decode
   compressed assets or exotic encodings, and it cannot see a secret assembled at run time.
 - `docker tag` and `docker push` are two commands, so a second process with Docker access can
