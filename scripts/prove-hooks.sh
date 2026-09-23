@@ -215,6 +215,60 @@ if [ "${HOOK_PROOF_CHILD:-}" != "1" ]; then
   expect "all cases passed" "found" "$(found 'all cases passed' "$work/case9.out")"
 fi
 
+# Cases 10 and 11 run the repository's REAL lefthook.yml and oxfmt configuration,
+# in a second throwaway repository that links this checkout's node_modules and
+# packages read-only. The synthetic lefthook.yml above cannot show how the real
+# format job treats files that oxfmt ignores.
+fmt="$work/fmt-repo"
+mkdir -p "$fmt"
+git init -q --template="$work/empty-template" "$fmt"
+git -C "$fmt" config core.hooksPath "$work/no-hooks"
+git -C "$fmt" config user.name proof
+git -C "$fmt" config user.email proof@example.invalid
+git -C "$fmt" config commit.gpgsign false
+cp -R "$root/.githooks" "$fmt/.githooks"
+mkdir -p "$fmt/.beads/hooks"
+for name in pre-commit prepare-commit-msg; do
+  printf '#!/bin/sh\nexit 0\n' >"$fmt/.beads/hooks/$name"
+  chmod +x "$fmt/.beads/hooks/$name"
+done
+# `pnpm exec` checks the install against the workspace file and the lockfile,
+# and the lint job reads oxlint.config.ts, so all of them come along.
+for file in lefthook.yml package.json pnpm-workspace.yaml pnpm-lock.yaml oxfmt.config.ts oxlint.config.ts; do
+  cp "$root/$file" "$fmt/"
+done
+ln -s "$root/node_modules" "$fmt/node_modules"
+ln -s "$root/packages" "$fmt/packages"
+printf 'node_modules\npackages\n' >"$fmt/.gitignore"
+git -C "$fmt" add -A
+git -C "$fmt" commit -q -m seed
+git -C "$fmt" config core.hooksPath .githooks
+
+# pnpm checks the install before `pnpm exec` and would run one through the linked
+# node_modules, including lefthook's install script. These cases prove the hook
+# commands, not the install, so that check is off for their commits only.
+say "case 10: a commit staging only oxfmt-ignored files passes the real format job"
+mkdir -p "$fmt/docs"
+printf '{"a":1}\n' >"$fmt/docs/diagram.json"
+git -C "$fmt" add docs/diagram.json
+status=0
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 10" >"$work/case10.out" 2>&1 || status=$?
+[ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case10.out"
+# A refused commit leaves its files staged. Unstage them, so case 11 commits its
+# own file only and cannot fail for case 10's reason.
+git -C "$fmt" reset -q
+expect "exit status" "0" "$status"
+expect "commit written" "case 10" "$(git -C "$fmt" log -1 --format=%s)"
+
+say "case 11: the real format job still formats and restages a non-ignored file"
+printf 'export const a = {b:1}\n' >"$fmt/probe.ts"
+git -C "$fmt" add probe.ts
+status=0
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 11" >"$work/case11.out" 2>&1 || status=$?
+[ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case11.out"
+expect "exit status" "0" "$status"
+expect "committed file formatted" "export const a = { b: 1 };" "$(git -C "$fmt" show HEAD:probe.ts)"
+
 printf '\n'
 if [ "$failures" -eq 0 ]; then
   echo "all cases passed"
