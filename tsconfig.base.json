@@ -9,7 +9,15 @@
   // otherwise compile (`genie-ops-center-v2-64a`).
   //
   // `__boundary__` and `__antislop__` each cover a fixture that really lands
-  // inside a typechecked `src/`. `__wiring__` is defensive: today that fixture
-  // sits outside every one, so removing the pattern fails no test.
-  "exclude": ["**/__boundary__*", "**/__wiring__*", "**/__antislop__*"]
+  // inside a typechecked `src/`. `__wiring__` is defensive on this surface:
+  // today that fixture sits outside every typechecked tree, so removing the
+  // entry fails no typecheck test. (The lint, formatter and Vitest suites do
+  // probe it, so the marker stays load-bearing there.)
+  //
+  // Each pattern matches its marker anywhere inside a path segment, not only at
+  // the start, so a mid-basename fixture such as
+  // `vitest.__boundary__.config.ts` is excluded too. A project's own `exclude`
+  // replaces this one rather than adding to it, so `tools/generators/tsconfig.json`
+  // repeats the same three entries (`genie-ops-center-v2-5hq`).
+  "exclude": ["**/*__boundary__*", "**/*__wiring__*", "**/*__antislop__*"]
 }
