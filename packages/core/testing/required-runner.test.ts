@@ -301,10 +301,17 @@ function makeRelocatedRunnerWorkspace(name: string): string {
   mkdirSync(join(root, "testing"), { recursive: true });
 
   cpSync(RUNNER, join(root, "tools/run-required-tests.ts"));
-  cpSync(
-    resolve(import.meta.dirname, "required-tests-guard.ts"),
-    join(root, "testing/required-tests-guard.ts")
-  );
+
+  // The entrypoint pulls in the guard, and the shared runner and validator it
+  // imports, so the whole chain moves with it and keeps resolving relatively.
+  for (const module of [
+    "required-tests-guard.ts",
+    "required-tests-runner.ts",
+    "required-tests-validator.ts",
+  ]) {
+    cpSync(resolve(import.meta.dirname, module), join(root, "testing", module));
+  }
+
   writeFileSync(join(root, "package.json"), '{"type":"module"}\n', "utf8");
 
   return root;
