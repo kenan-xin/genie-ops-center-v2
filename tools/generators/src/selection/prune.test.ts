@@ -64,6 +64,7 @@ describe("pruneModuleFolders", () => {
     expect(pruneModuleFolders(root, "gamma,alpha")).toEqual({
       kept: ["alpha", "gamma"],
       removed: ["beta"],
+      removedEmpty: [],
     });
 
     expect(folders(root)).toEqual(["alpha", "gamma"]);
@@ -76,6 +77,7 @@ describe("pruneModuleFolders", () => {
     expect(pruneModuleFolders(root, "")).toEqual({
       kept: [],
       removed: ["alpha", "beta"],
+      removedEmpty: [],
     });
 
     expect(folders(root)).toEqual([]);
@@ -100,6 +102,25 @@ describe("pruneModuleFolders", () => {
     );
 
     expect(folders(root)).toEqual(["alpha", "beta"]);
+  });
+
+  // A branch switch leaves packages/modules/<old>/node_modules untracked, and
+  // the image context drops ignored contents but keeps the folders, so the
+  // builder stage sees a folder holding only empty folders. It holds no code.
+  it("removes an empty leftover folder without a module manifest and lets the build proceed", () => {
+    const root = workspace(["alpha", "beta"]);
+
+    mkdirSync(join(root, "packages/modules/old/node_modules/.bin"), {
+      recursive: true,
+    });
+
+    expect(pruneModuleFolders(root, "alpha")).toEqual({
+      kept: ["alpha"],
+      removed: ["beta"],
+      removedEmpty: ["old"],
+    });
+
+    expect(folders(root)).toEqual(["alpha"]);
   });
 
   // The check itself: a folder that is not a module package is invisible to the
@@ -142,6 +163,19 @@ describe("the prune command the image builder stage runs", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("[module-prune] kept: alpha\n");
     expect(result.stdout).toContain("[module-prune] removed: beta\n");
+  });
+
+  it("prints a removed empty leftover folder", () => {
+    const root = workspace(["alpha"]);
+
+    mkdirSync(join(root, "packages/modules/old"));
+
+    const result = runPrune(root, "alpha");
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(
+      "[module-prune] removed empty folder: old\n"
+    );
   });
 
   it("prints none for an empty side", () => {
