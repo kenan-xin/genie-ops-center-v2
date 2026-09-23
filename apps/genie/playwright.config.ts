@@ -23,6 +23,10 @@ export default defineConfig({
     "**/*__wiring__*",
     "**/*__antislop__*",
   ],
+  // Its own artifact directory beside `test-results/fixture` and
+  // `test-results/dev`: the default `test-results` is their parent, and
+  // Playwright empties its `outputDir` at run start.
+  outputDir: "test-results/e2e",
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: BASE_URL },

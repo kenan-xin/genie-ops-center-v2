@@ -246,6 +246,28 @@ describe("the Spec 0 CI gates", () => {
     );
   });
 
+  it("runs the ordinary app E2E suite on develop beside the fixture suite", () => {
+    const develop = rootScript("ci:develop");
+
+    // A bare `test:e2e` substring would also match `test:e2e:fixture`.
+    expect(develop).toMatch(/@genie\/app:test:e2e(?![\w:-])/);
+    expect(develop).toContain("@genie/app:test:e2e:fixture");
+
+    // SAFETY: the app manifest is this repository's own file.
+    const app = JSON.parse(read("apps/genie/package.json")) as {
+      readonly scripts: Readonly<Record<string, string>>;
+    };
+
+    expect(app.scripts["test:e2e"]).toContain(
+      "--config apps/genie/playwright.config.ts"
+    );
+
+    const config = read("apps/genie/playwright.config.ts");
+
+    expect(config).toContain('name: "phone"');
+    expect(config).toContain('name: "desktop"');
+  });
+
   it("tracks the workflow and generator inputs the validate target reads", () => {
     // SAFETY: nx.json is this repository's own configuration.
     const config = JSON.parse(

@@ -12,6 +12,7 @@
     "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.fixture.config.ts postcss.config.mjs tailwind.config.ts vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
+    "test:e2e": "cd ../.. && playwright test --config apps/genie/playwright.config.ts",
     "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
     "typecheck": "tsc --noEmit"
@@ -123,6 +124,12 @@
       },
       "build-fixture-image": {
         "cache": false
+      },
+      "test:e2e": {
+        "cache": false,
+        "dependsOn": [
+          "build-image"
+        ]
       },
       "test:e2e:dev": {
         "cache": false
