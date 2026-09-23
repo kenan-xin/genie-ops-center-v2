@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { dockerBuild, requireDocker } from "./image-process.ts";
+import { dockerBuild, removeImage, requireDocker } from "./image-process.ts";
 import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
 
 /**
@@ -74,6 +74,19 @@ const unresolved = (specifier: string) =>
  */
 const IMPORTER = /src\/app\/layout\.tsx/;
 
+const tags: string[] = [];
+
+/** Builds one case and records its tag, so afterAll removes only this file's images. */
+const build = (
+  root: string,
+  moduleInclude: string | undefined,
+  tag: string
+) => {
+  tags.push(tag);
+
+  return dockerBuild(root, moduleInclude, tag);
+};
+
 /** The end of a build log, where the failing step is. */
 const tail = (log: string) => log.slice(-6000);
 
@@ -82,13 +95,16 @@ describe("the builder-stage module prune", () => {
     await requireDocker();
   }, 120000);
 
-  afterAll(() => {
-    // Only the stages this file created.
+  afterAll(async () => {
+    // Only the stages and image tags this file created. A failed build leaves
+    // no tag, which removeImage ignores.
     for (const root of stages) rmSync(root, { recursive: true, force: true });
-  });
+
+    await Promise.all(tags.map(removeImage));
+  }, 120000);
 
   it("keeps the selected module and removes every other module folder, as the build log shows", async () => {
-    const result = await dockerBuild(
+    const result = await build(
       stage(),
       "placeholder",
       "genie-s011:prune-control"
@@ -100,7 +116,7 @@ describe("the builder-stage module prune", () => {
   }, 900000);
 
   it("prunes every module folder for an explicitly empty selection although the app depends on placeholder", async () => {
-    const result = await dockerBuild(stage(), "", "genie-s011:prune-empty");
+    const result = await build(stage(), "", "genie-s011:prune-empty");
 
     expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: (none)"));
@@ -110,11 +126,7 @@ describe("the builder-stage module prune", () => {
   }, 900000);
 
   it("refuses an unset MODULE_INCLUDE", async () => {
-    const result = await dockerBuild(
-      stage(),
-      undefined,
-      "genie-s011:prune-unset"
-    );
+    const result = await build(stage(), undefined, "genie-s011:prune-unset");
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(/\[module-prune\] MODULE_INCLUDE is unset/);
@@ -131,11 +143,7 @@ describe("the builder-stage module prune", () => {
       );
     });
 
-    const result = await dockerBuild(
-      root,
-      "placeholder",
-      "genie-s011:prune-stray"
-    );
+    const result = await build(root, "placeholder", "genie-s011:prune-stray");
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(
@@ -146,7 +154,7 @@ describe("the builder-stage module prune", () => {
   it("resolves a direct and a subpath import of a selected module", async () => {
     const root = stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT));
 
-    const result = await dockerBuild(
+    const result = await build(
       root,
       "placeholder",
       "genie-s011:prune-import-control"
@@ -158,7 +166,7 @@ describe("the builder-stage module prune", () => {
   it("fails the build on a direct import of an excluded module", async () => {
     const root = stage(importing(DIRECT_IMPORT));
 
-    const result = await dockerBuild(root, "", "genie-s011:prune-direct");
+    const result = await build(root, "", "genie-s011:prune-direct");
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(
@@ -171,7 +179,7 @@ describe("the builder-stage module prune", () => {
   it("fails the build on a subpath import of an excluded module", async () => {
     const root = stage(importing(SUBPATH_IMPORT));
 
-    const result = await dockerBuild(root, "", "genie-s011:prune-subpath");
+    const result = await build(root, "", "genie-s011:prune-subpath");
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(

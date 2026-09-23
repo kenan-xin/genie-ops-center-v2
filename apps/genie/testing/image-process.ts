@@ -120,6 +120,11 @@ export async function dockerBuild(
   }
 }
 
+/** Removes one image tag, best effort: a tag that was never built is ignored. */
+export async function removeImage(tag: string): Promise<void> {
+  await run("docker", ["rmi", "-f", tag]).catch(() => undefined);
+}
+
 /** The `ARG` names a history declares, so a base image's own args can be ignored. */
 export function argNamesInHistory(
   history: readonly { readonly createdBy: string }[]
