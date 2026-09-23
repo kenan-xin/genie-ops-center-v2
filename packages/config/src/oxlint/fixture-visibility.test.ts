@@ -147,6 +147,19 @@ function lintReport(args: readonly string[]): string {
 const VITEST = join(WORKSPACE_ROOT, "node_modules", ".bin", "vitest");
 
 /**
+ * How long one nested `vitest list` may run before it is killed. The listing
+ * starts a whole second vitest process, and on a loaded 4-vCPU GitHub runner it
+ * measured 25-34 s (0.8 s locally). The ceiling exists so a hung child fails on
+ * its own clock, with its own error, rather than as a bare test timeout with no
+ * diagnostic. The case that waits on it uses the wider `LIST_CASE_TIMEOUT_MS`
+ * below.
+ */
+const VITEST_LIST_TIMEOUT_MS = 100_000;
+
+/** The listing case's ceiling: above the child's, so the child times out first. */
+const LIST_CASE_TIMEOUT_MS = 120_000;
+
+/**
  * Runs the checkout's own vitest in `list` mode over one project and returns the
  * collected specs. Collection is the surface under test: a project's resolved
  * `include`/`exclude` decides which files a run would import, and this reads
@@ -157,6 +170,7 @@ function vitestList(project: string): string {
     cwd: join(WORKSPACE_ROOT, project),
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: VITEST_LIST_TIMEOUT_MS,
   });
 }
 
@@ -215,6 +229,23 @@ function probeNames(marker: string): readonly string[] {
  */
 function withProbe<T>(path: string, source: string, read: () => T): T {
   return withFixture(WORKSPACE_ROOT, path, source, read);
+}
+
+/** A test-shaped probe body the unit collection would otherwise import. */
+const PROBE_TEST_SOURCE = `import { it } from "vitest";\n\nit("probe", () => {});\n`;
+
+/**
+ * Holds one transient probe per path under the checkout at the same time for the
+ * length of `read`, then removes them. One listing can then prove every marker
+ * at once, where a listing per marker re-launched the whole vitest subprocess
+ * for each.
+ */
+function withProbes<T>(paths: readonly string[], read: () => T): T {
+  const [path, ...rest] = paths;
+
+  if (path === undefined) return read();
+
+  return withProbe(path, PROBE_TEST_SOURCE, () => withProbes(rest, read));
 }
 
 /**
@@ -393,31 +424,39 @@ describe("lint fixtures and the lint that runs beside them", () => {
   });
 
   // The load-bearing case, read from the real binary: a mid-basename,
-  // test-shaped fixture is written, the project is asked what it would collect,
-  // and the fixture must be absent while a tracked test beside it still appears.
-  it.each(COVERED_MARKERS)(
-    "collects no mid-basename %s fixture when the project is listed",
-    (marker) => {
-      const probe = `src/probe-${process.pid}.${marker}.test.ts`;
+  // test-shaped fixture is written for every covered marker at once, the project
+  // is asked what it would collect, and each fixture must be absent while a
+  // tracked test beside them still appears. One listing covers every marker,
+  // because a `vitest list` per marker re-launched vitest each time: on a loaded
+  // 4-vCPU GitHub runner each nested list took 25-34 s (0.8 s locally), and the
+  // per-marker cases together overran the suite's timeout.
+  it(
+    "collects no mid-basename fixture when the project is listed",
+    () => {
+      const probes = COVERED_MARKERS.map(
+        (marker) => `src/probe-${process.pid}.${marker}.test.ts`
+      );
 
-      withProbe(
-        `packages/core/${probe}`,
-        `import { it } from "vitest";\n\nit("probe", () => {});\n`,
+      withProbes(
+        probes.map((probe) => `packages/core/${probe}`),
         () => {
           const listing = vitestList("packages/core");
 
-          expect(listing).not.toContain(probe);
+          for (const probe of probes) {
+            expect(listing).not.toContain(probe);
+          }
 
-          // The run collected the tracked tests beside the probe, so the absence
+          // The run collected the tracked tests beside the probes, so the absence
           // above is an exclusion and not an empty collection.
           expect(listing).toContain("src/lib/build-safety/index.test.ts");
         }
       );
     },
-    // `vitest list` starts a whole second vitest process, and the default 5s
-    // does not cover it on a shared two-core runner. The ceiling is named here
-    // rather than raised globally, so only this load-bearing case waits longer.
-    30_000
+    // One listing waits on a whole second vitest process: on a loaded 4-vCPU
+    // GitHub runner it measured 25-34 s (0.8 s locally), so the ceiling is named
+    // here rather than raised globally, and only this load-bearing case waits
+    // longer. `vitestList`'s own timeout kills a hung child first.
+    LIST_CASE_TIMEOUT_MS
   );
 });
 
