@@ -47,6 +47,18 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // could only ever make that proof weaker.
     "tools/generators/src/selection/__fixtures__/**",
 
+    // Transient lint fixtures. The boundary, wiring and anti-slop suites write
+    // these into a real project path to prove one override glob, then delete
+    // them, while a concurrent `format:check` walks the same tree and reads what
+    // it finds. The anti-slop suite's chained-assertion body is not oxfmt-clean,
+    // so a check overlapping it fails on the fixture itself
+    // (genie-ops-center-v2-bew). The prefixes are the same ones the root tsconfig,
+    // `.eslintignore` and the shared Vitest preset exclude, and no tracked file
+    // carries them, so the guard hides no source.
+    "**/__boundary__*",
+    "**/__wiring__*",
+    "**/__antislop__*",
+
     // Generated at build time from MODULE_INCLUDE (ADR 0008).
     "apps/genie/src/modules.ts",
 
