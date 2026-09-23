@@ -171,5 +171,11 @@ A re-review after the real Docker proof and merge is requested.
   it does not decode compressed or exotic encodings and cannot see a run-time-assembled
   secret. Generic `password:`-shaped content rules were removed because bundled third-party
   code false-positives on them.
-- Testcontainers can report a host port-bind timeout on a long-lived Docker Desktop; the
-  remedy is `docker rm -f $(docker ps -aq)` and `docker network prune -f`, then retry.
+- Testcontainers can report a host port-bind timeout on a long-lived Docker Desktop. The
+  remedy is scoped to this suite's own resources only: Testcontainers labels the containers
+  and networks it creates, so remove just those, e.g.
+  `docker ps -aq --filter label=org.testcontainers=true | xargs -r docker rm -f` and the
+  matching `docker network ls -q --filter label=org.testcontainers=true | xargs -r docker
+  network rm`, then retry; otherwise let Testcontainers' own teardown handle it. Do **not**
+  run a global `docker rm -f $(docker ps -aq)` or `docker network prune -f`: those are
+  destructive across unrelated user resources and are never part of this suite's cleanup.
