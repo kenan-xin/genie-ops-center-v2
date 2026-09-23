@@ -11,7 +11,18 @@ export default defineConfig({
   // `playwright.fixture.config.ts`. Collecting it here would run it against an
   // image whose fixture routes do not exist, so the ordinary run never picks it
   // up, and the fixture gate is what runs it.
-  testIgnore: ["**/e2e/fixture/**", "**/e2e/dev/**"],
+  //
+  // The lint suites write test-shaped transient fixtures under `e2e/` and delete
+  // them again. They carry the same markers the shared Vitest preset excludes,
+  // anywhere inside a basename, so a run beside those suites never imports one
+  // (genie-ops-center-v2-hlu).
+  testIgnore: [
+    "**/e2e/fixture/**",
+    "**/e2e/dev/**",
+    "**/*__boundary__*",
+    "**/*__wiring__*",
+    "**/*__antislop__*",
+  ],
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: BASE_URL },

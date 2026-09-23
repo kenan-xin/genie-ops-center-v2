@@ -387,6 +387,56 @@ describe("lint fixtures and the lint that runs beside them", () => {
   );
 });
 
+/** The app's own Playwright, the binary its end-to-end targets run. */
+const PLAYWRIGHT = join(
+  WORKSPACE_ROOT,
+  "apps/genie/node_modules/.bin/playwright"
+);
+
+/**
+ * The specs the ordinary app configuration would collect. `--list` resolves the
+ * configuration's `testDir`, `testMatch` and `testIgnore` and runs no test and no
+ * global setup, so it reads the collection decision without a server.
+ */
+function playwrightList(): string {
+  return execFileSync(
+    PLAYWRIGHT,
+    ["test", "--config", "playwright.config.ts", "--list"],
+    {
+      cwd: join(WORKSPACE_ROOT, "apps/genie"),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  );
+}
+
+describe("lint fixtures and the end-to-end collection that runs beside them", () => {
+  // The Playwright face of the same race. The boundary suite writes a
+  // test-shaped fixture under `apps/genie/e2e/`, the ordinary configuration's
+  // `testDir`, so a `playwright test` run beside it would import a file the
+  // suite already deleted (genie-ops-center-v2-hlu).
+  it.each(COVERED_MARKERS)(
+    "collects no %s fixture in the ordinary configuration",
+    (marker) => {
+      const probe = `probe-${process.pid}.${marker}.spec.ts`;
+
+      withProbe(
+        `apps/genie/e2e/${probe}`,
+        `import { test } from "@playwright/test";\n\ntest("probe", () => {});\n`,
+        () => {
+          const listing = playwrightList();
+
+          expect(listing).not.toContain(probe);
+
+          // A tracked spec beside the probe is still collected, so the absence
+          // above is an exclusion and not an empty collection.
+          expect(listing).toContain("security-headers.spec.ts");
+        }
+      );
+    }
+  );
+});
+
 describe("lint fixtures and the formatter that runs beside them", () => {
   // The formatter face of the same race. `format:check` walks the workspace and
   // reads every file it matches, so a fixture present when it runs is formatted

@@ -132,6 +132,13 @@ function planFixture(root: string, relativePath: string): FixturePlan {
  * A path that already exists is refused: never overwritten, never deleted. The
  * exclusive `wx` create is what makes that atomic, because an `existsSync` check
  * followed by a write can still be raced into clobbering another fixture.
+ *
+ * Unsupported: two processes running these suites against one checkout at once.
+ * The paths are fixed because each must match one exact override glob, so the
+ * second process meets the first one's file and fails with `EEXIST`. One process
+ * is safe, because `serializeByPath` orders same-path calls, and Nx runs
+ * `@genie/config:test` once. Run a second copy from its own worktree
+ * (genie-ops-center-v2-20z).
  */
 export function withFixture<T>(
   root: string,
