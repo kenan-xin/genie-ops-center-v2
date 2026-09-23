@@ -13,7 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ISOLATED_ROOT_PREFIX,
@@ -337,6 +337,29 @@ describe("lintAt through the hardened lifecycle", () => {
       "config opens no database connection (DEC-34)."
     );
     expect(existsSync(join(WORKSPACE_ROOT, dirname(relativePath)))).toBe(false);
+  });
+
+  it("reads a clean batch as clean under CI=true, which turns oxlint color on", async () => {
+    // oxlint colors its output whenever CI is set, ignoring FORCE_COLOR=0 and
+    // NO_COLOR. Colored diagnostics match no attribution line, so without the
+    // fix the batch fails closed and every clean fixture in it reads as failed.
+    vi.stubEnv("CI", "true");
+
+    try {
+      const clean = `packages/config/__ci-clean__-${process.pid}/__ci__.ts`;
+      const dirty = `packages/config/__ci-dirty__-${process.pid}/__ci__.ts`;
+
+      const [cleanResult, dirtyResult] = await Promise.all([
+        lintAt(clean, SOURCE),
+        lintAt(dirty, `import "pg";\n`),
+      ]);
+
+      expect(cleanResult).toEqual({ failed: false, output: "" });
+      expect(dirtyResult.failed).toBe(true);
+      expect(dirtyResult.output).toContain("x eslint(no-restricted-imports)");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

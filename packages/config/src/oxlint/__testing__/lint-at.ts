@@ -199,9 +199,20 @@ function childPath(): string {
  * color on for its children. Colored output replaces the `x`/`!` level glyph and
  * the `,-[path]` header with ANSI-wrapped ones, so naming it here is the color
  * twin of naming `--format=default` in `OXLINT_BASE_ARGS`.
+ *
+ * `CI` is dropped because oxlint turns color on whenever it is set, ignoring
+ * both `FORCE_COLOR=0` and `NO_COLOR` (oxlint 1.83.0, seen on GitHub Actions).
  */
 function childEnv(): NodeJS.ProcessEnv {
-  return { ...process.env, PATH: childPath(), FORCE_COLOR: "0" };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    PATH: childPath(),
+    FORCE_COLOR: "0",
+  };
+
+  delete env.CI;
+
+  return env;
 }
 
 /** Runs the repository's own oxlint configuration from `root` against one path. */
