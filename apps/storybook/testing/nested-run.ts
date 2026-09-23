@@ -4,7 +4,9 @@
  * On a loaded CI runner, Vitest browser mode sometimes fails the first import of
  * a test file with `Failed to fetch dynamically imported module`, although the
  * same server serves the same file to every later file of the run
- * (vitest-dev/vitest#9509, still open and unreproduced upstream). Develop run
+ * (vitest-dev/vitest#11171: load-dependent, warm cache, also on Vitest 5.0.0,
+ * closed 2026-09-11 without a reproduction or fix; #9509 is a different,
+ * optimizeDeps-caused failure). Develop run
  * 35871795291 failed this way on the addon's setup file. The browser server logs
  * no optimizer run, no reload and no transform error in that output, so neither
  * the stage nor the Storybook configuration caused it.
