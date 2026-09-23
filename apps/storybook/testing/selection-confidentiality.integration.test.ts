@@ -1128,10 +1128,11 @@ describe("a module written by the generator", () => {
       // The module's stories import `@genie/ui`, so its own dependency tree has
       // to be linked the way any module is linked. This is not a host or CI
       // edit: nothing names the module, only the package manager links it. The
-      // stage is disposable, so its lockfile is allowed to move.
+      // stage is disposable, so its lockfile is allowed to move, also under
+      // CI=true, where pnpm otherwise defaults to a frozen lockfile.
       const install = spawnSync(
         "pnpm",
-        ["install", "--ignore-scripts", "--silent"],
+        ["install", "--ignore-scripts", "--silent", "--no-frozen-lockfile"],
         { cwd: stage, encoding: "utf8" }
       );
 

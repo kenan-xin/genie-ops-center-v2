@@ -173,7 +173,13 @@ try {
 
   // Linking is the rest of its registration: the generator named the package in
   // the application's manifest, and nothing else in the workspace names it.
-  run("pnpm", ["install", "--silent"], "link the generated package");
+  // The lockfile moves here and is restored on exit, so the install must not
+  // be frozen, which pnpm otherwise defaults to under CI=true.
+  run(
+    "pnpm",
+    ["install", "--silent", "--no-frozen-lockfile"],
+    "link the generated package"
+  );
 
   run(
     "pnpm",
