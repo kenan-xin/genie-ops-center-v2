@@ -210,6 +210,44 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // A hosted runner has no browser. Storybook component tests and the E2E suites
+  // launch Chromium, so every job that runs gates installs the pinned browser after
+  // the dependencies and before the gates (genie-ops-center-v2-1rd.12.2).
+  it("installs the pinned Playwright Chromium before any gate runs", () => {
+    const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
+
+    for (const name of ["pull-request", "develop", "release"]) {
+      const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
+
+      const gates = lines.flatMap((line, index) =>
+        gate.test(line) ? [index] : []
+      );
+
+      expect(gates.length, name).toBeGreaterThan(0);
+
+      for (const at of gates) {
+        const before = lines.slice(0, at);
+
+        const install = before.findLastIndex((line) =>
+          line.includes("pnpm install --frozen-lockfile")
+        );
+
+        const browser = before.findLastIndex((line) =>
+          line.includes("pnpm exec playwright install --with-deps chromium")
+        );
+
+        expect(
+          install,
+          `${name}:${at + 1} installs dependencies`
+        ).toBeGreaterThan(-1);
+        expect(
+          browser,
+          `${name}:${at + 1} installs the browser after the dependencies`
+        ).toBeGreaterThan(install);
+      }
+    }
+  });
+
   it("never pushes an image except through the smoke-then-publish wrapper", () => {
     for (const name of ["pull-request", "develop", "release"]) {
       expect(read(`${WORKFLOWS}/${name}.yml`)).not.toContain("docker push");

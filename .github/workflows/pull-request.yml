@@ -27,4 +27,6 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The runner has no browser; Storybook and E2E launch the pinned Chromium.
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run ci:pr
