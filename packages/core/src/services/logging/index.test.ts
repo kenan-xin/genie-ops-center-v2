@@ -314,6 +314,59 @@ describe("the logger", () => {
     expect(written).toContain("Authorization");
   });
 
+  // A credential can reach a message without a header name or a `name=value` pair in front of
+  // it: a call site writes `Bearer <token>` on its own, or quotes a header line. The scheme
+  // word names how the credential is presented, so it may stay; the token never does (R-45).
+  it("redacts a bare bearer credential written into a message", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).warn(
+      "upstream rejected Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123"
+    );
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("[redacted]");
+  });
+
+  it("redacts a bearer credential in an authorization header line", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info(
+      "rejected Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123"
+    );
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("Authorization");
+  });
+
+  it("redacts a lowercase bearer credential in an authorization header line", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info(
+      "rejected authorization: bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123"
+    );
+
+    const written = JSON.stringify(lines[0]);
+
+    expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(written).not.toContain("abc123");
+    expect(written).toContain("authorization");
+  });
+
+  it("leaves an ordinary sentence that uses the word bearer alone", () => {
+    const { lines, destination } = capture();
+
+    createLogger(ENV, destination).info("the bearer of bad news");
+
+    expect(lines[0]).toMatchObject({ msg: "the bearer of bad news" });
+  });
+
   it("redacts a cookie header written into a message", () => {
     const { lines, destination } = capture();
 

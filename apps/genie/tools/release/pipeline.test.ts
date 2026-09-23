@@ -276,7 +276,7 @@ describe("the customer image release pipeline", () => {
       stepOf(command, args) === "typecheck"
         ? {
             status: 1,
-            stdout: `${stdoutHead.join("\n")}\nDATABASE_URL=postgres://u:hunter2@db/app\n`,
+            stdout: `${stdoutHead.join("\n")}\nDATABASE_URL=postgres://u:hunter2@db/app\nrejected Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123\n`,
             stderr: `${stderrHead.join("\n")}\n`,
           }
         : { status: 0, stdout: "", stderr: "" };
@@ -295,6 +295,8 @@ describe("the customer image release pipeline", () => {
 
     // A credential the gate printed never reaches the release log.
     expect(outcome.gateOutput).not.toContain("hunter2");
+    // ...including a bearer token it captured without a `name=value` pair around it.
+    expect(outcome.gateOutput).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(outcome.gateOutput).toContain("[redacted]");
   });
 

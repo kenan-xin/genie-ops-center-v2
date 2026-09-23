@@ -105,6 +105,15 @@ const COOKIE_HEADER = new RegExp(
 );
 
 /**
+ * A bearer credential written bare in a message, with no header name or `name=value` pair in
+ * front of it. The scheme word names how the credential is presented, so it stays; the token
+ * after it is the credential and is replaced (R-45). A token is at least twenty credential
+ * characters, the same length the image scan uses, so an ordinary phrase such as `bearer of
+ * bad news` has no token to match and is left alone.
+ */
+const BEARER_CREDENTIAL = /\b(bearer)\s+[A-Za-z0-9._~+/=-]{20,}/gi;
+
+/**
  * Every url inside a piece of text, whatever its scheme. A credential-carrying url is not only
  * an http one: a database, queue or cache connection string carries userinfo or a secret query
  * parameter, so the scheme cannot be what decides (R-45).
@@ -133,14 +142,26 @@ function redactPairs(text: string): string {
 }
 
 /**
+ * Replaces a bearer credential written bare in a message, leaving the scheme word in place so
+ * the line still says how the credential was presented. A header line is redacted whole before
+ * this runs, so only a token with no header name in front of it reaches here (R-45).
+ */
+function redactBearerCredential(text: string): string {
+  return text.replace(BEARER_CREDENTIAL, `$1 ${REDACTED}`);
+}
+
+/**
  * Replaces the secrets inside one piece of text: a quoted header, a url that carries a
- * credential, and a bare `name=value` pair. A message string reaches a log line as it was
- * written, so the same rule has to run on it and not only on the object beside it (R-45).
+ * credential, a bare bearer credential, and a bare `name=value` pair. A message string reaches
+ * a log line as it was written, so the same rule has to run on it and not only on the object
+ * beside it (R-45).
  */
 function redactText(text: string): string {
   return redactPairs(
-    redactHeaders(text).replace(URL_IN_TEXT, (link) =>
-      isSecretLink(link) ? REDACTED : link
+    redactBearerCredential(
+      redactHeaders(text).replace(URL_IN_TEXT, (link) =>
+        isSecretLink(link) ? REDACTED : link
+      )
     )
   );
 }
