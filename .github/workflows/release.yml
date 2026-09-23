@@ -25,6 +25,7 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       customers: ${{ steps.list.outputs.customers }}
     steps:
@@ -44,6 +45,7 @@ jobs:
     needs: discover
     if: needs.discover.outputs.customers != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 150
     permissions:
       contents: read
       packages: write
@@ -85,6 +87,7 @@ jobs:
     needs: discover
     if: needs.discover.outputs.customers == '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 150
     permissions:
       contents: read
       packages: write

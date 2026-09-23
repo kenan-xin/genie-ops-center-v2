@@ -284,6 +284,31 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // Without a limit a hung job runs to GitHub's six-hour default. Every job states
+  // its own ceiling, so a hang fails clearly within a bounded time.
+  it("bounds every job with its own timeout", () => {
+    for (const name of ["pull-request", "develop", "release"]) {
+      const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
+
+      const body = lines.slice(lines.findIndex((line) => line === "jobs:") + 1);
+
+      const starts = body.flatMap((line, index) =>
+        /^ {2}[\w-]+:$/.test(line) ? [index] : []
+      );
+
+      expect(starts.length, name).toBeGreaterThan(0);
+
+      for (const [position, start] of starts.entries()) {
+        const job = body.slice(start, starts[position + 1] ?? body.length);
+
+        expect(
+          job.some((line) => /^ {4}timeout-minutes: \d+$/.test(line)),
+          `${name} ${job[0]?.trim()} declares timeout-minutes`
+        ).toBe(true);
+      }
+    }
+  });
+
   it("never pushes an image except through the smoke-then-publish wrapper", () => {
     for (const name of ["pull-request", "develop", "release"]) {
       expect(read(`${WORKFLOWS}/${name}.yml`)).not.toContain("docker push");
