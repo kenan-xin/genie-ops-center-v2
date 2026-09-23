@@ -447,6 +447,30 @@ describe("the Spec 0 CI gates", () => {
     expect(config).toContain('name: "desktop"');
   });
 
+  // Coverage is a local developer tool, never a gate. It has exactly one entry
+  // point, the root `coverage` script, and no CI script or workflow may run it.
+  it("keeps coverage local: one root script, and no CI gate runs it", () => {
+    const coverage = rootScript("coverage");
+
+    expect(coverage).toContain("nx run-many");
+    expect(coverage).toContain("--coverage");
+
+    // SAFETY: the root manifest is this repository's own package.json.
+    const manifest = JSON.parse(
+      readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf8")
+    ) as RootScripts;
+
+    for (const [name, command] of Object.entries(manifest.scripts ?? {})) {
+      if (name === "coverage") continue;
+
+      expect(command, name).not.toContain("coverage");
+    }
+
+    for (const file of workflowFiles()) {
+      expect(read(file), file).not.toContain("coverage");
+    }
+  });
+
   it("tracks the workflow and generator inputs the validate target reads", () => {
     // SAFETY: nx.json is this repository's own configuration.
     const config = JSON.parse(

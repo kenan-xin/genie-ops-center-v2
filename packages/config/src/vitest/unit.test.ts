@@ -37,4 +37,23 @@ describe("unitTestPreset", () => {
     expect(UNIT_TEST_EXCLUDE).toContain("**/*.stories.*");
     expect(UNIT_TEST_EXCLUDE).toContain("e2e/**");
   });
+
+  it("declares v8 coverage but leaves it off, so an ordinary test run is unchanged", () => {
+    expect(unitTestPreset.test?.coverage?.provider).toBe("v8");
+    expect(unitTestPreset.test?.coverage?.enabled).toBe(false);
+  });
+
+  it("excludes tests, stories, fixtures and generated output from coverage", () => {
+    const exclude = unitTestPreset.test?.coverage?.exclude ?? [];
+
+    expect(exclude).toContain("**/*.test.ts");
+    expect(exclude).toContain("**/*.test.tsx");
+    expect(exclude).toContain("**/*.stories.*");
+    expect(exclude).toContain("**/fixtures/**");
+    expect(exclude).toContain("apps/genie/src/modules.ts");
+    // The same transient markers the unit collection already skips.
+    expect(exclude).toContain("**/*__boundary__*");
+    expect(exclude).toContain("**/*__wiring__*");
+    expect(exclude).toContain("**/*__antislop__*");
+  });
 });
