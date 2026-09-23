@@ -348,14 +348,20 @@ describe("the Spec 0 CI gates", () => {
 
     expect(pr).toContain("validate");
 
-    // The integration tasks run in parallel. Without bail, Nx waits for every
-    // sibling after one fails, so a slow or stalled sibling kept ci:develop
-    // silent for 14 minutes after a failure (develop run 35867486208).
+    // Without bail, Nx waits for every sibling after one fails, so a slow or
+    // stalled sibling kept ci:develop silent for 14 minutes after a failure
+    // (develop run 35867486208).
     const integration = pr
       .split("&&")
       .find((segment) => segment.includes("test:integration"));
 
     expect(integration).toContain("--nx-bail");
+
+    // The integration projects run one at a time. In parallel on a 4-vCPU
+    // runner, the Storybook browser matrix competed with the app's Docker
+    // image builds and failed on browser connect timeouts and the Vitest
+    // import race (develop runs 35893905134 and 35932712679).
+    expect(integration).toContain("--parallel=1");
     expect(rootScript("ci:develop")).toContain("test:e2e:fixture");
     expect(rootScript("ci:release:customer")).toContain(
       "scripts/build-customer-image.sh"
