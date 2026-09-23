@@ -2,6 +2,8 @@
 
 Bead: `genie-ops-center-v2-1rd.12`. Status and claims live in Beads, not this document.
 
+Evidence: [integrated acceptance traceability, 2026-09-23](traceability.md).
+
 ## Governing context
 
 Read [Spec 0](../../../specs/00-monorepo-foundation.md), [technical plan](../../../tech-plans/00-monorepo-foundation.md), [ADR 0008](../../../adr/0008-foundation-integration-and-generated-registry.md), [execution contract](../README.md), repository AGENTS.md/CLAUDE.md, and applicable canonical contracts before editing. Follow the linked specification for exact requirements; this ticket does not weaken them.

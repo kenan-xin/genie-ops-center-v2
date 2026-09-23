@@ -106,3 +106,5 @@ All at `3e980e1`, the final tip (develop `2713701`).
 - The app/image/CI wiring of this matrix (installed-image acceptance, customer image matrix, all four CI layers) is S0-11's owned result and was not run here.
 - The core guard's manifest is fixed to the current case names; a future rename must update it, by design.
 - No integration into `develop`, no push, no Bead closure.
+
+Correction, 2026-09-23 (S0-12 record reconciliation): the last line above was true when this record was written, but it is now stale. The develop reflog shows `develop@{2026-09-23 00:54:28 +0800}: merge kenan-xin/feature-s07-stage-appropriate-module-generator: Fast-forward` to `3bf3efb`, the documentation commit after the final tip `3e980e1`. The branch name says s07-stage-appropriate-module-generator, but the commits are the S0-07 commits recorded here. Bead `genie-ops-center-v2-1rd.7` is closed, which agrees with the reflog. Nothing was pushed by S0-07. The line above is kept unchanged.
