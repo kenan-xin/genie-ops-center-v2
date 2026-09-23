@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation.js";
 
+import { pinnedRoutePermission } from "../../../../module-route.ts";
 import { renderIfPermitted } from "../../../../page-access.tsx";
 import { moduleById } from "../../../../registry.ts";
 
@@ -7,8 +8,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * Mounts any compiled module's admin page under `/admin/m/<id>`, behind the same
- * seam as the workspace route beside it. The admin entry declares `<id>:admin`,
- * so a person who may use a module still does not reach its administration.
+ * seam as the workspace route beside it. The permission is pinned to the id's
+ * own `<id>:admin` key, so a person who may use a module still does not reach
+ * its administration, and a declaration naming another module's key cannot
+ * supply the grant.
  */
 export default async function ModuleAdminRoute(props: {
   readonly params: Promise<{ readonly moduleId: string }>;
@@ -19,20 +22,17 @@ export default async function ModuleAdminRoute(props: {
 
   if (module === undefined) notFound();
 
-  // Pinned to this module's own admin key, for the reason the workspace route
-  // beside this one records.
-  const entry = module.navigation.entries.find(
-    (candidate) =>
-      candidate.surface === "admin" &&
-      candidate.path === `/admin/m/${moduleId}` &&
-      candidate.requiredPermission === `${moduleId}:admin`
+  const permission = pinnedRoutePermission(
+    module,
+    "admin",
+    `/admin/m/${moduleId}`
   );
 
-  if (entry === undefined) notFound();
+  if (permission === undefined) notFound();
 
   const Page = module.pages.admin.settings;
 
   if (Page === undefined) notFound();
 
-  return renderIfPermitted(entry.requiredPermission, () => <Page />);
+  return renderIfPermitted(permission, () => <Page />);
 }

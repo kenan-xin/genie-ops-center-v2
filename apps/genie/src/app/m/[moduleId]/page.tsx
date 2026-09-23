@@ -2,6 +2,7 @@
 // map, so NodeNext resolves a package subpath only when it carries an extension.
 import { notFound } from "next/navigation.js";
 
+import { pinnedRoutePermission } from "../../../module-route.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
 import { moduleById } from "../../../registry.ts";
 
@@ -14,8 +15,8 @@ export const dynamic = "force-dynamic";
  * A module that ships with the platform may keep a route file of its own, the way
  * the placeholder does. Every other module, including one a generator just wrote,
  * reaches the browser here without an edit to this application: the id comes from
- * the path, the component comes from the compiled registry, and the permission
- * comes from the entry the module declared. A module that is not in this image
+ * the path, the component comes from the compiled registry, and the permission is
+ * pinned to the id's own `<id>:use` key. A module that is not in this image
  * has no entry in the registry and is not found, so an excluded module answers
  * nothing (R-22).
  *
@@ -35,18 +36,17 @@ export default async function ModuleWorkspaceRoute(props: {
   // entry as declared. A generic route answers for every compiled module, so a
   // declaration naming another module's key would otherwise reach this page with
   // a grant it was never given.
-  const entry = module.navigation.entries.find(
-    (candidate) =>
-      candidate.surface === "workspace" &&
-      candidate.path === `/m/${moduleId}` &&
-      candidate.requiredPermission === `${moduleId}:use`
+  const permission = pinnedRoutePermission(
+    module,
+    "workspace",
+    `/m/${moduleId}`
   );
 
-  if (entry === undefined) notFound();
+  if (permission === undefined) notFound();
 
   const Page = module.pages.workspace.home;
 
   if (Page === undefined) notFound();
 
-  return renderIfPermitted(entry.requiredPermission, () => <Page />);
+  return renderIfPermitted(permission, () => <Page />);
 }
