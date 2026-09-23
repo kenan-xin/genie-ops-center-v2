@@ -12,7 +12,11 @@ import { basename, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { UNIT_TEST_EXCLUDE } from "../vitest/unit.ts";
-import { WORKSPACE_ROOT, withFixture } from "./__testing__/lint-at.ts";
+import {
+  OXLINT_BASE_ARGS,
+  WORKSPACE_ROOT,
+  withFixture,
+} from "./__testing__/lint-at.ts";
 
 /**
  * A lint fixture is a real file, written into the checkout at a path chosen to
@@ -126,7 +130,7 @@ const OXLINT = join(WORKSPACE_ROOT, "node_modules", ".bin", "oxlint");
  */
 function lintReport(args: readonly string[]): string {
   try {
-    return execFileSync(OXLINT, ["--config", "oxlint.config.ts", ...args], {
+    return execFileSync(OXLINT, [...OXLINT_BASE_ARGS, ...args], {
       cwd: WORKSPACE_ROOT,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -409,7 +413,11 @@ describe("lint fixtures and the lint that runs beside them", () => {
           expect(listing).toContain("src/lib/build-safety/index.test.ts");
         }
       );
-    }
+    },
+    // `vitest list` starts a whole second vitest process, and the default 5s
+    // does not cover it on a shared two-core runner. The ceiling is named here
+    // rather than raised globally, so only this load-bearing case waits longer.
+    30_000
   );
 });
 

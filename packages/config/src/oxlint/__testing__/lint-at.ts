@@ -27,6 +27,22 @@ export const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 const WORKSPACE_BIN = join(WORKSPACE_ROOT, "node_modules", ".bin");
 
 /**
+ * The argv every harness invocation of the repository's oxlint shares, so the
+ * output format is named in exactly one place.
+ *
+ * `--format=default` is named because oxlint otherwise picks its format from the
+ * environment: the `github` annotations under GitHub Actions and the `agent`
+ * format inside a coding agent, both of which replace the message text the
+ * suites assert on. Naming `default` makes the output identical on a runner, in
+ * a developer's agent session, and on a plain terminal.
+ */
+export const OXLINT_BASE_ARGS: readonly string[] = [
+  "--config",
+  "oxlint.config.ts",
+  "--format=default",
+];
+
+/**
  * The entries an isolated root needs before the repository's own
  * `oxlint.config.ts` loads inside it. Oxlint anchors an override's `files` glob
  * and the plugin specifier to the directory that holds the config file, so the
@@ -187,7 +203,7 @@ async function runOxlint(
       // linted on its explicit path: that file is the product scan's guard against
       // a fixture vanishing mid-walk, not this harness's. The config's own
       // `ignorePatterns` are not ignore-file entries and stay in force.
-      ["--config", "oxlint.config.ts", "--no-ignore", relativePath],
+      [...OXLINT_BASE_ARGS, "--no-ignore", relativePath],
       {
         cwd: root,
         encoding: "utf8",
