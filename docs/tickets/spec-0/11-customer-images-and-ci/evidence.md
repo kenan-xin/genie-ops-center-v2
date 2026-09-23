@@ -201,3 +201,105 @@ fixture-visibility test) and docs, so it cannot affect the image or integration 
   network rm`, then retry; otherwise let Testcontainers' own teardown handle it. Do **not**
   run a global `docker rm -f $(docker ps -aq)` or `docker network prune -f`: those are
   destructive across unrelated user resources and are never part of this suite's cleanup.
+
+## Build-input exclusion (pg4), 2026-09-23
+
+Bead `genie-ops-center-v2-1rd.11.1`. Branch merged develop `0be0b55` first (merge `119935c`;
+the spec, S0-06 evidence and ticket index conflicts resolved to develop's text, plus S0-11's
+two script lines in `scripts/README.md`). Docker 29.8, real `docker build` of the production
+Dockerfile throughout. Nothing was pushed or published.
+
+What changed:
+
+- `tools/generators/src/selection/prune.ts` (dependency-free, reuses `readModuleInventory` and
+  `resolveModuleSelection`): refuses an unset `MODULE_INCLUDE`, resolves the selection before
+  removing anything, removes every unselected module package, then fails unless the remaining
+  `packages/modules/` folders equal the selection. Prints `[module-prune] kept: ...` and
+  `[module-prune] removed: ...`.
+- `deploy/Dockerfile`: `RUN node tools/generators/src/selection/prune.ts` before
+  `pnpm install`. The `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` copy is removed. Probe: with a
+  bare `ARG`, a `RUN` step sees `undefined` when no `--build-arg` is passed, `""` for
+  `--build-arg MODULE_INCLUDE=` and the value otherwise, so unset and empty stay distinct.
+- `apps/genie/next.config.ts` + `apps/genie/tsconfig.build.json`: `next build` type-checks
+  shipped source only. Found by the empty-selection proof: the build type-check covered
+  `src/registry.test.ts` and `testing/*.test.ts`, which import `@genie/module-placeholder`, so
+  every build that pruned placeholder failed with `TS2307` even with no application import.
+  The `typecheck` target still checks every file through `tsconfig.json`.
+- `apps/genie/testing/image-scan.ts`: only `"/m/<id>"` and `"/admin/m/<id>"` left
+  `excludedModuleContentNeedles`. Path needles, the ledger needle, migration-SQL, dev-tooling,
+  secret and `MODULE_INCLUDE`-only build-argument checks unchanged.
+- `.dockerignore`: `**/next-env.d.ts` (`genie-ops-center-v2-453`, see below).
+
+TDD record:
+
+```bash
+# prune unit (RED: module missing; GREEN after prune.ts)
+cd tools/generators && pnpm exec vitest run src/selection/prune.test.ts   # 8 passed
+# mutation: disabling the stray-folder check fails exactly
+#   "fails when a folder the selection does not name remains after the prune"
+# image-scan (RED: 2 failed for the right reason, route needle still a finding; GREEN 24 passed)
+cd apps/genie && pnpm exec vitest run --config vitest.integration.config.ts testing/image-scan.test.ts
+# docker proofs, RED before the Dockerfile change: 7 failed; the extra fixture folder reached
+#   pnpm install --frozen-lockfile -> ERR_PNPM_PACKAGE_MANAGER_NO_IMPORTER, and no refusal lines
+cd apps/genie && pnpm exec vitest run --config vitest.integration.config.ts testing/image-prune.integration.test.ts
+# GREEN: 7 passed, twice in a row on a warm cache (72s, 69s)
+```
+
+`image-prune.integration.test.ts` (in the mandatory manifest) builds staged copies under the
+OS temp directory, each carrying the extra fixture module `permitted-viewer` under
+`packages/modules/` and a unique nonce file so the prune step never restores from the layer
+cache:
+
+| Case | Selection | Result |
+| --- | --- | --- |
+| keeps the selected module and removes every other module folder, as the build log shows (AC-5) | `placeholder` | builds; `kept: placeholder`, `removed: permitted-viewer` |
+| prunes every module folder for an explicitly empty selection although the app depends on placeholder | `""` | builds; `kept: (none)`, `removed: permitted-viewer, placeholder` |
+| refuses an unset MODULE_INCLUDE | no build argument | fails: `[module-prune] MODULE_INCLUDE is unset` |
+| fails the build when a folder the selection does not name remains | `placeholder` + manifest-less `packages/modules/stray/` | fails: `packages/modules holds stray, which the selection does not name` |
+| resolves a direct and a subpath import of a selected module (control) | `placeholder` | builds |
+| fails the build on a direct import of an excluded module | `""` | fails: `./apps/genie/src/app/layout.tsx:1:1 Module not found: Can't resolve '@genie/module-placeholder'` |
+| fails the build on a subpath import of an excluded module | `""` | fails: same for `@genie/module-placeholder/presentation`, attributed to `layout.tsx` |
+
+AC-25 fixture image, placeholder pruned while the staged app manifest still depends on it:
+
+```bash
+pnpm exec nx run @genie/app:build-fixture-image --skip-nx-cache
+# [module-prune] kept: failing-viewer, invalid-viewer, permitted-viewer
+# [module-prune] removed: placeholder
+# NX Successfully ran target build-fixture-image
+```
+
+Gates:
+
+```bash
+pnpm exec nx affected -t build test lint typecheck               # Success, 7 projects
+pnpm exec nx run @genie/app:test:integration --output-style=stream
+# Test Files 14 passed (14); Tests 134 passed (134); manifest satisfied
+pnpm exec nx affected -t build test lint typecheck test:integration   # Success, 7 projects (one combined run)
+pnpm exec nx run @genie/generators:validate --skip-nx-cache      # 50 passed
+scripts/build-development-image.sh 0.0.0-pg4 --no-publish
+# candidate sha256:c1a4dc4107b3dd0fea19194f863323956dec469d59b2cc39a6de28fc81042808 passed smoke; no publish was requested
+```
+
+The app integration run includes `image-prune` (7), `image-matrix` (4), `image.startup` (13),
+`image-scan` (24), `required-runner` (17) and the fixture and dev Playwright suites at both
+viewports. One earlier streamed run failed only on a Testcontainers Postgres port-bind timeout
+in the matrix's empty case (the Docker Desktop limit below); the rerun passed.
+
+Found and fixed on the way:
+
+- `required-runner.test.ts` (from develop, `5ay`) relocated the runner and the guard but not
+  `release-matrix-cases.ts`, which the S0-11 guard imports, so the spawn-failure case crashed
+  with `ERR_MODULE_NOT_FOUND`. The helper now copies it.
+- `genie-ops-center-v2-453`: `apps/genie/next-env.d.ts` is git-ignored but was in the image
+  context, and `next build` and `next dev` write different contents to it, so
+  `test:e2e:dev` between `build-image` and the freshness guard moved the image. Observed as
+  `built from older source than this working tree` in `nx affected -t test:integration`.
+  Docker-ignoring it made the combined invocation pass once. The Bead stays open for the
+  coordinator; `ci:pr` still sequences the two runs.
+
+Residuals: a relative import of `apps/genie/tools/fixture-modules` files into application
+code is not caught by the prune (documented). The prune removes unselected module packages,
+meaning folders with a module manifest. Any other folder under `packages/modules/` fails the
+check instead of being removed, which is stricter than "removes every folder" and is what
+gives the stray-folder negative test a real target.
