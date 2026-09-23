@@ -3,10 +3,241 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
 import { promisify } from "node:util";
 
+import {
+  MAX_SCANNED_FILE_BYTES,
+  filesystemEntries,
+  type ImageFile,
+} from "./image-scan.ts";
+
 const run = promisify(execFile);
 
 /** The image every integration test drives. */
 export const IMAGE = "genie-s005:test";
+
+/**
+ * Fails closed when the Docker daemon is unreachable.
+ *
+ * The image matrix is the only proof the customer image contract has, and a run
+ * that quietly passed because the daemon was down would report the opposite of
+ * the truth. This throws a named, actionable diagnostic instead, so a red run
+ * says exactly what is missing rather than surfacing a confusing container
+ * error. It never skips.
+ */
+export async function requireDocker(): Promise<string> {
+  try {
+    const { stdout } = await run("docker", [
+      "info",
+      "--format",
+      "{{.ServerVersion}}",
+    ]);
+
+    const version = stdout.trim();
+
+    if (version === "") {
+      throw new Error("docker info returned no server version");
+    }
+
+    return version;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+
+    throw new Error(
+      `Docker is not available, so the image matrix cannot run and must not pass. Start the Docker daemon (for example, launch Docker Desktop) and re-run. Underlying error: ${detail}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Builds one selection into one tag, and throws with the daemon's own output on
+ * failure. A swallowed build error would surface later as a bare "expected true"
+ * with no cause, so the tag, the selection and the build log are named here.
+ * The Dockerfile copies the whole workspace, so an unchanged context is a
+ * content-addressed cache hit; a changed one rebuilds.
+ */
+export async function buildImageWith(
+  moduleInclude: string,
+  tag: string
+): Promise<void> {
+  const result = await dockerBuild(WORKSPACE_ROOT, moduleInclude, tag);
+
+  if (!result.ok) {
+    throw new Error(
+      `docker build of ${tag} (MODULE_INCLUDE=${moduleInclude}) failed with exit ${result.exitCode}: ${result.log}`
+    );
+  }
+}
+
+export type DockerBuildResult = {
+  readonly ok: boolean;
+  readonly exitCode: number | string;
+  /** The plain-progress build log, which carries every RUN step's output. */
+  readonly log: string;
+};
+
+/**
+ * Builds `context` with the production Dockerfile and returns the build log
+ * whether the build passed or failed, so a test can assert on what a builder
+ * stage printed (the module prune) and on why a build failed.
+ *
+ * `moduleInclude` undefined passes no build argument at all, which is how an
+ * unset MODULE_INCLUDE reaches the Dockerfile.
+ */
+export async function dockerBuild(
+  context: string,
+  moduleInclude: string | undefined,
+  tag: string
+): Promise<DockerBuildResult> {
+  const args = ["build", "--progress=plain", "-f", "deploy/Dockerfile"];
+
+  if (moduleInclude !== undefined) {
+    args.push("--build-arg", `MODULE_INCLUDE=${moduleInclude}`);
+  }
+
+  args.push("-t", tag, ".");
+
+  try {
+    const { stdout, stderr } = await run("docker", args, {
+      cwd: context,
+      maxBuffer: 256 * 1024 * 1024,
+    });
+
+    return { ok: true, exitCode: 0, log: `${stdout}${stderr}` };
+  } catch (error) {
+    // SAFETY: execFile rejects with an Error augmented with captured output
+    // and a numeric or null exit code; each is rendered defensively.
+    const failure = error as {
+      stdout?: string | Buffer;
+      stderr?: string | Buffer;
+      code?: number | null;
+    };
+
+    return {
+      ok: false,
+      exitCode: failure.code ?? "unknown",
+      log: `${String(failure.stdout ?? "")}${String(failure.stderr ?? "")}`,
+    };
+  }
+}
+
+/** Removes one image tag, best effort: a tag that was never built is ignored. */
+export async function removeImage(tag: string): Promise<void> {
+  await run("docker", ["rmi", "-f", tag]).catch(() => undefined);
+}
+
+/** The `ARG` names a history declares, so a base image's own args can be ignored. */
+export function argNamesInHistory(
+  history: readonly { readonly createdBy: string }[]
+): readonly string[] {
+  const names: string[] = [];
+
+  for (const entry of history) {
+    const declared = /^ARG ([A-Za-z_][A-Za-z0-9_]*)$/.exec(
+      entry.createdBy.trim()
+    );
+
+    if (declared !== null && declared[1] !== undefined) names.push(declared[1]);
+  }
+
+  return names;
+}
+
+/** The committed history lines of an image, one per layer. */
+export async function dockerHistory(
+  id: string
+): Promise<readonly { readonly createdBy: string }[]> {
+  const { stdout } = await run(
+    "docker",
+    ["history", "--no-trunc", "--format", "{{.CreatedBy}}", id],
+    { maxBuffer: 32 * 1024 * 1024 }
+  );
+
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((createdBy) => ({ createdBy }));
+}
+
+/**
+ * Every file path in the image's application tree, as `{ path, content: "" }`.
+ *
+ * This is a path inventory: the exclusion and dev-tooling contract is decided by
+ * what is present, and the migration and secret content checks reuse the public
+ * corpus scan, which reads the bytes the image actually serves. Reading every
+ * file body here would ship the whole runtime tree out of the container for no
+ * extra assurance.
+ */
+export async function imageFilePaths(
+  id: string
+): Promise<readonly { readonly path: string; readonly content: string }[]> {
+  const { stdout } = await run(
+    "docker",
+    ["exec", id, "find", "/app", "-type", "f"],
+    { maxBuffer: 64 * 1024 * 1024 }
+  );
+
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((path) => ({ path, content: "" }));
+}
+
+/**
+ * Every regular file in the image's application tree with its content, so the
+ * exclusion, secret and dev-tooling rules run against real bytes rather than
+ * paths alone.
+ *
+ * `find -L` follows the pnpm symlinks in a standalone tree and detects loops;
+ * the walk reports each real file once. A file above the scanner's cap is
+ * emitted as `oversized` and the parser fails closed, so nothing is silently
+ * left unscanned. Binary files are still read (their bytes decoded as UTF-8);
+ * the needles are ASCII, so a match survives the decode.
+ */
+export async function collectImageFilesystem(
+  id: string
+): Promise<readonly ImageFile[]> {
+  const script = `
+    const fs = require("node:fs");
+    const { execFileSync } = require("node:child_process");
+    const roots = execFileSync("find", ["-L", "/app", "-type", "f"], { encoding: "utf8" })
+      .trim().split("\\n").filter(Boolean);
+    const seen = new Set();
+    for (const candidate of roots) {
+      let real;
+      try { real = fs.realpathSync(candidate); } catch { continue; }
+      if (seen.has(real)) continue;
+      seen.add(real);
+      const size = fs.statSync(real).size;
+      if (size > ${MAX_SCANNED_FILE_BYTES}) {
+        console.log(JSON.stringify({ path: real, oversized: size }));
+        continue;
+      }
+      console.log(JSON.stringify({ path: real, b64: fs.readFileSync(real).toString("base64") }));
+    }
+  `.trim();
+
+  const { stdout } = await run("docker", ["exec", id, "node", "-e", script], {
+    maxBuffer: 512 * 1024 * 1024,
+  });
+
+  return filesystemEntries(stdout);
+}
+
+/**
+ * The five security headers R-47 fixes, and the one health body R-36a fixes.
+ * The values are the contract, not a shape: a header present with a weaker value
+ * must fail.
+ */
+export const REQUIRED_HEADERS = {
+  "content-security-policy":
+    "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'",
+  "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+} as const;
 
 /** Alias mapped to the host gateway, so a container can reach the host database. */
 export const HOST_ALIAS = "host.docker.internal";

@@ -297,6 +297,11 @@ function makeRelocatedRunnerWorkspace(name: string): string {
     resolve(import.meta.dirname, "required-tests-guard.ts"),
     join(root, "testing/required-tests-guard.ts")
   );
+  // The guard's own import, so the relocated runner loads as it does in place.
+  cpSync(
+    resolve(import.meta.dirname, "release-matrix-cases.ts"),
+    join(root, "testing/release-matrix-cases.ts")
+  );
   writeFileSync(join(root, "package.json"), '{"type":"module"}\n', "utf8");
 
   return root;

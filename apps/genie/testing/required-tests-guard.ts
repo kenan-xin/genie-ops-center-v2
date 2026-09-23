@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 
+import { RELEASE_MATRIX_FULL_NAMES } from "./release-matrix-cases.ts";
+
 /**
  * The mandatory manifest and the validator behind it.
  *
@@ -21,7 +23,15 @@ import { resolve } from "node:path";
  * - the viewer provider-count proof (R-49a, AC-25), zero calls on background
  *   requests at the viewer URL and exactly one for a normal viewer document,
  * - the devtools exclusion proof (S0-09), which is the only thing standing
- *   between a development diagnostic and the image a customer runs.
+ *   between a development diagnostic and the image a customer runs,
+ * - the customer image matrix (S0-11, R-53/AC-17/AC-18/AC-19): the development
+ *   and explicitly-empty images start on fresh disposable databases, the empty
+ *   image renders no placeholder route or table, and the image history and
+ *   filesystem carry only MODULE_INCLUDE. A missing Docker daemon fails these
+ *   cases rather than skipping them.
+ * - the build-input exclusion proof (Spec 0 AC-5/AC-24, `pg4`): the builder
+ *   stage prunes unselected module folders, refuses an unset selection, fails
+ *   on a stray folder, and an import of an excluded module fails the build.
  */
 export type RequiredCase = {
   readonly file: string;
@@ -79,6 +89,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the production build and the devtools ships no executable code carrying No user is signed in. Section 0 has no identity yet.",
       "the production build and the devtools ships no executable code carrying deploymentDiagnostics",
       "the production build and the devtools installs no devtools package in the image it runs from",
+    ],
+  },
+  {
+    file: "testing/image-matrix.integration.test.ts",
+    cases: RELEASE_MATRIX_FULL_NAMES,
+  },
+  {
+    file: "testing/image-prune.integration.test.ts",
+    cases: [
+      "the builder-stage module prune keeps the selected module and removes every other module folder, as the build log shows",
+      "the builder-stage module prune prunes every module folder for an explicitly empty selection although the app depends on placeholder",
+      "the builder-stage module prune refuses an unset MODULE_INCLUDE",
+      "the builder-stage module prune fails the build when a folder the selection does not name remains",
+      "the builder-stage module prune resolves a direct and a subpath import of a selected module",
+      "the builder-stage module prune fails the build on a direct import of an excluded module",
+      "the builder-stage module prune fails the build on a subpath import of an excluded module",
     ],
   },
   {

@@ -60,6 +60,26 @@ Production Dockerfile, customer wrapper and release CI are absent on develop; ex
 
 See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.
 
+## Implementation record, 2026-09-23
+
+Approach and tradeoffs: [design.md](design.md). Commands, outcomes and blocked items:
+[evidence.md](evidence.md). Beads owns status; the acceptance gate is not closed here.
+
+Two scope notes recorded explicitly:
+
+- **AC-1 carry from S0-06.** The S0-06 evidence transferred the config/schema
+  final-integration obligation of AC-1 to this ticket. It is carried here: the `validate`
+  suite pins that a change to the shared config preset and to the exposed core
+  tenant-config schema each mark their consumers affected, and the pull-request gate runs
+  `validate` on every change.
+- **Real image proof ran; real publication did not.** After the user started Docker, the
+  customer image matrix (development, selected and explicitly-empty selections), the release
+  smoke against the immutable candidate identity, and the app/core/module/Storybook
+  integration and phone/desktop browser suites all passed on Docker 29.8.0. Publication was
+  exercised only at the safe local-sink boundary. Real GHCR authentication and push remain
+  separately authorized and were not performed; the registry tag/push residual is
+  `genie-ops-center-v2-3aa` (first real release).
+
 ## Build-input exclusion (pg4), 2026-09-23
 
 Owner decision in Bead `genie-ops-center-v2-pg4`, recorded in Spec 0 AC-24 and DEC-33. It supersedes every earlier instruction in this ticket to find excluded module code by needles in built chunks.
@@ -67,6 +87,7 @@ Owner decision in Bead `genie-ops-center-v2-pg4`, recorded in Spec 0 AC-24 and D
 - The Docker context stays the repository root. In the builder stage, before `pnpm install` and `next build`, a step resolves the `MODULE_INCLUDE` selection with the dependency-free resolver in `tools/generators/src/selection` and removes every `packages/modules/<folder>` not in it.
 - The same step then checks that the remaining `packages/modules/` folders equal the selection and fails the build otherwise. Install failure is not the check, because a frozen install passes and leaves a dangling link when a listed module folder is missing.
 - The prune refuses to run when `MODULE_INCLUDE` is unset, so it never removes every module silently. The Dockerfile's `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` turns unset into empty today, so keep the two distinct, for example by testing `${MODULE_INCLUDE+set}` in the build step without that `ENV` copy. Every image builder passes the argument: the release wrapper (its development fallback spells every module id), `build-fixture-image.ts`, the `build-image` target and the image tests. R-3a's unset default applies to host builds.
+- Clarified 2026-09-23 (owner-approved review of `genie-ops-center-v2-1rd.11.1`): the prune removes every unselected module package (a folder with a module manifest), and every other folder under `packages/modules/` that holds no file, such as a folder a branch switch left with only an ignored `node_modules`. It logs that as `removed empty folder`. A non-empty folder without a module manifest is not removed and fails the build.
 - A module package is a folder under `packages/modules/`. Fixture templates elsewhere (`apps/genie/tools/fixture-modules`, generator `__fixtures__`) are out of scope. The `apps/genie/tools/fixture-modules` templates enter every builder stage with `COPY apps/genie`. A relative import of them into application code is a residual the prune does not catch.
 - The AC-25 fixture image must still build although the prune removes `placeholder`. This is unproven until it passes inside `docker build`.
 - The app keeps `@genie/module-placeholder` as a fixed workspace dependency in `apps/genie/package.json`, so a pruned module's link dangles by design. The explicitly empty selection and the AC-25 fixture image prune `placeholder` itself and prove this under install and the Nx project graph. Until they pass inside `docker build`, the pg4 risk about fixed module dependencies stays open.

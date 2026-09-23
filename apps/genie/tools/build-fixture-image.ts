@@ -1,14 +1,11 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+  stageFixtureModule,
+  stageWorkspace,
+} from "../testing/stage-workspace.ts";
 
 /**
  * Builds `genie-s005:fixture`, the disposable image carrying the failing,
@@ -35,8 +32,6 @@ import { join, resolve } from "node:path";
  * default image and every other gate keep building exactly what they built
  * before.
  */
-const REPO_ROOT = resolve(import.meta.dirname, "../../..");
-
 const FIXTURE_TAG = "genie-s005:fixture";
 
 const FIXTURE_MODULES = [
@@ -44,25 +39,6 @@ const FIXTURE_MODULES = [
   "invalid-viewer",
   "permitted-viewer",
 ] as const;
-
-/** Directory names never staged: untracked build output, caches, and bulk docs. */
-const PRUNED = new Set([
-  "node_modules",
-  ".git",
-  ".next",
-  ".nx",
-  ".turbo",
-  ".beads",
-  ".impeccable",
-  ".storybook",
-  "storybook-static",
-  "test-results",
-  "playwright-report",
-  "dist",
-  "coverage",
-  "docs",
-  "plans",
-]);
 
 let failed = false;
 
@@ -89,30 +65,16 @@ function run(
 // Each run stages into a fresh uniquely named directory, so the script can
 // never delete a path it does not know it owns. Stages are retained; removing
 // one is a separate, explicit decision about a path a run printed.
-const STAGE = mkdtempSync(join(tmpdir(), "genie-s005-fixture-"));
+const STAGE = stageWorkspace("genie-s005-fixture-");
 
 console.log(`[fixture-image] staging the workspace into ${STAGE}`);
 
-cpSync(REPO_ROOT, STAGE, {
-  recursive: true,
-  filter: (source) => {
-    const name = source.split(/[\\/]/).pop() ?? "";
+try {
+  for (const id of FIXTURE_MODULES) stageFixtureModule(STAGE, id);
+} catch (error) {
+  console.error(`[fixture-image] ${String(error)}`);
 
-    return !PRUNED.has(name);
-  },
-});
-
-for (const id of FIXTURE_MODULES) {
-  const source = join(REPO_ROOT, "apps/genie/tools/fixture-modules", id);
-  const target = join(STAGE, "packages/modules", id);
-
-  if (!existsSync(join(source, "package.json"))) {
-    console.error(`[fixture-image] missing fixture template: ${source}`);
-
-    process.exit(1);
-  }
-
-  cpSync(source, target, { recursive: true });
+  process.exit(1);
 }
 
 // The staged app manifest, never the repository's one: the fixture packages

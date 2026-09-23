@@ -18,7 +18,14 @@ export default defineConfig({
     name: "app-integration",
     environment: "node",
     include: ["testing/**/*.test.ts"],
-    exclude: ["**/node_modules/**", "**/dist/**", "**/.next/**"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.next/**",
+      // Driven by the release wrappers with a candidate identity; it has its own
+      // config and fails closed without `GENIE_SMOKE_IMAGE`.
+      "testing/release-smoke.integration.test.ts",
+    ],
     passWithNoTests: false,
     testTimeout: 240000,
     hookTimeout: 240000,

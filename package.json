@@ -11,7 +11,11 @@
     "validate": "nx run @genie/generators:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
-    "affected": "nx affected -t build test lint typecheck test-storybook test:integration && pnpm run validate"
+    "affected": "nx affected -t build test lint typecheck test-storybook test:integration && pnpm run validate",
+    "ci:pr": "nx affected -t lint typecheck test build build-storybook test-storybook --base=${NX_BASE:-origin/develop} && nx affected -t test:integration --base=${NX_BASE:-origin/develop} && pnpm run validate",
+    "ci:develop": "pnpm run ci:pr && nx run @genie/app:test:e2e:fixture",
+    "ci:release:customer": "scripts/build-customer-image.sh",
+    "ci:release:development": "scripts/build-development-image.sh"
   },
   "devDependencies": {
     "@nx/storybook": "23.2.1",

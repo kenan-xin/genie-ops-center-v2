@@ -1,0 +1,46 @@
+name: develop
+
+# R-51, every merge to develop: the pull-request gates plus the full Playwright
+# suite at both viewports. The suite runs against the compose stack in
+# deploy/stack, whose configuration declares one phone and one desktop project.
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # A push to develop has `origin/develop` at HEAD, so an affected run based
+      # on it would be empty. Base the merge gates on the pushed commit's parent
+      # instead. The all-zero first push has no parent; base it on git's empty
+      # tree so every project is affected, rather than on a ref that is HEAD.
+      - id: base
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -eu
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
+          fi
+      - run: pnpm run ci:develop
+        env:
+          NX_BASE: ${{ steps.base.outputs.ref }}

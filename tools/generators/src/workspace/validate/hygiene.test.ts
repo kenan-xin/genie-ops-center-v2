@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import { classifyProject } from "../classify-project.ts";
 import { moduleProjectNamingError } from "../module-naming.ts";
+import { moduleTestsError } from "../module-tests.ts";
+import { projectReadmeError } from "../project-readme.ts";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
@@ -156,14 +158,22 @@ describe("repository hygiene", () => {
     expect(name).toBe(`@genie/module-${project.root.split("/").at(-1)}`);
   });
 
+  // R-41: a module package that ships no test must fail continuous integration,
+  // not just report a green empty run. Runs over whatever modules exist; the
+  // failure path itself is proved in module-tests.test.ts.
+  it.each(
+    [...projects].filter(
+      ([, project]) => classifyProject(project.root) === "module"
+    )
+  )("%s ships at least one test file", (_name, project) => {
+    expect(moduleTestsError(project.root, WORKSPACE_ROOT)).toBeUndefined();
+  });
+
   it.each([...projects])(
     "%s holds a README.md that says what it imports",
     (_name, project) => {
-      const readme = join(WORKSPACE_ROOT, project.root, "README.md");
-
-      expect(existsSync(readme)).toBe(true);
-
-      expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
+      // The failure path is proved in project-readme.test.ts.
+      expect(projectReadmeError(project.root, WORKSPACE_ROOT)).toBeUndefined();
     }
   );
 

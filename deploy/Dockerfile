@@ -2,8 +2,11 @@
 # because a build argument stays readable in image history (DEC-33, R-32).
 FROM node:26-alpine AS builder
 
+# Every RUN step below reads the argument as an environment variable. There is
+# deliberately no `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` copy: it would turn an
+# unset argument into an empty one, and the prune below must refuse unset while
+# accepting an explicitly empty selection (Spec 0 AC-24, pg4).
 ARG MODULE_INCLUDE
-ENV MODULE_INCLUDE=${MODULE_INCLUDE}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Node 26 images no longer ship corepack, so pnpm is installed explicitly at the
@@ -15,6 +18,12 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json nx.json tsconfig.base.json 
 COPY packages ./packages
 COPY tools ./tools
 COPY apps/genie ./apps/genie
+
+# Build-input exclusion (Spec 0 AC-5/AC-24, pg4): remove every packages/modules
+# folder the selection does not name, fail unless the remaining folders equal
+# the selection, and print both lists into the build log. Install and build then
+# never see an excluded module, so importing one fails the build.
+RUN node tools/generators/src/selection/prune.ts
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN pnpm exec nx run @genie/app:build

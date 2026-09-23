@@ -8,11 +8,24 @@ import { defineConfig } from "vitest/config";
  * the real-service suite that runs behind a Docker build. The registry
  * generator and its guard are pure: they read package metadata and write text,
  * so they belong in the fast run and not behind an image.
+ *
+ * `testing/image-scan.ts` is the same kind of pure logic — the image history and
+ * filesystem checks are ordinary functions over an inventory — so its unit test
+ * is named explicitly here. `testing/` stays excluded as a directory, or the
+ * real-service files would be collected into the fast run; only this one file
+ * is re-included.
  */
+const preset = unitTestPreset.test;
+
 export default defineConfig({
   ...unitTestPreset,
   test: {
-    ...unitTestPreset.test,
-    include: [...(unitTestPreset.test?.include ?? []), "tools/**/*.test.ts"],
+    ...preset,
+    include: [
+      ...(preset?.include ?? []),
+      "tools/**/*.test.ts",
+      "testing/image-scan.test.ts",
+    ],
+    exclude: (preset?.exclude ?? []).filter((glob) => glob !== "testing/**"),
   },
 });
