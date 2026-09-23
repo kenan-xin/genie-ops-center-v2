@@ -61,7 +61,7 @@ The all-files pass also flagged hardcoded secrets in tests. These are synthetic 
 
 Confidence: 8.8/10 for the sequencing, not for unexecuted G2 compatibility. The repair set, real database proof and dependency order are now independently checked. Native framework context/header composition remains the G2 uncertainty.
 
-1. Dispatch **S0-05 alone** with its existing [G2 handoff](../handoffs/s0-05-g2.md), consuming accepted develop revision `531e8af`. Deliver `yt2` and `3yv` inside that owner session; keep them manually blocked until parent claim.
+1. Dispatch **S0-05 alone** with its existing G2 handoff (`handoffs/s0-05-g2.md`, removed 2026-09-23 after every Spec 0 ticket closed; see git history), consuming accepted develop revision `531e8af`. Deliver `yt2` and `3yv` inside that owner session; keep them manually blocked until parent claim.
 2. Only after integrated G2, release the **S0-06/S0-07/S0-08/S0-09** parallel batch under the recorded shared-file schedule.
 
 Native G2 feasibility remains its own hard stop; this review chooses no custom server, extra pool or workaround. Assumption: no other session writes the repair-owned surfaces concurrently.

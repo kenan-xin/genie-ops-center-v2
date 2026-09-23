@@ -1,6 +1,6 @@
 Confidence: 8.2/10
 Reasoning: Every requirement below traces to a roadmap item, a recorded decision, an architecture contract, or a cross-section call in `../specs/README.md`, and the sources now agree on the permission key form, the health endpoint, the release-tag push, the Section 0 smoke test, and the landing-route flag, so the two contradictions that held the first draft down are closed. The score is held below nine because production runtime and later gates remain unproven despite accepted workspace and Storybook checks, and because five routine implementation choices and the error body shape are settled by the cross-section calls table or under Assumptions rather than by a recorded decision. Several dependency versions in `../core/tech-stack.md` are ahead of what current documentation confirms, and those are listed under Assumptions rather than corrected here.
-Status: Approved by the product owner for ticket breakdown, 2026-09-19. S0-01 and G1/S0-02 are integrated and accepted; G2 and later gates remain required. See [integrated G1 evidence](../tickets/spec-0/02-storybook-compatibility-g1/integrated-acceptance.md).
+Status: Approved by the product owner for ticket breakdown, 2026-09-19. All twelve tickets are integrated and accepted as of 2026-09-23; G5 stays open for the real registry push only. See the [S0-12 traceability](../tickets/spec-0/12-foundation-acceptance-g5/traceability.md).
 
 ## Goal and scope
 
