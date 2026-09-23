@@ -38,6 +38,7 @@ async function raw(path: string) {
   return {
     status: response.status,
     headers: response.headers,
+    requestId: response.headers.get("x-request-id") ?? "",
     body: await response.text(),
   };
 }
@@ -49,6 +50,16 @@ const requestLinesFor = (logs: string, path: string) =>
     .filter(
       (line) =>
         line.includes('"msg":"request"') && line.includes(`"path":"${path}"`)
+    ).length;
+
+/** The request lines the proxy wrote for one request id. */
+const requestLinesWithId = (logs: string, requestId: string) =>
+  logs
+    .split("\n")
+    .filter(
+      (line) =>
+        line.includes('"msg":"request"') &&
+        line.includes(`"requestId":"${requestId}"`)
     ).length;
 
 /** The provider invocation lines the counted wrapper wrote so far. */
@@ -146,17 +157,43 @@ describe("header coverage on the built application", () => {
   // R-44 says one line per request, and a redirect is a request. The proxy used
   // to emit the redirect before it reached the log call, so `/home` produced
   // zero lines and the requirement was false for exactly this path. This asserts
-  // the fix: exactly one new line, not zero and not two.
+  // the fix: exactly one line for this request, not zero and not two.
+  //
+  // The line is counted by this response's own request id, not by a path delta.
+  // The log reaches the test through a stdout pipe that is independent of the
+  // HTTP socket, so the previous test's `/home` line can arrive after a
+  // `before` count was taken, and a delta then reads two (develop CI, 1rd.12.3).
   it("the application redirect writes exactly one request line", async () => {
-    const before = requestLinesFor(server.logs(), "/home");
-
     const response = await raw("/home");
 
     expect(response.status).toBe(307);
+    expect(response.requestId).toMatch(/^[0-9a-f-]{36}$/);
 
     await expect
-      .poll(() => requestLinesFor(server.logs(), "/home"), { timeout: 5000 })
-      .toBe(before + 1);
+      .poll(() => requestLinesWithId(server.logs(), response.requestId), {
+        timeout: 5000,
+      })
+      .toBe(1);
+
+    // Not two either. One process writes both lines to one stdout in order, so
+    // once a later request's line is visible, a duplicate of the earlier line
+    // would be visible too.
+    const barrier = await raw("/api/status");
+
+    await expect
+      .poll(() => requestLinesWithId(server.logs(), barrier.requestId), {
+        timeout: 5000,
+      })
+      .toBe(1);
+    expect(requestLinesWithId(server.logs(), response.requestId)).toBe(1);
+
+    // The line is the redirect's own: it names the redirected path.
+    const line = server
+      .logs()
+      .split("\n")
+      .find((candidate) => candidate.includes(response.requestId));
+
+    expect(line).toContain('"path":"/home"');
   });
 
   // Amendment B: the narrow exception, asserted rather than ignored. The 308
