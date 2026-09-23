@@ -21,6 +21,13 @@ docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t geni
 The image is built from the repository root, so the build context is the whole
 workspace and `.dockerignore` keeps it small.
 
+Before install, the builder stage runs `tools/generators/src/selection/prune.ts`
+(Spec 0 AC-24, `pg4`). It removes every `packages/modules/` folder the selection does
+not name, fails unless the remaining folders equal the selection, and prints
+`[module-prune] kept: ...` and `[module-prune] removed: ...` into the build log.
+`MODULE_INCLUDE` must be passed: an unset argument fails the build, and
+`--build-arg MODULE_INCLUDE=` builds with no module.
+
 ## Run
 
 ```bash

@@ -1,0 +1,14 @@
+// What `next build` type-checks: shipped source only. Test files import module
+// packages, such as @genie/module-placeholder, that the image builder stage
+// prunes when a selection excludes them (Spec 0 AC-24, pg4). The typecheck
+// target still checks every file through tsconfig.json.
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "next.config.ts",
+    "tailwind.config.ts"
+  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

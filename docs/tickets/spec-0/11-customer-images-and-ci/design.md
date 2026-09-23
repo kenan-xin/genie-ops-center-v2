@@ -49,6 +49,13 @@ Decisions:
   fallback is a separate flag and a separate wrapper script, and it publishes under a
   `development` tag, never a customer name.
 
+> Annotation 2026-09-23 (`pg4`, `genie-ops-center-v2-1rd.11.1`): the next section describes
+> the Dockerfile before the builder-stage prune. The `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` copy
+> it explains is gone. With a bare `ARG MODULE_INCLUDE`, BuildKit leaves the variable unset in
+> a `RUN` step when no `--build-arg` is passed, and the prune refuses that build. Every image
+> builder still passes the argument explicitly, and the development fallback still spells every
+> module id, as below.
+
 ### Why the Dockerfile's `MODULE_INCLUDE` cannot express "unset"
 
 `resolveModuleSelection` distinguishes an unset variable (every module) from an empty one
@@ -90,6 +97,17 @@ clean CI daemon does not fail on a missing one.
 `apps/genie/testing/image-scan.ts` holds the needles and the rules as pure functions, unit
 tested against controlled fixtures with a non-vacuous control (the same scanner finds an
 included module when it is excluded).
+
+> Annotation 2026-09-23 (`pg4`, `genie-ops-center-v2-1rd.11.1`): the text above presents the
+> excluded-module needle scan as the exclusion proof. That is superseded. Bundler output does
+> not preserve package origin, so exclusion is now proved at the build input: the Dockerfile
+> builder stage runs `tools/generators/src/selection/prune.ts` before install, which removes
+> every unselected `packages/modules/` folder, fails the build unless the remaining folders
+> equal the selection, and refuses an unset `MODULE_INCLUDE`.
+> `apps/genie/testing/image-prune.integration.test.ts` proves it inside `docker build`. The
+> scan dropped only the route-string needles `"/m/<id>"` and `"/admin/m/<id>"`. Its path
+> needles, ledger needle, migration-SQL, development-tooling, secret and build-argument checks
+> stay, and the image matrix still runs them. Evidence: [evidence.md](evidence.md).
 
 The matrix is **mandatory**: its four cases are in the anti-skip manifest
 (`testing/required-tests-guard.ts`), so a run that filtered them away fails, and a missing

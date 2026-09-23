@@ -59,24 +59,52 @@ export async function buildImageWith(
   moduleInclude: string,
   tag: string
 ): Promise<void> {
-  try {
-    await run(
-      "docker",
-      [
-        "build",
-        "--quiet",
-        "-f",
-        "deploy/Dockerfile",
-        "--build-arg",
-        `MODULE_INCLUDE=${moduleInclude}`,
-        "-t",
-        tag,
-        ".",
-      ],
-      { cwd: WORKSPACE_ROOT, maxBuffer: 64 * 1024 * 1024 }
+  const result = await dockerBuild(WORKSPACE_ROOT, moduleInclude, tag);
+
+  if (!result.ok) {
+    throw new Error(
+      `docker build of ${tag} (MODULE_INCLUDE=${moduleInclude}) failed with exit ${result.exitCode}: ${result.log}`
     );
+  }
+}
+
+export type DockerBuildResult = {
+  readonly ok: boolean;
+  readonly exitCode: number | string;
+  /** The plain-progress build log, which carries every RUN step's output. */
+  readonly log: string;
+};
+
+/**
+ * Builds `context` with the production Dockerfile and returns the build log
+ * whether the build passed or failed, so a test can assert on what a builder
+ * stage printed (the module prune) and on why a build failed.
+ *
+ * `moduleInclude` undefined passes no build argument at all, which is how an
+ * unset MODULE_INCLUDE reaches the Dockerfile.
+ */
+export async function dockerBuild(
+  context: string,
+  moduleInclude: string | undefined,
+  tag: string
+): Promise<DockerBuildResult> {
+  const args = ["build", "--progress=plain", "-f", "deploy/Dockerfile"];
+
+  if (moduleInclude !== undefined) {
+    args.push("--build-arg", `MODULE_INCLUDE=${moduleInclude}`);
+  }
+
+  args.push("-t", tag, ".");
+
+  try {
+    const { stdout, stderr } = await run("docker", args, {
+      cwd: context,
+      maxBuffer: 256 * 1024 * 1024,
+    });
+
+    return { ok: true, exitCode: 0, log: `${stdout}${stderr}` };
   } catch (error) {
-    // SAFETY: execFileSync rejects with an Error augmented with captured output
+    // SAFETY: execFile rejects with an Error augmented with captured output
     // and a numeric or null exit code; each is rendered defensively.
     const failure = error as {
       stdout?: string | Buffer;
@@ -84,13 +112,11 @@ export async function buildImageWith(
       code?: number | null;
     };
 
-    const output =
-      `${String(failure.stdout ?? "")}${String(failure.stderr ?? "")}`.trim();
-
-    throw new Error(
-      `docker build of ${tag} (MODULE_INCLUDE=${moduleInclude}) failed with exit ${failure.code ?? "unknown"}: ${output}`,
-      { cause: error }
-    );
+    return {
+      ok: false,
+      exitCode: failure.code ?? "unknown",
+      log: `${String(failure.stdout ?? "")}${String(failure.stderr ?? "")}`,
+    };
   }
 }
 

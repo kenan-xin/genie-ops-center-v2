@@ -29,6 +29,9 @@ import { RELEASE_MATRIX_FULL_NAMES } from "./release-matrix-cases.ts";
  *   image renders no placeholder route or table, and the image history and
  *   filesystem carry only MODULE_INCLUDE. A missing Docker daemon fails these
  *   cases rather than skipping them.
+ * - the build-input exclusion proof (Spec 0 AC-5/AC-24, `pg4`): the builder
+ *   stage prunes unselected module folders, refuses an unset selection, fails
+ *   on a stray folder, and an import of an excluded module fails the build.
  */
 export type RequiredCase = {
   readonly file: string;
@@ -91,6 +94,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/image-matrix.integration.test.ts",
     cases: RELEASE_MATRIX_FULL_NAMES,
+  },
+  {
+    file: "testing/image-prune.integration.test.ts",
+    cases: [
+      "the builder-stage module prune keeps the selected module and removes every other module folder, as the build log shows",
+      "the builder-stage module prune prunes every module folder for an explicitly empty selection although the app depends on placeholder",
+      "the builder-stage module prune refuses an unset MODULE_INCLUDE",
+      "the builder-stage module prune fails the build when a folder the selection does not name remains",
+      "the builder-stage module prune resolves a direct and a subpath import of a selected module",
+      "the builder-stage module prune fails the build on a direct import of an excluded module",
+      "the builder-stage module prune fails the build on a subpath import of an excluded module",
+    ],
   },
   {
     file: "testing/viewer-background.integration.test.ts",

@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
   // repeated-slash/backslash normalization still runs in `base-server` before
   // any proxy code.
   skipProxyUrlNormalize: true,
+  // The build type-checks shipped source only. Test files import module
+  // packages the image builder stage prunes for a selection that excludes them
+  // (pg4); the typecheck target still checks them through tsconfig.json.
+  typescript: { tsconfigPath: "tsconfig.build.json" },
   async headers() {
     return [{ source: "/(.*)", headers: STANDARD_HEADERS }];
   },
