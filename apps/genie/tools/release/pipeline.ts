@@ -127,6 +127,19 @@ export function runRelease(
 
   const env = { MODULE_INCLUDE: include };
 
+  // The effective excluded set, so the candidate smoke can prove the excluded
+  // modules have no route, table or ledger and no artifact in this exact image.
+  const includedIds = include
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id !== "");
+
+  const includedSet = new Set(includedIds);
+
+  const excludedIds = readModuleInventory(request.repoRoot)
+    .map((entry) => entry.id)
+    .filter((id) => !includedSet.has(id));
+
   const gates: readonly (readonly [string, string, readonly string[]])[] = [
     ["typecheck", "@genie/app:typecheck", nxArgs("@genie/app:typecheck")],
     [
@@ -210,7 +223,14 @@ export function runRelease(
 
   const smoked = runner(smokeCommand[0] ?? "pnpm", smokeCommand.slice(1), {
     cwd: join(request.repoRoot, "apps/genie"),
-    env: { ...env, GENIE_SMOKE_IMAGE: identity },
+    // The smoke scans this exact candidate against the effective selection, so
+    // the include list travels with the identity.
+    env: {
+      ...env,
+      GENIE_SMOKE_IMAGE: identity,
+      GENIE_SMOKE_INCLUDE: include,
+      GENIE_SMOKE_EXCLUDED: excludedIds.join(","),
+    },
   });
 
   if (smoked.status !== 0) {

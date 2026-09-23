@@ -49,14 +49,16 @@ export async function requireDocker(): Promise<string> {
 }
 
 /**
- * Builds one selection into one tag and reports whether the build succeeded.
+ * Builds one selection into one tag, and throws with the daemon's own output on
+ * failure. A swallowed build error would surface later as a bare "expected true"
+ * with no cause, so the tag, the selection and the build log are named here.
  * The Dockerfile copies the whole workspace, so an unchanged context is a
  * content-addressed cache hit; a changed one rebuilds.
  */
 export async function buildImageWith(
   moduleInclude: string,
   tag: string
-): Promise<boolean> {
+): Promise<void> {
   try {
     await run(
       "docker",
@@ -73,10 +75,22 @@ export async function buildImageWith(
       ],
       { cwd: WORKSPACE_ROOT, maxBuffer: 64 * 1024 * 1024 }
     );
+  } catch (error) {
+    // SAFETY: execFileSync rejects with an Error augmented with captured output
+    // and a numeric or null exit code; each is rendered defensively.
+    const failure = error as {
+      stdout?: string | Buffer;
+      stderr?: string | Buffer;
+      code?: number | null;
+    };
 
-    return true;
-  } catch {
-    return false;
+    const output =
+      `${String(failure.stdout ?? "")}${String(failure.stderr ?? "")}`.trim();
+
+    throw new Error(
+      `docker build of ${tag} (MODULE_INCLUDE=${moduleInclude}) failed with exit ${failure.code ?? "unknown"}: ${output}`,
+      { cause: error }
+    );
   }
 }
 

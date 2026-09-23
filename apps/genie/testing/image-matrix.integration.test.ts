@@ -60,10 +60,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
   it(
     RELEASE_MATRIX_CASES.development,
     async () => {
-      expect(
-        await buildImageWith("placeholder", DEVELOPMENT_IMAGE),
-        `could not build ${DEVELOPMENT_IMAGE}`
-      ).toBe(true);
+      await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
 
       const database = await startDisposableDeployment([]);
 
@@ -127,10 +124,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
   it(
     RELEASE_MATRIX_CASES.emptySelection,
     async () => {
-      expect(
-        await buildImageWith("", EMPTY_IMAGE),
-        `could not build ${EMPTY_IMAGE}`
-      ).toBe(true);
+      await buildImageWith("", EMPTY_IMAGE);
 
       const database = await startDisposableDeployment([]);
 
@@ -205,8 +199,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       // Both images exist from the cases above, but this case builds and starts
       // each on its own fresh database so the "two selections start" property
       // stands on its own rather than borrowing another case's evidence.
-      expect(await buildImageWith("placeholder", DEVELOPMENT_IMAGE)).toBe(true);
-      expect(await buildImageWith("", EMPTY_IMAGE)).toBe(true);
+      await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
+      await buildImageWith("", EMPTY_IMAGE);
 
       // Sequential by definition: each iteration starts, health-checks and stops
       // its own image on its own database, so running them together would mix the
@@ -250,7 +244,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
   it(
     RELEASE_MATRIX_CASES.content,
     async () => {
-      expect(await buildImageWith("placeholder", DEVELOPMENT_IMAGE)).toBe(true);
+      await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
 
       const database = await startDisposableDeployment([]);
 

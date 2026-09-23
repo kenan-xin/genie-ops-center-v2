@@ -146,12 +146,19 @@ describe("the customer image release pipeline", () => {
 
     expect(calls.some((call) => call.args[0] === "push")).toBe(true);
 
-    // Smoke runs on the identity and strictly before the push.
+    // Smoke runs on the identity and strictly before the push, and it receives
+    // the effective selection so it can scan the candidate for the excluded set.
     const smokeAt = steps(calls).indexOf("smoke");
     const pushAt = calls.findIndex((call) => call.args[0] === "push");
 
     expect(smokeAt).toBeGreaterThan(-1);
     expect(pushAt).toBeGreaterThan(smokeAt);
+
+    const smoke = calls[smokeAt];
+
+    expect(smoke?.env?.GENIE_SMOKE_IMAGE).toBe(IDENTITY);
+    expect(smoke?.env?.GENIE_SMOKE_INCLUDE).toBe("placeholder");
+    expect(smoke?.env?.GENIE_SMOKE_EXCLUDED).toBe("");
   });
 
   it("changes the build argument when the customer's modules.txt changes", () => {
