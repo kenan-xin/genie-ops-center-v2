@@ -146,6 +146,14 @@ const HEADLESS_ENTRYPOINT = "export {};\n";
 
 let stage = "";
 
+/**
+ * The bound on one nested command. `spawnSync` blocks the worker's event loop,
+ * so Vitest's own test timeout can never fire while it waits; without this a
+ * stalled nested run holds the whole CI step open with no output. SIGTERM, the
+ * default kill signal, lets Nx stop its own task processes on the way out.
+ */
+const NESTED_RUN_TIMEOUT_MS = 240000;
+
 type Run = {
   readonly status: number;
   readonly output: string;
@@ -188,11 +196,14 @@ function run(task: string, moduleInclude: string | undefined): Run {
     cwd: stage,
     encoding: "utf8",
     env,
+    timeout: NESTED_RUN_TIMEOUT_MS,
   });
 
   return {
     status: result.status ?? -1,
-    output: stripAnsi(`${result.stdout}${result.stderr}`),
+    output: stripAnsi(
+      `${result.stdout}${result.stderr}${result.error === undefined ? "" : `\n${String(result.error)}`}`
+    ),
   };
 }
 
@@ -313,7 +324,7 @@ beforeAll(() => {
   const install = spawnSync(
     "pnpm",
     ["install", "--frozen-lockfile", "--ignore-scripts", "--silent"],
-    { cwd: stage, encoding: "utf8" }
+    { cwd: stage, encoding: "utf8", timeout: NESTED_RUN_TIMEOUT_MS }
   );
 
   if (install.status !== 0) {
@@ -1118,7 +1129,12 @@ describe("a module written by the generator", () => {
       const generated = spawnSync(
         join(stage, "node_modules/.bin/nx"),
         ["g", "@genie/generators:module-new", GENERATED_ID],
-        { cwd: stage, encoding: "utf8", env: { ...process.env } }
+        {
+          cwd: stage,
+          encoding: "utf8",
+          env: { ...process.env },
+          timeout: NESTED_RUN_TIMEOUT_MS,
+        }
       );
 
       expect(generated.status, `${generated.stdout}${generated.stderr}`).toBe(
@@ -1133,7 +1149,7 @@ describe("a module written by the generator", () => {
       const install = spawnSync(
         "pnpm",
         ["install", "--ignore-scripts", "--silent", "--no-frozen-lockfile"],
-        { cwd: stage, encoding: "utf8" }
+        { cwd: stage, encoding: "utf8", timeout: NESTED_RUN_TIMEOUT_MS }
       );
 
       expect(install.status, `${install.stdout}${install.stderr}`).toBe(0);
