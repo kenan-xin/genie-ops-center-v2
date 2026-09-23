@@ -83,6 +83,7 @@ The protocol and the credentials of the customer's identity provider are not in 
 3. Run `docker compose pull` and `docker compose up -d`.
 4. The new container applies the migration histories under one lock before it serves. If a migration fails, the container stays unhealthy and the previous version keeps serving. Read the container log, fix the cause, and repeat step 3.
 5. If the release notes name a new `genie-ops setup` step, run `docker compose exec app genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done (`../core/roadmap.md`, Section 1 items 2 and 5).
+6. A module that the new image adds arrives disabled. An administrator configures it and enables it on the Modules page, or you run `docker compose exec app genie-ops module enable <module-id>` on the administrator's request. Nobody gets access to it until then (`DEC-50`).
 
 Every release upgrades from the last three releases (`DEC-9`). A customer-managed stack that is more than three releases behind must upgrade through an intermediate release. Release notes name the oldest release that each version upgrades from. The migrator logs the count of pending migrations at start, so read that line after an upgrade of a stack that was behind (`DEC-43`).
 
@@ -98,6 +99,7 @@ Three accounts exist with different jobs. A tenant administrator is a normal per
 | The person who holds the break-glass password left. | `genie-ops break-glass rotate` (`DEC-24`). | New password, authenticator cleared, sessions ended. |
 | The break-glass authenticator is lost. | `genie-ops break-glass rotate`. | Same command, same result. |
 | A setup step failed. | Fix the cause and run `genie-ops setup` again. | Setup resumes from the failed step. |
+| The container refuses to start and the log names a module that the image omits. | Deploy the image that includes that module again. If the deployment never went live, you can instead drop the database, create an empty one, start the corrected image and run setup. | The check deletes nothing. A module counts as installed once its row or its migration ledger exists, even when a first boot used the wrong image, and removing an installed module needs controlled removal, which is not built yet ([diagram](../architecture/diagrams/module-omission-check.html)). |
 | The worker log shows a job moved to a dead-letter queue. | Read the error, fix the cause, then retry the job from the dead-letter queue or delete it. | A failed job on a serialized key blocks every later job for that key until it is retried or deleted. |
 
 Use the break-glass account only for the rows that name it, and sign out as soon as the fix is done. Every action in that session bypasses the permission checks (`DEC-15`).

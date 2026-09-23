@@ -5,8 +5,8 @@
   // replaces the inherited one rather than adding to it.
   "exclude": [
     "src/selection/__fixtures__/**",
-    "**/__boundary__*",
-    "**/__wiring__*",
-    "**/__antislop__*"
+    "**/*__boundary__*",
+    "**/*__wiring__*",
+    "**/*__antislop__*"
   ]
 }

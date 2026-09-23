@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Every migrator run: the module omission check and registration",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "startup",
+      "label": "Migrator run, under one lock"
+    },
+    {
+      "id": "branch",
+      "label": "Refuse, or register after seed"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "image_starts",
+      "lane": "startup",
+      "col": 0,
+      "type": "backend",
+      "label": "Migrator",
+      "sublabel": "takes the lock"
+    },
+    {
+      "id": "read_history",
+      "lane": "startup",
+      "col": 1,
+      "type": "database",
+      "label": "Read history",
+      "sublabel": "rows or module ledgers"
+    },
+    {
+      "id": "module_missing",
+      "lane": "startup",
+      "col": 2,
+      "type": "security",
+      "label": "Missing from image?",
+      "width": 140,
+      "sublabel": "an installed module"
+    },
+    {
+      "id": "refuse_start",
+      "lane": "branch",
+      "col": 2,
+      "type": "security",
+      "label": "Refuse start",
+      "sublabel": "names X, keeps data",
+      "tag": "danger",
+      "width": 100
+    },
+    {
+      "id": "apply_migrations",
+      "lane": "startup",
+      "col": 3,
+      "type": "backend",
+      "label": "Migrate",
+      "sublabel": "core, then modules"
+    },
+    {
+      "id": "seed_done",
+      "lane": "startup",
+      "col": 4,
+      "type": "security",
+      "label": "Seed done?"
+    },
+    {
+      "id": "register_modules",
+      "lane": "branch",
+      "col": 4,
+      "type": "database",
+      "label": "Register",
+      "sublabel": "new rows, disabled"
+    },
+    {
+      "id": "serve",
+      "lane": "startup",
+      "col": 5,
+      "type": "cloud",
+      "label": "Commit",
+      "sublabel": "then serve, run jobs"
+    }
+  ],
+  "mainPath": [
+    "image_starts",
+    "read_history",
+    "module_missing",
+    "apply_migrations",
+    "seed_done",
+    "serve"
+  ],
+  "edges": [
+    {
+      "from": "image_starts",
+      "to": "read_history"
+    },
+    {
+      "from": "read_history",
+      "to": "module_missing"
+    },
+    {
+      "from": "module_missing",
+      "to": "refuse_start",
+      "label": "yes",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "module_missing",
+      "to": "apply_migrations",
+      "label": "no"
+    },
+    {
+      "from": "apply_migrations",
+      "to": "seed_done"
+    },
+    {
+      "from": "register_modules",
+      "to": "serve"
+    },
+    {
+      "from": "seed_done",
+      "to": "serve",
+      "label": "no, insert nothing"
+    },
+    {
+      "from": "seed_done",
+      "to": "register_modules",
+      "label": "yes"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Installed means either one",
+      "items": [
+        "A tenant_module row, or a drizzle.__drizzle_migrations_<id> ledger, with id hyphens as underscores",
+        "Core's own drizzle.__drizzle_migrations never counts",
+        "Registration inserts rows only after the seed step is done"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Why rows alone are not enough",
+      "items": [
+        "The app migrates at start, before setup",
+        "A wrong first image leaves module X tables and ledger, but no row"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "When the check refuses",
+      "items": [
+        "The log names the module and nothing is deleted",
+        "Restore the right image, or recreate an empty database if it never went live"
+      ]
+    }
+  ]
+}

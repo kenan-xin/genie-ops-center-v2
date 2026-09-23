@@ -3,7 +3,9 @@ pre-commit:
   jobs:
     - name: format
       glob: "*.{ts,tsx,js,jsx,mjs,cjs,json}"
-      run: pnpm exec oxfmt {staged_files}
+      # oxfmt ignores docs/**, so a commit whose staged files are all ignored
+      # leaves it no target; that is success, not an error (genie-ops-center-v2-sdm).
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     - name: lint
       glob: "*.{ts,tsx,js,jsx,mjs,cjs}"

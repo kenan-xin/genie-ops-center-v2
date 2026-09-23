@@ -4,6 +4,8 @@ Researched 2026-09-20. Research only; no implementation or compatibility spike p
 
 Owner decision after this research: use `@genie/module-<name>` with existing capability folders `packages/modules/<name>/` folders. See [the canonical contract](../architecture/repository-layout.md#module-package-naming) and [rework plan](../tech-plans/module-naming-revision.md). The observations and rejected alias examples below remain historical evidence, not current layout requirements.
 
+Superseded in part on 2026-09-23 by the `pg4` owner decision: excluded-module absence is proved at the build input, with a builder-stage prune of unselected `packages/modules/` folders, a check that the remaining folders equal the selection, and a failing-import test (Spec 0 AC-24). The advice below to verify exclusion in actual image files and traces stays a record of this research, not the current proof method.
+
 ## Recommendation
 
 **Use the fallback `@genie/module-<name>` spelling for the proposed names: `@genie/module-contract-data` and `@genie/module-solution`.** Slash imports are possible without merging module packages, and one shared TypeScript mapping is a credible inexpensive option for bundled application code. However, the evidence does not establish that this one mapping alone meets this repository's full runtime, graph, cache and image-exclusion contract. Given the stated preference for hyphens unless slash spelling is demonstrably cheap, adopt no additional abstraction now.

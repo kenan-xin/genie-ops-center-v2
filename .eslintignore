@@ -3,10 +3,16 @@
 # other projects' lint targets scan the same tree. A scan that lists a fixture
 # and opens it after the suite removed it fails with a bare ENOENT
 # (genie-ops-center-v2-64a is the typecheck face of the same race; the root
-# tsconfig excludes these prefixes for it).
+# tsconfig excludes these markers for it).
+#
+# Each pattern matches its marker anywhere inside a path segment, not only at
+# the start, because a suite may name a fixture mid-basename: the config probes
+# are `vitest.__boundary__.config.ts`, whose marker follows the dot. A `**/*`
+# prefix covers the leading and the mid-basename shape alike, so one entry per
+# marker is enough (genie-ops-center-v2-5hq).
 #
 # The harness lints an explicit fixture path with --no-ignore, so the fixtures
 # themselves are still checked by the rules they exist to prove.
-**/__boundary__*
-**/__wiring__*
-**/__antislop__*
+**/*__boundary__*
+**/*__wiring__*
+**/*__antislop__*

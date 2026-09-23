@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -273,6 +273,36 @@ function runRunner(cwd: string, args: readonly string[]): number {
 }
 
 /**
+ * A synthetic workspace holding a byte-for-byte copy of this runner and its
+ * guard, so the runner's own fixed `../node_modules/.bin/vitest` resolves to a
+ * path that does not exist. The absent executable is the deterministic spawn
+ * failure: the operating system reports ENOENT, which the runner must turn into
+ * its own named diagnostic instead of an unhandled `error` event.
+ *
+ * The copy is how the real runner is reached without touching its fixed path:
+ * `import.meta.dirname` moves with the file, so relocating the runner relocates
+ * the binary it spawns. The `package.json` gives the copy the module type its
+ * real neighbours in apps/genie provide.
+ */
+function makeRelocatedRunnerWorkspace(name: string): string {
+  const root = join(tmpdir(), `genie-runner-${name}`);
+
+  rmSync(root, { recursive: true, force: true });
+
+  mkdirSync(join(root, "tools"), { recursive: true });
+  mkdirSync(join(root, "testing"), { recursive: true });
+
+  cpSync(RUNNER, join(root, "tools/run-required-tests.ts"));
+  cpSync(
+    resolve(import.meta.dirname, "required-tests-guard.ts"),
+    join(root, "testing/required-tests-guard.ts")
+  );
+  writeFileSync(join(root, "package.json"), '{"type":"module"}\n', "utf8");
+
+  return root;
+}
+
+/**
  * One manifest case by index, failing loudly rather than on an undefined read.
  * The negative controls below name a case by position, so a manifest that
  * shortens its case list fails here rather than testing nothing.
@@ -388,4 +418,34 @@ describe("the runner command line", () => {
       ])
     ).toBe(1);
   }, 120000);
+
+  // A spawn that never starts vitest — its binary is missing — must fail the
+  // run with the runner's own named diagnostic and without an unhandled `error`
+  // event, rather than an opaque Node crash that hides the real cause
+  // (genie-ops-center-v2-5ay).
+  it("exits nonzero with a named diagnostic when vitest cannot start", () => {
+    const workspace = makeRelocatedRunnerWorkspace("spawn-failure");
+
+    try {
+      const result = spawnSync(
+        "node",
+        [
+          join(workspace, "tools/run-required-tests.ts"),
+          "--config",
+          "vitest.config.mjs",
+        ],
+        {
+          cwd: workspace,
+          env: { ...process.env, GENIE_RUNNER_QUIET: "1" },
+          encoding: "utf8",
+        }
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Could not start vitest");
+      expect(result.stderr).not.toContain("Unhandled 'error' event");
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
 });
