@@ -489,7 +489,17 @@ A module first introduced by an upgrade to an already configured deployment star
 
 Existing enabled states, configuration, category placement, custom roles, assignments, and group memberships are preserved. Re-enabling restores retained grants subject to current authorization and resource gates. Whole-module grants continue to cover future records within that module, not unrelated newly installed modules.
 
-First-time setup retains its existing initial activation policy. Permission/default-role evolution follows the accepted DEC-23 addendum and its linked policy. Removal/reintroduction follows the accepted policy below; reconciliation ownership/transactions and concrete in-flight cancellation mechanisms remain separate unresolved decisions. Verify an upgrade after setup is complete, repeated startup, validation failure, and explicit activation; registration alone must never activate the new module.
+First-time setup retains its existing initial activation policy. Permission/default-role evolution follows the accepted DEC-23 addendum and its linked policy. Removal/reintroduction follows the accepted policy below; concrete in-flight cancellation mechanisms and the removal-side reconciliation remain separate unresolved decisions. Verify an upgrade after setup is complete, repeated startup, validation failure, and explicit activation; registration alone must never activate the new module.
+
+### Registration reconciliation owner (decided 2026-09-23)
+
+Question: which code writes the disabled `tenant_module` row for a module that an upgrade introduces, and in which transaction relative to migrations and the omission check of Section 1 R-79.
+
+Decision: the migrator run owns it, under the advisory lock that the migrator already holds, before the process serves requests or consumes jobs. Inside the lock, the migrator first runs the omission check and stops on an unauthorized omission. After the migrations commit, it inserts one `enabled: false` row for each compiled module without a row, in one transaction, with `ON CONFLICT DO NOTHING`, so a repeated start changes nothing. Permission changes stay as versioned migration files under the DEC-23 addendum.
+
+Rejected: an operator rerun of `genie-ops setup`, because a compiled module has no row until the step runs, and every reader must then handle a missing row. Rejected: app startup code outside the lock, because replicas race.
+
+Gain: one path for every replica and every restart, and no new lock. Cost: the migrator gains one non-migration write, and a failed insert blocks startup like a failed migration. Not decided here: removal-side reconciliation and in-flight cancellation, which stay with the module removal policy. Revisit when controlled removal is designed, because its state changes must share this lock.
 
 ### Module removal and reintroduction (decided 2026-09-18)
 

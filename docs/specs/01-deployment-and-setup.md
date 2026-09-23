@@ -2,7 +2,7 @@ Confidence: 8.4/10
 
 Business scenarios: [CF-MA-01 and CF-MA-08](../flows/module-access-upgrades.md) describe new-module setup and retained access after re-enable. R-27/R-68a and the activation verification below provide their implementation requirements and proof; unresolved lifecycle branches remain explicitly open.
 Reasoning: Every requirement below traces to a roadmap item, a decision entry, an architecture contract, or the cross-section calls table, and the contracts for the tables, the environment, and the module points are complete enough to implement against. No open question remains: the pg-boss policy `key_strict_fifo` was confirmed against the current library documentation, the not-set-up page design lists the seven `setup_step` names in run order, the upgrade runbook names the setup rerun, the SMTP client is named, and an independent review corrected the proxy-network aliases and the disabled-module behavior. The score stays below nine for one reason: nothing here has been built, so every interface is proven against documentation and library documentation, not against a running deployment, and the review that found a wrong library fact shows that documentation review can still miss things.
-Status: Draft — awaiting user approval
+Status: Approved by the product owner for ticket breakdown, 2026-09-23, with Nodemailer confirmed as the SMTP client of R-43 and the registration owner of R-27 decided (DEC-50).
 
 ## Goal and scope
 
@@ -99,7 +99,7 @@ R-25. Setup sends no email and needs no mailer. It pre-adds nothing that require
 
 R-26. Setup has no completion flag of its own. A deployment is set up when every step of R-14 is `done`, which is the gate of R-15, so a later section that adds a step needs no second source of truth.
 
-R-27. On upgrade of an already configured deployment, startup registers a newly compiled module with no existing row as `enabled: false`. An authorized administrator must configure and explicitly enable it; no user/group role assignment or Tenant administrator admin-key append is created merely by registration. Preserve existing enabled states, configuration, category placement, roles, assignments, and memberships. First-time setup retains R-20's initial policy. Permission evolution follows ../architecture/permission-evolution.md; reconciliation ownership/transaction remains a separate unresolved finding (DEC-50, New modules on an existing deployment).
+R-27. On upgrade of an already configured deployment, startup registers a newly compiled module with no existing row as `enabled: false`. An authorized administrator must configure and explicitly enable it; no user/group role assignment or Tenant administrator admin-key append is created merely by registration. Preserve existing enabled states, configuration, category placement, roles, assignments, and memberships. First-time setup retains R-20's initial policy. Permission evolution follows ../architecture/permission-evolution.md. The migrator run owns registration, under its advisory lock and before the process serves requests or consumes jobs: it first runs the R-79 omission check, then, after the migrations commit, inserts the missing rows in one transaction with `ON CONFLICT DO NOTHING`, so a repeated start changes nothing (DEC-50, Registration reconciliation owner).
 
 ### Stack template and the smoke test
 
@@ -322,4 +322,4 @@ Assumptions
 
 Open questions
 
-- None. The SMTP client of R-43 was settled during the integration pass: Nodemailer, now named in `../core/tech-stack.md`, "Communication", and in `README.md`, "Cross-section calls made in the drafting round". The product owner confirms or overturns it at approval.
+- None. The SMTP client of R-43 was settled during the integration pass: Nodemailer, now named in `../core/tech-stack.md`, "Communication", and in `README.md`, "Cross-section calls made in the drafting round". The product owner confirmed it at approval on 2026-09-23.
