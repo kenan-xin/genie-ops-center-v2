@@ -45,7 +45,7 @@ The raw logs are under `/tmp/s012/` on the acceptance host. They are not kept in
 
 ## Acceptance criteria
 
-Counts: 29 PASS, 0 FAIL, 1 NOT RUN. Before the CI fix `0d96951`, AC-17 and AC-22 failed (F2).
+Counts: 30 PASS, 0 FAIL, 0 NOT RUN, after the external acceptance of 2026-09-24 below. Before the CI fix `0d96951`, AC-17 and AC-22 failed (F2).
 
 | AC | Requirement in one line | Owner tickets | Evidence (commands above) | Result |
 | --- | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ Counts: 29 PASS, 0 FAIL, 1 NOT RUN. Before the CI fix `0d96951`, AC-17 and AC-22
 | AC-5 | A placeholder-only build carries no other module; two landing flags fail the registry; zero landing entries succeed. Amended by `pg4` to the builder-stage prune | S0-06, S0-11 | C15 prune logs; C8 `image-prune.integration.test.ts` 7 passed; C2 app `registry.test.ts` | PASS |
 | AC-6 | Core history then module histories, each in its own table; a second start applies nothing | S0-04, S0-07 | C5 migrator 13 cases; C8 `image.startup.test.ts` 13 passed | PASS |
 | AC-7 | `module-new demo` passes every stage with no hand edit; `tenant-new` writes seven files and rejects a misplaced branding key | S0-08, S0-10 | C3 green runs; C2 generators 196 tests (`tenant-new` generator and render) | PASS |
-| AC-8 | Customer script builds and pushes; history shows only `MODULE_INCLUDE`; no secret; health returns `ok` | S0-11, push in 1rd.12.1 | Local part: C13, C16, C8 `image-matrix` and `image-scan`. The real registry push is not run | NOT RUN: the push is Bead `genie-ops-center-v2-1rd.12.1`, authorized but pending |
+| AC-8 | Customer script builds and pushes; history shows only `MODULE_INCLUDE`; no secret; health returns `ok` | S0-11, push in 1rd.12.1 | Local part: C13, C16, C8 `image-matrix` and `image-scan`. Registry push: E2 and E3 below | PASS (2026-09-24) |
 | AC-9 | Two migrators, lock held, timeout code, same session, injected failure releases, connection loss aborts | S0-07 | C5 migrator 13 cases and required runner 17 | PASS |
 | AC-10 | Shared unit preset everywhere, a Postgres container per integration file, a module package without tests fails | S0-01, S0-04, S0-11 | C2; C5, C6, C8; generators `module-tests.test.ts` in C2 | PASS |
 | AC-11 | Two Playwright projects, placeholder main path passes in both | S0-05 | C14 and C20, phone and desktop | PASS |
@@ -66,7 +66,7 @@ Counts: 29 PASS, 0 FAIL, 1 NOT RUN. Before the CI fix `0d96951`, AC-17 and AC-22
 | AC-14 | JSON log line with request, tenant and user ids; secrets censored | S0-04, S0-05 | C2 core `services/logging` and app `request-id.test.ts` | PASS |
 | AC-15 | Safe HTTP and tRPC error envelopes with matching request ids and no raw causes | S0-05 | C8 `transport.integration.test.ts` 4 passed | PASS |
 | AC-16 | Viewer response has the five headers and one enforced CSP with only `frame-src` replaced | S0-05 | C8 `headers.integration.test.ts` 19 passed; C14 `security-headers.spec.ts` | PASS |
-| AC-17 | PR, develop and release gates; develop also runs the full Playwright suite at both viewports; both smoke cases | S0-11, S0-12 | C21 develop gate with `test:e2e` and `test:e2e:fixture` at both viewports; C19; C11 PR gate; C13 and C8 `image-matrix` smoke cases | PASS for the local gates. The release-tag push itself stays with 1rd.12.1 (see AC-8) |
+| AC-17 | PR, develop and release gates; develop also runs the full Playwright suite at both viewports; both smoke cases | S0-11, S0-12 | C21 develop gate with `test:e2e` and `test:e2e:fixture` at both viewports; C19; C11 PR gate; C13 and C8 `image-matrix` smoke cases | PASS: the local gates, the GitHub develop gate E1 and the release-tag push E2 |
 | AC-18 | Two include lists build from one Dockerfile and both images start | S0-11 | C15 two selections; C8 `image-matrix.integration.test.ts` 4 passed | PASS |
 | AC-19 | Boot on an empty database with only core history, and serve | S0-11 | C8 `image-matrix` empty-selection case | PASS |
 | AC-20 | Placeholder passes every Section 0 contract point; stub refuses all but `placeholder:read` | S0-03, S0-04, S0-05, S0-08 | C2 core contract tests; C6 | PASS |
@@ -112,10 +112,25 @@ Under `CI=true`, pnpm defaults to `--frozen-lockfile`. The generated-module link
 
 Two standalone app integration runs failed on the port-bind timeout of Docker Desktop. A third run and every combined run passed. The required-test runner failed both flaky runs, so no skip counted as a pass. This is environment behavior, not a defect in Spec 0.
 
+## External acceptance on GitHub, 2026-09-24
+
+The owner authorized a fast-forward push of `develop` and one `v0.0.1-g5.N` tag per attempt (Bead `genie-ops-center-v2-1rd.12.1`). The first GitHub runs exposed runner-only failures that the local runs could not show. Each was fixed in its own Bead and is closed.
+
+| Id | Evidence | Revision | Result |
+| --- | --- | --- | --- |
+| E1 | GitHub develop workflow run `35934561046`, the whole `ci:develop` gate on `ubuntu-latest` | `2e89273` | success, 12 min 24 s. The first green develop run |
+| E2 | GitHub release workflow run `35867493389` for tag `v0.0.1-g5.4` | `4264ff1` | success: `candidate sha256:c90d9ce401aefe372792f2799e67d0f33326459c81817772d6421129b7db1770 passed smoke; published ghcr.io/kenan-xin/genie-ops-center-v2:development-v0.0.1-g5.4` |
+| E3 | GHCR registry manifest for `development-v0.0.1-g5.4`, read through the registry API | as published | manifest `sha256:2968c85b7c2beae50fdde6a62afacc3b5b3fb6d8814738716c6786259f4bcf4b`, whose config digest is `sha256:c90d9ce4...`, the smoke-tested candidate. The package is private: an anonymous request is refused |
+
+Runner fixes behind E1, each with its closed Bead:
+
+| Bead | Cause on the runner | Fix |
+| --- | --- | --- |
+| `1rd.12.2` | oxlint chose its GitHub annotation format; the release gate hid its output; a missing Playwright browser; a full runner disk; oxlint colors its output whenever `CI` is set | `--format=default`, flushed gate output, browser install, disk cleanup, `CI` removed from the oxlint child environment |
+| `1rd.12.3` | the `/home` redirect logged twice, then Nx waited on siblings after a failure | request-id match, `--nx-bail`, a 240 s bound on nested commands |
+| `1rd.12.4` | the Vitest browser import race (vitest-dev/vitest#11171) | one narrow retry |
+| `1rd.12.6` | the Storybook browser session connect timeout, and a slow nested `vitest list` | root `connectTimeout` of 120 s, one listing for all probes, streamed nested output with a 480 s bound, and the integration projects run one at a time |
+
 ## Outstanding G5 item
 
-| Item | Owner | State |
-| --- | --- | --- |
-| One pre-release tag push to GHCR, with the published digest equal to the smoke-tested digest | Bead `genie-ops-center-v2-1rd.12.1` | Authorized by the owner, pending. Not run by this ticket |
-
-G5 stays open until the push in `1rd.12.1` is recorded. Every other Spec 0 acceptance criterion has a PASS result on a named revision.
+None. The push of `1rd.12.1` is recorded in E2 and E3, and every Spec 0 acceptance criterion has a PASS result on a named revision.
