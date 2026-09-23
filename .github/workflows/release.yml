@@ -29,6 +29,8 @@ jobs:
       customers: ${{ steps.list.outputs.customers }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - id: list
         run: |
           set -eu
@@ -50,7 +52,11 @@ jobs:
       matrix:
         slug: ${{ fromJSON(needs.discover.outputs.customers) }}
     steps:
+      # The job token can write packages, so the checkout keeps no credential
+      # in .git/config while the gates and the build run.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 12.4.2
@@ -64,7 +70,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: scripts/build-customer-image.sh "${{ matrix.slug }}" "${{ github.ref_name }}" --publish
+      # Values reach the shell through env, never expanded into the script.
+      - env:
+          CUSTOMER_SLUG: ${{ matrix.slug }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: scripts/build-customer-image.sh "$CUSTOMER_SLUG" "$RELEASE_VERSION" --publish
 
   publish-development:
     needs: discover
@@ -75,6 +85,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 12.4.2
@@ -88,4 +100,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: scripts/build-development-image.sh "${{ github.ref_name }}" --publish
+      - env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: scripts/build-development-image.sh "$RELEASE_VERSION" --publish

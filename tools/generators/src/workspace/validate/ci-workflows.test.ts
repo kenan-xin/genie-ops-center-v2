@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -15,6 +15,56 @@ function read(relative: string): string {
   }
 
   return readFileSync(path, "utf8");
+}
+
+/** Every workflow file, repository-relative, so a new one is checked without a list edit. */
+function workflowFiles(): readonly string[] {
+  return readdirSync(join(WORKSPACE_ROOT, WORKFLOWS))
+    .filter((name) => /\.ya?ml$/.test(name))
+    .toSorted()
+    .map((name) => `${WORKFLOWS}/${name}`);
+}
+
+/**
+ * The shell text of every `run:` step: the inline value, or the indented block
+ * under `run: |`. This is what the runner hands to the shell.
+ */
+function runScripts(workflow: string): readonly string[] {
+  const lines = workflow.split("\n");
+  const scripts: string[] = [];
+
+  for (const [index, line] of lines.entries()) {
+    const run = /^(\s*)(?:- )?run:\s*(.*)$/.exec(line);
+
+    if (run === null) continue;
+
+    const [, indent = "", inline = ""] = run;
+
+    if (!/^[|>]/.test(inline)) {
+      scripts.push(inline);
+
+      continue;
+    }
+
+    const block: string[] = [];
+
+    for (const next of lines.slice(index + 1)) {
+      if (next.trim() !== "" && next.search(/\S/) <= indent.length) break;
+
+      block.push(next);
+    }
+
+    scripts.push(block.join("\n"));
+  }
+
+  return scripts;
+}
+
+/** The `actions/checkout` steps of a workflow, each with the lines under it. */
+function checkoutSteps(workflow: string): readonly string[] {
+  return workflow
+    .split(/^(?=\s*- )/m)
+    .filter((step) => /^\s*- uses: actions\/checkout@/.test(step));
 }
 
 type RootScripts = { readonly scripts?: Readonly<Record<string, string>> };
@@ -116,6 +166,48 @@ describe("the Spec 0 CI gates", () => {
     expect(grants.every((line) => line.trim() === "packages: write")).toBe(
       true
     );
+  });
+
+  // Least privilege: every workflow starts read-only, so a new job cannot
+  // inherit a write token by accident. Only the release publishing jobs write.
+  it("declares read-only top-level permissions in every workflow", () => {
+    const files = workflowFiles();
+
+    expect(files.length).toBeGreaterThan(2);
+
+    for (const file of files) {
+      const workflow = read(file);
+      const [head = ""] = workflow.split(/^jobs:\n/m);
+
+      expect(head, file).toMatch(/^permissions:\n {2}contents: read\n/m);
+
+      if (!file.endsWith("/release.yml")) {
+        expect(workflow, file).not.toMatch(/:\s*write\s*$/m);
+      }
+    }
+  });
+
+  // Script injection: an expression expanded into `run:` text is pasted into
+  // the shell before it runs, so a crafted tag name could execute. Values reach
+  // the shell through `env:` and are quoted there as ordinary variables.
+  it("expands no github or matrix expression inside a run script", () => {
+    for (const file of workflowFiles()) {
+      for (const script of runScripts(read(file))) {
+        expect(script, file).not.toMatch(/\$\{\{\s*(github|matrix)\./);
+      }
+    }
+  });
+
+  // The publishing jobs hold a packages:write token; a persisted checkout
+  // credential would sit in .git/config through every gate and build.
+  it("persists no checkout credential in the release workflow", () => {
+    const steps = checkoutSteps(read(`${WORKFLOWS}/release.yml`));
+
+    expect(steps.length).toBeGreaterThan(2);
+
+    for (const step of steps) {
+      expect(step).toMatch(/^\s+persist-credentials: false$/m);
+    }
   });
 
   it("never pushes an image except through the smoke-then-publish wrapper", () => {
