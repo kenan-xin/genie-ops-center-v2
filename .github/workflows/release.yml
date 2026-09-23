@@ -16,6 +16,12 @@ on:
     tags:
       - "v*"
 
+# The repository's default workflow token is read-only. Only the two publishing
+# jobs ask for package write, which the registry login and push need
+# (genie-ops-center-v2-0lj).
+permissions:
+  contents: read
+
 jobs:
   discover:
     runs-on: ubuntu-latest
@@ -36,6 +42,9 @@ jobs:
     needs: discover
     if: needs.discover.outputs.customers != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -61,6 +70,9 @@ jobs:
     needs: discover
     if: needs.discover.outputs.customers == '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

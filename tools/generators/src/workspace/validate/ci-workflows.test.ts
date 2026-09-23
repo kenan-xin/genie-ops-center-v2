@@ -80,6 +80,44 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).toContain("needs.discover.outputs.customers == '[]'");
   });
 
+  // The repository's default workflow token is read-only, so a job that logs in
+  // to the registry must ask for `packages: write` itself, and nothing else may
+  // ask for write (genie-ops-center-v2-0lj).
+  it("grants package write only to the jobs that log in to the registry", () => {
+    const workflow = read(`${WORKFLOWS}/release.yml`);
+
+    const [head = "", body = ""] = workflow.split(/^jobs:\n/m);
+
+    const jobs = body
+      .split(/^(?= {2}[\w-]+:\n)/m)
+      .filter((job) => job.trim() !== "");
+
+    const publishing = jobs.filter((job) =>
+      job.includes("docker/login-action")
+    );
+
+    expect(head).toMatch(/^permissions:\n {2}contents: read\n/m);
+    expect(publishing.length).toBeGreaterThan(1);
+
+    for (const job of publishing) {
+      expect(job, job.split("\n")[0]).toContain("      packages: write\n");
+    }
+
+    for (const job of jobs.filter(
+      (candidate) => !publishing.includes(candidate)
+    )) {
+      expect(job, job.split("\n")[0]).not.toContain("write");
+    }
+
+    const grants = workflow
+      .split("\n")
+      .filter((line) => /:\s*write\s*$/.test(line));
+
+    expect(grants.every((line) => line.trim() === "packages: write")).toBe(
+      true
+    );
+  });
+
   it("never pushes an image except through the smoke-then-publish wrapper", () => {
     for (const name of ["pull-request", "develop", "release"]) {
       expect(read(`${WORKFLOWS}/${name}.yml`)).not.toContain("docker push");
