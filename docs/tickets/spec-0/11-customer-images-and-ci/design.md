@@ -25,18 +25,21 @@ resolve customer → typecheck → validate → test → integration
 Decisions:
 
 - **Identity, not the tag.** `docker image inspect -f {{.Id}}` resolves the candidate's
-  digest after the build. The smoke boots the digest and the publish tags the digest, so a
-  tag that moved between build and push cannot publish a different image. A probe that does
-  not return `sha256:<64 hex>` fails closed.
+  digest after the build. The smoke boots the digest, and publish tags and pushes that
+  digest. A probe that does not return `sha256:<64 hex>` fails closed. This binds the push
+  to the candidate's bytes rather than to whatever the tag held before this run resolved it;
+  it does not make the two `docker` commands atomic, and that residual is stated below.
 - **Every gate precedes the build.** A failed per-customer typecheck (R-52), a failed
   `validate` (README R-9, module-has-tests R-41), a failed unit run, or an integration run
   that skipped the isolation proof stops the pipeline before it builds, so no publish
   command can run after a gate failure.
-- **Smoke precedes publish, on the same bytes.** The smoke is a real test
-  (`vitest.release-smoke.config.ts`) that boots the digest against a fresh disposable
-  Postgres and asserts `GET /api/health` is exactly `ok` with the five R-47 headers. The
-  ordinary integration collection excludes it, because it needs a candidate; the wrapper is
-  its only caller and a missing candidate fails closed.
+- **Smoke precedes publish, on the same bytes, with the full R-53 proof.** The smoke is a
+  real test (`vitest.release-smoke.config.ts`) that boots the exact candidate digest against
+  a fresh disposable Postgres and asserts `GET /api/health` is exactly `ok` with the five
+  R-47 headers; it also runs the history and filesystem confidentiality scan with the real
+  excluded set, and checks that every excluded module's route answers 404 and its tables and
+  ledger are absent. The ordinary integration collection excludes it, because it needs a
+  candidate; the wrapper is its only caller and a missing candidate fails closed.
 - **The publish boundary is replaceable.** `--publish-command "<argv>"` swaps the
   `docker tag` + `docker push` pair for a safe local sink
   (`apps/genie/tools/release/local-sink.ts`). The ordering unit tests and the wrapper

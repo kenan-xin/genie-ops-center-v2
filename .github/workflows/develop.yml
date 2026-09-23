@@ -25,12 +25,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # A push to develop has `origin/develop` at HEAD, so an affected run based
       # on it would be empty. Base the merge gates on the pushed commit's parent
-      # instead, and fall back to `origin/develop` for the all-zero first push.
+      # instead. The all-zero first push has no parent; base it on git's empty
+      # tree so every project is affected, rather than on a ref that is HEAD.
       - id: base
         run: |
           set -eu
           if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
-            echo "ref=origin/develop" >> "$GITHUB_OUTPUT"
+            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
           else
             echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
           fi

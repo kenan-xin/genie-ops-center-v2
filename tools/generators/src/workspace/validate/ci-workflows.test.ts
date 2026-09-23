@@ -61,6 +61,9 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).toContain("github.event.before");
     expect(workflow).toContain("NX_BASE");
     expect(workflow).toContain("0000000000000000000000000000000000000000");
+    // The all-zero first push has no parent; basing it on `origin/develop` (which
+    // is HEAD) would be an empty range, so it uses git's empty tree instead.
+    expect(workflow).toContain("4b825dc642cb6eb9a060e54bf8d69288fbee4904");
   });
 
   it("builds one image per customer and falls back to the development image", () => {

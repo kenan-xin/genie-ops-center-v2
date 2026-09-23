@@ -153,7 +153,29 @@ unset/empty/R-55 handling, `--no-publish` ordering, and that no workflow contain
 | `ci:develop` based affected on `origin/develop`, which is HEAD on a develop push | major | Fixed `39b3529`; bases on `github.event.before` with a zero-SHA fallback |
 | the matrix inspected `node:26-alpine` before any build | major | Fixed `6cbe7c9`; declared args come from the Dockerfile, inherited args from history |
 
-A re-review after the real Docker proof and merge is requested.
+### Re-review after the real Docker proof (artifact `s0-11-real-docker-rereview`)
+
+One blocker and three minors, all valid, all fixed:
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| The release smoke checked only health/headers; the R-53 confidentiality/content scan ran against a separately built image, so a selection-specific candidate leak could publish | blocker | Fixed: the smoke now takes `GENIE_SMOKE_INCLUDE`, computes the real excluded set, and runs the history/filesystem scan plus excluded route/table/ledger checks against `GENIE_SMOKE_IMAGE` itself |
+| The develop all-zero fallback based affected on `origin/develop`, which is HEAD | minor | Fixed: it bases on git's empty tree (`4b825dc…`), so every project is affected; pinned in the wiring test |
+| `buildImageWith` swallowed docker build errors into `false`, hiding the daemon-loss cause | minor | Fixed: it throws with the tag, selection and build log, and `cause` |
+| `design.md` claimed a moved tag cannot affect the pushed bytes | minor | Fixed: the paragraph now states the digest binding and the residual race |
+
+The re-review confirmed the first-review fixes (`--publish`, real-byte scan, path-based
+dev-tooling, develop NX_BASE, declared-argument derivation, the `ci:pr` split, and the
+`3aa` disposition), and found no false GHCR/push claim. The reviewer's own rerun passed the
+first two matrix cases before Docker Desktop vanished, then failed the rest closed — which
+is the fail-closed behavior the fix to `buildImageWith` now reports with a cause.
+
+**Post-merge Docker re-verification is BLOCKED.** Docker Desktop stopped after the first
+real run (`docker info` fails with ENOENT for `/home/kenan/.docker/desktop/docker.sock`).
+The blocker fix and the merge of develop `c0c7399` are committed, but the candidate-specific
+smoke has not been re-run against a live daemon. The genuine matrix proof stands at the
+pre-merge revision `ec314a7`; the merge touched only `packages/config` (oxfmt and its
+fixture-visibility test) and docs, so it cannot affect the image or integration code.
 
 ## Findings filed during the work
 
