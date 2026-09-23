@@ -119,15 +119,24 @@ export function devToolingNeedles(): readonly string[] {
   ];
 }
 
-/** The needles unique to one excluded module: package, folder and ledger. */
-export function excludedModuleNeedles(id: string): readonly string[] {
-  return [
-    `@genie/module-${id}`,
-    `packages/modules/${id}/`,
-    `__drizzle_migrations_${id}`,
-    `"/m/${id}"`,
-    `"/admin/m/${id}"`,
-  ];
+/**
+ * An excluded module's installed package and source folder, judged by path.
+ *
+ * The bare package name is not a needle: the app's own `package.json` declares
+ * every workspace module as a dependency, so it names an excluded module in
+ * every build. An installed directory is the leak, not the declaration.
+ */
+export function excludedModulePathNeedles(id: string): readonly string[] {
+  return [`/node_modules/@genie/module-${id}/`, `packages/modules/${id}/`];
+}
+
+/**
+ * An excluded module's high-signal content markers: its migration ledger, and
+ * its workspace and admin route strings. These appear in a built bundle only
+ * when the module's code or schema was compiled in.
+ */
+export function excludedModuleContentNeedles(id: string): readonly string[] {
+  return [`__drizzle_migrations_${id}`, `"/m/${id}"`, `"/admin/m/${id}"`];
 }
 
 /**
@@ -135,7 +144,10 @@ export function excludedModuleNeedles(id: string): readonly string[] {
  * policy label rather than the individual matches.
  */
 export function EXCLUDED_MODULE_PATH_NEEDLE(id: string): string {
-  return excludedModuleNeedles(id).join(" ");
+  return [
+    ...excludedModulePathNeedles(id),
+    ...excludedModuleContentNeedles(id),
+  ].join(" ");
 }
 
 const matchesSecret = (text: string) =>
@@ -303,15 +315,19 @@ export function scanFiles(
 ): readonly ImageScanFinding[] {
   const findings: ImageScanFinding[] = [];
 
-  const excluded = options.excludedModules.flatMap((id) =>
-    excludedModuleNeedles(id).map((needle) => ({ id, needle }))
-  );
+  const excluded = options.excludedModules.map((id) => ({
+    id,
+    paths: excludedModulePathNeedles(id),
+    contents: excludedModuleContentNeedles(id),
+  }));
 
   for (const file of files) {
-    const text = `${file.path}\n${file.content}`;
-
     const excludedHits = excluded
-      .filter(({ needle }) => text.includes(needle))
+      .filter(
+        ({ paths, contents }) =>
+          paths.some((needle) => file.path.includes(needle)) ||
+          contents.some((needle) => file.content.includes(needle))
+      )
       .map(({ id }) => id);
 
     for (const id of new Set(excludedHits)) {

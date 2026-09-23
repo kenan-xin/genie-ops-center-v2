@@ -61,8 +61,8 @@ describe("the image filesystem scanner", () => {
   it("is non-vacuous: it finds an included module and leaks nothing for it", () => {
     const files = [
       {
-        path: "apps/genie/src/modules.ts",
-        content: `import { placeholder } from "@genie/module-placeholder";`,
+        path: "node_modules/.pnpm/@genie+module-placeholder@0/node_modules/@genie/module-placeholder/dist/index.js",
+        content: "export {};",
       },
     ];
 
@@ -82,11 +82,11 @@ describe("the image filesystem scanner", () => {
     );
   });
 
-  it("flags an excluded module's package, path and migration ledger", () => {
+  it("flags an excluded module's installed package, folder and ledger", () => {
     const files = [
       {
-        path: "apps/genie/src/modules.ts",
-        content: `"@genie/module-solutions"`,
+        path: "node_modules/.pnpm/@genie+module-solutions@0/node_modules/@genie/module-solutions/dist/index.js",
+        content: "export {};",
       },
       {
         path: "packages/modules/solutions/drizzle/0000_x.sql",
@@ -102,6 +102,25 @@ describe("the image filesystem scanner", () => {
 
     expect(kinds).toContain("excluded-module");
     expect(kinds).toContain("migration-file");
+  });
+
+  it("does not flag a manifest that names an excluded module", () => {
+    // The real false positive the strengthened release smoke found: the app's
+    // own package.json declares every workspace module, so it names an excluded
+    // one in every build. A declaration is not an installed package.
+    const files = [
+      {
+        path: "/app/apps/genie/package.json",
+        content: `{"dependencies":{"@genie/module-placeholder":"workspace:*"}}`,
+      },
+    ];
+
+    expect(
+      scanFiles(files, {
+        includedModules: [],
+        excludedModules: ["placeholder"],
+      })
+    ).toEqual([]);
   });
 
   it("flags publicly served migration SQL but not the server-side history", () => {
