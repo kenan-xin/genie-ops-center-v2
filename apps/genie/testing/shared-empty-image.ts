@@ -1,11 +1,23 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 
 import { dockerBuild } from "./image-process.ts";
-import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
+import {
+  REPO_ROOT,
+  stageFixtureModule,
+  stageWorkspace,
+} from "./stage-workspace.ts";
 
 const run = promisify(execFile);
 
@@ -23,10 +35,12 @@ const run = promisify(execFile);
  * The build log travels beside the image id in a marker under the OS temporary
  * directory, because the two suites are separate test files with separate module
  * state: whichever runs first builds and writes the marker, the other reads it
- * and boots the same tag. A per-run nonce busts the prune layer's cache, so the
- * log being asserted is always produced by this run's build and a marker from an
- * earlier run cannot satisfy it. Neither order is privileged, and either suite
- * run alone still builds what it needs.
+ * and boots the same tag. The marker is reused only when its run id, its input
+ * digest and the tag's image id all match what this call sees, so evidence can
+ * never be borrowed from another run or from a build of different inputs. A
+ * failed build throws with the log, exactly as `buildImageWith` does, so an
+ * earlier tag can never be booted in place of this run's empty image. Neither
+ * order is privileged, and either suite run alone still builds what it needs.
  */
 export const SHARED_EMPTY_IMAGE = "genie-s011:empty";
 
@@ -35,15 +49,67 @@ export const PRUNE_FIXTURE_MODULE = "permitted-viewer";
 
 export type SharedEmptyBuild = {
   readonly tag: string;
-  readonly ok: boolean;
   /** The builder's plain-progress log, which carries the `[module-prune]` lines. */
   readonly log: string;
 };
 
-/** The image id and log of the build this run produced, for reuse by the other suite. */
-type Marker = { readonly imageId: string; readonly log: string };
+/** The run id, input digest, image id and log of the build this run produced. */
+type Marker = {
+  readonly runId: string;
+  readonly digest: string;
+  readonly imageId: string;
+  readonly log: string;
+};
 
 const MARKER_PATH = join(tmpdir(), "genie-s011-shared-empty.json");
+
+/**
+ * The paths whose bytes decide the empty image. Hashing them means a changed
+ * prune, resolver or Dockerfile forces a rebuild instead of satisfying the
+ * marker with a previous image.
+ */
+const DIGEST_INPUTS: readonly string[] = [
+  "tools/generators/src/selection",
+  "deploy/Dockerfile",
+  "apps/genie/tools/fixture-modules/permitted-viewer",
+];
+
+/** Every file at or under `absolute`, recursively. */
+function filesUnder(absolute: string): readonly string[] {
+  if (statSync(absolute).isFile()) return [absolute];
+
+  return readdirSync(absolute, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name));
+}
+
+/**
+ * A digest of every file the empty image's build depends on, over the file bytes
+ * and their repository-relative names, so a rename and an edit are both changes.
+ */
+function inputDigest(): string {
+  const hash = createHash("sha256");
+
+  for (const input of DIGEST_INPUTS) {
+    for (const file of filesUnder(join(REPO_ROOT, input)).toSorted()) {
+      hash.update(relative(REPO_ROOT, file));
+      hash.update("\0");
+      hash.update(readFileSync(file));
+      hash.update("\0");
+    }
+  }
+
+  return hash.digest("hex");
+}
+
+/**
+ * This run's id: the vitest process that every forked test file shares as its
+ * parent. Files in one `vitest run` share it, so the two suites reuse one build;
+ * a later run is a new process, so its id differs and the build runs again.
+ */
+function currentRunId(): string {
+  return String(process.ppid);
+}
 
 /** The Docker image id behind a tag, or `undefined` when the tag is absent. */
 async function imageId(tag: string): Promise<string | undefined> {
@@ -78,16 +144,31 @@ function writeMarker(marker: Marker): void {
   writeFileSync(MARKER_PATH, JSON.stringify(marker), "utf8");
 }
 
+/** The end of a build log, where a failure lives, for the thrown diagnostic. */
+function tail(log: string): string {
+  return log.slice(-6000);
+}
+
 /**
  * Returns the shared empty image, building it only when this run has not already
- * built it. The log returned with a reused image is the log its build produced.
+ * built these exact inputs. The log returned with a reused image is the log its
+ * build produced. Throws with the build log when the build fails, so a caller
+ * can never boot a leftover tag in place of this run's image.
  */
 export async function sharedEmptyImage(): Promise<SharedEmptyBuild> {
+  const digest = inputDigest();
+  const runId = currentRunId();
   const existing = await imageId(SHARED_EMPTY_IMAGE);
   const marker = readMarker();
 
-  if (existing !== undefined && marker?.imageId === existing) {
-    return { tag: SHARED_EMPTY_IMAGE, ok: true, log: marker.log };
+  if (
+    existing !== undefined &&
+    marker !== undefined &&
+    marker.imageId === existing &&
+    marker.digest === digest &&
+    marker.runId === runId
+  ) {
+    return { tag: SHARED_EMPTY_IMAGE, log: marker.log };
   }
 
   const stage = stageWorkspace("genie-s011-shared-empty-");
@@ -105,15 +186,19 @@ export async function sharedEmptyImage(): Promise<SharedEmptyBuild> {
 
     const result = await dockerBuild(stage, "", SHARED_EMPTY_IMAGE);
 
-    if (result.ok) {
-      const built = await imageId(SHARED_EMPTY_IMAGE);
-
-      if (built !== undefined) {
-        writeMarker({ imageId: built, log: result.log });
-      }
+    if (!result.ok) {
+      throw new Error(
+        `docker build of ${SHARED_EMPTY_IMAGE} (MODULE_INCLUDE="") failed with exit ${result.exitCode}: ${tail(result.log)}`
+      );
     }
 
-    return { tag: SHARED_EMPTY_IMAGE, ok: result.ok, log: result.log };
+    const built = await imageId(SHARED_EMPTY_IMAGE);
+
+    if (built !== undefined) {
+      writeMarker({ runId, digest, imageId: built, log: result.log });
+    }
+
+    return { tag: SHARED_EMPTY_IMAGE, log: result.log };
   } finally {
     rmSync(stage, { recursive: true, force: true });
   }

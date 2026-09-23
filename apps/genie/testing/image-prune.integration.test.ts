@@ -147,7 +147,6 @@ describe("the builder-stage module prune", () => {
   it("prunes every module folder for an explicitly empty selection although the app depends on placeholder", async () => {
     const result = await sharedEmptyImage();
 
-    expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: (none)"));
     expect(result.log).toMatch(
       pruneLine(`removed: ${EXTRA_MODULE}, placeholder`)
