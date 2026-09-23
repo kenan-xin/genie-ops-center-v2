@@ -153,8 +153,14 @@ let stage = "";
  * so Vitest's own test timeout can never fire while it waits; without this a
  * stalled nested run holds the whole CI step open with no output. SIGTERM, the
  * default kill signal, lets Nx stop its own task processes on the way out.
+ *
+ * 480 s, not 240 s. The component-test run's browser connect bound is 120 s on
+ * its own (`apps/storybook/vitest.config.ts`), `retryImportRace` can rerun the
+ * run once, and on a loaded 4-vCPU GitHub runner sharing the box with a
+ * parallel Docker build a nested run exceeded 240 s before it was killed. It
+ * stays a finite bound.
  */
-const NESTED_RUN_TIMEOUT_MS = 240000;
+const NESTED_RUN_TIMEOUT_MS = 480000;
 
 /** Built from the escape character rather than written literally, which no linter has to be told to allow. */
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -196,12 +202,20 @@ function runOnce(task: string, moduleInclude: string | undefined): Run {
   if (moduleInclude === undefined) delete env.MODULE_INCLUDE;
   else env.MODULE_INCLUDE = moduleInclude;
 
-  const result = spawnSync(join(stage, "node_modules/.bin/nx"), ["run", task], {
-    cwd: stage,
-    encoding: "utf8",
-    env,
-    timeout: NESTED_RUN_TIMEOUT_MS,
-  });
+  const result = spawnSync(
+    join(stage, "node_modules/.bin/nx"),
+    // Stream rather than the CI default, which buffers a task's terminal output
+    // until it ends. A killed task would then print nothing, so a timeout would
+    // carry no child output to diagnose. Streaming puts the partial output on
+    // stdout, which `spawnSync` has already captured when the timeout fires.
+    ["run", task, "--output-style=stream"],
+    {
+      cwd: stage,
+      encoding: "utf8",
+      env,
+      timeout: NESTED_RUN_TIMEOUT_MS,
+    }
+  );
 
   return {
     status: result.status ?? -1,
