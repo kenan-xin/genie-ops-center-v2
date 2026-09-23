@@ -9,6 +9,10 @@ import {
   removeImage,
   requireDocker,
 } from "./image-process.ts";
+import {
+  PRUNE_FIXTURE_MODULE,
+  sharedEmptyImage,
+} from "./shared-empty-image.ts";
 import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
 
 /**
@@ -22,9 +26,10 @@ import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
  * fail. The builder stage is discarded, so the prune's own log lines are how
  * these cases observe it.
  *
- * The two cases that succeed with placeholder share one build, so a passing
- * selection is proved once. The fail-fast cases keep their own builds, because
- * their whole assertion is that their build does not succeed.
+ * The two cases that succeed with placeholder share one build, and the empty
+ * case shares the empty build with the image matrix, so a passing selection is
+ * proved once. The fail-fast cases keep their own builds, because their whole
+ * assertion is that their build does not succeed.
  *
  * The import cases import placeholder, because it is the one module the app
  * lists as a fixed workspace dependency with a real lockfile importer. The
@@ -32,7 +37,7 @@ import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
  * the failures below are the prune's doing and not a bad import.
  */
 
-const EXTRA_MODULE = "permitted-viewer";
+const EXTRA_MODULE = PRUNE_FIXTURE_MODULE;
 
 const DIRECT_IMPORT = `import "@genie/module-placeholder";\n`;
 
@@ -124,7 +129,8 @@ describe("the builder-stage module prune", () => {
 
   afterAll(async () => {
     // Only the stages and image tags this file created. A failed build leaves
-    // no tag, which removeImage ignores.
+    // no tag, which removeImage ignores. The empty image is shared with the
+    // matrix and is owned by `sharedEmptyImage`, so it is left in place.
     for (const root of stages) rmSync(root, { recursive: true, force: true });
 
     await Promise.all(tags.map(removeImage));
@@ -139,7 +145,7 @@ describe("the builder-stage module prune", () => {
   }, 900000);
 
   it("prunes every module folder for an explicitly empty selection although the app depends on placeholder", async () => {
-    const result = await build(stage(), "", "genie-s011:prune-empty");
+    const result = await sharedEmptyImage();
 
     expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: (none)"));

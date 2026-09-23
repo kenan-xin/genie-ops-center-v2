@@ -27,6 +27,7 @@ import {
   RELEASE_MATRIX_CASES,
   RELEASE_MATRIX_DESCRIBE,
 } from "./release-matrix-cases.ts";
+import { SHARED_EMPTY_IMAGE, sharedEmptyImage } from "./shared-empty-image.ts";
 
 /**
  * The customer image matrix of R-53 and AC-17/AC-18/AC-19/AC-53.
@@ -45,7 +46,11 @@ import {
 
 const DEVELOPMENT_IMAGE = "genie-s011:development";
 
-const EMPTY_IMAGE = "genie-s011:empty";
+/**
+ * The empty-selection image, shared with the builder-stage prune proof so the
+ * one `docker build` serves both suites.
+ */
+const EMPTY_IMAGE = SHARED_EMPTY_IMAGE;
 
 /** The Dockerfile's own declared arguments, R-32's authority. */
 const DECLARED_ARGUMENTS = declaredBuildArguments(
@@ -124,7 +129,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
   it(
     RELEASE_MATRIX_CASES.emptySelection,
     async () => {
-      await buildImageWith("", EMPTY_IMAGE);
+      await sharedEmptyImage();
 
       const database = await startDisposableDeployment([]);
 
@@ -200,7 +205,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       // each on its own fresh database so the "two selections start" property
       // stands on its own rather than borrowing another case's evidence.
       await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
-      await buildImageWith("", EMPTY_IMAGE);
+      await sharedEmptyImage();
 
       // Sequential by definition: each iteration starts, health-checks and stops
       // its own image on its own database, so running them together would mix the
