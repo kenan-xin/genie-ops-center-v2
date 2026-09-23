@@ -15,6 +15,8 @@ import { join, relative, resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { retryImportRace, type Run } from "./nested-run.ts";
+
 /**
  * The Storybook selection, confidentiality and local-cache matrix.
  *
@@ -154,11 +156,6 @@ let stage = "";
  */
 const NESTED_RUN_TIMEOUT_MS = 240000;
 
-type Run = {
-  readonly status: number;
-  readonly output: string;
-};
-
 /** Built from the escape character rather than written literally, which no linter has to be told to allow. */
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 
@@ -177,8 +174,15 @@ const secondRoot = () => join(stage, "packages/modules", SECOND_ID);
  *
  * Every inherited `NX_` variable is dropped before the three this suite sets,
  * so the measurement is of the build graph rather than of how it was invoked.
+ *
+ * A component-test run that hits the Vitest browser import race runs once more;
+ * `nested-run.ts` says why and how narrowly.
  */
 function run(task: string, moduleInclude: string | undefined): Run {
+  return retryImportRace(() => runOnce(task, moduleInclude));
+}
+
+function runOnce(task: string, moduleInclude: string | undefined): Run {
   const env = { ...process.env };
 
   for (const name of Object.keys(env)) {
