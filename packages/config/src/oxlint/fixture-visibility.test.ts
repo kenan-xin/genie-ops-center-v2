@@ -1,5 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -124,7 +131,44 @@ function lintReport(args: readonly string[]): string {
   }
 }
 
+/** The checkout's own oxfmt, the binary `pnpm format:check` runs. */
+const OXFMT = join(WORKSPACE_ROOT, "node_modules", ".bin", "oxfmt");
+
+/** The one formatter configuration, passed explicitly so `cwd` cannot vary it. */
+const OXFMT_CONFIG = join(WORKSPACE_ROOT, "oxfmt.config.ts");
+
+/**
+ * Runs one oxfmt check over the given paths from `cwd` and returns its report,
+ * exit code folded into the text so a non-zero run is still readable here. The
+ * config is named, not discovered, so a caller in a disposable root checks that
+ * root against the repository's real ignore rules.
+ */
+function formatReport(cwd: string, paths: readonly string[]): string {
+  try {
+    return execFileSync(
+      OXFMT,
+      ["--check", "--disable-nested-config", "-c", OXFMT_CONFIG, ...paths],
+      {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+  } catch (error) {
+    // SAFETY: execFileSync throws an Error that carries the child's output.
+    const failure = error as { stdout?: string; stderr?: string };
+
+    return `${failure.stdout ?? ""}${failure.stderr ?? ""}`;
+  }
+}
+
 const COVERED_PREFIXES = ["__boundary__", "__wiring__", "__antislop__"];
+
+/**
+ * A body oxfmt always reports: the config requires semicolons and collapses the
+ * spacing, so any path carrying it is a certain diff.
+ */
+const UNTIDY_SOURCE = "const   untidy   =   1\n";
 
 /** The real fixture paths a project's own include would take. */
 function fixturesInside(project: string): readonly string[] {
@@ -278,5 +322,77 @@ describe("lint fixtures and the lint that runs beside them", () => {
     for (const prefix of COVERED_PREFIXES) {
       expect(UNIT_TEST_EXCLUDE).toContain(`**/${prefix}*`);
     }
+  });
+});
+
+describe("lint fixtures and the formatter that runs beside them", () => {
+  // The formatter face of the same race. `format:check` walks the workspace and
+  // reads every file it matches, so a fixture present when it runs is formatted
+  // as if it were source. The anti-slop suite's chained-assertion body is not
+  // oxfmt-clean, so a check overlapping it fails on the fixture itself
+  // (genie-ops-center-v2-bew). The root `ignorePatterns` exclude the shared
+  // prefixes, so the walk never reaches one.
+  // Every prefix is probed, not one representative: each is a separate entry in
+  // the ignore list, and dropping any single one would let that suite's fixture
+  // back into the walk. A shared `__boundary__` probe alone would stay green
+  // with `__antislop__` removed, which is the one whose body the formatter
+  // rejects (genie-ops-center-v2-bew).
+  it.each(COVERED_PREFIXES)(
+    "keeps a %s fixture out of the format check",
+    (prefix) => {
+      // A fresh, process-scoped path: the boundary suite owns
+      // `packages/core/src/__boundary__.ts`, and reusing it here would race that
+      // suite's exclusive create under parallel collection. The name still
+      // carries the prefix under test.
+      const excluded = `packages/core/src/${prefix}probe-${process.pid}.ts`;
+
+      withFixture(WORKSPACE_ROOT, excluded, UNTIDY_SOURCE, () => {
+        const report = formatReport(WORKSPACE_ROOT, ["packages/core/src"]);
+
+        // The walk reached the tracked files beside the probe, so the absence
+        // below is an exclusion and not an empty selection.
+        expect(report).toContain("correct format");
+        expect(report).not.toContain(excluded);
+      });
+    }
+  );
+
+  // The pair to the case above: the same body at a path no prefix covers is
+  // reported, so the case above proves the exclusion rather than proving the
+  // formatter read nothing. The path is disposable rather than a real one: a
+  // non-prefixed misformatted file in the checkout would itself be the race this
+  // guard exists to stop.
+  it("reports the same body when no prefix covers it, so the exclusion is what hides it", () => {
+    const root = mkdtempSync(join(tmpdir(), "oxfmt-visible-"));
+
+    try {
+      writeFileSync(join(root, "untidy.ts"), UNTIDY_SOURCE, "utf8");
+
+      expect(formatReport(root, ["."])).toContain("untidy.ts");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // The exclusion may only cover names no real file carries. This is the guard
+  // on that: a tracked file matching a covered prefix would vanish from the
+  // formatter, and the case above would not notice. The whole path is checked,
+  // not just the basename, because a matching directory hides everything under
+  // it, including a file whose own name carries no prefix.
+  it("covers no tracked file, so the fixture prefixes hide no source", () => {
+    const tracked = execFileSync("git", ["ls-files"], {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter((path) =>
+        path
+          .split("/")
+          .some((segment) =>
+            COVERED_PREFIXES.some((prefix) => segment.startsWith(prefix))
+          )
+      );
+
+    expect(tracked).toEqual([]);
   });
 });
