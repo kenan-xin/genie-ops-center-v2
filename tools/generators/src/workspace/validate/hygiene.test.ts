@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { classifyProject } from "../classify-project.ts";
 import { moduleProjectNamingError } from "../module-naming.ts";
 import { moduleTestsError } from "../module-tests.ts";
+import { projectReadmeError } from "../project-readme.ts";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
 
@@ -171,11 +172,8 @@ describe("repository hygiene", () => {
   it.each([...projects])(
     "%s holds a README.md that says what it imports",
     (_name, project) => {
-      const readme = join(WORKSPACE_ROOT, project.root, "README.md");
-
-      expect(existsSync(readme)).toBe(true);
-
-      expect(readFileSync(readme, "utf8")).toMatch(/what it imports/i);
+      // The failure path is proved in project-readme.test.ts.
+      expect(projectReadmeError(project.root, WORKSPACE_ROOT)).toBeUndefined();
     }
   );
 

@@ -220,6 +220,38 @@ describe("the customer image release pipeline", () => {
     expect(has(calls, "build")).toBe(false);
   });
 
+  // The S0-11 injected-failure acceptance: each failure, against both publish
+  // boundaries (docker tag + push, and the local sink the release tests use),
+  // runs no publish command at all.
+  const SINK = ["node", "tools/release/local-sink.ts"] as const;
+
+  it.each(
+    (
+      ["typecheck", "validate", "test", "integration", "smoke"] as const
+    ).flatMap(
+      (step) =>
+        [
+          [step, "docker"],
+          [step, "sink"],
+        ] as const
+    )
+  )(
+    "runs no publish command after a failed %s, with the %s boundary",
+    (step, boundary) => {
+      const root = repoWithModules("placeholder\n");
+      const { calls, runner } = recordingRunner([step]);
+
+      const outcome = runRelease(
+        request(root, boundary === "sink" ? { publishCommand: [...SINK] } : {}),
+        runner
+      );
+
+      expect(outcome.ok).toBe(false);
+      expect(has(calls, "publish")).toBe(false);
+      expect(calls.some((call) => call.args.includes(SINK[1]))).toBe(false);
+    }
+  );
+
   it("does not publish when the candidate smoke fails", () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner(["smoke"]);
