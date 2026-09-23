@@ -136,7 +136,7 @@
       "dot": "emerald",
       "title": "Installed means either one",
       "items": [
-        "A tenant_module row, or a drizzle.__drizzle_migrations_<id> ledger",
+        "A tenant_module row, or a drizzle.__drizzle_migrations_<id> ledger, with id hyphens as underscores",
         "Core's own drizzle.__drizzle_migrations never counts",
         "Registration inserts rows only after the seed step is done"
       ]
