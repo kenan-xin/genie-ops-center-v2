@@ -28,7 +28,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 ## Acceptance and tests
 
 - Run full prescribed acceptance including clean build, generator disposable fixture, local cache matrices, migration concurrency, image smoke, Storybook component tests and both E2E viewports.
-- For AC-5 and AC-24, record S0-11's build-input exclusion evidence: the pruned build context, the context check and the failing-import test (`pg4`, 2026-09-23). A scan of built chunks for excluded code is not expected evidence.
+- For AC-5 and AC-24, record S0-11's build-input exclusion evidence: the builder-stage prune and its folder check, the failing-import tests with their control, and the negative test for an unselected folder (`pg4`, 2026-09-23). A scan of built chunks for excluded module code is not expected evidence.
 - Check no empty/skipped target disguises success and evidence is tied to exact integrated revision/versions.
 - If actual registry-push acceptance has not been authorized/exercised, list it as outstanding and keep full G5 acceptance open; safe publish-order tests do not prove real push.
 

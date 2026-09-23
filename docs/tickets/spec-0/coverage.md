@@ -40,7 +40,7 @@ Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this rou
 | AC-2, AC-2a | S0-01 | S0-03 schemas / S0-08 generated destination / S0-12 |
 | AC-3 | S0-03 contract / S0-04 router | S0-05 / S0-12 |
 | AC-4 | S0-05 two-context | S0-07 no-skip / S0-11 CI / S0-12 |
-| AC-5 | S0-06 registry / S0-11 build-input exclusion | S0-11 / S0-12 |
+| AC-5 | S0-06 registry / S0-11 builder-stage prune and check | S0-11 / S0-12 |
 | AC-6 | S0-04 / S0-07 | S0-12 |
 | AC-7 | S0-08 | S0-10 story discovery / S0-12 |
 | AC-8 | S0-11 | S0-12; real external push needs separate authority |
@@ -55,7 +55,7 @@ Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this rou
 | AC-20 | S0-03 / S0-04 / S0-05 | S0-08 conformance / S0-12 |
 | AC-21, AC-22 | S0-11 | S0-12 |
 | AC-23 | S0-03 / S0-05 / S0-08 | S0-12 |
-| AC-24 | S0-06 cache matrix / S0-11 build-input exclusion (`pg4`) | S0-11 image / S0-12 |
+| AC-24 | S0-06 cache matrix / S0-11 builder-stage prune and check (`pg4`) | S0-11 image / S0-12 |
 | AC-25, AC-26 | S0-05 | S0-12 recheck after integration |
 | AC-27 | S0-02 G1 / S0-08 generation / S0-10 completion | S0-11 / S0-12 |
 | AC-28 | S0-10 | S0-11 runtime exclusion / S0-12 |

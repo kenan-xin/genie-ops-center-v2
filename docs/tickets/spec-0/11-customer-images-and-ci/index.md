@@ -62,10 +62,12 @@ See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary 
 
 ## Build-input exclusion (pg4), 2026-09-23
 
-Owner decision in Bead `genie-ops-center-v2-pg4`, recorded in Spec 0 AC-24 and DEC-33. It supersedes every earlier instruction in this ticket to find excluded modules by package-name, path or source-marker needles in built output.
+Owner decision in Bead `genie-ops-center-v2-pg4`, recorded in Spec 0 AC-24 and DEC-33. It supersedes every earlier instruction in this ticket to find excluded module code by needles in built chunks.
 
-- The release build uses a pruned Docker context that holds only the `MODULE_INCLUDE` module packages.
-- A context check compares the module folders present in the context with `MODULE_INCLUDE` and fails the build on any other module folder. Install failure is not the check, because a frozen install passes and leaves a dangling link when a listed module folder is missing.
-- A test proves that a direct import of an excluded module fails the build.
-- The excluded-module needle scan of built chunks is removed. The image scan keeps its secret and build-argument checks (`MODULE_INCLUDE` is the only build argument, R-32).
+- The Docker context stays the repository root. In the builder stage, before `pnpm install` and `next build`, a step resolves the `MODULE_INCLUDE` selection with the dependency-free resolver in `tools/generators/src/selection` and removes every `packages/modules/<folder>` not in it.
+- The same step then checks that the remaining `packages/modules/` folders equal the selection and fails the build otherwise. Install failure is not the check, because a frozen install passes and leaves a dangling link when a listed module folder is missing.
+- A module package is a folder under `packages/modules/`. Fixture templates elsewhere (`apps/genie/tools/fixture-modules`, generator `__fixtures__`) are out of scope. The AC-25 fixture image still builds, because the prune removes `placeholder` when only fixtures are selected.
+- The builder stage is discarded, and only `.next/standalone` reaches the runtime image.
+- Tests prove that a direct import of an excluded module, including a subpath import, fails the build, that a control without the import passes, and that the check fails when an unselected folder remains.
+- Only the excluded-module code needles over built chunks leave the image scan. It keeps its secret checks, the `MODULE_INCLUDE`-only build-argument check (R-32), the development-tooling check (AC-28) and the excluded-migration-SQL check (AC-17).
 - The smoke test keeps its excluded route, table and migration-history checks. No bundler migration is part of this ticket.

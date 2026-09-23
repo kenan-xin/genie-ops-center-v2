@@ -19,7 +19,7 @@ An included but disabled module does not allow ordinary module use. Its data/gra
 
 | Contract | Source and acceptance |
 | --- | --- |
-| Selected customer images and excluded-module absence | [Spec 0](../specs/00-monorepo-foundation.md), R-21/R-22, AC-5/AC-17/AC-24; prove at the build input that the image holds only the selected modules, then inspect routes, tables and migration files, including cached builds with different selections |
+| Selected customer images and excluded-module absence | [Spec 0](../specs/00-monorepo-foundation.md), R-21/R-22, AC-5/AC-17/AC-24; prove that the image build keeps only the selected module folders before it compiles, then inspect routes, tables and migration files, including cached builds with different selections |
 | Tenant data isolation | Spec 0 R-17–R-20, AC-4; real two-context database isolation tests |
 | Permission-filtered shell and no-grants state | [Spec 3](../specs/03-shell-branding-and-design-system.md), R-28/R-30; runtime and E2E authorization/navigation proof |
 | Authorization and disabled-module behavior | [Access model](../architecture/access-model.md), [Spec 2](../specs/02-identity-and-access.md), [module lifecycle stories](module-access-upgrades.md) |

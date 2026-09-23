@@ -263,6 +263,8 @@ A future mechanism should check the artifact rather than claim the root: compare
 
 Superseded on 2026-09-23 by the `pg4` owner decision. Excluded-module absence in the production image is proved at the build input, not by an artifact marker: the image build context holds only the selected module packages, a check fails the build when it holds any other, and a direct import of an excluded module fails the build (Spec 0 AC-24). The needle counts above remain valid evidence for cache isolation between selections. They are not the exclusion proof for the image.
 
+Refined on 2026-09-23: the Docker context stays the repository root, and the prune of unselected `packages/modules/` folders and its check run in the builder stage (Spec 0 AC-24).
+
 The supported way to build two selections at once is two build roots, which `generate-registry --root` exists for. That path is never denied.
 
 Three claim mechanisms were tried and rejected:
