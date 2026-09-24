@@ -116,6 +116,21 @@ function rootScript(name: string): string {
   return script;
 }
 
+type AppScripts = { readonly scripts?: Readonly<Record<string, string>> };
+
+/** One script from the app manifest, which its E2E targets run. */
+function appScript(name: string): string {
+  // SAFETY: the app manifest is this repository's own file; the field read is
+  // checked for presence below.
+  const manifest = JSON.parse(read("apps/genie/package.json")) as AppScripts;
+
+  const script = manifest.scripts?.[name];
+
+  if (script === undefined) throw new Error(`no app script ${name}`);
+
+  return script;
+}
+
 /**
  * R-51's CI gates, held as a wiring check.
  *
@@ -328,6 +343,7 @@ describe("the Spec 0 CI gates", () => {
       "validate",
       "test:e2e:fixture",
       "test:e2e",
+      "test:e2e:generated",
     ]) {
       expect(scripts, `the develop jobs run ${target}`).toMatch(
         targetPattern(target)
@@ -972,12 +988,7 @@ describe("the Spec 0 CI gates", () => {
     expect(develop).toMatch(/@genie\/app:test:e2e(?![\w:-])/);
     expect(develop).toContain("@genie/app:test:e2e:fixture");
 
-    // SAFETY: the app manifest is this repository's own file.
-    const app = JSON.parse(read("apps/genie/package.json")) as {
-      readonly scripts: Readonly<Record<string, string>>;
-    };
-
-    expect(app.scripts["test:e2e"]).toContain(
+    expect(appScript("test:e2e")).toContain(
       "--config apps/genie/playwright.config.ts"
     );
 
@@ -985,6 +996,30 @@ describe("the Spec 0 CI gates", () => {
 
     expect(config).toContain('name: "phone"');
     expect(config).toContain('name: "desktop"');
+  });
+
+  // The generated-module proof (R-30/AC-7) is docker- and browser-heavy: it
+  // generates a module, builds an image carrying it and proves the denied route
+  // at both viewports. Its only caller was a person who remembered the script,
+  // so CI always reported the spec's three skips and nothing failed when the
+  // script drifted from the generator's output. It runs in the E2E job, which
+  // already builds images and launches the browser, and never in the gates.
+  it("runs the generated-module proof in the develop E2E job", () => {
+    const e2eJob = jobsOf(read(`${WORKFLOWS}/develop.yml`)).get("e2e");
+
+    expect(e2eJob, "an e2e job").toBeDefined();
+
+    const scripts = runScripts(e2eJob ?? "").join("\n");
+
+    expect(scripts, "the e2e job runs the generated-module proof").toMatch(
+      targetPattern("test:e2e:generated")
+    );
+
+    // The target runs the script that sets GENIE_MODULE_UNDER_TEST; a target
+    // that ran something else would report three skips and prove nothing.
+    expect(appScript("test:e2e:generated")).toContain(
+      "tools/generators/scripts/prove-generated-module.ts"
+    );
   });
 
   // Coverage is a local developer tool, never a gate. It has exactly one entry

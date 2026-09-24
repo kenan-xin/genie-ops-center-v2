@@ -168,3 +168,6 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec nx run-many -t test:e2e:fixture -p @genie/app
       - run: pnpm exec nx run-many -t test:e2e -p @genie/app
+      # The generated-module proof (R-30/AC-7): it generates a module, builds
+      # the image carrying it and proves the denied route at both viewports.
+      - run: pnpm exec nx run-many -t test:e2e:generated -p @genie/app

@@ -15,6 +15,7 @@
     "test:e2e": "cd ../.. && playwright test --config apps/genie/playwright.config.ts",
     "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
+    "test:e2e:generated": "node ../../tools/generators/scripts/prove-generated-module.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -139,6 +140,9 @@
         "dependsOn": [
           "build-fixture-image"
         ]
+      },
+      "test:e2e:generated": {
+        "cache": false
       }
     }
   }
