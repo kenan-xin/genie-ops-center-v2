@@ -43,7 +43,15 @@ const SETUP_STEPS = ["migrations", "seed"] as const;
 
 type SetupStep = (typeof SETUP_STEPS)[number];
 
-type SetupStepState = "pending" | "done" | "failed";
+/** The recorded state of a known step. `pending` is both the transient write and the missing row. */
+export type SetupStepState = "pending" | "done" | "failed";
+
+/** One known step as the setup gate and the not-set-up page read it (R-14, R-16). */
+export type SetupStepView = {
+  readonly step: string;
+  readonly state: SetupStepState;
+  readonly detail: string | null;
+};
 
 /** The two states a step settles on; `pending` is the transient one it leaves. */
 type SettledStepState = "done" | "failed";
@@ -73,6 +81,41 @@ async function stepState(
   );
 
   return result.rows[0]?.state;
+}
+
+/**
+ * The progress of every step this image knows (R-14, R-15), for the setup gate and the
+ * not-set-up page. A missing row is a `pending` step; a missing table or any other query failure
+ * throws, because the application only reaches this after the `migrations` step created
+ * `setup_step`, so a throw is the outage or corruption the caller answers with a generic 503.
+ * It reads the table directly and caches nothing, because a stale answer would leave a set-up
+ * deployment showing the not-set-up page (R-15).
+ */
+export async function readSetupProgress(
+  context: TenantContext
+): Promise<readonly SetupStepView[]> {
+  const result = await context.db.$client.query<{
+    step: string;
+    state: SetupStepState;
+    detail: string | null;
+  }>("select step, state, detail from setup_step");
+
+  const byStep = new Map(result.rows.map((row) => [row.step, row] as const));
+
+  return SETUP_STEPS.map((step) => {
+    const row = byStep.get(step);
+
+    return {
+      step,
+      state: row?.state ?? "pending",
+      detail: row?.detail ?? null,
+    };
+  });
+}
+
+/** True when every known step is `done`; that is the gate of R-15. */
+export function setupSatisfied(steps: readonly SetupStepView[]): boolean {
+  return steps.every(({ state }) => state === "done");
 }
 
 /**

@@ -102,6 +102,9 @@ function viewerAppWith(provider: {
     startedAt: 0,
     contextId: "ctx-proxy-test",
     moduleRoutes: new Map(),
+    // The gate is satisfied, so these viewer cases exercise the provider path rather than the
+    // not-set-up page; the gate's own behaviour is covered by the integration suite.
+    setupGate: { isSatisfied: async () => true },
     viewerProviders: new Map([["placeholder", provider]]),
     reportProviderFailure: vi.fn(),
     logRequest: vi.fn(),

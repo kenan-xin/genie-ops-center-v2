@@ -1,11 +1,13 @@
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { headers } from "next/headers.js";
 import type { ReactNode } from "react";
 
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
 import { QueryProvider } from "../providers.tsx";
+import { SETUP_REQUIRED_HEADER } from "../setup-required-header.ts";
 
 import "../styles/globals.css";
 
@@ -31,7 +33,13 @@ export default async function RootLayout({
   readonly children: ReactNode;
 }) {
   const locale = await getLocale();
-  const messages = await getMessages();
+
+  // The proxy rewrites every document to the not-set-up route while the deployment is not set up
+  // (D-2), and marks the rewritten request. On that page the catalogue is withheld: passing it
+  // would serialize every namespace into the flight payload, including the shell and viewer
+  // strings R-16 says the standalone page must not carry.
+  const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
+  const messages = setupRequired ? {} : await getMessages();
 
   // Read, not required. A page that renders before the bootstrap published has
   // nothing true to report, and this layout is not the place to decide that a

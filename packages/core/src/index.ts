@@ -144,4 +144,12 @@ export {
   isFrameOrigin,
   normalizeFrameOrigins,
   serializeContentSecurityPolicy,
+  STANDARD_HEADERS,
 } from "./lib/content-security-policy/index.ts";
+
+export {
+  type SetupStepState,
+  type SetupStepView,
+  readSetupProgress,
+  setupSatisfied,
+} from "./services/setup/index.ts";

@@ -12,6 +12,16 @@ import type { FrameOriginProvider } from "@genie/core/security";
  * per bundle. The process global is shared by all of them. Measured evidence is
  * in the native composition spike.
  */
+export type SetupGate = {
+  /**
+   * Whether every known setup step is `done` (R-15). It reads `setup_step` directly until the
+   * answer is first true, then latches open for the life of the process (D-2), so the ordinary
+   * request path stops paying for the read. A failed read throws, which the proxy answers with a
+   * generic 503 rather than the not-set-up page.
+   */
+  readonly isSatisfied: () => Promise<boolean>;
+};
+
 export type AppContext = {
   readonly tenant: TenantContext;
   readonly startedAt: number;
@@ -23,6 +33,8 @@ export type AppContext = {
    * because the proxy bundle must not reach the module declarations and the database driver.
    */
   readonly moduleRoutes: ReadonlyMap<string, string>;
+  /** The process-global setup gate of D-2, read by the proxy on every request. */
+  readonly setupGate: SetupGate;
   /**
    * The viewer providers, keyed by module id, already wrapped with the counter
    * and the failure reporter. The proxy reads these instead of importing the

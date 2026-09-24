@@ -7,7 +7,7 @@
 // slot, which the bootstrap filled.
 import { AppError, CORE_ERRORS, safeBodyFor } from "@genie/core/errors";
 import {
-  BASELINE_POLICY,
+  STANDARD_HEADERS,
   type FrameOriginProvider,
   collectFrameOrigins,
   serializeContentSecurityPolicy,
@@ -17,6 +17,7 @@ import { type NextRequest, NextResponse } from "next/server.js";
 import { readContext } from "./context.ts";
 import { moduleRouteOwner } from "./module-paths.ts";
 import { newRequestId } from "./request-id.ts";
+import { SETUP_REQUIRED_HEADER } from "./setup-required-header.ts";
 import { viewerRouteFor } from "./viewer-routes.ts";
 
 /** Pure, so the policy decision is testable without a request. */
@@ -33,27 +34,88 @@ export async function buildViewerPolicy<Ctx>(input: {
 }
 
 /**
- * The standard headers, repeated here for responses the proxy creates itself.
- * The framework attaches nothing to a redirect it generates, and a redirect the
- * proxy returns replaces the response entirely, so these have to be set on it
- * (Amendment B).
+ * The standard headers (R-47) live once, in `@genie/core/security`, so this proxy and
+ * `next.config.ts` cannot drift. The framework attaches nothing to a redirect or a refusal the
+ * proxy creates itself — such a response replaces the one the header configuration would
+ * decorate — so the proxy sets them here (Amendment B; the setup gate keeps the same headers on
+ * every response it creates).
  */
-const STANDARD_HEADERS = [
-  {
-    key: "Content-Security-Policy",
-    value: BASELINE_POLICY,
-  },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
-  },
-];
+function applyStandardHeaders(response: NextResponse, requestId: string): void {
+  for (const { key, value } of STANDARD_HEADERS) {
+    response.headers.set(key, value);
+  }
+
+  response.headers.set("x-request-id", requestId);
+}
+
+/**
+ * Static assets the setup gate never touches, so a not-set-up deployment still serves the CSS,
+ * JavaScript and public files the not-set-up page needs (R-80). It is an extension list, not
+ * "contains a dot": a path like `/api/trpc/placeholder.read` has a dot and is not an asset.
+ */
+const ASSET_EXTENSIONS =
+  /\.(?:txt|xml|json|webmanifest|ico|png|jpe?g|gif|svg|webp|avif|css|js|mjs|map|woff2?|ttf|otf)$/i;
+
+function isStaticAsset(pathname: string): boolean {
+  return pathname.startsWith("/_next/") || ASSET_EXTENSIONS.test(pathname);
+}
+
+/**
+ * R-80, D-14: while the gate is unsatisfied, an API surface that would answer refuses, and a
+ * gate read that failed answers the same way. One generic 503 body serves both on purpose: it
+ * must not distinguish an unfinished setup from a database outage, so neither leaks a database
+ * message and a set-up deployment is never reported as not set up.
+ */
+function unavailableResponse(requestId: string): NextResponse {
+  const unavailable = new NextResponse("unavailable", { status: 503 });
+
+  applyStandardHeaders(unavailable, requestId);
+
+  return unavailable;
+}
+
+/**
+ * D-2: a RSC or prefetch request gets no page body while the gate is unsatisfied. A full document
+ * navigation is the one request class that carries none of the framework's flight or prefetch
+ * headers, which `isBackgroundRequest` decides.
+ */
+function emptyBackgroundResponse(requestId: string): NextResponse {
+  const empty = new NextResponse(null, { status: 200 });
+
+  applyStandardHeaders(empty, requestId);
+
+  return empty;
+}
+
+/**
+ * D-2: every document route shows the one not-set-up page. The proxy rewrites to the
+ * `setup-required` route, which renders it at the original URL, so R-16 holds for a route the
+ * image knows and for one it does not, without the framework rendering any shell first.
+ */
+function notSetUpPageResponse(
+  request: NextRequest,
+  requestId: string
+): NextResponse {
+  const target = request.nextUrl.clone();
+
+  target.pathname = "/setup-required";
+  target.search = "";
+
+  const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set("x-request-id", requestId);
+  // The root layout reads this and withholds the message catalogue, so the standalone page shows
+  // no shell strings (R-16).
+  requestHeaders.set(SETUP_REQUIRED_HEADER, "1");
+
+  const response = NextResponse.rewrite(target, {
+    request: { headers: requestHeaders },
+  });
+
+  applyStandardHeaders(response, requestId);
+
+  return response;
+}
 
 /** Every redirect the application owns, so each one is header-capable. */
 const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
@@ -73,11 +135,7 @@ function moduleDisabledResponse(requestId: string): NextResponse {
 
   const refusal = NextResponse.json(body, { status: 403 });
 
-  for (const { key, value } of STANDARD_HEADERS) {
-    refusal.headers.set(key, value);
-  }
-
-  refusal.headers.set("x-request-id", requestId);
+  applyStandardHeaders(refusal, requestId);
 
   return refusal;
 }
@@ -147,13 +205,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       307
     );
 
-    for (const { key, value } of STANDARD_HEADERS) {
-      redirect.headers.set(key, value);
-    }
-
     // The id reaches the client on the redirect too, so a redirect and any log
     // line or error body about it share one value.
-    redirect.headers.set("x-request-id", requestId);
+    applyStandardHeaders(redirect, requestId);
 
     return redirect;
   }
@@ -175,6 +229,34 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Before the bootstrap publishes, no viewer route exists, so frames stay
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
+
+  // D-2: the setup gate runs before the module-disabled guard, so an unfinished deployment shows
+  // the not-set-up page whatever the route would otherwise do. Static assets and health are the
+  // only surfaces R-80 keeps serving, so the gate never even reads `setup_step` for them.
+  if (!isStaticAsset(pathname) && pathname !== "/api/health") {
+    let satisfied: boolean;
+
+    try {
+      satisfied = await app.setupGate.isSatisfied();
+    } catch {
+      return unavailableResponse(requestId);
+    }
+
+    if (!satisfied) {
+      // RSC and prefetch requests carry no page body while the gate is unsatisfied (D-2).
+      if (isBackgroundRequest(request.headers)) {
+        return emptyBackgroundResponse(requestId);
+      }
+
+      // R-80: no tRPC procedure, no inbound endpoint under `/api/m/` and no authentication
+      // route answers. The health route was excluded above, so every other `/api/` path refuses.
+      if (pathname.startsWith("/api/")) {
+        return unavailableResponse(requestId);
+      }
+
+      return notSetUpPageResponse(request, requestId);
+    }
+  }
 
   // R-8: a declared route or a viewer document whose module is switched off
   // refuses before its page renders and before any frame-origin provider runs.

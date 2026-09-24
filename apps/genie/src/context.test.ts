@@ -24,6 +24,7 @@ const fakeContext: AppContext = {
   startedAt: 0,
   contextId: "ctx-test",
   moduleRoutes: new Map(),
+  setupGate: { isSatisfied: async () => true },
   viewerProviders: new Map(),
   reportProviderFailure: () => {},
   logRequest: () => {},

@@ -10,7 +10,9 @@ import {
   forExecution,
   migrationPlan,
   moduleHistory,
+  readSetupProgress,
   runMigrations,
+  setupSatisfied,
   validateEnvironment,
 } from "@genie/core";
 import type { FrameOriginProvider } from "@genie/core/security";
@@ -133,6 +135,27 @@ async function runFailureShutdown(input: {
 }
 
 /**
+ * The setup gate of D-2. The latch is a closure over the one context object, which the bootstrap
+ * stores in the process-global slot, so every bundle shares it and it never moves back once true.
+ * A failed read propagates, so the proxy answers a generic 503 instead of the not-set-up page.
+ */
+function buildSetupGate(tenant: TenantContext): AppContext["setupGate"] {
+  let open = false;
+
+  return {
+    isSatisfied: async () => {
+      // The latch short-circuits before any read, so a set-up deployment stops touching
+      // `setup_step` per request (D-2).
+      if (open) return true;
+
+      open = setupSatisfied(await readSetupProgress(tenant));
+
+      return open;
+    },
+  };
+}
+
+/**
  * Builds the one application context from the validated environment. It is kept
  * apart from `runBootstrap` so the ordering there stays readable, and it is only
  * reached when no test injected a context of its own.
@@ -143,12 +166,14 @@ function buildContext(
   logger: RedactingLogger
 ): AppContext {
   const contextId = randomUUID();
+  const tenant = createTenantContext(source, logger, compiledModuleIds);
 
   return {
-    tenant: createTenantContext(source, logger, compiledModuleIds),
+    tenant,
     startedAt: Date.now(),
     contextId,
     moduleRoutes,
+    setupGate: buildSetupGate(tenant),
     viewerProviders: buildViewerProviders(logger),
     reportProviderFailure: (cause, meta) =>
       logger.error(

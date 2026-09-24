@@ -6,6 +6,29 @@
 export const BASELINE_POLICY =
   "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'";
 
+/**
+ * The standard security headers (R-47) in one place, so the configuration that puts them on every
+ * response and the proxy that creates its own responses (a redirect, a refusal, the setup gate)
+ * cannot drift apart. The CSP starts as the baseline; the viewer override replaces `frame-src`
+ * on a viewer document only.
+ */
+export const STANDARD_HEADERS: readonly {
+  readonly key: string;
+  readonly value: string;
+}[] = [
+  { key: "Content-Security-Policy", value: BASELINE_POLICY },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+];
+
 const FRAME_ORIGIN =
   /^https:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/i;
 
