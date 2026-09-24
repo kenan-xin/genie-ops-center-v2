@@ -148,17 +148,15 @@ describe("integration resolver against a real database", () => {
     let resolved: Awaited<ReturnType<typeof resolveIntegration>> | undefined;
 
     for (const logLevel of LOG_LEVELS) {
+      const context = contextWithLogLevel(
+        deployment.context.env.databaseUrl,
+        logLevel
+      );
+
       // The process environment is shared, so each level must be restored before the next.
       // oxlint-disable-next-line no-await-in-loop
-      const captured = await withEnvironment(
-        { [SECRET_REF]: secret, LOG_LEVEL: logLevel },
-        () =>
-          captureProcessOutput(() =>
-            resolveIntegration(
-              contextWithLogLevel(deployment.context.env.databaseUrl, logLevel),
-              id
-            )
-          )
+      const captured = await withEnvironment({ [SECRET_REF]: secret }, () =>
+        captureProcessOutput(() => resolveIntegration(context, id))
       );
 
       outputs.push(captured.output);
@@ -217,21 +215,20 @@ describe("integration resolver against a real database", () => {
     const outputs: string[] = [];
 
     for (const logLevel of LOG_LEVELS) {
+      const context = contextWithLogLevel(
+        deployment.context.env.databaseUrl,
+        logLevel
+      );
+
       // The process environment is shared, so each level must be restored before the next.
       // oxlint-disable-next-line no-await-in-loop
       const captured = await withEnvironment(
         {
           [SECRET_REF]: undefined,
           [OTHER_SECRET]: unrelatedSecret,
-          LOG_LEVEL: logLevel,
         },
-        () => {
-          const context = contextWithLogLevel(
-            deployment.context.env.databaseUrl,
-            logLevel
-          );
-
-          return captureProcessOutput(async () => {
+        () =>
+          captureProcessOutput(async () => {
             try {
               await resolveIntegration(context, id);
             } catch (error) {
@@ -239,8 +236,7 @@ describe("integration resolver against a real database", () => {
             }
 
             return undefined;
-          });
-        }
+          })
       );
 
       outputs.push(captured.output);
