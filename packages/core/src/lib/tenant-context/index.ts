@@ -40,34 +40,6 @@ export type TenantContext = {
 };
 
 /**
- * The compiled module ids each context was built with, kept off the context object so the context
- * keeps its two fixed members (R-18). The factory is the only writer; the entitlement reader of a
- * later section is the reader, so no caller holds a second copy of the image's module list (D-12).
- */
-const contextCompiledModuleIds = new WeakMap<
-  TenantContext,
-  readonly string[]
->();
-
-/**
- * The compiled module ids one context was built with. A context the factory did not build has no
- * entry, which is a programming error rather than a condition to swallow silently.
- */
-export function compiledModuleIdsFor(
-  context: TenantContext
-): readonly string[] {
-  const ids = contextCompiledModuleIds.get(context);
-
-  if (ids === undefined) {
-    throw new Error(
-      "compiledModuleIdsFor needs a context built by createTenantContext."
-    );
-  }
-
-  return ids;
-}
-
-/**
  * Builds one tenant context (R-17). The environment is validated first, so a deployment with a
  * broken value fails before anything opens a connection (R-25). The pool is lazy: it connects on
  * the first query, never here.
@@ -85,11 +57,13 @@ export function compiledModuleIdsFor(
  * `compiledModuleIds` is required for the same reason: it is the one caller-supplied list of the
  * modules the image compiled, and the entitlement reader of a later section reads it here so the
  * migrator run and the reader cannot disagree (D-12). A caller that has no modules passes `[]`.
+ * The factory does not read the list yet, so the parameter is named for the rule it holds rather
+ * than to be consumed here; 1ia.15 closes over it when it builds the entitlement reader.
  */
 export function createTenantContext(
   source: EnvironmentSource,
   logger: Pick<RedactingLogger, "error">,
-  compiledModuleIds: readonly string[]
+  _compiledModuleIds: readonly string[]
 ): TenantContext {
   const env = validateEnvironment(source);
 
@@ -114,10 +88,8 @@ export function createTenantContext(
 
   // The context keeps its two fixed members (R-18): the logger the pool's error listener already
   // uses is recorded off the object, where `withTransaction` reads it for its after-commit
-  // diagnostics. The compiled list is recorded off the object for the same reason, for the
-  // entitlement reader of a later section. A context this factory did not build has no entry.
+  // diagnostics. A context this factory did not build has no entry.
   registerContextLogger(context, logger);
-  contextCompiledModuleIds.set(context, compiledModuleIds);
 
   return context;
 }
