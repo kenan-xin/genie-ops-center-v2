@@ -22,7 +22,7 @@
 // module's history is covered without editing this script.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
@@ -120,24 +120,57 @@ function requireBinary(binary, packageName) {
 }
 
 /**
+ * Squawk's `require-concurrent-index-creation` rule suggests `CONCURRENTLY`, but
+ * this migrator cannot run it: Drizzle applies each history inside one
+ * transaction (services/migrator/index.ts), and Postgres refuses
+ * `CREATE INDEX CONCURRENTLY` inside a transaction block. A migration that
+ * carries it would pass Squawk and fail at container start (R-27). Refuse it
+ * here, with the remedy, before Squawk runs.
+ */
+const CONCURRENTLY = /\bCONCURRENTLY\b/i;
+
+function refuseConcurrently(file) {
+  // A missing file is Squawk's to report; reading it here would throw first.
+  if (!existsSync(file)) return 0;
+
+  if (!CONCURRENTLY.test(readFileSync(file, "utf8"))) return 0;
+
+  process.stderr.write(
+    `${file}: contains CONCURRENTLY. Drizzle applies every history inside one\n` +
+      `transaction, and Postgres refuses CREATE INDEX CONCURRENTLY (and every other\n` +
+      `CONCURRENTLY form) inside a transaction block, so the migration would fail at\n` +
+      `container start (R-27). Use a plain statement with a\n` +
+      "`-- squawk-ignore require-concurrent-index-creation` comment and a justification\n" +
+      `instead.\n`
+  );
+
+  return 1;
+}
+
+/**
  * Lints one changed migration with Squawk, pinned to the deployed Postgres
  * major. Squawk exits nonzero on a failed rule, including a warning-level one,
- * so its status is the verdict.
+ * so its status is the verdict. A migration carrying CONCURRENTLY is refused
+ * before Squawk, because Squawk would accept it and the migrator cannot run it.
  */
 function lintMigration(file, pgVersion) {
   if (pgVersion === undefined) {
     throw new Error("--migration requires --pg-version <major>");
   }
 
+  const concurrentlyRefused = refuseConcurrently(file);
+
   requireBinary(SQUAWK, "squawk-cli");
 
   // Pass the config explicitly: the rule set is part of the gate, so it must not
   // depend on Squawk's upward search from whatever directory it is invoked in.
-  return run(
+  const squawkStatus = run(
     SQUAWK,
     ["--config", SQUAWK_CONFIG, "--pg-version", pgVersion, file],
     REPO_ROOT
   );
+
+  return concurrentlyRefused === 0 && squawkStatus === 0 ? 0 : 1;
 }
 
 /**

@@ -348,6 +348,32 @@ describe("the migration pull-request gate", () => {
     }
   });
 
+  // Squawk's remedy for a live-table index is CONCURRENTLY, but the migrator runs
+  // each history in one transaction and Postgres refuses CONCURRENTLY there. The
+  // gate refuses it outright, so the next author does not ship a migration that
+  // passes CI and then fails at container start (R-27).
+  it("fails a changed migration that uses CONCURRENTLY, which the migrator's transaction forbids", () => {
+    const file = migrationFixture(
+      `CREATE INDEX CONCURRENTLY "example_col_idx" ON "public"."example" USING btree ("col");\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/CONCURRENTLY/);
+      expect(result.stdout + result.stderr).toMatch(/transaction/i);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
   it("fails a changed migration that renames a column", () => {
     const file = migrationFixture(
       `ALTER TABLE public.example RENAME COLUMN old_name TO new_name;\n`

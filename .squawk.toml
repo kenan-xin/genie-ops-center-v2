@@ -16,8 +16,13 @@
 #     A `CREATE INDEX` in the migration that creates its table therefore holds no
 #     lock an outside reader can observe, so `require-concurrent-index-creation`
 #     stops firing for a generated migration. The rule still fires for a
-#     `CREATE INDEX` on a table an earlier migration created, which is the case
-#     the rule exists for: a later index on a live table must be CONCURRENTLY.
+#     `CREATE INDEX` on a table an earlier migration created: that is the
+#     live-table case, and the remedy is not CONCURRENTLY. Postgres refuses
+#     `CREATE INDEX CONCURRENTLY` inside the transaction the migrator opens, and
+#     `scripts/check-migrations.mjs` rejects any migration containing it. The
+#     author writes a plain `CREATE INDEX` with a
+#     `-- squawk-ignore require-concurrent-index-creation` comment and a
+#     justification (for example, a small table), or changes the migrator.
 #   * `prefer-bigint-over-int` is a style rule, not one of R-13's four breaking
 #     changes. It fires on `integer` columns whose domain fits (a rate-limit
 #     count, session idle minutes), and excluding it keeps the gate on the
