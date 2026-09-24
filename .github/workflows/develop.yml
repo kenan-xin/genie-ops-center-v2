@@ -13,8 +13,12 @@ on:
     branches:
       - develop
 
+# nrwl/nx-set-shas looks this workflow's run history up through the GitHub API
+# to find the last successful develop run, so the token needs `actions: read`
+# (genie-ops-center-v2-bf7). Everything else stays read-only.
 permissions:
   contents: read
+  actions: read
 
 # A merge to develop supersedes the previous develop run, so a burst of pushes
 # does not queue redundant runner hours; a cancelled run writes no caches,
@@ -27,8 +31,6 @@ jobs:
   gates:
     # The fast gates, exactly what ci:pr runs before its integration layer. No
     # image suite and no browser suite, so this job stays cheap and fails first.
-    # The ceiling covers an all-affected first push (the all-zero base falls
-    # back to git's empty tree), when every project builds cold.
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -47,31 +49,71 @@ jobs:
       # The runner has no browser; the Storybook component tests launch the
       # pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
-      # A push to develop has `origin/develop` at HEAD, so an affected run based
-      # on it would be empty. Base the gates on the pushed commit's parent
-      # instead. The all-zero first push has no parent; base it on git's empty
-      # tree so every project is affected, rather than on a ref that is HEAD.
-      - id: base
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
+      # Base the affected range on the last successful develop run, not the
+      # pushed commit's parent. With `cancel-in-progress: true`, push B cancels
+      # the run for push A and gates only A→B, so if A's run was cancelled or
+      # failed the projects A touched are never gated on develop. nx-set-shas
+      # reads this workflow's own run history and exports NX_BASE/NX_HEAD. A
+      # history with no successful run yet — the first push — falls back to
+      # git's empty tree, so every project is affected rather than an empty
+      # range (genie-ops-center-v2-bf7).
+      - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: develop
+          fallback-sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+      - run: pnpm exec nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
+
+  integration-discover:
+    # One projection of the affected integration roster, so the matrix below
+    # runs one runner per project and a new module's generated test:integration
+    # target is picked up without a develop.yml edit (genie-ops-center-v2-bf7).
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      projects: ${{ steps.discover.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: nrwl/nx-set-shas@v5
+        with:
+          main-branch-name: develop
+          fallback-sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+      # The workspace is the source of truth for the roster: a push that touches
+      # no integration project prints `[]` and the matrix is skipped, and a new
+      # module with the target appears here without a list edit.
+      - id: discover
         run: |
           set -eu
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
-          fi
-      - run: pnpm exec nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
-        env:
-          NX_BASE: ${{ steps.base.outputs.ref }}
+          projects="$(pnpm exec nx show projects --affected -t test:integration --base="$NX_BASE" --json)"
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
 
-  integration-app:
-    # The app's suite owns the app's Docker image builds, which competed with
-    # the Storybook browser matrix on one 4-vCPU runner (develop run
-    # 35893905134), so it gets a runner of its own.
-    needs: gates
+  integration:
+    # One runner per discovered project: the app's image builds and the
+    # Storybook browser matrix no longer compete on one 4-vCPU runner (develop
+    # run 35893905134), and a new module's generated test:integration target
+    # gets its own shard automatically (genie-ops-center-v2-bf7).
+    needs:
+      - gates
+      - integration-discover
+    if: needs.integration-discover.outputs.projects != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      # One failed project does not cancel its siblings' shards.
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.integration-discover.outputs.projects) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,110 +132,19 @@ jobs:
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The suite drives the pinned Chromium through Playwright.
       - run: pnpm exec playwright install --with-deps chromium
-      # Base the affected range on the pushed commit's parent, as the gates job
-      # does: `--exclude='*,!@genie/app'` keeps the affected set but drops every
-      # project but the app, so a push touching no project runs no suite.
-      - id: base
+      # The shard runs only the project the discover job handed it. A bail
+      # stops the run once the project fails, and the projects never compete
+      # for the runner's 4 vCPUs.
+      - run: pnpm exec nx run "$PROJECT:test:integration" --nx-bail --parallel=1
         env:
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -eu
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
-          fi
-      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/app' --base="$NX_BASE"
-        env:
-          NX_BASE: ${{ steps.base.outputs.ref }}
-
-  integration-storybook:
-    # The Storybook suite runs the browser component matrix, which is why it is
-    # kept off the app's image-building runner.
-    needs: gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.4.2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # The suite builds full images; free the preinstalled toolchains this
-      # repository never uses, or the runner runs out of disk.
-      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      # The suite drives the pinned Chromium through Playwright.
-      - run: pnpm exec playwright install --with-deps chromium
-      # Base the affected range on the pushed commit's parent, as the gates job
-      # does: `--exclude='*,!@genie/storybook'` keeps the affected set but drops
-      # every project but Storybook, so a push touching no project runs nothing.
-      - id: base
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -eu
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
-          fi
-      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/storybook' --base="$NX_BASE"
-        env:
-          NX_BASE: ${{ steps.base.outputs.ref }}
-
-  integration-core:
-    # The lighter suites share one runner. They run one at a time — the 4-vCPU
-    # competition that forced --parallel=1 on ci:pr — and bail stops the
-    # remaining project once one fails (develop run 35867486208).
-    needs: gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.4.2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # These suites build full images; free the preinstalled toolchains this
-      # repository never uses, or the runner runs out of disk.
-      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      # The suites drive the pinned Chromium through Playwright.
-      - run: pnpm exec playwright install --with-deps chromium
-      # Base the affected range on the pushed commit's parent, as the gates job
-      # does: `--exclude='*,!@genie/core,!@genie/module-placeholder'` keeps the
-      # affected set but drops every project but these two.
-      - id: base
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -eu
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            echo "ref=4b825dc642cb6eb9a060e54bf8d69288fbee4904" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
-          fi
-      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/core,!@genie/module-placeholder' --base="$NX_BASE" --nx-bail --parallel=1
-        env:
-          NX_BASE: ${{ steps.base.outputs.ref }}
+          PROJECT: ${{ matrix.project }}
 
   e2e:
     # The browser E2E suites, which build the fixture stack and the app image.
     # The fixture stack precedes the ordinary suite, exactly as ci:develop runs
-    # them.
+    # them. The E2E job stays unconditional: ci:develop always ran both browser
+    # suites regardless of the affected set, so the deployable image is proved
+    # end to end on every merge.
     needs: gates
     runs-on: ubuntu-latest
     timeout-minutes: 60

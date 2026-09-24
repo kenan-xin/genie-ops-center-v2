@@ -258,20 +258,28 @@ describe("the Spec 0 CI gates", () => {
       "the heavy suites split across jobs"
     ).toBeGreaterThanOrEqual(2);
 
-    // The suites are known by their job ids: the integration rosters are
-    // derived from the workspace at run time (genie-ops-center-v2-bf7), so the
-    // project names no longer appear in the job text.
-    const appJob = jobs.get("integration-app");
-    const storybookJob = jobs.get("integration-storybook");
+    // genie-ops-center-v2-bf7: the suites are one matrix job whose roster is
+    // projected from the workspace at run time, so each discovered project —
+    // the app and Storybook included — gets its own runner and a new module is
+    // picked up without a develop.yml edit.
+    const discover = jobs.get("integration-discover");
+    const integration = jobs.get("integration");
 
-    expect(appJob, "a job runs the app integration suite").toBeDefined();
     expect(
-      storybookJob,
-      "a job runs the Storybook integration suite"
+      discover,
+      "a job discovers the affected integration projects"
     ).toBeDefined();
-    expect(appJob, "the two suites run on different runners").not.toBe(
-      storybookJob
+    expect(integration, "an integration matrix job").toBeDefined();
+    expect(
+      integration,
+      "the matrix fans out one runner per discovered project"
+    ).toContain(
+      "project: ${{ fromJSON(needs.integration-discover.outputs.projects) }}"
     );
+    expect(
+      integration,
+      "one failed project does not cancel its siblings"
+    ).toContain("fail-fast: false");
 
     const e2eJob = [...jobs.entries()].find(([, job]) =>
       job.includes("test:e2e")
@@ -331,7 +339,7 @@ describe("the Spec 0 CI gates", () => {
   // job carried must be carried again per job: ubuntu-latest (the owner kept
   // every job on the standard image), a runtime bound, a credential-free
   // checkout, the disk cleanup where images build, a bail on multi-project
-  // integration runs, and the parent-commit base for every affected run.
+  // integration runs, and the last-green base for every affected run.
   it("carries the runner guardrails into every develop job", () => {
     for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
       expect(job, `${name} stays on ubuntu-latest`).toMatch(
@@ -352,8 +360,13 @@ describe("the Spec 0 CI gates", () => {
       // The integration and E2E suites build full Docker images (build-image,
       // build-fixture-image); each image-building job frees the runner's
       // preinstalled toolchains first or runs out of disk (release run
-      // 35865015903). The gates job builds no image and needs none of this.
-      if (/test:integration|test:e2e/.test(scripts)) {
+      // 35865015903). The gates job builds no image, and the discover job only
+      // projects the roster, so neither needs this.
+      if (
+        /nx (?:affected|run-many|run)\b[^\n]*test[:-](?:integration|e2e)/.test(
+          scripts
+        )
+      ) {
         expect(scripts, `${name} frees runner disk space`).toContain(
           "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
         );
@@ -385,34 +398,53 @@ describe("the Spec 0 CI gates", () => {
   });
 
   // Affected filtering: a push that touches no project must run no heavy
-  // suite, so every develop integration job filters its project through
-  // `nx affected` — an unconditional `nx run-many` runs every suite on every
-  // push (reviewed on 57bfc26). On Nx 23.2.1, `nx affected -t test:integration
-  // --base="$NX_BASE"` filters to the affected set. The base itself — the last
-  // successful develop run, not the push parent (genie-ops-center-v2-bf7) — is
-  // pinned by the dedicated base test above.
+  // suite, so the discover job projects the affected integration set with
+  // `nx show projects --affected -t test:integration --base="$NX_BASE"` — an
+  // unconditional `nx run-many` runs every suite on every push (reviewed on
+  // 57bfc26). The base itself — the last successful develop run, not the push
+  // parent (genie-ops-center-v2-bf7) — is pinned by the dedicated base test
+  // above.
   it("filters every develop integration job through the affected set", () => {
-    for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
-      const scripts = runScripts(job).join("\n");
+    const jobs = jobsOf(read(`${WORKFLOWS}/develop.yml`));
 
-      if (!scripts.includes("test:integration")) continue;
+    // genie-ops-center-v2-bf7: the roster is projected from the affected set
+    // once, in the discover job, and the matrix runs one shard per project it
+    // prints. A push that touches no integration project yields `[]`, the
+    // matrix is skipped, and no suite runs.
+    const discover = jobs.get("integration-discover");
 
-      expect(scripts, `${name} runs through nx affected`).toContain(
-        "nx affected"
-      );
-      expect(
-        scripts,
-        `${name} never runs the suite unconditionally`
-      ).not.toContain("nx run-many");
-      expect(scripts, `${name} bases the affected range on NX_BASE`).toMatch(
-        /--base=["{]?\$NX_BASE/
-      );
-    }
+    expect(discover, "an integration-discover job").toBeDefined();
+
+    const discoverScripts = runScripts(discover ?? "").join("\n");
+
+    expect(
+      discoverScripts,
+      "the discover job projects the affected integration set"
+    ).toContain("nx show projects --affected");
+    expect(
+      discoverScripts,
+      "the discover job bases the affected range on NX_BASE"
+    ).toMatch(/--base=["{]?\$NX_BASE/);
+
+    const integration = jobs.get("integration");
+
+    expect(integration, "an integration matrix job").toBeDefined();
+
+    const integrationScripts = runScripts(integration ?? "").join("\n");
+
+    expect(
+      integrationScripts,
+      "the matrix job never runs every suite unconditionally"
+    ).not.toContain("nx run-many");
+    expect(
+      integrationScripts,
+      "the matrix job runs the project the discover job handed it"
+    ).toContain("test:integration");
 
     // The E2E job stays unconditional: ci:develop always ran both browser
     // suites regardless of the affected set, so the deployable image is
     // proved end to end on every merge.
-    const e2eJob = jobsOf(read(`${WORKFLOWS}/develop.yml`)).get("e2e");
+    const e2eJob = jobs.get("e2e");
 
     expect(e2eJob, "an e2e job").toBeDefined();
     expect(
@@ -424,12 +456,12 @@ describe("the Spec 0 CI gates", () => {
   // genie-ops-center-v2-bf7: the integration jobs used to name a fixed project
   // roster — `--exclude='*,!@genie/app'` and friends — so a new module's
   // generated test:integration target never ran on develop, and nothing caught
-  // it. The roster must be derived from the workspace at run time, with the
-  // same query this test uses to know what the coverage should be: `nx show
-  // projects -t test:integration --json`. Because the expected set below comes
-  // from the real workspace, the day a module declares the target the
-  // workflow's derivation already covers it — no develop.yml edit, no silent
-  // skip.
+  // it. The roster must be derived from the workspace at run time: the
+  // discover job prints the affected projection of `nx show projects -t
+  // test:integration --json`, the same workspace query this test uses to know
+  // what the coverage should be. Because the expected set below comes from the
+  // real workspace, the day a module declares the target the workflow's
+  // derivation already covers it — no develop.yml edit, no silent skip.
   it("picks up every project with a test:integration target on develop", () => {
     const query = spawnSync(
       join(WORKSPACE_ROOT, "node_modules/.bin/nx"),
@@ -449,50 +481,62 @@ describe("the Spec 0 CI gates", () => {
     // of project names the query prints.
     const projects = JSON.parse(query.stdout ?? "[]") as readonly string[];
 
-    // An empty projection would let the per-job assertions pass vacuously, so
+    // An empty projection would let the assertions below pass vacuously, so
     // the workspace must actually declare integration targets.
     expect(
       projects.length,
       "the workspace declares integration targets"
     ).toBeGreaterThan(0);
 
-    const integrationJobs = [
-      ...jobsOf(read(`${WORKFLOWS}/develop.yml`)),
-    ].filter(([, job]) =>
-      runScripts(job).join("\n").includes("test:integration")
-    );
+    const jobs = jobsOf(read(`${WORKFLOWS}/develop.yml`));
+    const discover = jobs.get("integration-discover");
 
     expect(
-      integrationJobs.length,
-      "the develop workflow has integration jobs"
-    ).toBeGreaterThan(0);
+      discover,
+      "the develop workflow discovers the integration roster"
+    ).toBeDefined();
 
-    for (const [name, job] of integrationJobs) {
-      const scripts = runScripts(job).join("\n");
+    const discoverScripts = runScripts(discover ?? "").join("\n");
 
-      // A fixed roster is exactly the staleness bug: it names today's projects
-      // and silently drops the next module's.
-      expect(scripts, `${name} carries no fixed project roster`).not.toMatch(
-        /--exclude=\S*!/
-      );
+    // A fixed roster is exactly the staleness bug: it names today's projects
+    // and silently drops the next module's.
+    expect(
+      discoverScripts,
+      "the discover job carries no fixed project roster"
+    ).not.toMatch(/--exclude=\S*!/);
 
-      expect(
-        scripts,
-        `${name} derives its project list from the workspace`
-      ).toContain("nx show projects -t test:integration --json");
+    // The roster is the affected projection of the same workspace query used
+    // above, so a module that declares the target is covered the day it lands.
+    expect(
+      discoverScripts,
+      "the discover job derives its project list from the workspace"
+    ).toContain("nx show projects --affected -t test:integration");
 
-      // A derived roster can put several projects on one runner, so every
-      // integration run keeps the shared-runner rules: a bail stops the
-      // remaining projects once one fails (develop run 35867486208), and the
-      // projects run one at a time — the 4-vCPU competition that broke the
-      // parallel runs (develop runs 35893905134 and 35932712679).
-      expect(scripts, `${name} bails its integration run`).toContain(
-        "--nx-bail"
-      );
-      expect(scripts, `${name} runs its projects one at a time`).toContain(
-        "--parallel=1"
-      );
-    }
+    const integration = jobs.get("integration");
+
+    expect(integration, "an integration matrix job").toBeDefined();
+
+    expect(
+      integration,
+      "the matrix fans out one runner per discovered project"
+    ).toContain(
+      "project: ${{ fromJSON(needs.integration-discover.outputs.projects) }}"
+    );
+
+    const integrationScripts = runScripts(integration ?? "").join("\n");
+
+    // Each shard runs one project and keeps the shared-runner rules: a bail
+    // stops the run once the project fails (develop run 35867486208), and the
+    // projects never compete for the runner's 4 vCPUs (develop runs
+    // 35893905134 and 35932712679).
+    expect(
+      integrationScripts,
+      "the matrix bails its integration run"
+    ).toContain("--nx-bail");
+    expect(
+      integrationScripts,
+      "the matrix runs its projects one at a time"
+    ).toContain("--parallel=1");
   }, 90000);
 
   // Superseded runs: every push to an open pull request and every merge to
@@ -675,7 +719,14 @@ describe("the Spec 0 CI gates", () => {
     for (const [jobName, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
       const scripts = runScripts(job).join("\n");
 
-      if (!/test-storybook|test:e2e|test:integration/.test(scripts)) continue;
+      // Only the jobs that actually run a browser suite install the browser;
+      // the discover job merely projects the integration roster.
+      if (
+        !/nx (?:affected|run-many|run)\b[^\n]*test[:-](?:storybook|e2e|integration)/.test(
+          scripts
+        )
+      )
+        continue;
 
       const install = job.indexOf("pnpm install --frozen-lockfile");
 
@@ -748,7 +799,14 @@ describe("the Spec 0 CI gates", () => {
     for (const [jobName, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
       const scripts = runScripts(job).join("\n");
 
-      if (!/test:integration|test:e2e/.test(scripts)) continue;
+      // Only the jobs that actually build an image need the cleanup; the
+      // discover job merely projects the integration roster.
+      if (
+        !/nx (?:affected|run-many|run)\b[^\n]*test[:-](?:integration|e2e)/.test(
+          scripts
+        )
+      )
+        continue;
 
       const freed = job.indexOf(
         "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
