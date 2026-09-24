@@ -45,6 +45,13 @@ type AuditRow = {
   };
 };
 
+type SetupStepRow = {
+  readonly step: string;
+  readonly state: string;
+  readonly detail: string | null;
+  readonly updated_at: Date;
+};
+
 async function setupFixture(): Promise<SetupFixture> {
   const postgres = await startDisposablePostgres();
   const observer = new Client({ connectionString: postgres.url });
@@ -227,6 +234,14 @@ describe("genie-ops setup", () => {
       ],
     });
 
+    const completedSteps = await fixture.observer.query<SetupStepRow>(`
+      select step, state, detail, updated_at
+        from setup_step
+       order by step
+    `);
+
+    expect(completedSteps.rows.every((row) => row.state === "done")).toBe(true);
+
     await expect(
       fixture.observer.query<{ migrations_before_seed: boolean }>(`
         select (select updated_at from setup_step where step = 'migrations')
@@ -289,6 +304,8 @@ describe("genie-ops setup", () => {
       "update tenant_module set enabled = false where module_id = 'fixture'"
     );
 
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 25));
+
     const secondOutput = outputCapture();
 
     await expect(
@@ -313,6 +330,14 @@ describe("genie-ops setup", () => {
     ).resolves.toMatchObject({
       rows: [{ module_id: "fixture", enabled: false }],
     });
+
+    await expect(
+      fixture.observer.query<SetupStepRow>(`
+        select step, state, detail, updated_at
+          from setup_step
+         order by step
+      `)
+    ).resolves.toMatchObject({ rows: completedSteps.rows });
 
     const audits = await auditRows(fixture.observer);
     expect(audits).toHaveLength(2);
