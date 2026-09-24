@@ -30,7 +30,6 @@ const reservedEntrypointOverride: OxlintOverride = {
 
 /**
  * The one Oxlint configuration for this repository.
- * Task 5 adds the import-direction overrides. Task 6 adds the vendored rules.
  *
  * The vendored anti-slop plugin lives at `packages/config/oxlint/anti-slop/`
  * with its licence and provenance beside it. The five Effect rules are not

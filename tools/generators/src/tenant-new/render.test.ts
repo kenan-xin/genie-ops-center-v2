@@ -22,9 +22,9 @@ const INPUT: TenantRenderInput = {
 
 /**
  * A stand-in for a core schema. The real strict schemas live in
- * `packages/core/src/lib/tenant-config/`, and this package cannot import them
- * until its manifest declares `@genie/core`, so the renderer takes them as a
- * parameter and these doubles prove the seam.
+ * `packages/core/src/lib/tenant-config/`, and the renderer imports them for
+ * `CORE_VALIDATORS`. It still takes a schema as a parameter, so these doubles
+ * keep the test independent of the real schema's contents.
  */
 function strictSchema(allowed: readonly string[]): StrictSchema {
   return {

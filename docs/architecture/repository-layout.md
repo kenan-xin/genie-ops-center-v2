@@ -30,7 +30,7 @@ genie-ops-center/
       src/utils/                    Small stateless helpers, one file per topic, named by the topic.
       src/services/<name>/          Mailer, files, events, jobs, auth, and every other unit that does
                                     work for the application.
-      migrations/                   The core drizzle-kit history.
+      drizzle/                      The core drizzle-kit history.
       testing/                      Core-table factories and generic database, migration, and tenant-context
                                     helpers. No module imports; composed tests and seed belong to the app.
     ui/                             Design-system primitives and tokens.
@@ -45,7 +45,7 @@ genie-ops-center/
         src/index.ts                The module definition: id, schema, router, permissions, roles,
                                     record types, navigation, pages, config schema, events, jobs.
         src/schema.ts               Drizzle tables.
-        migrations/                 This module's own drizzle-kit history and migrations table (DEC-33).
+        drizzle/                    This module's own drizzle-kit history and migrations table (DEC-33).
         src/router.ts               tRPC procedures, every one behind can().
         src/permissions.ts          Permission keys and default roles.
         src/config.ts               zod schema for per-tenant module settings.
