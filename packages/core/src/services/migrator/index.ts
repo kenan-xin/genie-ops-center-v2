@@ -28,17 +28,30 @@ export type MigrationHistory = {
 };
 
 /**
- * Core's own SQL files, one entry per journal tag. Core's journal holds no entry today, so this
- * map holds none either; the first core migration adds its `new URL` here in the same change
- * that adds the file, and `migrationsFromJournal` refuses to start if it does not.
+ * Core's own SQL files, one entry per journal tag. The Section 1 migration adds its `new URL`
+ * here in the same change that adds the file, and `migrationsFromJournal` refuses to start if a
+ * journal entry has none. The spelling is what the production bundler traces to copy the SQL
+ * into the image.
  */
-const CORE_MIGRATION_FILES: MigrationFiles = {};
+const CORE_MIGRATION_FILES: MigrationFiles = {
+  "0000_majestic_sharon_carter": new URL(
+    "../../../drizzle/0000_majestic_sharon_carter.sql",
+    import.meta.url
+  ),
+};
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */
 export const CORE_HISTORY: MigrationHistory = {
   name: "core",
-  migrations: migrationsFromJournal(coreJournal, CORE_MIGRATION_FILES),
   table: "__drizzle_migrations",
+  // A getter, not an eager value: core's SQL is read when the run asks for it, never at import
+  // time. An eager read would run during a Next.js page-data collection, where the bundler has
+  // rewritten the `new URL` above to a public asset path `readFileSync` cannot open, and the
+  // build would fail. The `new URL` declarations stay at module scope on purpose: that spelling
+  // is what the bundler traces to copy the SQL into the image. This defers only the read.
+  get migrations() {
+    return migrationsFromJournal(coreJournal, CORE_MIGRATION_FILES);
+  },
 };
 
 /**

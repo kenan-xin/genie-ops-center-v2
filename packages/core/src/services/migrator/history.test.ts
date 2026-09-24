@@ -14,8 +14,8 @@ import { type MigrationJournal, migrationsFromJournal } from "./history.ts";
  * the hash is what the ledger stores, so a reader that drifted would write a different history
  * into a database that drizzle itself had migrated.
  *
- * The fixtures are written to a temporary folder because core's own journal holds no entry yet,
- * and because the comparison needs a folder for drizzle's reader to read.
+ * The fixtures are written to a temporary folder because the comparison needs a folder for
+ * drizzle's own reader to read.
  */
 const cleanups: Array<() => Promise<void>> = [];
 

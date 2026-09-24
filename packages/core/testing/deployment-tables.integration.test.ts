@@ -271,7 +271,7 @@ async function indexFacts(
             ix.indisunique as "unique",
             ix.indisprimary as "primary",
             coalesce(
-              (select array_agg(a.attname order by k.ord)
+              (select array_agg(a.attname::text order by k.ord)
                  from unnest(ix.indkey) with ordinality as k(attnum, ord)
                  join pg_attribute a
                    on a.attrelid = ix.indrelid and a.attnum = k.attnum),

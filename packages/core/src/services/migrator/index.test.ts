@@ -40,9 +40,14 @@ describe("the migration plan", () => {
   });
 
   it("carries core's migrations as data, so no folder is resolved at run time", () => {
-    // The empty journal is core's current state, not an accident of the test: core owns a
-    // history and has generated no migration into it yet. The ledger table is still created.
-    expect(CORE_HISTORY.migrations).toEqual([]);
+    // Core now owns the Section 1 migration (R-1), so the history is no longer empty. The
+    // SQL still arrives as data read from a declared `new URL`, never as a folder path, which
+    // is what keeps it in a production image.
+    expect(CORE_HISTORY.migrations).toHaveLength(1);
+
+    expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
+      'CREATE TABLE "tenant_module"'
+    );
 
     expect(CORE_HISTORY).not.toHaveProperty("folder");
   });
