@@ -114,4 +114,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "audit helper fallback writes the outcome to command output when audit_event does not exist",
     ],
   },
+  {
+    file: "testing/setup.integration.test.ts",
+    reason:
+      "Spec 1 AC-5, AC-6, AC-10, AC-13, AC-17 and R-18-R-26, R-65, R-77, R-78 require the resumable setup and schema contracts to run",
+    cases: [
+      "genie-ops setup runs migrations before seed, inserts the configured rows, and leaves a rerun unchanged",
+      "genie-ops setup applies each tenant setting default when tenant.yaml omits it",
+      "genie-ops setup refuses the misplaced tenant.yaml key company_name and names its source file",
+      "genie-ops setup refuses the misplaced branding.seed.json key modules and names its source file",
+      "genie-ops setup resumes after a seed transaction fails without leaving partial seed rows",
+      "genie-ops setup completes without mail variables and logs fresh-database migration progress",
+      "genie-ops setup writes the migration failure to command output when audit_event does not exist",
+    ],
+  },
 ];
