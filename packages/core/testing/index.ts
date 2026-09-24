@@ -62,7 +62,8 @@ export async function startDisposableDeployment(
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
     },
-    silentLogger()
+    silentLogger(),
+    modules.map((module) => module.identity.id)
   );
 
   const stop = async () => {

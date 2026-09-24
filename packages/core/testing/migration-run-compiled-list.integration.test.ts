@@ -1,0 +1,233 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { WORKSPACE_ROOT } from "../src/__testing__/target-probe.ts";
+import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
+import {
+  type MigrationHistory,
+  migrationPlan,
+  runMigrations,
+} from "../src/services/migrator/index.ts";
+import { startDisposablePostgres } from "./index.ts";
+
+const cleanups: Array<() => Promise<void>> = [];
+
+afterEach(async () => {
+  await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
+});
+
+async function freshContext(compiledModuleIds: readonly string[] = []) {
+  const postgres = await startDisposablePostgres();
+
+  const context = createTenantContext(
+    {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: "https://test.example.invalid",
+    },
+    silentLogger(),
+    compiledModuleIds
+  );
+
+  cleanups.push(async () => {
+    await context.db.$client.end();
+    await postgres.stop();
+  });
+
+  return context;
+}
+
+function emptyHistory(name: string): MigrationHistory {
+  return { name, migrations: [], table: moduleLedgerTable(name) };
+}
+
+async function runCore(
+  context: Awaited<ReturnType<typeof freshContext>>,
+  compiledModuleIds: readonly string[] = []
+) {
+  await runMigrations({
+    env: context.env,
+    pool: context.db.$client,
+    histories: migrationPlan([]),
+    compiledModuleIds,
+  });
+}
+
+async function moduleRows(
+  context: Awaited<ReturnType<typeof freshContext>>
+): Promise<Array<{ module_id: string; enabled: boolean }>> {
+  const result = await context.db.$client.query<{
+    module_id: string;
+    enabled: boolean;
+  }>("select module_id, enabled from tenant_module order by module_id");
+
+  return result.rows;
+}
+
+async function tableExists(
+  context: Awaited<ReturnType<typeof freshContext>>,
+  schema: string,
+  table: string
+): Promise<boolean> {
+  const result = await context.db.$client.query(
+    "select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = $1 and c.relname = $2 and c.relkind = 'r'",
+    [schema, table]
+  );
+
+  return result.rowCount === 1;
+}
+
+describe("MigrationRun compiled-module guards", () => {
+  it("refuses an installed tenant_module row before any history and deletes nothing", async () => {
+    const context = await freshContext();
+    await runCore(context);
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ($1, false)",
+      ["removed-module"]
+    );
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([emptyHistory("removed-module")]),
+        compiledModuleIds: [],
+      })
+    ).rejects.toThrow("removed-module");
+
+    expect(await moduleRows(context)).toEqual([
+      { module_id: "removed-module", enabled: false },
+    ]);
+    expect(
+      await tableExists(context, "drizzle", moduleLedgerTable("removed-module"))
+    ).toBe(false);
+  });
+
+  it("refuses an installed module ledger before any history and leaves the ledger", async () => {
+    const context = await freshContext();
+    await runCore(context);
+    const table = moduleLedgerTable("ledger-only-module");
+    await context.db.$client.query(
+      `create table drizzle."${table}" ("id" integer primary key)`
+    );
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([emptyHistory("ledger-only-module")]),
+        compiledModuleIds: [],
+      })
+    ).rejects.toThrow("ledger-only-module");
+
+    expect(await tableExists(context, "drizzle", table)).toBe(true);
+    expect(await moduleRows(context)).toEqual([]);
+  });
+
+  it("does not register modules until seed is done, then inserts disabled rows idempotently", async () => {
+    const compiledModuleIds = ["alpha", "beta"];
+    const context = await freshContext(compiledModuleIds);
+    const histories = migrationPlan(compiledModuleIds.map(emptyHistory));
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories,
+      compiledModuleIds,
+    });
+    expect(await moduleRows(context)).toEqual([]);
+
+    await context.db.$client.query(
+      "insert into setup_step (step, state) values ('seed', 'done')"
+    );
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('alpha', true)"
+    );
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories,
+      compiledModuleIds,
+    });
+    expect(await moduleRows(context)).toEqual([
+      { module_id: "alpha", enabled: true },
+      { module_id: "beta", enabled: false },
+    ]);
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories,
+      compiledModuleIds,
+    });
+    expect(await moduleRows(context)).toEqual([
+      { module_id: "alpha", enabled: true },
+      { module_id: "beta", enabled: false },
+    ]);
+  });
+
+  it("starts a fresh database with no drizzle schema and creates an empty module ledger", async () => {
+    const context = await freshContext(["empty-module"]);
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([emptyHistory("empty-module")]),
+      compiledModuleIds: ["empty-module"],
+    });
+
+    expect(await tableExists(context, "drizzle", "__drizzle_migrations")).toBe(
+      true
+    );
+    expect(
+      await tableExists(context, "drizzle", moduleLedgerTable("empty-module"))
+    ).toBe(true);
+  });
+});
+
+function sourceFiles(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+
+    if (entry.isDirectory()) return sourceFiles(path);
+
+    return entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")
+      ? [path]
+      : [];
+  });
+}
+
+describe("tenant_module write boundary", () => {
+  it("keeps runtime references allowlisted for the migrator, seed, enable procedure and readers", () => {
+    const roots = [
+      join(WORKSPACE_ROOT, "packages"),
+      join(WORKSPACE_ROOT, "apps"),
+    ];
+
+    const allowlisted = new Set([
+      "packages/core/src/schema.ts",
+      "packages/core/src/services/migrator/index.ts",
+    ]);
+
+    const offenders = roots.flatMap(sourceFiles).flatMap((path) => {
+      const relativePath = relative(WORKSPACE_ROOT, path);
+
+      if (
+        !path.includes("/src/") ||
+        path.endsWith(".test.ts") ||
+        !readFileSync(path, "utf8").includes("tenant_module") ||
+        allowlisted.has(relativePath)
+      ) {
+        return [];
+      }
+
+      return [relativePath];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});

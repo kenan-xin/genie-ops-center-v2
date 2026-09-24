@@ -22,7 +22,8 @@ describe("the core package root", () => {
         DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
         PUBLIC_URL: "https://genie.example.com",
       },
-      silentLogger()
+      silentLogger(),
+      []
     );
 
     try {

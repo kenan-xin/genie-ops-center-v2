@@ -145,7 +145,11 @@ function buildContext(
   const contextId = randomUUID();
 
   return {
-    tenant: createTenantContext(source, logger),
+    tenant: createTenantContext(
+      source,
+      logger,
+      modules.map((module) => module.identity.id)
+    ),
     startedAt: Date.now(),
     contextId,
     viewerProviders: buildViewerProviders(logger),
@@ -229,6 +233,7 @@ export async function runBootstrap(
           env: started.tenant.env,
           pool: started.tenant.db.$client,
           histories: migrationPlan(modules.map(moduleHistory)),
+          compiledModuleIds: modules.map((module) => module.identity.id),
           log: migrationLog(activeLogger),
         }));
 

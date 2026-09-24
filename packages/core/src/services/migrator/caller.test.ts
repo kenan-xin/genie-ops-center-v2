@@ -106,6 +106,7 @@ describe("runMigrations, watched through a recording client", () => {
       env: ENV,
       pool: recorder.pool,
       histories: [CORE_HISTORY],
+      compiledModuleIds: [],
       apply: (_db, history) => {
         applied.push(history.name);
 
@@ -133,6 +134,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         apply: () => {
           applied += 1;
 
@@ -158,6 +160,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         apply: () => Promise.resolve(),
       })
     ).rejects.toMatchObject({ code: "migration-lock-timeout" });
@@ -177,6 +180,7 @@ describe("runMigrations, watched through a recording client", () => {
       env: ENV,
       pool: recorder.pool,
       histories: [CORE_HISTORY],
+      compiledModuleIds: [],
       apply: () => Promise.reject(cause),
     }).then(
       () => undefined,
@@ -198,6 +202,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         apply: () => Promise.resolve(),
       })
     ).rejects.toMatchObject({ code: "migration-failed" });
@@ -219,6 +224,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         apply: () => Promise.resolve(),
       })
     ).rejects.toBe(setting);
@@ -241,6 +247,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         apply: () => {
           applied += 1;
 
@@ -264,6 +271,7 @@ describe("runMigrations, watched through a recording client", () => {
       env: ENV,
       pool: recorder.pool,
       histories: [CORE_HISTORY],
+      compiledModuleIds: [],
       log: brokenLogger,
       apply: () => Promise.reject(cause),
     }).then(
@@ -294,6 +302,7 @@ describe("runMigrations, watched through a recording client", () => {
         env: ENV,
         pool: recorder.pool,
         histories: [CORE_HISTORY],
+        compiledModuleIds: [],
         log: (event) => {
           events.push(event);
         },

@@ -32,7 +32,7 @@ describe("tenant context database clients", () => {
       },
     });
 
-    const context = createTenantContext(source, logger);
+    const context = createTenantContext(source, logger, []);
     const terminator = new Client({ connectionString: postgres.url });
 
     cleanups.push(async () => {
@@ -97,7 +97,8 @@ describe("tenant context database clients", () => {
         DATABASE_URL: postgres.url,
         PUBLIC_URL: "https://test.example.invalid",
       },
-      silentLogger()
+      silentLogger(),
+      []
     );
 
     cleanups.push(async () => {
@@ -122,7 +123,8 @@ describe("tenant context database clients", () => {
         DATABASE_URL: postgres.url,
         PUBLIC_URL: "https://test.example.invalid",
       },
-      silentLogger()
+      silentLogger(),
+      []
     );
 
     const terminator = new Client({ connectionString: postgres.url });

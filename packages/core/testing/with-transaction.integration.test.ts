@@ -38,7 +38,8 @@ async function startTransactionFixture(
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
     },
-    logger
+    logger,
+    []
   );
 
   const observer = new Client({ connectionString: postgres.url });
