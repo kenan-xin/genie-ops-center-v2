@@ -27,6 +27,27 @@ function databaseTripwire(): TenantContext["db"] {
   });
 }
 
+/**
+ * The three readers, at the same tripwire as the database: a module procedure must refuse an
+ * unpermitted caller before it reads any of them (R-5, DEC-34). A read here fails the test.
+ */
+function readersTripwire(): Pick<
+  TenantContext,
+  "settings" | "branding" | "entitlements"
+> {
+  return {
+    settings: {
+      get: () => Promise.reject(new Error("the router read a reader")),
+    },
+    branding: {
+      get: () => Promise.reject(new Error("the router read a reader")),
+    },
+    entitlements: {
+      isEnabled: () => Promise.reject(new Error("the router read a reader")),
+    },
+  };
+}
+
 function contextWith(
   read: Parameters<typeof createRequestPrincipal>[1]
 ): ModuleRequestContext {
@@ -44,6 +65,7 @@ function contextWith(
         logLevel: "info",
         port: 3000,
       },
+      ...readersTripwire(),
     },
     caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
   };

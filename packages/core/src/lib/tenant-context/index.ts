@@ -7,7 +7,17 @@ import {
   type EnvironmentSource,
   validateEnvironment,
 } from "../environment/index.ts";
+import { createTenantReaders, type TenantReaders } from "./readers.ts";
 import { registerContextLogger } from "./with-transaction.ts";
+
+export type {
+  BrandingReader,
+  EntitlementReader,
+  SettingsReader,
+  TenantBranding,
+  TenantReaders,
+  TenantSettings,
+} from "./readers.ts";
 
 export type FileStorageAdapter = "postgres" | "s3" | "gcs" | "azure";
 
@@ -28,15 +38,21 @@ export type DeploymentEnvironment = {
 };
 
 /**
- * The one object every procedure, job and page reads through (DEC-34). In Section 0 it holds
- * fixed members only. Section 1 adds settings, branding and entitlements as readers that expire
- * after ten seconds (DEC-46, R-18); adding a member here is how that arrives.
+ * The one object every procedure, job and page reads through (DEC-34). It holds its two fixed
+ * members and the three cached tenant readers of R-5, each of which expires ten seconds after it
+ * is filled (DEC-46). A later service ticket adds its own flat readonly member here.
  */
 export type TenantContext = {
   readonly db: NodePgDatabase<Record<string, never>> & {
     readonly $client: Pool;
   };
   readonly env: DeploymentEnvironment;
+  /** The settings reader of R-5. */
+  readonly settings: TenantReaders["settings"];
+  /** The branding reader of R-5. */
+  readonly branding: TenantReaders["branding"];
+  /** The module entitlement reader of R-5, a gate separate from `can()` (DEC-39). */
+  readonly entitlements: TenantReaders["entitlements"];
 };
 
 /**
@@ -55,15 +71,13 @@ export type TenantContext = {
  * omit it and swallow the error by accident.
  *
  * `compiledModuleIds` is required for the same reason: it is the one caller-supplied list of the
- * modules the image compiled, and the entitlement reader of a later section reads it here so the
- * migrator run and the reader cannot disagree (D-12). A caller that has no modules passes `[]`.
- * The factory does not read the list yet, so the parameter is named for the rule it holds rather
- * than to be consumed here; 1ia.15 closes over it when it builds the entitlement reader.
+ * modules the image compiled, and the entitlement reader closes over it here so the migrator run
+ * and the reader cannot disagree (D-12). A caller that has no modules passes `[]`.
  */
 export function createTenantContext(
   source: EnvironmentSource,
   logger: Pick<RedactingLogger, "error">,
-  _compiledModuleIds: readonly string[]
+  compiledModuleIds: readonly string[]
 ): TenantContext {
   const env = validateEnvironment(source);
 
@@ -84,11 +98,14 @@ export function createTenantContext(
     logger.error({ err: error }, "idle database client error");
   });
 
-  const context: TenantContext = { db: drizzle(pool), env };
+  const db = drizzle(pool);
+  const readers = createTenantReaders({ pool, compiledModuleIds });
 
-  // The context keeps its two fixed members (R-18): the logger the pool's error listener already
-  // uses is recorded off the object, where `withTransaction` reads it for its after-commit
-  // diagnostics. A context this factory did not build has no entry.
+  const context: TenantContext = { db, env, ...readers };
+
+  // The logger the pool's error listener already uses is recorded off the object, where
+  // `withTransaction` reads it for its after-commit diagnostics. A context this factory did not
+  // build has no entry. Nothing here reads a reader, so the factory opens no connection (R-19).
   registerContextLogger(context, logger);
 
   return context;

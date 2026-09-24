@@ -18,6 +18,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "not-found": "That item does not exist, or you may not see it.",
   "forbidden": "You may not do that.",
   "invalid-input": "The request was not valid.",
+  "module-disabled": "That module is switched off for this deployment.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */
