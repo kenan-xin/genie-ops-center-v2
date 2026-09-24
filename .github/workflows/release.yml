@@ -128,7 +128,9 @@ jobs:
       # runner's local image store, so the publish job cannot rebuild them; it
       # loads this tarball and the promotion's config-digest check proves the
       # published tag carries the identity smoke saw.
-      - run: docker save "$(cat candidate/identity)" | zstd -T0 -o candidate/image.tar.zst
+      - run: |
+          set -euo pipefail
+          docker save "$(cat candidate/identity)" | zstd -T0 -o candidate/image.tar.zst
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: candidate-${{ matrix.slug }}
@@ -164,7 +166,9 @@ jobs:
         with:
           name: candidate-${{ matrix.slug }}
           path: candidate
-      - run: zstd -dc candidate/image.tar.zst | docker load
+      - run: |
+          set -euo pipefail
+          zstd -dc candidate/image.tar.zst | docker load
       # The packages:write token is written to ~/.docker/config.json only here,
       # after the image the verify job built and smoked is loaded.
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
@@ -211,7 +215,9 @@ jobs:
       # travel as a job output, not only in the artifact.
       - id: identity
         run: echo "identity=$(cat candidate/identity)" >> "$GITHUB_OUTPUT"
-      - run: docker save "$(cat candidate/identity)" | zstd -T0 -o candidate/image.tar.zst
+      - run: |
+          set -euo pipefail
+          docker save "$(cat candidate/identity)" | zstd -T0 -o candidate/image.tar.zst
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: candidate-development
@@ -237,7 +243,9 @@ jobs:
         with:
           name: candidate-development
           path: candidate
-      - run: zstd -dc candidate/image.tar.zst | docker load
+      - run: |
+          set -euo pipefail
+          zstd -dc candidate/image.tar.zst | docker load
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
