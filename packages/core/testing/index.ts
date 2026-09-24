@@ -18,6 +18,8 @@ const POSTGRES_IMAGE = "postgres:18-alpine";
 
 export { enableModules } from "./enable-modules.ts";
 
+export { markSetupDone } from "./mark-setup-done.ts";
+
 export type DisposableDeployment = {
   readonly context: TenantContext;
   /** Closes the pool and removes the container. Always call it, in a `finally` or an `afterAll`. */

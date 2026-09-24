@@ -116,4 +116,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "compiled disabled module refusal a compiled disabled module hides navigation refuses tRPC and routes and keeps its tables",
     ],
   },
+  {
+    file: "testing/setup-gate.integration.test.ts",
+    cases: [
+      "the setup gate reports degraded health with the standard security headers before setup",
+      "the setup gate serves static assets before setup",
+      "the setup gate refuses tRPC calls before setup with standard security headers",
+      "the setup gate renders the not-set-up page for a module document before setup",
+      "the setup gate refuses authentication routes before setup",
+      "the setup gate refuses inbound module endpoints before setup",
+      "the setup gate renders the standalone not-set-up page on all three document routes",
+      "the setup gate omits the not-set-up page body from RSC and prefetch requests",
+      "the setup gate answers a generic 503 when reading the setup gate fails",
+      "the setup gate opens after both known steps are done and serves the same routes normally",
+      "health database availability checks the database on each call and answers 503 after the database stops",
+    ],
+  },
 ];

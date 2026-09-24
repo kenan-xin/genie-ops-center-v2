@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { startDisposableDeployment } from "@genie/core/testing";
+import { markSetupDone, startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -64,6 +64,8 @@ describe("the release candidate smoke", () => {
   beforeAll(async () => {
     await requireDocker();
     database = await startDisposableDeployment([]);
+    // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+    await markSetupDone(database.context);
   }, 180000);
 
   afterAll(async () => {

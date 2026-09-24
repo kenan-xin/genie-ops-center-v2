@@ -9,13 +9,8 @@ const FIXTURE_MODULES = [
   "permitted-viewer",
 ] as const;
 
-/**
- * Stand-in for the `seed` step (R-20), which `genie-ops setup` brings in genie-ops-center-v2-1ia.2.
- * The fixture stack runs no setup yet, so without these rows R-8 refuses each fixture module's
- * viewer document before its provider runs. It runs after health answers 200, which reads no
- * entitlement, so no cache is filled first.
- */
-async function seedEnabledModules(): Promise<void> {
+/** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
+async function seedTestSetup(): Promise<void> {
   const rows = FIXTURE_MODULES.map((id) => `('${id}', true)`).join(", ");
 
   await composeWithEnv(
@@ -29,7 +24,7 @@ async function seedEnabledModules(): Promise<void> {
       "-d",
       "genie",
       "-c",
-      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true`,
+      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
     ],
     {}
   );
@@ -57,7 +52,7 @@ export default async function fixtureGlobalSetup(): Promise<void> {
       .catch(() => false);
 
     if (ready) {
-      await seedEnabledModules();
+      await seedTestSetup();
 
       return;
     }

@@ -1,4 +1,4 @@
-import { startDisposableDeployment } from "@genie/core/testing";
+import { markSetupDone, startDisposableDeployment } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -10,6 +10,8 @@ let server: Awaited<ReturnType<typeof startBuiltApp>>;
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
+  // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+  await markSetupDone(deployment.context);
   await deployment.context.db.$client.query(
     "insert into tenant_module (module_id, enabled) values ('placeholder', false) on conflict (module_id) do update set enabled = false"
   );

@@ -19,6 +19,8 @@ export default defineConfig({
   testIgnore: [
     "**/e2e/fixture/**",
     "**/e2e/dev/**",
+    "**/e2e/setup-gate/**",
+    "**/setup-gate.spec.ts",
     "**/*__boundary__*",
     "**/*__wiring__*",
     "**/*__antislop__*",

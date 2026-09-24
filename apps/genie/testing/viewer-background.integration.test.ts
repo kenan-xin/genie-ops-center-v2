@@ -1,4 +1,8 @@
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+import {
+  enableModules,
+  markSetupDone,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -95,6 +99,8 @@ async function providerInvocationsFor(
 
 beforeAll(async () => {
   database = await startDisposableDeployment([]);
+  // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+  await markSetupDone(database.context);
 
   // Stand-in for the `seed` step (R-20), which genie-ops setup brings in 1ia.2. Without the row,
   // R-8 refuses the disabled placeholder's viewer document and never calls its provider.

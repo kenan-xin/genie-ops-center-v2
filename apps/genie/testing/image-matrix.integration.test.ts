@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+import {
+  enableModules,
+  markSetupDone,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -68,9 +72,10 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
 
       const database = await startDisposableDeployment([]);
+      // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+      await markSetupDone(database.context);
 
-      // Stand-in for the `seed` step (R-20), which genie-ops setup brings in 1ia.2, so R-8 does
-      // not read this image's placeholder as disabled.
+      // R-8 also needs the placeholder module enabled for the positive route proof.
       await enableModules(database.context, ["placeholder"]);
 
       try {
@@ -136,6 +141,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       await sharedEmptyImage();
 
       const database = await startDisposableDeployment([]);
+      // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+      await markSetupDone(database.context);
 
       try {
         const image = await startImage(
@@ -220,6 +227,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
         [EMPTY_IMAGE, 3423],
       ] as const) {
         const database = await startDisposableDeployment([]);
+        // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+        await markSetupDone(database.context);
 
         try {
           const image = await startImage(
@@ -256,6 +265,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
 
       const database = await startDisposableDeployment([]);
+      // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+      await markSetupDone(database.context);
 
       try {
         const image = await startImage(

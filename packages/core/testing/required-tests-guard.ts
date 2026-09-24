@@ -170,4 +170,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "genie-ops retire --confirm passes the age and hold checks after 90 days",
     ],
   },
+  {
+    file: "testing/setup-step-latch.integration.test.ts",
+    reason:
+      "D-2, the setup lifecycle latch guard, requires a completed step to survive setup rerun",
+    cases: [
+      "the setup gate latch keeps every completed setup step done after a setup rerun",
+    ],
+  },
 ];

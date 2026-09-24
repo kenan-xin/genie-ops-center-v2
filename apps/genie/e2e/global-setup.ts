@@ -21,18 +21,8 @@ const READY_URL = `http://127.0.0.1:${READY_PORT}/api/health`;
 
 export const COMPOSE = ["compose", "-p", "genie-s005-e2e", "-f", COMPOSE_FILE];
 
-/**
- * Stand-in for the `seed` step (R-20), which `genie-ops setup` brings in genie-ops-center-v2-1ia.2.
- * The compose stack runs no setup yet, so without this row R-8 reads the placeholder as disabled
- * and hides its navigation and refuses its routes. It runs after health answers 200: `/api/health`
- * is not a declared module route and reads no entitlement, so no 10-second cache is filled first.
- *
- * `GENIE_MODULE_UNDER_TEST` names a generated module the image also carries
- * (`tools/generators/scripts/prove-generated-module.ts`). Without a row for it too, R-8 reads it as
- * disabled and the generated-module spec's `module-disabled` refusal masks the `can()` denial it
- * means to prove, so this seeds that module the same way.
- */
-async function seedEnabledModules(): Promise<void> {
+/** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
+async function seedTestSetup(): Promise<void> {
   const moduleIds = ["placeholder", process.env.GENIE_MODULE_UNDER_TEST].filter(
     (id) => id !== undefined
   );
@@ -50,7 +40,7 @@ async function seedEnabledModules(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true`,
+    `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
   ]);
 }
 
@@ -83,7 +73,9 @@ export default async function globalSetup(): Promise<void> {
       .catch(() => false);
 
     if (ready) {
-      await seedEnabledModules();
+      if (process.env.GENIE_E2E_SETUP_GATE !== "1") {
+        await seedTestSetup();
+      }
 
       return;
     }

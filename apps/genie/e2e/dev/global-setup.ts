@@ -34,6 +34,23 @@ export const DEV_PORT = Number(process.env.GENIE_DEV_PORT ?? "3401");
 /** Where the server's process id is left, so teardown can stop it. */
 export const PID_FILE = resolve(import.meta.dirname, ".dev-server.pid");
 
+/** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
+async function seedTestSetup(): Promise<void> {
+  await run("docker", [
+    ...COMPOSE,
+    "exec",
+    "-T",
+    "database",
+    "psql",
+    "-U",
+    "genie",
+    "-d",
+    "genie",
+    "-c",
+    "insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
+  ]);
+}
+
 async function isReady(url: string): Promise<boolean> {
   return fetch(url)
     .then((response) => response.status === 200)
@@ -164,6 +181,8 @@ export default async function globalSetup(): Promise<void> {
 
     throw new Error(`The development server never became ready.\n${output}`);
   }
+
+  await seedTestSetup();
 }
 
 /**

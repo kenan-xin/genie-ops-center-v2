@@ -1,5 +1,9 @@
 import { CORE_ERROR_MESSAGES, CORE_HISTORY } from "@genie/core";
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+import {
+  enableModules,
+  markSetupDone,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import {
   type PlaceholderRouter,
   placeholderModule,
@@ -92,6 +96,8 @@ async function readFailure(
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
+  // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
+  await markSetupDone(deployment.context);
 
   // Stand-in for the `seed` step (R-20), which genie-ops setup brings in 1ia.2. Without the row,
   // R-8 reads the placeholder as disabled and refuses `placeholder.read`.

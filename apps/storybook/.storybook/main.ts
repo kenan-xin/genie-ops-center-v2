@@ -7,6 +7,8 @@ import type { StorybookConfig } from "@storybook/nextjs-vite";
 
 const workspaceRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
+const FROM_HOST = "../../..";
+
 // Selection is resolved here, before story collection, so an excluded module is
 // never globbed and then hidden. MODULE_INCLUDE unset means every available
 // module. An empty string means none.
@@ -22,7 +24,10 @@ const shared = sharedStorybookConfig({
 
 const config: StorybookConfig = {
   framework: shared.framework,
-  stories: [...shared.stories],
+  stories: [
+    ...shared.stories,
+    `${FROM_HOST}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)`,
+  ],
   addons: [...shared.addons],
 };
 
