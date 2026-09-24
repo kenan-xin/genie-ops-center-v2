@@ -78,6 +78,7 @@ export {
   CORE_HISTORY,
   MIGRATION_LOCK_KEY,
   type MigrationHistory,
+  type MigrationLog,
   type MigrationRun,
   type ModuleHistorySource,
   migrationPlan,

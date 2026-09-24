@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   type EnvironmentSource,
+  type MigrationLog,
   type RedactingLogger,
   type TenantContext,
   createLogger,
@@ -169,6 +170,25 @@ function buildContext(
 }
 
 /**
+ * Adapts the migrator's own event stream to the process logger. The event name is the message,
+ * so an operator greps the container log with the same words the run uses, and a cleanup failure
+ * keeps the cause the run swallowed, which is the only place that cause can reach anyone (R-45).
+ */
+function migrationLog(logger: RedactingLogger): MigrationLog {
+  return (event) => {
+    const fields = { history: event.history, err: event.error };
+
+    if (event.event === "migration-cleanup-failed") {
+      logger.error(fields, event.event);
+
+      return;
+    }
+
+    logger.info(fields, event.event);
+  };
+}
+
+/**
  * Validate, connect, migrate, publish. Order is the requirement: validation
  * precedes every database connection, and migrations precede publication, so no
  * request-bound path can reach a context before the schema is ready.
@@ -209,6 +229,7 @@ export async function runBootstrap(
           env: started.tenant.env,
           pool: started.tenant.db.$client,
           histories: migrationPlan(modules.map(moduleHistory)),
+          log: migrationLog(activeLogger),
         }));
 
     await migrate(ready);
@@ -225,6 +246,12 @@ export async function runBootstrap(
   } catch (caught) {
     failed = true;
     failure = caught;
+
+    // Validation runs before the logger exists, so a rejected environment would otherwise exit
+    // with nothing in the log. A minimal logger carries the validator's own message, which names
+    // the invalid variables and never a value (R-45), to the container log. An injected logger
+    // is left in place, so the failure path still writes through the process's own logger.
+    logger ??= createLogger({ logLevel: "info" });
   } finally {
     // The failure path runs from `finally`, not the catch body, so no secondary
     // failure in diagnostics or cleanup can skip the exit below. `exit` is the

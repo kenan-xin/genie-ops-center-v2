@@ -282,7 +282,8 @@ type MigrationDouble = {
 };
 
 const sqlOf = (query: string | { text: string }) =>
-  ("text" in query ? query.text : query).replace(/\s+/g, " ").trim();
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- pg's query argument is a string or a config object, and this double must read either
+  (typeof query === "string" ? query : query.text).replace(/\s+/g, " ").trim();
 
 /**
  * A session client that answers the migrator's own control statements and
