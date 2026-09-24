@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -77,6 +77,14 @@ function coreTsconfigInclude(): readonly string[] {
   return config.include;
 }
 
+function coreSourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+
+    return entry.isDirectory() ? coreSourceFiles(path) : [path];
+  });
+}
+
 // One `let` per statement is the rule the formatter applies, so the violation is stable.
 const LINT_VIOLATION = `export const value: string = "x" as string as string;\n`;
 
@@ -115,5 +123,24 @@ describe("the core typecheck scope", () => {
 
     expect(result.failed).toBe(true);
     expect(result.output).toContain("offender.ts");
+  });
+});
+
+describe("the core integration UI boundary", () => {
+  it("ships no integration page component", () => {
+    const sourceRoot = join(WORKSPACE_ROOT, "packages/core/src");
+
+    const integrationComponents = coreSourceFiles(sourceRoot).filter((path) => {
+      if (!/\.(?:tsx|jsx)$/i.test(path)) return false;
+
+      return (
+        /integration/i.test(relative(sourceRoot, path)) ||
+        /integration/i.test(readFileSync(path, "utf8"))
+      );
+    });
+
+    expect(
+      integrationComponents.map((path) => relative(sourceRoot, path))
+    ).toEqual([]);
   });
 });

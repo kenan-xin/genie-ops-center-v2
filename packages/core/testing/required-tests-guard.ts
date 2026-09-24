@@ -73,6 +73,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/integrations.integration.test.ts",
+    reason:
+      "Spec 1 AC-9 and R-40-R-42 require call-time secret resolution and the no-credential-storage proof",
+    cases: [
+      "integration resolver against a real database returns non-secret configuration and the live secret at call time without storing the credential",
+      "integration resolver against a real database names an absent secret reference without exposing another secret in the error or output",
+    ],
+  },
+  {
     file: "testing/tenant-context.integration.test.ts",
     reason:
       "R-26a's production cross-check, held by genie-ops-center-v2-wwc, requires the containment proof to run",
