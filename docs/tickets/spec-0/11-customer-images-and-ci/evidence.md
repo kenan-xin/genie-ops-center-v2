@@ -148,7 +148,7 @@ unset/empty/R-55 handling, `--no-publish` ordering, and that no workflow contain
 | Finding | Severity | Disposition |
 | --- | --- | --- |
 | `release.yml` passed an unsupported `--publish`, so both release paths exited at argument parsing | blocker | Fixed `62c73e1`; `--publish` is accepted and driven by `cli.test.ts` |
-| `docker tag <identity>` then `docker push <ref>` is not atomic | major | Residual, filed `genie-ops-center-v2-3aa` (P1, blocks the first real registry release, not the stub-boundary acceptance); recorded in `design.md` and a code comment |
+| `docker tag <identity>` then `docker push <ref>` is not atomic | major | Fixed (this record): the push now carries a run-unique temporary ref, the stable tag is created registry-side from the pushed manifest digest (`docker buildx imagetools create`), and the published tag's config digest must equal the smoke-tested identity. Pinned by the publish-by-digest cases in `pipeline.test.ts` and `cli.test.ts`. Closes `genie-ops-center-v2-3aa` |
 | `imageFilePaths` supplied empty content, so content rules never ran | major | Fixed `6cbe7c9`; `collectImageFilesystem` reads bounded real bytes and fails closed on an oversized file |
 | `ci:develop` based affected on `origin/develop`, which is HEAD on a develop push | major | Fixed `39b3529`; bases on `github.event.before` with a zero-SHA fallback |
 | the matrix inspected `node:26-alpine` before any build | major | Fixed `6cbe7c9`; declared args come from the Dockerfile, inherited args from history |
@@ -185,14 +185,19 @@ fixture-visibility test) and docs, so it cannot affect the image or integration 
 
 | Bead | Finding |
 | --- | --- |
-| `genie-ops-center-v2-3aa` | registry tag can be retagged between `docker tag` and `docker push` (P1, first real release) |
+| `genie-ops-center-v2-3aa` | registry tag could be retagged between `docker tag` and `docker push` (P1, first real release) — closed by publishing the stable tag from the pushed manifest digest and verifying it |
 | `genie-ops-center-v2-453` | the S0-05 image-freshness guard fails in a combined affected invocation (worked around by sequencing `ci:pr`) |
 | `genie-ops-center-v2-w7u` | config lint raced config test on the `__antislop__` probe; develop's `7lj` fixture-ignore work appears to fix it, and the S0-11 image context now ignores the prefixes too |
 
 ## Limits
 
 - Real GHCR authentication and push remain separately authorized. Nothing was pushed.
-- The residual tag/push race (`3aa`) is the one publish hardening not closed here.
+- The tag/push race (`3aa`) is closed: publish pushes the smoke-tested identity under a
+  run-unique temporary ref and creates the stable tag from the pushed manifest digest, then
+  verifies the published tag's config digest. The temporary ref is left in the registry as an
+  extra, run-unique tag; the release attempts no registry delete. `docker buildx imagetools`
+  talks to the registry directly, so `release.yml` needs no `docker/setup-buildx-action` —
+  Buildx ships on `ubuntu-latest` and no builder instance is created.
 - The filesystem scan reads real bytes with a 32 MiB per-file cap and fails closed above it;
   it does not decode compressed or exotic encodings and cannot see a run-time-assembled
   secret. Generic `password:`-shaped content rules were removed because bundled third-party

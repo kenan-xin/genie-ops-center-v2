@@ -18,6 +18,14 @@ import {
 
 const IDENTITY = `sha256:${"a".repeat(64)}`;
 
+/**
+ * The manifest digest a real `docker push` reports for the ref it uploaded.
+ * A push always names the manifest it wrote, so a runner that returns nothing
+ * for `push` cannot exercise the publish-by-digest contract; this is the value
+ * the generic runner reports.
+ */
+const PUSHED_MANIFEST = `sha256:${"c".repeat(64)}`;
+
 const temporary: string[] = [];
 
 function repoWithModules(contents: string | undefined): string {
@@ -100,6 +108,41 @@ function recordingRunner(
       if (path !== undefined) {
         writeFileSync(path, `${identity ?? ""}\n`, "utf8");
       }
+    }
+
+    // The publish phase talks to a registry, so the generic runner answers it
+    // the way a real daemon and registry do: a push reports the manifest digest
+    // it uploaded, and `imagetools inspect` returns a manifest whose config
+    // digest is the image id the build wrote. Without this a real publish path
+    // could not run at all, which would make these cases assert nothing.
+    if (step === "publish" && status === 0 && args[0] === "push") {
+      return {
+        status,
+        stdout: `latest: digest: ${PUSHED_MANIFEST} size: 528\n`,
+        stderr: "",
+      };
+    }
+
+    if (
+      command === "docker" &&
+      args[0] === "buildx" &&
+      args[2] === "inspect" &&
+      status === 0
+    ) {
+      return {
+        status,
+        stdout: JSON.stringify({
+          schemaVersion: 2,
+          mediaType: "application/vnd.oci.image.manifest.v1+json",
+          config: {
+            mediaType: "application/vnd.oci.image.config.v1+json",
+            digest: identity ?? IDENTITY,
+            size: 768,
+          },
+          layers: [],
+        }),
+        stderr: "",
+      };
     }
 
     return { status, stdout: "", stderr: status === 0 ? "" : "failed" };

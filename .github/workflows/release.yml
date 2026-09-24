@@ -9,8 +9,13 @@ name: release
 #
 # Every publish goes through `scripts/build-customer-image.sh` (or the
 # development wrapper), which resolves the built image's immutable digest,
-# smoke-checks that digest, and only then pushes that exact identity. There is no
-# path here that pushes an image smoke did not verify.
+# smoke-checks that digest, then pushes it under a run-unique temporary ref and
+# creates the stable tag from the pushed manifest digest with
+# `docker buildx imagetools create`, verifying the published tag's config digest
+# before success. There is no path here that publishes an image smoke did not
+# verify. `docker buildx imagetools` talks to the registry directly, so no
+# `docker/setup-buildx-action` is needed: Buildx ships on `ubuntu-latest` and
+# these commands create no builder instance.
 on:
   push:
     tags:

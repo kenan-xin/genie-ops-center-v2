@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,6 +62,47 @@ export type ReleaseOutcome = {
 
 /** The digest shape `docker build --iidfile` writes for a real image. */
 const IMMUTABLE_IDENTITY = /^sha256:[0-9a-f]{64}$/;
+
+/**
+ * The manifest digest `docker push` reports for the ref it uploaded. The final
+ * line of a push reads `<ref>: digest: sha256:<64 hex> size: <n>`; the manifest
+ * digest is the registry-side name for the exact bytes this run pushed, which
+ * is what the stable tag is then created from.
+ */
+const PUSHED_MANIFEST_DIGEST = /digest:\s*(sha256:[0-9a-f]{64})/;
+
+/** The manifest digest a push reported, or `undefined` when it reported none. */
+function parsePushedManifestDigest(stdout: string): string | undefined {
+  return PUSHED_MANIFEST_DIGEST.exec(stdout)?.[1];
+}
+
+/**
+ * The config digest a raw manifest names — the image id `docker build` writes
+ * to its iidfile. The published tag is created with `--prefer-index=false`, so
+ * a single-platform candidate inspects as one manifest whose `config.digest` is
+ * the smoke-tested identity. An index carries no config, so this returns
+ * `undefined` and the caller fails closed rather than trusting a shape it
+ * cannot verify.
+ */
+function parseConfigDigest(rawManifest: string): string | undefined {
+  let manifest: { config?: { digest?: string } };
+
+  try {
+    // SAFETY: the bytes are the raw manifest `docker buildx imagetools inspect
+    // --raw` printed for the tag this run just created. The only field read is
+    // `config.digest`, and it is checked against the immutable-digest shape
+    // before use, so a manifest of any other shape fails closed.
+    manifest = JSON.parse(rawManifest) as { config?: { digest?: string } };
+  } catch {
+    return undefined;
+  }
+
+  const digest = manifest.config?.digest;
+
+  return digest !== undefined && IMMUTABLE_IDENTITY.test(digest)
+    ? digest
+    : undefined;
+}
 
 /**
  * How many trailing lines of a failed gate's captured output the release log
@@ -336,27 +378,36 @@ export function runRelease(
     return { ok: true, identity, publishedRef };
   }
 
-  // The exact identity is tagged and pushed in the same step, so the pushed ref
-  // is bound to the candidate digest rather than to whatever the tag held before
-  // this run resolved it.
+  // Publish by digest, not by tag. `docker tag` then `docker push` is two
+  // commands, so a second process with Docker access can retag the published ref
+  // between them and the push would carry bytes the smoke never saw. Instead the
+  // smoke-tested identity is tagged with a run-unique temporary ref and pushed
+  // under it; the stable tag is then created registry-side from the manifest
+  // digest that push reported, and inspected to prove its config digest is the
+  // smoke-tested identity. The stable ref is never tagged or pushed directly, so
+  // no local writer can move the bytes under it.
   //
-  // Residual, tracked as genie-ops-center-v2-3aa: `docker tag` and `docker push`
-  // are two commands, so a second process with Docker access can retag the ref
-  // between them. Closing that needs registry-side promotion by digest, which
-  // needs registry access this ticket does not have; real publication is
-  // separately authorized. The supported bound is one local writer per registry.
-  const tagged = runner("docker", ["tag", identity, publishedRef], {
+  // The temporary ref is left in the registry as an extra, run-unique tag. No
+  // registry delete follows: the release must not depend on a second,
+  // separately authorized registry mutation, and an untagged leftover costs
+  // nothing a cleanup job cannot reclaim.
+  const temporaryRef = `${request.registry}:genie-release-tmp-${tagComponent(
+    label,
+    "slug"
+  )}-${tagComponent(request.version, "version")}-${randomUUID()}`;
+
+  const tagged = runner("docker", ["tag", identity, temporaryRef], {
     cwd: request.repoRoot,
   });
 
   if (tagged.status !== 0) {
     return fail(
       "publish-candidate",
-      "Tagging the smoke-tested identity failed."
+      "Tagging the smoke-tested identity with a run-unique temporary ref failed."
     );
   }
 
-  const pushed = runner("docker", ["push", publishedRef], {
+  const pushed = runner("docker", ["push", temporaryRef], {
     cwd: request.repoRoot,
     env,
   });
@@ -364,7 +415,69 @@ export function runRelease(
   if (pushed.status !== 0) {
     return fail(
       "publish-candidate",
-      `The push of ${publishedRef} failed with exit ${pushed.status}.`
+      `The push of the temporary ref failed with exit ${pushed.status}. The published ref is not created from unverified bytes.`
+    );
+  }
+
+  const manifestDigest = parsePushedManifestDigest(pushed.stdout);
+
+  if (manifestDigest === undefined) {
+    return fail(
+      "publish-candidate",
+      `The push of ${temporaryRef} reported no manifest digest, so ${publishedRef} cannot be created by digest. This fails closed.`
+    );
+  }
+
+  // `--prefer-index=false` keeps a single-platform candidate a single manifest,
+  // so the published tag inspects as a manifest whose `config.digest` is the
+  // image id, not as an index that carries no config.
+  const created = runner(
+    "docker",
+    [
+      "buildx",
+      "imagetools",
+      "create",
+      "--tag",
+      publishedRef,
+      "--prefer-index=false",
+      `${request.registry}@${manifestDigest}`,
+    ],
+    { cwd: request.repoRoot, env }
+  );
+
+  if (created.status !== 0) {
+    return fail(
+      "publish-candidate",
+      `Creating ${publishedRef} from ${request.registry}@${manifestDigest} failed with exit ${created.status}.`
+    );
+  }
+
+  const inspected = runner(
+    "docker",
+    ["buildx", "imagetools", "inspect", "--raw", publishedRef],
+    { cwd: request.repoRoot, env }
+  );
+
+  if (inspected.status !== 0) {
+    return fail(
+      "publish-candidate",
+      `Inspecting the published ${publishedRef} failed with exit ${inspected.status}.`
+    );
+  }
+
+  const publishedConfigDigest = parseConfigDigest(inspected.stdout);
+
+  if (publishedConfigDigest === undefined) {
+    return fail(
+      "publish-candidate",
+      `The published ${publishedRef} reported no config digest, so its smoke-tested identity cannot be confirmed. This fails closed.`
+    );
+  }
+
+  if (publishedConfigDigest !== identity) {
+    return fail(
+      "publish-candidate",
+      `The published ${publishedRef} carries config digest ${publishedConfigDigest}, not the smoke-tested identity ${identity}. The promotion did not preserve the verified bytes.`
     );
   }
 

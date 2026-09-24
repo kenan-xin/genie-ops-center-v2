@@ -24,11 +24,15 @@ resolve customer → typecheck → validate → test → integration
 
 Decisions:
 
-- **Identity, not the tag.** `docker image inspect -f {{.Id}}` resolves the candidate's
-  digest after the build. The smoke boots the digest, and publish tags and pushes that
-  digest. A probe that does not return `sha256:<64 hex>` fails closed. This binds the push
-  to the candidate's bytes rather than to whatever the tag held before this run resolved it;
-  it does not make the two `docker` commands atomic, and that residual is stated below.
+- **Identity, not the tag.** The build writes the candidate's digest to its `--iidfile`, and a
+  value that is not `sha256:<64 hex>` fails closed. The smoke boots that digest. Publish then
+  pushes that identity under a run-unique temporary ref, reads the manifest digest the push
+  reports, and creates the stable tag registry-side from that digest with
+  `docker buildx imagetools create --tag <publishedRef> <repo>@<manifest digest>`. The stable
+  ref is never tagged or pushed directly, so a second process with Docker access cannot retag
+  the bytes under it between two commands. The published tag is then inspected
+  (`docker buildx imagetools inspect --raw`) and must report the smoke-tested config digest
+  before the run succeeds.
 - **Every gate precedes the build.** A failed per-customer typecheck (R-52), a failed
   `validate` (README R-9, module-has-tests R-41), a failed unit run, or an integration run
   that skipped the isolation proof stops the pipeline before it builds, so no publish
@@ -40,10 +44,10 @@ Decisions:
   excluded set, and checks that every excluded module's route answers 404 and its tables and
   ledger are absent. The ordinary integration collection excludes it, because it needs a
   candidate; the wrapper is its only caller and a missing candidate fails closed.
-- **The publish boundary is replaceable.** `--publish-command "<argv>"` swaps the
-  `docker tag` + `docker push` pair for a safe local sink
-  (`apps/genie/tools/release/local-sink.ts`). The ordering unit tests and the wrapper
-  integration test drive that boundary; no GHCR authentication or push ran here.
+- **The publish boundary is replaceable.** `--publish-command "<argv>"` swaps the docker
+  publish (temporary-ref push, registry-side digest promotion, and verification) for a safe
+  local sink (`apps/genie/tools/release/local-sink.ts`). The ordering unit tests and the
+  wrapper integration test drive that boundary; no GHCR authentication or push ran here.
 - **Explicit selection only.** A customer release reads `customers/<slug>/deploy/modules.txt`
   and refuses to fall back to the default when the file is missing. The R-55 development
   fallback is a separate flag and a separate wrapper script, and it publishes under a
@@ -155,8 +159,11 @@ affected, alongside the existing shared-preset edge.
 - The image filesystem scan reads real file bytes with a 32 MiB per-file cap and fails closed
   above it. It detects verbatim, escaped and base64-carried content; it does not decode
   compressed assets or exotic encodings, and it cannot see a secret assembled at run time.
-- `docker tag` and `docker push` are two commands, so a second process with Docker access can
-  retag the published ref between them. Closing that needs registry-side promotion by digest,
-  which needs registry access this ticket does not have. Tracked as
-  `genie-ops-center-v2-3aa` and stated as a limit rather than hidden.
+- The publish pushes the smoke-tested identity under a run-unique temporary ref and creates
+  the stable tag from the pushed manifest digest (`docker buildx imagetools create`), then
+  verifies the published tag's config digest. The stable ref is never the target of a
+  `docker tag`/`docker push` pair, so a retag between commands cannot change the published
+  bytes; this closes the residual `genie-ops-center-v2-3aa`. The temporary ref is left in the
+  registry as an extra, run-unique tag: the release attempts no registry delete, so it depends
+  on no second, separately authorized mutation.
 - Real GHCR authentication and push remain separately authorized. Nothing here pushed.
