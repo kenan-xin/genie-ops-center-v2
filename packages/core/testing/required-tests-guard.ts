@@ -47,6 +47,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/migration-run-compiled-list.integration.test.ts",
+    reason: "R-27, R-79, D-13 (1ia.13)",
+    cases: [
+      "MigrationRun compiled-module guards refuses an installed tenant_module row before any history and deletes nothing",
+      "MigrationRun compiled-module guards refuses an installed module ledger before any history and leaves the ledger",
+      "MigrationRun compiled-module guards does not register modules until seed is done, then inserts disabled rows idempotently",
+      "MigrationRun compiled-module guards starts a fresh database with no drizzle schema and creates an empty module ledger",
+      "tenant_module write boundary keeps runtime references allowlisted for the migrator, seed, enable procedure and readers",
+    ],
+  },
+  {
     file: "testing/deployment-tables.integration.test.ts",
     reason:
       "Spec 1 AC-1's first half, R-1, R-1a, R-2 and R-3, requires the deployment-table shape proof to run",

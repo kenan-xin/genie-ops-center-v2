@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -190,6 +190,10 @@ describe("MigrationRun compiled-module guards", () => {
 });
 
 function sourceFiles(root: string): string[] {
+  // A customer root may not exist in this checkout; the scan treats an absent root as no files
+  // rather than failing, so the root can be listed before any customer app lands.
+  if (!existsSync(root)) return [];
+
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const path = join(root, entry.name);
 
@@ -206,6 +210,7 @@ describe("tenant_module write boundary", () => {
     const roots = [
       join(WORKSPACE_ROOT, "packages"),
       join(WORKSPACE_ROOT, "apps"),
+      join(WORKSPACE_ROOT, "customers"),
     ];
 
     const allowlisted = new Set([
@@ -213,13 +218,17 @@ describe("tenant_module write boundary", () => {
       "packages/core/src/services/migrator/index.ts",
     ]);
 
+    // Both the SQL name and the drizzle table object name count: a core file reaches the table
+    // through `db.select().from(tenantModule)`, which never spells `tenant_module`.
+    const writeReference = /tenant_module|\btenantModule\b/;
+
     const offenders = roots.flatMap(sourceFiles).flatMap((path) => {
       const relativePath = relative(WORKSPACE_ROOT, path);
 
       if (
         !path.includes("/src/") ||
         path.endsWith(".test.ts") ||
-        !readFileSync(path, "utf8").includes("tenant_module") ||
+        !writeReference.test(readFileSync(path, "utf8")) ||
         allowlisted.has(relativePath)
       ) {
         return [];
