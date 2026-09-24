@@ -116,6 +116,12 @@ export {
 export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
 
 export {
+  type IntegrationConfig,
+  type ResolvedIntegration,
+  resolveIntegration,
+} from "./services/integrations/index.ts";
+
+export {
   type LogBindings,
   type RedactingLogger,
   createLogger,
