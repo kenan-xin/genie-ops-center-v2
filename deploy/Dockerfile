@@ -59,6 +59,7 @@ COPY --from=builder /build/apps/genie/.next/standalone ./
 COPY --from=builder /build/apps/genie/.next/static /staging/static
 COPY --from=builder /build/apps/genie/public /staging/public
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY deploy/genie-ops.mjs /usr/local/bin/genie-ops
 
 RUN set -eu; \
     matches=$(find /app -maxdepth 4 -name server.js -not -path '*/node_modules/*'); \
@@ -72,6 +73,7 @@ RUN set -eu; \
     cp -r /staging/public "$root/public"; \
     rm -rf /staging; \
     chmod +x /usr/local/bin/entrypoint.sh; \
+    chmod +x /usr/local/bin/genie-ops; \
     chown -R node:node "$root"
 
 # The runtime runs as the base image's built-in `node` user, never root. The

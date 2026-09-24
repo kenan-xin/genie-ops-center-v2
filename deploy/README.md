@@ -56,8 +56,14 @@ The image carries one binary and dispatches on its first argument (R-35):
 | Argument | Behavior |
 | --- | --- |
 | `app` (default) | Runs the standalone Next server. |
-| `worker`, `genie-ops` | Reserved. They exit 64 until Section 1 delivers them. |
+| `genie-ops` | Runs the operator command, for example `genie-ops migrate` (R-62). |
+| `worker` | Reserved. It exits 64 until Section 1 delivers it. |
 | anything else | Exits 64 with the accepted arguments. |
+
+`genie-ops` is also installed on `PATH` as `/usr/local/bin/genie-ops`, so
+`docker compose exec <service> genie-ops migrate` reaches it without this script
+(D-10). It loads the command entry the build traced beside the standalone server
+and hands over its arguments.
 
 The launcher locates the single standalone `server.js` under `/app` rather than
 hard-coding its depth, because the file tracing root differs between a standalone
