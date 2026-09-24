@@ -145,10 +145,13 @@ is testable without a workflow runner:
 - `ci:develop` — `ci:pr` plus the full Playwright fixture suite at both viewports.
 - `release.yml` — refuses a tag whose commit has no green `develop` run, discovers
   `customers/*/deploy/modules.txt`, runs the customer wrapper per slug (or the development
-  wrapper when none exists) with `--no-publish`, logs in to GHCR, and promotes the smoked
-  identity with `--publish-digest`. No workflow contains a bare `docker push`; the wrapper is
-  the only publisher, and the credential exists only in the publish step
-  (`genie-ops-center-v2-sl1`).
+  wrapper when none exists) with `--no-publish`, stops the Nx daemon and kills the processes
+  the job orphaned, logs in to GHCR, and promotes the smoked identity with `--publish-digest`.
+  No workflow contains a bare `docker push`; the wrapper is the only publisher, and the
+  credential exists only in the publish step (`genie-ops-center-v2-sl1`). The pre-login sweep
+  removes the long-lived processes — the Nx daemon and anything a lifecycle script detached —
+  that a same-job publish would otherwise leave able to read the token or move the identity
+  (`genie-ops-center-v2-dwn`).
 
 `tools/generators/src/workspace/validate/ci-workflows.test.ts` pins the triggers, the
 commands and the no-bare-push rule.
@@ -184,4 +187,6 @@ affected, alongside the existing shared-preset edge.
   on no second, separately authorized mutation.
 - Real GHCR authentication and push remain separately authorized. Nothing here pushed. The
   credential exists only in the publish step, after the gates, the build and the smoke
-  (`genie-ops-center-v2-sl1`).
+  (`genie-ops-center-v2-sl1`), and only after the job stops the Nx daemon and kills the
+  processes it orphaned, so no long-lived install or build process can read it
+  (`genie-ops-center-v2-dwn`).

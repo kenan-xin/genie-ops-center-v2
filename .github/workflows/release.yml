@@ -25,6 +25,9 @@ name: release
 # have run (genie-ops-center-v2-sl1): the verify step runs with `--no-publish`
 # and writes the smoked identity out, then `docker/login-action` writes the
 # packages:write token, then a `--publish-digest` step promotes that identity.
+# Between the smoke and the login, the job stops the Nx daemon and kills the
+# processes it orphaned, so nothing the install or the build left running can
+# read the token or move the identity (genie-ops-center-v2-dwn).
 on:
   push:
     tags:
@@ -111,6 +114,22 @@ jobs:
           CUSTOMER_SLUG: ${{ matrix.slug }}
           RELEASE_VERSION: ${{ github.ref_name }}
         run: scripts/build-customer-image.sh "$CUSTOMER_SLUG" "$RELEASE_VERSION" --no-publish --identity-out "$RUNNER_TEMP/candidate-identity"
+      # genie-ops-center-v2-dwn (sl1 review M1): a separate publish job cannot
+      # promote the smoke-tested image — it exists only in this runner's local
+      # image store, `docker tag` needs it locally, and the wrapper needs
+      # node_modules to run — so nothing this job left running may survive into
+      # the credentialed steps. The Nx daemon is long-lived by design; stop it,
+      # then kill every process this job orphaned (reparented to init), which is
+      # exactly what a lifecycle script detaches with `setsid`/`nohup`. Both run
+      # before the token exists, so no leftover can read it from the docker
+      # config or move the identity file the publish step consumes.
+      - run: |
+          set -eu
+          pnpm exec nx reset
+          leftovers() { ps -eo pid=,ppid= -u "$(id -u)" | awk '$2 == 1 { print $1 }'; }
+          for p in $(leftovers); do kill -TERM "$p" 2>/dev/null || true; done
+          sleep 1
+          for p in $(leftovers); do kill -KILL "$p" 2>/dev/null || true; done
       # The packages:write token is written to ~/.docker/config.json only here,
       # after every gate, the build and the smoke have run.
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
@@ -157,6 +176,15 @@ jobs:
       - env:
           RELEASE_VERSION: ${{ github.ref_name }}
         run: scripts/build-development-image.sh "$RELEASE_VERSION" --no-publish --identity-out "$RUNNER_TEMP/candidate-identity"
+      # genie-ops-center-v2-dwn (sl1 review M1): see the customer job. Stop the
+      # Nx daemon and kill this job's orphaned processes before the token exists.
+      - run: |
+          set -eu
+          pnpm exec nx reset
+          leftovers() { ps -eo pid=,ppid= -u "$(id -u)" | awk '$2 == 1 { print $1 }'; }
+          for p in $(leftovers); do kill -TERM "$p" 2>/dev/null || true; done
+          sleep 1
+          for p in $(leftovers); do kill -KILL "$p" 2>/dev/null || true; done
       # The packages:write token is written to ~/.docker/config.json only here,
       # after every gate, the build and the smoke have run.
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0

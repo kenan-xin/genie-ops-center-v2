@@ -1006,6 +1006,51 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // genie-ops-center-v2-dwn (sl1 review M1): a process that survives a step
+  // boundary can read the packages:write token from ~/.docker/config.json once
+  // the login writes it, or move the identity file the publish step reads. The
+  // preferred fix — a separate publish job with no install and no Nx — cannot
+  // promote the smoke-tested image: it exists only in the verify job's local
+  // image store (`docker tag` needs it locally; `buildx imagetools create`
+  // needs a registry source), and the wrapper imports workspace packages, so it
+  // needs node_modules to run. The bead's second fix is pinned here: before any
+  // credential appears, stop the Nx daemon (long-lived by design) and kill the
+  // processes this job orphaned — reparented to init, which is exactly what a
+  // lifecycle script detaches with `setsid`/`nohup`.
+  it("stops the Nx daemon and kills leftover processes before the registry login", () => {
+    const workflow = read(`${WORKFLOWS}/release.yml`);
+
+    const publishing = [...jobsOf(workflow).entries()].filter(([, job]) =>
+      job.includes("docker/login-action")
+    );
+
+    expect(publishing.length, "at least one publishing job").toBeGreaterThan(0);
+
+    for (const [name, job] of publishing) {
+      const verifyAt = job.indexOf("--no-publish");
+      const loginAt = job.indexOf("docker/login-action");
+      const daemonAt = job.indexOf("nx reset");
+      const sweepAt = job.indexOf("ps -eo pid=,ppid=");
+
+      expect(verifyAt, `${name} verifies with --no-publish`).toBeGreaterThan(
+        -1
+      );
+      expect(loginAt, `${name} logs in after the smoke`).toBeGreaterThan(
+        verifyAt
+      );
+
+      // Both sweeps run after the smoke and before the token is written, so the
+      // daemon and every leftover process are gone when the credential lands.
+      for (const [label, at] of [
+        ["stops the Nx daemon", daemonAt],
+        ["kills leftover processes", sweepAt],
+      ] as const) {
+        expect(at, `${name} ${label}`).toBeGreaterThan(verifyAt);
+        expect(at, `${name} ${label}`).toBeLessThan(loginAt);
+      }
+    }
+  });
+
   // genie-ops-center-v2-sl1 (M5): a retagged third-party action in a
   // packages:write job can publish, and a movable base image can change under a
   // build. Every action is pinned to a full commit SHA with its version named.
