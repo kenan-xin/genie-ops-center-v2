@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import { type ErrorEnvelope, formatTrpcError } from "./init.ts";
 
 describe("formatTrpcError", () => {
-  it("keeps the protocol code and adds the catalogue code and the request id", () => {
+  it("derives the protocol code, status and catalogue code from an AppError cause", () => {
+    // tRPC wraps a thrown AppError as INTERNAL_SERVER_ERROR, so the envelope
+    // names the wrong condition; the formatter has to answer for the cause.
     const envelope: ErrorEnvelope = {
       message: "original",
       code: -32603,
@@ -15,16 +17,17 @@ describe("formatTrpcError", () => {
     const result = formatTrpcError({
       envelope,
       error: new TRPCError({
-        code: "FORBIDDEN",
+        code: "INTERNAL_SERVER_ERROR",
         cause: new AppError(CORE_ERRORS.forbidden),
       }),
       requestId: "req-9",
     });
 
-    expect(result.code).toBe(-32603);
-    expect(result.data.code).toBe("INTERNAL_SERVER_ERROR");
-    // The status tRPC reads back to set the HTTP response status.
-    expect(result.data.httpStatus).toBe(500);
+    // The status tRPC reads back to set the HTTP response status, and the
+    // protocol code that names the same condition.
+    expect(result.data.httpStatus).toBe(403);
+    expect(result.code).toBe(-32003);
+    expect(result.data.code).toBe("FORBIDDEN");
     expect(result.data.appCode).toBe("forbidden");
     expect(result.data.requestId).toBe("req-9");
     expect(result.message).toBe(CORE_ERRORS.forbidden.message);
