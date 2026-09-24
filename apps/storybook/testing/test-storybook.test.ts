@@ -5,7 +5,12 @@ import {
   RACE_AND_FAILED_STORY,
   RACE_OUTPUT,
 } from "./import-race-output.ts";
-import { RETRY_NOTICE, runWithRetry } from "./test-storybook.ts";
+import { RETRY_NOTICE, VITEST_ARGS, runWithRetry } from "./test-storybook.ts";
+
+// An empty story collection must fail the target, not pass it quietly.
+it("keeps passWithNoTests off for the component run", () => {
+  expect(VITEST_ARGS).toContain("--passWithNoTests=false");
+});
 
 /**
  * The decision the `test-storybook` wrapper makes around a Vitest run. The

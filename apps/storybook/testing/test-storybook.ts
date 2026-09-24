@@ -21,7 +21,7 @@ import { isBrowserImportRace, type Run } from "./nested-run.ts";
  */
 
 /** The Vitest flags the target used to run directly. They are unchanged. */
-const VITEST_ARGS = [
+export const VITEST_ARGS = [
   "run",
   "--project=storybook",
   "--passWithNoTests=false",
