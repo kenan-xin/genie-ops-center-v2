@@ -29,7 +29,8 @@ export * from "./required-tests-validator.ts";
 export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/migrator.integration.test.ts",
-    reason: "AC-6 and AC-9, R-25a-R-28, require the migrator matrix to run",
+    reason:
+      "AC-6 and AC-9, R-25a-R-28, require the migrator matrix to run; R-10, 1ia.2.1 requires the already-applied-history-gains-a-migration case to run",
     cases: [
       "the migrator's one reserved session, watched on a real database sends the setting, the lock, every history and the cleanup through one real session",
       "the migrator's one reserved session, watched on a real database leaves the lock with the foreign session it could not take, and takes none itself (negative control)",
@@ -44,6 +45,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the migrator recovering from a real database failure fails the start and destroys the session when the lock is gone by cleanup time",
       "the migrator recovering from a real database failure rolls a failed history back whole, leaving no half applied table",
       "the migrator over an already migrated database applies only what is missing, and applies it in registry order",
+      "the migrator over an already migrated database still applies a migration a history's journal gained since the last run",
     ],
   },
   {

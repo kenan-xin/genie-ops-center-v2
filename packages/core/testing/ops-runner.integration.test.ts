@@ -322,6 +322,8 @@ describe("audit helper fallback", () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(lines.join("\n")).toContain("failure");
+    // 42P01: undefined_table. Read from drizzle's DrizzleQueryError wrapper via `.cause`,
+    // never from the wrapper's own message, which carries the SQL and the parameters.
+    expect(lines.join("\n")).toContain("(not recorded: 42P01)");
   }, 120000);
 });

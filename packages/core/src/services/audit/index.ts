@@ -26,16 +26,25 @@ export type AuditEventInput = {
 };
 
 /**
- * The Postgres error code of a failed write, or `undefined` for anything else. Only the code
- * reaches the fallback line: the message and every value stay in the server log (R-45, R-66).
+ * The Postgres error code of a failed write, or `undefined` for anything else. drizzle-orm
+ * 0.45.2 wraps a failed query in `DrizzleQueryError`, which carries no `code` of its own; the
+ * driver's pg error, and its `code`, sits on `.cause`. So the chain is walked, not just the top
+ * error. Only the code reaches the fallback line: the message and every value (drizzle's
+ * wrapper message holds the SQL and the parameters) stay in the server log (R-45, R-66).
  */
 function pgErrorCode(error: Error | undefined): string | undefined {
-  if (error === undefined || !("code" in error)) return undefined;
+  for (let current = error; current !== undefined;) {
+    if ("code" in current) {
+      const code: unknown = current.code;
 
-  const code: unknown = error.code;
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of a driver error
+      if (typeof code === "string") return code;
+    }
 
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of a driver error
-  return typeof code === "string" ? code : undefined;
+    current = current.cause instanceof Error ? current.cause : undefined;
+  }
+
+  return undefined;
 }
 
 /**

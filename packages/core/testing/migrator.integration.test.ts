@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -100,6 +100,53 @@ async function writeHistory(
     }),
     table: `__drizzle_migrations_${name}`,
   };
+}
+
+/**
+ * The migrations one history's folder holds right now, read fresh (R2 of the eab6bef
+ * re-check). A build re-reads a module's folder on every start (`moduleHistory`), so a history
+ * whose journal grew between two runs is exactly this: the same folder, read again.
+ */
+function readHistory(folder: string, name: string): MigrationHistory {
+  return {
+    name,
+    migrations: readMigrationFiles({
+      migrationsFolder: folder,
+      migrationsTable: `__drizzle_migrations_${name}`,
+    }),
+    table: `__drizzle_migrations_${name}`,
+  };
+}
+
+/** Adds a second migration file and journal entry to a history a prior call already wrote. */
+async function growHistory(
+  folder: string,
+  name: string,
+  statement: string
+): Promise<MigrationHistory> {
+  await writeFile(join(folder, "0001_second.sql"), statement, "utf8");
+
+  // SAFETY: this test wrote the journal a few lines above via `writeFile`, in the exact shape
+  // drizzle-kit emits, so the entries array is present.
+  const journal = JSON.parse(
+    await readFile(join(folder, "meta", "_journal.json"), "utf8")
+  ) as { entries: unknown[] };
+
+  journal.entries.push({
+    idx: 1,
+    version: "7",
+    when: 1789948987483,
+    tag: "0001_second",
+    breakpoints: true,
+  });
+
+  await writeFile(
+    join(folder, "meta", "_journal.json"),
+    JSON.stringify(journal),
+    "utf8"
+  );
+
+  return readHistory(folder, name);
 }
 
 /** Every ledger table this database holds in the schema reserved for migrations. */
@@ -797,5 +844,66 @@ describe("the migrator over an already migrated database", () => {
     expect(await appliedCount(context, gamma.table)).toBe(1);
     expect(await tableExists(context, "alpha_record")).toBe(true);
     expect(await advisoryLocks(context)).toBe(0);
+  });
+
+  it("still applies a migration a history's journal gained since the last run", async () => {
+    // The skip that stands in for drizzle's own decision (`services/migrator/index.ts`,
+    // ledgerStates/runMigrations) compares applied row counts against the history's migration
+    // count. This is the one case that would expose a skip that only ever compared "is the
+    // ledger present": an already-applied history whose journal grew a second entry.
+    const context = await freshDeployment();
+    const folder = await mkdtemp(join(tmpdir(), "genie-history-grown-"));
+
+    cleanups.push(() => rm(folder, { recursive: true, force: true }));
+
+    await mkdir(join(folder, "meta"), { recursive: true });
+    await writeFile(join(folder, "0000_first.sql"), ALPHA_TABLE, "utf8");
+    await writeFile(
+      join(folder, "meta", "_journal.json"),
+      JSON.stringify({
+        version: "7",
+        dialect: "postgresql",
+        entries: [
+          {
+            idx: 0,
+            version: "7",
+            when: 1789948987482,
+            tag: "0000_first",
+            breakpoints: true,
+          },
+        ],
+      }),
+      "utf8"
+    );
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([readHistory(folder, "grown")]),
+      compiledModuleIds: ["grown"],
+    });
+
+    expect(await appliedCount(context, "__drizzle_migrations_grown")).toBe(1);
+
+    const grown = await growHistory(
+      folder,
+      "grown",
+      'CREATE TABLE "grown_second_record" ("id" integer PRIMARY KEY);'
+    );
+
+    const watched = instrumentedPool(context.db.$client);
+
+    await runMigrations({
+      env: context.env,
+      pool: watched.pool,
+      histories: migrationPlan([grown]),
+      compiledModuleIds: ["grown"],
+    });
+
+    expect(watched.statements.join("\n")).toContain(
+      'CREATE TABLE "grown_second_record"'
+    );
+    expect(await appliedCount(context, "__drizzle_migrations_grown")).toBe(2);
+    expect(await tableExists(context, "grown_second_record")).toBe(true);
   });
 });

@@ -153,7 +153,7 @@ const applyWithDrizzle: ApplyHistory = (db, history) => {
     // The ledger schema is pinned here rather than left to drizzle's default, so an upgrade
     // that moved that default cannot silently relocate core's or a module's ledger (Spec 1
     // R-9/R-79, DEC-50). Every history records in this one schema.
-    migrationsSchema: "drizzle",
+    migrationsSchema: LEDGER_SCHEMA,
     migrationsTable: history.table,
   });
 };
@@ -324,6 +324,9 @@ async function checkOmissions(
   );
 }
 
+/** True for a ledger table name this process may quote into a statement. */
+const LEDGER_TABLE_NAME = /^[A-Za-z0-9_-]+$/;
+
 /** One history's ledger as the run reads it under the lock: what it applied, and whether it exists. */
 type LedgerState = {
   readonly applied: number;
@@ -352,6 +355,15 @@ async function ledgerStates(
   const states: LedgerState[] = [];
 
   for (const history of histories) {
+    // Every table name comes from `moduleLedgerTable(id)` or `CORE_HISTORY`, never from input,
+    // so this guard is not an injection defense; it stops a future caller from quoting an
+    // arbitrary string into the statements below.
+    if (!LEDGER_TABLE_NAME.test(history.table)) {
+      states.push({ applied: 0, present: false });
+
+      continue;
+    }
+
     // One reserved session serves every read, and two queries in flight on one connection is
     // not allowed, so the ledger reads are sequential like the histories themselves.
     // oxlint-disable-next-line no-await-in-loop
@@ -485,7 +497,9 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
 
       // A history with nothing to apply whose ledger is already in place is skipped: a rerun
       // applies nothing and does no work. A history whose ledger is absent still runs, because
-      // an empty compiled module must get its ledger (R-27).
+      // an empty compiled module must get its ledger (R-27). This count comparison and
+      // drizzle's own decision (`created_at` against the journal timestamps) can disagree only
+      // when a journal entry was removed or replaced, which forward-only migration rules forbid.
       if (owed === 0 && state?.present === true) continue;
 
       log({ event: "migration-history-start", history: history.name });
