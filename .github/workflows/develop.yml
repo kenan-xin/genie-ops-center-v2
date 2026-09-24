@@ -3,6 +3,11 @@ name: develop
 # R-51, every merge to develop: the pull-request gates plus the full Playwright
 # suite at both viewports. The suite runs against the compose stack in
 # deploy/stack, whose configuration declares one phone and one desktop project.
+#
+# The merge gate is split across runners so a merge commit no longer waits for
+# the slowest chain: the fast `gates` job fails first, and the image-building
+# integration suites and the browser E2E suites run beside each other, each on
+# its own hosted runner (genie-ops-center-v2-ejs).
 on:
   push:
     branches:
@@ -11,10 +16,19 @@ on:
 permissions:
   contents: read
 
+# A merge to develop supersedes the previous develop run, so a burst of pushes
+# does not queue redundant runner hours; a cancelled run writes no caches,
+# which is accepted. Release tags are never grouped (genie-ops-center-v2-ejs).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  gates:
+    # The fast gates, exactly what ci:pr runs before its integration layer. No
+    # image suite and no browser suite, so this job stays cheap and fails first.
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,13 +42,11 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The image suites build many full images; free the preinstalled toolchains
-      # this repository never uses, or the runner runs out of disk.
-      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      # The runner has no browser; Storybook and E2E launch the pinned Chromium.
+      # The runner has no browser; the Storybook component tests launch the
+      # pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
       # A push to develop has `origin/develop` at HEAD, so an affected run based
-      # on it would be empty. Base the merge gates on the pushed commit's parent
+      # on it would be empty. Base the gates on the pushed commit's parent
       # instead. The all-zero first push has no parent; base it on git's empty
       # tree so every project is affected, rather than on a ref that is HEAD.
       - id: base
@@ -47,6 +59,114 @@ jobs:
           else
             echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           fi
-      - run: pnpm run ci:develop
+      - run: nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
         env:
           NX_BASE: ${{ steps.base.outputs.ref }}
+
+  integration-app:
+    # The app's suite owns the app's Docker image builds, which competed with
+    # the Storybook browser matrix on one 4-vCPU runner (develop run
+    # 35893905134), so it gets a runner of its own.
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The suite builds full images; free the preinstalled toolchains this
+      # repository never uses, or the runner runs out of disk.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      # The suite drives the pinned Chromium through Playwright.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: nx run-many -t test:integration -p @genie/app
+
+  integration-storybook:
+    # The Storybook suite runs the browser component matrix, which is why it is
+    # kept off the app's image-building runner.
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The suite builds full images; free the preinstalled toolchains this
+      # repository never uses, or the runner runs out of disk.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      # The suite drives the pinned Chromium through Playwright.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: nx run-many -t test:integration -p @genie/storybook
+
+  integration-core:
+    # The lighter suites share one runner. They run one at a time — the 4-vCPU
+    # competition that forced --parallel=1 on ci:pr — and bail stops the
+    # remaining project once one fails (develop run 35867486208).
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # These suites build full images; free the preinstalled toolchains this
+      # repository never uses, or the runner runs out of disk.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      # The suites drive the pinned Chromium through Playwright.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: nx run-many -t test:integration -p @genie/core @genie/module-placeholder --nx-bail --parallel=1
+
+  e2e:
+    # The browser E2E suites, which build the fixture stack and the app image.
+    # The fixture stack precedes the ordinary suite, exactly as ci:develop runs
+    # them.
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The suites build full images; free the preinstalled toolchains this
+      # repository never uses, or the runner runs out of disk.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      # The runner has no browser; both suites launch the pinned Chromium.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: nx run-many -t test:e2e:fixture -p @genie/app
+      - run: nx run-many -t test:e2e -p @genie/app
