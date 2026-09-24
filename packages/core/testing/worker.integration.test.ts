@@ -1,3 +1,5 @@
+import { createServer, connect, type AddressInfo } from "node:net";
+
 import { PgBoss } from "pg-boss";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +11,7 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
   MIGRATION_LOCK_KEY,
@@ -415,47 +418,367 @@ describe("the core pg-boss worker", () => {
     expect(context.jobQueue.schedule).toBeDefined();
   });
 
-  it("schedules jobs with a cron expression distinct from their data", async () => {
+  it("schedules a declared job with a cron expression distinct from its data", async () => {
     const database = await disposablePostgres();
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-    cleanups.push(() => context.db.$client.end());
-
+    const context = createTenantContext(source(database.url), silentLogger(), [
+      "scheduled",
+    ]);
+    const module = moduleWithJob("scheduled", async () => {}, "0 3 * * *");
     const controller = new AbortController();
+    const heartbeatPath = `/tmp/genie-worker-schedule-api-${crypto.randomUUID()}`;
+
+    cleanups.push(async () => {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(heartbeatPath).catch(() => undefined);
+      await context.db.$client.end();
+    });
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [module.identity.id],
+    });
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('scheduled', true)"
+    );
+
+    const inspector = await boss(context);
+    cleanups.push(() => inspector.stop());
     const worker = runWorker({
       source: source(database.url),
-      modules: [],
+      modules: [module],
       histories: [],
       ...OUTPUT,
       signal: controller.signal,
       heartbeat: {
-        cron: "* * * * *",
-        path: "/tmp/worker-heartbeat",
-        staleAfterMs: 180000,
+        cron: "*/1 * * * * *",
+        path: heartbeatPath,
+        staleAfterMs: 1800,
       },
     });
 
     await waitUntil(async () => {
-      const schema = await context.db.$client.query<{ present: boolean }>(
-        "select exists(select 1 from information_schema.schemata where schema_name = 'pgboss') as present"
-      );
+      const rows = await inspector.getSchedules("scheduled.read-record");
 
-      return schema.rows[0]?.present === true;
+      return rows.some(({ cron }) => cron === "0 3 * * *");
     });
 
     await expect(
-      context.jobQueue.schedule(
-        "core.heartbeat",
-        "* * * * *",
-        { label: "scheduled" },
-        { key: "test-schedule" }
-      )
+      context.jobQueue.schedule("scheduled.read-record", "*/7 * * * *", {
+        reportId: "weekly-42",
+      })
     ).resolves.toBeUndefined();
+
+    const heartbeatBefore = await inspector.getSchedule(
+      "core.worker-heartbeat"
+    );
+
+    await waitUntil(async () => {
+      const afterTick = await inspector.getSchedule("core.worker-heartbeat");
+
+      return afterTick?.lastJobId !== heartbeatBefore?.lastJobId;
+    });
+
+    const schedules = await inspector.getSchedules("scheduled.read-record");
+    const applicationSchedule = schedules.find(({ key }) => key === "");
+    const moduleSchedule = schedules.find(({ cron }) => cron === "0 3 * * *");
+
     controller.abort();
     await worker;
+
+    expect(applicationSchedule).toMatchObject({
+      cron: "*/7 * * * *",
+      data: { reportId: "weekly-42" },
+    });
+    expect(moduleSchedule).toBeDefined();
+    expect(moduleSchedule?.key).not.toBe(applicationSchedule?.key);
+  });
+
+  it("preserves an application schedule and payload after declaration reconciliation", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(source(database.url), silentLogger(), [
+      "reporting",
+    ]);
+    const module = moduleWithJob("reporting", async () => {}, "0 3 * * *");
+    const controller = new AbortController();
+    const heartbeatPath = `/tmp/genie-reporting-heartbeat-${crypto.randomUUID()}`;
+
+    cleanups.push(async () => {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(heartbeatPath).catch(() => undefined);
+      await context.db.$client.end();
+    });
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: ["reporting"],
+    });
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('reporting', true)"
+    );
+
+    const inspector = await boss(context);
+    cleanups.push(async () => {
+      await inspector.stop();
+    });
+
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [module],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: {
+        cron: "*/1 * * * * *",
+        path: heartbeatPath,
+        staleAfterMs: 1800,
+      },
+    });
+
+    await waitUntil(async () => {
+      const schedules = await inspector.getSchedules("reporting.read-record");
+
+      return schedules.some(({ cron }) => cron === "0 3 * * *");
+    });
+
+    const applicationSchedule = {
+      label: "user-supplied-schedule-data",
+    };
+
+    await context.jobQueue.schedule(
+      "reporting.read-record",
+      "*/7 * * * *",
+      applicationSchedule
+    );
+
+    const heartbeatBefore = await inspector.getSchedule(
+      "core.worker-heartbeat"
+    );
+    const declarationSchedule = await inspector.getSchedule(
+      "reporting.read-record",
+      "genie.module.reporting.read-record"
+    );
+
+    await waitUntil(async () => {
+      const heartbeatAfter = await inspector.getSchedule(
+        "core.worker-heartbeat"
+      );
+
+      return heartbeatAfter?.lastJobId !== heartbeatBefore?.lastJobId;
+    });
+
+    const schedules = await inspector.getSchedules("reporting.read-record");
+    const callerOwned = schedules.find(({ key }) => key === "");
+    const declarationOwned = schedules.find(({ cron }) => cron === "0 3 * * *");
+
+    controller.abort();
+    await worker;
+
+    expect(callerOwned).toMatchObject({
+      key: "",
+      cron: "*/7 * * * *",
+      data: applicationSchedule,
+    });
+    expect(declarationOwned).toBeDefined();
+    expect(declarationOwned?.key).not.toBe(callerOwned?.key);
+    expect(declarationSchedule?.cron).toBe("0 3 * * *");
+  });
+
+  it("retries a failed lazy pg-boss start after the database query recovers", async () => {
+    const database = await disposablePostgres();
+    const control = createServer();
+    const firstConnection = deferred();
+    const allowUpstream = deferred();
+    let acceptedConnections = 0;
+    const target = new URL(database.url);
+
+    control.on("connection", (downstream) => {
+      acceptedConnections += 1;
+
+      if (acceptedConnections === 1) {
+        firstConnection.resolve();
+        downstream.destroy();
+        return;
+      }
+
+      void allowUpstream.promise.then(() => {
+        const upstream = connect(Number(target.port), target.hostname);
+
+        upstream.once("connect", () => {
+          downstream.pipe(upstream);
+          upstream.pipe(downstream);
+        });
+        upstream.once("error", () => downstream.destroy());
+      });
+    });
+
+    await new Promise<void>((resolve) =>
+      control.listen(0, "127.0.0.1", resolve)
+    );
+    // SAFETY: listen(0, "127.0.0.1") binds TCP and returns AddressInfo before this read.
+    const address = control.address() as AddressInfo;
+
+    const proxyUrl = new URL(database.url);
+
+    proxyUrl.hostname = "127.0.0.1";
+    proxyUrl.port = String(address.port);
+
+    const context = createTenantContext(
+      source(proxyUrl.toString()),
+      silentLogger(),
+      []
+    );
+
+    cleanups.push(async () => {
+      await stopJobQueue(context.jobQueue);
+      await context.db.$client.end();
+      control.close();
+    });
+
+    const failedSend = context.jobQueue
+      .enqueue("recovery.first", { attempt: "first" })
+      .then(
+        () => undefined,
+        (error: Error) => error
+      );
+
+    await firstConnection.promise;
+    const firstFailure = await failedSend;
+
+    expect(firstFailure).toBeInstanceOf(Error);
+    allowUpstream.resolve();
+
+    const jobId = await context.jobQueue.enqueue("recovery.second", {
+      attempt: "recovered",
+    });
+    const persisted = await context.db.$client.query<{
+      id: string;
+      data: unknown;
+    }>("select id::text, data from pgboss.job where id = $1", [jobId]);
+
+    expect(persisted.rows).toEqual([
+      { id: jobId, data: { attempt: "recovered" } },
+    ]);
+  });
+
+  it("does not refresh the heartbeat when declaration schedule reconciliation fails", async () => {
+    const { access, unlink } = await import("node:fs/promises");
+    const database = await disposablePostgres();
+    const context = createTenantContext(source(database.url), silentLogger(), [
+      "invalid-schedule",
+    ]);
+    const heartbeatPath = `/tmp/genie-worker-invalid-schedule-${crypto.randomUUID()}`;
+    const module = moduleWithJob(
+      "invalid-schedule",
+      async () => {},
+      "not a cron expression"
+    );
+    const errors: string[] = [];
+    const controller = new AbortController();
+
+    cleanups.push(async () => {
+      await unlink(heartbeatPath).catch(() => undefined);
+      await context.db.$client.end();
+    });
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [module.identity.id],
+    });
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('invalid-schedule', true)"
+    );
+
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [module],
+      histories: [],
+      output: () => {},
+      errorOutput: (line) => errors.push(line),
+      signal: controller.signal,
+      heartbeat: {
+        cron: "*/1 * * * * *",
+        path: heartbeatPath,
+        staleAfterMs: 1800,
+      },
+    });
+
+    await waitUntil(async () =>
+      errors.some((line) => line.includes("core.worker-heartbeat"))
+    );
+
+    const heartbeatExists = await access(heartbeatPath).then(
+      () => true,
+      () => false
+    );
+
+    controller.abort();
+    await worker;
+
+    expect(heartbeatExists).toBe(false);
+  });
+
+  it("settles a hung job handler within shutdownTimeoutMs", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(source(database.url), silentLogger(), [
+      "shutdown",
+    ]);
+    const started = deferred();
+    const neverFinish = deferred();
+    const controller = new AbortController();
+
+    cleanups.push(() => context.db.$client.end());
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: ["shutdown"],
+    });
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('shutdown', true)"
+    );
+
+    const publisher = await boss(context);
+
+    await publisher.createQueue("shutdown.read-record");
+    await publisher.send("shutdown.read-record", { label: "never-resolves" });
+
+    const shutdownModule = moduleWithJob("shutdown", async () => {
+      started.resolve();
+      await neverFinish.promise;
+    });
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [shutdownModule],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      shutdownTimeoutMs: 250,
+      heartbeat: {
+        cron: "*/1 * * * * *",
+        path: `/tmp/genie-worker-shutdown-${crypto.randomUUID()}`,
+        staleAfterMs: 1800,
+      },
+    });
+
+    await started.promise;
+    controller.abort();
+
+    const settledWithinBound = await Promise.race([
+      worker.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000)),
+    ]);
+
+    neverFinish.resolve();
+    await worker;
+
+    expect(settledWithinBound).toBe(true);
   });
 
   it("uses the tenant context pool for pg-boss rather than a second driver pool", async () => {
@@ -575,10 +898,11 @@ describe("the core pg-boss worker", () => {
 
   it("uses WORKER_HEARTBEAT_PATH when set and the default path otherwise", async () => {
     const customPath = `/tmp/genie-worker-override-${crypto.randomUUID()}`;
+    const defaultPath = `/tmp/genie-worker-default-${crypto.randomUUID()}`;
     const { access, unlink } = await import("node:fs/promises");
     cleanups.push(async () => {
       await unlink(customPath).catch(() => undefined);
-      await unlink("/tmp/genie-worker-heartbeat").catch(() => undefined);
+      await unlink(defaultPath).catch(() => undefined);
     });
 
     const defaultDatabase = await disposablePostgres();
@@ -589,11 +913,15 @@ describe("the core pg-boss worker", () => {
       histories: [],
       ...OUTPUT,
       signal: defaultController.signal,
-      heartbeat: { cron: "*/1 * * * * *", staleAfterMs: 1800 },
+      heartbeat: {
+        cron: "*/1 * * * * *",
+        path: defaultPath,
+        staleAfterMs: 1800,
+      },
     });
 
     await waitUntil(async () =>
-      access("/tmp/genie-worker-heartbeat").then(
+      access(defaultPath).then(
         () => true,
         () => false
       )
@@ -622,6 +950,48 @@ describe("the core pg-boss worker", () => {
     );
     overrideController.abort();
     await overrideWorker;
+  });
+
+  it("writes to a unique default heartbeat path on a clean startup", async () => {
+    const { access, unlink } = await import("node:fs/promises");
+    const database = await disposablePostgres();
+    const heartbeatPath = `/tmp/genie-worker-default-path-${crypto.randomUUID()}`;
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+    const controller = new AbortController();
+
+    cleanups.push(async () => {
+      await unlink(heartbeatPath).catch(() => undefined);
+      await context.db.$client.end();
+    });
+
+    const worker = runWorker({
+      source: source(database.url, { WORKER_HEARTBEAT_PATH: heartbeatPath }),
+      modules: [],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: { cron: "*/1 * * * * *", staleAfterMs: 1800 },
+    });
+
+    await waitUntil(async () =>
+      access(heartbeatPath).then(
+        () => true,
+        () => false
+      )
+    );
+    controller.abort();
+    await worker;
+
+    expect(
+      await access(heartbeatPath).then(
+        () => true,
+        () => false
+      )
+    ).toBe(true);
   });
 
   it("pins pg-boss to version 12.33.5", async () => {

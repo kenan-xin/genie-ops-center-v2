@@ -16,6 +16,42 @@ describe("validateModule", () => {
     expect(validateModule(validModule)).toEqual([]);
   });
 
+  it("rejects a job name outside its module prefix", () => {
+    const broken = {
+      ...validModule,
+      jobs: validModule.jobs.map((job) => ({ ...job, name: "other.cleanup" })),
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Job name "other.cleanup" must start with "fixture."'
+    );
+  });
+
+  it("rejects duplicate job names within one module", () => {
+    const broken = {
+      ...validModule,
+      jobs: [...validModule.jobs, ...validModule.jobs],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Job name "fixture.cleanup" is declared more than once'
+    );
+  });
+
+  it("rejects module jobs in the reserved core namespace", () => {
+    const broken = {
+      ...validModule,
+      jobs: validModule.jobs.map((job) => ({
+        ...job,
+        name: "core.worker-heartbeat",
+      })),
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Module "fixture" cannot declare a job in the reserved "core." namespace'
+    );
+  });
+
   it("rejects an identifier that is not kebab-case", () => {
     const broken = {
       ...validModule,

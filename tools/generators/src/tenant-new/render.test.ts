@@ -125,8 +125,11 @@ describe("the rendered deployment folder", () => {
     const startPeriodSeconds = Number(
       /start_period:\s*(\d+)s/.exec(healthcheck ?? "")?.[1]
     );
+    const checkCommand = healthcheck
+      ?.split("\n")
+      .find((line) => line.includes("test:"));
     const staleAfterSeconds = Number(
-      /stale_after_seconds:\s*(\d+)/.exec(healthcheck ?? "")?.[1]
+      /-lt\s+(\d+)/.exec(checkCommand ?? "")?.[1]
     );
 
     expect(worker).toBeDefined();
@@ -134,6 +137,7 @@ describe("the rendered deployment folder", () => {
     expect(worker ?? "").toContain("WORKER_HEARTBEAT_PATH:");
     expect(healthcheck ?? "").toContain("$$WORKER_HEARTBEAT_PATH");
     expect(healthcheck ?? "").not.toContain("/tmp/");
+    expect(checkCommand).toContain("-lt 180");
     expect(startPeriodSeconds).toBeGreaterThan(180);
     expect(staleAfterSeconds).toBeGreaterThanOrEqual(180);
   });
