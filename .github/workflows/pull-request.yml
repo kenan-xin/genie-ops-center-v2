@@ -6,6 +6,8 @@ name: pull request
 # module-has-tests), which the `validate` target runs.
 on:
   pull_request:
+    branches:
+      - develop
 
 permissions:
   contents: read
@@ -41,3 +43,35 @@ jobs:
       # The runner has no browser; Storybook and E2E launch the pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run ci:pr
+
+  # R-13 and the lint half of R-74: one job lints the branch's changed
+  # migrations and checks every history for a fork, and it blocks the merge into
+  # develop (DEC-43). `scripts/check-migrations.mjs` holds both checks so this
+  # job and the pipeline test run the same code.
+  migration-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The changed-file diff reads through to the base branch, so its whole
+          # history must be present, not only the merge commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The script runs squawk_and_drizzle-kit check over the changed migrations
+      # and every history. A drop, a rename, a type change or a new required
+      # column fails unless the statement carries `-- squawk-ignore <rule>`.
+      - name: Lint changed migrations
+        run: |
+          changed="$(git diff --name-only --diff-filter=ACMR origin/develop...HEAD -- 'packages/**/drizzle/*.sql' 'apps/**/drizzle/*.sql' 'customers/**/drizzle/*.sql')"
+          migrations=()
+          for file in $changed; do migrations+=(--migration "$file"); done
+          pnpm exec node scripts/check-migrations.mjs "${migrations[@]}" --pg-version 18

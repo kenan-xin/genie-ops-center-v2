@@ -234,6 +234,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      squawk-cli:
+        specifier: 2.65.0
+        version: 2.65.0
       storybook:
         specifier: 10.6.0
         version: 10.6.0(@types/react@19.3.0)(react@19.3.0)
@@ -3105,6 +3108,31 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
 
+  '@squawk-cli/darwin-arm64@2.65.0':
+    resolution: {integrity: sha512-Zz9wMfAkfiCiDbmtzP/cCZTfETAnAcOoN1HzKe3tlshXAEw50sVupKAK/181oM9j1WPC1VIb9hm7pqYYje34ZQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@squawk-cli/darwin-x64@2.65.0':
+    resolution: {integrity: sha512-2etV6WaUFADqMcC4uMa365rQhvgwxUY43zRS+5+p4kwLTsZCci9WL5VsMHnvsdstKf2vOICfQ2L6E/N/8L7/UQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@squawk-cli/linux-arm64@2.65.0':
+    resolution: {integrity: sha512-7MyHDi84VtKIed3SB9/svc9Rpvr/f4taTjAVFTp83qyZIuQ7sa7216XpuAXP2Nbt0cCeBjgdwVD2qF5JrJ0j0w==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@squawk-cli/linux-x64@2.65.0':
+    resolution: {integrity: sha512-ZUdtZTatsOKAmT3I03I3RUyNiKLr3l5VdmDPi4b2xpioNSyIEuj2rjzOTRD1mP4ivw34KD/A8uapOsYrKf7lrg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@squawk-cli/win32-x64@2.65.0':
+    resolution: {integrity: sha512-w/Qg3RimCN7OxYRe9H4QLryb4Qi+4b5UJxNgFfegv5GtJPd2mIrP8xdAo3PSIfB2qnBXHVI3CmcNkplz2gMvHw==}
+    cpu: [x64]
+    os: [win32]
+
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -5947,6 +5975,10 @@ packages:
   sqids@0.3.0:
     resolution: {integrity: sha512-lOQK1ucVg+W6n3FhRwwSeUijxe93b51Bfz5PMRMihVf1iVkl82ePQG7V5vwrhzB11v0NtsR25PSZRGiSomJaJw==}
 
+  squawk-cli@2.65.0:
+    resolution: {integrity: sha512-ctkXl9mf1RLfahNiGFLYAsl1Zxp/uFVvSZEvdGyn5eylgPbU4gG8Htn1D/jD6fxKqIKzMD7UaqdqWQE07+jH4w==}
+    hasBin: true
+
   ssh-remote-port-forward@1.0.4:
     resolution: {integrity: sha512-x0LV1eVDwjf1gmG7TTnfqIzf+3VPRz7vrNIjX6oYLbeCrf/PeVY6hkT68Mg+q02qXxQhrLjB0jfgvhevoCRmLQ==}
 
@@ -8566,6 +8598,21 @@ snapshots:
   '@solid-primitives/utils@6.4.1(solid-js@1.9.15)':
     dependencies:
       solid-js: 1.9.15
+
+  '@squawk-cli/darwin-arm64@2.65.0':
+    optional: true
+
+  '@squawk-cli/darwin-x64@2.65.0':
+    optional: true
+
+  '@squawk-cli/linux-arm64@2.65.0':
+    optional: true
+
+  '@squawk-cli/linux-x64@2.65.0':
+    optional: true
+
+  '@squawk-cli/win32-x64@2.65.0':
+    optional: true
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -11592,6 +11639,14 @@ snapshots:
   split2@4.2.0: {}
 
   sqids@0.3.0: {}
+
+  squawk-cli@2.65.0:
+    optionalDependencies:
+      '@squawk-cli/darwin-arm64': 2.65.0
+      '@squawk-cli/darwin-x64': 2.65.0
+      '@squawk-cli/linux-arm64': 2.65.0
+      '@squawk-cli/linux-x64': 2.65.0
+      '@squawk-cli/win32-x64': 2.65.0
 
   ssh-remote-port-forward@1.0.4:
     dependencies:
