@@ -15,8 +15,20 @@ import { expect, test } from "@playwright/test";
  * another module, so every entry a generated module declares is denied. The
  * application's page loader answers `can()` and returns its own denied response;
  * nothing the module would have rendered appears.
+ *
+ * A compiled module with no `tenant_module` row reads as disabled (R-5), so
+ * before its own permission check ever runs, R-8 would refuse it at the proxy
+ * with `module-disabled` instead. Global setup seeds an enabled row for this
+ * module (stand-in for R-20, same as it does for `placeholder`) so the refusal
+ * these cases see is the `can()` denial, not that earlier module gate; each case
+ * below also checks for the `module-disabled` message, so a regression of that
+ * seed shows up here rather than masquerading as a pass.
  */
 const id = process.env.GENIE_MODULE_UNDER_TEST;
+
+/** `packages/core/src/lib/errors/index.ts`'s fixed message for `module-disabled`. */
+const MODULE_DISABLED_MESSAGE =
+  "That module is switched off for this deployment.";
 
 /** The label the generator derives from an id, which is what navigation shows. */
 const displayName =
@@ -34,6 +46,9 @@ test("the generated module's workspace page is refused", async ({ page }) => {
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
 
+  // The refusal is `can()`'s, not R-8's module-disabled gate landing first.
+  await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
+
   // The refused page reveals nothing the module would have rendered.
   await expect(page.getByText("No records yet.")).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
@@ -43,6 +58,7 @@ test("the generated module's admin page is refused", async ({ page }) => {
   await page.goto(`/admin/m/${id}`);
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
   await expect(page.getByText(/records\./)).toHaveCount(0);
 });
 
@@ -59,4 +75,5 @@ test("its navigation entry leads to the refusal, not to a missing page", async (
   await link.click();
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
 });
