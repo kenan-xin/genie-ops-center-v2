@@ -15,7 +15,7 @@ import { join, relative, resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { retryImportRace, type Run } from "./nested-run.ts";
+import type { Run } from "./nested-run.ts";
 
 /**
  * The Storybook selection, confidentiality and local-cache matrix.
@@ -155,10 +155,10 @@ let stage = "";
  * default kill signal, lets Nx stop its own task processes on the way out.
  *
  * 480 s, not 240 s. The component-test run's browser connect bound is 120 s on
- * its own (`apps/storybook/vitest.config.ts`), `retryImportRace` can rerun the
- * run once, and on a loaded 4-vCPU GitHub runner sharing the box with a
- * parallel Docker build a nested run exceeded 240 s before it was killed. It
- * stays a finite bound.
+ * its own (`apps/storybook/vitest.config.ts`), the target's wrapper can rerun
+ * the Vitest run once (`testing/test-storybook.ts`), and on a loaded 4-vCPU
+ * GitHub runner sharing the box with a parallel Docker build a nested run
+ * exceeded 240 s before it was killed. It stays a finite bound.
  */
 const NESTED_RUN_TIMEOUT_MS = 480000;
 
@@ -181,14 +181,11 @@ const secondRoot = () => join(stage, "packages/modules", SECOND_ID);
  * Every inherited `NX_` variable is dropped before the three this suite sets,
  * so the measurement is of the build graph rather than of how it was invoked.
  *
- * A component-test run that hits the Vitest browser import race runs once more;
- * `nested-run.ts` says why and how narrowly.
+ * A component-test run that hits the Vitest browser import race is retried by
+ * the target's own wrapper (`testing/test-storybook.ts`), so this suite adds no
+ * second retry: one nested run executes the Vitest command at most twice.
  */
 function run(task: string, moduleInclude: string | undefined): Run {
-  return retryImportRace(() => runOnce(task, moduleInclude));
-}
-
-function runOnce(task: string, moduleInclude: string | undefined): Run {
   const env = { ...process.env };
 
   for (const name of Object.keys(env)) {

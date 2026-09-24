@@ -22,6 +22,9 @@ const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../..");
 
 const RUNTIME_INPUT = "node tools/generators/src/selection/print.ts";
 
+/** The wrapper the `test-storybook` target runs, project-relative. */
+const TEST_STORYBOOK_WRAPPER = "testing/test-storybook.ts";
+
 /**
  * The actual story owners and the shared surfaces a story composes. Discovery
  * is data-driven, so a module is not a declared dependency of this host; these
@@ -135,9 +138,20 @@ describe("the selection-aware Storybook task graph", () => {
   // collected as a unit test and neither collection satisfies the other.
   it("keeps the unit and story collections in separate projects", () => {
     expect(target("test").metadata?.scriptContent).toContain("--project=unit");
+  });
+
+  // The target names the wrapper that owns the Vitest flags and the narrow
+  // import-race retry; the flags themselves live in the wrapper.
+  it("runs the component tests through the retrying wrapper", () => {
     expect(target("test-storybook").options?.command).toContain(
-      "--project=storybook"
+      TEST_STORYBOOK_WRAPPER
     );
+    expect(
+      readFileSync(
+        join(WORKSPACE_ROOT, "apps/storybook", TEST_STORYBOOK_WRAPPER),
+        "utf8"
+      )
+    ).toContain("--project=storybook");
   });
 });
 

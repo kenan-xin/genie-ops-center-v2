@@ -40,7 +40,7 @@
       },
       "test-storybook": {
         "options": {
-          "command": "vitest run --project=storybook --passWithNoTests=false"
+          "command": "node testing/test-storybook.ts"
         }
       }
     },

@@ -1,5 +1,5 @@
 /**
- * The one nested-run failure the Storybook matrix retries.
+ * The one browser-mode failure the Storybook component-test target retries.
  *
  * On a loaded CI runner, Vitest browser mode sometimes fails the first import of
  * a test file with `Failed to fetch dynamically imported module`, although the
@@ -11,8 +11,9 @@
  * no optimizer run, no reload and no transform error in that output, so neither
  * the stage nor the Storybook configuration caused it.
  *
- * The retry is narrow: a single import failure with no failed test. A story that
- * fails, or a setup file that can never be fetched, still fails the case.
+ * The retry itself lives in `test-storybook.ts`, the wrapper the Nx target runs.
+ * It is narrow: a single import failure with no failed test. A story that fails,
+ * or a setup file that can never be fetched, still fails the run.
  */
 export type Run = {
   readonly status: number;
@@ -27,13 +28,4 @@ const FAILED_TESTS = /^\s*Tests\s.*\bfailed\b/m;
 
 export function isBrowserImportRace(output: string): boolean {
   return IMPORT_RACE.test(output) && !FAILED_TESTS.test(output);
-}
-
-/** Runs once, and once more only after the import race. The second result stands. */
-export function retryImportRace(runOnce: () => Run): Run {
-  const first = runOnce();
-
-  if (first.status === 0 || !isBrowserImportRace(first.output)) return first;
-
-  return runOnce();
 }
