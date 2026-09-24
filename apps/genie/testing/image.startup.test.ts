@@ -327,6 +327,38 @@ describe("the built image", () => {
     }
   }, 180000);
 
+  it("runs genie-ops from PATH through docker exec and migrates", async () => {
+    const image = await startImage(
+      {
+        DATABASE_URL: databaseUrl(),
+        PUBLIC_URL: "https://example.invalid",
+      },
+      3406
+    );
+
+    try {
+      await pollHealth(3406);
+
+      const result = await run("docker", [
+        "exec",
+        image.id,
+        "genie-ops",
+        "migrate",
+      ]).then(
+        (value) => ({ code: 0, output: `${value.stdout}${value.stderr}` }),
+        (error: { code?: number; stdout?: string; stderr?: string }) => ({
+          code: error.code ?? -1,
+          output: `${error.stdout ?? ""}${error.stderr ?? ""}`,
+        })
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.output).toContain("pending");
+    } finally {
+      await image.stop();
+    }
+  }, 180000);
+
   // R-44/R-46: one log line per request, carrying the request id, and that id is
   // the one the client is handed. The response header is read and matched against
   // the request line for the same request, so neither the header nor the line's
