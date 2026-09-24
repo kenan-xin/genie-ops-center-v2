@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { MigrationMeta } from "drizzle-orm/migrator";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -6,6 +7,7 @@ import type { Pool, PoolClient } from "pg";
 
 import coreJournal from "../../../drizzle/meta/_journal.json" with { type: "json" };
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { moduleIdFromLedgerTable } from "../../lib/module-contract/ledger.ts";
 import type {
   ModuleIdentity,
   ModuleSchema,
@@ -78,6 +80,18 @@ export type ApplyHistory = (
   history: MigrationHistory
 ) => Promise<void>;
 
+/** Refuses a run whose image omits a module the deployment already installed (R-79). */
+export type CheckOmissions = (
+  db: MigrationDatabase,
+  compiledModuleIds: readonly string[]
+) => Promise<void>;
+
+/** Registers a compiled module the deployment has no row for, once `seed` is done (R-27). */
+export type RegisterModules = (
+  db: MigrationDatabase,
+  compiledModuleIds: readonly string[]
+) => Promise<void>;
+
 export type MigrationRun = {
   readonly env: DeploymentEnvironment;
   /**
@@ -87,12 +101,23 @@ export type MigrationRun = {
   readonly pool: Pick<Pool, "connect">;
   /** Core first, then each included module in registry order. */
   readonly histories: readonly MigrationHistory[];
+  /**
+   * The ids the image compiled, which the omission check compares with what the deployment
+   * already installed and the registration step inserts rows for (R-27, R-79). Required and not
+   * derived from `histories`: a history list is a derived value a caller can filter, so a module
+   * left out of it would be invisible to the check.
+   */
+  readonly compiledModuleIds: readonly string[];
   readonly log?: MigrationLog;
   /**
    * The seam a caller-level test uses to watch the session without a database. Production
    * passes nothing, so the real migrator runs.
    */
   readonly apply?: ApplyHistory;
+  /** The seam a caller-level test uses in place of the real omission check. */
+  readonly checkOmissions?: CheckOmissions;
+  /** The seam a caller-level test uses in place of the real registration insert. */
+  readonly registerModules?: RegisterModules;
 };
 
 /**
@@ -223,11 +248,120 @@ function isLockTimeout(error: Error): boolean {
   return "code" in error && error.code === LOCK_NOT_AVAILABLE;
 }
 
+/** The one schema every migration ledger records in (R-9, DEC-50). */
+const LEDGER_SCHEMA = "drizzle";
+
+/**
+ * The database a run's steps receive: drizzle's node-postgres database over the run's one
+ * reserved client. `$client` is that client, so a step sends a statement as text with parameters,
+ * which is what the run's own control statements use and what a caller-level recording double can
+ * read. It is not a pool: the run dispatches nothing to a pool (R-25a).
+ */
+export type MigrationDatabase = NodePgDatabase & {
+  readonly $client: Pick<PoolClient, "query">;
+};
+
+/**
+ * Every module id the deployment already installed, read without the module's declaration. A
+ * module counts as installed when its `tenant_module` row exists or its ledger table
+ * `drizzle.__drizzle_migrations_<id>` exists (R-79). The ledger name is read back as an id, so
+ * this works for a module the image no longer carries.
+ *
+ * The catalog is read rather than the tables, so a fresh database with no `drizzle` schema and no
+ * `tenant_module` table returns nothing instead of failing: on a first boot the check runs before
+ * core's migrations, when both are still absent (R-79).
+ */
+async function installedModuleIds(db: MigrationDatabase): Promise<string[]> {
+  const ledgers = await db.$client.query<{ name: string }>(
+    `select c.relname as name
+       from pg_catalog.pg_class c
+       join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = $1 and c.relkind = 'r'`,
+    [LEDGER_SCHEMA]
+  );
+
+  const installed = ledgers.rows.flatMap((row) => {
+    const id = moduleIdFromLedgerTable(row.name);
+
+    return id === undefined ? [] : [id];
+  });
+
+  const present = await db.$client.query<{ present: boolean }>(
+    `select to_regclass('tenant_module') is not null as present`
+  );
+
+  if (present.rows[0]?.present !== true) return installed;
+
+  const rows = await db.$client.query<{ module_id: string }>(
+    `select module_id from tenant_module`
+  );
+
+  return [...new Set([...installed, ...rows.rows.map((row) => row.module_id)])];
+}
+
+/**
+ * Refuses a run whose image omits a module the deployment already installed (R-79). The refusal
+ * names every omitted module and deletes nothing; the operator restores the image that includes
+ * them or, for a deployment that never went live, recreates an empty database. Controlled
+ * removal, which lets an image drop a module on purpose, is not built yet (Section 5 item 4a).
+ */
+async function checkOmissions(
+  db: MigrationDatabase,
+  compiledModuleIds: readonly string[]
+): Promise<void> {
+  const compiled = new Set(compiledModuleIds);
+  const installed = await installedModuleIds(db);
+  const omitted = installed.filter((id) => !compiled.has(id));
+
+  if (omitted.length === 0) return;
+
+  const named = omitted.map((id) => `"${id}"`).join(", ");
+
+  throw new Error(
+    `The image omits the installed module(s) ${named}. An image cannot drop an installed module; controlled removal is not built yet. Restore the image that includes them, or recreate an empty database if this deployment never went live.`
+  );
+}
+
+/**
+ * Registers a compiled module the deployment has no `tenant_module` row for, as `enabled: false`
+ * (R-27). It runs only once the `seed` step is `done`: before that the seed step is the only
+ * writer of the initial rows, and it applies its own initial policy. The insert uses
+ * `ON CONFLICT DO NOTHING`, so a repeated start changes nothing and an existing row's enabled
+ * state is preserved. It commits in one transaction on the run's own locked session.
+ */
+async function registerModules(
+  db: MigrationDatabase,
+  compiledModuleIds: readonly string[]
+): Promise<void> {
+  if (compiledModuleIds.length === 0) return;
+
+  const seed = await db.$client.query<{ state: string }>(
+    `select state from setup_step where step = $1`,
+    ["seed"]
+  );
+
+  if (seed.rows[0]?.state !== "done") return;
+
+  const rows = sql.join(
+    compiledModuleIds.map((moduleId) => sql`(${moduleId}, false)`),
+    sql`, `
+  );
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into tenant_module (module_id, enabled)
+      values ${rows}
+      on conflict (module_id) do nothing
+    `);
+  });
+}
+
 /**
  * Applies every history on one reserved session (R-25a). The same client sets the lock wait
- * limit, takes the advisory lock, applies each history with its own ledger, and unlocks. The
- * lock is held across the transaction boundary between two histories, and no history begins
- * before the lock is held.
+ * limit, takes the advisory lock, refuses an image that omits an installed module, applies each
+ * history with its own ledger, registers the compiled modules missing a row once `seed` is done,
+ * and unlocks. The lock is held across the transaction boundary between two histories, and no
+ * history begins before the lock is held.
  *
  * A failure keeps its original error as the cause and leaves the caller to exit unhealthy
  * (R-27). Cleanup never turns a failed run into a successful one: a cleanup problem is logged
@@ -270,6 +404,11 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
 
     const db = drizzle(client);
 
+    // The omission check runs before any history, under the same lock, so a run that would drop
+    // an installed module refuses before it touches a ledger or a table (R-79). Its refusal is
+    // its own error, so the module names reach the operator rather than a generic wrap.
+    await (run.checkOmissions ?? checkOmissions)(db, run.compiledModuleIds);
+
     for (const history of run.histories) {
       log({ event: "migration-history-start", history: history.name });
 
@@ -285,6 +424,14 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
       }
 
       log({ event: "migration-history-done", history: history.name });
+    }
+
+    // Registration runs after the histories commit and only once `seed` is done (R-27). A
+    // failure here is the run's own, so it is wrapped like a failed history.
+    try {
+      await (run.registerModules ?? registerModules)(db, run.compiledModuleIds);
+    } catch (error) {
+      throw new AppError(CORE_ERRORS["migration-failed"], { cause: error });
     }
   } catch (error) {
     migrationFailed = true;

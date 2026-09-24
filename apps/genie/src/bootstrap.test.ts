@@ -307,6 +307,11 @@ function migrationClientDouble(behavior: MigrationDouble) {
 
       if (sql.startsWith("RESET lock_timeout")) return { rows: [] };
 
+      // A read is not the migration SQL this double scripts. The run reads the catalog for the
+      // omission check and reads `setup_step` before registering, so both answer empty here and
+      // the run reaches the history it is meant to fail.
+      if (sql.toLowerCase().startsWith("select")) return { rows: [] };
+
       if (behavior.onMigrationSql === "reject") {
         throw new Error("migration sql refused by the double");
       }

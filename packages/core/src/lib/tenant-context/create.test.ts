@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 import { silentLogger } from "../../services/logging/index.ts";
-import { createTenantContext } from "./index.ts";
+import { compiledModuleIdsFor, createTenantContext } from "./index.ts";
 
 const MINIMAL = {
   DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
@@ -50,6 +50,19 @@ describe("createTenantContext", () => {
       expect(Object.keys(context).toSorted()).toEqual(["db", "env"]);
       expect(context.env.databaseUrl).toBe(MINIMAL.DATABASE_URL);
       expect(context.env.lockTimeoutMs).toBe(120000);
+    } finally {
+      await context.db.$client.end();
+    }
+  });
+
+  it("keeps the compiled module list off the object, for the entitlement reader (D-12)", async () => {
+    const context = createTenantContext(MINIMAL, silentLogger(), [
+      "alpha",
+      "beta",
+    ]);
+
+    try {
+      expect(compiledModuleIdsFor(context)).toEqual(["alpha", "beta"]);
     } finally {
       await context.db.$client.end();
     }

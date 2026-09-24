@@ -57,13 +57,15 @@ export async function startDisposableDeployment(
 ): Promise<DisposableDeployment> {
   const postgres = await startDisposablePostgres();
 
+  const compiledModuleIds = modules.map((module) => module.identity.id);
+
   const context = createTenantContext(
     {
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
     },
     silentLogger(),
-    modules.map((module) => module.identity.id)
+    compiledModuleIds
   );
 
   const stop = async () => {
@@ -76,6 +78,7 @@ export async function startDisposableDeployment(
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan(modules.map(moduleHistory)),
+      compiledModuleIds,
     });
   } catch (error) {
     await stop();

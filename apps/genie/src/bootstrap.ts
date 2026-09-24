@@ -19,6 +19,15 @@ import { type AppContext, publishContext } from "./context.ts";
 import { modules } from "./registry.ts";
 
 /**
+ * The module ids the image compiled, read once from the registry. The tenant context and the
+ * migrator run both take this one list, so the entitlement reader and the omission check cannot
+ * disagree about what the image carries (D-12).
+ */
+const compiledModuleIds: readonly string[] = modules.map(
+  (module) => module.identity.id
+);
+
+/**
  * Wraps every module's optional viewer provider so each call is recorded.
  *
  * R-49a requires counting invocations: zero on ordinary pages, route handlers,
@@ -145,11 +154,7 @@ function buildContext(
   const contextId = randomUUID();
 
   return {
-    tenant: createTenantContext(
-      source,
-      logger,
-      modules.map((module) => module.identity.id)
-    ),
+    tenant: createTenantContext(source, logger, compiledModuleIds),
     startedAt: Date.now(),
     contextId,
     viewerProviders: buildViewerProviders(logger),
@@ -233,7 +238,7 @@ export async function runBootstrap(
           env: started.tenant.env,
           pool: started.tenant.db.$client,
           histories: migrationPlan(modules.map(moduleHistory)),
-          compiledModuleIds: modules.map((module) => module.identity.id),
+          compiledModuleIds,
           log: migrationLog(activeLogger),
         }));
 
@@ -242,10 +247,7 @@ export async function runBootstrap(
     (options.publish ?? publishContext)(ready);
 
     activeLogger.info(
-      {
-        modules: modules.map((module) => module.identity.id),
-        contextId: ready.contextId,
-      },
+      { modules: compiledModuleIds, contextId: ready.contextId },
       "bootstrap complete"
     );
   } catch (caught) {

@@ -17,3 +17,20 @@ const LEDGER_PREFIX = "__drizzle_migrations_";
 export function moduleLedgerTable(moduleId: string): string {
   return `${LEDGER_PREFIX}${moduleId.replaceAll("-", "_")}`;
 }
+
+/**
+ * The module id a ledger table names, or `undefined` when the name is not a
+ * module ledger. It is the inverse of `moduleLedgerTable`: the prefix is
+ * stripped and every underscore is written back as a hyphen, so
+ * `__drizzle_migrations_contract_data` maps to `contract-data`.
+ *
+ * The startup omission check reads an installed module's id from this name,
+ * because the image that omits the module cannot read its declaration (R-79).
+ * Core's own `__drizzle_migrations` has no trailing underscore after the
+ * prefix, so it is not a module ledger and never matches.
+ */
+export function moduleIdFromLedgerTable(table: string): string | undefined {
+  if (!table.startsWith(LEDGER_PREFIX)) return undefined;
+
+  return table.slice(LEDGER_PREFIX.length).replaceAll("_", "-");
+}

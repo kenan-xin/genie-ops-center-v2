@@ -279,7 +279,7 @@ describe("the migrator's one reserved session, watched on a real database", () =
       env: context.env,
       pool: watched.pool,
       histories: migrationPlan([alpha, sleeper]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "sleeper"],
       log: (event) => {
         if (event.event === "migration-lock-held") {
           lockOwner = advisoryLockOwner(observer);
@@ -337,7 +337,7 @@ describe("the migrator's one reserved session, watched on a real database", () =
         env: context.env,
         pool: watched.pool,
         histories: migrationPlan([alpha]),
-        compiledModuleIds: [],
+        compiledModuleIds: ["alpha"],
       })
     ).rejects.toMatchObject({ code: "migration-lock-timeout" });
 
@@ -361,7 +361,7 @@ describe("the migrator against a real database", () => {
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([alpha]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha"],
     });
 
     expect(await ledgerNames(context)).toEqual([
@@ -381,7 +381,7 @@ describe("the migrator against a real database", () => {
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([alpha]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha"],
     };
 
     await runMigrations(run);
@@ -405,7 +405,7 @@ describe("the migrator against a real database", () => {
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([alpha]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha"],
     });
 
     expect(await advisoryLocks(context)).toBe(0);
@@ -430,7 +430,7 @@ describe("the migrator against a real database", () => {
         env: context.env,
         pool: context.db.$client,
         histories: migrationPlan([alpha]),
-        compiledModuleIds: [],
+        compiledModuleIds: ["alpha"],
       })
     ).rejects.toMatchObject({ code: "migration-lock-timeout" });
 
@@ -464,7 +464,7 @@ describe("the migrator against a real database", () => {
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([broken]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["broken"],
     }).then(
       () => undefined,
       (error: Error) => error
@@ -473,12 +473,13 @@ describe("the migrator against a real database", () => {
     expect(raised).toMatchObject({ code: "migration-failed" });
     expect(raised?.cause).toBeInstanceOf(Error);
 
-    // The failed run left nothing applied: a later run takes the lock and finishes.
+    // The failed run left nothing applied: a later run takes the lock and finishes. The image
+    // still compiles the module, so its empty ledger is installed and not an omission.
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["broken"],
     });
 
     // Drizzle creates a history's ledger table before it opens the transaction that runs the
@@ -519,7 +520,7 @@ describe("two migrator runs contending for the one lock", () => {
       env: context.env,
       pool: first.pool,
       histories: plan,
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "sleeper"],
       log: (event) => {
         trace.push(`first:${event.event}`);
         held.hit(event.event);
@@ -532,7 +533,7 @@ describe("two migrator runs contending for the one lock", () => {
       env: context.env,
       pool: second.pool,
       histories: plan,
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "sleeper"],
       log: (event) => {
         trace.push(`second:${event.event}`);
       },
@@ -572,7 +573,7 @@ describe("two migrator runs contending for the one lock", () => {
       env: context.env,
       pool: context.db.$client,
       histories: plan,
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "sleeper"],
       log: (event) => {
         held.hit(event.event);
       },
@@ -587,7 +588,7 @@ describe("two migrator runs contending for the one lock", () => {
         env: context.env,
         pool: second.pool,
         histories: plan,
-        compiledModuleIds: [],
+        compiledModuleIds: ["alpha", "sleeper"],
       })
     ).rejects.toMatchObject({ code: "migration-lock-timeout" });
 
@@ -602,7 +603,7 @@ describe("two migrator runs contending for the one lock", () => {
       env: context.env,
       pool: context.db.$client,
       histories: plan,
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "sleeper"],
     });
 
     expect(await appliedCount(context, alpha.table)).toBe(1);
@@ -635,7 +636,7 @@ describe("the migrator recovering from a real database failure", () => {
       env: context.env,
       pool: watched.pool,
       histories: migrationPlan([sleeper]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["sleeper"],
       log: (event) => {
         if (
           event.event !== "migration-history-start" ||
@@ -666,12 +667,13 @@ describe("the migrator recovering from a real database failure", () => {
     expect(watched.released).toEqual([true]);
     expect(await advisoryLocks(context)).toBe(0);
 
-    // A later start is not blocked by the session that died.
+    // A later start is not blocked by the session that died, and the image still compiles the
+    // module whose ledger the killed run left behind.
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["sleeper"],
     });
 
     // No listener is attached here on purpose. A terminated backend makes pg emit `error` on
@@ -699,7 +701,7 @@ describe("the migrator recovering from a real database failure", () => {
       env: context.env,
       pool: watched.pool,
       histories: migrationPlan([alpha, saboteur]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "saboteur"],
     }).then(
       () => undefined,
       (error: Error) => error
@@ -732,7 +734,7 @@ describe("the migrator recovering from a real database failure", () => {
         env: context.env,
         pool: context.db.$client,
         histories: migrationPlan([partial]),
-        compiledModuleIds: [],
+        compiledModuleIds: ["partial"],
       })
     ).rejects.toMatchObject({ code: "migration-failed" });
 
@@ -768,7 +770,7 @@ describe("the migrator over an already migrated database", () => {
       env: context.env,
       pool: context.db.$client,
       histories: migrationPlan([alpha]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha"],
     });
 
     const watched = instrumentedPool(context.db.$client);
@@ -777,7 +779,7 @@ describe("the migrator over an already migrated database", () => {
       env: context.env,
       pool: watched.pool,
       histories: migrationPlan([alpha, beta, gamma]),
-      compiledModuleIds: [],
+      compiledModuleIds: ["alpha", "beta", "gamma"],
     });
 
     const sent = watched.statements.join("\n");
