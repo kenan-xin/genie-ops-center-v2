@@ -27,7 +27,7 @@ const temporary: string[] = [];
  * handoff at the wrapper boundary, which the pipeline's own unit tests cannot
  * see.
  */
-function stubWorkspace(pnpmExit: number, pnpmExtra = "") {
+function stubWorkspace(pnpmExit: number, pnpmExtra = "", dockerFailOn = "") {
   const root = mkdtempSync(join(tmpdir(), "genie-release-cli-"));
 
   temporary.push(root);
@@ -70,6 +70,7 @@ for arg in "$@"; do
   if [ "$prev" = "--iidfile" ]; then printf '${IDENTITY}\\n' > "$arg"; fi
   prev="$arg"
 done
+if [ -n "${dockerFailOn}" ] && [ "$1" = "${dockerFailOn}" ]; then exit 1; fi
 exit 0`
   );
 
@@ -129,9 +130,18 @@ describe("the customer image release wrapper", () => {
 
     expect(outcome.status, `${outcome.stderr}\nLOG:\n${log}`).toBe(0);
 
+    // The gate environment carries the selection...
     expect(log).toContain("MODULE_INCLUDE=placeholder");
-    expect(log).toContain("docker build");
-    expect(log).toContain("MODULE_INCLUDE=placeholder");
+
+    // ...and the build receives it as its one build argument. This asserts on
+    // the docker build line itself, not the pnpm gate line that also prints the
+    // variable, which is what the previous duplicate assertion actually matched.
+    const buildLine = log
+      .split("\n")
+      .find((line) => line.startsWith("docker build"));
+
+    expect(buildLine).toBeDefined();
+    expect(buildLine).toContain("--build-arg MODULE_INCLUDE=placeholder");
 
     // The smoke ran with the identity, before the push of that same identity.
     const smokeAt = log.indexOf("vitest.release-smoke.config.ts");
@@ -187,6 +197,59 @@ describe("the customer image release wrapper", () => {
 
     expect(log).not.toContain("docker push");
     expect(log).not.toContain("docker build");
+  });
+
+  it("publishes nothing when the tag of the smoke-tested identity fails", () => {
+    const workspace = stubWorkspace(0, "", "tag");
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("release failed at publish-candidate");
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    // The build and smoke ran; the tag that binds the pushed ref to the digest
+    // failed, so the push never follows it.
+    expect(log).toContain("docker build");
+    expect(log).toContain("docker tag");
+    expect(log).not.toContain("docker push");
+  });
+
+  it("fails at the smoke and publishes nothing when only the smoke fails", () => {
+    const workspace = stubWorkspace(
+      0,
+      'case "$*" in *release-smoke*) exit 1 ;; esac'
+    );
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("release failed at smoke-candidate");
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    // Gates and the build ran; the smoke's own failure stops the run before any
+    // tag or push, which is the wrapper-level version of the pipeline's
+    // smoke-only failure.
+    expect(log).toContain("docker build");
+    expect(log).toContain("release-smoke");
+    expect(log).not.toContain("docker tag");
+    expect(log).not.toContain("docker push");
   });
 
   it("prints a failed gate's captured output before the status line", () => {
