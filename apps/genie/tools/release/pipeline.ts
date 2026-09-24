@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { redact } from "@genie/core";
@@ -58,7 +59,7 @@ export type ReleaseOutcome = {
   readonly gateOutput?: string;
 };
 
-/** The digest shape `docker image inspect -f {{.Id}}` prints for a real image. */
+/** The digest shape `docker build --iidfile` writes for a real image. */
 const IMMUTABLE_IDENTITY = /^sha256:[0-9a-f]{64}$/;
 
 /**
@@ -228,40 +229,48 @@ export function runRelease(
     "slug"
   )}-${tagComponent(request.version, "version")}`;
 
-  const built = runner(
-    "docker",
-    [
-      "build",
-      "-f",
-      "deploy/Dockerfile",
-      "--build-arg",
-      `MODULE_INCLUDE=${include}`,
-      "-t",
-      candidateTag,
-      ".",
-    ],
-    { cwd: request.repoRoot, env }
-  );
+  // The build writes its own image id to this file, so the identity the smoke
+  // and publish consume is the build's own output rather than whatever a
+  // movable candidate tag currently points at.
+  const iidDir = mkdtempSync(join(tmpdir(), "genie-release-iid-"));
+  const iidFile = join(iidDir, "iid");
 
-  if (built.status !== 0) {
-    return fail(
-      "build-candidate",
-      `The candidate build failed with exit ${built.status}. Nothing is published.`
+  let identity = "";
+
+  try {
+    const built = runner(
+      "docker",
+      [
+        "build",
+        "-f",
+        "deploy/Dockerfile",
+        "--build-arg",
+        `MODULE_INCLUDE=${include}`,
+        "--iidfile",
+        iidFile,
+        "-t",
+        candidateTag,
+        ".",
+      ],
+      { cwd: request.repoRoot, env }
     );
+
+    if (built.status !== 0) {
+      return fail(
+        "build-candidate",
+        `The candidate build failed with exit ${built.status}. Nothing is published.`
+      );
+    }
+
+    identity = existsSync(iidFile) ? readFileSync(iidFile, "utf8").trim() : "";
+  } finally {
+    rmSync(iidDir, { recursive: true, force: true });
   }
 
-  const inspected = runner(
-    "docker",
-    ["image", "inspect", "-f", "{{.Id}}", candidateTag],
-    { cwd: request.repoRoot }
-  );
-
-  const identity = inspected.stdout.trim();
-
-  if (inspected.status !== 0 || !IMMUTABLE_IDENTITY.test(identity)) {
+  if (!IMMUTABLE_IDENTITY.test(identity)) {
     return fail(
       "resolve-identity",
-      `Could not resolve an immutable digest for ${candidateTag} (saw "${identity}"). Publishing a movable tag would not be the smoke-tested candidate, so this fails closed.`
+      `The build's iidfile held "${identity}", not an immutable digest. Publishing a movable tag would not be the smoke-tested candidate, so this fails closed.`
     );
   }
 

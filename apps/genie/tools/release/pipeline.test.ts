@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -42,7 +48,6 @@ type Step =
   | "test"
   | "integration"
   | "build"
-  | "identity"
   | "smoke"
   | "publish";
 
@@ -50,9 +55,6 @@ function stepOf(command: string, args: readonly string[]): Step | undefined {
   const line = `${command} ${args.join(" ")}`;
 
   if (command === "docker" && args[0] === "build") return "build";
-
-  if (command === "docker" && args[0] === "image" && args[1] === "inspect")
-    return "identity";
 
   if (command === "docker" && (args[0] === "tag" || args[0] === "push"))
     return "publish";
@@ -72,9 +74,9 @@ function stepOf(command: string, args: readonly string[]): Step | undefined {
 
 /**
  * A runner that records every invocation and fails exactly the steps named in
- * `failures`. The identity probe answers the canned digest unless a case passes
- * a replacement, so the pipeline's own parsing of `docker image inspect` runs
- * for real.
+ * `failures`. A real `docker build` writes the image id to the path given by
+ * `--iidfile`, so the stub writes the canned digest to that same path and the
+ * pipeline's own read of the file runs for real.
  */
 function recordingRunner(
   failures: readonly Step[] = [],
@@ -88,12 +90,17 @@ function recordingRunner(
 
     calls.push(call);
 
-    if (stepOf(command, args) === "identity") {
-      return { status: 0, stdout: `${identity ?? ""}\n`, stderr: "" };
-    }
-
     const step = stepOf(command, args);
     const status = step !== undefined && failed.has(step) ? 1 : 0;
+
+    if (step === "build" && status === 0) {
+      const iidAt = args.indexOf("--iidfile");
+      const path = iidAt === -1 ? undefined : args[iidAt + 1];
+
+      if (path !== undefined) {
+        writeFileSync(path, `${identity ?? ""}\n`, "utf8");
+      }
+    }
 
     return { status, stdout: "", stderr: status === 0 ? "" : "failed" };
   };
@@ -139,6 +146,20 @@ describe("the customer image release pipeline", () => {
     expect(build?.args).toContain("MODULE_INCLUDE=placeholder");
     expect(build?.env?.MODULE_INCLUDE).toBe("placeholder");
 
+    // The identity comes from the build's iidfile, never from inspecting the
+    // movable candidate tag.
+    const iidAt = build?.args.indexOf("--iidfile") ?? -1;
+
+    expect(iidAt).toBeGreaterThan(-1);
+    expect(
+      calls.some(
+        (call) =>
+          call.command === "docker" &&
+          call.args[0] === "image" &&
+          call.args[1] === "inspect"
+      )
+    ).toBe(false);
+
     // Publish consumes the immutable identity, never the tag, which can move.
     const tag = calls.find((call) => call.args[0] === "tag");
 
@@ -159,6 +180,44 @@ describe("the customer image release pipeline", () => {
     expect(smoke?.env?.GENIE_SMOKE_IMAGE).toBe(IDENTITY);
     expect(smoke?.env?.GENIE_SMOKE_INCLUDE).toBe("placeholder");
     expect(smoke?.env?.GENIE_SMOKE_EXCLUDED).toBe("");
+  });
+
+  it("resolves the identity from the build's iidfile and removes the temp file", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = recordingRunner();
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.identity).toBe(IDENTITY);
+
+    const build = calls.find(
+      (call) => stepOf(call.command, call.args) === "build"
+    );
+
+    const iidAt = build?.args.indexOf("--iidfile") ?? -1;
+
+    expect(iidAt).toBeGreaterThan(-1);
+
+    const iidPath = build?.args[iidAt + 1] ?? "";
+
+    expect(iidPath).not.toBe("");
+
+    // Smoke and publish both consume the digest the build wrote to that exact
+    // path, so the identity is the build's own output and not a tag's current
+    // target.
+    expect(calls.find((call) => call.args[0] === "tag")?.args[1]).toBe(
+      IDENTITY
+    );
+
+    const smoke = calls.find(
+      (call) => stepOf(call.command, call.args) === "smoke"
+    );
+
+    expect(smoke?.env?.GENIE_SMOKE_IMAGE).toBe(IDENTITY);
+
+    // The temp file the build wrote is gone once the run returns.
+    expect(existsSync(iidPath)).toBe(false);
   });
 
   it("changes the build argument when the customer's modules.txt changes", () => {
@@ -310,7 +369,7 @@ describe("the customer image release pipeline", () => {
     expect(outcome.gateOutput).toBeUndefined();
   });
 
-  it("fails closed when the identity probe is not an immutable digest", () => {
+  it("fails closed when the build's iidfile is not an immutable digest", () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner([], "acme:latest");
 

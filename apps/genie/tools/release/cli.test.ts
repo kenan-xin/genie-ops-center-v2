@@ -64,7 +64,13 @@ function stubWorkspace(pnpmExit: number, pnpmExtra = "") {
   );
   stub(
     "docker",
-    `if [ "$1" = "image" ]; then printf '${IDENTITY}\\n'; exit 0; fi\nprintf 'docker %s\\n' "$*" >> "$STUB_LOG"\nexit 0`
+    `printf 'docker %s\\n' "$*" >> "$STUB_LOG"
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--iidfile" ]; then printf '${IDENTITY}\\n' > "$arg"; fi
+  prev="$arg"
+done
+exit 0`
   );
 
   return { root, bin, log };
