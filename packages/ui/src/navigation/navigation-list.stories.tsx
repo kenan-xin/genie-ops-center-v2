@@ -25,43 +25,57 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const ENTRIES = {
+  heading: "Modules",
+  items: [
+    { id: "placeholder-home", label: "Placeholder", path: "/placeholder" },
+    {
+      id: "placeholder-archive",
+      label: "Archive",
+      path: "/placeholder/archive",
+    },
+  ],
+  emptyMessage: "No modules are compiled into this deployment.",
+};
+
+// The one populated assertion the three viewport variants share, so a viewport
+// variant cannot drift from the story it mirrors.
+const entriesRender: Story["play"] = async ({ canvasElement }) => {
+  const list = within(canvasElement).getByRole("navigation", {
+    name: "Modules",
+  });
+
+  await expect(within(list).getAllByRole("link")).toHaveLength(2);
+  await expect(
+    within(list).getByRole("link", { name: "Placeholder" })
+  ).toHaveAttribute("href", "/placeholder");
+};
+
 export const WithEntries: Story = {
-  args: {
-    heading: "Modules",
-    items: [
-      { id: "placeholder-home", label: "Placeholder", path: "/placeholder" },
-      {
-        id: "placeholder-archive",
-        label: "Archive",
-        path: "/placeholder/archive",
-      },
-    ],
-    emptyMessage: "No modules are compiled into this deployment.",
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  args: ENTRIES,
+  play: entriesRender,
+};
 
-    const list = canvas.getByRole("navigation", { name: "Modules" });
+// Every screen is proved at both viewports (DEC-25). "desktop" and "mobile1" are
+// keys of the built-in minimal viewports, so no host configuration is needed.
+export const Desktop: Story = {
+  args: ENTRIES,
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: entriesRender,
+};
 
-    await expect(
-      within(list).getByRole("link", { name: "Placeholder" })
-    ).toHaveAttribute("href", "/placeholder");
-    await expect(within(list).getAllByRole("link")).toHaveLength(2);
-  },
+export const Phone: Story = {
+  args: ENTRIES,
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: entriesRender,
 };
 
 export const Empty: Story = {
-  args: {
-    heading: "Modules",
-    items: [],
-    emptyMessage: "No modules are compiled into this deployment.",
-  },
+  args: { ...ENTRIES, items: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(
-      canvas.getByText("No modules are compiled into this deployment.")
-    ).toBeVisible();
+    await expect(canvas.getByText(ENTRIES.emptyMessage)).toBeVisible();
     await expect(canvas.queryAllByRole("link")).toHaveLength(0);
   },
 };

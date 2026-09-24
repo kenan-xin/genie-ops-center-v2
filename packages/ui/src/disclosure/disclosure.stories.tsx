@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent } from "storybook/test";
 
+import { ThemeProvider } from "../theme/theme-provider.tsx";
+import { themeTokens } from "../theme/tokens.ts";
 import { Disclosure } from "./disclosure.tsx";
 
 const meta = {
@@ -87,22 +89,37 @@ export const StateResets: Story = {
   },
 };
 
-// Renders on a dark surface owned by this package, so the story asserts on what
-// packages/ui itself renders and never reaches for the host's decorator. The
-// theme toolbar in apps/storybook is a separate concern.
+// Renders on the dark surface this package owns. The decorator composes the
+// real ThemeProvider, so the story asserts the dark token pair the surface
+// actually renders and never reaches for the host's decorator. A dark-surface
+// token regression fails here; the theme toolbar in apps/storybook is a
+// separate concern.
 export const Dark: Story = {
   args: { defaultOpen: true },
   decorators: [
     (Story) => (
-      <div data-theme="dark">
+      <ThemeProvider theme="dark">
         <Story />
-      </div>
+      </ThemeProvider>
     ),
   ],
   play: async ({ canvas }) => {
     const region = canvas.getByRole("region", { name: "Deployment notes" });
 
     await expect(region).toBeVisible();
-    await expect(region.closest("[data-theme='dark']")).not.toBeNull();
+
+    const surface = region.closest("[data-theme]");
+
+    await expect(surface).toHaveAttribute("data-theme", "dark");
+    await expect(surface).toHaveStyle({
+      backgroundColor: themeTokens.dark.surface,
+      color: themeTokens.dark.foreground,
+    });
+    // The dark pair must not collapse to the light one, so a dark token that
+    // becomes the light colour (the contrast regression this story catches)
+    // fails here rather than passing on the attribute alone.
+    await expect(surface).not.toHaveStyle({
+      backgroundColor: themeTokens.light.surface,
+    });
   },
 };
