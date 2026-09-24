@@ -47,6 +47,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/deployment-tables.integration.test.ts",
+    reason:
+      "Spec 1 AC-1's first half, R-1, R-1a, R-2 and R-3, requires the deployment-table shape proof to run",
+    cases: [
+      "the Section 1 deployment tables create the eleven deployment tables with exactly the documented columns",
+      "the Section 1 deployment tables gives every table its documented primary key and index shape",
+      "the Section 1 deployment tables does not create the Section 3 tables category and user_preference",
+      "the Section 1 deployment tables leaves every person-naming column and tenant_module.category_id nullable with no foreign key",
+      "the Section 1 deployment tables keeps the file_blob bytes column in external storage",
+    ],
+  },
+  {
     file: "testing/tenant-context.integration.test.ts",
     reason:
       "R-26a's production cross-check, held by genie-ops-center-v2-wwc, requires the containment proof to run",
