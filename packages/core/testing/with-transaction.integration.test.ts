@@ -52,8 +52,8 @@ async function startTransactionFixture(): Promise<TransactionFixture> {
  * The withTransaction seam (D-5, D-6). `fn` receives the one transaction over the context's
  * own pool and an after-commit registration. A thrown fn rolls the write back and the
  * after-commit list is discarded; a commit runs each entry exactly once, only once the row
- * is visible to a separate session (the bead's acceptance, R-33, R-54). The throwing entry's
- * behavior is unspecified by the plan and is deliberately not asserted here.
+ * is visible to a separate session (the bead's acceptance, R-33, R-54). A throwing after-commit
+ * entry is best effort and must not prevent later entries or turn a committed result into a failure.
  */
 describe("withTransaction against a real database", () => {
   it("rolls a thrown fn's write back and runs no after-commit entry", async () => {
@@ -103,7 +103,7 @@ describe("withTransaction against a real database", () => {
       rowsSeenWhileEntryRan.push(left.rows[0]?.count ?? -1);
     };
 
-    await withTransaction(context, async (tx, afterCommit) => {
+    const result = await withTransaction(context, async (tx, afterCommit) => {
       await tx.execute(
         sql`insert into wt_note (id, label) values (1, 'committed')`
       );
@@ -119,13 +119,39 @@ describe("withTransaction against a real database", () => {
 
         return countFromObserver();
       });
+
+      return "transaction-result";
     });
 
     // Each entry saw the committed row from its own separate query, so both ran only
     // after the commit was durable, and each entry's own counter shows exactly one run.
+    expect(result).toBe("transaction-result");
     expect(rowsSeenWhileEntryRan).toEqual([1, 1]);
     expect(runCounts.get("first")).toBe(1);
     expect(runCounts.get("second")).toBe(1);
+  });
+
+  it("keeps the committed result and runs later entries when an after-commit entry throws", async () => {
+    const { context } = await startTransactionFixture();
+    const entriesRan: string[] = [];
+
+    const result = await withTransaction(context, async (_tx, afterCommit) => {
+      afterCommit(() => {
+        entriesRan.push("throwing");
+        throw new Error("after-commit failure");
+      });
+
+      afterCommit(() => {
+        entriesRan.push("later");
+      });
+
+      return "transaction-result";
+    });
+
+    // TenantContext does not expose its constructor logger, so this pins the observable seam:
+    // best-effort handlers cannot turn a committed result into a caller-visible failure.
+    expect(result).toBe("transaction-result");
+    expect(entriesRan).toEqual(["throwing", "later"]);
   });
 
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
