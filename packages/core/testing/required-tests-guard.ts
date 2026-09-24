@@ -16,6 +16,9 @@ import type { RequiredCase } from "./required-tests-validator.ts";
  *   cleanup preserve the original error and destroy the session.
  * - R-26a / R-27: a failed run releases or destroys the owning connection and
  *   blocks no later run.
+ * - D-5 / D-6 (1ia.14): a thrown fn rolls the write back and discards the
+ *   after-commit list, a commit runs each entry exactly once after the row is
+ *   visible to another session, and the transaction is the context pool's own.
  *
  * The validator itself is shared with the app harness
  * (`apps/genie/testing/required-tests-guard.ts`) through this module's
@@ -50,6 +53,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "tenant context database clients keeps an error listener while a client is checked out",
       "tenant context database clients rejects the active query when its backend terminates",
+    ],
+  },
+  {
+    file: "testing/with-transaction.integration.test.ts",
+    reason:
+      "D-5 and D-6's withTransaction seam, bead 1ia.14's acceptance, requires the transaction and after-commit cases to run",
+    cases: [
+      "withTransaction against a real database rolls a thrown fn's write back and runs no after-commit entry",
+      "withTransaction against a real database commits the write and runs each after-commit entry exactly once, after the commit",
+      "withTransaction against a real database serves the transaction from the context's own pool and opens no second connection",
     ],
   },
 ];
