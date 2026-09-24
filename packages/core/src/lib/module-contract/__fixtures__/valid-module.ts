@@ -32,7 +32,7 @@ export const validModule = {
   schema: {
     tables: { fixtureRecord },
     migrations: () => [],
-    migrationsTable: "fixture_migrations",
+    migrationsTable: "__drizzle_migrations_fixture",
   },
 
   router: initTRPC.create().router({}),

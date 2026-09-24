@@ -354,6 +354,9 @@ describe("the identifier guard", () => {
     expect(
       rendered.get("packages/modules/contract-data/drizzle/0000_initial.sql")
     ).toContain('CREATE TABLE "contract_data_record"');
+    expect(
+      rendered.get("packages/modules/contract-data/src/schema.ts")
+    ).toContain('"__drizzle_migrations_contract_data"');
   });
 
   it("renders the same bytes for the same id", () => {

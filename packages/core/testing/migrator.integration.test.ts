@@ -101,13 +101,18 @@ async function writeHistory(
   };
 }
 
-/** Every ledger table this database holds, whatever schema drizzle put it in. */
-async function ledgerNames(context: TenantContext): Promise<string[]> {
-  const result = await context.db.$client.query<{ tablename: string }>(
-    "select tablename from pg_tables where tablename ~ '^__drizzle_migrations' order by tablename"
+/** Every ledger table this database holds in the schema reserved for migrations. */
+async function ledgerNames(
+  context: TenantContext
+): Promise<Array<{ schema: string; table: string }>> {
+  const result = await context.db.$client.query<{
+    schema: string;
+    table: string;
+  }>(
+    "select n.nspname as schema, c.relname as table from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where c.relkind = 'r' and c.relname ~ '^__drizzle_migrations' order by n.nspname, c.relname"
   );
 
-  return result.rows.map((row) => row.tablename);
+  return result.rows;
 }
 
 /** How many migrations one ledger records. */
@@ -356,8 +361,8 @@ describe("the migrator against a real database", () => {
     });
 
     expect(await ledgerNames(context)).toEqual([
-      "__drizzle_migrations",
-      "__drizzle_migrations_alpha",
+      { schema: "drizzle", table: "__drizzle_migrations" },
+      { schema: "drizzle", table: "__drizzle_migrations_alpha" },
     ]);
 
     expect(await tableExists(context, "alpha_record")).toBe(true);

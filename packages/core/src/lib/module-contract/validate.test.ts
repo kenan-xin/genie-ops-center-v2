@@ -289,6 +289,37 @@ describe("validateModule", () => {
 });
 
 describe("validateRegistry", () => {
+  it("accepts the exact ledger name for a module id", () => {
+    expect(validateRegistry([validModule])).toEqual([]);
+  });
+
+  it("accepts a module ledger named after a hyphenated module id", () => {
+    const contractData = {
+      ...renameModule(validModule, "contract-data"),
+      schema: {
+        ...validModule.schema,
+        migrationsTable: "__drizzle_migrations_contract_data",
+      },
+    };
+
+    expect(validateRegistry([contractData])).toEqual([]);
+  });
+
+  it("rejects a module ledger with a name unrelated to its module id", () => {
+    const broken = {
+      ...validModule,
+      schema: {
+        ...validModule.schema,
+        migrationsTable: "__drizzle_migrations_other",
+      },
+    };
+
+    const problems = validateRegistry([broken]).join(" ");
+
+    expect(problems).toContain("fixture");
+    expect(problems).toContain("__drizzle_migrations_fixture");
+  });
+
   it("accepts one landing flag across two modules", () => {
     const landing = withLanding(validModule);
     const plain = renameModule(validModule, "second");
