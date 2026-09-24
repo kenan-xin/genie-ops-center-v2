@@ -43,6 +43,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "the built image shares one context across concurrent page, tRPC and viewer requests",
       "the built image runs genie-ops from PATH through docker exec and migrates",
+      "the built image runs genie-ops migrate on a fresh database through the image entrypoint",
       "the built image serves no migration SQL url",
       "the built image exposes no migration SQL content in its public corpus",
       "the built image detects the repository migration SQL in a public corpus, raw, JSON-escaped and base64 encoded, and only that SQL",

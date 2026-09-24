@@ -19,6 +19,7 @@ import {
   logsUntil,
   normalizeSqlText,
   pollHealth,
+  reachableFromContainer,
   startImage,
   type RunningImage,
   asScannerSource,
@@ -356,6 +357,43 @@ describe("the built image", () => {
       expect(result.output).toContain("pending");
     } finally {
       await image.stop();
+    }
+  }, 180000);
+
+  // R-62 and D-10: the image entrypoint dispatches `genie-ops` too, and on a fresh database the
+  // command actually migrates. The `docker exec` case above proves the PATH install; this one
+  // proves the entrypoint branch, a pending count above zero and core's history applied.
+  it("runs genie-ops migrate on a fresh database through the image entrypoint", async () => {
+    const fresh = await startDisposablePostgres();
+
+    try {
+      const result = await run("docker", [
+        "run",
+        "--rm",
+        "--add-host",
+        `${HOST_ALIAS}:host-gateway`,
+        "-e",
+        `DATABASE_URL=${reachableFromContainer(fresh.url)}`,
+        "-e",
+        "PUBLIC_URL=https://example.invalid",
+        IMAGE,
+        "genie-ops",
+        "migrate",
+      ]).then(
+        (value) => ({ code: 0, output: `${value.stdout}${value.stderr}` }),
+        (error: { code?: number; stdout?: string; stderr?: string }) => ({
+          code: error.code ?? -1,
+          output: `${error.stdout ?? ""}${error.stderr ?? ""}`,
+        })
+      );
+
+      expect(result.code).toBe(0);
+
+      // A fresh database has everything pending, so the count is above zero.
+      expect(result.output).toMatch(/migration-pending [1-9][0-9]*/);
+      expect(result.output).toContain("migration-history-done core");
+    } finally {
+      await fresh.stop();
     }
   }, 180000);
 
