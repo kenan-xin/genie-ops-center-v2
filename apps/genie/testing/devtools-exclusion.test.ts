@@ -1,7 +1,9 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+
+import { assertBuildIsCurrent } from "./build-freshness.ts";
 
 /**
  * The devtools are development-only, and this is what proves it.
@@ -108,6 +110,14 @@ function servedScripts(): readonly string[] {
 
   return found;
 }
+
+// This file certifies the exclusion against a build, so the build has to be the
+// one the current source produces: a stale `.next` would certify the previous
+// revision's output. `BUILD_ID` is the build's own completion marker, and the
+// shared guard names the rebuild command when it is older than a watched source.
+beforeAll(() => {
+  assertBuildIsCurrent(join(BUILD_ROOT, "BUILD_ID"));
+});
 
 describe("the production build and the devtools", () => {
   const scripts = servedScripts();
