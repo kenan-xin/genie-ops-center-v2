@@ -102,6 +102,22 @@ describe("the shared empty image input digest", () => {
     expect(inputDigest({ repoRoot: root })).toBe(clean);
   });
 
+  it("changes when an already dirty file is edited again", () => {
+    const path = join(root, OUTSIDE_INPUT);
+
+    writeFileSync(path, "export const version = 10;\n", "utf8");
+
+    const dirty = inputDigest({ repoRoot: root });
+
+    // `git status` still reports the same " M path" line, so only the bytes
+    // this loop hashes can carry the second edit.
+    writeFileSync(path, "export const version = 11;\n", "utf8");
+
+    expect(inputDigest({ repoRoot: root })).not.toBe(dirty);
+
+    writeFileSync(path, "export const version = 1;\n", "utf8");
+  });
+
   it("changes when an untracked file outside the old inputs is added", () => {
     const clean = inputDigest({ repoRoot: root });
     const path = join(root, "apps/genie/src/untracked.ts");
