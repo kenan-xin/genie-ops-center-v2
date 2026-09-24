@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
+import type { Module } from "../src/lib/module-contract/module.ts";
 import {
   createTenantContext,
   type TenantContext,
@@ -21,6 +23,14 @@ import { runGenieOps } from "../src/services/ops/index.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
+
+function moduleFor(id: string): Module {
+  return {
+    ...validModule,
+    identity: { ...validModule.identity, id },
+    schema: { ...validModule.schema, migrationsTable: moduleLedgerTable(id) },
+  };
+}
 
 afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
@@ -149,7 +159,7 @@ describe("genie-ops migrate", () => {
 
     const options = {
       source,
-      compiledModuleIds: [migration.name],
+      compiledModules: [moduleFor(migration.name)],
       histories: [migration],
       ...captured,
     };
@@ -194,7 +204,7 @@ describe("genie-ops migrate", () => {
     await expect(
       runGenieOps(["migrate"], {
         source,
-        compiledModuleIds: [migration.name],
+        compiledModules: [moduleFor(migration.name)],
         histories: [migration],
         ...captured,
       })
@@ -228,7 +238,7 @@ describe("genie-ops migrate", () => {
     await expect(
       runGenieOps(["migrate"], {
         source,
-        compiledModuleIds: [migration.name],
+        compiledModules: [moduleFor(migration.name)],
         histories: [migration],
         ...captured,
       })
@@ -256,7 +266,7 @@ describe("genie-ops parse guards", () => {
     await expect(
       runGenieOps(["unknown-command"], {
         source,
-        compiledModuleIds: [],
+        compiledModules: [],
         histories: [],
         ...captured,
       })
@@ -273,7 +283,7 @@ describe("genie-ops parse guards", () => {
     await expect(
       runGenieOps(["migrate", fakeSecret], {
         source,
-        compiledModuleIds: [],
+        compiledModules: [],
         histories: [],
         ...captured,
       })
@@ -297,7 +307,7 @@ describe("genie-ops parse guards", () => {
           DATABASE_URL: "not-a-database-url",
           PUBLIC_URL: "not-a-public-url",
         },
-        compiledModuleIds: [],
+        compiledModules: [],
         histories: [],
         ...captured,
       })
