@@ -240,6 +240,52 @@ describe("withTransaction against a real database", () => {
     expect(otherBackendsDuring).toHaveLength(1);
   });
 
+  it("runs two parallel top-level calls on one context, each committing and running its entries", async () => {
+    const { context, observer } = await startTransactionFixture();
+    await context.db.$client.query(
+      "create table wt_parallel (id integer primary key, label text)"
+    );
+
+    const entriesRan: string[] = [];
+
+    const [first, second] = await Promise.all([
+      withTransaction(context, async (tx, afterCommit) => {
+        await tx.execute(
+          sql`insert into wt_parallel (id, label) values (1, 'first')`
+        );
+
+        afterCommit(() => {
+          entriesRan.push("first");
+        });
+
+        return "first-result";
+      }),
+      withTransaction(context, async (tx, afterCommit) => {
+        await tx.execute(
+          sql`insert into wt_parallel (id, label) values (2, 'second')`
+        );
+
+        afterCommit(() => {
+          entriesRan.push("second");
+        });
+
+        return "second-result";
+      }),
+    ]);
+
+    // Two concurrent top-level calls are not nesting: the guard marks only the call's own async
+    // tree, so each call opens its own transaction and both run their own after-commit entry.
+    expect(first).toBe("first-result");
+    expect(second).toBe("second-result");
+    expect(entriesRan.toSorted()).toEqual(["first", "second"]);
+
+    const left = await observer.query<{ count: number }>(
+      "select count(*)::int as count from wt_parallel"
+    );
+
+    expect(left.rows[0]?.count).toBe(2);
+  });
+
   it("refuses an afterCommit registration once fn has settled", async () => {
     const { context } = await startTransactionFixture();
 
