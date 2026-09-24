@@ -45,7 +45,7 @@ The tRPC and TanStack Query setup follows the tRPC App Router guide and the TanS
 
 | Item | Choice | Version | Why |
 | --- | --- | --- | --- |
-| Database | PostgreSQL | 16 | One database per deployment, and a deployment serves one customer (ADR 0007). Row-level security is not used; isolation is by deployment and database. |
+| Database | PostgreSQL | 18 | One database per deployment, and a deployment serves one customer (ADR 0007). A customer-hosted database must run PostgreSQL 18, the major that every integration and end-to-end test runs (`postgres:18-alpine`). Row-level security is not used; isolation is by deployment and database. |
 | ORM and migrations | Drizzle ORM with drizzle-kit | 0.45.x, 0.31.x | Typed schema per module, each with its own migration history and migrations table, core with another (`DEC-33`). Histories apply at container start under one advisory lock, core first. |
 | Driver | node-postgres (`pg`) | 8.x | One pool per deployment, built at startup inside the tenant context and never exported (`DEC-34`). |
 | File storage | Postgres `file_blob` behind a `FileStorage` interface | own code | Default adapter: bytes in the database, so isolation and backups come with the database and no storage service is run. Optional object-store adapter per deployment when volume grows, built on FlyDrive (`DEC-20`). |
