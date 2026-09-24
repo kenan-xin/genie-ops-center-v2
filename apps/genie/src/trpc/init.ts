@@ -4,12 +4,12 @@ import {
   type ModuleRequestContext,
   safeMessageFor,
 } from "@genie/core";
+import { TRPCError, initTRPC } from "@trpc/server";
 import {
-  TRPCError,
+  TRPC_ERROR_CODES_BY_KEY,
   type TRPC_ERROR_CODE_KEY,
   type TRPC_ERROR_CODE_NUMBER,
-  initTRPC,
-} from "@trpc/server";
+} from "@trpc/server/rpc";
 
 import type { AppContext } from "../context.ts";
 import { httpStatusForCode } from "../http-errors.ts";
@@ -96,28 +96,25 @@ type ProtocolCode = {
 };
 
 /**
- * The protocol code that names each status this formatter answers with. tRPC
+ * The protocol key that names each status this formatter answers with. tRPC
  * reads `data.httpStatus` back to set the HTTP response status, so the protocol
  * `code` has to name the same condition, or a client decodes one status from
  * the body and reads another from the response.
- *
- * The numbers are tRPC's own `TRPC_ERROR_CODES_BY_KEY` values for these keys.
- * `tRPC` exports no public key-to-number helper, so they are written here.
  */
-const PROTOCOL_CODE_BY_HTTP_STATUS = new Map<number, ProtocolCode>([
-  [400, { key: "BAD_REQUEST", number: -32600 }],
-  [403, { key: "FORBIDDEN", number: -32003 }],
-  [404, { key: "NOT_FOUND", number: -32004 }],
-  [500, { key: "INTERNAL_SERVER_ERROR", number: -32603 }],
+const PROTOCOL_KEY_BY_HTTP_STATUS = new Map<number, TRPC_ERROR_CODE_KEY>([
+  [400, "BAD_REQUEST"],
+  [403, "FORBIDDEN"],
+  [404, "NOT_FOUND"],
+  [500, "INTERNAL_SERVER_ERROR"],
 ]);
 
-const GENERIC_PROTOCOL_CODE: ProtocolCode = {
-  key: "INTERNAL_SERVER_ERROR",
-  number: -32603,
-};
+const GENERIC_PROTOCOL_KEY: TRPC_ERROR_CODE_KEY = "INTERNAL_SERVER_ERROR";
 
 function protocolCodeFor(httpStatus: number): ProtocolCode {
-  return PROTOCOL_CODE_BY_HTTP_STATUS.get(httpStatus) ?? GENERIC_PROTOCOL_CODE;
+  const key =
+    PROTOCOL_KEY_BY_HTTP_STATUS.get(httpStatus) ?? GENERIC_PROTOCOL_KEY;
+
+  return { key, number: TRPC_ERROR_CODES_BY_KEY[key] };
 }
 
 /**
