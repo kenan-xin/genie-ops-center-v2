@@ -84,8 +84,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason:
       "Spec 1 AC-1 second half and R-5 require reader cache expiry and disabled-module proof",
     cases: [
-      "tenant context readers serve cached settings branding and entitlement values without a second database read",
-      "tenant context readers reread settings branding and entitlements after ten seconds without save invalidation",
+      "tenant context readers serves cached settings branding and entitlement values without a second database read",
+      "tenant context readers rereads settings branding and entitlements after ten seconds without save invalidation",
     ],
   },
   {

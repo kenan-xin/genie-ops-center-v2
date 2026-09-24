@@ -111,7 +111,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/disabled-module.integration.test.ts",
     cases: [
-      "a compiled disabled module hides navigation refuses tRPC and routes and keeps its tables",
+      "compiled disabled module refusal a compiled disabled module hides navigation refuses tRPC and routes and keeps its tables",
     ],
   },
 ];
