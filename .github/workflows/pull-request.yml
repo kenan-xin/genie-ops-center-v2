@@ -66,7 +66,7 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The script runs squawk_and_drizzle-kit check over the changed migrations
+      # The script runs squawk and drizzle-kit check over the changed migrations
       # and every history. A drop, a rename, a type change or a new required
       # column fails unless the statement carries `-- squawk-ignore <rule>`.
       - name: Lint changed migrations

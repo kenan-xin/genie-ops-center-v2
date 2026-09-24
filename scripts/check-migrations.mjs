@@ -4,8 +4,10 @@
 // exercise the same code:
 //
 //   * Squawk lints every migration file the branch changed, with `--pg-version`
-//     set to the deployed Postgres major. A drop, a rename, a type change or a
-//     new required column fails the run unless the statement carries a
+//     set to the deployed Postgres major and the repository's `.squawk.toml`,
+//     which keeps the R-13 breaking-change rules and drops the style defaults a
+//     generated migration trips. A drop, a rename, a type change or a new
+//     required column fails the run unless the statement carries a
 //     `-- squawk-ignore <rule>` comment above it.
 //   * drizzle-kit check fails when two migrations fork from one history parent.
 //     It runs against the folder that holds `meta/`, which is what `--out` names.
@@ -30,6 +32,8 @@ const REPO_ROOT = resolve(import.meta.dirname, "..");
 const DIALECT = "postgresql";
 
 const SQUAWK = join(REPO_ROOT, "node_modules", ".bin", "squawk");
+
+const SQUAWK_CONFIG = join(REPO_ROOT, ".squawk.toml");
 
 const DRIZZLE_KIT = join(REPO_ROOT, "node_modules", ".bin", "drizzle-kit");
 
@@ -127,7 +131,13 @@ function lintMigration(file, pgVersion) {
 
   requireBinary(SQUAWK, "squawk-cli");
 
-  return run(SQUAWK, ["--pg-version", pgVersion, file], REPO_ROOT);
+  // Pass the config explicitly: the rule set is part of the gate, so it must not
+  // depend on Squawk's upward search from whatever directory it is invoked in.
+  return run(
+    SQUAWK,
+    ["--config", SQUAWK_CONFIG, "--pg-version", pgVersion, file],
+    REPO_ROOT
+  );
 }
 
 /**

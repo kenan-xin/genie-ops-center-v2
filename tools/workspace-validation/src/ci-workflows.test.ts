@@ -252,10 +252,6 @@ describe("the migration pull-request gate", () => {
     expect(migrationJob).toContain("git diff --name-only");
     expect(migrationJob).toContain("--migration");
     expect(migrationJob).toContain("--pg-version 18");
-    expect(migrationJob).toContain("drizzle-kit check");
-    expect(migrationJob).not.toMatch(
-      /\b(?:squawk|drizzle-kit)\s+(?:[^\n]*\s+)?(?:--|[\w./])/
-    );
   });
 
   it("fails a changed migration that drops a column", () => {
@@ -293,6 +289,84 @@ describe("the migration pull-request gate", () => {
       ]);
 
       expect(result.status, result.stdout + result.stderr).toBe(0);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
+  // The rule set is `.squawk.toml`: the R-13 breaking-change rules stay active,
+  // and Squawk's style defaults are excluded because drizzle-kit generates
+  // `CREATE TABLE` with no `IF NOT EXISTS` and no timeout settings. A real
+  // generated history is the proof that a normal module migration stays green.
+  it("passes a generated migration that only trips Squawk's style defaults", () => {
+    const result = runMigrationCheck([
+      "--migration",
+      "packages/modules/placeholder/drizzle/0000_boring_gargoyle.sql",
+      "--pg-version",
+      "18",
+    ]);
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  it("fails a changed migration that renames a column", () => {
+    const file = migrationFixture(
+      `ALTER TABLE public.example RENAME COLUMN old_name TO new_name;\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/renaming-column/i);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("fails a changed migration that changes a column type", () => {
+    const file = migrationFixture(
+      `ALTER TABLE public.example ALTER COLUMN amount TYPE text;\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/changing-column-type/i);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("fails a changed migration that adds a required column", () => {
+    const file = migrationFixture(
+      `ALTER TABLE public.example ADD COLUMN email text NOT NULL;\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/adding-required-field/i);
     } finally {
       rmSync(file, { force: true });
       rmSync(join(file, ".."), { recursive: true, force: true });

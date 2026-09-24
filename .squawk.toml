@@ -1,0 +1,18 @@
+# Squawk configuration for the pull-request migration gate (R-13, R-74, DEC-43).
+#
+# R-13 names the findings the job must enforce: a drop, a rename, a type change
+# and a new required column, with a `-- squawk-ignore <rule>` comment as the
+# deliberate-escape hatch. Squawk's style and robustness defaults are not part of
+# R-13, and drizzle-kit generates migrations that trip them every time: it emits
+# neither `IF NOT EXISTS` (prefer-robust-stmts) nor the lock and statement
+# timeouts that wrap each DDL statement (require-lock-timeout,
+# require-statement-timeout). Those three are excluded here; every other rule,
+# including the breaking-change rules that cover R-13, stays active.
+#
+# `scripts/check-migrations.mjs` passes this file with `--config` explicitly, so
+# the gate does not depend on Squawk's upward search from the current directory.
+excluded_rules = [
+  "prefer-robust-stmts",
+  "require-lock-timeout",
+  "require-statement-timeout",
+]
