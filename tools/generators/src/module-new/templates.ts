@@ -821,12 +821,11 @@ export const Desktop: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {
-    // The count is read from its own element rather than matched inside a
-    // sentence, so a display name can carry any punctuation without changing
-    // what this asserts.
-    await expect(canvas.getByTestId("${names.id}-record-count")).toHaveTextContent(
-      "2"
-    );
+    // Anchored to the sentence's start, so the number this asserts is the
+    // rendered count, not any digit a display name happens to carry.
+    await expect(
+      canvas.getByTestId("${names.id}-record-count")
+    ).toHaveTextContent(/^This deployment holds 2 /);
   },
 };
 `;
