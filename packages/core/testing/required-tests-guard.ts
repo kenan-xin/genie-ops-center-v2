@@ -78,6 +78,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "Spec 1 AC-9 and R-40-R-42 require call-time secret resolution and the no-credential-storage proof",
     cases: [
       "integration resolver against a real database returns non-secret configuration and the live secret at call time without storing the credential",
+      "integration resolver against a real database reads a rotated secret at each call and refuses once the environment value is removed",
+      "integration resolver against a real database resolves an integration with no secret reference and returns undefined secret",
+      "integration resolver against a real database rejects a missing integration id and names the id in the error",
+      "integration resolver against a real database returns integration status so the caller can decide whether to use it",
       "integration resolver against a real database names an absent secret reference without exposing another secret in the error or output",
     ],
   },

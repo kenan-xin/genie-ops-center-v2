@@ -27,6 +27,7 @@ type ResolvedIntegration = {
   readonly id: string;
   readonly config: JsonValue;
   readonly secret: string | undefined;
+  readonly status?: string;
 };
 
 type JsonValue =
@@ -208,6 +209,146 @@ describe("integration resolver against a real database", () => {
     expect(stored).toMatchObject({ secretRef: SECRET_REF, config });
     expect(JSON.stringify(stored)).not.toContain(secret);
     expect(outputs.join("")).not.toContain(secret);
+  }, 120000);
+
+  it("reads a rotated secret at each call and refuses once the environment value is removed", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const inserted = await deployment.context.db
+      .insert(tenantIntegration)
+      .values({
+        moduleId: "records",
+        kind: "http",
+        name: "Records API",
+        config: { baseUrl: "https://records.example.invalid/api" },
+        secretRef: SECRET_REF,
+      })
+      .returning({ id: tenantIntegration.id });
+
+    const integration = inserted[0];
+
+    expect(integration).toBeDefined();
+
+    if (integration === undefined)
+      throw new Error("Integration insert returned no row.");
+
+    const context = contextWithLogLevel(
+      deployment.context.env.databaseUrl,
+      "info"
+    );
+
+    const secretA = "integration-secret-version-a";
+    const secretB = "integration-secret-version-b";
+
+    const first = await withEnvironment({ [SECRET_REF]: secretA }, () =>
+      resolveIntegration(context, integration.id)
+    );
+
+    const second = await withEnvironment({ [SECRET_REF]: secretB }, () =>
+      resolveIntegration(context, integration.id)
+    );
+
+    const absent = await withEnvironment(
+      { [SECRET_REF]: undefined },
+      async () => {
+        try {
+          await resolveIntegration(context, integration.id);
+        } catch (error) {
+          return error;
+        }
+
+        return undefined;
+      }
+    );
+
+    expect(first.secret).toBe(secretA);
+    expect(second.secret).toBe(secretB);
+
+    expect(absent).toBeInstanceOf(Error);
+
+    if (absent instanceof Error) {
+      expect(absent.message).toContain(SECRET_REF);
+    }
+  }, 120000);
+
+  it("resolves an integration with no secret reference and returns undefined secret", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const inserted = await deployment.context.db
+      .insert(tenantIntegration)
+      .values({
+        moduleId: "records",
+        kind: "http",
+        name: "Public records API",
+        config: { baseUrl: "https://records.example.invalid/api" },
+        secretRef: null,
+      })
+      .returning({ id: tenantIntegration.id });
+
+    const integration = inserted[0];
+
+    expect(integration).toBeDefined();
+
+    if (integration === undefined)
+      throw new Error("Integration insert returned no row.");
+
+    const resolved = await withEnvironment({ [SECRET_REF]: undefined }, () =>
+      resolveIntegration(deployment.context, integration.id)
+    );
+
+    expect(resolved).toMatchObject({
+      id: integration.id,
+      config: { baseUrl: "https://records.example.invalid/api" },
+      secret: undefined,
+    });
+  }, 120000);
+
+  it("rejects a missing integration id and names the id in the error", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const missingId = "00000000-0000-4000-8000-000000000001";
+
+    await expect(
+      resolveIntegration(deployment.context, missingId)
+    ).rejects.toThrow(missingId);
+  }, 120000);
+
+  it("returns integration status so the caller can decide whether to use it", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const inserted = await deployment.context.db
+      .insert(tenantIntegration)
+      .values({
+        moduleId: "records",
+        kind: "http",
+        name: "Disabled records API",
+        config: { baseUrl: "https://records.example.invalid/api" },
+        secretRef: null,
+        status: "disabled",
+      })
+      .returning({ id: tenantIntegration.id });
+
+    const integration = inserted[0];
+
+    expect(integration).toBeDefined();
+
+    if (integration === undefined)
+      throw new Error("Integration insert returned no row.");
+
+    const resolved = await resolveIntegration(
+      deployment.context,
+      integration.id
+    );
+
+    expect(resolved.status).toBe("disabled");
   }, 120000);
 
   it("names an absent secret reference without exposing another secret in the error or output", async () => {
