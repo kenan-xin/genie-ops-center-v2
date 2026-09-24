@@ -20,7 +20,7 @@ const permittedViewerModule = {
   schema: {
     tables: {},
     migrations: () => [],
-    migrationsTable: "permitted_viewer_migrations",
+    migrationsTable: "__drizzle_migrations_permitted_viewer",
   },
 
   router: initTRPC.create().router({}),

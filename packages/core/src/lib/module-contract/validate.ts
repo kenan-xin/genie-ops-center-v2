@@ -1,6 +1,7 @@
 import type { ZodType } from "zod";
 
 import { isPermissionKey } from "./keys.ts";
+import { moduleLedgerTable } from "./ledger.ts";
 import type { Module, NavigationEntry } from "./module.ts";
 
 /**
@@ -90,6 +91,16 @@ export function validateModule(module: Module): readonly string[] {
 
   if (!KEBAB_CASE.test(id)) {
     problems.push(`Module id "${id}" is not kebab-case.`);
+  }
+
+  // The startup omission check finds an installed module by its ledger table, so
+  // the table must be the one this id derives (Spec 1 R-9/R-79, DEC-50).
+  const expectedLedger = moduleLedgerTable(id);
+
+  if (module.schema.migrationsTable !== expectedLedger) {
+    problems.push(
+      `Module "${id}" declares migrations table "${module.schema.migrationsTable}". A module ledger is "${expectedLedger}" (DEC-50).`
+    );
   }
 
   for (const entry of module.permissions) {

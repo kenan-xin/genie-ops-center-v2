@@ -477,8 +477,8 @@ describe("the migrator against a real database", () => {
     // own order and it predates this migrator: what matters is that the failed statement
     // recorded nothing and applied nothing.
     expect(await ledgerNames(context)).toEqual([
-      "__drizzle_migrations",
-      "__drizzle_migrations_broken",
+      { schema: "drizzle", table: "__drizzle_migrations" },
+      { schema: "drizzle", table: "__drizzle_migrations_broken" },
     ]);
 
     expect(await appliedCount(context, "__drizzle_migrations_broken")).toBe(0);

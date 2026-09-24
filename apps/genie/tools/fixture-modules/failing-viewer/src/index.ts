@@ -18,7 +18,7 @@ const failingViewerModule = {
   schema: {
     tables: {},
     migrations: () => [],
-    migrationsTable: "failing_viewer_migrations",
+    migrationsTable: "__drizzle_migrations_failing_viewer",
   },
 
   router: initTRPC.create().router({}),

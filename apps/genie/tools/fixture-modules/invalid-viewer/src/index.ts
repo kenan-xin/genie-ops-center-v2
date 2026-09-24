@@ -19,7 +19,7 @@ const invalidViewerModule = {
   schema: {
     tables: {},
     migrations: () => [],
-    migrationsTable: "invalid_viewer_migrations",
+    migrationsTable: "__drizzle_migrations_invalid_viewer",
   },
 
   router: initTRPC.create().router({}),

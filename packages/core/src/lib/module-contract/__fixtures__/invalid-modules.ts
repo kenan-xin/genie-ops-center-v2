@@ -1,4 +1,5 @@
 import { permissionKeyFor } from "../keys.ts";
+import { moduleLedgerTable } from "../ledger.ts";
 import type { Module, NavigationEntry } from "../module.ts";
 
 /**
@@ -11,13 +12,14 @@ function actionOf(key: string, oldId: string): string {
   return key.replace(`${oldId}:`, "");
 }
 
-/** Rewrite the identity and every permission-key prefix to a new module id. */
+/** Rewrite the identity, every permission-key prefix and the ledger to a new module id. */
 export function renameModule(module: Module, id: string): Module {
   const oldId = module.identity.id;
 
   return {
     ...module,
     identity: { ...module.identity, id },
+    schema: { ...module.schema, migrationsTable: moduleLedgerTable(id) },
     permissions: module.permissions.map((entry) => ({
       ...entry,
       key: permissionKeyFor(id, actionOf(entry.key, oldId)),

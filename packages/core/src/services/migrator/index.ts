@@ -110,6 +110,10 @@ const applyWithDrizzle: ApplyHistory = (db, history) => {
     // `migrate` reads only the table and the schema from this config. The folder is required
     // by drizzle's type and is never opened, which is the whole point of the change.
     migrationsFolder: "",
+    // The ledger schema is pinned here rather than left to drizzle's default, so an upgrade
+    // that moved that default cannot silently relocate core's or a module's ledger (Spec 1
+    // R-9/R-79, DEC-50). Every history records in this one schema.
+    migrationsSchema: "drizzle",
     migrationsTable: history.table,
   });
 };

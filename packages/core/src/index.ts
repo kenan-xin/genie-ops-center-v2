@@ -69,6 +69,8 @@ export type {
   PermissionDeclaration,
 } from "./lib/module-contract/module.ts";
 
+export { moduleLedgerTable } from "./lib/module-contract/ledger.ts";
+
 export {
   validateModule,
   validateRegistry,
