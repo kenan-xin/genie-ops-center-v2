@@ -6,8 +6,6 @@ name: pull request
 # module-has-tests), which the `validate` target runs.
 on:
   pull_request:
-    branches:
-      - develop
 
 permissions:
   contents: read
@@ -47,8 +45,11 @@ jobs:
   # R-13 and the lint half of R-74: one job lints the branch's changed
   # migrations and checks every history for a fork, and it blocks the merge into
   # develop (DEC-43). `scripts/check-migrations.mjs` holds both checks so this
-  # job and the pipeline test run the same code.
+  # job and the pipeline test run the same code. The `if` limits it to a merge
+  # into develop; the workflow trigger stays broad so `verify` still runs on every
+  # pull request, the develop -> main release pull request included.
   migration-lint:
+    if: github.base_ref == 'develop'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -241,8 +241,17 @@ describe("the migration pull-request gate", () => {
     const workflow = read(`${WORKFLOWS}/pull-request.yml`);
     const migrationJob = jobsOf(workflow).get("migration-lint");
 
-    expect(workflow).toMatch(/pull_request:\n {4}branches:\n {6}- develop\n/);
+    // The trigger stays unfiltered so `verify` runs on every pull request —
+    // including the develop -> main release pull request (genie-ops-center-v2-3ui),
+    // which the workflow-wide `branches` filter used to suppress. Only the
+    // migration lint is limited, by the job's own `if`.
+    const [head = ""] = workflow.split(/^jobs:\n/m);
+
+    expect(head).toContain("pull_request:");
+    expect(head).not.toContain("branches:");
+    expect(jobsOf(workflow).get("verify"), "the verify gate").toBeDefined();
     expect(migrationJob, "a migration-lint job").toBeDefined();
+    expect(migrationJob).toContain("if: github.base_ref == 'develop'");
     expect(migrationJob).toMatch(
       new RegExp(
         `pnpm exec node ${MIGRATION_CHECK_SCRIPT.replaceAll(".", "\\.")}`
