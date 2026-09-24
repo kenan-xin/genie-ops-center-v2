@@ -177,7 +177,11 @@ function buildContext(
  */
 function migrationLog(logger: RedactingLogger): MigrationLog {
   return (event) => {
-    const fields = { history: event.history, err: event.error };
+    const fields = {
+      history: event.history,
+      count: event.count,
+      err: event.error,
+    };
 
     if (event.event === "migration-cleanup-failed") {
       logger.error(fields, event.event);

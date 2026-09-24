@@ -70,6 +70,8 @@ const LOCK_NOT_AVAILABLE = "55P03";
 export type MigrationLog = (event: {
   readonly event: string;
   readonly history?: string;
+  /** The pending migration count, on `migration-pending` (R-10). */
+  readonly count?: number;
   /** The original cleanup error, for the caller's redacting logger to record. */
   readonly error?: unknown;
 }) => void;
@@ -322,6 +324,59 @@ async function checkOmissions(
   );
 }
 
+/** One history's ledger as the run reads it under the lock: what it applied, and whether it exists. */
+type LedgerState = {
+  readonly applied: number;
+  readonly present: boolean;
+};
+
+/** The migrations one history still owes, never negative when a ledger holds more than it declares. */
+function outstanding(
+  history: MigrationHistory,
+  state: LedgerState | undefined
+): number {
+  return Math.max(0, history.migrations.length - (state?.applied ?? 0));
+}
+
+/**
+ * The state of every history's ledger, read on the run's own locked session (R-10). A ledger that
+ * does not exist yet — a fresh database, or a module applied for the first time — records nothing
+ * and is marked absent, which is also what tells the run to create it (R-27). The counts only
+ * decide the pending log line and which histories still have work; the migrator itself decides
+ * what to apply.
+ */
+async function ledgerStates(
+  db: MigrationDatabase,
+  histories: readonly MigrationHistory[]
+): Promise<readonly LedgerState[]> {
+  const states: LedgerState[] = [];
+
+  for (const history of histories) {
+    // One reserved session serves every read, and two queries in flight on one connection is
+    // not allowed, so the ledger reads are sequential like the histories themselves.
+    // oxlint-disable-next-line no-await-in-loop
+    const present = await db.$client.query<{ present: boolean }>(
+      "select to_regclass($1) is not null as present",
+      [`${LEDGER_SCHEMA}."${history.table}"`]
+    );
+
+    if (present.rows[0]?.present !== true) {
+      states.push({ applied: 0, present: false });
+
+      continue;
+    }
+
+    // oxlint-disable-next-line no-await-in-loop
+    const counted = await db.$client.query<{ count: number }>(
+      `select count(*)::int as count from ${LEDGER_SCHEMA}."${history.table}"`
+    );
+
+    states.push({ applied: counted.rows[0]?.count ?? 0, present: true });
+  }
+
+  return states;
+}
+
 /**
  * Registers a compiled module the deployment has no `tenant_module` row for, as `enabled: false`
  * (R-27). It runs only once the `seed` step is `done`: before that the seed step is the only
@@ -358,10 +413,13 @@ async function registerModules(
 
 /**
  * Applies every history on one reserved session (R-25a). The same client sets the lock wait
- * limit, takes the advisory lock, refuses an image that omits an installed module, applies each
- * history with its own ledger, registers the compiled modules missing a row once `seed` is done,
- * and unlocks. The lock is held across the transaction boundary between two histories, and no
- * history begins before the lock is held.
+ * limit, takes the advisory lock, refuses an image that omits an installed module, reads the
+ * ledgers and logs the pending count (R-10), applies each history that still has work with its
+ * own ledger, registers the compiled modules missing a row once `seed` is done, and unlocks. A
+ * history whose ledger is in place and which owes nothing is skipped, so a rerun does no work;
+ * one whose ledger is absent still runs, because an empty compiled module must get its ledger
+ * (R-27). The lock is held across the transaction boundary between two histories, and no history
+ * begins before the lock is held.
  *
  * A failure keeps its original error as the cause and leaves the caller to exit unhealthy
  * (R-27). Cleanup never turns a failed run into a successful one: a cleanup problem is logged
@@ -409,7 +467,27 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
     // its own error, so the module names reach the operator rather than a generic wrap.
     await (run.checkOmissions ?? checkOmissions)(db, run.compiledModuleIds);
 
-    for (const history of run.histories) {
+    // The ledger state is read under the lock and before the first history applies, so the
+    // pending count of an upgrade that lagged is visible in the deployment log (R-10).
+    const ledgers = await ledgerStates(db, run.histories);
+
+    const pending = run.histories.reduce(
+      (total, history, index) => total + outstanding(history, ledgers[index]),
+      0
+    );
+
+    log({ event: "migration-pending", count: pending });
+
+    for (const [index, history] of run.histories.entries()) {
+      const state = ledgers[index];
+
+      const owed = outstanding(history, state);
+
+      // A history with nothing to apply whose ledger is already in place is skipped: a rerun
+      // applies nothing and does no work. A history whose ledger is absent still runs, because
+      // an empty compiled module must get its ledger (R-27).
+      if (owed === 0 && state?.present === true) continue;
+
       log({ event: "migration-history-start", history: history.name });
 
       try {

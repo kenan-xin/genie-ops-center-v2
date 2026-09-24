@@ -1,4 +1,5 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { auditEvent } from "../../schema.ts";
 
 /** One json value an audit row's metadata may carry. It is a closed shape, never `unknown`. */
 export type AuditMetadataValue =
@@ -25,14 +26,28 @@ export type AuditEventInput = {
 };
 
 /**
+ * The Postgres error code of a failed write, or `undefined` for anything else. Only the code
+ * reaches the fallback line: the message and every value stay in the server log (R-45, R-66).
+ */
+function pgErrorCode(error: Error | undefined): string | undefined {
+  if (error === undefined || !("code" in error)) return undefined;
+
+  const code: unknown = error.code;
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of a driver error
+  return typeof code === "string" ? code : undefined;
+}
+
+/**
  * The one place a `genie-ops` command touches `audit_event` (R-64, DEC-45). It writes one
  * append-only row with `actor_user_id` null, the action the runner named, and the metadata the
- * runner allow-listed; the summary is the action, because an operator row carries no target.
+ * runner allow-listed; the summary is the action, because an operator row carries no target. The
+ * insert is the typed one from `schema.ts`, so a renamed or dropped column fails `tsc` here.
  *
  * A row that cannot be written — the database or the table does not exist yet, or the write
  * would outlive the database — is not a second failure. The helper reports the outcome on the
- * command output instead, so an operator still sees it (R-65), and the command's own exit
- * decides the run.
+ * command output instead, with the driver's error code and nothing else, so an operator still
+ * sees it (R-65) and the reason is not silent; the command's own exit decides the run.
  *
  * It takes the tenant context, never a pool (DEC-34): the one context owns the one connection,
  * and a command never builds its own.
@@ -42,16 +57,21 @@ export async function writeAuditEvent(
   input: AuditEventInput
 ): Promise<void> {
   try {
-    await context.db.$client.query(
-      `insert into audit_event (actor_user_id, action, summary, metadata)
-       values ($1, $2, $3, $4)`,
-      [null, input.action, input.action, JSON.stringify(input.metadata)]
-    );
-  } catch {
+    await context.db.insert(auditEvent).values({
+      actorUserId: null,
+      action: input.action,
+      summary: input.action,
+      metadata: input.metadata,
+    });
+  } catch (caught) {
     // R-65: the command output is the fallback sink. Nothing is rethrown, because the command's
     // own result, not the audit transport, decides whether it succeeded.
+    const code = pgErrorCode(caught instanceof Error ? caught : undefined);
+
     input.output(
-      `audit ${input.action}: ${JSON.stringify(input.metadata)} (not recorded)`
+      `audit ${input.action}: ${JSON.stringify(input.metadata)} (not recorded${
+        code === undefined ? "" : `: ${code}`
+      })`
     );
   }
 }

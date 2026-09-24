@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import {
   createTenantContext,
   type TenantContext,
@@ -101,9 +102,9 @@ async function history(
     name,
     migrations: readMigrationFiles({
       migrationsFolder: folder,
-      migrationsTable: `__drizzle_migrations_${name}`,
+      migrationsTable: moduleLedgerTable(name),
     }),
-    table: `__drizzle_migrations_${name}`,
+    table: moduleLedgerTable(name),
   };
 }
 
@@ -148,24 +149,41 @@ describe("genie-ops migrate", () => {
 
     const options = {
       source,
-      compiledModuleIds: ["fixture"],
+      compiledModuleIds: [migration.name],
       histories: [migration],
       ...captured,
     };
 
     await expect(runGenieOps(["migrate"], options)).resolves.toBe(0);
+
+    const firstRun = [...captured.lines];
+
+    captured.lines.length = 0;
+
     await expect(runGenieOps(["migrate"], options)).resolves.toBe(0);
 
-    const pending = captured.lines.findIndex((line) =>
-      line.includes("pending")
+    const secondRun = [...captured.lines];
+
+    const pending = firstRun.findIndex((line) =>
+      line.includes("migration-pending")
     );
 
-    const firstHistory = captured.lines.findIndex((line) =>
+    const firstHistory = firstRun.findIndex((line) =>
       line.includes("migration-history-start")
     );
 
     expect(pending).toBeGreaterThanOrEqual(0);
     expect(firstHistory).toBeGreaterThan(pending);
+    expect(firstRun).toContain("migration-history-done pending-order");
+
+    // The second run applies nothing: the count is zero and the module's history is skipped
+    // rather than run as a no-op.
+    expect(secondRun).toContain("migration-pending 0");
+    expect(
+      secondRun.some((line) =>
+        line.includes("migration-history-done pending-order")
+      )
+    ).toBe(false);
   }, 120000);
 
   it("writes exactly one success audit row with only allow-listed arguments", async () => {
@@ -176,7 +194,7 @@ describe("genie-ops migrate", () => {
     await expect(
       runGenieOps(["migrate"], {
         source,
-        compiledModuleIds: ["fixture"],
+        compiledModuleIds: [migration.name],
         histories: [migration],
         ...captured,
       })
@@ -210,7 +228,7 @@ describe("genie-ops migrate", () => {
     await expect(
       runGenieOps(["migrate"], {
         source,
-        compiledModuleIds: ["fixture"],
+        compiledModuleIds: [migration.name],
         histories: [migration],
         ...captured,
       })
