@@ -407,12 +407,6 @@ describe("two explicit selections on one revision", () => {
         `second module leaked into ${needle}`
       ).toEqual([]);
     }
-
-    // Back to the first selection: a hit, and the bytes are the first run's.
-    const again = ran(BUILD_TASK, SECOND_ID);
-
-    expect(servedFromCache(again.output, BUILD_TASK), again.output).toBe(true);
-    expect(index()).toEqual(secondIndex);
   });
 
   it("serializes an explicitly empty selection as UI and Core only", () => {
@@ -429,19 +423,6 @@ describe("two explicit selections on one revision", () => {
         `${needle} leaked into the scoped build`
       ).toEqual([]);
     }
-  });
-
-  it("repeats an identical selection from the cache, byte for byte", () => {
-    const first = ran(BUILD_TASK, SECOND_ID);
-    const firstIndex = index();
-
-    const second = ran(BUILD_TASK, SECOND_ID);
-
-    expect(servedFromCache(second.output, BUILD_TASK), second.output).toBe(
-      true
-    );
-    expect(first.status).toBe(0);
-    expect(index()).toEqual(firstIndex);
   });
 });
 
@@ -466,19 +447,6 @@ describe("all available, which is the unset default", () => {
       allIndex.entries["modules-second-fixture-probe--default"]
     ).toBeDefined();
   });
-
-  it("reuses an identical unset selection", () => {
-    const first = ran(BUILD_TASK, undefined);
-    const firstIndex = index();
-
-    const second = ran(BUILD_TASK, undefined);
-
-    expect(servedFromCache(second.output, BUILD_TASK), second.output).toBe(
-      true
-    );
-    expect(first.status).toBe(0);
-    expect(index()).toEqual(firstIndex);
-  });
 });
 
 describe("an unknown module id", () => {
@@ -497,21 +465,58 @@ describe("an unknown module id", () => {
   });
 });
 
-describe("a deleted static output", () => {
-  it("is restored from the cache before any consumer reads it", () => {
-    const first = ran(BUILD_TASK, SECOND_ID);
+/**
+ * The one case that re-proves Nx's own cache. The rest of the matrix keeps its
+ * own subject — selection isolation, confidentiality, invalidation — and the
+ * byte-for-byte repeats that used to sit in those cases live here instead.
+ */
+describe("the local cache", () => {
+  it("restores an identical selection's static output, byte for byte", () => {
+    // An explicit selection, repeated: a hit, and the same bytes.
+    ran(BUILD_TASK, SECOND_ID);
+
     const firstIndex = index();
 
+    const repeated = ran(BUILD_TASK, SECOND_ID);
+
+    expect(servedFromCache(repeated.output, BUILD_TASK), repeated.output).toBe(
+      true
+    );
+    expect(index()).toEqual(firstIndex);
+
+    // The unset default is its own entry, and repeats the same way.
+    ran(BUILD_TASK, undefined);
+
+    const allIndex = index();
+
+    const allRepeated = ran(BUILD_TASK, undefined);
+
+    expect(
+      servedFromCache(allRepeated.output, BUILD_TASK),
+      allRepeated.output
+    ).toBe(true);
+    expect(index()).toEqual(allIndex);
+
+    // Another selection overwrote the static directory; returning to the first
+    // must write the first selection's bytes back, not serve the other's.
+    ran(BUILD_TASK, "placeholder");
+
+    const restored = ran(BUILD_TASK, SECOND_ID);
+
+    expect(servedFromCache(restored.output, BUILD_TASK), restored.output).toBe(
+      true
+    );
+    expect(index()).toEqual(firstIndex);
+
+    // With the directory gone entirely, a hit here means Nx wrote it back out
+    // of the cache, which "outputs already match" cannot explain.
     rmSync(staticPath(), { recursive: true, force: true });
 
     expect(existsSync(indexPath())).toBe(false);
 
-    const restored = ran(BUILD_TASK, SECOND_ID);
+    const rewritten = ran(BUILD_TASK, SECOND_ID);
 
-    // Not "outputs already match": the directory was gone, so a hit here means
-    // Nx wrote it back out of the cache.
-    expect(restored.output).toContain("[local cache]");
-    expect(first.status).toBe(0);
+    expect(rewritten.output).toContain("[local cache]");
     expect(index()).toEqual(firstIndex);
   });
 });
