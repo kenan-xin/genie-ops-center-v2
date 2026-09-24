@@ -173,14 +173,6 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
 
   const boss = createBoss(context.db.$client, logger, true);
 
-  const heartbeatPath =
-    options.heartbeat?.path ??
-    (options.source.WORKER_HEARTBEAT_PATH || DEFAULT_WORKER_HEARTBEAT_PATH);
-
-  const jobs = options.modules.flatMap((module) =>
-    module.jobs.map((job) => ({ moduleId: module.identity.id, job }))
-  );
-
   try {
     await runMigrations({
       env: context.env,
@@ -197,43 +189,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
         ),
     });
 
-    if (options.signal.aborted) return 0;
-
-    await boss.start();
-    await Promise.all(
-      [HEARTBEAT_JOB, ...jobs.map(({ job }) => job.name)].map(async (name) =>
-        boss.createQueue(name)
-      )
-    );
-    await boss.schedule(
-      HEARTBEAT_JOB,
-      options.heartbeat?.cron ?? HEARTBEAT_CRON
-    );
-    await boss.send(HEARTBEAT_JOB, {});
-
-    const heartbeat: QueueLoop = {
-      name: HEARTBEAT_JOB,
-      mayRun: async () => true,
-      run: async () => {
-        await context.db.$client.query("select 1");
-        await writeFile(heartbeatPath, new Date().toISOString());
-        await reconcileSchedules(boss, context, jobs);
-      },
-    };
-
-    const moduleLoops = jobs.map(({ moduleId, job }): QueueLoop => ({
-      name: job.name,
-      mayRun: async () => context.entitlements.isEnabled(moduleId),
-      // SAFETY: a queue carries only the data its own module enqueued under this job name.
-      run: async (data) => job.handler({ tenant: context }, data as never),
-    }));
-
-    options.output("worker started");
-    await Promise.all(
-      [heartbeat, ...moduleLoops].map(async (loop) =>
-        drain(boss, loop, options)
-      )
-    );
+    if (!options.signal.aborted) await serve(boss, context, options);
 
     return 0;
   } catch (caught) {
@@ -247,4 +203,63 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
     await stopJobQueue(context.jobQueue);
     await context.db.$client.end();
   }
+}
+
+/**
+ * Starts pg-boss once the migrator run returned, creates every queue, schedules the heartbeat and
+ * sends the first one, then drains the heartbeat queue and each module job queue until the signal
+ * aborts.
+ */
+async function serve(
+  boss: PgBoss,
+  context: TenantContext,
+  options: WorkerOptions
+): Promise<void> {
+  const jobs = options.modules.flatMap((module) =>
+    module.jobs.map((job) => ({ moduleId: module.identity.id, job }))
+  );
+
+  await boss.start();
+  await Promise.all(
+    [HEARTBEAT_JOB, ...jobs.map(({ job }) => job.name)].map(async (name) =>
+      boss.createQueue(name)
+    )
+  );
+  await boss.schedule(HEARTBEAT_JOB, options.heartbeat?.cron ?? HEARTBEAT_CRON);
+  await boss.send(HEARTBEAT_JOB, {});
+
+  const loops = [
+    heartbeatLoop(boss, context, jobs, options),
+    ...jobs.map(({ moduleId, job }): QueueLoop => ({
+      name: job.name,
+      mayRun: async () => context.entitlements.isEnabled(moduleId),
+      // SAFETY: a queue carries only the data its own module enqueued under this job name.
+      run: async (data) => job.handler({ tenant: context }, data as never),
+    })),
+  ];
+
+  options.output("worker started");
+  await Promise.all(loops.map(async (loop) => drain(boss, loop, options)));
+}
+
+/** The core heartbeat queue: no entitlement gate, a round trip, the file, then the schedules. */
+function heartbeatLoop(
+  boss: PgBoss,
+  context: TenantContext,
+  jobs: readonly { moduleId: string; job: JobDeclaration }[],
+  options: WorkerOptions
+): QueueLoop {
+  const path =
+    options.heartbeat?.path ??
+    (options.source.WORKER_HEARTBEAT_PATH || DEFAULT_WORKER_HEARTBEAT_PATH);
+
+  return {
+    name: HEARTBEAT_JOB,
+    mayRun: async () => true,
+    run: async () => {
+      await context.db.$client.query("select 1");
+      await writeFile(path, new Date().toISOString());
+      await reconcileSchedules(boss, context, jobs);
+    },
+  };
 }
