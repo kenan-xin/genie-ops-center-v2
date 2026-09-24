@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import {
+  createTenantContext,
+  type TenantContext,
+} from "../src/lib/tenant-context/index.ts";
 import { tenantIntegration } from "../src/schema.ts";
-import { resolveIntegration } from "../src/services/integrations/index.ts";
 import { createLogger } from "../src/services/logging/index.ts";
 import { startDisposableDeployment } from "./index.ts";
 
@@ -20,6 +22,29 @@ const LOG_LEVELS = [
   "trace",
   "silent",
 ] as const;
+
+type ResolvedIntegration = {
+  readonly id: string;
+  readonly config: JsonValue;
+  readonly secret: string | undefined;
+};
+
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly JsonValue[]
+  | { readonly [key: string]: JsonValue };
+
+async function resolveIntegration(
+  context: TenantContext,
+  integrationId: string
+): Promise<ResolvedIntegration> {
+  const service = await import("../src/services/integrations/index.ts");
+
+  return service.resolveIntegration(context, integrationId);
+}
 
 const cleanups: Array<() => Promise<void>> = [];
 
