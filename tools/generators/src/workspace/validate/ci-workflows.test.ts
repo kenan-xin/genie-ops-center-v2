@@ -326,6 +326,54 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // Affected filtering: a push that touches no project must run no heavy
+  // suite, so every develop integration job filters its project through
+  // `nx affected` based on the pushed commit's parent — an unconditional
+  // `nx run-many` runs every suite on every push (reviewed on 57bfc26). On
+  // Nx 23.2.1, `nx affected -t test:integration --exclude='*,!@genie/app'
+  // --base="$NX_BASE"` filters to one project. Each integration job wires the
+  // same parent-commit base step the gates job carries, zero-SHA fallback
+  // included.
+  it("filters every develop integration job through the affected set", () => {
+    for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
+      const scripts = runScripts(job).join("\n");
+
+      if (!scripts.includes("test:integration")) continue;
+
+      expect(scripts, `${name} runs through nx affected`).toContain(
+        "nx affected"
+      );
+      expect(
+        scripts,
+        `${name} never runs the suite unconditionally`
+      ).not.toContain("nx run-many");
+      expect(scripts, `${name} bases the affected range on NX_BASE`).toMatch(
+        /--base=["{]?\$NX_BASE/
+      );
+
+      // The job carries the base step itself: the pushed commit's parent,
+      // with the all-zero first push falling back.
+      expect(job, `${name} reads the pushed commit's parent`).toContain(
+        "github.event.before"
+      );
+      expect(job, `${name} keeps the zero-SHA fallback`).toContain(
+        "0000000000000000000000000000000000000000"
+      );
+      expect(job, `${name} wires NX_BASE`).toContain("NX_BASE");
+    }
+
+    // The E2E job stays unconditional: ci:develop always ran both browser
+    // suites regardless of the affected set, so the deployable image is
+    // proved end to end on every merge.
+    const e2eJob = jobsOf(read(`${WORKFLOWS}/develop.yml`)).get("e2e");
+
+    expect(e2eJob, "an e2e job").toBeDefined();
+    expect(
+      e2eJob,
+      "the e2e job never filters through the affected set"
+    ).not.toContain("nx affected");
+  });
+
   // Superseded runs: every push to an open pull request and every merge to
   // develop cancels the previous run on the same ref, so a burst of pushes
   // does not queue a wall of redundant runner hours (genie-ops-center-v2-ejs).
