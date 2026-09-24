@@ -52,6 +52,19 @@ Decisions:
   and refuses to fall back to the default when the file is missing. The R-55 development
   fallback is a separate flag and a separate wrapper script, and it publishes under a
   `development` tag, never a customer name.
+- **The registry credential appears only after the smoke (`genie-ops-center-v2-sl1`).** The
+  release workflow runs the wrapper with `--no-publish` first: the gates, the build and the
+  smoke run with no credential on disk, and the wrapper writes the smoked identity out with
+  `--identity-out`. Only then does `docker/login-action` write the `packages:write` token, and
+  a `--publish-digest` run promotes exactly that identity. No dependency or test runs while the
+  token exists.
+- **A tag publishes only from a green develop run (`genie-ops-center-v2-sl1`).** The release
+  workflow's `discover` job refuses the run unless `gh run list --workflow develop.yml
+  --commit "$GITHUB_SHA" --status success` finds a successful run for the tagged commit, and
+  fails closed naming the SHA. Releases come from `develop` for now; the ancestor-of-main rule
+  is deferred to `genie-ops-center-v2-3ui`. Every action is pinned to a full commit SHA with a
+  `# vX.Y.Z` comment, the runtime base image is pinned by digest, the runtime stage runs as the
+  base image's non-root `node` user, and `.dockerignore` keeps `.env*` out of the build context.
 
 > Annotation 2026-09-23 (`pg4`, `genie-ops-center-v2-1rd.11.1`): the next section describes
 > the Dockerfile before the builder-stage prune. The `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` copy
@@ -130,9 +143,12 @@ is testable without a workflow runner:
   `build-image` dependency, which a single combined invocation triggers
   (`genie-ops-center-v2-453`). Same targets, same proof.
 - `ci:develop` — `ci:pr` plus the full Playwright fixture suite at both viewports.
-- `release.yml` — discovers `customers/*/deploy/modules.txt`, runs the customer wrapper per
-  slug, or the development wrapper when none exists. No workflow contains a bare
-  `docker push`; the wrapper is the only publisher.
+- `release.yml` — refuses a tag whose commit has no green `develop` run, discovers
+  `customers/*/deploy/modules.txt`, runs the customer wrapper per slug (or the development
+  wrapper when none exists) with `--no-publish`, logs in to GHCR, and promotes the smoked
+  identity with `--publish-digest`. No workflow contains a bare `docker push`; the wrapper is
+  the only publisher, and the credential exists only in the publish step
+  (`genie-ops-center-v2-sl1`).
 
 `tools/generators/src/workspace/validate/ci-workflows.test.ts` pins the triggers, the
 commands and the no-bare-push rule.
@@ -166,4 +182,6 @@ affected, alongside the existing shared-preset edge.
   bytes; this closes the residual `genie-ops-center-v2-3aa`. The temporary ref is left in the
   registry as an extra, run-unique tag: the release attempts no registry delete, so it depends
   on no second, separately authorized mutation.
-- Real GHCR authentication and push remain separately authorized. Nothing here pushed.
+- Real GHCR authentication and push remain separately authorized. Nothing here pushed. The
+  credential exists only in the publish step, after the gates, the build and the smoke
+  (`genie-ops-center-v2-sl1`).
