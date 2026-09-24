@@ -15,8 +15,8 @@ requires that logger, so no construction can omit it and swallow the error by ac
 The `withTransaction` seam lives here too. It runs a caller's work in one transaction over the
 context's pool and runs the after-commit entries a caller registers once the commit is durable.
 Each entry runs at most once and is not retried, an entry that fails after the commit is best
-effort, and a nested `withTransaction` on the same context is refused. The seam records a failed
-entry through the same logger the factory already owns. That logger stays off the context object in
+effort, and any nested `withTransaction` is refused. The seam records a failed entry through the
+same logger the factory already owns. That logger stays off the context object in
 a folder-private map, so the context keeps its two fixed members and no logger member reaches a
 caller.
 

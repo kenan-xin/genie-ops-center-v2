@@ -15,9 +15,9 @@ const contextLoggers = new WeakMap<
 >();
 
 /**
- * Marks the async context of a running `withTransaction`, so a call made inside `fn` is refused
- * instead of opening a second, independent transaction on a second pool client. The store follows
- * the async tree, so two concurrent calls in separate chains never see each other's mark.
+ * Marks the async context of a running `withTransaction`, so any call made inside `fn` is refused
+ * instead of opening a second, independent top-level transaction. The store follows the async
+ * tree, so two concurrent calls in separate chains never see each other's mark.
  */
 const transactionScope = new AsyncLocalStorage<true>();
 
@@ -105,11 +105,11 @@ async function runAfterCommit(
  * propagates, so no entry runs (R-54). Registration closes when `fn` settles, so an `afterCommit`
  * call after that throws instead of adding an entry that silently never runs.
  *
- * A nested `withTransaction` on the same context is refused: it would take a second pool client
- * and open an independent top-level transaction whose commit survives the outer rollback, and it
- * can deadlock on a row the outer transaction holds. Use `tx.transaction(...)` inside `fn` for a
- * savepoint instead. A context not built by `createTenantContext` has no logger entry, so the call
- * throws rather than swallow the failure.
+ * Any nested `withTransaction` is refused, whatever the context: it opens an independent top-level
+ * transaction that cannot commit or roll back with the outer one. On the same context it also
+ * takes a second pool client and can deadlock on a row the outer transaction holds. Use
+ * `tx.transaction(...)` inside `fn` for a savepoint instead. A context not built by
+ * `createTenantContext` has no logger entry, so the call throws rather than swallow the failure.
  */
 export async function withTransaction<T>(
   context: TenantContext,
