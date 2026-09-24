@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {
@@ -40,6 +41,11 @@ Options:
                            the flag states the intent explicitly.
   --no-publish             Gates, build and smoke, but do not publish.
   --dry-run                Alias of --no-publish.
+  --identity-out <path>    On success, write the resolved immutable identity to
+                           this path, so a later --publish-digest run can
+                           publish exactly the candidate this run smoked.
+  --publish-digest <sha>   Publish a digest a prior run already gated, built and
+                           smoked. Skips the gates, the build and the smoke.
   --publish-command <argv> A local/test sink that replaces the docker push. It
                            receives the immutable identity and the published ref.
   --smoke-command <argv>   Replaces the smoke invocation (test stub only).
@@ -59,6 +65,8 @@ type Parsed = {
   readonly smokeCommand?: readonly string[] | undefined;
   readonly repoRoot: string;
   readonly developmentFallback: boolean;
+  readonly identityOut?: string | undefined;
+  readonly verifiedIdentity?: string | undefined;
 };
 
 const splitArgv = (value: string): readonly string[] =>
@@ -80,6 +88,9 @@ export function parseArgv(
   let smokeCommand: readonly string[] | undefined;
   let repoRoot = resolve(import.meta.dirname, "../../../..");
   let developmentFallback = false;
+  let identityOut: string | undefined;
+  let verifiedIdentity: string | undefined;
+  let sawNoPublish = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index] ?? "";
@@ -107,6 +118,17 @@ export function parseArgv(
           argv[++index] ?? usageError("--smoke-command needs a value.")
         );
         break;
+      case "--identity-out":
+        identityOut =
+          argv[++index] ?? usageError("--identity-out needs a value.");
+        break;
+      case "--publish-digest":
+        // Publishing a verified digest is a publish by definition; the two
+        // cannot be combined with --no-publish.
+        verifiedIdentity =
+          argv[++index] ?? usageError("--publish-digest needs a value.");
+        publish = true;
+        break;
       case "--development-fallback":
         developmentFallback = true;
         break;
@@ -118,11 +140,16 @@ export function parseArgv(
       case "--no-publish":
       case "--dry-run":
         publish = false;
+        sawNoPublish = true;
         break;
       default:
         if (token.startsWith("--")) usageError(`Unknown option: ${token}`);
         positional.push(token);
     }
+  }
+
+  if (verifiedIdentity !== undefined && sawNoPublish) {
+    usageError("--publish-digest cannot be combined with --no-publish.");
   }
 
   const [first, second, ...rest] = positional;
@@ -160,6 +187,8 @@ export function parseArgv(
     smokeCommand,
     repoRoot,
     developmentFallback,
+    identityOut,
+    verifiedIdentity,
   };
 }
 
@@ -175,6 +204,7 @@ export function main(argv: readonly string[]): number {
     publishCommand: parsed.publishCommand,
     smokeCommand: parsed.smokeCommand,
     developmentFallback: parsed.developmentFallback,
+    verifiedIdentity: parsed.verifiedIdentity,
   };
 
   const outcome = runRelease(request, spawnRunner);
@@ -192,6 +222,13 @@ export function main(argv: readonly string[]): number {
     );
 
     return 1;
+  }
+
+  // Hand the resolved identity to a later step so a separate --publish-digest
+  // run publishes exactly the candidate this run smoked
+  // (genie-ops-center-v2-sl1).
+  if (parsed.identityOut !== undefined && outcome.identity !== undefined) {
+    writeFileSync(parsed.identityOut, `${outcome.identity}\n`, "utf8");
   }
 
   process.stdout.write(

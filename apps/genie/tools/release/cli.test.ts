@@ -424,4 +424,80 @@ describe("the customer image release wrapper", () => {
     expect(outcome.status).toBe(1);
     expect(readFileSync(workspace.log, "utf8")).not.toContain("docker push");
   });
+
+  // genie-ops-center-v2-sl1: the release workflow splits verify from publish so
+  // the registry credential is written only for the publish step. The verify
+  // run writes the identity it smoked to --identity-out, and a later run
+  // publishes exactly that identity with --publish-digest.
+  it("writes the smoked identity to --identity-out and publishes nothing", () => {
+    const workspace = stubWorkspace(0);
+    const identityOut = join(workspace.root, "candidate-identity");
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+      "--no-publish",
+      "--identity-out",
+      identityOut,
+    ]);
+
+    expect(outcome.status, outcome.stderr).toBe(0);
+    expect(readFileSync(identityOut, "utf8").trim()).toBe(IDENTITY);
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    expect(log).toContain("docker build");
+    expect(log).toContain("release-smoke");
+    expect(log).not.toContain("docker push");
+  });
+
+  it("publishes a verified digest without rebuilding or re-running the gates", () => {
+    const workspace = stubWorkspace(0);
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+      "--publish-digest",
+      IDENTITY,
+    ]);
+
+    expect(outcome.status, outcome.stderr).toBe(0);
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    // The publish run touches the registry only: no gate, no build, no smoke.
+    // `docker buildx imagetools` is the promotion, not the candidate build.
+    expect(log).not.toContain("docker build -f");
+    expect(log).not.toContain("release-smoke");
+    expect(log).not.toContain("pnpm");
+    expect(log).toContain(`docker tag ${IDENTITY} `);
+    expect(log).toContain("docker push");
+  });
+
+  it("fails closed when --publish-digest is not an immutable digest", () => {
+    const workspace = stubWorkspace(0);
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+      "--publish-digest",
+      "acme:latest",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("release failed at resolve-identity");
+    expect(readFileSync(workspace.log, "utf8")).not.toContain("docker push");
+  });
 });

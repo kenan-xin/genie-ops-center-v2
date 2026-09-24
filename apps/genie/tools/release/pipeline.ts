@@ -43,6 +43,14 @@ export type ReleaseRequest = {
    * `development`, so this image is never mistaken for a customer deliverable.
    */
   readonly developmentFallback?: boolean;
+  /**
+   * An immutable identity a prior run already gated, built and smoked. When
+   * set, the gates, the build and the smoke are skipped and only the publish
+   * runs, so the release workflow can hold the registry credential for the
+   * publish step alone (genie-ops-center-v2-sl1). The value must still be a
+   * `sha256:<64 hex>` digest or the run fails closed.
+   */
+  readonly verifiedIdentity?: string | undefined;
 };
 
 export type ReleaseOutcome = {
@@ -222,6 +230,27 @@ export function runRelease(
 
   const env = { MODULE_INCLUDE: include };
 
+  // The development fallback is never published under a customer's name.
+  const label =
+    request.developmentFallback === true ? "development" : request.slug;
+
+  // A prior verify run already gated, built and smoked this exact identity, so
+  // publish it without touching the gates, the build or the smoke again. The
+  // release workflow splits the two runs so the registry credential exists only
+  // for the publish step (genie-ops-center-v2-sl1).
+  if (request.verifiedIdentity !== undefined) {
+    if (!IMMUTABLE_IDENTITY.test(request.verifiedIdentity)) {
+      return fail(
+        "resolve-identity",
+        `The verified identity "${request.verifiedIdentity}" is not an immutable digest, so it cannot be published. This fails closed.`
+      );
+    }
+
+    return request.publish
+      ? publish(request, request.verifiedIdentity, label, env, runner)
+      : { ok: true, identity: request.verifiedIdentity };
+  }
+
   // The effective excluded set, so the candidate smoke can prove the excluded
   // modules have no route, table or ledger and no artifact in this exact image.
   const includedIds = include
@@ -250,21 +279,17 @@ export function runRelease(
     ],
   ];
 
-  for (const [step, label, args] of gates) {
+  for (const [step, gateLabel, args] of gates) {
     const result = runner(NX, args, { cwd: request.repoRoot, env });
 
     if (result.status !== 0) {
       return fail(
         step,
-        `${label} failed with exit ${result.status}. The candidate is not built and nothing is published.`,
+        `${gateLabel} failed with exit ${result.status}. The candidate is not built and nothing is published.`,
         gateOutputTail(result)
       );
     }
   }
-
-  // The development fallback is never published under a customer's name.
-  const label =
-    request.developmentFallback === true ? "development" : request.slug;
 
   const candidateTag = `genie-release-candidate:${tagComponent(
     label,
@@ -348,6 +373,22 @@ export function runRelease(
     return { ok: true, identity };
   }
 
+  return publish(request, identity, label, env, runner);
+}
+
+/**
+ * The publish half of the pipeline, split out so a later run can publish an
+ * identity an earlier verify run already gated, built and smoked
+ * (genie-ops-center-v2-sl1). It touches no registry credential of its own: the
+ * caller's step holds the login, and this only issues the docker commands.
+ */
+function publish(
+  request: ReleaseRequest,
+  identity: string,
+  label: string,
+  env: Readonly<Record<string, string>>,
+  runner: CommandRunner
+): ReleaseOutcome {
   const publishedRef = `${request.registry}:${tagComponent(
     label,
     "slug"

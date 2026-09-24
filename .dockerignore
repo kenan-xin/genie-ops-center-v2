@@ -26,3 +26,8 @@ apps/storybook
 # guard changed the context hash and failed the guard (genie-ops-center-v2-453).
 # The build regenerates it.
 **/next-env.d.ts
+# Local environment files must not reach the build context: `next build` loads
+# them and inlines every NEXT_PUBLIC_* value into the client bundle that ships
+# (genie-ops-center-v2-sl1). The example file stays, for a build that needs one.
+**/.env*
+!**/.env.example

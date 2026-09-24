@@ -7,6 +7,10 @@ name: release
 # build path is proved before the first customer exists. That image contains the
 # placeholder and is not a customer deliverable.
 #
+# A release is refused unless the tagged commit already has a successful
+# develop.yml push run (genie-ops-center-v2-sl1). Releases come from develop for
+# now; the main-based rule is deferred to genie-ops-center-v2-3ui.
+#
 # Every publish goes through `scripts/build-customer-image.sh` (or the
 # development wrapper), which resolves the built image's immutable digest,
 # smoke-checks that digest, then pushes it under a run-unique temporary ref and
@@ -16,13 +20,19 @@ name: release
 # verify. `docker buildx imagetools` talks to the registry directly, so no
 # `docker/setup-buildx-action` is needed: Buildx ships on `ubuntu-latest` and
 # these commands create no builder instance.
+#
+# The registry credential appears only after the gates, the build and the smoke
+# have run (genie-ops-center-v2-sl1): the verify step runs with `--no-publish`
+# and writes the smoked identity out, then `docker/login-action` writes the
+# packages:write token, then a `--publish-digest` step promotes that identity.
 on:
   push:
     tags:
       - "v*"
 
-# The repository's default workflow token is read-only. Only the two publishing
-# jobs ask for package write, which the registry login and push need
+# The repository's default workflow token is read-only. The discover job asks
+# for `actions: read` to look up the tagged commit's develop run; only the two
+# publishing jobs ask for package write, which the registry login and push need
 # (genie-ops-center-v2-0lj).
 permissions:
   contents: read
@@ -31,12 +41,28 @@ jobs:
   discover:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
     outputs:
       customers: ${{ steps.list.outputs.customers }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # genie-ops-center-v2-sl1: refuse the tag unless the tagged commit has a
+      # successful develop.yml push run. Releases come from develop for now; a
+      # main-based rule (an ancestor-of-main check) is deferred to
+      # genie-ops-center-v2-3ui. Fail closed, naming the commit.
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          runs=$(gh run list --workflow develop.yml --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId)
+          if [ -z "$runs" ] || [ "$runs" = "[]" ]; then
+            echo "::error::No successful develop.yml run for $GITHUB_SHA. A release tag must point at a commit that passed the develop gate; merge it to develop, wait for the run to succeed, then re-tag."
+            exit 1
+          fi
       - id: list
         run: |
           set -eu
@@ -61,13 +87,13 @@ jobs:
     steps:
       # The job token can write packages, so the checkout keeps no credential
       # in .git/config while the gates and the build run.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 12.4.2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 26
           cache: pnpm
@@ -75,18 +101,29 @@ jobs:
       # The image suites build many full images; free the preinstalled toolchains
       # this repository never uses, or the runner runs out of disk.
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      # The release gates run the E2E suites, and the runner has no browser.
+      # The app integration gate drives the pinned Chromium (its target depends
+      # on the fixture and dev E2E suites); the runner has no browser.
       - run: pnpm exec playwright install --with-deps chromium
-      - uses: docker/login-action@v3
+      # The gates, the build and the smoke run with no registry credential on
+      # disk (genie-ops-center-v2-sl1). The smoked identity is written out for
+      # the publish step below.
+      - env:
+          CUSTOMER_SLUG: ${{ matrix.slug }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: scripts/build-customer-image.sh "$CUSTOMER_SLUG" "$RELEASE_VERSION" --no-publish --identity-out "$RUNNER_TEMP/candidate-identity"
+      # The packages:write token is written to ~/.docker/config.json only here,
+      # after every gate, the build and the smoke have run.
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # Values reach the shell through env, never expanded into the script.
+      # Promote the exact identity the verify step smoked. No gate, build or
+      # smoke re-runs while the token is present.
       - env:
           CUSTOMER_SLUG: ${{ matrix.slug }}
           RELEASE_VERSION: ${{ github.ref_name }}
-        run: scripts/build-customer-image.sh "$CUSTOMER_SLUG" "$RELEASE_VERSION" --publish
+        run: scripts/build-customer-image.sh "$CUSTOMER_SLUG" "$RELEASE_VERSION" --publish-digest "$(cat "$RUNNER_TEMP/candidate-identity")"
 
   publish-development:
     needs: discover
@@ -97,13 +134,13 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 12.4.2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 26
           cache: pnpm
@@ -111,13 +148,24 @@ jobs:
       # The image suites build many full images; free the preinstalled toolchains
       # this repository never uses, or the runner runs out of disk.
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      # The release gates run the E2E suites, and the runner has no browser.
+      # The app integration gate drives the pinned Chromium (its target depends
+      # on the fixture and dev E2E suites); the runner has no browser.
       - run: pnpm exec playwright install --with-deps chromium
-      - uses: docker/login-action@v3
+      # The gates, the build and the smoke run with no registry credential on
+      # disk (genie-ops-center-v2-sl1). The smoked identity is written out for
+      # the publish step below.
+      - env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: scripts/build-development-image.sh "$RELEASE_VERSION" --no-publish --identity-out "$RUNNER_TEMP/candidate-identity"
+      # The packages:write token is written to ~/.docker/config.json only here,
+      # after every gate, the build and the smoke have run.
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Promote the exact identity the verify step smoked. No gate, build or
+      # smoke re-runs while the token is present.
       - env:
           RELEASE_VERSION: ${{ github.ref_name }}
-        run: scripts/build-development-image.sh "$RELEASE_VERSION" --publish
+        run: scripts/build-development-image.sh "$RELEASE_VERSION" --publish-digest "$(cat "$RUNNER_TEMP/candidate-identity")"

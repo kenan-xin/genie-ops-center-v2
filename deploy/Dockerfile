@@ -1,6 +1,10 @@
 # One image builds every deployment. MODULE_INCLUDE is the only build argument,
 # because a build argument stays readable in image history (DEC-33, R-32).
-FROM node:26-alpine AS builder
+#
+# The base image is pinned by digest, with the tag kept for readability, so a
+# retagged `node:26-alpine` cannot change the build under a release
+# (genie-ops-center-v2-sl1).
+FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS builder
 
 # Every RUN step below reads the argument as an environment variable. There is
 # deliberately no `ENV MODULE_INCLUDE=${MODULE_INCLUDE}` copy: it would turn an
@@ -28,7 +32,7 @@ RUN node tools/generators/src/selection/prune.ts
 RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN pnpm exec nx run @genie/app:build
 
-FROM node:26-alpine AS runtime
+FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS runtime
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -67,7 +71,13 @@ RUN set -eu; \
     cp -r /staging/static "$root/.next/static"; \
     cp -r /staging/public "$root/public"; \
     rm -rf /staging; \
-    chmod +x /usr/local/bin/entrypoint.sh
+    chmod +x /usr/local/bin/entrypoint.sh; \
+    chown -R node:node "$root"
+
+# The runtime runs as the base image's built-in `node` user, never root. The
+# chown above lets the standalone server write its own `.next/cache`, which a
+# root-owned tree could not (genie-ops-center-v2-sl1).
+USER node
 
 EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -705,3 +705,71 @@ describe("publishing the stable tag by digest", () => {
     ).toBe(false);
   });
 });
+
+// genie-ops-center-v2-sl1: the release workflow splits verify from publish so
+// the registry credential exists only for the publish step. The verify run
+// (`--no-publish`) gates, builds and smokes, then hands its immutable identity
+// to a later `--publish-digest` run that re-runs none of that.
+describe("publishing an identity a prior run verified", () => {
+  it("publishes the verified identity without re-running the gates, the build or the smoke", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = registryRunner();
+
+    const outcome = runRelease(
+      request(root, { verifiedIdentity: IDENTITY }),
+      runner
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.publishedRef).toBe(
+      "ghcr.io/owner/genie-ops-center:acme-1.2.3"
+    );
+
+    // Nothing untrusted ran again: the identity was already gated, built and
+    // smoked, and the token only appears for the publish below.
+    for (const step of [
+      "typecheck",
+      "validate",
+      "test",
+      "integration",
+      "build",
+      "smoke",
+    ] as const) {
+      expect(has(calls, step), `${step} must not re-run`).toBe(false);
+    }
+
+    expect(calls.some((call) => call.args[0] === "tag")).toBe(true);
+    expect(calls.some((call) => call.args[0] === "push")).toBe(true);
+  });
+
+  it("fails closed when the verified identity is not an immutable digest", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = recordingRunner();
+
+    const outcome = runRelease(
+      request(root, { verifiedIdentity: "acme:latest" }),
+      runner
+    );
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failedStep).toBe("resolve-identity");
+    expect(calls.some((call) => call.args[0] === "push")).toBe(false);
+  });
+
+  it("reports the identity and publishes nothing when the verified run is dry", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = recordingRunner();
+
+    const outcome = runRelease(
+      request(root, { verifiedIdentity: IDENTITY, publish: false }),
+      runner
+    );
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.identity).toBe(IDENTITY);
+    // The verified path is taken even when publishing is off: nothing re-ran.
+    expect(has(calls, "build")).toBe(false);
+    expect(has(calls, "smoke")).toBe(false);
+    expect(calls.some((call) => call.args[0] === "push")).toBe(false);
+  });
+});

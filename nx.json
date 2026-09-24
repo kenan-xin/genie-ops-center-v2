@@ -113,7 +113,9 @@
         "{workspaceRoot}/apps/genie/tools/**/*",
         "{workspaceRoot}/packages/modules/**/*",
         "{workspaceRoot}/.github/**",
-        "{workspaceRoot}/scripts/**"
+        "{workspaceRoot}/scripts/**",
+        "{workspaceRoot}/deploy/**/*",
+        "{workspaceRoot}/.dockerignore"
       ]
     }
   }

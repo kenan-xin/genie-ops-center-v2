@@ -204,14 +204,17 @@ describe("the Spec 0 CI gates", () => {
     for (const [name, job] of jobsOf(workflow)) {
       if (!runScripts(job).join("\n").includes("nx affected")) continue;
 
-      const shas = [...job.matchAll(/uses: (nrwl\/nx-set-shas@\S+)/g)].map(
-        ([, action]) => action
-      );
+      // Pinned to a commit SHA with its major named, so an upgrade is a
+      // deliberate edit (genie-ops-center-v2-sl1); the global pinning test
+      // above proves the SHA and version comment on every action.
+      const shas = [
+        ...job.matchAll(/uses: nrwl\/nx-set-shas@[0-9a-f]{40} # v5\.\d+\.\d+/g),
+      ];
 
       expect(
         shas,
         `${name} derives its base from the last successful develop run`
-      ).toEqual(["nrwl/nx-set-shas@v5"]);
+      ).toHaveLength(1);
       expect(job, `${name} reads develop's run history, not main's`).toContain(
         "main-branch-name: develop"
       );
@@ -592,6 +595,140 @@ describe("the Spec 0 CI gates", () => {
     const workflow = read(`${WORKFLOWS}/release.yml`);
 
     expect(workflow).not.toMatch(/cancel-in-progress:\s*true/);
+  });
+
+  // genie-ops-center-v2-sl1: a tag used to publish any commit. A release is now
+  // refused unless the tagged commit already has a successful develop.yml push
+  // run, so a tag on a commit whose develop gate failed or was cancelled cannot
+  // publish. Releases come from develop for now; the main-based rule is
+  // deferred to genie-ops-center-v2-3ui.
+  it("refuses a release tag whose commit has no green develop run", () => {
+    const workflow = read(`${WORKFLOWS}/release.yml`);
+    const discover = jobsOf(workflow).get("discover");
+
+    expect(discover, "a discover job").toBeDefined();
+
+    // Reading the run history through the Actions API needs `actions: read`;
+    // the job stays otherwise read-only.
+    expect(
+      discover,
+      "the discover job grants actions: read for the run-history lookup"
+    ).toMatch(/^ {4}permissions:\n {6}contents: read\n {6}actions: read\n/m);
+
+    const scripts = runScripts(discover ?? "").join("\n");
+
+    expect(scripts, "the gate queries the develop workflow").toContain(
+      "gh run list"
+    );
+    expect(scripts).toContain("--workflow develop.yml");
+    expect(scripts).toContain("--commit");
+    expect(scripts).toContain("--status success");
+
+    // Fail closed: no successful run exits nonzero, and the message names the
+    // commit so an operator knows which SHA to fix.
+    expect(scripts).toContain("exit 1");
+    expect(scripts).toMatch(/GITHUB_SHA/);
+
+    // The ancestor-of-main rule is deferred to genie-ops-center-v2-3ui; the
+    // one-line pointer to it stays, and no main check is added here.
+    expect(workflow).toContain("3ui");
+    expect(workflow).not.toContain("merge-base");
+    expect(workflow).not.toMatch(/origin\/main/);
+  });
+
+  // genie-ops-center-v2-sl1: docker/login-action writes a packages:write token
+  // to ~/.docker/config.json. It used to run before every gate, the build and
+  // the smoke, so any compromised dependency could push any image. It now runs
+  // only after a --no-publish run has gated, built and smoked the candidate,
+  // and the publish step promotes the identity that run wrote out.
+  it("holds the registry credential only for the publish step, after the smoke", () => {
+    const workflow = read(`${WORKFLOWS}/release.yml`);
+
+    const publishing = [...jobsOf(workflow).entries()].filter(([, job]) =>
+      job.includes("docker/login-action")
+    );
+
+    expect(publishing.length, "at least one publishing job").toBeGreaterThan(0);
+
+    for (const [name, job] of publishing) {
+      const verifyAt = job.indexOf("--no-publish");
+      const loginAt = job.indexOf("docker/login-action");
+      const publishAt = job.indexOf("--publish-digest");
+
+      expect(verifyAt, `${name} verifies with --no-publish`).toBeGreaterThan(
+        -1
+      );
+      expect(
+        publishAt,
+        `${name} publishes with --publish-digest`
+      ).toBeGreaterThan(-1);
+      expect(loginAt, `${name} logs in after the smoke`).toBeGreaterThan(
+        verifyAt
+      );
+      expect(
+        publishAt,
+        `${name} publishes only after the login`
+      ).toBeGreaterThan(loginAt);
+    }
+  });
+
+  // genie-ops-center-v2-sl1 (M5): a retagged third-party action in a
+  // packages:write job can publish, and a movable base image can change under a
+  // build. Every action is pinned to a full commit SHA with its version named.
+  it("pins every workflow action to a commit SHA with its version", () => {
+    const pin =
+      /^\s*(?:- )?uses:\s+[\w.-]+\/[\w.-]+@[0-9a-f]{40}\s+#\s+v\d+\.\d+\.\d+\s*$/;
+
+    for (const file of workflowFiles()) {
+      for (const [index, line] of read(file).split("\n").entries()) {
+        if (!/^\s*(?:- )?uses:/.test(line)) continue;
+
+        expect(pin.test(line), `${file}:${index + 1}: ${line.trim()}`).toBe(
+          true
+        );
+      }
+    }
+  });
+
+  // The Dockerfile and its build context are part of the release supply chain:
+  // the base image must be immutable, the runtime must not run as root, and a
+  // local .env must not be baked into the image (genie-ops-center-v2-sl1).
+  describe("the release supply chain", () => {
+    it("pins the runtime base image by digest, keeping the tag for readability", () => {
+      const froms = read("deploy/Dockerfile")
+        .split("\n")
+        .filter((line) => line.startsWith("FROM "));
+
+      expect(froms.length, "both stages").toBeGreaterThanOrEqual(2);
+
+      for (const from of froms) {
+        expect(from, from).toMatch(
+          /^FROM node:26-alpine@sha256:[0-9a-f]{64} AS \w+$/
+        );
+      }
+    });
+
+    it("runs the runtime stage as the non-root node user", () => {
+      const runtime = read("deploy/Dockerfile")
+        .split(/^FROM /m)
+        .find((stage) =>
+          /^node:26-alpine@sha256:[0-9a-f]{64} AS runtime\b/.test(stage)
+        );
+
+      expect(runtime, "a runtime stage").toBeDefined();
+      expect(runtime).toMatch(/^USER node$/m);
+
+      // The user switch must follow the asset placement, or the container
+      // still starts as root.
+      const userAt = runtime?.indexOf("USER node") ?? -1;
+      const assetsAt = runtime?.indexOf("cp -r /staging/static") ?? -1;
+
+      expect(userAt).toBeGreaterThan(assetsAt);
+    });
+
+    it("keeps local environment files out of the build context", () => {
+      expect(read(".dockerignore")).toMatch(/^\*\*\/\.env\*$/m);
+    });
   });
 
   it("builds one image per customer and falls back to the development image", () => {
@@ -1068,5 +1205,10 @@ describe("the Spec 0 CI gates", () => {
     expect(inputs).toContain("{workspaceRoot}/apps/genie/tools/**/*");
     expect(inputs).toContain("{workspaceRoot}/packages/modules/**/*");
     expect(inputs).toContain("{workspaceRoot}/.github/**");
+    // The release supply-chain checks read the Dockerfile and the build-context
+    // ignore file, so a change to either must invalidate this target too
+    // (genie-ops-center-v2-sl1).
+    expect(inputs).toContain("{workspaceRoot}/deploy/**/*");
+    expect(inputs).toContain("{workspaceRoot}/.dockerignore");
   });
 });
