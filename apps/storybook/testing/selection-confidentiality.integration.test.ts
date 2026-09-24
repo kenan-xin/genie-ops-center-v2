@@ -1,18 +1,16 @@
 import { spawn, spawnSync } from "node:child_process";
 import {
-  cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { createServer, type AddressInfo } from "node:net";
-import { tmpdir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { join, relative } from "node:path";
 
+import { stageWorkspace } from "@genie/core/testing/stage-workspace";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Run } from "./nested-run.ts";
@@ -37,31 +35,6 @@ import type { Run } from "./nested-run.ts";
  * separately by `tools/generators/scripts/prove-generated-module.ts`; here the
  * fixture only has to satisfy the data-only inventory contract.
  */
-const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../..");
-
-/** Build output, version control, caches and bulk documents: none is an input here. */
-const PRUNED = new Set([
-  ".git",
-  ".next",
-  ".nx",
-  ".beads",
-  ".dolt",
-  ".impeccable",
-  ".turbo",
-  ".agents",
-  ".claude",
-  ".codex",
-  ".config",
-  "graft",
-  "storybook-static",
-  "test-results",
-  "playwright-report",
-  "coverage",
-  "dist",
-  "docs",
-  "plans",
-]);
-
 const BUILD_TASK = "@genie/storybook:build-storybook";
 
 const TEST_TASK = "@genie/storybook:test-storybook";
@@ -310,24 +283,11 @@ function writeHeadlessFixture(): void {
 }
 
 beforeAll(() => {
-  stage = mkdtempSync(join(tmpdir(), "genie-storybook-matrix-"));
-
-  cpSync(WORKSPACE_ROOT, stage, {
-    recursive: true,
-    filter: (source) => {
-      // The root node_modules is replaced by a symlink below. A nested one,
-      // such as the host's, is copied: its entries are relative symlinks into
-      // the workspace, so inside the stage they point at the stage's packages.
-      if (source === join(WORKSPACE_ROOT, "node_modules")) return false;
-
-      if (source === join(WORKSPACE_ROOT, "apps/storybook/storybook-static")) {
-        return false;
-      }
-
-      const name = source.split(/[\\/]/).pop() ?? "";
-
-      return !PRUNED.has(name);
-    },
+  // The root node_modules is replaced by a real install below. A nested one, such
+  // as the host's, is copied: its entries are relative symlinks into the
+  // workspace, so inside the stage they point at the stage's packages.
+  stage = stageWorkspace("genie-storybook-matrix-", {
+    keepNestedNodeModules: true,
   });
 
   // A real install links the stage's own packages. Symlinking the checkout's

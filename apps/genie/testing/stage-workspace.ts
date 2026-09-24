@@ -1,6 +1,10 @@
-import { cpSync, existsSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { cpSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+  stageWorkspace,
+  WORKSPACE_ROOT,
+} from "@genie/core/testing/stage-workspace";
 
 /**
  * A disposable copy of the workspace under the operating system's temporary
@@ -9,38 +13,13 @@ import { join, resolve } from "node:path";
  *
  * Each call allocates its own uniquely named stage, so a caller can only ever
  * delete a path it knows it owns.
+ *
+ * The staging itself lives in `@genie/core/testing/stage-workspace`, shared with
+ * the Storybook matrix so the prune list cannot drift between the callers.
  */
-export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
+export const REPO_ROOT = WORKSPACE_ROOT;
 
-/** Directory names never staged: untracked build output, caches, and bulk docs. */
-const PRUNED = new Set([
-  "node_modules",
-  ".git",
-  ".next",
-  ".nx",
-  ".turbo",
-  ".beads",
-  ".impeccable",
-  ".storybook",
-  "storybook-static",
-  "test-results",
-  "playwright-report",
-  "dist",
-  "coverage",
-  "docs",
-  "plans",
-]);
-
-export function stageWorkspace(prefix: string): string {
-  const stage = mkdtempSync(join(tmpdir(), prefix));
-
-  cpSync(REPO_ROOT, stage, {
-    recursive: true,
-    filter: (source) => !PRUNED.has(source.split(/[\\/]/).pop() ?? ""),
-  });
-
-  return stage;
-}
+export { stageWorkspace };
 
 /**
  * Copies one fixture template from `apps/genie/tools/fixture-modules/<id>` into

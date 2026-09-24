@@ -1,15 +1,11 @@
 import { spawnSync } from "node:child_process";
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 
+import {
+  stageWorkspace,
+  WORKSPACE_ROOT,
+} from "@genie/core/testing/stage-workspace";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
@@ -32,25 +28,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * copied as it stands, because its entries are relative symlinks and therefore
  * resolve to the stage's own packages.
  */
-const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../..");
-
-/** Build output, version control, caches and bulk documents: none is an input here. */
-const PRUNED = new Set([
-  ".git",
-  ".next",
-  ".nx",
-  ".beads",
-  ".impeccable",
-  ".turbo",
-  "storybook-static",
-  "test-results",
-  "playwright-report",
-  "coverage",
-  "dist",
-  "docs",
-  "plans",
-]);
-
 const TASK = "@genie/app:generate-registry";
 
 let stage = "";
@@ -135,20 +112,11 @@ function servedFromCache(output: string, task: string): boolean {
 }
 
 beforeAll(() => {
-  stage = mkdtempSync(join(tmpdir(), "genie-selection-cache-"));
-
-  cpSync(WORKSPACE_ROOT, stage, {
-    recursive: true,
-    filter: (source) => {
-      const name = source.split(/[\\/]/).pop() ?? "";
-
-      // The root node_modules is replaced by a symlink below. A nested one, such
-      // as the app's, is copied: its entries are relative symlinks into the
-      // workspace, so inside the stage they point at the stage's own packages.
-      if (source === join(WORKSPACE_ROOT, "node_modules")) return false;
-
-      return !PRUNED.has(name);
-    },
+  // A nested node_modules, such as the app's, is copied: its entries are relative
+  // symlinks into the workspace, so inside the stage they point at the stage's
+  // own packages. The root one is replaced by a symlink below.
+  stage = stageWorkspace("genie-selection-cache-", {
+    keepNestedNodeModules: true,
   });
 
   symlinkSync(
