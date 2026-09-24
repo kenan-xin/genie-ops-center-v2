@@ -5,7 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { withTransaction } from "../src/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
-import { silentLogger } from "../src/services/logging/index.ts";
+import {
+  type RedactingLogger,
+  createLogger,
+  silentLogger,
+} from "../src/services/logging/index.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -24,7 +28,9 @@ type TransactionFixture = {
   readonly observer: Client;
 };
 
-async function startTransactionFixture(): Promise<TransactionFixture> {
+async function startTransactionFixture(
+  logger: Pick<RedactingLogger, "error"> = silentLogger()
+): Promise<TransactionFixture> {
   const postgres = await startDisposablePostgres();
 
   const context = createTenantContext(
@@ -32,7 +38,7 @@ async function startTransactionFixture(): Promise<TransactionFixture> {
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
     },
-    silentLogger()
+    logger
   );
 
   const observer = new Client({ connectionString: postgres.url });
@@ -132,7 +138,14 @@ describe("withTransaction against a real database", () => {
   });
 
   it("keeps the committed result and runs later entries when an after-commit entry throws", async () => {
-    const { context } = await startTransactionFixture();
+    const lines: string[] = [];
+
+    const logger = createLogger(
+      { logLevel: "error" },
+      { write: (line: string) => void lines.push(line) }
+    );
+
+    const { context } = await startTransactionFixture(logger);
     const entriesRan: string[] = [];
 
     const result = await withTransaction(context, async (_tx, afterCommit) => {
@@ -152,6 +165,12 @@ describe("withTransaction against a real database", () => {
     // best-effort handlers cannot turn a committed result into a caller-visible failure.
     expect(result).toBe("transaction-result");
     expect(entriesRan).toEqual(["throwing", "later"]);
+
+    // The factory kept the logger off the context and the seam records the failure through it,
+    // so a best-effort entry is never swallowed silently.
+    const logged = lines.join("");
+    expect(logged).toContain("after-commit entry failed");
+    expect(logged).toContain("after-commit failure");
   });
 
   it("serves the transaction from the context's own pool and opens no second connection", async () => {

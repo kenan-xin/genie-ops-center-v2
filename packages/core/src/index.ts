@@ -14,6 +14,13 @@ export {
 } from "./lib/tenant-context/index.ts";
 
 export {
+  type AfterCommit,
+  type AfterCommitEntry,
+  type TenantTransaction,
+  withTransaction,
+} from "./lib/tenant-context/with-transaction.ts";
+
+export {
   type EnvironmentSource,
   validateEnvironment,
 } from "./lib/environment/index.ts";

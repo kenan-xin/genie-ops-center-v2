@@ -7,6 +7,7 @@ import {
   type EnvironmentSource,
   validateEnvironment,
 } from "../environment/index.ts";
+import { registerContextLogger } from "./with-transaction.ts";
 
 export type FileStorageAdapter = "postgres" | "s3" | "gcs" | "azure";
 
@@ -76,5 +77,12 @@ export function createTenantContext(
     logger.error({ err: error }, "idle database client error");
   });
 
-  return { db: drizzle(pool), env };
+  const context: TenantContext = { db: drizzle(pool), env };
+
+  // The context keeps its two fixed members (R-18): the logger the pool's error listener already
+  // uses is recorded off the object, where `withTransaction` reads it for its after-commit
+  // diagnostics. A context this factory did not build has no entry.
+  registerContextLogger(context, logger);
+
+  return context;
 }
