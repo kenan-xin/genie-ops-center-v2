@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 
 import { placeholderModule } from "./module.ts";
 
+/* oxlint-disable anti-slop/require-readable-spacing -- this declaration assertion is one contract. */
+
 describe("the placeholder module declaration", () => {
   it("satisfies every rule the contract validator checks", () => {
     expect(validateModule(placeholderModule)).toEqual([]);
@@ -65,6 +67,13 @@ describe("the placeholder module declaration", () => {
       expect(entry).not.toHaveProperty("landing");
     }
   });
+
+  it("declares the placeholder record reader job", () => {
+    expect(
+      placeholderModule.jobs.map(({ name, schedule }) => ({ name, schedule }))
+    ).toEqual([{ name: "placeholder.read-record", schedule: undefined }]);
+  });
+  /* oxlint-enable anti-slop/require-readable-spacing */
 
   it("declares one field of each of the five configuration kinds", () => {
     expect(Object.keys(placeholderModule.configuration.fields)).toEqual([

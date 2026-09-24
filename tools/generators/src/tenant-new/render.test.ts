@@ -7,6 +7,8 @@ import type {
   TenantRenderInput,
 } from "./render.ts";
 
+/* oxlint-disable anti-slop/require-readable-spacing -- assertions in this case read as one contract. */
+
 const INPUT: TenantRenderInput = {
   slug: "demo-co",
   modules: ["placeholder"],
@@ -108,6 +110,32 @@ describe("the rendered deployment folder", () => {
     const none = renderTenant({ ...INPUT, modules: [] }, VALIDATORS);
 
     expect(none.get("customers/demo-co/deploy/modules.txt")).toBe("");
+  });
+
+  it("sets worker heartbeat path and health-check timeouts from the worker environment", () => {
+    const compose = read("compose.yaml");
+    const worker =
+      /  worker:\n([\s\S]*?)(?=\n  [a-z][a-z0-9_-]*:|\nvolumes:)/.exec(
+        compose
+      )?.[1];
+    const healthcheck =
+      /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
+        worker ?? ""
+      )?.[1];
+    const startPeriodSeconds = Number(
+      /start_period:\s*(\d+)s/.exec(healthcheck ?? "")?.[1]
+    );
+    const staleAfterSeconds = Number(
+      /stale_after_seconds:\s*(\d+)/.exec(healthcheck ?? "")?.[1]
+    );
+
+    expect(worker).toBeDefined();
+    expect(healthcheck).toBeDefined();
+    expect(worker ?? "").toContain("WORKER_HEARTBEAT_PATH:");
+    expect(healthcheck ?? "").toContain("$$WORKER_HEARTBEAT_PATH");
+    expect(healthcheck ?? "").not.toContain("/tmp/");
+    expect(startPeriodSeconds).toBeGreaterThan(180);
+    expect(staleAfterSeconds).toBeGreaterThanOrEqual(180);
   });
 
   it("points the editor at the published schema", () => {

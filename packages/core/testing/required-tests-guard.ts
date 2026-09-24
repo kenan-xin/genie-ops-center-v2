@@ -178,4 +178,24 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the setup gate latch keeps every completed setup step done after a setup rerun",
     ],
   },
+  {
+    file: "testing/worker.integration.test.ts",
+    reason:
+      "AC-11, R-4, R-5, R-27 and R-50 to R-52 require the pg-boss worker against real Postgres",
+    cases: [
+      "the core pg-boss worker runs an enqueued placeholder handler and reads from the worker database",
+      "the core pg-boss worker does not dequeue a queued job while its migrator waits on the shared advisory lock",
+      "the core pg-boss worker serializes concurrent fresh application and worker migration runs",
+      "the core pg-boss worker starts its own migrator and pg-boss schema without an application process",
+      "the core pg-boss worker skips a job of a compiled module with no tenant_module row",
+      "the core pg-boss worker checks entitlement before running a queued job for a disabled module",
+      "the core pg-boss worker keeps the job queue as a fixed context member exposing enqueue and schedule",
+      "the core pg-boss worker schedules jobs with a cron expression distinct from their data",
+      "the core pg-boss worker uses the tenant context pool for pg-boss rather than a second driver pool",
+      "the core pg-boss worker leaves worker-only supervision and scheduling disabled on the application instance",
+      "the core pg-boss worker writes heartbeat from the scheduled core job only after migration completes, then becomes stale when aborted",
+      "the core pg-boss worker uses WORKER_HEARTBEAT_PATH when set and the default path otherwise",
+      "the core pg-boss worker pins pg-boss to version 12.33.5",
+    ],
+  },
 ];

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 
-import { MIGRATION_LOCK_KEY } from "@genie/core";
+import { MIGRATION_LOCK_KEY, createTenantContext } from "@genie/core";
 import {
   enableModules,
   markSetupDone,
@@ -34,6 +34,22 @@ import {
 } from "./image-process.ts";
 
 const run = promisify(execFile);
+
+/* oxlint-disable no-await-in-loop -- polling waits for the container's actual database effect. */
+async function waitForDatabaseCondition(
+  check: () => Promise<boolean>,
+  budgetMs = 15000
+): Promise<void> {
+  const deadline = Date.now() + budgetMs;
+
+  while (Date.now() < deadline) {
+    if (await check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error("the built worker did not migrate the database in time");
+}
+/* oxlint-enable no-await-in-loop */
 
 /** Named in the staleness failures below, so the fix is one copy-paste away. */
 const REBUILD_IMAGE =
@@ -299,6 +315,125 @@ const batchRequestLinesIn = (logs: string) =>
   );
 
 describe("the built image", () => {
+  it("runs the worker entrypoint from the built image and migrates a fresh database", async () => {
+    const fresh = await startDisposablePostgres();
+    let workerId: string | undefined;
+
+    try {
+      const result = await run("docker", [
+        "run",
+        "-d",
+        "--add-host",
+        `${HOST_ALIAS}:host-gateway`,
+        "-e",
+        `DATABASE_URL=${reachableFromContainer(fresh.url)}`,
+        "-e",
+        "PUBLIC_URL=https://example.invalid",
+        IMAGE,
+        "worker",
+      ]);
+
+      workerId = result.stdout.trim();
+
+      const verifier = createTenantContext(
+        { DATABASE_URL: fresh.url, PUBLIC_URL: "https://example.invalid" },
+        { error: () => {} },
+        []
+      );
+
+      try {
+        await waitForDatabaseCondition(async () => {
+          const migrationCheck = await verifier.db.$client.query<{
+            present: boolean;
+          }>(
+            "select to_regclass('drizzle.__drizzle_migrations') is not null as present"
+          );
+
+          return migrationCheck.rows[0]?.present === true;
+        });
+
+        expect(workerId).toBeTruthy();
+      } finally {
+        await verifier.db.$client.end();
+      }
+    } finally {
+      if (workerId !== undefined) {
+        await run("docker", ["rm", "-f", workerId]).catch(() => undefined);
+      }
+
+      await fresh.stop();
+    }
+  }, 240000);
+
+  it("starts the app and worker from the same image with only the entrypoint argument different", async () => {
+    const appImage = await startImage(
+      {
+        DATABASE_URL: databaseUrl(),
+        PUBLIC_URL: "https://example.invalid",
+      },
+      3415
+    );
+
+    try {
+      await pollHealth(3415);
+
+      const worker = await run("docker", [
+        "run",
+        "-d",
+        "--add-host",
+        `${HOST_ALIAS}:host-gateway`,
+        "-e",
+        `DATABASE_URL=${reachableFromContainer(databaseUrl())}`,
+        "-e",
+        "PUBLIC_URL=https://example.invalid",
+        IMAGE,
+        "worker",
+      ]);
+
+      try {
+        const appInspection = await run("docker", [
+          "inspect",
+          "--format",
+          "{{json .Config}}",
+          appImage.id,
+        ]);
+
+        const workerInspection = await run("docker", [
+          "inspect",
+          "--format",
+          "{{json .Config}}",
+          worker.stdout.trim(),
+        ]);
+
+        // SAFETY: docker inspect --format emits exactly one JSON Config object.
+        const appConfig = JSON.parse(appInspection.stdout.trim()) as {
+          Image: string;
+          Entrypoint: string[];
+          Cmd: string[];
+        };
+
+        // SAFETY: docker inspect --format emits exactly one JSON Config object.
+        const workerConfig = JSON.parse(workerInspection.stdout.trim()) as {
+          Image: string;
+          Entrypoint: string[];
+          Cmd: string[];
+        };
+
+        expect(appConfig.Image).toBe(IMAGE);
+        expect(workerConfig.Image).toBe(IMAGE);
+        expect(appConfig.Entrypoint).toEqual(workerConfig.Entrypoint);
+        expect(appConfig.Cmd).toEqual(["app"]);
+        expect(workerConfig.Cmd).toEqual(["worker"]);
+      } finally {
+        await run("docker", ["rm", "-f", worker.stdout.trim()]).catch(
+          () => undefined
+        );
+      }
+    } finally {
+      await appImage.stop();
+    }
+  }, 240000);
+
   it("becomes healthy, logs one bootstrap line, and invokes no provider before it", async () => {
     const image = await startImage(
       {

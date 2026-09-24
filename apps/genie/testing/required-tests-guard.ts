@@ -41,6 +41,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/image.startup.test.ts",
     cases: [
+      "the built image runs the worker entrypoint from the built image and migrates a fresh database",
+      "the built image starts the app and worker from the same image with only the entrypoint argument different",
       "the built image shares one context across concurrent page, tRPC and viewer requests",
       "the built image runs genie-ops from PATH through docker exec and migrates",
       "the built image runs genie-ops migrate on a fresh database through the image entrypoint",
