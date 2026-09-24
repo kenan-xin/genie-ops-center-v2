@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { stripVTControlCharacters } from "node:util";
@@ -27,11 +27,34 @@ import { stripVTControlCharacters } from "node:util";
  * then says which files it did not put back. `--no-integration` and `--no-browser`
  * skip the layers that need a container runtime; the run says so rather than
  * reporting a pass it did not get.
+ *
+ * Every step prints its header before it starts and streams its child's stdout
+ * and stderr live, so a hang shows exactly where it is stuck instead of going
+ * silent until the process ends. Each step also has its own timeout; a step that
+ * outruns it is killed by process group and fails by name, rather than the whole
+ * run sitting quiet until CI's job limit cuts it off.
  */
 const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 
 /** The two tracked files that carry the generated module while the run lasts. */
 const SHARED_FILES = ["pnpm-lock.yaml", "apps/genie/package.json"];
+
+const MINUTE = 60_000;
+
+/** Per-step timeouts. Storybook runs and the image build are slow by nature;
+ * Playwright gets a middle ground; everything else is fast and gets the floor. */
+const STEP_TIMEOUT_MS = new Map<string, number>([
+  ["Storybook component tests without the generated module", 15 * MINUTE],
+  ["Storybook component tests with the generated module", 15 * MINUTE],
+  ["build an image carrying the generated module", 15 * MINUTE],
+  ["denied route at a phone and a desktop viewport", 10 * MINUTE],
+]);
+
+const DEFAULT_STEP_TIMEOUT_MS = 5 * MINUTE;
+
+function timeoutFor(label: string): number {
+  return STEP_TIMEOUT_MS.get(label) ?? DEFAULT_STEP_TIMEOUT_MS;
+}
 
 const [, , maybeId, ...flags] = process.argv;
 
@@ -73,27 +96,94 @@ const shared = new Map(
   ])
 );
 
-function call(
-  command: string,
-  args: readonly string[],
-  env?: Record<string, string>
-): string {
-  return execFileSync(command, args, {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, ...env },
-  });
-}
+/** The step currently in flight, so a thrown error - however it is shaped - can
+ * be reported against the step that produced it. */
+let currentStep = "";
 
-function run(
+/**
+ * Runs one command with its stdout/stderr streamed live to this process's own
+ * streams, while still capturing the stdout text for callers that need to parse
+ * it (`storiesRunFor`). `spawnSync`/`execFileSync` buffer the whole run and hand
+ * back nothing until the process exits, which is why a hang goes silent; a piped
+ * `spawn` forwards chunks as they arrive.
+ *
+ * The child runs detached so it leads its own process group: a timeout kills
+ * `-pid`, the whole group, not just the top process, which matters for a step
+ * like `pnpm exec nx ...` that forks further children.
+ */
+function runStreamed(
   command: string,
   args: readonly string[],
   label: string,
   env?: Record<string, string>
-): void {
+): Promise<string> {
+  currentStep = label;
+
   process.stdout.write(`\n=== ${label} ===\n`);
-  process.stdout.write(call(command, args, env));
+
+  const timeoutMs = timeoutFor(label);
+
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, {
+      cwd: REPO_ROOT,
+      env: { ...process.env, ...env },
+      detached: true,
+    });
+
+    let out = "";
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+
+      if (child.pid) process.kill(-child.pid, "SIGKILL");
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      out += chunk.toString();
+      process.stdout.write(chunk);
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      process.stderr.write(chunk);
+    });
+
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+
+      if (timedOut) {
+        reject(
+          new Error(
+            `did not finish within ${timeoutMs / MINUTE} minutes and was killed`
+          )
+        );
+
+        return;
+      }
+
+      if (code !== 0) {
+        reject(new Error(`exited with code ${code}`));
+
+        return;
+      }
+
+      resolvePromise(out);
+    });
+  });
+}
+
+async function run(
+  command: string,
+  args: readonly string[],
+  label: string,
+  env?: Record<string, string>
+): Promise<void> {
+  await runStreamed(command, args, label, env);
 }
 
 let restored = false;
@@ -143,14 +233,16 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
  * those even if the generated module contributed no story at all. The difference
  * between the two selections is what proves the generated stories executed.
  */
-function storiesRunFor(moduleInclude: string): number {
-  const output = call(
+async function storiesRunFor(
+  moduleInclude: string,
+  label: string
+): Promise<number> {
+  const output = await runStreamed(
     "pnpm",
     ["exec", "nx", "run", "@genie/storybook:test-storybook", "--skip-nx-cache"],
+    label,
     { MODULE_INCLUDE: moduleInclude }
   );
-
-  process.stdout.write(output);
 
   // Under CI=true the output carries color codes between the words.
   const passed = /Tests\s+(\d+) passed/.exec(
@@ -169,7 +261,7 @@ function storiesRunFor(moduleInclude: string): number {
 let failure: unknown;
 
 try {
-  run(
+  await run(
     "pnpm",
     ["exec", "nx", "g", "@genie/generators:module-new", id],
     "generate"
@@ -179,13 +271,13 @@ try {
   // the application's manifest, and nothing else in the workspace names it.
   // The lockfile moves here and is restored on exit, so the install must not
   // be frozen, which pnpm otherwise defaults to under CI=true.
-  run(
+  await run(
     "pnpm",
     ["install", "--silent", "--no-frozen-lockfile"],
     "link the generated package"
   );
 
-  run(
+  await run(
     "pnpm",
     [
       "exec",
@@ -201,14 +293,14 @@ try {
     "lint, typecheck and unit tests on the generated module"
   );
 
-  run(
+  await run(
     "node",
     ["tools/generators/scripts/assert-discovered.ts", id],
     "selection and story discovery"
   );
 
   if (withIntegration) {
-    run(
+    await run(
       "pnpm",
       [
         "exec",
@@ -226,12 +318,15 @@ try {
   }
 
   if (withBrowser) {
-    process.stdout.write(
-      "\n=== Storybook component tests: this module's stories against a selection without it ===\n"
+    const withoutModule = await storiesRunFor(
+      "",
+      "Storybook component tests without the generated module"
     );
 
-    const withoutModule = storiesRunFor("");
-    const withModule = storiesRunFor(id);
+    const withModule = await storiesRunFor(
+      id,
+      "Storybook component tests with the generated module"
+    );
 
     if (withModule <= withoutModule) {
       throw new Error(
@@ -243,14 +338,14 @@ try {
       `\nThe generated module contributed ${withModule - withoutModule} stories, which passed.\n`
     );
 
-    run(
+    await run(
       "pnpm",
       ["exec", "nx", "run", "@genie/app:build-image"],
       "build an image carrying the generated module",
       { MODULE_INCLUDE: `placeholder,${id}` }
     );
 
-    run(
+    await run(
       "pnpm",
       [
         "exec",
@@ -283,8 +378,10 @@ try {
 }
 
 if (failure !== undefined) {
+  const message = failure instanceof Error ? failure.message : String(failure);
+
   console.error(
-    `\nThe generated module did not pass. ${failure instanceof Error ? failure.message : String(failure)}`
+    `\nThe generated module did not pass. Step "${currentStep}": ${message}`
   );
   process.exit(1);
 }
