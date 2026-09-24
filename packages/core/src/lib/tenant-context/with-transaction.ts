@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import type { RedactingLogger } from "../../services/logging/index.ts";
 import type { TenantContext } from "./index.ts";
 
@@ -11,6 +13,13 @@ const contextLoggers = new WeakMap<
   TenantContext,
   Pick<RedactingLogger, "error">
 >();
+
+/**
+ * Marks the async context of a running `withTransaction`, so a call made inside `fn` is refused
+ * instead of opening a second, independent transaction on a second pool client. The store follows
+ * the async tree, so two concurrent calls in separate chains never see each other's mark.
+ */
+const transactionScope = new AsyncLocalStorage<true>();
 
 /**
  * Records the process logger for one context. Called by `createTenantContext` only; it is not
@@ -31,11 +40,40 @@ export type TenantTransaction = Parameters<
   Parameters<TenantContext["db"]["transaction"]>[0]
 >[0];
 
-/** One deferred side effect, run after the commit. It must tolerate running at least once. */
+/**
+ * One deferred side effect, run after the commit. It runs at most once and is never retried: a
+ * crash between the commit and the dispatch loses it.
+ */
 export type AfterCommitEntry = () => void | Promise<void>;
 
-/** Registers an entry to run after the commit. Registration happens inside `fn` only. */
+/**
+ * Registers an entry to run after the commit. It may be called only while `fn` runs; a call after
+ * `fn` settles throws, because the seam has already taken the list.
+ */
 export type AfterCommit = (entry: AfterCommitEntry) => void;
+
+/**
+ * The after-commit list a caller fills while `fn` runs. It closes when `fn` settles, so a
+ * registration after that throws instead of adding an entry that silently never runs.
+ */
+function openAfterCommitList() {
+  const entries: AfterCommitEntry[] = [];
+  let open = true;
+
+  return {
+    register: (entry: AfterCommitEntry): void => {
+      if (!open) {
+        throw new Error("afterCommit can only be called while fn runs.");
+      }
+
+      entries.push(entry);
+    },
+    entries,
+    close: () => {
+      open = false;
+    },
+  };
+}
 
 /**
  * Runs the registered entries once each, in order, awaiting each before the next. The commit
@@ -64,13 +102,25 @@ async function runAfterCommit(
  * registered entries to `runAfterCommit`.
  *
  * The list is discarded when `fn` throws: drizzle rolls the transaction back and the error
- * propagates, so no entry runs (R-54). A context not built by `createTenantContext` has no logger
- * entry, so the call throws rather than swallow the failure.
+ * propagates, so no entry runs (R-54). Registration closes when `fn` settles, so an `afterCommit`
+ * call after that throws instead of adding an entry that silently never runs.
+ *
+ * A nested `withTransaction` on the same context is refused: it would take a second pool client
+ * and open an independent top-level transaction whose commit survives the outer rollback, and it
+ * can deadlock on a row the outer transaction holds. Use `tx.transaction(...)` inside `fn` for a
+ * savepoint instead. A context not built by `createTenantContext` has no logger entry, so the call
+ * throws rather than swallow the failure.
  */
 export async function withTransaction<T>(
   context: TenantContext,
   fn: (tx: TenantTransaction, afterCommit: AfterCommit) => Promise<T>
 ): Promise<T> {
+  if (transactionScope.getStore() === true) {
+    throw new Error(
+      "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
+    );
+  }
+
   const logger = contextLoggers.get(context);
 
   if (logger === undefined) {
@@ -79,15 +129,21 @@ export async function withTransaction<T>(
     );
   }
 
-  const entries: AfterCommitEntry[] = [];
+  const afterCommit = openAfterCommitList();
 
-  const afterCommit: AfterCommit = (entry) => {
-    entries.push(entry);
-  };
+  const result = await transactionScope.run(true, () =>
+    context.db.transaction(async (tx) => {
+      try {
+        return await fn(tx, afterCommit.register);
+      } finally {
+        // Close registration the moment `fn` settles, before the commit, so a late call from an
+        // un-awaited promise inside `fn` throws instead of running or vanishing silently.
+        afterCommit.close();
+      }
+    })
+  );
 
-  const result = await context.db.transaction((tx) => fn(tx, afterCommit));
-
-  await runAfterCommit(entries, logger);
+  await runAfterCommit(afterCommit.entries, logger);
 
   return result;
 }

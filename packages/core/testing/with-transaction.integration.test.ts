@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { withTransaction } from "../src/index.ts";
+import { type AfterCommit, withTransaction } from "../src/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import {
@@ -92,6 +92,37 @@ describe("withTransaction against a real database", () => {
     expect(afterCommitRan).toEqual([]);
   });
 
+  it("rejects and runs no entry when a deferred constraint fails at the commit", async () => {
+    const { context, observer } = await startTransactionFixture();
+    await context.db.$client.query(
+      "create table wt_unique (id integer primary key, code integer, constraint wt_unique_code unique (code) deferrable initially deferred)"
+    );
+
+    const afterCommitRan: string[] = [];
+
+    await expect(
+      withTransaction(context, async (tx, afterCommit) => {
+        afterCommit(() => {
+          afterCommitRan.push("entry");
+        });
+
+        // Both rows pass their own insert; the unique violation surfaces only when the
+        // transaction commits, so this pins that a failed commit runs no entry.
+        await tx.execute(sql`insert into wt_unique (id, code) values (1, 7)`);
+        await tx.execute(sql`insert into wt_unique (id, code) values (2, 7)`);
+
+        return "never-returned";
+      })
+    ).rejects.toThrow();
+
+    const left = await observer.query<{ count: number }>(
+      "select count(*)::int as count from wt_unique"
+    );
+
+    expect(left.rows[0]?.count).toBe(0);
+    expect(afterCommitRan).toEqual([]);
+  });
+
   it("commits the write and runs each after-commit entry exactly once, after the commit", async () => {
     const { context, observer } = await startTransactionFixture();
     await context.db.$client.query(
@@ -171,6 +202,61 @@ describe("withTransaction against a real database", () => {
     const logged = lines.join("");
     expect(logged).toContain("after-commit entry failed");
     expect(logged).toContain("after-commit failure");
+  });
+
+  it("refuses a nested call on the same context and opens no second connection", async () => {
+    const { context, observer } = await startTransactionFixture();
+
+    let poolDuring:
+      | { readonly total: number; readonly idle: number }
+      | undefined;
+
+    let otherBackendsDuring: number[] = [];
+
+    const result = await withTransaction(context, async (tx) => {
+      await expect(
+        withTransaction(context, async () => "inner")
+      ).rejects.toThrow(/cannot be nested/);
+
+      await tx.execute(sql`select 1`);
+
+      poolDuring = {
+        total: context.db.$client.totalCount,
+        idle: context.db.$client.idleCount,
+      };
+
+      const backends = await observer.query<{ pid: number }>(
+        "select pid from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid()"
+      );
+
+      otherBackendsDuring = backends.rows.map((row) => row.pid);
+
+      return "outer";
+    });
+
+    expect(result).toBe("outer");
+    // The refused inner call never reached the pool: only the outer transaction's client exists.
+    expect(poolDuring).toEqual({ total: 1, idle: 0 });
+    expect(otherBackendsDuring).toHaveLength(1);
+  });
+
+  it("refuses an afterCommit registration once fn has settled", async () => {
+    const { context } = await startTransactionFixture();
+
+    let late: AfterCommit | undefined;
+
+    const result = await withTransaction(context, async (_tx, afterCommit) => {
+      late = afterCommit;
+
+      return "transaction-result";
+    });
+
+    expect(result).toBe("transaction-result");
+    expect(late).toBeDefined();
+
+    // fn has settled, so the seam has already taken the list: a late registration is a
+    // programming error, not a silently dropped side effect.
+    expect(() => late?.(() => {})).toThrow(/while fn runs/);
   });
 
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
