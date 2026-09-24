@@ -266,6 +266,29 @@ const ROUTE_CLASSES = [
   "/viewer/placeholder",
 ] as const;
 
+/**
+ * The pathname the proxy logs for each route class. The proxy logs
+ * `request.nextUrl.pathname`, so the tRPC member's query string is dropped and
+ * each batch path can be matched in a request line exactly.
+ */
+const BATCH_PATHS = ROUTE_CLASSES.map(
+  (route) => new URL(route, "http://batch.invalid").pathname
+);
+
+/**
+ * The batch's own request lines, matched by the path the proxy logged.
+ *
+ * Counting these rather than a before/after delta over every request line closes
+ * a race with readiness: the logger writes a request's line after the server has
+ * answered it, so the last `/api/health` poll's line can still be in flight when
+ * a snapshot is taken right after `pollHealth`, and it then lands inside the
+ * delta and counts twenty-five requests where the batch sent twenty-four.
+ */
+const batchRequestLinesIn = (logs: string) =>
+  requestLinesIn(logs).filter((line) =>
+    BATCH_PATHS.some((path) => line.includes(`"path":"${path}"`))
+  );
+
 describe("the built image", () => {
   it("becomes healthy, logs one bootstrap line, and invokes no provider before it", async () => {
     const image = await startImage(
@@ -581,11 +604,6 @@ describe("the built image", () => {
     try {
       await pollHealth(3402);
 
-      // The readiness poll's own successful request is logged like any other, so
-      // the load is counted as a delta. Asserting an absolute total would make
-      // the test depend on how many polls the container needed to become ready.
-      const before = requestLinesIn(await image.logs()).length;
-
       const responses = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
           fetch(
@@ -641,20 +659,23 @@ describe("the built image", () => {
 
       const logs = await logsUntil(
         image,
-        (seen) => requestLinesIn(seen).length - before >= 24
+        (seen) => batchRequestLinesIn(seen).length >= 24
       );
 
-      // Count request lines, not every line carrying a context id. The bootstrap
-      // line carries one too, so matching the whole log would report a single id
-      // even when no request was served at all, and the assertion below would
-      // pass on a process that built a second context for every request.
-      const requestLines = requestLinesIn(logs);
+      // Count the batch's own request lines, not every line carrying a context
+      // id. The bootstrap line carries one too, so matching the whole log would
+      // report a single id even when no request was served at all, and the
+      // assertion below would pass on a process that built a second context for
+      // every request.
+      const requestLines = batchRequestLinesIn(logs);
 
       // The proxy is the one request logger (R-44), so each of the twenty-four
       // requests produces exactly one request line. The count is exact, not
       // "at least": a second logger added back anywhere would double it, which
-      // is the defect this count exists to catch.
-      expect(requestLines.length - before).toBe(24);
+      // is the defect this count exists to catch. Filtering by the batch's paths
+      // keeps the readiness poll's own lines out, so the total stays twenty-four
+      // however many polls the container needed.
+      expect(requestLines.length).toBe(24);
 
       // All three route classes were served, so the batch really exercised the
       // page, the tRPC handler and the viewer rather than one class three times.
