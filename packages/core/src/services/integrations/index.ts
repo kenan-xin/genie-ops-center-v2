@@ -16,13 +16,14 @@ export type IntegrationConfig =
   | { readonly [key: string]: IntegrationConfig };
 
 /**
- * One integration resolved for a call (R-41): its id, its non-secret configuration, and the live
- * secret read from the environment by the name in `secret_ref` at this call. The secret is
- * `undefined` only when the row names no reference; it never comes from the database and is never
- * written back (DEC-20).
+ * One integration resolved for a call (R-41): its id, its status, its non-secret configuration,
+ * and the live secret read from the environment by the name in `secret_ref` at this call. The
+ * secret is `undefined` only when the row names no reference; it never comes from the database and
+ * is never written back (DEC-20).
  */
 export type ResolvedIntegration = {
   readonly id: string;
+  readonly status: string;
   readonly config: IntegrationConfig;
   readonly secret: string | undefined;
 };
@@ -46,9 +47,12 @@ function readSecret(secretRef: string): string {
 
 /**
  * The one service that resolves an integration (R-41): it reads the row through the context's
- * database, returns its non-secret configuration, and reads the secret from the environment by the
- * name in `secret_ref` at each call. It writes nothing and logs nothing, so a credential is never
- * stored and never logged (R-40, R-42, DEC-20).
+ * database, returns its status and non-secret configuration, and reads the secret from the
+ * environment by the name in `secret_ref` at each call. It writes nothing and logs nothing, so a
+ * credential is never stored and never logged (R-40, R-42, DEC-20).
+ *
+ * The resolver does not refuse by status: a `disabled` or `error` row still resolves, and the
+ * calling module decides whether to use it.
  */
 export async function resolveIntegration(
   context: TenantContext,
@@ -57,6 +61,7 @@ export async function resolveIntegration(
   const [row] = await context.db
     .select({
       id: tenantIntegration.id,
+      status: tenantIntegration.status,
       config: tenantIntegration.config,
       secretRef: tenantIntegration.secretRef,
     })
@@ -75,6 +80,7 @@ export async function resolveIntegration(
 
   return {
     id: row.id,
+    status: row.status,
     config,
     secret: row.secretRef === null ? undefined : readSecret(row.secretRef),
   };

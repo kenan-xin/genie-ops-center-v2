@@ -8,7 +8,8 @@ The one service that resolves a `tenant_integration` for a call.
 non-secret configuration, and reads the live secret from the environment by the name in
 `secret_ref` at each call (R-40, R-41, DEC-20). A credential is never written to the database and
 never logged, and a missing environment entry fails with a message that names the reference, not
-the value.
+the value. The resolver does not refuse by status: a `disabled` or `error` row still resolves, and
+the calling module decides whether to use it.
 
 ## What must not go here
 
