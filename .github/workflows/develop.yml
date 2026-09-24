@@ -61,7 +61,7 @@ jobs:
           else
             echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           fi
-      - run: nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
+      - run: pnpm exec nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
         env:
           NX_BASE: ${{ steps.base.outputs.ref }}
 
@@ -103,7 +103,7 @@ jobs:
           else
             echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           fi
-      - run: nx affected -t test:integration --exclude='*,!@genie/app' --base="$NX_BASE"
+      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/app' --base="$NX_BASE"
         env:
           NX_BASE: ${{ steps.base.outputs.ref }}
 
@@ -144,7 +144,7 @@ jobs:
           else
             echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           fi
-      - run: nx affected -t test:integration --exclude='*,!@genie/storybook' --base="$NX_BASE"
+      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/storybook' --base="$NX_BASE"
         env:
           NX_BASE: ${{ steps.base.outputs.ref }}
 
@@ -186,7 +186,7 @@ jobs:
           else
             echo "ref=$BEFORE_SHA" >> "$GITHUB_OUTPUT"
           fi
-      - run: nx affected -t test:integration --exclude='*,!@genie/core,!@genie/module-placeholder' --base="$NX_BASE" --nx-bail --parallel=1
+      - run: pnpm exec nx affected -t test:integration --exclude='*,!@genie/core,!@genie/module-placeholder' --base="$NX_BASE" --nx-bail --parallel=1
         env:
           NX_BASE: ${{ steps.base.outputs.ref }}
 
@@ -215,5 +215,5 @@ jobs:
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The runner has no browser; both suites launch the pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
-      - run: nx run-many -t test:e2e:fixture -p @genie/app
-      - run: nx run-many -t test:e2e -p @genie/app
+      - run: pnpm exec nx run-many -t test:e2e:fixture -p @genie/app
+      - run: pnpm exec nx run-many -t test:e2e -p @genie/app

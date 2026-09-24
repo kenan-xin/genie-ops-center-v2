@@ -126,6 +126,21 @@ function rootScript(name: string): string {
  * and pushes the exact smoke-tested identity.
  */
 describe("the Spec 0 CI gates", () => {
+  // A workflow step runs in a plain shell, where the workspace binaries are not
+  // on PATH, so a bare `nx` exits 127 (develop run 35938781955). Inside a pnpm
+  // script it worked, which is why the single-job workflow never showed it.
+  it("calls nx through pnpm exec in every workflow step", () => {
+    for (const file of workflowFiles()) {
+      for (const script of runScripts(read(file))) {
+        for (const command of script.split(/&&|\|\||;|\n/)) {
+          expect(command.trim(), `${file}: ${command.trim()}`).not.toMatch(
+            /^nx\s/
+          );
+        }
+      }
+    }
+  });
+
   it("runs the pull-request gates on every pull request", () => {
     const workflow = read(`${WORKFLOWS}/pull-request.yml`);
 
