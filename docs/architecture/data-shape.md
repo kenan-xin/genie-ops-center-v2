@@ -12,7 +12,7 @@ A deployment serves one customer and has one Postgres database (ADR 0007). It ho
 2. Each module ships its own Drizzle schema file and its own drizzle-kit migration history with its own migrations table. The migrator applies the core history first and then each included module's history (`DEC-33`).
 3. Every module record that has an owner references `user.id`. Every scope in a role assignment references a resource by type and id, never by foreign key, so core does not depend on module tables.
 4. Identifiers: `user.id` is text (Better Auth). All other primary keys are UUID.
-5. Timestamps: `created_at` and `updated_at` on every table that a person edits.
+5. Timestamps: `created_at` and `updated_at` on every table that a person edits, except where the table's explicit column list names only one. The single-row `tenant_settings` and `tenant_branding` tables carry `updated_at` alone, and `tenant_module` carries `enabled_at` alone because the row records enablement, not creation.
 6. Files go through the core `FileStorage` interface. A `file` row holds the metadata; the bytes live in `file_blob` by default, or in object storage when the deployment sets the `s3` adapter in the environment. Modules never read or write bytes directly.
 7. A column that references `user.id` in a table created before the `user` table exists (the Section 1 tables: `tenant_settings.updated_by_user_id`, `tenant_branding.updated_by_user_id`, `audit_event.actor_user_id`, `file.uploaded_by_user_id`, `tenant_api_key.created_by`, `tenant_integration.created_by_user_id`) is nullable and gains its foreign key in the Section 2 migration that creates `user` (`../core/roadmap.md`, Section 1 item 1).
 
