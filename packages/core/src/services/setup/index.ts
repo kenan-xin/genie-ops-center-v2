@@ -1,3 +1,5 @@
+import { ne } from "drizzle-orm";
+
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import type {
   BrandingSeed,
@@ -43,6 +45,9 @@ type SetupStep = (typeof SETUP_STEPS)[number];
 
 type SetupStepState = "pending" | "done" | "failed";
 
+/** The two states a step settles on; `pending` is the transient one it leaves. */
+type SettledStepState = "done" | "failed";
+
 /** True once the migration that creates `setup_step` has run. */
 async function setupStepTableExists(context: TenantContext): Promise<boolean> {
   const result = await context.db.$client.query<{ present: boolean }>(
@@ -70,11 +75,13 @@ async function stepState(
   return result.rows[0]?.state;
 }
 
-/** Writes or moves one step's row. `updated_at` advances, which is what orders the run (R-18). */
+/**
+ * Writes or moves one step's row. `updated_at` advances, which is what orders the run (R-18).
+ */
 async function writeStep(
   context: TenantContext,
   step: SetupStep,
-  state: SetupStepState,
+  state: SettledStepState,
   detail: string | null
 ): Promise<void> {
   await context.db
@@ -83,6 +90,26 @@ async function writeStep(
     .onConflictDoUpdate({
       target: setupStep.step,
       set: { state, detail, updatedAt: new Date() },
+    });
+}
+
+/**
+ * Moves a step to `pending` before its work, but never over a step that is already `done`. The
+ * update carries its own `WHERE` so the database, not the earlier read, decides: two concurrent
+ * setup runs cannot flip a finished step back to `pending` (R-18). The read that skips a done
+ * step stays as the ordinary fast path.
+ */
+async function markPending(
+  context: TenantContext,
+  step: SetupStep
+): Promise<void> {
+  await context.db
+    .insert(setupStep)
+    .values({ step, state: "pending", detail: null })
+    .onConflictDoUpdate({
+      target: setupStep.step,
+      set: { state: "pending", detail: null, updatedAt: new Date() },
+      setWhere: ne(setupStep.state, "done"),
     });
 }
 
@@ -275,7 +302,7 @@ async function runStep(
 ): Promise<void> {
   const rowWritable = await setupStepTableExists(context);
 
-  if (rowWritable) await writeStep(context, step, "pending", null);
+  if (rowWritable) await markPending(context, step);
 
   try {
     await work();
