@@ -228,7 +228,6 @@ describe("the core pg-boss worker", () => {
     await queue.createQueue("startup-race.read-record");
     await queue.send("startup-race.read-record", { label: "queued" });
     const held = await app.db.$client.connect();
-    cleanups.push(async () => held.release());
     await held.query("select pg_advisory_lock($1)", [
       MIGRATION_LOCK_KEY.toString(),
     ]);
@@ -346,7 +345,7 @@ describe("the core pg-boss worker", () => {
     expect(count.rows).toEqual([{ count: 1 }]);
   });
 
-  it("starts its own migrator without an application process", async () => {
+  it("starts its own migrator and pg-boss schema without an application process", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(
       source(database.url),
@@ -371,11 +370,15 @@ describe("the core pg-boss worker", () => {
     await waitUntil(async () => {
       const result = await context.db.$client.query<{
         coreLedger: string | null;
+        bossSchema: boolean;
       }>(
-        "select to_regclass('drizzle.__drizzle_migrations') as \"coreLedger\""
+        "select to_regclass('drizzle.__drizzle_migrations') as \"coreLedger\", exists(select 1 from information_schema.schemata where schema_name = 'pgboss') as \"bossSchema\""
       );
 
-      return result.rows[0]?.coreLedger !== null;
+      return (
+        result.rows[0]?.coreLedger !== null &&
+        result.rows[0]?.bossSchema === true
+      );
     });
 
     controller.abort();
@@ -412,7 +415,7 @@ describe("the core pg-boss worker", () => {
     expect(context.jobQueue.schedule).toBeDefined();
   });
 
-  it("schedules a declared job with a cron expression distinct from its data", async () => {
+  it("schedules jobs with a cron expression distinct from their data", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(
       source(database.url),
