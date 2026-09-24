@@ -1,6 +1,7 @@
-import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
+import { execFile, execFileSync } from "node:child_process";
+import { createHash, type Hash } from "node:crypto";
 import {
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -54,7 +55,7 @@ export type SharedEmptyBuild = {
 };
 
 /** The run id, input digest, image id and log of the build this run produced. */
-type Marker = {
+export type Marker = {
   readonly runId: string;
   readonly digest: string;
   readonly imageId: string;
@@ -67,12 +68,55 @@ const MARKER_PATH = join(tmpdir(), "genie-s011-shared-empty.json");
  * The paths whose bytes decide the empty image. Hashing them means a changed
  * prune, resolver or Dockerfile forces a rebuild instead of satisfying the
  * marker with a previous image.
+ *
+ * They are only part of the answer. The Dockerfile stages the whole repository,
+ * so `inputDigest` also folds in the git revision and working-tree state, which
+ * cover everything else the build copies: `apps/genie` sources, `packages/**`,
+ * `pnpm-lock.yaml`, the root configs and `deploy/entrypoint.sh`.
  */
-const DIGEST_INPUTS: readonly string[] = [
+export const DIGEST_INPUTS: readonly string[] = [
   "tools/generators/src/selection",
   "deploy/Dockerfile",
   "apps/genie/tools/fixture-modules/permitted-viewer",
 ];
+
+/** Runs one git subcommand in `cwd` and returns its stdout, or throws when git is unavailable. */
+export type GitRunner = (args: readonly string[], cwd: string) => string;
+
+/** The real git, used unless a caller supplies its own. `execFileSync` throws on a failed command. */
+function gitStdout(args: readonly string[], cwd: string): string {
+  return execFileSync("git", [...args], { cwd, encoding: "utf8" });
+}
+
+/** How to locate the repository and reach git, for the digest's own tests. */
+export type DigestOptions = {
+  readonly repoRoot?: string;
+  readonly git?: GitRunner;
+};
+
+/**
+ * The repository-relative paths of every entry `git status --porcelain=v1 -z`
+ * reports. A rename or copy carries the original path as the next NUL field,
+ * which is skipped: only the current path has bytes to hash.
+ */
+function changedPaths(status: string): readonly string[] {
+  const fields = status.split("\0");
+  const paths: string[] = [];
+
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index];
+
+    if (field === undefined || field === "") continue;
+
+    paths.push(field.slice(3));
+
+    const code = field.slice(0, 2);
+
+    if (code.startsWith("R") || code.startsWith("C")) index += 1;
+  }
+
+  return paths;
+}
 
 /** Every file at or under `absolute`, recursively. */
 function filesUnder(absolute: string): readonly string[] {
@@ -84,22 +128,95 @@ function filesUnder(absolute: string): readonly string[] {
 }
 
 /**
- * A digest of every file the empty image's build depends on, over the file bytes
- * and their repository-relative names, so a rename and an edit are both changes.
+ * A digest of everything the empty image's build depends on: the bytes of the
+ * named inputs, the committed revision, and the working tree. The revision and
+ * the working tree close the gap the named inputs left, because the Dockerfile
+ * stages the whole repository; the status output alone is not enough, since an
+ * edit to an already-dirty file leaves it unchanged, so the content of every
+ * path it lists is hashed too.
+ *
+ * Throws when git cannot answer. The caller treats that as "no digest" and
+ * rebuilds: a digest that cannot see the tree must never certify reuse.
  */
-function inputDigest(): string {
+export function inputDigest(options: DigestOptions = {}): string {
+  const repoRoot = options.repoRoot ?? REPO_ROOT;
+  const git = options.git ?? gitStdout;
   const hash = createHash("sha256");
 
+  hashNamedInputs(hash, repoRoot);
+  hashGitState(hash, repoRoot, git);
+
+  return hash.digest("hex");
+}
+
+/** Hashes the bytes and repository-relative names of the named inputs. */
+function hashNamedInputs(hash: Hash, repoRoot: string): void {
   for (const input of DIGEST_INPUTS) {
-    for (const file of filesUnder(join(REPO_ROOT, input)).toSorted()) {
-      hash.update(relative(REPO_ROOT, file));
+    for (const file of filesUnder(join(repoRoot, input)).toSorted()) {
+      hash.update(relative(repoRoot, file));
       hash.update("\0");
       hash.update(readFileSync(file));
       hash.update("\0");
     }
   }
+}
 
-  return hash.digest("hex");
+/** Hashes the revision, the status, and the bytes of every path the status reports. */
+function hashGitState(hash: Hash, repoRoot: string, git: GitRunner): void {
+  hash.update("head\0");
+  hash.update(git(["rev-parse", "HEAD"], repoRoot).trim());
+  hash.update("\0");
+
+  const status = git(
+    ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    repoRoot
+  );
+
+  hash.update("status\0");
+  hash.update(status);
+  hash.update("\0");
+
+  for (const path of changedPaths(status)) {
+    const absolute = join(repoRoot, path);
+
+    hash.update("content\0");
+    hash.update(path);
+    hash.update("\0");
+    hash.update(
+      existsSync(absolute) && statSync(absolute).isFile()
+        ? readFileSync(absolute)
+        : Buffer.from("<absent>")
+    );
+    hash.update("\0");
+  }
+}
+
+/**
+ * The marker to reuse, or `undefined` when this run cannot reuse it. A marker is
+ * only valid when the tag still resolves to the image it names, when its digest
+ * matches the inputs this run sees, and when it belongs to this run. A missing
+ * digest — git failed — never matches, so the caller builds.
+ */
+export function reusableMarker(args: {
+  readonly existing: string | undefined;
+  readonly marker: Marker | undefined;
+  readonly digest: string | undefined;
+  readonly runId: string;
+}): Marker | undefined {
+  const { existing, marker, digest, runId } = args;
+
+  if (
+    existing === undefined ||
+    digest === undefined ||
+    marker === undefined ||
+    marker.imageId !== existing ||
+    marker.digest !== digest ||
+    marker.runId !== runId
+  ) {
+    return undefined;
+  }
+
+  return marker;
 }
 
 /**
@@ -156,19 +273,28 @@ function tail(log: string): string {
  * can never boot a leftover tag in place of this run's image.
  */
 export async function sharedEmptyImage(): Promise<SharedEmptyBuild> {
-  const digest = inputDigest();
   const runId = currentRunId();
   const existing = await imageId(SHARED_EMPTY_IMAGE);
-  const marker = readMarker();
 
-  if (
-    existing !== undefined &&
-    marker !== undefined &&
-    marker.imageId === existing &&
-    marker.digest === digest &&
-    marker.runId === runId
-  ) {
-    return { tag: SHARED_EMPTY_IMAGE, log: marker.log };
+  // Fail closed: a digest that cannot see the repository is no digest at all, so
+  // the marker is never consulted and the build runs.
+  let digest: string | undefined;
+
+  try {
+    digest = inputDigest();
+  } catch {
+    digest = undefined;
+  }
+
+  const reusable = reusableMarker({
+    existing,
+    marker: digest === undefined ? undefined : readMarker(),
+    digest,
+    runId,
+  });
+
+  if (reusable !== undefined) {
+    return { tag: SHARED_EMPTY_IMAGE, log: reusable.log };
   }
 
   const stage = stageWorkspace("genie-s011-shared-empty-");
@@ -194,7 +320,7 @@ export async function sharedEmptyImage(): Promise<SharedEmptyBuild> {
 
     const built = await imageId(SHARED_EMPTY_IMAGE);
 
-    if (built !== undefined) {
+    if (built !== undefined && digest !== undefined) {
       writeMarker({ runId, digest, imageId: built, log: result.log });
     }
 

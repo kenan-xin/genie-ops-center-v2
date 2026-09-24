@@ -12,8 +12,8 @@ import { defineConfig } from "vitest/config";
  * `testing/image-scan.ts` is the same kind of pure logic — the image history and
  * filesystem checks are ordinary functions over an inventory — so its unit test
  * is named explicitly here. `testing/` stays excluded as a directory, or the
- * real-service files would be collected into the fast run; only this one file
- * is re-included.
+ * real-service files would be collected into the fast run; only the pure files
+ * are re-included, `shared-empty-image`'s input digest alongside it.
  */
 const preset = unitTestPreset.test;
 
@@ -25,6 +25,7 @@ export default defineConfig({
       ...(preset?.include ?? []),
       "tools/**/*.test.ts",
       "testing/image-scan.test.ts",
+      "testing/shared-empty-image.test.ts",
     ],
     exclude: (preset?.exclude ?? []).filter((glob) => glob !== "testing/**"),
   },
