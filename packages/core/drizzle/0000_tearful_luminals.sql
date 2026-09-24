@@ -16,13 +16,13 @@ CREATE TABLE "file" (
 	"mime_type" text NOT NULL,
 	"size_bytes" bigint NOT NULL,
 	"checksum" text NOT NULL,
-	"scan_status" text DEFAULT 'skipped' NOT NULL,
+	"scan_status" text NOT NULL,
 	"uploaded_by_user_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "file_blob" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY NOT NULL,
 	"bytes" "bytea" NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -125,6 +125,10 @@ CREATE TABLE "tenant_settings" (
 --> statement-breakpoint
 CREATE INDEX "audit_event_target_idx" ON "audit_event" USING btree ("target_type","target_id");--> statement-breakpoint
 CREATE INDEX "audit_event_occurred_at_idx" ON "audit_event" USING btree ("occurred_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "file_storage_key_idx" ON "file" USING btree ("storage_key");
+CREATE UNIQUE INDEX "file_storage_key_idx" ON "file" USING btree ("storage_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "retirement_singleton_idx" ON "retirement" USING btree ((true));--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_api_key_key_hash_idx" ON "tenant_api_key" USING btree ("key_hash");--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_branding_singleton_idx" ON "tenant_branding" USING btree ((true));--> statement-breakpoint
+CREATE UNIQUE INDEX "tenant_settings_singleton_idx" ON "tenant_settings" USING btree ((true));
 --> statement-breakpoint
 ALTER TABLE "file_blob" ALTER COLUMN "bytes" SET STORAGE EXTERNAL;

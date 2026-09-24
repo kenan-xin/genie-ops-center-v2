@@ -18,10 +18,10 @@ export type MigrationHistory = {
   /** The name in a log line, `core` or the module id. */
   readonly name: string;
   /**
-   * The migrations this history applies, in journal order, already read from files the build
-   * traced. It is data and not a folder path because a folder resolved at run time is invisible
-   * to a production bundler: the bundler neither resolves the reference nor copies the SQL into
-   * the image, so a container built that way cannot migrate at all.
+   * The migrations this history applies, in journal order, read from files the build traced.
+   * It is data and not a folder path because a folder resolved at run time is invisible to a
+   * production bundler: the bundler neither resolves the reference nor copies the SQL into the
+   * image, so a container built that way cannot migrate at all.
    */
   readonly migrations: readonly MigrationMeta[];
   readonly table: string;
@@ -34,8 +34,8 @@ export type MigrationHistory = {
  * into the image.
  */
 const CORE_MIGRATION_FILES: MigrationFiles = {
-  "0000_majestic_sharon_carter": new URL(
-    "../../../drizzle/0000_majestic_sharon_carter.sql",
+  "0000_tearful_luminals": new URL(
+    "../../../drizzle/0000_tearful_luminals.sql",
     import.meta.url
   ),
 };

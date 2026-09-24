@@ -56,6 +56,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the Section 1 deployment tables does not create the Section 3 tables category and user_preference",
       "the Section 1 deployment tables leaves every person-naming column and tenant_module.category_id nullable with no foreign key",
       "the Section 1 deployment tables keeps the file_blob bytes column in external storage",
+      "the Section 1 deployment tables refuses a second row in each single-row table",
     ],
   },
   {

@@ -38,8 +38,9 @@ const STATEMENT_BREAKPOINT = "--> statement-breakpoint";
  * order, the same split and the same hash, so a database migrated through either records the
  * same ledger rows. `history.test.ts` pins that equivalence against drizzle's own reader.
  *
- * A journal entry whose file is not declared fails here, when the declaration is first imported,
- * rather than half way through migrating a container.
+ * A journal entry whose file is not declared fails here, at the first run access (core's lazy
+ * getter, or a module's `migrations()` thunk), rather than half way through migrating a
+ * container.
  */
 export function migrationsFromJournal(
   journal: MigrationJournal,

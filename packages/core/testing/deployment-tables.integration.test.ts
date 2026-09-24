@@ -138,7 +138,7 @@ const DEPLOYMENT_TABLES = {
       storage_key: {},
       file_name: {},
       mime_type: {},
-      size_bytes: {},
+      size_bytes: { type: "bigint" },
       checksum: {},
       scan_status: {},
       uploaded_by_user_id: { nullable: true },
@@ -327,6 +327,27 @@ async function attributeStorage(
   return result.rows[0]?.attstorage;
 }
 
+/**
+ * One table's index definitions as `pg_indexes` renders them. An expression index covers no
+ * named column, so `indexFacts` reports it with no columns; the definition is what names the
+ * constant `((true))` that makes a single-row table a singleton.
+ */
+async function indexDefinitions(
+  client: {
+    query: <T>(text: string, values?: unknown[]) => Promise<{ rows: T[] }>;
+  },
+  table: string
+): Promise<string[]> {
+  const result = await client.query<{ indexdef: string }>(
+    `select indexdef
+       from pg_indexes
+      where schemaname = 'public' and tablename = $1`,
+    [table]
+  );
+
+  return result.rows.map((row) => row.indexdef);
+}
+
 /** The columns two indexes must cover, joined for a comparison against `indexFacts`. */
 const covered = (index: { columns: string[] }): string =>
   index.columns.join(",");
@@ -475,6 +496,42 @@ describe("the Section 1 deployment tables", () => {
       problems.push("file: no unique index on (storage_key)");
     }
 
+    // Keys data-shape.md does not list but the design needs: the inbound endpoint looks a key
+    // up by its hash, and each single-row table must refuse a second row.
+    const apiKeyIndexes = indexesByTable.get("tenant_api_key") ?? [];
+
+    if (
+      !apiKeyIndexes.some(
+        (index) => index.unique && covered(index) === "key_hash"
+      )
+    ) {
+      problems.push("tenant_api_key: no unique index on (key_hash)");
+    }
+
+    const singletonDefinitions = new Map(
+      await Promise.all(
+        ["tenant_settings", "tenant_branding", "retirement"].map(
+          async (table): Promise<[string, string[]]> => [
+            table,
+            await indexDefinitions(client, table),
+          ]
+        )
+      )
+    );
+
+    for (const table of ["tenant_settings", "tenant_branding", "retirement"]) {
+      const definitions = singletonDefinitions.get(table) ?? [];
+
+      if (
+        !definitions.some(
+          (definition) =>
+            /unique/i.test(definition) && definition.includes("((true))")
+        )
+      ) {
+        problems.push(`${table}: no unique singleton index on ((true))`);
+      }
+    }
+
     expect(problems).toEqual([]);
   });
 
@@ -572,5 +629,46 @@ describe("the Section 1 deployment tables", () => {
         "bytes"
       )
     ).toBe("e");
+  });
+
+  it("refuses a second row in each single-row table", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    // The three tables are independent, so the attempts run together. The singleton unique
+    // index must reject the second row with a unique violation (23505); an accepted row, or any
+    // other error, is a problem.
+    const inserts: ReadonlyArray<readonly [string, string]> = [
+      ["tenant_settings", "insert into tenant_settings default values"],
+      [
+        "tenant_branding",
+        "insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ('Company', 'Product', 'en', 'UTC')",
+      ],
+      ["retirement", "insert into retirement (retired_at) values (now())"],
+    ];
+
+    const problems = await Promise.all(
+      inserts.map(async ([table, insert]) => {
+        await client.query(insert);
+
+        const second = await client.query(insert).then(
+          () => undefined,
+          (error: { code?: string }) => error
+        );
+
+        if (second === undefined) {
+          return `${table}: a second row was accepted`;
+        }
+
+        return second.code === "23505"
+          ? undefined
+          : `${table}: the second insert failed with ${String(second.code)}, not a unique violation`;
+      })
+    );
+
+    expect(problems.filter((problem) => problem !== undefined)).toEqual([]);
   });
 });

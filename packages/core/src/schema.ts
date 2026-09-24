@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import {
   bigint,
@@ -48,16 +49,22 @@ export const tenantModule = pgTable("tenant_module", {
 });
 
 /** A customer system's key for a module's inbound endpoint, stored hashed and shown once. */
-export const tenantApiKey = pgTable("tenant_api_key", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  moduleId: text("module_id").notNull(),
-  name: text("name").notNull(),
-  keyHash: text("key_hash").notNull(),
-  createdBy: text("created_by"),
-  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
-  lastUsedAt: timestamp("last_used_at", withTimeZone),
-  revokedAt: timestamp("revoked_at", withTimeZone),
-});
+export const tenantApiKey = pgTable(
+  "tenant_api_key",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduleId: text("module_id").notNull(),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", withTimeZone),
+    revokedAt: timestamp("revoked_at", withTimeZone),
+  },
+  // The inbound endpoint authenticates by hashing the presented key and looking it up, so the
+  // hash is unique and indexed. data-shape.md does not list the index; the lookup needs it.
+  (table) => [uniqueIndex("tenant_api_key_key_hash_idx").on(table.keyHash)]
+);
 
 /** The resumable setup steps; the step name is also the run order. */
 export const setupStep = pgTable("setup_step", {
@@ -68,10 +75,16 @@ export const setupStep = pgTable("setup_step", {
 });
 
 /** At most one row. `genie-ops retire --confirm` reads it; nothing runs on a schedule. */
-export const retirement = pgTable("retirement", {
-  retiredAt: timestamp("retired_at", withTimeZone).notNull(),
-  deletionHold: boolean("deletion_hold").notNull().default(false),
-});
+export const retirement = pgTable(
+  "retirement",
+  {
+    retiredAt: timestamp("retired_at", withTimeZone).notNull(),
+    deletionHold: boolean("deletion_hold").notNull().default(false),
+  },
+  // A constant unique key makes the row a singleton, so the seed can use
+  // `INSERT ... ON CONFLICT DO NOTHING` and no second row can race in.
+  () => [uniqueIndex("retirement_singleton_idx").on(sql`(true)`)]
+);
 
 /** A fixed-window counter for the sensitive endpoints; the next window overwrites the row. */
 export const rateLimitWindow = pgTable(
@@ -90,59 +103,72 @@ export const rateLimitWindow = pgTable(
 );
 
 /** The single settings row the tenant administrator owns and that is not branding. */
-export const tenantSettings = pgTable("tenant_settings", {
-  onboardingMode: text("onboarding_mode").notNull().default("invite"),
-  localAccountsEnabled: boolean("local_accounts_enabled")
-    .notNull()
-    .default(false),
-  realmSupportsLocalAccounts: boolean("realm_supports_local_accounts")
-    .notNull()
-    .default(false),
-  sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
-  updatedByUserId: text("updated_by_user_id"),
-  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
-});
+export const tenantSettings = pgTable(
+  "tenant_settings",
+  {
+    onboardingMode: text("onboarding_mode").notNull().default("invite"),
+    localAccountsEnabled: boolean("local_accounts_enabled")
+      .notNull()
+      .default(false),
+    realmSupportsLocalAccounts: boolean("realm_supports_local_accounts")
+      .notNull()
+      .default(false),
+    sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
+    updatedByUserId: text("updated_by_user_id"),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  // A constant unique key makes the row a singleton (data-shape rule 4 keeps every non-user key
+  // a UUID, so it is not the primary key), so the seed can use `INSERT ... ON CONFLICT DO
+  // NOTHING` and no second row can race in.
+  () => [uniqueIndex("tenant_settings_singleton_idx").on(sql`(true)`)]
+);
 
 /**
  * The single branding row. Column inventory does not define seed requiredness (branding-seed.md),
  * so only the four required customer values and the stated defaults are constrained here.
  */
-export const tenantBranding = pgTable("tenant_branding", {
-  companyName: text("company_name").notNull(),
-  productName: text("product_name").notNull(),
-  logoLightFileId: uuid("logo_light_file_id"),
-  logoDarkFileId: uuid("logo_dark_file_id"),
-  logoMarkFileId: uuid("logo_mark_file_id"),
-  faviconFileId: uuid("favicon_file_id"),
-  primaryColor: text("primary_color"),
-  primaryForeground: text("primary_foreground"),
-  defaultTheme: text("default_theme").notNull().default("system"),
-  fontFamily: text("font_family").notNull().default("plus-jakarta-sans"),
-  fontSize: text("font_size").notNull().default("default"),
-  textColor: text("text_color"),
-  loginBackgroundFileId: uuid("login_background_file_id"),
-  loginBackgroundColor: text("login_background_color"),
-  loginWelcomeText: text("login_welcome_text"),
-  loginNoticeText: text("login_notice_text"),
-  loginNoticeRequiresAcknowledgement: boolean(
-    "login_notice_requires_acknowledgement"
-  )
-    .notNull()
-    .default(false),
-  emailSenderName: text("email_sender_name"),
-  emailReplyTo: text("email_reply_to"),
-  emailFooterText: text("email_footer_text"),
-  supportUrl: text("support_url"),
-  supportEmail: text("support_email"),
-  termsUrl: text("terms_url"),
-  privacyUrl: text("privacy_url"),
-  defaultLocale: text("default_locale").notNull(),
-  defaultTimeZone: text("default_time_zone").notNull(),
-  dateFormat: text("date_format"),
-  numberFormat: text("number_format"),
-  updatedByUserId: text("updated_by_user_id"),
-  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
-});
+export const tenantBranding = pgTable(
+  "tenant_branding",
+  {
+    companyName: text("company_name").notNull(),
+    productName: text("product_name").notNull(),
+    logoLightFileId: uuid("logo_light_file_id"),
+    logoDarkFileId: uuid("logo_dark_file_id"),
+    logoMarkFileId: uuid("logo_mark_file_id"),
+    faviconFileId: uuid("favicon_file_id"),
+    primaryColor: text("primary_color"),
+    primaryForeground: text("primary_foreground"),
+    defaultTheme: text("default_theme").notNull().default("system"),
+    fontFamily: text("font_family").notNull().default("plus-jakarta-sans"),
+    fontSize: text("font_size").notNull().default("default"),
+    textColor: text("text_color"),
+    loginBackgroundFileId: uuid("login_background_file_id"),
+    loginBackgroundColor: text("login_background_color"),
+    loginWelcomeText: text("login_welcome_text"),
+    loginNoticeText: text("login_notice_text"),
+    loginNoticeRequiresAcknowledgement: boolean(
+      "login_notice_requires_acknowledgement"
+    )
+      .notNull()
+      .default(false),
+    emailSenderName: text("email_sender_name"),
+    emailReplyTo: text("email_reply_to"),
+    emailFooterText: text("email_footer_text"),
+    supportUrl: text("support_url"),
+    supportEmail: text("support_email"),
+    termsUrl: text("terms_url"),
+    privacyUrl: text("privacy_url"),
+    defaultLocale: text("default_locale").notNull(),
+    defaultTimeZone: text("default_time_zone").notNull(),
+    dateFormat: text("date_format"),
+    numberFormat: text("number_format"),
+    updatedByUserId: text("updated_by_user_id"),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  // A constant unique key makes the row a singleton, so the seed can use `INSERT ... ON
+  // CONFLICT DO NOTHING` and no second row can race in.
+  () => [uniqueIndex("tenant_branding_singleton_idx").on(sql`(true)`)]
+);
 
 /** Append-only events, kept for the tenant's lifetime and readable with `core:audit:read`. */
 export const auditEvent = pgTable(
@@ -173,7 +199,7 @@ export const file = pgTable(
     mimeType: text("mime_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     checksum: text("checksum").notNull(),
-    scanStatus: text("scan_status").notNull().default("skipped"),
+    scanStatus: text("scan_status").notNull(),
     uploadedByUserId: text("uploaded_by_user_id"),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
   },
@@ -182,7 +208,9 @@ export const file = pgTable(
 
 /** One row per file stored with the `postgres` adapter, so `file` scans never load bytes. */
 export const fileBlob = pgTable("file_blob", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  // No default: R-33 keys the blob by the file id, so a blob that forgets its id must fail
+  // rather than write an orphan no `file` row finds.
+  id: uuid("id").primaryKey(),
   bytes: bytea("bytes").notNull(),
   createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
 });
