@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logo_light_file_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logo_dark_file_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logo_mark_file_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "favicon_file_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "primary_color": {
+      "type": "string",
+      "pattern": "^#[0-9a-f]{6}$"
+    },
+    "default_theme": {
+      "type": "string",
+      "enum": ["light", "dark", "system"]
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "plus-jakarta-sans",
+        "ibm-plex-sans",
+        "manrope",
+        "source-serif-4"
+      ]
+    },
+    "font_size": {
+      "type": "string",
+      "enum": ["compact", "default", "large"]
+    },
+    "text_color": {
+      "type": "string",
+      "pattern": "^#[0-9a-f]{6}$"
+    },
+    "login_background_file_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "login_background_color": {
+      "type": "string",
+      "pattern": "^#[0-9a-f]{6}$"
+    },
+    "login_welcome_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "login_notice_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "login_notice_requires_acknowledgement": {
+      "type": "boolean"
+    },
+    "email_sender_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "email_reply_to": {
+      "type": "string",
+      "format": "email",
+      "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+    },
+    "email_footer_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "support_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "support_email": {
+      "type": "string",
+      "format": "email",
+      "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+    },
+    "terms_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "privacy_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "default_locale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "default_time_zone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date_format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "number_format": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "company_name",
+    "product_name",
+    "default_locale",
+    "default_time_zone"
+  ],
+  "additionalProperties": false
+}

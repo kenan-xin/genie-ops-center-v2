@@ -9,6 +9,7 @@ import {
   type TenantContext,
   createTenantContext,
 } from "../../lib/tenant-context/index.ts";
+import { causeChain } from "../../utils/error-cause.ts";
 import { writeAuditEvent } from "../audit/index.ts";
 import { createLogger, redact } from "../logging/index.ts";
 import {
@@ -17,6 +18,7 @@ import {
   migrationPlan,
   runMigrations,
 } from "../migrator/index.ts";
+import { runSetup } from "../setup/index.ts";
 
 /**
  * What one `genie-ops` run reads and writes. The source is the process environment, the module
@@ -39,10 +41,15 @@ export type GenieOpsOptions = {
   readonly errorOutput: (line: string) => void;
 };
 
-/** One parsed command: the action name and the arguments the audit row may carry (D-4). */
+/** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
+ * command bound to the parsed option values. */
 type ParsedCommand = {
-  readonly name: keyof typeof COMMANDS;
+  readonly name: "migrate" | "setup";
   readonly args: readonly string[];
+  readonly run: (
+    context: TenantContext,
+    options: GenieOpsOptions
+  ) => Promise<void>;
 };
 
 /**
@@ -51,35 +58,12 @@ type ParsedCommand = {
  * value can be a secret an operator pasted by mistake (D-4, R-66).
  */
 const PARSE_REFUSAL =
-  "genie-ops: unknown or invalid command. Usage: genie-ops migrate";
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>";
 
 /** `redact` answers the same string for a string, which is what every sink here writes. */
 function safe(text: string): string {
   // SAFETY: a string in is a string out; the union return is `redact`'s json surface.
   return redact(text) as string;
-}
-
-/**
- * The deepest message in an error's cause chain. A migration failure is an `AppError` whose
- * safe message says only that a migration did not finish; the operator's cause — the database's
- * own text — sits on the cause, and that is the line the runbook tells them to read (R-76).
- */
-function causeChain(error: Error | undefined): string {
-  const messages: string[] = [];
-  const seen = new Set<Error>();
-
-  let current = error;
-
-  while (current !== undefined && !seen.has(current)) {
-    seen.add(current);
-    messages.push(current.message);
-
-    const cause: unknown = current.cause;
-
-    current = cause instanceof Error ? cause : undefined;
-  }
-
-  return messages.join(": ");
 }
 
 /**
@@ -103,8 +87,8 @@ export function osUserName(
 
 /**
  * Parses one subcommand with node's own `parseArgs`, dispatching on the first positional (D-4).
- * Every failure — an unknown command, an unexpected positional, an unknown option — becomes the
- * one generic refusal, so no rejected value reaches the output.
+ * Every failure — an unknown command, an unexpected positional, an unknown option, a missing
+ * required option — becomes the one generic refusal, so no rejected value reaches the output.
  */
 function parseCommand(
   command: string | undefined,
@@ -122,7 +106,38 @@ function parseCommand(
         allowPositionals: false,
       });
 
-      return { name: "migrate", args: [] };
+      return { name: "migrate", args: [], run: runMigrate };
+    }
+
+    case "setup": {
+      const { values } = parseArgs({
+        args: [...rest],
+        options: {
+          "tenant-config": { type: "string" },
+          "branding-seed": { type: "string" },
+        },
+        strict: true,
+        allowPositionals: false,
+      });
+
+      const tenantConfig = values["tenant-config"];
+      const brandingSeed = values["branding-seed"];
+
+      if (tenantConfig === undefined || brandingSeed === undefined) {
+        throw new Error("setup needs --tenant-config and --branding-seed");
+      }
+
+      return {
+        name: "setup",
+        args: [tenantConfig, brandingSeed],
+        run: (context, options) =>
+          runSetup(
+            context,
+            { tenantConfig, brandingSeed },
+            options,
+            commandLog(options)
+          ),
+      };
     }
 
     default:
@@ -173,16 +188,6 @@ async function runMigrate(
   });
 }
 
-/** The command by name, inferred so its keys are the accepted command names. */
-const COMMANDS = {
-  migrate: runMigrate,
-} satisfies Readonly<
-  Record<
-    string,
-    (context: TenantContext, options: GenieOpsOptions) => Promise<void>
-  >
->;
-
 /**
  * The one `genie-ops` runner (R-63). It parses the command with node's `parseArgs`, builds the
  * tenant context from the validated environment, runs the command and writes the one audit row
@@ -209,8 +214,6 @@ export async function runGenieOps(
 
     return 1;
   }
-
-  const run = COMMANDS[parsed.name];
 
   let context: TenantContext;
 
@@ -242,7 +245,7 @@ export async function runGenieOps(
     // still leaves exactly one row (R-64).
     const metadata = { osUser: osUserName(), args: parsed.args };
 
-    await run(context, options);
+    await parsed.run(context, options);
 
     await writeAuditEvent(context, {
       action: `ops:${parsed.name}`,

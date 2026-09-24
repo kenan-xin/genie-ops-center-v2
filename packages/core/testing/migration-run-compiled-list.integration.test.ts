@@ -216,6 +216,7 @@ describe("tenant_module write boundary", () => {
     const allowlisted = new Set([
       "packages/core/src/schema.ts",
       "packages/core/src/services/migrator/index.ts",
+      "packages/core/src/services/setup/index.ts",
       "packages/core/src/lib/tenant-context/readers.ts",
     ]);
 

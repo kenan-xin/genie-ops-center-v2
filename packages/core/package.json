@@ -16,6 +16,7 @@
   },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src contracts testing tools",
+    "schemas": "node tools/emit-schemas.ts",
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json"
@@ -27,6 +28,7 @@
     "pg-boss": "12.33.5",
     "pino": "10.3.1",
     "react": "19.3.0",
+    "yaml": "2.9.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -44,6 +46,14 @@
   "nx": {
     "tags": [
       "core"
-    ]
+    ],
+    "targets": {
+      "schemas": {
+        "cache": false,
+        "outputs": [
+          "{workspaceRoot}/deploy/schemas"
+        ]
+      }
+    }
   }
 }
