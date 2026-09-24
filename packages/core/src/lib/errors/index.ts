@@ -165,9 +165,17 @@ export class AppError extends Error {
 
   declare readonly safeMessage: string;
 
+  /**
+   * The request this error answers, when the throw site knows it but the formatter does not. A
+   * gate that throws before a transport builds its context attaches the id here, so the response
+   * body and the log line still share one value (R-46, AC-15). Absent on an error raised where no
+   * request exists; the transport then reads its own id.
+   */
+  declare readonly requestId: string | undefined;
+
   constructor(
     definition: ErrorDefinition,
-    options: { readonly cause?: unknown } = {}
+    options: { readonly cause?: unknown; readonly requestId?: string } = {}
   ) {
     // Both halves reach a client, so neither may be assembled at the throw site. A core code
     // takes its message from the catalogue, whatever the caller supplied beside it. Any other
@@ -192,6 +200,7 @@ export class AppError extends Error {
     for (const [name, value] of [
       ["code", definition.code],
       ["safeMessage", message],
+      ["requestId", options.requestId],
     ] as const) {
       Object.defineProperty(this, name, {
         value,

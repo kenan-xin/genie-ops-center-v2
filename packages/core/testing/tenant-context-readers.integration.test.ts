@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { startDisposableDeployment } from "./index.ts";
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
+import {
+  migrationPlan,
+  runMigrations,
+} from "../src/services/migrator/index.ts";
+import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -9,9 +15,29 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
 });
 
+/**
+ * A context built with `placeholder` compiled, so the entitlement reader answers for it (R-79).
+ * The deployment URL comes from a disposable Postgres with the core history applied, the way
+ * `freshContext` builds one in the compiled-module test.
+ */
 async function readerContext() {
-  const deployment = await startDisposableDeployment();
-  const context = deployment.context;
+  const postgres = await startDisposablePostgres();
+
+  const context = createTenantContext(
+    {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: "https://test.example.invalid",
+    },
+    silentLogger(),
+    ["placeholder"]
+  );
+
+  await runMigrations({
+    env: context.env,
+    pool: context.db.$client,
+    histories: migrationPlan([]),
+    compiledModuleIds: ["placeholder"],
+  });
 
   await context.db.$client.query(
     "insert into tenant_settings (onboarding_mode, local_accounts_enabled, realm_supports_local_accounts, session_idle_minutes) values ('invite', false, false, 15)"
@@ -24,10 +50,33 @@ async function readerContext() {
   );
 
   cleanups.push(async () => {
-    await deployment.stop();
+    await context.db.$client.end();
+    await postgres.stop();
   });
 
   return context;
+}
+
+/**
+ * The pool reads whose SQL targets one of the three reader tables.
+ *
+ * Drizzle's node-postgres session passes the SQL as a `QueryConfig` object, not a string, so the
+ * statement is read from `text` when present and from the value itself otherwise. A read is
+ * counted from its SQL, so the assertion proves one database read per cached reader rather than
+ * one call of any kind.
+ */
+function readerReads(calls: readonly (readonly unknown[])[]): number {
+  return calls.filter((call) => {
+    const statement = call[0];
+
+    // SAFETY: a pg pool `query` first argument is the SQL string or a query-config object that
+    // carries the same SQL on `text`; this reads the object spelling when the string is absent.
+    const sql =
+      (statement as { readonly text?: string } | undefined)?.text ??
+      String(statement);
+
+    return /select .*tenant_(settings|branding|module)/is.test(sql);
+  }).length;
 }
 
 describe("tenant context readers", () => {
@@ -42,11 +91,7 @@ describe("tenant context readers", () => {
     expect(await context.entitlements.isEnabled("placeholder")).toBe(true);
     expect(await context.entitlements.isEnabled("placeholder")).toBe(true);
 
-    const reads = query.mock.calls.filter(([statement]) =>
-      /select .*tenant_(settings|branding|module)/is.test(String(statement))
-    );
-
-    expect(reads).toHaveLength(3);
+    expect(readerReads(query.mock.calls)).toBe(3);
   });
 
   it("rereads settings branding and entitlements after ten seconds without save invalidation", async () => {
@@ -81,10 +126,19 @@ describe("tenant context readers", () => {
     expect(await context.entitlements.isEnabled("placeholder")).toBe(false);
     expect(await context.entitlements.isEnabled("missing-module")).toBe(false);
 
-    const reads = query.mock.calls.filter(([statement]) =>
-      /select .*tenant_(settings|branding|module)/is.test(String(statement))
+    expect(readerReads(query.mock.calls)).toBeGreaterThanOrEqual(6);
+  });
+
+  it("answers false for a module the image did not compile, even with an enabled row", async () => {
+    const context = await readerContext();
+
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('retired-module', true)"
     );
 
-    expect(reads.length).toBeGreaterThanOrEqual(6);
+    const query = vi.spyOn(context.db.$client, "query");
+
+    expect(await context.entitlements.isEnabled("retired-module")).toBe(false);
+    expect(readerReads(query.mock.calls)).toBe(0);
   });
 });

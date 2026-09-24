@@ -99,7 +99,7 @@ export function createTenantContext(
   });
 
   const db = drizzle(pool);
-  const readers = createTenantReaders({ pool, compiledModuleIds });
+  const readers = createTenantReaders({ db, compiledModuleIds });
 
   const context: TenantContext = { db, env, ...readers };
 

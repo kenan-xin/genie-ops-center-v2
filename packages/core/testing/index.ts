@@ -16,6 +16,8 @@ import {
 /** The Postgres the image is built against (tech stack, Database row). */
 const POSTGRES_IMAGE = "postgres:18-alpine";
 
+export { enableModules } from "./enable-modules.ts";
+
 export type DisposableDeployment = {
   readonly context: TenantContext;
   /** Closes the pool and removes the container. Always call it, in a `finally` or an `afterAll`. */

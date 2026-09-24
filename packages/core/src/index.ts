@@ -52,6 +52,11 @@ export {
   scopesFor,
 } from "./services/authorization/index.ts";
 
+export {
+  assertModulesEnabled,
+  enabledNavigation,
+} from "./lib/entitlement/index.ts";
+
 export type {
   PermissionKey,
   ResourceRef,
