@@ -1,9 +1,11 @@
 // Imports here decide what lands in the proxy bundle. The `@genie/core` root
 // entry point re-exports the tenant context, which imports `pg` and
 // `drizzle-orm/node-postgres`, so importing it would put the database driver in
-// this bundle. The build-safe `@genie/core/security` subpath has no imports at
-// all. Everything else the proxy needs, the provider map and the failure
-// reporter, comes from the context slot, which the bootstrap filled.
+// this bundle. The build-safe `@genie/core/security` and `@genie/core/errors`
+// subpaths import nothing at all. Everything else the proxy needs, the module
+// route map, the provider map and the failure reporter, comes from the context
+// slot, which the bootstrap filled.
+import { AppError, CORE_ERRORS, safeBodyFor } from "@genie/core/errors";
 import {
   BASELINE_POLICY,
   type FrameOriginProvider,
@@ -13,6 +15,7 @@ import {
 import { type NextRequest, NextResponse } from "next/server.js";
 
 import { readContext } from "./context.ts";
+import { moduleRouteOwner } from "./module-paths.ts";
 import { newRequestId } from "./request-id.ts";
 import { viewerRouteFor } from "./viewer-routes.ts";
 
@@ -54,6 +57,30 @@ const STANDARD_HEADERS = [
 
 /** Every redirect the application owns, so each one is header-capable. */
 const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
+
+/**
+ * R-8: the refusal for a declared route whose module is switched off. It carries the catalogue
+ * code, its fixed safe message and this request's id, at HTTP 403, so it reads exactly like the
+ * tRPC gate's refusal and the ordinary route helper's body. The module stays mounted; it refuses
+ * rather than disappearing, which is what keeps it distinguishable from an excluded module whose
+ * route does not exist.
+ */
+function moduleDisabledResponse(requestId: string): NextResponse {
+  const body = safeBodyFor(
+    new AppError(CORE_ERRORS["module-disabled"]),
+    requestId
+  );
+
+  const refusal = NextResponse.json(body, { status: 403 });
+
+  for (const { key, value } of STANDARD_HEADERS) {
+    refusal.headers.set(key, value);
+  }
+
+  refusal.headers.set("x-request-id", requestId);
+
+  return refusal;
+}
 
 /**
  * The framework's flight headers. Next 16 attaches one or more of these to every
@@ -148,6 +175,20 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Before the bootstrap publishes, no viewer route exists, so frames stay
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
+
+  // R-8: a declared route whose module is switched off refuses before its page
+  // renders. The entitlement reader answers disabled for a compiled module with
+  // no row, so this also covers a module that has not been through the seed
+  // step; an excluded module's path was never declared and falls through to the
+  // framework's own not-found, which keeps the two cases distinguishable.
+  const owner = moduleRouteOwner(pathname, app.moduleRoutes);
+
+  if (
+    owner !== undefined &&
+    !(await app.tenant.entitlements.isEnabled(owner))
+  ) {
+    return moduleDisabledResponse(requestId);
+  }
 
   // R-49a: a background navigation request must not invoke a provider either,
   // whatever the pathname. A full document navigation is the one request class

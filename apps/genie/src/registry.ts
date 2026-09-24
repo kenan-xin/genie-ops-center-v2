@@ -72,6 +72,29 @@ assertSelectedIdentity(compiled, selectedModuleIds);
 
 export const modules: readonly Module[] = compiled;
 
+/**
+ * The ids the image compiled, read once from the registry. The tenant context and the migrator
+ * run both take this one list, so the entitlement reader and the omission check cannot disagree
+ * about what the image carries (D-12).
+ */
+export const compiledModuleIds: readonly string[] = compiled.map(
+  (module) => module.identity.id
+);
+
+/**
+ * The module that owns each declared navigation path, resolved at load so the proxy can refuse a
+ * disabled module's route before any page renders (R-8). The proxy cannot import this module or
+ * the registry it reads, because that path reaches the database driver, so the bootstrap copies
+ * this map onto the context slot instead.
+ */
+export const moduleRoutes: ReadonlyMap<string, string> = new Map(
+  compiled.flatMap((module) =>
+    module.navigation.entries.map(
+      (entry) => [entry.path, module.identity.id] as const
+    )
+  )
+);
+
 export const moduleById: ReadonlyMap<string, Module> = new Map(
   compiled.map((module) => [module.identity.id, module])
 );

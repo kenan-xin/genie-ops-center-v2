@@ -23,6 +23,7 @@ const fakeContext: AppContext = {
   tenant: {} as AppContext["tenant"],
   startedAt: 0,
   contextId: "ctx-test",
+  moduleRoutes: new Map(),
   viewerProviders: new Map(),
   reportProviderFailure: () => {},
   logRequest: () => {},

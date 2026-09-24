@@ -95,6 +95,7 @@ function viewerAppWith(provider: {
     tenant: {} as AppContext["tenant"],
     startedAt: 0,
     contextId: "ctx-proxy-test",
+    moduleRoutes: new Map(),
     viewerProviders: new Map([["placeholder", provider]]),
     reportProviderFailure: vi.fn(),
     logRequest: vi.fn(),

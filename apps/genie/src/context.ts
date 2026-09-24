@@ -18,6 +18,12 @@ export type AppContext = {
   /** Identifies this context in every log line, so acceptance can count contexts. */
   readonly contextId: string;
   /**
+   * The module that owns each declared navigation path, so the proxy can refuse a disabled
+   * module's route before a page renders (R-8). It is a flat map rather than the registry,
+   * because the proxy bundle must not reach the module declarations and the database driver.
+   */
+  readonly moduleRoutes: ReadonlyMap<string, string>;
+  /**
    * The viewer providers, keyed by module id, already wrapped with the counter
    * and the failure reporter. The proxy reads these instead of importing the
    * registry, which would pull the module declarations, their routers and the

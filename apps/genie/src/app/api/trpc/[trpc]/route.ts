@@ -2,10 +2,15 @@ import { createRequestPrincipal, createStubGrantReader } from "@genie/core";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { CONTEXT_HEADER, requireContext } from "../../../../context.ts";
+import { compiledModuleIds } from "../../../../registry.ts";
 import { newRequestId } from "../../../../request-id.ts";
+import { assertModulesEnabled } from "../../../../trpc/module-gate.ts";
 import { appRouter } from "../../../../trpc/root.ts";
 
 export const dynamic = "force-dynamic";
+
+/** The compiled ids as a set, built once, so the gate answers a call with one lookup. */
+const COMPILED_MODULE_IDS: ReadonlySet<string> = new Set(compiledModuleIds);
 
 async function handler(request: Request): Promise<Response> {
   const app = requireContext();
@@ -21,19 +26,30 @@ async function handler(request: Request): Promise<Response> {
     endpoint: "/api/trpc",
     req: request,
     router: appRouter,
-    createContext: () => ({
-      app,
-      requestId,
-      // The one tenant context the bootstrap published. A module procedure
-      // reaches its data only through this, so omitting it makes every
-      // procedure throw before it reads anything (DEC-34).
-      tenant: app.tenant,
-      // The Section 0 stub grants placeholder:read and nothing else (R-13).
-      caller: createRequestPrincipal(
-        { userId: "anonymous", groups: [] },
-        createStubGrantReader()
-      ),
-    }),
+    createContext: async ({ info }) => {
+      // R-8: refuse a call to a compiled module whose entitlement is off, before
+      // any resolver runs. The throw is a catalogue `AppError`, so the formatter
+      // below answers HTTP 403 with app code `module-disabled`.
+      await assertModulesEnabled({
+        entitlements: app.tenant.entitlements,
+        compiledModuleIds: COMPILED_MODULE_IDS,
+        calls: info.calls,
+      });
+
+      return {
+        app,
+        requestId,
+        // The one tenant context the bootstrap published. A module procedure
+        // reaches its data only through this, so omitting it makes every
+        // procedure throw before it reads anything (DEC-34).
+        tenant: app.tenant,
+        // The Section 0 stub grants placeholder:read and nothing else (R-13).
+        caller: createRequestPrincipal(
+          { userId: "anonymous", groups: [] },
+          createStubGrantReader()
+        ),
+      };
+    },
     // AC-15: the id the client receives must match a redacted server log entry.
     // The formatter writes the response and logs nothing, so the logging belongs
     // here, where the caught error is still available.
