@@ -106,8 +106,11 @@ const shadcnThemeProviderException: OxlintOverride = {
  * registered; Effect adoption needs separate approval (Spec 0 R-5a).
  *
  * The `shadcn` plugin is the published `@shadcn/lint`, resolved from the
- * workspace root, where the config that names it lives. Its `eslint` and
- * `@typescript-eslint/parser` peers are optional and stay uninstalled.
+ * workspace root, where the config that names it lives. This change installs
+ * neither of its optional peers: `@typescript-eslint/parser` is absent, and
+ * the `eslint` 10.11.0 pnpm binds that peer to is a pre-existing root
+ * devDependency kept only for `@nx/eslint`'s peer contract (556289c), with no
+ * ESLint configuration or target, so no ESLint runs.
  */
 export const sharedOxlintConfig: OxlintConfig = {
   ignorePatterns: [
