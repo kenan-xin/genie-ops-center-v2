@@ -16,6 +16,9 @@ const CLI = resolve(import.meta.dirname, "cli.ts");
 
 const IDENTITY = `sha256:${"b".repeat(64)}`;
 
+/** The manifest digest the stubbed registry reports for a pushed ref. */
+const PUSH_DIGEST = `sha256:${"e".repeat(64)}`;
+
 const temporary: string[] = [];
 
 /**
@@ -27,7 +30,12 @@ const temporary: string[] = [];
  * handoff at the wrapper boundary, which the pipeline's own unit tests cannot
  * see.
  */
-function stubWorkspace(pnpmExit: number, pnpmExtra = "", dockerFailOn = "") {
+function stubWorkspace(
+  pnpmExit: number,
+  pnpmExtra = "",
+  dockerFailOn = "",
+  configDigest = IDENTITY
+) {
   const root = mkdtempSync(join(tmpdir(), "genie-release-cli-"));
 
   temporary.push(root);
@@ -51,6 +59,17 @@ function stubWorkspace(pnpmExit: number, pnpmExtra = "", dockerFailOn = "") {
 
   writeFileSync(log, "", "utf8");
 
+  const manifest = JSON.stringify({
+    schemaVersion: 2,
+    mediaType: "application/vnd.oci.image.manifest.v1+json",
+    config: {
+      mediaType: "application/vnd.oci.image.config.v1+json",
+      digest: configDigest,
+      size: 768,
+    },
+    layers: [],
+  });
+
   const stub = (name: string, body: string) => {
     const path = join(bin, name);
 
@@ -71,6 +90,14 @@ for arg in "$@"; do
   prev="$arg"
 done
 if [ -n "${dockerFailOn}" ] && [ "$1" = "${dockerFailOn}" ]; then exit 1; fi
+if [ "$1" = "push" ]; then
+  printf 'latest: digest: ${PUSH_DIGEST} size: 528\\n'
+  exit 0
+fi
+if [ "$1" = "buildx" ] && [ "$2" = "imagetools" ] && [ "$3" = "inspect" ]; then
+  printf '%s\\n' '${manifest}'
+  exit 0
+fi
 exit 0`
   );
 
@@ -143,21 +170,59 @@ describe("the customer image release wrapper", () => {
     expect(buildLine).toBeDefined();
     expect(buildLine).toContain("--build-arg MODULE_INCLUDE=placeholder");
 
-    // The smoke ran with the identity, before the push of that same identity.
+    // The smoke ran with the identity. The identity is then tagged with a
+    // run-unique temporary ref, that ref is pushed, and only afterwards is
+    // the stable published tag created from the digest the push reported.
     const smokeAt = log.indexOf("vitest.release-smoke.config.ts");
 
-    const tagAt = log.indexOf(
+    const tagLines = log
+      .split("\n")
+      .filter((line) => line.startsWith(`docker tag ${IDENTITY} `));
+
+    const pushedLine = log
+      .split("\n")
+      .find((line) => line.startsWith("docker push "));
+
+    expect(smokeAt).toBeGreaterThan(-1);
+    expect(tagLines).toHaveLength(1);
+    expect(pushedLine).toBeDefined();
+    expect(log.indexOf(tagLines[0] ?? "")).toBeGreaterThan(smokeAt);
+    expect(log.indexOf(pushedLine ?? "")).toBeGreaterThan(
+      log.indexOf(tagLines[0] ?? "")
+    );
+    expect(log).toContain(`ENV=${IDENTITY}`);
+
+    // The stable published ref is never tagged or pushed directly, so a
+    // retag between the steps cannot change the bytes under it.
+    const pushedRef = (pushedLine ?? "").slice("docker push ".length);
+
+    expect(pushedRef).not.toBe("ghcr.io/owner/genie-ops-center:acme-1.2.3");
+    expect(log).not.toContain(
       `docker tag ${IDENTITY} ghcr.io/owner/genie-ops-center:acme-1.2.3`
     );
-
-    const pushAt = log.indexOf(
+    expect(log).not.toContain(
       "docker push ghcr.io/owner/genie-ops-center:acme-1.2.3"
     );
 
-    expect(smokeAt).toBeGreaterThan(-1);
-    expect(tagAt).toBeGreaterThan(smokeAt);
-    expect(pushAt).toBeGreaterThan(tagAt);
-    expect(log).toContain(`ENV=${IDENTITY}`);
+    // The stable tag is created registry-side from the pushed manifest's
+    // digest, then inspected to verify it carries the smoke-tested identity.
+    const pushAt = log.indexOf(pushedLine ?? "");
+    const createAt = log.indexOf("imagetools create");
+
+    expect(createAt).toBeGreaterThan(pushAt);
+    expect(log.slice(createAt)).toContain(
+      "--tag ghcr.io/owner/genie-ops-center:acme-1.2.3"
+    );
+    expect(log.slice(createAt)).toContain(
+      `ghcr.io/owner/genie-ops-center@${PUSH_DIGEST}`
+    );
+
+    const inspectAt = log.indexOf("imagetools inspect");
+
+    expect(inspectAt).toBeGreaterThan(createAt);
+    expect(log.slice(inspectAt)).toContain(
+      "ghcr.io/owner/genie-ops-center:acme-1.2.3"
+    );
   });
 
   it("accepts an explicit --publish, which the release workflow passes", () => {
@@ -221,6 +286,53 @@ describe("the customer image release wrapper", () => {
     expect(log).toContain("docker build");
     expect(log).toContain("docker tag");
     expect(log).not.toContain("docker push");
+  });
+
+  it("creates no stable tag when the push of the temporary ref fails", () => {
+    const workspace = stubWorkspace(0, "", "push");
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("release failed at publish-candidate");
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    // The temporary ref was pushed (and failed), but the promotion never ran,
+    // so the stable published tag is never created from unverified bytes.
+    expect(log).toContain("docker push");
+    expect(log).not.toContain("imagetools create");
+  });
+
+  it("fails the release when the published tag does not carry the smoke-tested identity", () => {
+    const workspace = stubWorkspace(0, "", "", `sha256:${"f".repeat(64)}`);
+
+    const outcome = runCli(workspace, [
+      "acme",
+      "1.2.3",
+      "--repo-root",
+      workspace.root,
+      "--registry",
+      "ghcr.io/owner/genie-ops-center",
+    ]);
+
+    expect(outcome.status).toBe(1);
+    expect(outcome.stderr).toContain("release failed at publish-candidate");
+
+    const log = readFileSync(workspace.log, "utf8");
+
+    // The stable tag was created and then inspected; the mismatch between the
+    // tag's config digest and the smoke-tested identity is what failed the
+    // run, so a wrong promotion is detected before success is reported.
+    expect(log).toContain("imagetools create");
+    expect(log).toContain("imagetools inspect");
   });
 
   it("fails at the smoke and publishes nothing when only the smoke fails", () => {

@@ -457,3 +457,208 @@ describe("the customer image release pipeline", () => {
     expect(calls.some((call) => call.args[0] === "push")).toBe(false);
   });
 });
+
+/**
+ * The manifest digest the registry reports for the pushed temporary ref. It is
+ * the manifest's digest, which is not the image id (the config digest) the
+ * build wrote to the iidfile; promotion and verification are what connect them.
+ */
+const REGISTRY_MANIFEST = `sha256:${"c".repeat(64)}`;
+
+function inspectManifest(configDigest: string): string {
+  return JSON.stringify({
+    schemaVersion: 2,
+    mediaType: "application/vnd.oci.image.manifest.v1+json",
+    config: {
+      mediaType: "application/vnd.oci.image.config.v1+json",
+      digest: configDigest,
+      size: 768,
+    },
+    layers: [],
+  });
+}
+
+/**
+ * A runner for the publish-by-digest contract. Gates, build and smoke come
+ * from `recordingRunner`; the docker publish phase is answered the way a real
+ * daemon and registry behave: a push reports the pushed manifest's digest, and
+ * `imagetools inspect` returns a manifest whose config digest is the image id.
+ */
+function registryRunner(
+  failure: "tag" | "push" | "create" | "inspect" | undefined = undefined,
+  configDigest: string = IDENTITY
+) {
+  const inner = recordingRunner();
+  const calls = inner.calls;
+
+  const runner: CommandRunner = (command, args, options) => {
+    const line = `${command} ${args.join(" ")}`;
+
+    const phase =
+      command === "docker" && args[0] === "tag"
+        ? "tag"
+        : command === "docker" && args[0] === "push"
+          ? "push"
+          : line.startsWith("docker buildx imagetools create")
+            ? "create"
+            : line.startsWith("docker buildx imagetools inspect")
+              ? "inspect"
+              : undefined;
+
+    if (phase === undefined) {
+      return inner.runner(command, args, options);
+    }
+
+    calls.push({ command, args: [...args], env: options.env });
+
+    if (phase === failure) {
+      return { status: 1, stdout: "", stderr: `${phase} failed` };
+    }
+
+    if (phase === "push") {
+      return {
+        status: 0,
+        stdout: `latest: digest: ${REGISTRY_MANIFEST} size: 528\n`,
+        stderr: "",
+      };
+    }
+
+    if (phase === "inspect") {
+      return { status: 0, stdout: inspectManifest(configDigest), stderr: "" };
+    }
+
+    return { status: 0, stdout: "", stderr: "" };
+  };
+
+  return { calls, runner };
+}
+
+describe("publishing the stable tag by digest", () => {
+  const PUBLISHED_REF = "ghcr.io/owner/genie-ops-center:acme-1.2.3";
+
+  it("pushes a unique temporary ref, then creates the stable tag from the registry digest and verifies it", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = registryRunner();
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.publishedRef).toBe(PUBLISHED_REF);
+
+    // The stable published ref is never tagged or pushed directly: the push
+    // carries a temporary ref, so the uploaded bytes are bound to the one ref
+    // no other writer holds, and a retag between the steps cannot change them.
+    const tags = calls.filter((call) => call.args[0] === "tag");
+    const pushes = calls.filter((call) => call.args[0] === "push");
+
+    expect(tags).toHaveLength(1);
+    expect(pushes).toHaveLength(1);
+    expect(tags[0]?.args[1]).toBe(IDENTITY);
+    expect(tags[0]?.args[2]).not.toBe(PUBLISHED_REF);
+    expect(pushes[0]?.args[1]).not.toBe(PUBLISHED_REF);
+
+    // The pushed ref is the temporary tag the smoke-tested identity received.
+    expect(pushes[0]?.args[1]).toBe(tags[0]?.args[2]);
+
+    // A second run must not reuse the first run's temporary ref, or a
+    // concurrent run could retag it exactly like the stable one.
+    const second = registryRunner();
+
+    runRelease(request(repoWithModules("placeholder\n")), second.runner);
+
+    const secondPush = second.calls.find((call) => call.args[0] === "push");
+
+    expect(secondPush?.args[1]).toBeDefined();
+    expect(secondPush?.args[1]).not.toBe(pushes[0]?.args[1]);
+
+    // The stable tag is created registry-side from the digest the push
+    // reported, as `<repo>@<manifest digest>`, not from any local ref.
+    const createAt = calls.findIndex(
+      (call) => call.args[0] === "buildx" && call.args[2] === "create"
+    );
+
+    expect(createAt).toBeGreaterThan(-1);
+
+    const create = calls[createAt];
+
+    expect(create?.args).toContain("--tag");
+    expect(create?.args).toContain(PUBLISHED_REF);
+    expect(create?.args).toContain(
+      `ghcr.io/owner/genie-ops-center@${REGISTRY_MANIFEST}`
+    );
+    expect(calls.findIndex((call) => call.args[0] === "push")).toBeLessThan(
+      createAt
+    );
+
+    // The published tag is inspected and its config digest must equal the
+    // smoke-tested identity before the run reports success.
+    const inspectAt = calls.findIndex(
+      (call) => call.args[0] === "buildx" && call.args[2] === "inspect"
+    );
+
+    expect(inspectAt).toBeGreaterThan(createAt);
+    expect(calls[inspectAt]?.args.join(" ")).toContain(PUBLISHED_REF);
+  });
+
+  it("fails and publishes nothing further when the published tag's config digest differs from the smoke-tested identity", () => {
+    const root = repoWithModules("placeholder\n");
+
+    const { calls, runner } = registryRunner(
+      undefined,
+      `sha256:${"d".repeat(64)}`
+    );
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failedStep).toBe("publish-candidate");
+
+    // Verification is the last word: after the published tag failed to match,
+    // no tag, push or promotion runs again.
+    const inspectAt = calls.findIndex(
+      (call) => call.args[0] === "buildx" && call.args[2] === "inspect"
+    );
+
+    expect(inspectAt).toBeGreaterThan(-1);
+    expect(
+      calls
+        .slice(inspectAt + 1)
+        .some(
+          (call) =>
+            call.args[0] === "tag" ||
+            call.args[0] === "push" ||
+            call.args[0] === "buildx"
+        )
+    ).toBe(false);
+  });
+
+  it("creates no stable tag when the push of the temporary ref fails", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = registryRunner("push");
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failedStep).toBe("publish-candidate");
+    expect(calls.some((call) => call.args[0] === "buildx")).toBe(false);
+  });
+
+  it("fails the release when creating the stable tag by digest fails", () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = registryRunner("create");
+
+    const outcome = runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failedStep).toBe("publish-candidate");
+
+    // The push happened, but with the promotion failed the published tag was
+    // never created, so nothing is verified or reported as published.
+    expect(calls.some((call) => call.args[0] === "push")).toBe(true);
+    expect(
+      calls.some(
+        (call) => call.args[0] === "buildx" && call.args[2] === "inspect"
+      )
+    ).toBe(false);
+  });
+});
