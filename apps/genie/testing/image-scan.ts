@@ -15,6 +15,8 @@
  * values. Those are recorded as limits, not asserted away.
  */
 
+import { moduleLedgerTable } from "@genie/core";
+
 /** One committed layer line from `docker history --no-trunc`. */
 export type ImageHistoryEntry = {
   readonly createdBy: string;
@@ -140,7 +142,7 @@ export function excludedModulePathNeedles(id: string): readonly string[] {
  * (`tools/generators/src/selection/prune.ts`, Spec 0 AC-24).
  */
 export function excludedModuleContentNeedles(id: string): readonly string[] {
-  return [`__drizzle_migrations_${id}`];
+  return [moduleLedgerTable(id)];
 }
 
 /**
