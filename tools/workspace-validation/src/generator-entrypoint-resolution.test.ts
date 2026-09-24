@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 const GENERATORS_ROOT = join(WORKSPACE_ROOT, "tools/generators");
 

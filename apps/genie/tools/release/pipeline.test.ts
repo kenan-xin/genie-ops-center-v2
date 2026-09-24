@@ -65,7 +65,7 @@ function stepOf(command: string, args: readonly string[]): Step | undefined {
 
   if (line.includes("app:typecheck")) return "typecheck";
 
-  if (line.includes("generators:validate")) return "validate";
+  if (line.includes("workspace-validation:validate")) return "validate";
 
   if (line.includes("app:test")) return "test";
 

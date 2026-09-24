@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 type NxConfig = {
   readonly targetDefaults: {
@@ -82,5 +82,15 @@ describe("the validate target's inputs", () => {
     ]);
     expect(inputs).not.toContain("{workspaceRoot}/docs/**/*.md");
     expect(inputs).not.toContain("{workspaceRoot}/docs/**");
+  });
+
+  // genie-ops-center-v2-d05: the checks moved to `@genie/workspace-validation`,
+  // but the workspace-policy helpers they run (the classifier, the module naming
+  // and test rules, the README rule) live in `@genie/generators`. That package
+  // stays a real input — the exact coverage the checks had when they lived there —
+  // so a helper change still invalidates the cache instead of replaying a stale
+  // validate result.
+  it("keeps the generators package the checks read as an input", () => {
+    expect(validateInputs()).toContain("{workspaceRoot}/tools/generators/**/*");
   });
 });

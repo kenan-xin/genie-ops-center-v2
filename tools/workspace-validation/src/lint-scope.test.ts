@@ -12,7 +12,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 type ConfigManifest = { readonly scripts: { readonly lint: string } };
 

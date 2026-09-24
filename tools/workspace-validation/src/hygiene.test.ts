@@ -2,14 +2,15 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+import {
+  classifyProject,
+  moduleProjectNamingError,
+  moduleTestsError,
+  projectReadmeError,
+} from "@genie/generators/workspace";
 import { describe, expect, it } from "vitest";
 
-import { classifyProject } from "../classify-project.ts";
-import { moduleProjectNamingError } from "../module-naming.ts";
-import { moduleTestsError } from "../module-tests.ts";
-import { projectReadmeError } from "../project-readme.ts";
-
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 /**
  * The active canonical documentation, by location: the requirement specs, the

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src/**/*.ts", "vitest.validate.config.ts"],
+  // Repeated from `tsconfig.base.json`, because a project's own `exclude`
+  // replaces the inherited one rather than adding to it.
+  "exclude": ["**/*__boundary__*", "**/*__wiring__*", "**/*__antislop__*"]
+}

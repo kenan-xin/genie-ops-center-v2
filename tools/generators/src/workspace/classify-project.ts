@@ -12,6 +12,7 @@ const EXACT_ROOTS = new Map<string, ArchitecturalTag>([
   ["packages/ui", "ui"],
   ["packages/config", "config"],
   ["tools/generators", "tooling"],
+  ["tools/workspace-validation", "tooling"],
 ]);
 
 const PATTERNS: readonly (readonly [RegExp, ArchitecturalTag])[] = [

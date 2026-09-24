@@ -197,8 +197,8 @@ export function runRelease(
     ["typecheck", "@genie/app:typecheck", nxArgs("@genie/app:typecheck")],
     [
       "validate",
-      "@genie/generators:validate",
-      nxArgs("@genie/generators:validate"),
+      "@genie/workspace-validation:validate",
+      nxArgs("@genie/workspace-validation:validate"),
     ],
     ["test", "@genie/app:test", nxArgs("@genie/app:test")],
     [

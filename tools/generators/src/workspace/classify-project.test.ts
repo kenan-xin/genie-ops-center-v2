@@ -12,6 +12,7 @@ describe("classifyProject", () => {
     ["packages/modules/placeholder", "module"],
     ["packages/config", "config"],
     ["tools/generators", "tooling"],
+    ["tools/workspace-validation", "tooling"],
   ])("classifies %s as %s", (root, expected) => {
     expect(classifyProject(root)).toBe(expected);
   });

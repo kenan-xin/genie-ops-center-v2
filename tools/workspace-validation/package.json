@@ -1,0 +1,21 @@
+{
+  "name": "@genie/workspace-validation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "typecheck": "tsc --noEmit",
+    "validate": "vitest run --config vitest.validate.config.ts"
+  },
+  "devDependencies": {
+    "@genie/generators": "workspace:*",
+    "oxlint": "1.83.0",
+    "vitest": "4.1.11"
+  },
+  "nx": {
+    "tags": [
+      "tooling"
+    ]
+  }
+}

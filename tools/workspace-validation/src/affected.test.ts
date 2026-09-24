@@ -4,13 +4,19 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 const CONFIG_PRESET = "packages/config/src/vitest/unit.ts";
 
 /** A shared schema `tools/generators` is allowed to import (R-31, R-7a). */
 const EXPOSED_GENERATOR_SCHEMA =
   "packages/core/src/lib/tenant-config/tenant-yaml.ts";
+
+/** A canonical document the workspace checks read. */
+const CANONICAL_DOC = "docs/core/tech-stack.md";
+
+/** A source file inside the app, to pin ordinary project-local propagation. */
+const APP_SOURCE = "apps/genie/src/bootstrap.ts";
 
 /**
  * Lists the projects Nx would mark affected if only one file changed.
@@ -57,5 +63,22 @@ describe("the affected graph", () => {
 
     expect(affected).toContain("@genie/core");
     expect(affected).toContain("@genie/generators");
+  });
+
+  // genie-ops-center-v2-d05: the workspace-wide `validate` inputs live on their
+  // own leaf project, so a document change reruns the checks that read it without
+  // dragging the app and the Storybook host — and their 19-minute integration
+  // suites — into the affected set through their dependency on `@genie/generators`.
+  it("keeps a docs-only change on the validation project, off the app and Storybook", () => {
+    const affected = affectedBy(CANONICAL_DOC);
+
+    expect(affected).toContain("@genie/workspace-validation");
+    expect(affected).not.toContain("@genie/generators");
+    expect(affected).not.toContain("@genie/app");
+    expect(affected).not.toContain("@genie/storybook");
+  });
+
+  it("still marks the app affected when its own source changes", () => {
+    expect(affectedBy(APP_SOURCE)).toContain("@genie/app");
   });
 });

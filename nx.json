@@ -89,6 +89,7 @@
       "cache": true,
       "inputs": [
         "{projectRoot}/**/*",
+        "{workspaceRoot}/tools/generators/**/*",
         "{workspaceRoot}/nx.json",
         "{workspaceRoot}/pnpm-workspace.yaml",
         "{workspaceRoot}/pnpm-lock.yaml",

@@ -61,6 +61,9 @@ genie-ops-center/
     generators/                     Tagged tooling: Nx local plugin, module-new and tenant-new.
                                     Uses config and exposed build-safe core schemas/types only; generated
                                     modules/apps follow their destination tags and import rules.
+    workspace-validation/           Tagged tooling: the repository-wide workspace checks, run by the
+                                    `validate` target. A leaf with no dependents, so a document it
+                                    reads invalidates the checks without marking an app affected.
   scripts/
     build-customer-image.sh         docker build with the customer's include list, then push (DEC-33).
     seed.ts                         Interactive local seed: slug, modules, first administrator.

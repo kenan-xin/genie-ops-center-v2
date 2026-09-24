@@ -5,14 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/selection/index.ts",
+    "./workspace": "./src/workspace/index.ts",
     "./package.json": "./package.json",
     "./generators.json": "./generators.json"
   },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src scripts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "validate": "vitest run --config vitest.validate.config.ts"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",

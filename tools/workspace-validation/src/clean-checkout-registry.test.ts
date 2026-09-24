@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../../../..");
+const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 const REGISTRY = "apps/genie/src/modules.ts";
 

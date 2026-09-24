@@ -9,7 +9,7 @@
     "coverage": "nx run-many -t test -- --coverage",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
-    "validate": "nx run @genie/generators:validate",
+    "validate": "nx run @genie/workspace-validation:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
     "affected": "nx affected -t build test lint typecheck test-storybook test:integration && pnpm run validate",
