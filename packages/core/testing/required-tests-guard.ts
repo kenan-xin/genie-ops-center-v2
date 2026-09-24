@@ -80,6 +80,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/tenant-context-readers.integration.test.ts",
+    reason:
+      "Spec 1 AC-1 second half and R-5 require reader cache expiry and disabled-module proof",
+    cases: [
+      "tenant context readers serve cached settings branding and entitlement values without a second database read",
+      "tenant context readers reread settings branding and entitlements after ten seconds without save invalidation",
+    ],
+  },
+  {
     file: "testing/with-transaction.integration.test.ts",
     reason:
       "D-5 and D-6's withTransaction seam, bead 1ia.14's acceptance, requires the transaction and after-commit cases to run",

@@ -43,11 +43,17 @@ function runProbe(source: string) {
 }
 
 describe("createTenantContext", () => {
-  it("holds the two fixed members and nothing else (R-18)", async () => {
+  it("holds the fixed members and three readers and nothing else (R-18)", async () => {
     const context = createTenantContext(MINIMAL, silentLogger(), []);
 
     try {
-      expect(Object.keys(context).toSorted()).toEqual(["db", "env"]);
+      expect(Object.keys(context).toSorted()).toEqual([
+        "branding",
+        "db",
+        "entitlements",
+        "env",
+        "settings",
+      ]);
       expect(context.env.databaseUrl).toBe(MINIMAL.DATABASE_URL);
       expect(context.env.lockTimeoutMs).toBe(120000);
     } finally {

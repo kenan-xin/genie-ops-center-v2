@@ -16,7 +16,7 @@ describe("the core package root", () => {
     expect(core.createTenantContext).toBeTypeOf("function");
   });
 
-  it("builds a context through the package root and holds its two members", async () => {
+  it("builds a context through the package root and holds its five members", async () => {
     const context = core.createTenantContext(
       {
         DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
@@ -27,7 +27,13 @@ describe("the core package root", () => {
     );
 
     try {
-      expect(Object.keys(context).toSorted()).toEqual(["db", "env"]);
+      expect(Object.keys(context).toSorted()).toEqual([
+        "branding",
+        "db",
+        "entitlements",
+        "env",
+        "settings",
+      ]);
     } finally {
       await context.db.$client.end();
     }
@@ -79,7 +85,14 @@ describe("the core package root", () => {
   });
 
   it("exports no connection, database, settings, branding or storage singleton", () => {
-    for (const name of ["db", "pool", "settings", "branding", "storage"]) {
+    for (const name of [
+      "db",
+      "pool",
+      "settings",
+      "branding",
+      "entitlements",
+      "storage",
+    ]) {
       expect(Object.hasOwn(core, name)).toBe(false);
     }
   });

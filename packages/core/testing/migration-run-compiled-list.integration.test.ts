@@ -216,6 +216,7 @@ describe("tenant_module write boundary", () => {
     const allowlisted = new Set([
       "packages/core/src/schema.ts",
       "packages/core/src/services/migrator/index.ts",
+      "packages/core/src/lib/tenant-context/readers.ts",
     ]);
 
     // Both the SQL name and the drizzle table object name count: a core file reaches the table

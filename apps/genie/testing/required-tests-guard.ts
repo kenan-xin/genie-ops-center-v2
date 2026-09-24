@@ -108,4 +108,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the viewer URL a purpose-prefetch request at the viewer URL invokes no provider",
     ],
   },
+  {
+    file: "testing/disabled-module.integration.test.ts",
+    cases: [
+      "a compiled disabled module hides navigation refuses tRPC and routes and keeps its tables",
+    ],
+  },
 ];
