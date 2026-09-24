@@ -532,7 +532,7 @@ describe("the built image", () => {
       "-e",
       "DATABASE_URL=not-a-url",
       "-e",
-      "PUBLIC_URL=https://example.invalid",
+      "PUBLIC_URL=also-not-a-url",
       IMAGE,
     ]).then(
       () => ({ code: 0, output: "" }),
@@ -543,7 +543,23 @@ describe("the built image", () => {
     );
 
     expect(result.code).not.toBe(0);
+
+    // No rejected value may reach the output in any spelling (R-45): the
+    // diagnostic names variables, never values, and both values here carry the
+    // `not-a-url` spelling.
     expect(result.output).not.toContain("not-a-url");
+
+    // A silent exit passes the exit-code assertion above, so the diagnostic
+    // line is the assertion that carries this requirement: exactly one line
+    // names every invalid variable at once, so an operator reading the
+    // container log can fix the environment without re-running with a debugger.
+    const diagnosticLines = result.output
+      .split("\n")
+      .filter((line) => line.includes("DATABASE_URL"));
+
+    expect(diagnosticLines).toHaveLength(1);
+    expect(diagnosticLines[0]).toContain("The environment is not valid");
+    expect(diagnosticLines[0]).toContain("PUBLIC_URL");
   }, 120000);
 
   // AC-26's concurrency clause, proven across real framework bundles rather

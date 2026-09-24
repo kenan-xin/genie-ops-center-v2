@@ -264,3 +264,200 @@ describe("runBootstrap production wiring", () => {
     await pool?.end();
   });
 });
+
+/**
+ * The bootstrap owns the `runMigrations` call in production, so the migrator's
+ * diagnostics reach the container log only if this call passes the process
+ * logger in as the run's `log`. The real migrator runs here against a scripted
+ * session client and no database, and the injected process logger's sink is
+ * what the assertions read: every migration event must arrive through it, a
+ * failed history must be named by the log the run wrote before failing, and a
+ * cleanup failure must carry its cause.
+ */
+
+/** The two outcomes a migration run can be scripted to reach without a database. */
+type MigrationDouble = {
+  onMigrationSql: "resolve" | "reject";
+  onUnlock: "confirm" | "deny";
+};
+
+const sqlOf = (query: string | { text: string }) =>
+  ("text" in query ? query.text : query).replace(/\s+/g, " ").trim();
+
+/**
+ * A session client that answers the migrator's own control statements and
+ * scripts everything else: the ledger and history SQL drizzle's apply sends,
+ * and the advisory-unlock reply the cleanup reads.
+ */
+function migrationClientDouble(behavior: MigrationDouble) {
+  return {
+    query: async (query: string | { text: string }) => {
+      const sql = sqlOf(query);
+
+      if (sql.startsWith("SET lock_timeout")) return { rows: [] };
+
+      if (sql.startsWith("SELECT pg_advisory_lock")) return { rows: [] };
+
+      if (sql.startsWith("SELECT pg_advisory_unlock")) {
+        return behavior.onUnlock === "deny"
+          ? { rows: [{ pg_advisory_unlock: false }] }
+          : { rows: [{ pg_advisory_unlock: true }] };
+      }
+
+      if (sql.startsWith("RESET lock_timeout")) return { rows: [] };
+
+      if (behavior.onMigrationSql === "reject") {
+        throw new Error("migration sql refused by the double");
+      }
+
+      return { rows: [] };
+    },
+    release: () => {},
+  };
+}
+
+function migrationContextDouble(behavior: MigrationDouble) {
+  const client = migrationClientDouble(behavior);
+
+  // SAFETY: the bootstrap's default migrate reads only `tenant.env` and
+  // `tenant.db.$client` from the context, and the failure shutdown reads only
+  // the same client's `end`. This fixture supplies exactly those members, and
+  // `connect` bypasses `buildContext`, so no pool is created and the run never
+  // leaves the process.
+  return {
+    tenant: {
+      env: validateEnvironment(VALID_SOURCE),
+      db: { $client: { connect: async () => client, end: async () => {} } },
+    },
+  } as never;
+}
+
+/** A real redacting logger at the production default level, captured raw. */
+function sinkLogger(lines: string[]): RedactingLogger {
+  return createLogger(
+    { logLevel: "info" },
+    {
+      write(line: string) {
+        // Whitespace-normalized, so the assertions read one serialized shape
+        // regardless of how the sink lays a line out.
+        lines.push(JSON.stringify(JSON.parse(line)));
+      },
+    }
+  );
+}
+
+const countLinesWith = (log: string, needle: string) =>
+  log.split("\n").filter((line) => line.includes(needle)).length;
+
+describe("runBootstrap migration diagnostics", () => {
+  it("writes every migration event through the process logger", async () => {
+    const lines: string[] = [];
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      logger: sinkLogger(lines),
+      connect: () =>
+        migrationContextDouble({
+          onMigrationSql: "resolve",
+          onUnlock: "confirm",
+        }),
+      publish: () => {},
+      exit: () => {
+        throw new Error("a successful bootstrap must not exit");
+      },
+      budgetMs: 500,
+    });
+
+    const log = lines.join("\n");
+
+    expect(log).toContain("migration-lock-held");
+    expect(log).toContain("migration-history-start");
+    expect(log).toContain('"history":"core"');
+    expect(log).toContain("migration-history-done");
+
+    // Every history that started also finished: the run reached its normal end.
+    expect(countLinesWith(log, "migration-history-start")).toBe(
+      countLinesWith(log, "migration-history-done")
+    );
+
+    expect(log).toContain("bootstrap complete");
+  });
+
+  it("names the failing history in the log and exits when a history fails", async () => {
+    const lines: string[] = [];
+    const exit = vi.fn();
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      logger: sinkLogger(lines),
+      connect: () =>
+        migrationContextDouble({
+          onMigrationSql: "reject",
+          onUnlock: "confirm",
+        }),
+      publish: () => {
+        throw new Error("a failed migration must not publish");
+      },
+      exit,
+      budgetMs: 500,
+    });
+
+    expect(exit).toHaveBeenCalledWith(1);
+
+    const log = lines.join("\n");
+
+    const startLines = log
+      .split("\n")
+      .filter((line) => line.includes("migration-history-start"));
+
+    expect(startLines.length).toBeGreaterThanOrEqual(1);
+
+    // The history the run was applying when it failed is the one its last
+    // start line names, and no done line may name it afterwards.
+    const failing = /"history":"([^"]+)"/.exec(startLines.at(-1) ?? "")?.[1];
+
+    expect(failing).toBeDefined();
+
+    expect(
+      log
+        .split("\n")
+        .some(
+          (line) =>
+            line.includes("migration-history-done") &&
+            line.includes(`"history":"${failing}"`)
+        )
+    ).toBe(false);
+
+    expect(log).toContain("bootstrap failed");
+  });
+
+  it("carries the cleanup cause when the session cannot be restored", async () => {
+    const lines: string[] = [];
+    const exit = vi.fn();
+
+    await runBootstrap({
+      source: VALID_SOURCE,
+      logger: sinkLogger(lines),
+      connect: () =>
+        migrationContextDouble({ onMigrationSql: "resolve", onUnlock: "deny" }),
+      publish: () => {
+        throw new Error("a failed migration must not publish");
+      },
+      exit,
+      budgetMs: 500,
+    });
+
+    expect(exit).toHaveBeenCalledWith(1);
+
+    // The generic failure the caller sees never holds the cause; the cleanup
+    // event in the log is the only place it can reach an operator, so the
+    // message must be there, serialized by the redacting logger.
+    const cleanupLines = lines
+      .join("\n")
+      .split("\n")
+      .filter((line) => line.includes("migration-cleanup-failed"));
+
+    expect(cleanupLines).toHaveLength(1);
+    expect(cleanupLines[0]).toContain("did not hold the advisory lock");
+  });
+});
