@@ -9,10 +9,30 @@
 # require-statement-timeout). Those three are excluded here; every other rule,
 # including the breaking-change rules that cover R-13, stays active.
 #
+# Two more settings keep the gate on R-13 without weakening it:
+#
+#   * `assume_in_transaction = true` tells Squawk what the migrator does: Drizzle
+#     applies each history inside one transaction (services/migrator/index.ts).
+#     A `CREATE INDEX` in the migration that creates its table therefore holds no
+#     lock an outside reader can observe, so `require-concurrent-index-creation`
+#     stops firing for a generated migration. The rule still fires for a
+#     `CREATE INDEX` on a table an earlier migration created, which is the case
+#     the rule exists for: a later index on a live table must be CONCURRENTLY.
+#   * `prefer-bigint-over-int` is a style rule, not one of R-13's four breaking
+#     changes. It fires on `integer` columns whose domain fits (a rate-limit
+#     count, session idle minutes), and excluding it keeps the gate on the
+#     breaking-change rules rather than on a size preference. A column whose
+#     domain can exceed 2^31 still uses `bigint` on its own merits, as
+#     `file.size_bytes` does because the later `s3` adapter is not capped at the
+#     `postgres` adapter's 15 MB.
+#
 # `scripts/check-migrations.mjs` passes this file with `--config` explicitly, so
 # the gate does not depend on Squawk's upward search from the current directory.
 excluded_rules = [
   "prefer-robust-stmts",
   "require-lock-timeout",
   "require-statement-timeout",
+  "prefer-bigint-over-int",
 ]
+
+assume_in_transaction = true

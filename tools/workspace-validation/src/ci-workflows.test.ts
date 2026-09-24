@@ -265,7 +265,7 @@ describe("the migration pull-request gate", () => {
 
   it("fails a changed migration that drops a column", () => {
     const file = migrationFixture(
-      `BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL statement_timeout = '30s';\nALTER TABLE public.example DROP COLUMN obsolete;\nCOMMIT;\n`
+      `ALTER TABLE public.example DROP COLUMN obsolete;\n`
     );
 
     try {
@@ -286,7 +286,7 @@ describe("the migration pull-request gate", () => {
 
   it("accepts the same deliberate contract migration with a squawk-ignore comment", () => {
     const file = migrationFixture(
-      `BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL statement_timeout = '30s';\n-- squawk-ignore ban-drop-column\nALTER TABLE public.example DROP COLUMN obsolete;\nCOMMIT;\n`
+      `-- squawk-ignore ban-drop-column\nALTER TABLE public.example DROP COLUMN obsolete;\n`
     );
 
     try {
@@ -317,6 +317,35 @@ describe("the migration pull-request gate", () => {
     ]);
 
     expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  // `assume_in_transaction = true` in `.squawk.toml` clears
+  // `require-concurrent-index-creation` for an index on a table the same
+  // migration creates, because Drizzle applies the history in one transaction.
+  // It must not clear the rule for an index on a table an earlier migration
+  // created: that is the live-table case the rule exists for, so the fixture
+  // below creates an index and no table at all.
+  it("fails a changed migration that indexes a table an earlier migration created", () => {
+    const file = migrationFixture(
+      `CREATE INDEX "example_col_idx" ON "public"."example" USING btree ("col");\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(
+        /require-concurrent-index-creation/i
+      );
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
   });
 
   it("fails a changed migration that renames a column", () => {
