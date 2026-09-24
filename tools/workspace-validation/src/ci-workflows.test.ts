@@ -18,6 +18,10 @@ const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 const WORKFLOWS = ".github/workflows";
 
+const MIGRATION_CHECK_SCRIPT = "scripts/check-migrations.mjs";
+
+const PULL_REQUEST_TEMPLATE = ".github/pull_request_template.md";
+
 function read(relative: string): string {
   const path = join(WORKSPACE_ROOT, relative);
 
@@ -130,6 +134,194 @@ function appScript(name: string): string {
 
   return script;
 }
+
+type CommandResult = {
+  readonly status: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+};
+
+function runMigrationCheck(
+  args: readonly string[],
+  cwd = WORKSPACE_ROOT
+): CommandResult {
+  const result = spawnSync(
+    process.execPath,
+    [join(WORKSPACE_ROOT, MIGRATION_CHECK_SCRIPT), ...args],
+    {
+      cwd,
+      encoding: "utf8",
+    }
+  );
+
+  return {
+    status: result.status,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+function migrationFixture(sql: string): string {
+  const root = mkdtempSync(join(tmpdir(), "genie-migration-lint-"));
+  const file = join(root, "0001_contract.sql");
+
+  writeFileSync(file, sql, "utf8");
+
+  return file;
+}
+
+function conflictingHistoryFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), "genie-migration-history-"));
+  const meta = join(root, "meta");
+
+  const snapshot = readFileSync(
+    join(
+      WORKSPACE_ROOT,
+      "packages/modules/placeholder/drizzle/meta/0000_snapshot.json"
+    ),
+    "utf8"
+  );
+
+  mkdirSync(meta, { recursive: true });
+
+  const parentId = "11111111-1111-4111-8111-111111111111";
+  const leftId = "22222222-2222-4222-8222-222222222222";
+  const rightId = "33333333-3333-4333-8333-333333333333";
+
+  writeFileSync(
+    join(meta, "_journal.json"),
+    `${JSON.stringify({
+      version: "7",
+      dialect: "postgresql",
+      entries: [
+        {
+          idx: 0,
+          version: "7",
+          when: 1,
+          tag: "0000_parent",
+          breakpoints: true,
+        },
+        { idx: 1, version: "7", when: 2, tag: "0001_left", breakpoints: true },
+        { idx: 2, version: "7", when: 3, tag: "0001_right", breakpoints: true },
+      ],
+    })}\n`,
+    "utf8"
+  );
+
+  writeFileSync(
+    join(meta, "0000_parent_snapshot.json"),
+    snapshot
+      .replace("f65ec70f-c0b2-4c3c-b563-eec57c7c6437", parentId)
+      .replace(
+        "00000000-0000-0000-0000-000000000000",
+        "00000000-0000-0000-0000-000000000000"
+      ),
+    "utf8"
+  );
+  writeFileSync(
+    join(meta, "0001_left_snapshot.json"),
+    snapshot
+      .replace("f65ec70f-c0b2-4c3c-b563-eec57c7c6437", leftId)
+      .replace("00000000-0000-0000-0000-000000000000", parentId),
+    "utf8"
+  );
+  writeFileSync(
+    join(meta, "0001_right_snapshot.json"),
+    snapshot
+      .replace("f65ec70f-c0b2-4c3c-b563-eec57c7c6437", rightId)
+      .replace("00000000-0000-0000-0000-000000000000", parentId),
+    "utf8"
+  );
+
+  return root;
+}
+
+describe("the migration pull-request gate", () => {
+  it("runs one pinned migration-check script for pull requests into develop", () => {
+    const workflow = read(`${WORKFLOWS}/pull-request.yml`);
+    const migrationJob = jobsOf(workflow).get("migration-lint");
+
+    expect(workflow).toMatch(/pull_request:\n {4}branches:\n {6}- develop\n/);
+    expect(migrationJob, "a migration-lint job").toBeDefined();
+    expect(migrationJob).toMatch(
+      new RegExp(
+        `pnpm exec node ${MIGRATION_CHECK_SCRIPT.replaceAll(".", "\\.")}`
+      )
+    );
+    expect(migrationJob).toContain("origin/develop");
+    expect(migrationJob).toContain("git diff --name-only");
+    expect(migrationJob).toContain("--migration");
+    expect(migrationJob).toContain("--pg-version 18");
+    expect(migrationJob).toContain("drizzle-kit check");
+    expect(migrationJob).not.toMatch(
+      /\b(?:squawk|drizzle-kit)\s+(?:[^\n]*\s+)?(?:--|[\w./])/
+    );
+  });
+
+  it("fails a changed migration that drops a column", () => {
+    const file = migrationFixture(
+      `BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL statement_timeout = '30s';\nALTER TABLE public.example DROP COLUMN obsolete;\nCOMMIT;\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/squawk|ban-drop-column/i);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("accepts the same deliberate contract migration with a squawk-ignore comment", () => {
+    const file = migrationFixture(
+      `BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL statement_timeout = '30s';\n-- squawk-ignore ban-drop-column\nALTER TABLE public.example DROP COLUMN obsolete;\nCOMMIT;\n`
+    );
+
+    try {
+      const result = runMigrationCheck([
+        "--migration",
+        file,
+        "--pg-version",
+        "18",
+      ]);
+
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+    } finally {
+      rmSync(file, { force: true });
+      rmSync(join(file, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("rejects two snapshots that fork from one migration history parent", () => {
+    const folder = conflictingHistoryFixture();
+
+    try {
+      const result = runMigrationCheck(["--history", folder]);
+
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(
+        /drizzle-kit|prevId|history|migration history/i
+      );
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("requires reviewers to confirm the expand/contract release gap", () => {
+    const template = read(PULL_REQUEST_TEMPLATE);
+
+    expect(template).toMatch(
+      /\[[ x]\].*contract migration.*at least one release after.*expand/i
+    );
+  });
+});
 
 /**
  * R-51's CI gates, held as a wiring check.
