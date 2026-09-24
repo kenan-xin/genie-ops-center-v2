@@ -172,6 +172,7 @@ describe("the core pg-boss worker", () => {
     await context.db.$client.query(
       "insert into tenant_module (module_id, enabled) values ('placeholder', true)"
     );
+    await queue.createQueue("placeholder.read-record");
     await queue.send("placeholder.read-record", {
       label: "queued-placeholder-job",
     });
@@ -224,6 +225,7 @@ describe("the core pg-boss worker", () => {
       "insert into tenant_module (module_id, enabled) values ('startup-race', true)"
     );
     const queue = await boss(app);
+    await queue.createQueue("startup-race.read-record");
     await queue.send("startup-race.read-record", { label: "queued" });
     const held = await app.db.$client.connect();
     cleanups.push(async () => held.release());
@@ -664,6 +666,7 @@ async function expectSkippedModuleJob(input: {
 
   const queue = await boss(context);
 
+  await queue.createQueue(`${input.id}.read-record`);
   await queue.send(`${input.id}.read-record`, {
     label: "should-remain-queued",
   });
