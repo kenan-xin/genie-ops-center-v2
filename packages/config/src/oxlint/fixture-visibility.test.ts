@@ -205,7 +205,12 @@ function formatReport(cwd: string, paths: readonly string[]): string {
   }
 }
 
-const COVERED_MARKERS = ["__boundary__", "__wiring__", "__antislop__"];
+const COVERED_MARKERS = [
+  "__boundary__",
+  "__wiring__",
+  "__antislop__",
+  "__shadcn__",
+];
 
 /**
  * The two basename shapes a covered fixture takes. A suite may lead the name

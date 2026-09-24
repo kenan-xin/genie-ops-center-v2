@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "1.83.0",
+    "@shadcn/lint": "0.2.0",
     "oxlint": "1.83.0",
     "tailwindcss": "4.3.3",
     "vitest": "4.1.11"

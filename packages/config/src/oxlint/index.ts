@@ -29,11 +29,85 @@ const reservedEntrypointOverride: OxlintOverride = {
 };
 
 /**
+ * The six Tailwind design-system rules `@shadcn/lint` ships, all at error. They
+ * read JSX class strings, helper calls, and style props, so a TypeScript file
+ * with no JSX simply produces no findings.
+ */
+const shadcnDesignSystemRules: OxlintOverride["rules"] = {
+  "shadcn/no-restyle": "error",
+  "shadcn/no-raw-colors": "error",
+  "shadcn/no-arbitrary-values": "error",
+  "shadcn/no-inline-styles": "error",
+  "shadcn/no-unknown-classes": "error",
+  "shadcn/require-static-classes": "error",
+};
+
+/**
+ * Product code that renders UI, where the design-system rules apply. The
+ * arbitrary-value ban matches the fixed token layer, which forbids arbitrary
+ * pixel sizes in every component (`docs/design/design-system/tokens.md`).
+ */
+const shadcnProductOverride: OxlintOverride = {
+  files: [
+    "packages/ui/src/**",
+    "apps/genie/src/**",
+    "packages/modules/*/src/**",
+    "customers/*/app/**",
+  ],
+  rules: shadcnDesignSystemRules,
+};
+
+/**
+ * Tests, stories, and fixtures are not the shipping surface: a story sets up a
+ * state with classes the product would not ship, so the design-system rules are
+ * turned off there. This entry follows the product entry, and the last matching
+ * entry wins for a rule it sets.
+ */
+const shadcnNonProductOverride: OxlintOverride = {
+  files: [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.stories.ts",
+    "**/*.stories.tsx",
+    "**/testing/**",
+    "**/__fixtures__/**",
+  ],
+  rules: Object.fromEntries(
+    Object.keys(shadcnDesignSystemRules).map((rule) => [rule, "off"])
+  ),
+};
+
+/**
+ * The one accepted exception to the design-system rules, and the reason it is
+ * accepted. `ThemeProvider` is the story-only surface that paints the fixed
+ * token pair from `packages/ui/src/theme/tokens.ts` onto a subtree, and it does
+ * so with an inline `backgroundColor`/`color`. `shadcn/no-inline-styles` reports
+ * both. The plugin's own remedy, a Tailwind class over a CSS custom property,
+ * needs the CSS theme layer that Section 3 owns and that neither `packages/ui`
+ * nor the Storybook host builds yet; today the host loads no stylesheet, so the
+ * inline pair is the only thing that renders the surface, and the component's
+ * stories assert the rendered pair (`theme-provider.stories.tsx`). The exception
+ * is one exact file and one rule; every other file under `packages/ui/src` still
+ * gets `no-inline-styles`. Revisit with the primitive catalogue and delete this
+ * entry once the theme CSS layer lands.
+ */
+const shadcnThemeProviderException: OxlintOverride = {
+  files: ["packages/ui/src/theme/theme-provider.tsx"],
+  rules: {
+    "shadcn/no-inline-styles": "off",
+  },
+};
+
+/**
  * The one Oxlint configuration for this repository.
  *
  * The vendored anti-slop plugin lives at `packages/config/oxlint/anti-slop/`
  * with its licence and provenance beside it. The five Effect rules are not
  * registered; Effect adoption needs separate approval (Spec 0 R-5a).
+ *
+ * The `shadcn` plugin is the published `@shadcn/lint`, resolved from the
+ * workspace root, where the config that names it lives. Its `eslint` and
+ * `@typescript-eslint/parser` peers are optional and stay uninstalled.
  */
 export const sharedOxlintConfig: OxlintConfig = {
   ignorePatterns: [
@@ -61,7 +135,21 @@ export const sharedOxlintConfig: OxlintConfig = {
       name: "boundaries",
       specifier: "./packages/config/oxlint/boundaries/index.ts",
     },
+    {
+      name: "shadcn",
+      specifier: "@shadcn/lint",
+    },
   ],
+  settings: {
+    // The plugin reads `settings.shadcn`. `ui` names the design-system package
+    // prefix, so `@genie/ui` and `@genie/ui/...` imports are recognized as
+    // components. The built-in class-function list already covers `cn`,
+    // `twMerge`, `clsx` and `classNames`, so `mergeFunctions` stays unset: this
+    // repository has no custom class-merge helper to add (2026-09-24).
+    shadcn: {
+      ui: "@genie/ui",
+    },
+  },
   categories: {
     correctness: "error",
     suspicious: "error",
@@ -89,5 +177,11 @@ export const sharedOxlintConfig: OxlintConfig = {
     "anti-slop/require-readable-spacing": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
   },
-  overrides: [reservedEntrypointOverride, ...importBoundaryOverrides],
+  overrides: [
+    reservedEntrypointOverride,
+    ...importBoundaryOverrides,
+    shadcnProductOverride,
+    shadcnNonProductOverride,
+    shadcnThemeProviderException,
+  ],
 };

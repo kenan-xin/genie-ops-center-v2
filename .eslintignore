@@ -1,7 +1,7 @@
-# Transient lint fixtures. The boundary, wiring and anti-slop suites write these
-# into a real project path to prove one override glob, then delete them, while
-# other projects' lint targets scan the same tree. A scan that lists a fixture
-# and opens it after the suite removed it fails with a bare ENOENT
+# Transient lint fixtures. The boundary, wiring, anti-slop and shadcn suites
+# write these into a real project path to prove one override glob, then delete
+# them, while other projects' lint targets scan the same tree. A scan that lists
+# a fixture and opens it after the suite removed it fails with a bare ENOENT
 # (genie-ops-center-v2-64a is the typecheck face of the same race; the root
 # tsconfig excludes these markers for it).
 #
@@ -16,3 +16,4 @@
 **/*__boundary__*
 **/*__wiring__*
 **/*__antislop__*
+**/*__shadcn__*

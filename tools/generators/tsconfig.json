@@ -12,6 +12,7 @@
     "src/selection/__fixtures__/**",
     "**/*__boundary__*",
     "**/*__wiring__*",
-    "**/*__antislop__*"
+    "**/*__antislop__*",
+    "**/*__shadcn__*"
   ]
 }

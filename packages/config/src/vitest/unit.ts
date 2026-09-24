@@ -25,6 +25,7 @@ const TRANSIENT_FIXTURE_MARKERS: readonly string[] = [
   "**/*__boundary__*",
   "**/*__wiring__*",
   "**/*__antislop__*",
+  "**/*__shadcn__*",
 ];
 
 export const UNIT_TEST_EXCLUDE: readonly string[] = [

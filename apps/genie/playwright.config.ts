@@ -22,6 +22,7 @@ export default defineConfig({
     "**/*__boundary__*",
     "**/*__wiring__*",
     "**/*__antislop__*",
+    "**/*__shadcn__*",
   ],
   // Its own artifact directory beside `test-results/fixture` and
   // `test-results/dev`: the default `test-results` is their parent, and

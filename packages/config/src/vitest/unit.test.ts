@@ -55,5 +55,6 @@ describe("unitTestPreset", () => {
     expect(exclude).toContain("**/*__boundary__*");
     expect(exclude).toContain("**/*__wiring__*");
     expect(exclude).toContain("**/*__antislop__*");
+    expect(exclude).toContain("**/*__shadcn__*");
   });
 });
