@@ -23,6 +23,9 @@ const MIGRATION_CHECK_SCRIPT = "scripts/check-migrations.mjs";
 
 const PULL_REQUEST_TEMPLATE = ".github/pull_request_template.md";
 
+/** A `permissions:` block: a scope map, or the `read-all`/`write-all` shorthand. */
+type ReleasePermissions = string | Readonly<Record<string, string>>;
+
 /** One `run:` step's script and one action's `uses:`, as parsed from the YAML. */
 type ReleaseStep = {
   readonly uses?: string;
@@ -30,30 +33,34 @@ type ReleaseStep = {
 };
 
 type ReleaseJob = {
-  readonly permissions?: Readonly<Record<string, string>>;
+  readonly permissions?: ReleasePermissions;
   readonly needs?: string | readonly string[];
   readonly steps?: readonly ReleaseStep[];
 };
 
 type ReleaseWorkflow = {
+  readonly permissions?: ReleasePermissions;
   readonly jobs?: Readonly<Record<string, ReleaseJob>>;
 };
 
 /**
  * The release workflow parsed as YAML, so a test reads jobs and steps rather
- * than matching raw text: a comment or a disabled step cannot satisfy an
- * assertion (sl1 review M2).
+ * than matching raw text: a comment cannot satisfy an assertion (sl1 review
+ * M2). A negative check (no dependency command, no write grant) holds whatever
+ * a step's `if:` or `continue-on-error:` says; a positive check asserts a step
+ * exists, and a disabled one fails closed when the job runs (sl1 re-review N3).
  */
-function releaseJobs(): Readonly<Record<string, ReleaseJob>> {
+function releaseWorkflow(): ReleaseWorkflow {
   // SAFETY: `.github/workflows/release.yml` is this repository's own workflow.
-  // The fields read from it are `jobs[].permissions.packages`, `steps[].uses`
-  // and `steps[].run`, each a string or absent in this file; `read` throws when
-  // the file is missing, so a typo fails rather than passing vacuously.
-  const workflow = parseYaml(
-    read(`${WORKFLOWS}/release.yml`)
-  ) as ReleaseWorkflow;
+  // The fields read from it are the top-level and job `permissions`, each a
+  // string map or shorthand, and `steps[].uses`/`steps[].run`, each a string or
+  // absent; `read` throws when the file is missing, so a typo fails rather than
+  // passing vacuously.
+  return parseYaml(read(`${WORKFLOWS}/release.yml`)) as ReleaseWorkflow;
+}
 
-  return workflow.jobs ?? {};
+function releaseJobs(): Readonly<Record<string, ReleaseJob>> {
+  return releaseWorkflow().jobs ?? {};
 }
 
 /** The concatenated `run:` scripts of a job, for a command-presence check. */
@@ -69,8 +76,58 @@ function uses(job: ReleaseJob, action: string): readonly ReleaseStep[] {
 }
 
 // A run step that touches the package manager. `pnpm` covers `pnpm exec`; `nx`
-// catches a bare Nx invocation.
+// catches a bare Nx invocation. The publish jobs are held to the stricter
+// allowlist below, so this denylist only guards the verify jobs (sl1 re-review
+// N2).
 const DEPENDENCY_COMMAND = /\bpnpm\b|\bnx\b/;
+
+/**
+ * A `permissions:` block normalized to a domain value: `write` when it grants
+ * package write (`packages: write`, or the `write-all` shorthand), `none`
+ * otherwise, and `undefined` when no block was declared.
+ */
+function packageGrant(
+  block: ReleasePermissions | undefined
+): "write" | "none" | undefined {
+  if (block === undefined) return undefined;
+
+  // The YAML parser hands a shorthand as a string and a scope map as an object;
+  // this is the boundary that normalizes the two into one domain value.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof
+  if (typeof block === "string")
+    return block === "write-all" ? "write" : "none";
+
+  return block.packages === "write" ? "write" : "none";
+}
+
+/**
+ * The effective `packages` grant for a job: its own block when it declares one,
+ * otherwise the workflow block. `write-all` grants every scope write, and a
+ * scope absent from a map is `none` (GitHub sets unspecified scopes to none).
+ */
+function effectivePackages(
+  workflow: ReleaseWorkflow,
+  job: ReleaseJob
+): "write" | "none" | undefined {
+  return packageGrant(job.permissions ?? workflow.permissions);
+}
+
+/**
+ * The jobs that would hold a packages: write token while running dependency
+ * code: exactly the combination the split forbids. A `write-all` grant or an
+ * inherited workflow-level write counts as a write (sl1 re-review N1).
+ */
+function dependencyJobsWithPackageWrite(
+  workflow: ReleaseWorkflow
+): readonly string[] {
+  return Object.entries(workflow.jobs ?? {})
+    .filter(
+      ([, job]) =>
+        DEPENDENCY_COMMAND.test(runText(job)) &&
+        effectivePackages(workflow, job) === "write"
+    )
+    .map(([name]) => name);
+}
 
 function read(relative: string): string {
   const path = join(WORKSPACE_ROOT, relative);
@@ -1021,25 +1078,86 @@ describe("the Spec 0 CI gates", () => {
   });
 
   // genie-ops-center-v2-sl1 and -dwn: docker/login-action writes a
-  // packages:write token to ~/.docker/config.json. A job that ran pnpm install
-  // or Nx can leave a process behind that reads it, so no such job may hold the
-  // token. The release workflow is parsed as YAML and the steps are inspected
-  // structurally, so a comment, a disabled step or a `continue-on-error` step
-  // cannot satisfy these assertions (sl1 review M2).
+  // packages:write token to ~/.docker/config.json. A job that ran dependency
+  // code (pnpm install, Nx) can leave a process behind that reads it, so no
+  // such job may hold a write grant — not its own, not inherited from the
+  // workflow, and not `write-all`. The workflow is parsed as YAML (sl1 review
+  // M2); a negative check holds whatever `if:` or `continue-on-error:` a step
+  // carries, and a positive check that a disabled step would fail closed when
+  // the job runs (sl1 re-review N3).
   describe("the release credential boundary", () => {
-    it("gives packages: write to no job that runs pnpm or Nx", () => {
-      for (const [name, job] of Object.entries(releaseJobs())) {
-        if (job.permissions?.packages !== "write") continue;
+    it("gives no dependency job a package write grant", () => {
+      const workflow = releaseWorkflow();
 
-        expect(
-          runText(job),
-          `${name} holds packages: write, so it must run no pnpm or Nx command`
-        ).not.toMatch(DEPENDENCY_COMMAND);
-      }
+      expect(
+        Object.entries(workflow.jobs ?? {})
+          .filter(([, job]) => job.permissions === undefined)
+          .map(([name]) => name),
+        "every release job declares its own permissions"
+      ).toEqual([]);
+
+      expect(
+        dependencyJobsWithPackageWrite(workflow),
+        "no job that runs pnpm or Nx may hold packages: write"
+      ).toEqual([]);
     });
 
-    it("publishes from a separate job that installs nothing and only promotes", () => {
+    // A `write-all` grant is not a scope map, and a job without a block
+    // inherits the workflow's. Both slipped past the old check; this pins that
+    // the computed grant catches them (sl1 re-review N1).
+    it("catches a write-all verify job and a verify job with no block", () => {
       const jobs = releaseJobs();
+      const verify = jobs["verify-customers"];
+
+      if (verify === undefined) throw new Error("no verify-customers job");
+
+      const writeAll: ReleaseWorkflow = {
+        permissions: { contents: "read" },
+        jobs: {
+          ...jobs,
+          "verify-customers": { ...verify, permissions: "write-all" },
+        },
+      };
+
+      expect(
+        dependencyJobsWithPackageWrite(writeAll),
+        "write-all is a write grant"
+      ).toContain("verify-customers");
+
+      const noBlock: ReleaseWorkflow = {
+        permissions: { contents: "read" },
+        jobs: {
+          ...jobs,
+          "verify-customers": { steps: verify.steps ?? [] },
+        },
+      };
+
+      expect(
+        Object.entries(noBlock.jobs ?? {})
+          .filter(([, job]) => job.permissions === undefined)
+          .map(([name]) => name),
+        "an undeclared block is caught"
+      ).toContain("verify-customers");
+
+      // A job with no block inherits the workflow's grant, so a workflow-level
+      // `packages: write` reaches a dependency job that declares nothing.
+      const inherited: ReleaseWorkflow = {
+        permissions: { packages: "write" },
+        jobs: {
+          ...jobs,
+          "verify-customers": { steps: verify.steps ?? [] },
+        },
+      };
+
+      expect(
+        dependencyJobsWithPackageWrite(inherited),
+        "a workflow-level write is inherited"
+      ).toContain("verify-customers");
+    });
+
+    it("publishes from a separate job that only loads and promotes", () => {
+      const workflow = releaseWorkflow();
+      const jobs = workflow.jobs ?? {};
 
       const publishing = Object.entries(jobs).filter(
         ([, job]) => uses(job, "docker/login-action").length > 0
@@ -1048,37 +1166,64 @@ describe("the Spec 0 CI gates", () => {
       // One publish job per path: the customer matrix and the development one.
       expect(publishing.length, "one publishing job per path").toBe(2);
 
+      // The credential job's whole surface is an allowlist, not a denylist of
+      // known package managers: an unlisted action or command fails the test
+      // even if it never mentions pnpm or nx (sl1 re-review N2).
+      const ALLOWED_ACTIONS = [
+        "actions/checkout",
+        "actions/setup-node",
+        "actions/download-artifact",
+        "docker/login-action",
+      ] as const;
+
       for (const [name, job] of publishing) {
         expect(
-          job.permissions?.packages,
+          effectivePackages(workflow, job),
           `${name} holds the package grant`
         ).toBe("write");
-        // No install and no Nx: the token-holding job runs only the promote path
-        // of the release wrapper, which imports no dependency code.
-        expect(runText(job), `${name} runs no pnpm or Nx`).not.toMatch(
-          DEPENDENCY_COMMAND
+
+        const actions = (job.steps ?? []).flatMap((step) =>
+          step.uses === undefined ? [] : [step.uses]
         );
-        expect(
-          uses(job, "pnpm/action-setup").length,
-          `${name} sets up no package manager`
-        ).toBe(0);
-        expect(
-          runText(job),
-          `${name} loads the image the verify job built`
-        ).toContain("docker load");
-        expect(runText(job), `${name} promotes a verified digest`).toContain(
-          "--publish-digest"
-        );
+
+        for (const action of actions) {
+          expect(
+            ALLOWED_ACTIONS.some((allowed) => action.startsWith(allowed)),
+            `${name} uses only the allowed actions (${action})`
+          ).toBe(true);
+        }
+
+        for (const allowed of ALLOWED_ACTIONS) {
+          expect(
+            uses(job, allowed).length,
+            `${name} uses ${allowed} exactly once`
+          ).toBe(1);
+        }
+
+        for (const step of job.steps ?? []) {
+          if (step.run === undefined) continue;
+
+          const loads = /zstd -dc\b[^\n]*\|\s*docker load/.test(step.run);
+
+          const promotes =
+            step.run.includes("scripts/build-") &&
+            step.run.includes("--publish-digest");
+
+          expect(
+            loads || promotes,
+            `${name} runs only a load or a promote: ${step.run}`
+          ).toBe(true);
+        }
       }
 
-      // Every job that is not a publisher stays without a package grant.
+      // Every job that is not a publisher stays without a write grant.
       for (const [name, job] of Object.entries(jobs)) {
         if (publishing.some(([published]) => published === name)) continue;
 
         expect(
-          job.permissions?.packages,
-          `${name} holds no package grant`
-        ).toBeUndefined();
+          effectivePackages(workflow, job),
+          `${name} holds no write grant`
+        ).not.toBe("write");
       }
     });
 
@@ -1118,14 +1263,16 @@ describe("the Spec 0 CI gates", () => {
     });
 
     it("verifies with no package grant and uploads the smoked image", () => {
+      const workflow = releaseWorkflow();
+
       for (const name of ["verify-customers", "verify-development"]) {
-        const job = releaseJobs()[name];
+        const job = workflow.jobs?.[name];
 
         expect(job, `a ${name} job`).toBeDefined();
         expect(
-          job?.permissions?.packages,
-          `${name} holds no package grant`
-        ).toBeUndefined();
+          effectivePackages(workflow, job ?? {}),
+          `${name} holds no write grant`
+        ).not.toBe("write");
 
         const scripts = runText(job ?? {});
 

@@ -160,8 +160,11 @@ is testable without a workflow runner:
   (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-dwn`).
 
 `tools/workspace-validation/src/ci-workflows.test.ts` pins the triggers, the commands, the
-no-bare-push rule, and — parsing the release YAML — that no job holding `packages: write` runs
-`pnpm` or Nx and that the publish job takes the identity from the verify job.
+no-bare-push rule, and — parsing the release YAML — the credential boundary: every job
+declares its own `permissions`; the effective grant (job block, else the workflow block, with
+`write-all` counted as write) is never a write for a job that runs `pnpm` or Nx; and the
+publish jobs' whole surface is an allowlist (checkout, setup-node, download-artifact,
+login-action; a `docker load` and the `--publish-digest` promote).
 
 ## R-41 and R-21 enforcement
 
@@ -196,7 +199,20 @@ affected, alongside the existing shared-preset edge.
   credential exists only in the publish job, which runs no dependency code: the verify job
   holds no package permission, and the promote path of the release CLI loads only `node:`
   builtins (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-dwn`).
+- Release operations: `publish-customers` waits for every verify shard, so one failed customer
+  blocks every customer's publish — the release fails closed rather than publishing some
+  slugs. "Re-run failed jobs" re-runs the skipped publish shards, but only while the candidate
+  artifact still exists; its retention is one day, and after that the whole workflow must run
+  again from the tag.
 - H3 (remaining): a compromised dependency still controls the bytes the verify job builds and
-  smokes, because the gates and the build run dependency code on the verify runner. The split
-  removes the stronger capability — a `packages: write` token in that runner, able to push any
-  tag in the repository's packages — not the build-time influence.
+  smokes, because the gates and the build run dependency code on the verify runner. In the
+  customer path it also controls the identity file, and any verify shard holds
+  `ACTIONS_RUNTIME_TOKEN`, so a hostile shard can upload or replace another slug's
+  `candidate-<slug>` artifact; the promotion's config-digest check proves only that the pushed
+  image matches the identity in that artifact, not that the artifact is trustworthy. The
+  development path is stronger, because its identity comes from a job output a changed tarball
+  cannot carry. Two surfaces are new with the split: `docker load` (through the root `dockerd`)
+  and `zstd` parse untrusted input on the VM that later holds the token. The split removes the
+  stronger capability — a `packages: write` token in the verify runner, able to push any tag
+  in the repository's packages — not the build-time influence. Optional hardening: take the
+  `upload-artifact` `artifact-id` output and download by id, so a replaced artifact is refused.

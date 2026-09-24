@@ -209,12 +209,21 @@ export async function main(argv: readonly string[]): Promise<number> {
   };
 
   const outcome = await runRelease(request, spawnRunner).catch(
-    (): ReleaseOutcome => ({
-      ok: false,
-      failedStep: "run-release",
-      reason:
-        "The release run threw before it could report a failure. Nothing is published.",
-    })
+    (error: Error): ReleaseOutcome => {
+      // The promote path must not load the redactor, so the diagnostic is the
+      // error's name and code only: a message can carry a secret, and a failed
+      // `await import()` names its cause through the code.
+      const code = "code" in error ? ` (${String(error.code)})` : "";
+
+      process.stderr.write(`release run threw: ${error.name}${code}\n`);
+
+      return {
+        ok: false,
+        failedStep: "run-release",
+        reason:
+          "The release run threw before it could report a failure. Nothing is published.",
+      };
+    }
   );
 
   if (!outcome.ok) {
@@ -262,9 +271,10 @@ if (
     .then((code) => {
       process.exitCode = code;
     })
-    .catch(() => {
+    .catch((error: Error) => {
       // `main` maps a thrown pipeline run to a failed outcome; this is the last
       // line of defence for an unexpected throw, and it fails the run closed.
+      process.stderr.write(`release run threw: ${error.name}\n`);
       process.exitCode = 1;
     });
 }
