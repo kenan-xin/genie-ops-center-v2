@@ -13,6 +13,7 @@ import {
 } from "../src/lib/tenant-context/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { CORE_HISTORY, runMigrations } from "../src/services/migrator/index.ts";
+import { ModuleManagementError } from "../src/services/module-management/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
 import { startDisposablePostgres } from "./index.ts";
 
@@ -74,6 +75,15 @@ const requiredConfigurationModule: Module = {
     schema: z.object({ endpoint: z.string().url() }),
     section: { id: "required-config", title: "Required configuration" },
     fields: { endpoint: { id: "endpoint", title: "Endpoint URL" } },
+  },
+};
+
+const compiledPlaceholderModule: Module = {
+  ...validModule,
+  identity: { ...validModule.identity, id: "placeholder" },
+  schema: {
+    ...validModule.schema,
+    migrationsTable: moduleLedgerTable("placeholder"),
   },
 };
 
@@ -255,6 +265,155 @@ describe("genie-ops module lifecycle", () => {
     expectAudit(rows[0], "ops:module-disable", ["fixture"], "success");
   }, 120000);
 
+  it("module disable refuses a missing registration with one failure audit row and inserts nothing", async () => {
+    const fixture = await createFixture([compiledPlaceholderModule]);
+    const captured = outputCapture();
+
+    const exitCode = await runGenieOps(
+      ["module", "disable", "placeholder"],
+      runnerOptions(fixture, captured)
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(captured.lines.join("\n")).toContain("module-not-registered");
+    await expect(
+      fixture.observer.query(
+        "select count(*)::int as count from tenant_module where module_id = $1",
+        ["placeholder"]
+      )
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+    const rows = await auditRows(fixture.observer);
+    expect(rows).toHaveLength(1);
+    expectAudit(rows[0], "ops:module-disable", ["placeholder"], "failure");
+  }, 120000);
+
+  it("module enable refuses a missing registration with one failure audit row and inserts nothing", async () => {
+    const fixture = await createFixture([compiledPlaceholderModule]);
+    const captured = outputCapture();
+
+    const exitCode = await runGenieOps(
+      ["module", "enable", "placeholder"],
+      runnerOptions(fixture, captured)
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(captured.lines.join("\n")).toContain("module-not-registered");
+    await expect(
+      fixture.observer.query(
+        "select count(*)::int as count from tenant_module where module_id = $1",
+        ["placeholder"]
+      )
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+    const rows = await auditRows(fixture.observer);
+    expect(rows).toHaveLength(1);
+    expectAudit(rows[0], "ops:module-enable", ["placeholder"], "failure");
+  }, 120000);
+
+  it("setModuleEnabled refuses to enable an unregistered module without inserting a row", async () => {
+    const fixture = await createFixture([compiledPlaceholderModule]);
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "placeholder",
+        true
+      )
+    ).rejects.toMatchObject({ code: "module-not-registered" });
+    await expect(
+      fixture.observer.query(
+        "select count(*)::int as count from tenant_module where module_id = $1",
+        ["placeholder"]
+      )
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+  }, 120000);
+
+  it("setModuleEnabled refuses to disable an unregistered module without inserting a row", async () => {
+    const fixture = await createFixture([compiledPlaceholderModule]);
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "placeholder",
+        false
+      )
+    ).rejects.toMatchObject({ code: "module-not-registered" });
+    await expect(
+      fixture.observer.query(
+        "select count(*)::int as count from tenant_module where module_id = $1",
+        ["placeholder"]
+      )
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+  }, 120000);
+
+  it("setModuleEnabled reports transitions and preserves enabled_at on repeated enable and disable", async () => {
+    const fixture = await createFixture([validModule]);
+    await fixture.observer.query(
+      "insert into tenant_module (module_id, enabled, enabled_at) values ($1, true, $2)",
+      ["fixture", PRIOR_ENABLED_AT]
+    );
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        true
+      )
+    ).resolves.toEqual({ changed: false });
+    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
+      {
+        enabled: true,
+        enabled_at: PRIOR_ENABLED_AT,
+      }
+    );
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        false
+      )
+    ).resolves.toEqual({ changed: true });
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        false
+      )
+    ).resolves.toEqual({ changed: false });
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        true
+      )
+    ).resolves.toEqual({ changed: true });
+    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
+      {
+        enabled: true,
+        enabled_at: expect.any(Date),
+      }
+    );
+    expect(
+      (await moduleRow(fixture.observer, "fixture")).enabled_at?.getTime()
+    ).toBeGreaterThan(PRIOR_ENABLED_AT.getTime());
+  }, 120000);
+
   it("module disable prints the cause, exits nonzero, and writes one failure audit row", async () => {
     const fixture = await createFixture([validModule]);
     await fixture.observer.query("drop table tenant_module");
@@ -419,12 +578,14 @@ describe("genie-ops module lifecycle", () => {
     const { setModuleEnabled } =
       await import("../src/services/module-management/index.ts");
 
-    await setModuleEnabled(
-      fixture.context,
-      fixture.compiledModules,
-      "fixture",
-      true
-    );
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        true
+      )
+    ).resolves.toEqual({ changed: true });
     const procedureRow = await moduleRow(fixture.observer, "fixture");
 
     const captured = outputCapture();
@@ -440,6 +601,7 @@ describe("genie-ops module lifecycle", () => {
     expect(commandRow).toMatchObject({
       module_id: procedureRow.module_id,
       enabled: procedureRow.enabled,
+      enabled_at: procedureRow.enabled_at,
       config: procedureRow.config,
     });
     expect(procedureRow.enabled).toBe(true);
@@ -447,6 +609,70 @@ describe("genie-ops module lifecycle", () => {
     const rows = await auditRows(fixture.observer);
     expect(rows).toHaveLength(1);
     expectAudit(rows[0], "ops:module-enable", ["fixture"], "success");
+  }, 120000);
+
+  it("setModuleEnabled reports changes and preserves enabled_at on repeated enable and disable", async () => {
+    const fixture = await createFixture([validModule]);
+    await fixture.observer.query(
+      "insert into tenant_module (module_id, enabled, enabled_at) values ($1, true, $2)",
+      ["fixture", PRIOR_ENABLED_AT]
+    );
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        true
+      )
+    ).resolves.toEqual({ changed: false });
+    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
+      {
+        enabled: true,
+        enabled_at: PRIOR_ENABLED_AT,
+      }
+    );
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        false
+      )
+    ).resolves.toEqual({ changed: true });
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        false
+      )
+    ).resolves.toEqual({ changed: false });
+    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
+      {
+        enabled: false,
+        enabled_at: PRIOR_ENABLED_AT,
+      }
+    );
+
+    await expect(
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        true
+      )
+    ).resolves.toEqual({ changed: true });
+    const reenabled = await moduleRow(fixture.observer, "fixture");
+    expect(reenabled.enabled).toBe(true);
+    expect(reenabled.enabled_at).toBeInstanceOf(Date);
+    expect(reenabled.enabled_at?.getTime()).toBeGreaterThan(
+      PRIOR_ENABLED_AT.getTime()
+    );
   }, 120000);
 
   it("the core procedure reports stable errors and actionable issues for rejected enables", async () => {
@@ -473,17 +699,37 @@ describe("genie-ops module lifecycle", () => {
       )
     ).rejects.toMatchObject({ code: "module-not-compiled" });
 
-    await expect(
-      setModuleEnabled(
+    let validationError: ModuleManagementError | undefined;
+
+    try {
+      await setModuleEnabled(
         fixture.context,
         fixture.compiledModules,
         "required-config",
         true
-      )
-    ).rejects.toMatchObject({
-      code: "module-config-invalid",
-      message: expect.stringContaining("endpoint"),
-    });
+      );
+    } catch (caught) {
+      if (caught instanceof ModuleManagementError) validationError = caught;
+    }
+
+    expect(validationError).toBeInstanceOf(ModuleManagementError);
+    expect(validationError?.code).toBe("module-config-invalid");
+    const issues = validationError?.issues ?? [];
+    expect(issues.length).toBeGreaterThan(0);
+
+    for (const issue of issues) {
+      expect(issue).toMatchObject({
+        path: expect.any(String),
+        message: expect.any(String),
+      });
+    }
+
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        path: "endpoint",
+        message: expect.any(String),
+      })
+    );
 
     await expect(
       moduleRow(fixture.observer, "required-config")
@@ -528,6 +774,40 @@ describe("genie-ops retire", () => {
     expectAudit(rows[0], "ops:retire", [], "success");
   }, 120000);
 
+  it("retire twice keeps the original retired_at value", async () => {
+    const fixture = await createFixture([]);
+    const firstOutput = outputCapture();
+
+    expect(
+      await runGenieOps(["retire"], runnerOptions(fixture, firstOutput))
+    ).toBe(0);
+
+    const first = await fixture.observer.query<RetirementRow>(
+      "select retired_at, deletion_hold from retirement"
+    );
+
+    const firstRetiredAt = first.rows[0]?.retired_at;
+    expect(firstRetiredAt).toBeInstanceOf(Date);
+
+    const secondOutput = outputCapture();
+    expect(
+      await runGenieOps(["retire"], runnerOptions(fixture, secondOutput))
+    ).toBe(0);
+
+    const second = await fixture.observer.query<RetirementRow>(
+      "select retired_at, deletion_hold from retirement"
+    );
+
+    expect(second.rows).toHaveLength(1);
+    expect(second.rows[0]?.retired_at).toEqual(firstRetiredAt);
+    const rows = await auditRows(fixture.observer);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.metadata.outcome)).toEqual([
+      "success",
+      "success",
+    ]);
+  }, 120000);
+
   it("retire prints the cause, exits nonzero, and writes one failure audit row", async () => {
     const fixture = await createFixture([]);
     await fixture.observer.query("drop table retirement");
@@ -543,6 +823,22 @@ describe("genie-ops retire", () => {
     const rows = await auditRows(fixture.observer);
     expect(rows).toHaveLength(1);
     expectAudit(rows[0], "ops:retire", [], "failure");
+  }, 120000);
+
+  it("--confirm without a retirement row refuses with a clear cause", async () => {
+    const fixture = await createFixture([]);
+    const captured = outputCapture();
+
+    const exitCode = await runGenieOps(
+      ["retire", "--confirm"],
+      runnerOptions(fixture, captured)
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(captured.lines.join("\n")).toMatch(/no retirement row/i);
+    const rows = await auditRows(fixture.observer);
+    expect(rows).toHaveLength(1);
+    expectAudit(rows[0], "ops:retire", ["--confirm"], "failure");
   }, 120000);
 
   it("--confirm refuses before 90 days with a failure audit row and cause", async () => {
@@ -602,8 +898,40 @@ describe("genie-ops retire", () => {
     );
 
     expect(exitCode).toBe(0);
+    await expect(
+      fixture.observer.query(
+        "select module_id, enabled, config from tenant_module where module_id = $1",
+        ["retained-module"]
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          module_id: "retained-module",
+          enabled: false,
+          config: { label: "Retained" },
+        },
+      ],
+    });
+
+    const retirement = await fixture.observer.query<RetirementRow>(
+      "select retired_at, deletion_hold from retirement"
+    );
+
+    expect(retirement.rows).toHaveLength(1);
+    expect(retirement.rows[0]?.retired_at).toBeInstanceOf(Date);
+    expect(retirement.rows[0]?.deletion_hold).toBe(false);
+    await expect(
+      moduleRow(fixture.observer, "retained-module")
+    ).resolves.toMatchObject({
+      enabled: false,
+      config: { label: "Retained" },
+    });
     const rows = await auditRows(fixture.observer);
     expect(rows).toHaveLength(1);
     expectAudit(rows[0], "ops:retire", ["--confirm"], "success");
+    expect(captured.lines.join("\n")).toMatch(/checks passed/i);
+    expect(captured.lines.join("\n")).toMatch(
+      /deletion.*Section 5|Section 5.*deletion/i
+    );
   }, 120000);
 });
