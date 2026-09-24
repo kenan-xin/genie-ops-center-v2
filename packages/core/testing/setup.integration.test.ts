@@ -6,7 +6,9 @@ import { readMigrationFiles } from "drizzle-orm/migrator";
 import { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
+import type { Module } from "../src/lib/module-contract/module.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
@@ -25,7 +27,7 @@ afterEach(async () => {
 
 type SetupFixture = {
   readonly source: { DATABASE_URL: string; PUBLIC_URL: string };
-  readonly compiledModuleIds: readonly string[];
+  readonly compiledModules: readonly Module[];
   readonly histories: readonly MigrationHistory[];
   readonly observer: Client;
 };
@@ -52,6 +54,17 @@ type SetupStepRow = {
   readonly updated_at: Date;
 };
 
+function fixtureModule(): Module {
+  return {
+    ...validModule,
+    identity: { ...validModule.identity, id: "fixture" },
+    schema: {
+      ...validModule.schema,
+      migrationsTable: moduleLedgerTable("fixture"),
+    },
+  };
+}
+
 async function setupFixture(): Promise<SetupFixture> {
   const postgres = await startDisposablePostgres();
   const observer = new Client({ connectionString: postgres.url });
@@ -68,11 +81,11 @@ async function setupFixture(): Promise<SetupFixture> {
     PUBLIC_URL: "https://test.example.invalid",
   };
 
-  const compiledModuleIds = ["fixture"];
+  const compiledModules = [fixtureModule()];
 
   return {
     source,
-    compiledModuleIds,
+    compiledModules,
     histories: [await history("fixture", "select 1;")],
     observer,
   };
@@ -192,7 +205,7 @@ function setupOptions(
 ) {
   return {
     source: fixture.source,
-    compiledModuleIds: fixture.compiledModuleIds,
+    compiledModules: fixture.compiledModules,
     histories: fixture.histories,
     ...captured,
   };
@@ -445,14 +458,16 @@ describe("genie-ops setup", () => {
     const migrationContext = createTenantContext(
       fixture.source,
       silentLogger(),
-      fixture.compiledModuleIds
+      fixture.compiledModules.map((module) => module.identity.id)
     );
 
     await runMigrations({
       env: migrationContext.env,
       pool: migrationContext.db.$client,
       histories: migrationPlan(fixture.histories),
-      compiledModuleIds: fixture.compiledModuleIds,
+      compiledModuleIds: fixture.compiledModules.map(
+        (module) => module.identity.id
+      ),
     });
     await migrationContext.db.$client.end();
     await fixture.observer.query(`

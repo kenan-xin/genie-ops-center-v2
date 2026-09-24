@@ -141,4 +141,26 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "genie-ops setup writes the migration failure to command output when audit_event does not exist",
     ],
   },
+  {
+    file: "testing/module-lifecycle.integration.test.ts",
+    reason:
+      "Spec 1 AC-13, AC-17, AC-19a and R-67-R-69, R-76 require the module activation and retirement command contracts to run",
+    cases: [
+      "genie-ops module lifecycle module enable writes one success audit row and enables a no-required-config module only after explicit enable",
+      "genie-ops module lifecycle module disable writes one success audit row and disables the module",
+      "genie-ops module lifecycle module disable prints the cause, exits nonzero, and writes one failure audit row",
+      "genie-ops module lifecycle module disable skips required-configuration validation",
+      "genie-ops module lifecycle module enable refuses a module that is not compiled in with one failure audit row",
+      "genie-ops module lifecycle module enable refuses missing required configuration without changing the disabled row",
+      "genie-ops module lifecycle module enable refuses invalid required configuration with actionable issues and without changing the disabled row",
+      "genie-ops module lifecycle module enable activates a module with valid required configuration",
+      "genie-ops module lifecycle setModuleEnabled writes the same tenant_module row as the module enable command",
+      "genie-ops module lifecycle the core procedure reports stable errors and actionable issues for rejected enables",
+      "genie-ops retire writes one retirement row and leaves tenant data in place",
+      "genie-ops retire retire prints the cause, exits nonzero, and writes one failure audit row",
+      "genie-ops retire --confirm refuses before 90 days with a failure audit row and cause",
+      "genie-ops retire --confirm refuses while deletion_hold is set with a failure audit row and cause",
+      "genie-ops retire --confirm passes the age and hold checks after 90 days",
+    ],
+  },
 ];
