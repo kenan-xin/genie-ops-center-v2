@@ -344,6 +344,9 @@ importers:
       '@genie/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@genie/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@genie/generators':
         specifier: workspace:*
         version: link:../../tools/generators

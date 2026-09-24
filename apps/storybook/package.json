@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "@genie/core": "workspace:*",
     "@genie/generators": "workspace:*",
     "@storybook/addon-a11y": "10.6.0",
     "@storybook/addon-docs": "10.6.0",
