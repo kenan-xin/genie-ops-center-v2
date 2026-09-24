@@ -122,6 +122,13 @@ export {
 } from "./services/integrations/index.ts";
 
 export {
+  type ModuleConfigIssue,
+  ModuleManagementError,
+  type ModuleManagementErrorCode,
+  setModuleEnabled,
+} from "./services/module-management/index.ts";
+
+export {
   type LogBindings,
   type RedactingLogger,
   createLogger,

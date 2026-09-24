@@ -5,6 +5,7 @@ import {
   type EnvironmentSource,
   validateEnvironment,
 } from "../../lib/environment/index.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
 import {
   type TenantContext,
   createTenantContext,
@@ -18,21 +19,24 @@ import {
   migrationPlan,
   runMigrations,
 } from "../migrator/index.ts";
+import { setModuleEnabled } from "../module-management/index.ts";
+import { runRetire } from "../retirement/index.ts";
 import { runSetup } from "../setup/index.ts";
 
 /**
- * What one `genie-ops` run reads and writes. The source is the process environment, the module
- * ids are the ones the image compiled, the histories are the module histories only, and the two
+ * What one `genie-ops` run reads and writes. The source is the process environment, the modules
+ * are the ones the image compiled, the histories are the module histories only, and the two
  * sinks are the command's own stdout and stderr.
  */
 export type GenieOpsOptions = {
   /** The environment the tenant context is built from, validated before anything connects. */
   readonly source: EnvironmentSource;
   /**
-   * The module ids the image compiled, passed unchanged to the context and the migrator run, so
-   * the two cannot disagree and no caller holds a second copy (D-12).
+   * The modules the image compiled. The runner derives the ids from these once and passes that
+   * one list to the context, the migrator run and the module commands, so nothing holds a second
+   * copy and the readers cannot disagree (D-12).
    */
-  readonly compiledModuleIds: readonly string[];
+  readonly compiledModules: readonly Module[];
   /** The module histories only; core's history is prepended by the run (R-25). */
   readonly histories: readonly MigrationHistory[];
   /** Where ordinary progress and the audit fallback go. */
@@ -44,7 +48,12 @@ export type GenieOpsOptions = {
 /** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
  * command bound to the parsed option values. */
 type ParsedCommand = {
-  readonly name: "migrate" | "setup";
+  readonly name:
+    | "migrate"
+    | "setup"
+    | "module-enable"
+    | "module-disable"
+    | "retire";
   readonly args: readonly string[];
   readonly run: (
     context: TenantContext,
@@ -58,7 +67,7 @@ type ParsedCommand = {
  * value can be a secret an operator pasted by mistake (D-4, R-66).
  */
 const PARSE_REFUSAL =
-  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>";
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm]";
 
 /** `redact` answers the same string for a string, which is what every sink here writes. */
 function safe(text: string): string {
@@ -92,7 +101,8 @@ export function osUserName(
  */
 function parseCommand(
   command: string | undefined,
-  rest: readonly string[]
+  rest: readonly string[],
+  compiledModuleIds: readonly string[]
 ): ParsedCommand {
   switch (command) {
     case "migrate": {
@@ -106,7 +116,12 @@ function parseCommand(
         allowPositionals: false,
       });
 
-      return { name: "migrate", args: [], run: runMigrate };
+      return {
+        name: "migrate",
+        args: [],
+        run: (context, options) =>
+          runMigrate(context, options, compiledModuleIds),
+      };
     }
 
     case "setup": {
@@ -134,9 +149,62 @@ function parseCommand(
           runSetup(
             context,
             { tenantConfig, brandingSeed },
-            options,
+            {
+              compiledModuleIds,
+              histories: options.histories,
+              output: options.output,
+              errorOutput: options.errorOutput,
+            },
             commandLog(options)
           ),
+      };
+    }
+
+    case "module": {
+      // `enable|disable <module-id>` takes exactly two positionals and no options. Strict mode
+      // rejects an unknown option; the length and value checks reject anything else, and every
+      // failure is the one generic refusal, so the rejected value never reaches the output.
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, moduleId, ...extra] = positionals;
+
+      if (
+        moduleId === undefined ||
+        extra.length > 0 ||
+        (subcommand !== "enable" && subcommand !== "disable")
+      ) {
+        throw new Error("unknown module subcommand");
+      }
+
+      const enabled = subcommand === "enable";
+
+      return {
+        name: enabled ? "module-enable" : "module-disable",
+        args: [moduleId],
+        run: (context, options) =>
+          setModuleEnabled(context, options.compiledModules, moduleId, enabled),
+      };
+    }
+
+    case "retire": {
+      const { values } = parseArgs({
+        args: [...rest],
+        options: { confirm: { type: "boolean" } },
+        strict: true,
+        allowPositionals: false,
+      });
+
+      const confirm = values.confirm === true;
+
+      return {
+        name: "retire",
+        args: confirm ? ["--confirm"] : [],
+        run: (context) => runRetire(context, confirm),
       };
     }
 
@@ -177,13 +245,14 @@ function commandLog(options: GenieOpsOptions): MigrationLog {
 /** Runs `migrate` through the migrator run of R-9, with the one compiled list (D-12). */
 async function runMigrate(
   context: TenantContext,
-  options: GenieOpsOptions
+  options: GenieOpsOptions,
+  compiledModuleIds: readonly string[]
 ): Promise<void> {
   await runMigrations({
     env: context.env,
     pool: context.db.$client,
     histories: migrationPlan(options.histories),
-    compiledModuleIds: options.compiledModuleIds,
+    compiledModuleIds,
     log: commandLog(options),
   });
 }
@@ -204,10 +273,16 @@ export async function runGenieOps(
 ): Promise<number> {
   const [command, ...rest] = argv;
 
+  // D-12: the one caller-supplied module list, derived once here and passed unchanged to the
+  // context, the migrator run and the module commands, so nothing can hold a second copy.
+  const compiledModuleIds = options.compiledModules.map(
+    (module) => module.identity.id
+  );
+
   let parsed: ParsedCommand;
 
   try {
-    parsed = parseCommand(command, rest);
+    parsed = parseCommand(command, rest, compiledModuleIds);
   } catch {
     // D-4: no context, no audit row, and never the rejected value.
     options.errorOutput(PARSE_REFUSAL);
@@ -226,7 +301,7 @@ export async function runGenieOps(
     context = createTenantContext(
       options.source,
       createLogger(env),
-      options.compiledModuleIds
+      compiledModuleIds
     );
   } catch (caught) {
     // The environment is validated before anything connects, so a bad one is a refusal, not a
