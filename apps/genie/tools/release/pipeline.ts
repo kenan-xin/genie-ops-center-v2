@@ -3,8 +3,11 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { redact } from "@genie/core";
-import { readModuleInventory, readModulesFile } from "@genie/generators";
+// `@genie/core` and `@genie/generators` are loaded with `await import()` in the
+// build path only (genie-ops-center-v2-dwn). A promote run — a verified identity
+// handed over from the verify job — must import nothing but `node:` builtins, so
+// the job that holds the registry credential never executes dependency code at
+// import time. A static import here would load ~25 packages into that job.
 
 /** One command the pipeline runs, with its working directory and environment. */
 export type CommandRunner = (
@@ -128,25 +131,22 @@ function tailLines(text: string, lines: number): string {
 
 /**
  * A failed gate's captured stdout and stderr, each bounded to its own trailing
- * lines and redacted.
+ * lines. The caller redacts the result with the build path's `redact`, so no
+ * credential a gate printed (a database url, a token) reaches the release log.
  *
  * Each stream is bounded on its own so a long stdout cannot push a short
- * stderr's cause out of the log. The result runs through the logger's redaction
- * rule, so a credential a gate printed (a database url, a token) never reaches
- * the release log.
+ * stderr's cause out of the log.
  */
 function gateOutputTail(result: {
   readonly stdout: string;
   readonly stderr: string;
 }): string {
-  const tail = [
+  return [
     tailLines(result.stdout, GATE_OUTPUT_TAIL_LINES),
     tailLines(result.stderr, GATE_OUTPUT_TAIL_LINES),
   ]
     .filter((part) => part.trim() !== "")
     .join("\n");
-
-  return String(redact(tail));
 }
 
 /**
@@ -194,10 +194,41 @@ function fail(
  * This function never touches a registry by itself: publishing is a separate,
  * authorized step, and a local sink replaces it exactly here.
  */
-export function runRelease(
+export async function runRelease(
   request: ReleaseRequest,
   runner: CommandRunner
-): ReleaseOutcome {
+): Promise<ReleaseOutcome> {
+  // The development fallback is never published under a customer's name.
+  const label =
+    request.developmentFallback === true ? "development" : request.slug;
+
+  // A prior verify run already gated, built and smoked this exact identity, so
+  // publish it without touching the gates, the build or the smoke again. The
+  // release workflow splits the two runs so the registry credential exists only
+  // for the publish job (genie-ops-center-v2-sl1). This branch runs before the
+  // workspace imports below and `publish()` uses neither the include list nor a
+  // package, so a promote run imports only `node:` builtins
+  // (genie-ops-center-v2-dwn).
+  if (request.verifiedIdentity !== undefined) {
+    if (!IMMUTABLE_IDENTITY.test(request.verifiedIdentity)) {
+      return fail(
+        "resolve-identity",
+        `The verified identity "${request.verifiedIdentity}" is not an immutable digest, so it cannot be published. This fails closed.`
+      );
+    }
+
+    return request.publish
+      ? publish(request, request.verifiedIdentity, label, {}, runner)
+      : { ok: true, identity: request.verifiedIdentity };
+  }
+
+  // The build path is the only path that needs the workspace packages, so it is
+  // the only one that loads them. `await import()` keeps them out of the
+  // promote path's module graph; at this point the run has already passed the
+  // verified-identity branch above.
+  const [{ redact }, { readModuleInventory, readModulesFile }] =
+    await Promise.all([import("@genie/core"), import("@genie/generators")]);
+
   let include: string;
 
   if (request.developmentFallback === true) {
@@ -229,27 +260,6 @@ export function runRelease(
   }
 
   const env = { MODULE_INCLUDE: include };
-
-  // The development fallback is never published under a customer's name.
-  const label =
-    request.developmentFallback === true ? "development" : request.slug;
-
-  // A prior verify run already gated, built and smoked this exact identity, so
-  // publish it without touching the gates, the build or the smoke again. The
-  // release workflow splits the two runs so the registry credential exists only
-  // for the publish step (genie-ops-center-v2-sl1).
-  if (request.verifiedIdentity !== undefined) {
-    if (!IMMUTABLE_IDENTITY.test(request.verifiedIdentity)) {
-      return fail(
-        "resolve-identity",
-        `The verified identity "${request.verifiedIdentity}" is not an immutable digest, so it cannot be published. This fails closed.`
-      );
-    }
-
-    return request.publish
-      ? publish(request, request.verifiedIdentity, label, env, runner)
-      : { ok: true, identity: request.verifiedIdentity };
-  }
 
   // The effective excluded set, so the candidate smoke can prove the excluded
   // modules have no route, table or ledger and no artifact in this exact image.
@@ -286,7 +296,7 @@ export function runRelease(
       return fail(
         step,
         `${gateLabel} failed with exit ${result.status}. The candidate is not built and nothing is published.`,
-        gateOutputTail(result)
+        String(redact(gateOutputTail(result)))
       );
     }
   }

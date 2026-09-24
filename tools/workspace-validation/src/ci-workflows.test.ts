@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
@@ -21,6 +22,55 @@ const WORKFLOWS = ".github/workflows";
 const MIGRATION_CHECK_SCRIPT = "scripts/check-migrations.mjs";
 
 const PULL_REQUEST_TEMPLATE = ".github/pull_request_template.md";
+
+/** One `run:` step's script and one action's `uses:`, as parsed from the YAML. */
+type ReleaseStep = {
+  readonly uses?: string;
+  readonly run?: string;
+};
+
+type ReleaseJob = {
+  readonly permissions?: Readonly<Record<string, string>>;
+  readonly needs?: string | readonly string[];
+  readonly steps?: readonly ReleaseStep[];
+};
+
+type ReleaseWorkflow = {
+  readonly jobs?: Readonly<Record<string, ReleaseJob>>;
+};
+
+/**
+ * The release workflow parsed as YAML, so a test reads jobs and steps rather
+ * than matching raw text: a comment or a disabled step cannot satisfy an
+ * assertion (sl1 review M2).
+ */
+function releaseJobs(): Readonly<Record<string, ReleaseJob>> {
+  // SAFETY: `.github/workflows/release.yml` is this repository's own workflow.
+  // The fields read from it are `jobs[].permissions.packages`, `steps[].uses`
+  // and `steps[].run`, each a string or absent in this file; `read` throws when
+  // the file is missing, so a typo fails rather than passing vacuously.
+  const workflow = parseYaml(
+    read(`${WORKFLOWS}/release.yml`)
+  ) as ReleaseWorkflow;
+
+  return workflow.jobs ?? {};
+}
+
+/** The concatenated `run:` scripts of a job, for a command-presence check. */
+function runText(job: ReleaseJob): string {
+  return (job.steps ?? []).map((step) => step.run ?? "").join("\n");
+}
+
+/** The steps of a job that use an action, matched by its `owner/repo` prefix. */
+function uses(job: ReleaseJob, action: string): readonly ReleaseStep[] {
+  return (job.steps ?? []).filter(
+    (step) => step.uses?.startsWith(action) ?? false
+  );
+}
+
+// A run step that touches the package manager. `pnpm` covers `pnpm exec`; `nx`
+// catches a bare Nx invocation.
+const DEPENDENCY_COMMAND = /\bpnpm\b|\bnx\b/;
 
 function read(relative: string): string {
   const path = join(WORKSPACE_ROOT, relative);
@@ -970,85 +1020,131 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).not.toMatch(/origin\/main/);
   });
 
-  // genie-ops-center-v2-sl1: docker/login-action writes a packages:write token
-  // to ~/.docker/config.json. It used to run before every gate, the build and
-  // the smoke, so any compromised dependency could push any image. It now runs
-  // only after a --no-publish run has gated, built and smoked the candidate,
-  // and the publish step promotes the identity that run wrote out.
-  it("holds the registry credential only for the publish step, after the smoke", () => {
-    const workflow = read(`${WORKFLOWS}/release.yml`);
+  // genie-ops-center-v2-sl1 and -dwn: docker/login-action writes a
+  // packages:write token to ~/.docker/config.json. A job that ran pnpm install
+  // or Nx can leave a process behind that reads it, so no such job may hold the
+  // token. The release workflow is parsed as YAML and the steps are inspected
+  // structurally, so a comment, a disabled step or a `continue-on-error` step
+  // cannot satisfy these assertions (sl1 review M2).
+  describe("the release credential boundary", () => {
+    it("gives packages: write to no job that runs pnpm or Nx", () => {
+      for (const [name, job] of Object.entries(releaseJobs())) {
+        if (job.permissions?.packages !== "write") continue;
 
-    const publishing = [...jobsOf(workflow).entries()].filter(([, job]) =>
-      job.includes("docker/login-action")
-    );
-
-    expect(publishing.length, "at least one publishing job").toBeGreaterThan(0);
-
-    for (const [name, job] of publishing) {
-      const verifyAt = job.indexOf("--no-publish");
-      const loginAt = job.indexOf("docker/login-action");
-      const publishAt = job.indexOf("--publish-digest");
-
-      expect(verifyAt, `${name} verifies with --no-publish`).toBeGreaterThan(
-        -1
-      );
-      expect(
-        publishAt,
-        `${name} publishes with --publish-digest`
-      ).toBeGreaterThan(-1);
-      expect(loginAt, `${name} logs in after the smoke`).toBeGreaterThan(
-        verifyAt
-      );
-      expect(
-        publishAt,
-        `${name} publishes only after the login`
-      ).toBeGreaterThan(loginAt);
-    }
-  });
-
-  // genie-ops-center-v2-dwn (sl1 review M1): a process that survives a step
-  // boundary can read the packages:write token from ~/.docker/config.json once
-  // the login writes it, or move the identity file the publish step reads. The
-  // preferred fix — a separate publish job with no install and no Nx — cannot
-  // promote the smoke-tested image: it exists only in the verify job's local
-  // image store (`docker tag` needs it locally; `buildx imagetools create`
-  // needs a registry source), and the wrapper imports workspace packages, so it
-  // needs node_modules to run. The bead's second fix is pinned here: before any
-  // credential appears, stop the Nx daemon (long-lived by design) and kill the
-  // processes this job orphaned — reparented to init, which is exactly what a
-  // lifecycle script detaches with `setsid`/`nohup`.
-  it("stops the Nx daemon and kills leftover processes before the registry login", () => {
-    const workflow = read(`${WORKFLOWS}/release.yml`);
-
-    const publishing = [...jobsOf(workflow).entries()].filter(([, job]) =>
-      job.includes("docker/login-action")
-    );
-
-    expect(publishing.length, "at least one publishing job").toBeGreaterThan(0);
-
-    for (const [name, job] of publishing) {
-      const verifyAt = job.indexOf("--no-publish");
-      const loginAt = job.indexOf("docker/login-action");
-      const daemonAt = job.indexOf("nx reset");
-      const sweepAt = job.indexOf("ps -eo pid=,ppid=");
-
-      expect(verifyAt, `${name} verifies with --no-publish`).toBeGreaterThan(
-        -1
-      );
-      expect(loginAt, `${name} logs in after the smoke`).toBeGreaterThan(
-        verifyAt
-      );
-
-      // Both sweeps run after the smoke and before the token is written, so the
-      // daemon and every leftover process are gone when the credential lands.
-      for (const [label, at] of [
-        ["stops the Nx daemon", daemonAt],
-        ["kills leftover processes", sweepAt],
-      ] as const) {
-        expect(at, `${name} ${label}`).toBeGreaterThan(verifyAt);
-        expect(at, `${name} ${label}`).toBeLessThan(loginAt);
+        expect(
+          runText(job),
+          `${name} holds packages: write, so it must run no pnpm or Nx command`
+        ).not.toMatch(DEPENDENCY_COMMAND);
       }
-    }
+    });
+
+    it("publishes from a separate job that installs nothing and only promotes", () => {
+      const jobs = releaseJobs();
+
+      const publishing = Object.entries(jobs).filter(
+        ([, job]) => uses(job, "docker/login-action").length > 0
+      );
+
+      // One publish job per path: the customer matrix and the development one.
+      expect(publishing.length, "one publishing job per path").toBe(2);
+
+      for (const [name, job] of publishing) {
+        expect(
+          job.permissions?.packages,
+          `${name} holds the package grant`
+        ).toBe("write");
+        // No install and no Nx: the token-holding job runs only the promote path
+        // of the release wrapper, which imports no dependency code.
+        expect(runText(job), `${name} runs no pnpm or Nx`).not.toMatch(
+          DEPENDENCY_COMMAND
+        );
+        expect(
+          uses(job, "pnpm/action-setup").length,
+          `${name} sets up no package manager`
+        ).toBe(0);
+        expect(
+          runText(job),
+          `${name} loads the image the verify job built`
+        ).toContain("docker load");
+        expect(runText(job), `${name} promotes a verified digest`).toContain(
+          "--publish-digest"
+        );
+      }
+
+      // Every job that is not a publisher stays without a package grant.
+      for (const [name, job] of Object.entries(jobs)) {
+        if (publishing.some(([published]) => published === name)) continue;
+
+        expect(
+          job.permissions?.packages,
+          `${name} holds no package grant`
+        ).toBeUndefined();
+      }
+    });
+
+    it("hands the published identity over from the verify job, never a shared temp file", () => {
+      const jobs = releaseJobs();
+
+      // The single development job has one verify instance, so GitHub can carry
+      // its identity as a job output — bound by the runner, not a file the
+      // publish job re-reads from a shared lane.
+      const developmentPublish = JSON.stringify(
+        jobs["publish-development"]?.steps ?? []
+      );
+
+      expect(
+        developmentPublish,
+        "the development publish reads the verify job output"
+      ).toContain("needs.verify-development.outputs.identity");
+      expect(
+        developmentPublish,
+        "the development publish re-reads no shared temp file"
+      ).not.toContain("RUNNER_TEMP");
+
+      // The customer path is a matrix, and GitHub resolves a matrix job's
+      // `outputs` to the last instance that finished, so a per-slug identity
+      // cannot be a job output. It travels in the artifact the verify job
+      // uploaded, which the matching publish job downloads.
+      const customerPublish = jobs["publish-customers"] ?? {};
+
+      expect(
+        uses(customerPublish, "actions/download-artifact").length,
+        "the customer publish downloads the verify artifact"
+      ).toBe(1);
+      expect(
+        runText(customerPublish),
+        "the customer publish reads the identity the verify job wrote"
+      ).toContain("candidate/identity");
+    });
+
+    it("verifies with no package grant and uploads the smoked image", () => {
+      for (const name of ["verify-customers", "verify-development"]) {
+        const job = releaseJobs()[name];
+
+        expect(job, `a ${name} job`).toBeDefined();
+        expect(
+          job?.permissions?.packages,
+          `${name} holds no package grant`
+        ).toBeUndefined();
+
+        const scripts = runText(job ?? {});
+
+        expect(scripts, `${name} smokes without publishing`).toContain(
+          "--no-publish"
+        );
+        expect(scripts, `${name} writes the smoked identity`).toContain(
+          "--identity-out candidate/identity"
+        );
+        expect(scripts, `${name} saves the smoked image`).toContain(
+          "docker save"
+        );
+        expect(
+          uses(job ?? {}, "actions/upload-artifact").length,
+          `${name} uploads the candidate`
+        ).toBe(1);
+        expect(scripts, `${name} never logs in`).not.toContain("docker/login");
+      }
+    });
   });
 
   // genie-ops-center-v2-sl1 (M5): a retagged third-party action in a
@@ -1208,7 +1304,10 @@ describe("the Spec 0 CI gates", () => {
   // launch Chromium, so every job that runs gates installs the pinned browser after
   // the dependencies and before the gates (genie-ops-center-v2-1rd.12.2).
   it("installs the pinned Playwright Chromium before any gate runs", () => {
-    const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
+    // A gate is the pull-request ci run or a release verify build. The
+    // `--no-publish` build is the verify job's; the publish job's
+    // `--publish-digest` promote is not a gate and installs no browser.
+    const gate = /run: pnpm run ci:|run: scripts\/build-[^\n]*--no-publish/;
 
     // pull-request and release keep one serial gate job each, so the install
     // still precedes that single gate.
@@ -1292,7 +1391,10 @@ describe("the Spec 0 CI gates", () => {
   // 35865015903). Every job that runs gates frees the preinstalled toolchains
   // first (genie-ops-center-v2-1rd.12.2).
   it("frees runner disk space before any gate runs", () => {
-    const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
+    // A gate is the pull-request ci run or a release verify build. The
+    // `--no-publish` build is the verify job's; the publish job's
+    // `--publish-digest` promote is not a gate and installs no browser.
+    const gate = /run: pnpm run ci:|run: scripts\/build-[^\n]*--no-publish/;
 
     // pull-request and release keep one serial gate job each, so the cleanup
     // still precedes that single gate.

@@ -52,12 +52,17 @@ Decisions:
   and refuses to fall back to the default when the file is missing. The R-55 development
   fallback is a separate flag and a separate wrapper script, and it publishes under a
   `development` tag, never a customer name.
-- **The registry credential appears only after the smoke (`genie-ops-center-v2-sl1`).** The
-  release workflow runs the wrapper with `--no-publish` first: the gates, the build and the
-  smoke run with no credential on disk, and the wrapper writes the smoked identity out with
-  `--identity-out`. Only then does `docker/login-action` write the `packages:write` token, and
-  a `--publish-digest` run promotes exactly that identity. No dependency or test runs while the
-  token exists.
+- **The registry credential lives in a job that runs no dependency code
+  (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-dwn`).** A verify job runs the wrapper
+  with `--no-publish`: the gates, the build and the smoke run with no package permission at
+  all, and the wrapper records the smoked identity with `--identity-out`. It saves the built
+  image to a short-lived artifact. A separate publish job, which holds `packages: write` and
+  runs no `pnpm install` and no Nx, downloads that artifact, loads the image, runs
+  `docker/login-action`, and promotes the recorded identity with `--publish-digest`. Because
+  the promote path of the release CLI imports only `node:` builtins, no dependency code runs
+  on the runner that holds the token. The identity comes from the verify job: a job output
+  for the single development path, and the per-slug artifact for the customer matrix, whose
+  job outputs GitHub resolves to the last instance that finished.
 - **A tag publishes only from a green develop run (`genie-ops-center-v2-sl1`).** The release
   workflow's `discover` job refuses the run unless `gh run list --workflow develop.yml
   --commit "$GITHUB_SHA" --status success` finds a successful run for the tagged commit, and
@@ -144,17 +149,19 @@ is testable without a workflow runner:
   (`genie-ops-center-v2-453`). Same targets, same proof.
 - `ci:develop` — `ci:pr` plus the full Playwright fixture suite at both viewports.
 - `release.yml` — refuses a tag whose commit has no green `develop` run, discovers
-  `customers/*/deploy/modules.txt`, runs the customer wrapper per slug (or the development
-  wrapper when none exists) with `--no-publish`, stops the Nx daemon and kills the processes
-  the job orphaned, logs in to GHCR, and promotes the smoked identity with `--publish-digest`.
-  No workflow contains a bare `docker push`; the wrapper is the only publisher, and the
-  credential exists only in the publish step (`genie-ops-center-v2-sl1`). The pre-login sweep
-  removes the long-lived processes — the Nx daemon and anything a lifecycle script detached —
-  that a same-job publish would otherwise leave able to read the token or move the identity
-  (`genie-ops-center-v2-dwn`).
+  `customers/*/deploy/modules.txt`, and splits each path into a verify job and a publish job.
+  The verify job (no package permission) runs the customer wrapper per slug (or the
+  development wrapper when none exists) with `--no-publish`, saves the image with
+  `docker save | zstd`, and uploads it as a short-retention artifact. The publish job holds
+  `packages: write`, runs checkout and `setup-node` but no install and no Nx, downloads the
+  artifact, `docker load`s it, logs in to GHCR, and promotes the smoked identity with
+  `--publish-digest`. No workflow contains a bare `docker push`; the wrapper is the only
+  publisher, and the credential exists only in the publish job
+  (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-dwn`).
 
-`tools/generators/src/workspace/validate/ci-workflows.test.ts` pins the triggers, the
-commands and the no-bare-push rule.
+`tools/workspace-validation/src/ci-workflows.test.ts` pins the triggers, the commands, the
+no-bare-push rule, and — parsing the release YAML — that no job holding `packages: write` runs
+`pnpm` or Nx and that the publish job takes the identity from the verify job.
 
 ## R-41 and R-21 enforcement
 
@@ -186,7 +193,10 @@ affected, alongside the existing shared-preset edge.
   registry as an extra, run-unique tag: the release attempts no registry delete, so it depends
   on no second, separately authorized mutation.
 - Real GHCR authentication and push remain separately authorized. Nothing here pushed. The
-  credential exists only in the publish step, after the gates, the build and the smoke
-  (`genie-ops-center-v2-sl1`), and only after the job stops the Nx daemon and kills the
-  processes it orphaned, so no long-lived install or build process can read it
-  (`genie-ops-center-v2-dwn`).
+  credential exists only in the publish job, which runs no dependency code: the verify job
+  holds no package permission, and the promote path of the release CLI loads only `node:`
+  builtins (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-dwn`).
+- H3 (remaining): a compromised dependency still controls the bytes the verify job builds and
+  smokes, because the gates and the build run dependency code on the verify runner. The split
+  removes the stronger capability — a `packages: write` token in that runner, able to push any
+  tag in the repository's packages — not the build-time influence.

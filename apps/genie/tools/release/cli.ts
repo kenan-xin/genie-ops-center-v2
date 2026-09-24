@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import {
   runRelease,
   type CommandRunner,
+  type ReleaseOutcome,
   type ReleaseRequest,
 } from "./pipeline.ts";
 
@@ -192,7 +193,7 @@ export function parseArgv(
   };
 }
 
-export function main(argv: readonly string[]): number {
+export async function main(argv: readonly string[]): Promise<number> {
   const parsed = parseArgv(argv, process.env);
 
   const request: ReleaseRequest = {
@@ -207,7 +208,14 @@ export function main(argv: readonly string[]): number {
     verifiedIdentity: parsed.verifiedIdentity,
   };
 
-  const outcome = runRelease(request, spawnRunner);
+  const outcome = await runRelease(request, spawnRunner).catch(
+    (): ReleaseOutcome => ({
+      ok: false,
+      failedStep: "run-release",
+      reason:
+        "The release run threw before it could report a failure. Nothing is published.",
+    })
+  );
 
   if (!outcome.ok) {
     // The gate's own output, bounded and redacted, comes first so the status
@@ -250,5 +258,13 @@ if (
   // stderr are asynchronous, and `process.exit` discards whatever has not
   // flushed yet. A failed gate's tail is large, so exiting here would cut off
   // both the tail and the status line that follows it.
-  process.exitCode = main(process.argv.slice(2));
+  main(process.argv.slice(2))
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch(() => {
+      // `main` maps a thrown pipeline run to a failed outcome; this is the last
+      // line of defence for an unexpected throw, and it fails the run closed.
+      process.exitCode = 1;
+    });
 }

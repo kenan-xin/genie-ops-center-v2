@@ -11,7 +11,8 @@
   "devDependencies": {
     "@genie/generators": "workspace:*",
     "oxlint": "1.83.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "yaml": "2.9.0"
   },
   "nx": {
     "tags": [

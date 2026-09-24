@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -174,11 +176,11 @@ afterEach(() => {
 });
 
 describe("the customer image release pipeline", () => {
-  it("reads modules.txt, builds that exact selection, and pushes the smoke-tested identity", () => {
+  it("reads modules.txt, builds that exact selection, and pushes the smoke-tested identity", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(true);
 
@@ -225,11 +227,11 @@ describe("the customer image release pipeline", () => {
     expect(smoke?.env?.GENIE_SMOKE_EXCLUDED).toBe("");
   });
 
-  it("resolves the identity from the build's iidfile and removes the temp file", () => {
+  it("resolves the identity from the build's iidfile and removes the temp file", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(true);
     expect(outcome.identity).toBe(IDENTITY);
@@ -263,12 +265,12 @@ describe("the customer image release pipeline", () => {
     expect(existsSync(iidPath)).toBe(false);
   });
 
-  it("changes the build argument when the customer's modules.txt changes", () => {
+  it("changes the build argument when the customer's modules.txt changes", async () => {
     const first = recordingRunner();
     const second = recordingRunner();
 
-    runRelease(request(repoWithModules("placeholder\n")), first.runner);
-    runRelease(request(repoWithModules("other\n")), second.runner);
+    await runRelease(request(repoWithModules("placeholder\n")), first.runner);
+    await runRelease(request(repoWithModules("other\n")), second.runner);
 
     const argOf = (calls: readonly Call[]) =>
       calls
@@ -279,10 +281,10 @@ describe("the customer image release pipeline", () => {
     expect(argOf(second.calls)).toBe("MODULE_INCLUDE=other");
   });
 
-  it("treats an empty modules.txt as an explicit empty selection, not the default", () => {
+  it("treats an empty modules.txt as an explicit empty selection, not the default", async () => {
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(request(repoWithModules("")), runner);
+    const outcome = await runRelease(request(repoWithModules("")), runner);
 
     expect(outcome.ok).toBe(true);
 
@@ -294,10 +296,13 @@ describe("the customer image release pipeline", () => {
     expect(build?.env?.MODULE_INCLUDE).toBe("");
   });
 
-  it("fails before any docker command when the customer has no modules.txt", () => {
+  it("fails before any docker command when the customer has no modules.txt", async () => {
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(request(repoWithModules(undefined)), runner);
+    const outcome = await runRelease(
+      request(repoWithModules(undefined)),
+      runner
+    );
 
     expect(outcome.ok).toBe(false);
     expect(calls).toEqual([]);
@@ -311,11 +316,11 @@ describe("the customer image release pipeline", () => {
     ],
     ["a failed unit test", "test"],
     ["a skipped isolation run", "integration"],
-  ] as const)("does not build or publish after %s", (_label, step) => {
+  ] as const)("does not build or publish after %s", async (_label, step) => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner([step]);
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(calls.some((call) => call.args[0] === "push")).toBe(false);
@@ -339,11 +344,11 @@ describe("the customer image release pipeline", () => {
     )
   )(
     "runs no publish command after a failed %s, with the %s boundary",
-    (step, boundary) => {
+    async (step, boundary) => {
       const root = repoWithModules("placeholder\n");
       const { calls, runner } = recordingRunner([step]);
 
-      const outcome = runRelease(
+      const outcome = await runRelease(
         request(root, boundary === "sink" ? { publishCommand: [...SINK] } : {}),
         runner
       );
@@ -354,11 +359,11 @@ describe("the customer image release pipeline", () => {
     }
   );
 
-  it("does not publish when the candidate smoke fails", () => {
+  it("does not publish when the candidate smoke fails", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner(["smoke"]);
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(calls.some((call) => call.args[0] === "push")).toBe(false);
@@ -366,7 +371,7 @@ describe("the customer image release pipeline", () => {
     expect(has(calls, "build")).toBe(true);
   });
 
-  it("reports a bounded, redacted tail of a failed gate's captured output", () => {
+  it("reports a bounded, redacted tail of a failed gate's captured output", async () => {
     const root = repoWithModules("placeholder\n");
 
     // The head of each stream is longer than the tail that is kept, so a case
@@ -383,7 +388,7 @@ describe("the customer image release pipeline", () => {
           }
         : { status: 0, stdout: "", stderr: "" };
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
 
@@ -402,31 +407,31 @@ describe("the customer image release pipeline", () => {
     expect(outcome.gateOutput).toContain("[redacted]");
   });
 
-  it("carries no gate output when the gate succeeds", () => {
+  it("carries no gate output when the gate succeeds", async () => {
     const root = repoWithModules("placeholder\n");
     const { runner } = recordingRunner();
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(true);
     expect(outcome.gateOutput).toBeUndefined();
   });
 
-  it("fails closed when the build's iidfile is not an immutable digest", () => {
+  it("fails closed when the build's iidfile is not an immutable digest", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner([], "acme:latest");
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(calls.some((call) => call.args[0] === "push")).toBe(false);
   });
 
-  it("runs the gates, build and smoke but publishes nothing when publish is off", () => {
+  it("runs the gates, build and smoke but publishes nothing when publish is off", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(request(root, { publish: false }), runner);
+    const outcome = await runRelease(request(root, { publish: false }), runner);
 
     expect(outcome.ok).toBe(true);
     expect(has(calls, "build")).toBe(true);
@@ -437,7 +442,7 @@ describe("the customer image release pipeline", () => {
     expect(outcome.identity).toBe(IDENTITY);
   });
 
-  it("builds the every-module image and tags it development when no customer exists", () => {
+  it("builds the every-module image and tags it development when no customer exists", async () => {
     // R-55: no `customers/` folder at all. The fallback must not fail on the
     // missing modules.txt; it selects every module the inventory holds and
     // publishes under a `development` tag, never a customer name.
@@ -464,7 +469,7 @@ describe("the customer image release pipeline", () => {
 
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(
+    const outcome = await runRelease(
       request(root, { developmentFallback: true, slug: "development" }),
       runner
     );
@@ -476,11 +481,11 @@ describe("the customer image release pipeline", () => {
     expect(outcome.publishedRef).toContain(":development-1.2.3");
   });
 
-  it("drives the publish boundary through an injected local sink", () => {
+  it("drives the publish boundary through an injected local sink", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(
+    const outcome = await runRelease(
       request(root, {
         publishCommand: ["node", "tools/release/local-sink.ts"],
       }),
@@ -579,11 +584,11 @@ function registryRunner(
 describe("publishing the stable tag by digest", () => {
   const PUBLISHED_REF = "ghcr.io/owner/genie-ops-center:acme-1.2.3";
 
-  it("pushes a unique temporary ref, then creates the stable tag from the registry digest and verifies it", () => {
+  it("pushes a unique temporary ref, then creates the stable tag from the registry digest and verifies it", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = registryRunner();
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(true);
     expect(outcome.publishedRef).toBe(PUBLISHED_REF);
@@ -607,7 +612,7 @@ describe("publishing the stable tag by digest", () => {
     // concurrent run could retag it exactly like the stable one.
     const second = registryRunner();
 
-    runRelease(request(repoWithModules("placeholder\n")), second.runner);
+    await runRelease(request(repoWithModules("placeholder\n")), second.runner);
 
     const secondPush = second.calls.find((call) => call.args[0] === "push");
 
@@ -643,7 +648,7 @@ describe("publishing the stable tag by digest", () => {
     expect(calls[inspectAt]?.args.join(" ")).toContain(PUBLISHED_REF);
   });
 
-  it("fails and publishes nothing further when the published tag's config digest differs from the smoke-tested identity", () => {
+  it("fails and publishes nothing further when the published tag's config digest differs from the smoke-tested identity", async () => {
     const root = repoWithModules("placeholder\n");
 
     const { calls, runner } = registryRunner(
@@ -651,7 +656,7 @@ describe("publishing the stable tag by digest", () => {
       `sha256:${"d".repeat(64)}`
     );
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.failedStep).toBe("publish-candidate");
@@ -675,22 +680,22 @@ describe("publishing the stable tag by digest", () => {
     ).toBe(false);
   });
 
-  it("creates no stable tag when the push of the temporary ref fails", () => {
+  it("creates no stable tag when the push of the temporary ref fails", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = registryRunner("push");
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.failedStep).toBe("publish-candidate");
     expect(calls.some((call) => call.args[0] === "buildx")).toBe(false);
   });
 
-  it("fails the release when creating the stable tag by digest fails", () => {
+  it("fails the release when creating the stable tag by digest fails", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = registryRunner("create");
 
-    const outcome = runRelease(request(root), runner);
+    const outcome = await runRelease(request(root), runner);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.failedStep).toBe("publish-candidate");
@@ -711,11 +716,11 @@ describe("publishing the stable tag by digest", () => {
 // (`--no-publish`) gates, builds and smokes, then hands its immutable identity
 // to a later `--publish-digest` run that re-runs none of that.
 describe("publishing an identity a prior run verified", () => {
-  it("publishes the verified identity without re-running the gates, the build or the smoke", () => {
+  it("publishes the verified identity without re-running the gates, the build or the smoke", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = registryRunner();
 
-    const outcome = runRelease(
+    const outcome = await runRelease(
       request(root, { verifiedIdentity: IDENTITY }),
       runner
     );
@@ -742,11 +747,58 @@ describe("publishing an identity a prior run verified", () => {
     expect(calls.some((call) => call.args[0] === "push")).toBe(true);
   });
 
-  it("fails closed when the verified identity is not an immutable digest", () => {
+  it("promotes without loading any workspace or third-party package", () => {
+    // The promote path must import only `node:` builtins, so a copy of the CLI
+    // and its one relative import runs from a directory tree with no
+    // node_modules above it. A static import of @genie/core or
+    // @genie/generators would fail with ERR_MODULE_NOT_FOUND; the build-path
+    // `await import()` never runs, so the promote succeeds. This is the property
+    // the split publish job relies on: it runs no install, yet promotes
+    // (genie-ops-center-v2-dwn).
+    const stage = mkdtempSync(join(tmpdir(), "genie-promote-"));
+
+    temporary.push(stage);
+
+    copyFileSync(join(import.meta.dirname, "cli.ts"), join(stage, "cli.ts"));
+    copyFileSync(
+      join(import.meta.dirname, "pipeline.ts"),
+      join(stage, "pipeline.ts")
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(stage, "cli.ts"),
+        "acme",
+        "1.2.3",
+        "--repo-root",
+        stage,
+        "--registry",
+        "ghcr.io/owner/genie-ops-center",
+        "--publish-digest",
+        IDENTITY,
+        // A sink that always succeeds, so the run exercises the promote path
+        // without a registry. `true` is resolved from PATH, not node_modules.
+        "--publish-command",
+        "true",
+      ],
+      {
+        cwd: stage,
+        encoding: "utf8",
+        // An empty NODE_PATH keeps the module search inside the stage tree, so
+        // the assert is about the import graph, not a stray search path.
+        env: { ...process.env, NODE_PATH: "" },
+      }
+    );
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  it("fails closed when the verified identity is not an immutable digest", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(
+    const outcome = await runRelease(
       request(root, { verifiedIdentity: "acme:latest" }),
       runner
     );
@@ -756,11 +808,11 @@ describe("publishing an identity a prior run verified", () => {
     expect(calls.some((call) => call.args[0] === "push")).toBe(false);
   });
 
-  it("reports the identity and publishes nothing when the verified run is dry", () => {
+  it("reports the identity and publishes nothing when the verified run is dry", async () => {
     const root = repoWithModules("placeholder\n");
     const { calls, runner } = recordingRunner();
 
-    const outcome = runRelease(
+    const outcome = await runRelease(
       request(root, { verifiedIdentity: IDENTITY, publish: false }),
       runner
     );
