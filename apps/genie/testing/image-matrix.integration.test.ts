@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { startDisposableDeployment } from "@genie/core/testing";
+import { enableModules, startDisposableDeployment } from "@genie/core/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -68,6 +68,10 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
 
       const database = await startDisposableDeployment([]);
+
+      // Stand-in for the `seed` step (R-20), which genie-ops setup brings in 1ia.2, so R-8 does
+      // not read this image's placeholder as disabled.
+      await enableModules(database.context, ["placeholder"]);
 
       try {
         const image = await startImage(

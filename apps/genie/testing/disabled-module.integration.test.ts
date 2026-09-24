@@ -38,19 +38,28 @@ describe("compiled disabled module refusal", () => {
 
     // SAFETY: the response is the JSON tRPC error envelope produced by the request above.
     const transportBody = JSON.parse(transportText) as {
-      error?: { data?: { appCode?: string } };
+      error?: { data?: { appCode?: string; requestId?: string } };
     };
 
     expect(transport.status).toBe(403);
     expect(transportBody.error?.data?.appCode).toBe("module-disabled");
 
-    const routeAnswers = await Promise.all(
-      ["/placeholder", "/admin/placeholder"].map(async (path) => {
-        const response = await fetch(`${server.baseUrl}${path}`);
-        const text = await response.text();
+    // R-46 and AC-15: the body and the response header must carry one id, even though the gate
+    // refuses before any tRPC context exists.
+    const transportRequestId = transport.headers.get("x-request-id");
 
-        return { path, response, text };
-      })
+    expect(transportRequestId).not.toBeNull();
+    expect(transportBody.error?.data?.requestId).toBe(transportRequestId);
+
+    const routeAnswers = await Promise.all(
+      ["/placeholder", "/admin/placeholder", "/viewer/placeholder"].map(
+        async (path) => {
+          const response = await fetch(`${server.baseUrl}${path}`);
+          const text = await response.text();
+
+          return { path, response, text };
+        }
+      )
     );
 
     for (const { path, response, text } of routeAnswers) {

@@ -171,6 +171,25 @@ export function formatTrpcError(input: {
   };
 }
 
+/**
+ * The request id that correlates a formatted error with its log line.
+ *
+ * A gate that refuses before any procedure runs throws from the context factory, so tRPC formats
+ * it with no context and there is no `requestId` on `ctx`. That error is an `AppError` the gate
+ * built with the request id attached (R-46, AC-15), so the formatter reads it from the cause.
+ * Every other error reaches the formatter with a context and takes the id from there.
+ */
+function requestIdFor(input: {
+  readonly contextRequestId: string | undefined;
+  readonly cause: unknown;
+}): string {
+  if (input.contextRequestId !== undefined) return input.contextRequestId;
+
+  const cause = input.cause;
+
+  return cause instanceof AppError ? (cause.requestId ?? "unknown") : "unknown";
+}
+
 export const t = initTRPC.context<RequestContext>().create({
   // The envelope is read as a member (`input.shape`), never bound to a local
   // name: `anti-slop/no-shape-in-symbol-names` exempts a statically accessed
@@ -179,6 +198,9 @@ export const t = initTRPC.context<RequestContext>().create({
     formatTrpcError({
       envelope: input.shape,
       error: input.error,
-      requestId: input.ctx?.requestId ?? "unknown",
+      requestId: requestIdFor({
+        contextRequestId: input.ctx?.requestId,
+        cause: input.error.cause,
+      }),
     }),
 });

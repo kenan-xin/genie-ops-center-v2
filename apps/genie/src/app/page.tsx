@@ -1,8 +1,8 @@
+import { enabledNavigation } from "@genie/core";
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../context.ts";
-import { enabledNavigation } from "../navigation.ts";
 import { modules } from "../registry.ts";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,16 @@ export default async function HomePage() {
   const t = await getTranslations("app");
   const { contextId, tenant } = requireContext();
 
-  const items = await enabledNavigation({
+  const entries = await enabledNavigation({
     entitlements: tenant.entitlements,
     modules,
   });
+
+  const items = entries.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    path: entry.path,
+  }));
 
   return (
     <main data-context-id={contextId}>

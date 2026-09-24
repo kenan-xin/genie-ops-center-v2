@@ -176,12 +176,15 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // denied by the baseline the header configuration already set.
   if (app === undefined) return response;
 
-  // R-8: a declared route whose module is switched off refuses before its page
-  // renders. The entitlement reader answers disabled for a compiled module with
-  // no row, so this also covers a module that has not been through the seed
-  // step; an excluded module's path was never declared and falls through to the
+  // R-8: a declared route or a viewer document whose module is switched off
+  // refuses before its page renders and before any frame-origin provider runs.
+  // The entitlement reader answers disabled for a compiled module with no row,
+  // so this also covers a module that has not been through the seed step; an
+  // excluded module's path was never declared and falls through to the
   // framework's own not-found, which keeps the two cases distinguishable.
-  const owner = moduleRouteOwner(pathname, app.moduleRoutes);
+  const owner =
+    moduleRouteOwner(pathname, app.moduleRoutes) ??
+    viewerRouteFor(pathname, new Set(app.viewerProviders.keys()))?.moduleId;
 
   if (
     owner !== undefined &&

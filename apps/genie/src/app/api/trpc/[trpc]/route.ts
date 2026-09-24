@@ -1,10 +1,13 @@
-import { createRequestPrincipal, createStubGrantReader } from "@genie/core";
+import {
+  assertModulesEnabled,
+  createRequestPrincipal,
+  createStubGrantReader,
+} from "@genie/core";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { CONTEXT_HEADER, requireContext } from "../../../../context.ts";
 import { compiledModuleIds } from "../../../../registry.ts";
 import { newRequestId } from "../../../../request-id.ts";
-import { assertModulesEnabled } from "../../../../trpc/module-gate.ts";
 import { appRouter } from "../../../../trpc/root.ts";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,7 @@ async function handler(request: Request): Promise<Response> {
         entitlements: app.tenant.entitlements,
         compiledModuleIds: COMPILED_MODULE_IDS,
         calls: info.calls,
+        requestId,
       });
 
       return {

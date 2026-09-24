@@ -21,6 +21,28 @@ const READY_URL = `http://127.0.0.1:${READY_PORT}/api/health`;
 
 export const COMPOSE = ["compose", "-p", "genie-s005-e2e", "-f", COMPOSE_FILE];
 
+/**
+ * Stand-in for the `seed` step (R-20), which `genie-ops setup` brings in genie-ops-center-v2-1ia.2.
+ * The compose stack runs no setup yet, so without this row R-8 reads the placeholder as disabled
+ * and hides its navigation and refuses its routes. It runs after health answers 200: `/api/health`
+ * is not a declared module route and reads no entitlement, so no 10-second cache is filled first.
+ */
+async function seedEnabledModules(): Promise<void> {
+  await run("docker", [
+    ...COMPOSE,
+    "exec",
+    "-T",
+    "database",
+    "psql",
+    "-U",
+    "genie",
+    "-d",
+    "genie",
+    "-c",
+    "insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true",
+  ]);
+}
+
 export default async function globalSetup(): Promise<void> {
   // A targeted run may have started its own deployment already, for example the
   // failing-provider case. Starting a second stack would collide on the host
@@ -49,7 +71,11 @@ export default async function globalSetup(): Promise<void> {
       .then((response) => response.status === 200)
       .catch(() => false);
 
-    if (ready) return;
+    if (ready) {
+      await seedEnabledModules();
+
+      return;
+    }
 
     await new Promise((settle) => setTimeout(settle, 500));
   }

@@ -83,16 +83,22 @@ describe("the application redirect", () => {
   });
 });
 
-// SAFETY: the proxy reads only the members below, and the tenant is the opaque
-// value it hands the provider, so the empty object is never dereferenced.
+// SAFETY: the proxy reads only the members below and the entitlement reader
+// the gate calls; the rest of the tenant is the opaque value it hands the
+// provider, so the partial object is never otherwise dereferenced. The reader
+// answers enabled, so these viewer cases exercise the provider path.
 function viewerAppWith(provider: {
   frameOrigins: () => Promise<string[]>;
 }): AppContext {
-  // SAFETY: the proxy reads only the members below, and the tenant is the
-  // opaque value it hands the provider, so the empty object is never
-  // dereferenced.
+  // SAFETY: the proxy reads only the members below and the entitlement reader
+  // the gate calls; the rest of the tenant is the opaque value it hands the
+  // provider, so the partial object is never otherwise dereferenced.
   return {
-    tenant: {} as AppContext["tenant"],
+    tenant: {
+      entitlements: {
+        isEnabled: async (_moduleId: string): Promise<boolean> => true,
+      },
+    } as AppContext["tenant"],
     startedAt: 0,
     contextId: "ctx-proxy-test",
     moduleRoutes: new Map(),

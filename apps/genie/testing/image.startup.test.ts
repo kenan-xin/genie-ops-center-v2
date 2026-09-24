@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 
 import { MIGRATION_LOCK_KEY } from "@genie/core";
 import {
+  enableModules,
   startDisposableDeployment,
   startDisposablePostgres,
 } from "@genie/core/testing";
@@ -148,6 +149,10 @@ beforeAll(async () => {
 
 beforeAll(async () => {
   database = await startDisposableDeployment([]);
+
+  // Stand-in for the `seed` step (R-20), which genie-ops setup brings in 1ia.2. Without the row,
+  // R-8 reads the placeholder as disabled and refuses its pages, procedures and viewer document.
+  await enableModules(database.context, ["placeholder"]);
 }, 180000);
 
 afterAll(async () => {
