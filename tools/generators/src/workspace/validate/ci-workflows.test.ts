@@ -78,6 +78,28 @@ function checkoutSteps(workflow: string): readonly string[] {
     .filter((step) => /^\s*- uses: actions\/checkout@/.test(step));
 }
 
+/** The jobs of a workflow, keyed by job id, each with its full YAML text. */
+function jobsOf(workflow: string): ReadonlyMap<string, string> {
+  const body = workflow.split(/^jobs:\n/m)[1] ?? "";
+
+  return new Map(
+    body
+      .split(/^(?= {2}[\w-]+:\n)/m)
+      .filter((job) => job.trim() !== "")
+      .map((job) => {
+        const name =
+          /^ {2}([\w-]+):$/.exec(job.split("\n")[0] ?? "")?.[1] ?? "";
+
+        return [name, job] as const;
+      })
+  );
+}
+
+/** A whole-target pattern: `test` must not match inside `test:integration`. */
+function targetPattern(name: string): RegExp {
+  return new RegExp(`(?<![\\w:-])${name}(?![\\w:-])`);
+}
+
 type RootScripts = { readonly scripts?: Readonly<Record<string, string>> };
 
 function rootScript(name: string): string {
@@ -116,7 +138,9 @@ describe("the Spec 0 CI gates", () => {
 
     expect(workflow).toContain("branches:");
     expect(workflow).toContain("- develop");
-    expect(workflow).toContain("pnpm run ci:develop");
+    // The serial `pnpm run ci:develop` monolith is gone from the workflow; the
+    // parallel jobs below carry its targets (genie-ops-center-v2-ejs).
+    expect(workflow).not.toContain("pnpm run ci:develop");
     // `origin/develop` is HEAD on a develop push, so the base must be the
     // pushed commit's parent, with the all-zero first push falling back.
     expect(workflow).toContain("github.event.before");
@@ -125,6 +149,220 @@ describe("the Spec 0 CI gates", () => {
     // The all-zero first push has no parent; basing it on `origin/develop` (which
     // is HEAD) would be an empty range, so it uses git's empty tree instead.
     expect(workflow).toContain("4b825dc642cb6eb9a060e54bf8d69288fbee4904");
+  });
+
+  // One runner per heavy suite. Today's single verify job serializes the fast
+  // gates behind the image-building integration suites and the browser E2E
+  // suites, so a merge commit waits for the slowest chain
+  // (genie-ops-center-v2-ejs). The gates keep one job; the app and Storybook
+  // integration suites each get their own runner — on one 4-vCPU runner the
+  // app's Docker builds competed with the Storybook browser matrix (develop
+  // run 35893905134) — and the E2E suites get theirs. Requiring each heavy job
+  // to `needs: gates` is accepted here: the gates fail fast before any heavy
+  // suite spends runner time, and the heavy suites still run beside each other.
+  it("splits the develop merge gates into parallel jobs", () => {
+    const workflow = read(`${WORKFLOWS}/develop.yml`);
+    const jobs = jobsOf(workflow);
+
+    // No develop job runs the serial monolith scripts any more; ci:pr stays
+    // the pull-request path only.
+    expect(workflow).not.toContain("pnpm run ci:develop");
+    expect(workflow).not.toContain("pnpm run ci:pr");
+
+    const gates = jobs.get("gates");
+
+    expect(gates, "a gates job").toBeDefined();
+
+    for (const target of [
+      "lint",
+      "typecheck",
+      "test",
+      "build",
+      "build-storybook",
+      "test-storybook",
+      "validate",
+    ]) {
+      expect(gates, `the gates job runs ${target}`).toMatch(
+        targetPattern(target)
+      );
+    }
+
+    // The gates job stays fast: no image suite, no browser suite.
+    expect(gates).not.toMatch(/test:integration|test:e2e/);
+
+    const integrationJobs = [...jobs.entries()].filter(([, job]) =>
+      job.includes("test:integration")
+    );
+
+    expect(
+      integrationJobs.length,
+      "the heavy suites split across jobs"
+    ).toBeGreaterThanOrEqual(2);
+
+    const appJob = integrationJobs.find(([, job]) =>
+      job.includes("@genie/app")
+    );
+
+    const storybookJob = integrationJobs.find(([, job]) =>
+      job.includes("@genie/storybook")
+    );
+
+    expect(appJob, "a job runs the app integration suite").toBeDefined();
+    expect(
+      storybookJob,
+      "a job runs the Storybook integration suite"
+    ).toBeDefined();
+    expect(appJob?.[0], "the two suites run on different runners").not.toBe(
+      storybookJob?.[0]
+    );
+
+    const e2eJob = [...jobs.entries()].find(([, job]) =>
+      job.includes("test:e2e")
+    );
+
+    expect(e2eJob, "a job runs the E2E suites").toBeDefined();
+
+    // The fixture stack precedes the ordinary suite, as ci:develop runs them.
+    const e2eScripts = runScripts(e2eJob?.[1] ?? "").join("\n");
+    const fixtureAt = e2eScripts.search(targetPattern("test:e2e:fixture"));
+    const ordinaryAt = e2eScripts.search(targetPattern("test:e2e"));
+
+    expect(fixtureAt, "the E2E job runs the fixture suite").toBeGreaterThan(-1);
+    expect(
+      ordinaryAt,
+      "the E2E job runs the ordinary suite after the fixture"
+    ).toBeGreaterThan(fixtureAt);
+
+    // Every heavy job waits for the gates, so a broken lint fails before any
+    // image build spends runner time.
+    const heavyJobs = [...integrationJobs, ...(e2eJob ? [e2eJob] : [])];
+
+    for (const [name, job] of heavyJobs) {
+      expect(job, `${name} waits for the gates`).toMatch(
+        /^ {4}needs:(?: gates| \[gates\]|\n {6}- gates)\n/m
+      );
+    }
+  });
+
+  // Splitting must not drop targets: the union of the develop jobs still runs
+  // everything ci:develop runs today — the ci:pr gates and validate, the
+  // integration target, and both E2E suites — so no gate silently leaves CI.
+  it("covers every ci:develop target across the develop jobs", () => {
+    const scripts = [...jobsOf(read(`${WORKFLOWS}/develop.yml`)).values()]
+      .flatMap(runScripts)
+      .join("\n");
+
+    for (const target of [
+      "lint",
+      "typecheck",
+      "test",
+      "build",
+      "build-storybook",
+      "test-storybook",
+      "test:integration",
+      "validate",
+      "test:e2e:fixture",
+      "test:e2e",
+    ]) {
+      expect(scripts, `the develop jobs run ${target}`).toMatch(
+        targetPattern(target)
+      );
+    }
+  });
+
+  // Each split job is a hosted runner of its own, so the guardrails the single
+  // job carried must be carried again per job: ubuntu-latest (the owner kept
+  // every job on the standard image), a runtime bound, a credential-free
+  // checkout, the disk cleanup where images build, a bail on multi-project
+  // integration runs, and the parent-commit base for every affected run.
+  it("carries the runner guardrails into every develop job", () => {
+    for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
+      expect(job, `${name} stays on ubuntu-latest`).toMatch(
+        /^ {4}runs-on: ubuntu-latest$/m
+      );
+      expect(job, `${name} declares timeout-minutes`).toMatch(
+        /^ {4}timeout-minutes: \d+$/m
+      );
+
+      for (const step of checkoutSteps(job)) {
+        expect(step, `${name} persists no checkout credential`).toMatch(
+          /^\s+persist-credentials: false$/m
+        );
+      }
+
+      const scripts = runScripts(job).join("\n");
+
+      // The integration and E2E suites build full Docker images (build-image,
+      // build-fixture-image); each image-building job frees the runner's
+      // preinstalled toolchains first or runs out of disk (release run
+      // 35865015903). The gates job builds no image and needs none of this.
+      if (/test:integration|test:e2e/.test(scripts)) {
+        expect(scripts, `${name} frees runner disk space`).toContain(
+          "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
+        );
+      }
+
+      // Several integration projects sharing one runner run one at a time —
+      // the 4-vCPU competition that forced --parallel=1 on ci:pr — and a bail
+      // stops the remaining projects once one fails (develop run 35867486208).
+      const projects = new Set(
+        runScripts(job)
+          .filter((script) => script.includes("test:integration"))
+          .flatMap((script) => script.match(/@[\w-]+\/[\w-]+/g) ?? [])
+      );
+
+      if (projects.size > 1) {
+        expect(
+          scripts,
+          `${name} bails its multi-project integration run`
+        ).toContain("--nx-bail");
+      }
+
+      // An affected run on a develop push bases its range on the pushed
+      // commit's parent; every affected job wires that base itself.
+      if (scripts.includes("nx affected")) {
+        expect(job, `${name} wires the affected base`).toContain("NX_BASE");
+      }
+    }
+  });
+
+  // Superseded runs: every push to an open pull request and every merge to
+  // develop cancels the previous run on the same ref, so a burst of pushes
+  // does not queue a wall of redundant runner hours (genie-ops-center-v2-ejs).
+  it("cancels the superseded pull-request and develop runs", () => {
+    for (const name of ["pull-request", "develop"]) {
+      const workflow = read(`${WORKFLOWS}/${name}.yml`);
+      const [head = ""] = workflow.split(/^jobs:\n/m);
+
+      // Top-level, so it applies to every job the workflow declares.
+      expect(head, `${name} declares a concurrency group`).toMatch(
+        /^concurrency:\n/m
+      );
+
+      // The group carries a ref, so two branches never share a group, and a
+      // workflow name — the expression or the workflow's own name — so the
+      // two workflows on one pull request never cancel each other.
+      const group = /^ {2}group: (.*)$/m.exec(head)?.[1] ?? "";
+
+      expect(group, `${name} groups by ref`).toContain("github.ref");
+      expect(
+        /github\.workflow/.test(group) ||
+          /[A-Za-z]/.test(group.replace(/\$\{\{[^}]*\}\}/g, "")),
+        `${name} groups by workflow`
+      ).toBe(true);
+
+      expect(head, `${name} cancels in progress`).toMatch(
+        /^ {2}cancel-in-progress: true$/m
+      );
+    }
+  });
+
+  // A release tag is never superseded: there is no newer tag run to cancel it
+  // in favour of, and a cancelled publish could strand a half-pushed image.
+  it("never cancels a release run", () => {
+    const workflow = read(`${WORKFLOWS}/release.yml`);
+
+    expect(workflow).not.toMatch(/cancel-in-progress:\s*true/);
   });
 
   it("builds one image per customer and falls back to the development image", () => {
@@ -227,7 +465,9 @@ describe("the Spec 0 CI gates", () => {
   it("installs the pinned Playwright Chromium before any gate runs", () => {
     const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
 
-    for (const name of ["pull-request", "develop", "release"]) {
+    // pull-request and release keep one serial gate job each, so the install
+    // still precedes that single gate.
+    for (const name of ["pull-request", "release"]) {
       const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
 
       const gates = lines.flatMap((line, index) =>
@@ -257,6 +497,42 @@ describe("the Spec 0 CI gates", () => {
         ).toBeGreaterThan(install);
       }
     }
+
+    // develop splits into jobs, and every one of those jobs runs a gate that
+    // launches the pinned Chromium on the host: test-storybook under the gates
+    // and the Storybook integration suite, Playwright under the E2E suites.
+    // Each such job installs the browser after its dependencies and before
+    // its first gate.
+    for (const [jobName, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
+      const scripts = runScripts(job).join("\n");
+
+      if (!/test-storybook|test:e2e|test:integration/.test(scripts)) continue;
+
+      const install = job.indexOf("pnpm install --frozen-lockfile");
+
+      const browser = job.indexOf(
+        "pnpm exec playwright install --with-deps chromium"
+      );
+
+      const firstGate = Math.min(
+        ...[...job.matchAll(/run:.*\bnx (?:affected|run-many|run)\b/g)].map(
+          (match) => match.index ?? 0
+        )
+      );
+
+      expect(
+        install,
+        `develop ${jobName} installs dependencies`
+      ).toBeGreaterThan(-1);
+      expect(
+        browser,
+        `develop ${jobName} installs the browser after the dependencies`
+      ).toBeGreaterThan(install);
+      expect(
+        browser,
+        `develop ${jobName} installs the browser before its first gate`
+      ).toBeLessThan(firstGate);
+    }
   });
 
   // The image suites build many full app images on one hosted runner, and the
@@ -266,7 +542,9 @@ describe("the Spec 0 CI gates", () => {
   it("frees runner disk space before any gate runs", () => {
     const gate = /run: (pnpm run ci:|scripts\/build-)|^\s+run: scripts\/build-/;
 
-    for (const name of ["pull-request", "develop", "release"]) {
+    // pull-request and release keep one serial gate job each, so the cleanup
+    // still precedes that single gate.
+    for (const name of ["pull-request", "release"]) {
       const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
 
       const gates = lines.flatMap((line, index) =>
@@ -292,6 +570,35 @@ describe("the Spec 0 CI gates", () => {
           true
         );
       }
+    }
+
+    // develop splits into jobs, and the disk-hungry ones — the integration
+    // suites and the E2E suites, which build full Docker images (build-image,
+    // build-fixture-image) — free the toolchains in their own job before the
+    // builds start. The gates job builds no image and needs none of this.
+    for (const [jobName, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
+      const scripts = runScripts(job).join("\n");
+
+      if (!/test:integration|test:e2e/.test(scripts)) continue;
+
+      const freed = job.indexOf(
+        "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
+      );
+
+      const firstGate = Math.min(
+        ...[...job.matchAll(/run:.*\bnx (?:affected|run-many|run)\b/g)].map(
+          (match) => match.index ?? 0
+        )
+      );
+
+      expect(
+        freed,
+        `develop ${jobName} frees disk space in its job`
+      ).toBeGreaterThan(-1);
+      expect(
+        freed,
+        `develop ${jobName} frees disk space before its first build`
+      ).toBeLessThan(firstGate);
     }
   });
 
