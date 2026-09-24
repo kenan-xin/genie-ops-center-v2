@@ -148,7 +148,7 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).toContain("pnpm run ci:pr");
   });
 
-  it("runs the merge gates on develop, based on the pushed commit's parent", () => {
+  it("runs the merge gates on develop", () => {
     const workflow = read(`${WORKFLOWS}/develop.yml`);
 
     expect(workflow).toContain("branches:");
@@ -156,14 +156,58 @@ describe("the Spec 0 CI gates", () => {
     // The serial `pnpm run ci:develop` monolith is gone from the workflow; the
     // parallel jobs below carry its targets (genie-ops-center-v2-ejs).
     expect(workflow).not.toContain("pnpm run ci:develop");
-    // `origin/develop` is HEAD on a develop push, so the base must be the
-    // pushed commit's parent, with the all-zero first push falling back.
-    expect(workflow).toContain("github.event.before");
-    expect(workflow).toContain("NX_BASE");
-    expect(workflow).toContain("0000000000000000000000000000000000000000");
-    // The all-zero first push has no parent; basing it on `origin/develop` (which
-    // is HEAD) would be an empty range, so it uses git's empty tree instead.
-    expect(workflow).toContain("4b825dc642cb6eb9a060e54bf8d69288fbee4904");
+  });
+
+  // genie-ops-center-v2-bf7: the affected base used to be the pushed commit's
+  // parent (`github.event.before`). With `cancel-in-progress: true`, push B
+  // cancels the run for push A and gates only A→B — so if A's run was cancelled
+  // or failed, the projects A touched are never gated on develop. The base must
+  // be the last *successful* develop run instead: nrwl/nx-set-shas (v2+) reads
+  // the workflow's own run history through the GitHub API, which needs
+  // `actions: read`, and exports it as the NX_BASE the affected commands use.
+  it("bases every develop affected run on the last successful develop run", () => {
+    const workflow = read(`${WORKFLOWS}/develop.yml`);
+    const [head = ""] = workflow.split(/^jobs:\n/m);
+
+    // The push parent must be gone in every form: the `github.event.before`
+    // expression and the all-zero first-push marker that only made sense as
+    // its fallback.
+    expect(workflow).not.toContain("github.event.before");
+    expect(workflow).not.toContain("0000000000000000000000000000000000000000");
+
+    // v2+ of the action looks the run history up through the GitHub API, so
+    // the token needs `actions: read`; the workflow stays otherwise read-only.
+    expect(
+      head,
+      "the workflow grants actions: read for the run-history lookup"
+    ).toMatch(/^permissions:\n {2}contents: read\n {2}actions: read\n/m);
+
+    // Every affected job is a runner of its own, so each one derives NX_BASE
+    // itself. The major is pinned so an upgrade is a deliberate edit, and
+    // `main-branch-name: develop` points the lookup at this gate branch — the
+    // action would otherwise default to main.
+    for (const [name, job] of jobsOf(workflow)) {
+      if (!runScripts(job).join("\n").includes("nx affected")) continue;
+
+      const shas = [...job.matchAll(/uses: (nrwl\/nx-set-shas@\S+)/g)].map(
+        ([, action]) => action
+      );
+
+      expect(
+        shas,
+        `${name} derives its base from the last successful develop run`
+      ).toEqual(["nrwl/nx-set-shas@v5"]);
+      expect(job, `${name} reads develop's run history, not main's`).toContain(
+        "main-branch-name: develop"
+      );
+
+      // A history with no successful run yet — the first push — falls back to
+      // git's empty tree, so every project is affected rather than an empty
+      // range (the property the old zero-SHA branch carried).
+      expect(job, `${name} falls back to git's empty tree`).toContain(
+        "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+      );
+    }
   });
 
   // One runner per heavy suite. Today's single verify job serializes the fast
@@ -214,21 +258,19 @@ describe("the Spec 0 CI gates", () => {
       "the heavy suites split across jobs"
     ).toBeGreaterThanOrEqual(2);
 
-    const appJob = integrationJobs.find(([, job]) =>
-      job.includes("@genie/app")
-    );
-
-    const storybookJob = integrationJobs.find(([, job]) =>
-      job.includes("@genie/storybook")
-    );
+    // The suites are known by their job ids: the integration rosters are
+    // derived from the workspace at run time (genie-ops-center-v2-bf7), so the
+    // project names no longer appear in the job text.
+    const appJob = jobs.get("integration-app");
+    const storybookJob = jobs.get("integration-storybook");
 
     expect(appJob, "a job runs the app integration suite").toBeDefined();
     expect(
       storybookJob,
       "a job runs the Storybook integration suite"
     ).toBeDefined();
-    expect(appJob?.[0], "the two suites run on different runners").not.toBe(
-      storybookJob?.[0]
+    expect(appJob, "the two suites run on different runners").not.toBe(
+      storybookJob
     );
 
     const e2eJob = [...jobs.entries()].find(([, job]) =>
@@ -333,8 +375,9 @@ describe("the Spec 0 CI gates", () => {
         ).toContain("--nx-bail");
       }
 
-      // An affected run on a develop push bases its range on the pushed
-      // commit's parent; every affected job wires that base itself.
+      // An affected run on a develop push bases its range on the last
+      // successful develop run (genie-ops-center-v2-bf7); every affected job
+      // wires NX_BASE for it.
       if (scripts.includes("nx affected")) {
         expect(job, `${name} wires the affected base`).toContain("NX_BASE");
       }
@@ -343,12 +386,11 @@ describe("the Spec 0 CI gates", () => {
 
   // Affected filtering: a push that touches no project must run no heavy
   // suite, so every develop integration job filters its project through
-  // `nx affected` based on the pushed commit's parent — an unconditional
-  // `nx run-many` runs every suite on every push (reviewed on 57bfc26). On
-  // Nx 23.2.1, `nx affected -t test:integration --exclude='*,!@genie/app'
-  // --base="$NX_BASE"` filters to one project. Each integration job wires the
-  // same parent-commit base step the gates job carries, zero-SHA fallback
-  // included.
+  // `nx affected` — an unconditional `nx run-many` runs every suite on every
+  // push (reviewed on 57bfc26). On Nx 23.2.1, `nx affected -t test:integration
+  // --base="$NX_BASE"` filters to the affected set. The base itself — the last
+  // successful develop run, not the push parent (genie-ops-center-v2-bf7) — is
+  // pinned by the dedicated base test above.
   it("filters every develop integration job through the affected set", () => {
     for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
       const scripts = runScripts(job).join("\n");
@@ -365,16 +407,6 @@ describe("the Spec 0 CI gates", () => {
       expect(scripts, `${name} bases the affected range on NX_BASE`).toMatch(
         /--base=["{]?\$NX_BASE/
       );
-
-      // The job carries the base step itself: the pushed commit's parent,
-      // with the all-zero first push falling back.
-      expect(job, `${name} reads the pushed commit's parent`).toContain(
-        "github.event.before"
-      );
-      expect(job, `${name} keeps the zero-SHA fallback`).toContain(
-        "0000000000000000000000000000000000000000"
-      );
-      expect(job, `${name} wires NX_BASE`).toContain("NX_BASE");
     }
 
     // The E2E job stays unconditional: ci:develop always ran both browser
@@ -388,6 +420,80 @@ describe("the Spec 0 CI gates", () => {
       "the e2e job never filters through the affected set"
     ).not.toContain("nx affected");
   });
+
+  // genie-ops-center-v2-bf7: the integration jobs used to name a fixed project
+  // roster — `--exclude='*,!@genie/app'` and friends — so a new module's
+  // generated test:integration target never ran on develop, and nothing caught
+  // it. The roster must be derived from the workspace at run time, with the
+  // same query this test uses to know what the coverage should be: `nx show
+  // projects -t test:integration --json`. Because the expected set below comes
+  // from the real workspace, the day a module declares the target the
+  // workflow's derivation already covers it — no develop.yml edit, no silent
+  // skip.
+  it("picks up every project with a test:integration target on develop", () => {
+    const query = spawnSync(
+      join(WORKSPACE_ROOT, "node_modules/.bin/nx"),
+      ["show", "projects", "-t", "test:integration", "--json"],
+      {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+        env: { ...process.env, NX_DAEMON: "false", CI: "true" },
+        // A hung projection must fail the test, not stall the suite.
+        timeout: 60000,
+      }
+    );
+
+    expect(query.status, query.stdout + query.stderr).toBe(0);
+
+    // SAFETY: the projection ran to exit 0 above, so stdout is the JSON array
+    // of project names the query prints.
+    const projects = JSON.parse(query.stdout ?? "[]") as readonly string[];
+
+    // An empty projection would let the per-job assertions pass vacuously, so
+    // the workspace must actually declare integration targets.
+    expect(
+      projects.length,
+      "the workspace declares integration targets"
+    ).toBeGreaterThan(0);
+
+    const integrationJobs = [
+      ...jobsOf(read(`${WORKFLOWS}/develop.yml`)),
+    ].filter(([, job]) =>
+      runScripts(job).join("\n").includes("test:integration")
+    );
+
+    expect(
+      integrationJobs.length,
+      "the develop workflow has integration jobs"
+    ).toBeGreaterThan(0);
+
+    for (const [name, job] of integrationJobs) {
+      const scripts = runScripts(job).join("\n");
+
+      // A fixed roster is exactly the staleness bug: it names today's projects
+      // and silently drops the next module's.
+      expect(scripts, `${name} carries no fixed project roster`).not.toMatch(
+        /--exclude=\S*!/
+      );
+
+      expect(
+        scripts,
+        `${name} derives its project list from the workspace`
+      ).toContain("nx show projects -t test:integration --json");
+
+      // A derived roster can put several projects on one runner, so every
+      // integration run keeps the shared-runner rules: a bail stops the
+      // remaining projects once one fails (develop run 35867486208), and the
+      // projects run one at a time — the 4-vCPU competition that broke the
+      // parallel runs (develop runs 35893905134 and 35932712679).
+      expect(scripts, `${name} bails its integration run`).toContain(
+        "--nx-bail"
+      );
+      expect(scripts, `${name} runs its projects one at a time`).toContain(
+        "--parallel=1"
+      );
+    }
+  }, 90000);
 
   // Superseded runs: every push to an open pull request and every merge to
   // develop cancels the previous run on the same ref, so a burst of pushes
