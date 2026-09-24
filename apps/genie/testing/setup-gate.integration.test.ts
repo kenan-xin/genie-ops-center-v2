@@ -108,7 +108,7 @@ describe("the setup gate", () => {
       redirect: "manual",
     });
 
-    expect(authRoute.status).not.toBe(404);
+    expect(authRoute.status).toBe(503);
     expectStandardHeaders(authRoute, "authentication refusal");
   });
 
@@ -118,7 +118,7 @@ describe("the setup gate", () => {
       redirect: "manual",
     });
 
-    expect(inbound.status).not.toBe(404);
+    expect(inbound.status).toBe(503);
     expectStandardHeaders(inbound, "inbound endpoint refusal");
   });
 
