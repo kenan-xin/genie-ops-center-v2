@@ -108,6 +108,14 @@ export {
 } from "./services/migrator/history.ts";
 
 export {
+  type AuditEventInput,
+  type AuditMetadataValue,
+  writeAuditEvent,
+} from "./services/audit/index.ts";
+
+export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
+
+export {
   type LogBindings,
   type RedactingLogger,
   createLogger,

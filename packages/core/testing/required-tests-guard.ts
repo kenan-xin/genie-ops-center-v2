@@ -98,4 +98,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "withTransaction against a real database serves the transaction from the context's own pool and opens no second connection",
     ],
   },
+  {
+    file: "testing/ops-runner.integration.test.ts",
+    reason:
+      "Spec 1 AC-4, AC-13 and AC-17, and R-9, R-10, R-12, R-62 to R-66 and R-76 (1ia.2), require the genie-ops runner and audit helper cases to run",
+    cases: [
+      "genie-ops migrate runs twice, applies nothing on the second run, and logs pending before SQL",
+      "genie-ops migrate writes exactly one success audit row with only allow-listed arguments",
+      "genie-ops migrate writes one failing audit row and prints the cause with a nonzero exit",
+      "genie-ops parse guards dispatches on the first positional and parses each subcommand independently",
+      "genie-ops parse guards does not echo an unexpected positional value or write an audit row",
+      "genie-ops parse guards fails before creating a context when parsing rejects",
+      "audit helper fallback writes the outcome to command output when audit_event does not exist",
+    ],
+  },
 ];
