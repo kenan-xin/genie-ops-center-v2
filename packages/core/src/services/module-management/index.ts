@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { tenantModule } from "../../schema.ts";
 
 /**
@@ -16,6 +17,7 @@ export type ModuleConfigIssue = {
 /** The stable refusal codes of the one enable/disable procedure. */
 export type ModuleManagementErrorCode =
   | "module-not-compiled"
+  | "module-not-registered"
   | "module-config-invalid";
 
 /**
@@ -41,6 +43,13 @@ export class ModuleManagementError extends Error {
   }
 }
 
+/**
+ * What one call changed (DEC-23). `changed` is false when the module already held the requested
+ * state, so a caller knows whether this call was the enable/disable transition — and only a true
+ * transition moves `enabled_at`.
+ */
+export type ModuleEnableResult = { readonly changed: boolean };
+
 /** One issue as the single line the operator reads: `endpoint: Invalid url`. */
 function describeIssue(issue: ModuleConfigIssue): string {
   return issue.path === "" ? issue.message : `${issue.path}: ${issue.message}`;
@@ -53,19 +62,23 @@ function describeIssue(issue: ModuleConfigIssue): string {
  * their ids (D-12).
  *
  * It refuses an id the image did not compile, because an entitlement can only switch on a module
- * the image carries. On enable it validates the row's stored `tenant_module.config` against the
- * module's declared configuration schema (R-68a): a missing or invalid required value refuses the
- * enable with actionable issues and leaves the row untouched, so the module stays disabled and
- * `enabled_at` does not move. Disable validates nothing, so a module whose configuration no longer
- * parses can still be switched off. A module without required configuration still needs this
- * explicit enable; valid configuration alone never activates it.
+ * the image carries, and an id with no `tenant_module` row, because only the seed step and the
+ * migrator run register module rows (R-20, DEC-50): a command must not invent one. The row is read
+ * with `FOR UPDATE` and written in the same transaction, so a concurrent configuration save cannot
+ * slip between the validation and the write.
+ *
+ * On a real enable it validates the row's stored `tenant_module.config` against the module's
+ * declared configuration schema (R-68a): a missing or invalid required value refuses the enable
+ * with actionable issues and leaves the row untouched. Disable validates nothing, so a module
+ * whose configuration no longer parses can still be switched off. A repeated enable or disable is a
+ * no-op that keeps `enabled_at`; `changed` reports whether this call was the transition.
  */
 export async function setModuleEnabled(
   context: TenantContext,
   compiledModules: readonly Module[],
   moduleId: string,
   enabled: boolean
-): Promise<void> {
+): Promise<ModuleEnableResult> {
   const module = compiledModules.find(
     (candidate) => candidate.identity.id === moduleId
   );
@@ -77,47 +90,60 @@ export async function setModuleEnabled(
     );
   }
 
-  const configuration = module.configuration;
-
-  if (enabled && configuration !== undefined) {
-    const current = await context.db
-      .select({ config: tenantModule.config })
+  return withTransaction(context, async (tx) => {
+    const rows = await tx
+      .select({ enabled: tenantModule.enabled, config: tenantModule.config })
       .from(tenantModule)
-      .where(eq(tenantModule.moduleId, moduleId));
+      .where(eq(tenantModule.moduleId, moduleId))
+      .for("update");
 
-    // The row's jsonb is unparsed input; this schema run is its boundary, and it is the only
-    // place the stored config is trusted (R-68a).
-    const result = configuration.schema.safeParse(current[0]?.config ?? {});
+    const row = rows[0];
 
-    if (!result.success) {
-      const issues = result.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      }));
-
+    if (row === undefined) {
       throw new ModuleManagementError(
-        "module-config-invalid",
-        `module-config-invalid: ${moduleId} ${issues.map(describeIssue).join("; ")}`,
-        issues
+        "module-not-registered",
+        `module-not-registered: ${moduleId} has no tenant_module row; run \`genie-ops setup\` or \`genie-ops migrate\` first`
       );
     }
-  }
 
-  const enabledAt = new Date();
+    const configuration = module.configuration;
 
-  const updated = await context.db
-    .update(tenantModule)
-    .set(enabled ? { enabled: true, enabledAt } : { enabled: false })
-    .where(eq(tenantModule.moduleId, moduleId))
-    .returning({ moduleId: tenantModule.moduleId });
+    if (enabled && !row.enabled && configuration !== undefined) {
+      // The row's jsonb is unparsed input; this schema run is its boundary, and it is the only
+      // place the stored config is trusted (R-68a). It runs only on a real disable-to-enable
+      // transition, so a repeated enable never refuses a module that is already active.
+      const result = configuration.schema.safeParse(row.config ?? {});
 
-  if (updated.length === 0 && enabled) {
-    // A compiled module with no row yet — an image upgraded outside the migrator's registration —
-    // still activates rather than silently doing nothing. `enable` only falsifies here; a disable
-    // of a missing row has nothing to switch off.
-    await context.db
-      .insert(tenantModule)
-      .values({ moduleId, enabled: true, enabledAt })
-      .onConflictDoNothing();
-  }
+      if (!result.success) {
+        const issues = result.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        }));
+
+        throw new ModuleManagementError(
+          "module-config-invalid",
+          `module-config-invalid: ${moduleId} ${issues.map(describeIssue).join("; ")}`,
+          issues
+        );
+      }
+    }
+
+    // The condition is the transition itself (`enabled = false` to enable, `enabled = true` to
+    // disable), so a repeated call matches no row and changes nothing, and `enabled_at` moves only
+    // on a real enable.
+    const updated = await tx
+      .update(tenantModule)
+      .set(
+        enabled ? { enabled: true, enabledAt: new Date() } : { enabled: false }
+      )
+      .where(
+        and(
+          eq(tenantModule.moduleId, moduleId),
+          eq(tenantModule.enabled, !enabled)
+        )
+      )
+      .returning({ moduleId: tenantModule.moduleId });
+
+    return { changed: updated.length > 0 };
+  });
 }

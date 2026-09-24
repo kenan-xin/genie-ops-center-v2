@@ -186,8 +186,14 @@ function parseCommand(
       return {
         name: enabled ? "module-enable" : "module-disable",
         args: [moduleId],
-        run: (context, options) =>
-          setModuleEnabled(context, options.compiledModules, moduleId, enabled),
+        run: async (context, options) => {
+          await setModuleEnabled(
+            context,
+            options.compiledModules,
+            moduleId,
+            enabled
+          );
+        },
       };
     }
 
@@ -204,7 +210,7 @@ function parseCommand(
       return {
         name: "retire",
         args: confirm ? ["--confirm"] : [],
-        run: (context) => runRetire(context, confirm),
+        run: (context, options) => runRetire(context, confirm, options.output),
       };
     }
 
