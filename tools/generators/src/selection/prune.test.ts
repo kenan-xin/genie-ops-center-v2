@@ -5,10 +5,11 @@ import {
   mkdtempSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -18,11 +19,21 @@ const SCRIPT = new URL("./prune.ts", import.meta.url).pathname;
 
 const roots: string[] = [];
 
+/** The module source stub every fixture writes. */
+const MODULE_SOURCE = "export {};\n";
+
+/** A fresh temp directory registered for removal after the suite. */
+function tempDir(prefix: string): string {
+  const path = mkdtempSync(join(tmpdir(), prefix));
+
+  roots.push(path);
+
+  return path;
+}
+
 /** A workspace root holding the named module packages and a README beside them. */
 function workspace(ids: readonly string[]): string {
-  const root = mkdtempSync(join(tmpdir(), "genie-prune-"));
-
-  roots.push(root);
+  const root = tempDir("genie-prune-");
 
   mkdirSync(join(root, "packages/modules"), { recursive: true });
 
@@ -41,7 +52,7 @@ function workspace(ids: readonly string[]): string {
       })
     );
 
-    writeFileSync(join(packageRoot, "src/index.ts"), "export {};\n");
+    writeFileSync(join(packageRoot, "src/index.ts"), MODULE_SOURCE);
   }
 
   return root;
@@ -52,6 +63,40 @@ const folders = (root: string) =>
     .filter((entry) => !entry.isFile())
     .map((entry) => entry.name)
     .toSorted();
+
+/** Asserts the prune reported `folder` as a stray the selection does not name. */
+function expectStray(root: string, folder: string): void {
+  expect(() => pruneModuleFolders(root, "alpha")).toThrow(
+    new RegExp(
+      `packages/modules holds ${folder}, which the selection does not name`
+    )
+  );
+}
+
+/**
+ * Places a symlink at `relative` under packages/modules pointing at a fresh
+ * external folder that holds one file, then asserts the prune reports the
+ * folder named by `stray` and leaves the target intact. The prune must never
+ * follow the link and delete what it points at.
+ */
+function expectStraySymlink(
+  root: string,
+  relative: string,
+  stray: string
+): void {
+  const target = tempDir("genie-prune-target-");
+
+  writeFileSync(join(target, "keep.ts"), MODULE_SOURCE);
+
+  const link = join(root, "packages/modules", relative);
+
+  mkdirSync(dirname(link), { recursive: true });
+  symlinkSync(target, link, "dir");
+
+  expectStray(root, stray);
+
+  expect(existsSync(join(target, "keep.ts"))).toBe(true);
+}
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -131,13 +176,27 @@ describe("pruneModuleFolders", () => {
     mkdirSync(join(root, "packages/modules/stray/src"), { recursive: true });
     writeFileSync(
       join(root, "packages/modules/stray/src/index.ts"),
-      "export {};\n"
+      MODULE_SOURCE
     );
 
-    expect(() => pruneModuleFolders(root, "alpha")).toThrow(
-      /packages\/modules holds stray, which the selection does not name/
-    );
+    expectStray(root, "stray");
   });
+
+  // A symlinked folder and a folder whose only entry is a symlink are both
+  // invisible to the inventory, so the prune leaves them and the folder
+  // comparison reports them. The empty-leftover removal must not follow either
+  // link and delete what it points at.
+  it.each([
+    ["a symlinked module folder", "linked", "linked", ["alpha", "beta"]],
+    ["a file-less folder holding a symlink", "old/link", "old", ["alpha"]],
+  ] as const)(
+    "reports %s as stray and leaves its target intact",
+    (_label, relative, stray, ids) => {
+      const root = workspace([...ids]);
+
+      expectStraySymlink(root, relative, stray);
+    }
+  );
 });
 
 describe("the prune command the image builder stage runs", () => {
