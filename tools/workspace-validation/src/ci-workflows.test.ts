@@ -622,6 +622,10 @@ describe("the Spec 0 CI gates", () => {
     );
     expect(scripts).toContain("--workflow develop.yml");
     expect(scripts).toContain("--commit");
+    // A push run on develop, not a pull-request run that happened to carry the
+    // commit; both filters are what make the lookup unambiguous.
+    expect(scripts).toContain("--branch develop");
+    expect(scripts).toContain("--event push");
     expect(scripts).toContain("--status success");
 
     // Fail closed: no successful run exits nonzero, and the message names the
