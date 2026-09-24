@@ -2,6 +2,10 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import {
+  createJobQueue,
+  type JobQueue,
+} from "../../services/job-queue/index.ts";
 import type { RedactingLogger } from "../../services/logging/index.ts";
 import {
   type EnvironmentSource,
@@ -38,8 +42,8 @@ export type DeploymentEnvironment = {
 };
 
 /**
- * The one object every procedure, job and page reads through (DEC-34). It holds its two fixed
- * members and the three cached tenant readers of R-5, each of which expires ten seconds after it
+ * The one object every procedure, job and page reads through (DEC-34). It holds its three fixed
+ * members (`db`, `env`, `jobQueue`) and the three cached tenant readers of R-5, each of which expires ten seconds after it
  * is filled (DEC-46). A later service ticket adds its own flat readonly member here.
  */
 export type TenantContext = {
@@ -53,6 +57,8 @@ export type TenantContext = {
   readonly branding: TenantReaders["branding"];
   /** The module entitlement reader of R-5, a gate separate from `can()` (DEC-39). */
   readonly entitlements: TenantReaders["entitlements"];
+  /** The pg-boss job queue over this context's pool (D-11). It starts on first use. */
+  readonly jobQueue: JobQueue;
 };
 
 /**
@@ -101,7 +107,12 @@ export function createTenantContext(
   const db = drizzle(pool);
   const readers = createTenantReaders({ db, compiledModuleIds });
 
-  const context: TenantContext = { db, env, ...readers };
+  const context: TenantContext = {
+    db,
+    env,
+    ...readers,
+    jobQueue: createJobQueue(pool, logger),
+  };
 
   // The logger the pool's error listener already uses is recorded off the object, where
   // `withTransaction` reads it for its after-commit diagnostics. A context this factory did not

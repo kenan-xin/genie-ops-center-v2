@@ -70,6 +70,8 @@ export {
 } from "./lib/module-contract/keys.ts";
 
 export type {
+  JobContext,
+  JobDeclaration,
   Module,
   ModuleConfiguration,
   ModuleIdentity,
@@ -114,6 +116,15 @@ export {
 } from "./services/audit/index.ts";
 
 export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
+
+export type { JobQueue } from "./services/job-queue/index.ts";
+
+export {
+  DEFAULT_WORKER_HEARTBEAT_PATH,
+  HEARTBEAT_JOB,
+  runWorker,
+  type WorkerOptions,
+} from "./services/worker/index.ts";
 
 export {
   type IntegrationConfig,

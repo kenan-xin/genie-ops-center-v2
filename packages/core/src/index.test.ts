@@ -32,6 +32,7 @@ describe("the core package root", () => {
         "db",
         "entitlements",
         "env",
+        "jobQueue",
         "settings",
       ]);
     } finally {

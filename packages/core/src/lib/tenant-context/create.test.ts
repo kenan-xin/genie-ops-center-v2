@@ -52,6 +52,7 @@ describe("createTenantContext", () => {
         "db",
         "entitlements",
         "env",
+        "jobQueue",
         "settings",
       ]);
       expect(context.env.databaseUrl).toBe(MINIMAL.DATABASE_URL);

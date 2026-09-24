@@ -25,3 +25,15 @@ export async function runOps(argv: readonly string[]): Promise<number> {
 
   return runGenieOpsEntry(argv);
 }
+
+/**
+ * The worker entry (D-10), reached only by the launcher's `worker` mode, never by the server. It
+ * shares the `genie-ops` bundle mechanism, so the worker migrates with the same traced SQL.
+ */
+export async function runWorker(): Promise<number> {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return 1;
+
+  const { runWorkerEntry } = await import("./ops/entry.ts");
+
+  return runWorkerEntry();
+}

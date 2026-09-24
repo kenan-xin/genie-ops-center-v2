@@ -77,17 +77,21 @@ try {
 
 const exported = loaded["module.exports"] ?? loaded.default;
 
-const runOps = exported?.runOps;
+// entrypoint.sh sets GENIE_ENTRY=worker for its `worker` mode only, so the worker loads from the
+// same bundle as the command (D-10). Every other caller, `docker exec` included, runs genie-ops.
+const worker = process.env.GENIE_ENTRY === "worker";
+
+const run = worker ? exported?.runWorker : exported?.runOps;
 
 // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the loaded module is untrusted input
-if (typeof runOps !== "function") {
+if (typeof run !== "function") {
   process.stderr.write(
-    "genie-ops: the image carries no genie-ops command entry\n"
+    `genie-ops: the image carries no ${worker ? "worker" : "genie-ops command"} entry\n`
   );
   process.exit(70);
 }
 
-const code = await runOps(process.argv.slice(2));
+const code = await run(process.argv.slice(2));
 
 // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the command's return is untrusted input
 process.exit(typeof code === "number" && Number.isInteger(code) ? code : 1);

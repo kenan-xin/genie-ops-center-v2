@@ -1,4 +1,4 @@
-import { moduleHistory, runGenieOps } from "@genie/core";
+import { moduleHistory, runGenieOps, runWorker } from "@genie/core";
 
 import { modules } from "../registry.ts";
 
@@ -19,5 +19,27 @@ export function runGenieOpsEntry(argv: readonly string[]): Promise<number> {
     histories: modules.map(moduleHistory),
     output: (line) => process.stdout.write(`${line}\n`),
     errorOutput: (line) => process.stderr.write(`${line}\n`),
+  });
+}
+
+/**
+ * The worker entry (D-10), bundled through the same instrumentation module as `genie-ops`, so it
+ * reads the same traced migration SQL. It passes the compiled registry itself; the runner derives
+ * the ids from it (D-12). SIGTERM and SIGINT abort the job loops, and the runner then stops
+ * pg-boss and closes the pool.
+ */
+export function runWorkerEntry(): Promise<number> {
+  const controller = new AbortController();
+
+  process.once("SIGTERM", () => controller.abort());
+  process.once("SIGINT", () => controller.abort());
+
+  return runWorker({
+    source: process.env,
+    modules,
+    histories: modules.map(moduleHistory),
+    output: (line) => process.stdout.write(`${line}\n`),
+    errorOutput: (line) => process.stderr.write(`${line}\n`),
+    signal: controller.signal,
   });
 }

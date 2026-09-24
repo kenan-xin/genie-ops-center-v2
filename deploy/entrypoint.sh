@@ -1,8 +1,7 @@
 #!/bin/sh
 # One image runs the application, the worker and the operator command through
-# flags (R-35). Section 0 ships the dispatch and the application path; Section 1
-# adds the genie-ops command, which `docker exec` also reaches directly on PATH
-# without this script (D-10).
+# flags (R-35). The worker and the genie-ops command load from one bundle, and
+# `docker exec` also reaches genie-ops directly on PATH without this script (D-10).
 set -eu
 
 # The standalone entry point's depth depends on where the framework decides the
@@ -29,15 +28,16 @@ case "${1:-app}" in
     exec node "$(find_server)"
     ;;
   worker)
-    echo "The worker entrypoint arrives in Section 1." >&2
-    exit 64
+    # The worker loads from the same bundle as genie-ops (D-10); the launcher picks the worker
+    # export when GENIE_ENTRY says so.
+    GENIE_ENTRY=worker exec genie-ops
     ;;
   genie-ops)
     shift
     exec genie-ops "$@"
     ;;
   *)
-    echo "Unknown entrypoint: $1. Use app or genie-ops." >&2
+    echo "Unknown entrypoint: $1. Use app, worker or genie-ops." >&2
     exit 64
     ;;
 esac

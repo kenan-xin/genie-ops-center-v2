@@ -66,6 +66,10 @@ function contextWith(
         port: 3000,
       },
       ...readersTripwire(),
+      jobQueue: {
+        enqueue: () => Promise.reject(new Error("the router enqueued a job")),
+        schedule: () => Promise.reject(new Error("the router scheduled a job")),
+      },
     },
     caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
   };

@@ -1,4 +1,4 @@
-import type { Module } from "@genie/core";
+import type { JobDeclaration, Module } from "@genie/core";
 import { z } from "zod";
 
 import {
@@ -17,6 +17,13 @@ const LIVE_CATEGORY_ID = "4b7f1d52-7f4e-4f0f-93a8-8a8f6f2c1a11";
 
 /** A category id that no longer exists. A module treats it as no category (DEC-51). */
 const REMOVED_CATEGORY_ID = "9d0f8b3c-2f5a-4f2e-9d61-0b7a1c4e5f22";
+
+const readRecordJob: JobDeclaration = {
+  name: "placeholder.read-record",
+  handler: async ({ tenant }) => {
+    await tenant.db.select().from(placeholderRecord).limit(1);
+  },
+};
 
 const configurationSchema = z.object({
   title: z.string().default("Placeholder"),
@@ -126,7 +133,9 @@ export const placeholderModule = {
   // Section 0 registers no capability, so a provision cannot name one (DEC-42).
   capabilities: [],
 
-  jobs: [],
+  // The job the worker's contract test enqueues: it reads through the tenant context it is given,
+  // which proves a handler's reads land in the worker's own database (AC-11).
+  jobs: [readRecordJob],
 
   inboundEndpoints: [],
 
