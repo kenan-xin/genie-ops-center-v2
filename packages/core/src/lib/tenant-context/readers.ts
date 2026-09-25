@@ -166,14 +166,9 @@ export function createTenantReaders(input: {
     async isEnabled(moduleId: string): Promise<boolean> {
       if (!compiled.has(moduleId)) return false;
 
-      let reader = byModule.get(moduleId);
-
-      if (reader === undefined) {
-        reader = entitlementReaderFor(moduleId);
-        byModule.set(moduleId, reader);
-      }
-
-      return reader.get();
+      // `byModule` is built from the same list as `compiled`, so every compiled
+      // id already has a reader and the `?? false` only satisfies the type.
+      return byModule.get(moduleId)?.get() ?? false;
     },
   };
 
