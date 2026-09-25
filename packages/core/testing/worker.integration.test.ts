@@ -591,28 +591,25 @@ describe("the core pg-boss worker", () => {
     const database = await disposablePostgres();
     const control = createServer();
     const firstConnection = deferred();
-    const allowUpstream = deferred();
-    let acceptedConnections = 0;
+    let upstreamAllowed = false;
     const target = new URL(database.url);
 
     control.on("connection", (downstream) => {
-      acceptedConnections += 1;
-
-      if (acceptedConnections === 1) {
+      // The database is unreachable until the test allows it: every connection before that
+      // fails, including the ones pg-boss's start makes after its best-effort version probe.
+      if (!upstreamAllowed) {
         firstConnection.resolve();
         downstream.destroy();
         return;
       }
 
-      void allowUpstream.promise.then(() => {
-        const upstream = connect(Number(target.port), target.hostname);
+      const upstream = connect(Number(target.port), target.hostname);
 
-        upstream.once("connect", () => {
-          downstream.pipe(upstream);
-          upstream.pipe(downstream);
-        });
-        upstream.once("error", () => downstream.destroy());
+      upstream.once("connect", () => {
+        downstream.pipe(upstream);
+        upstream.pipe(downstream);
       });
+      upstream.once("error", () => downstream.destroy());
     });
 
     await new Promise<void>((resolve) =>
@@ -649,7 +646,7 @@ describe("the core pg-boss worker", () => {
     const firstFailure = await failedSend;
 
     expect(firstFailure).toBeInstanceOf(Error);
-    allowUpstream.resolve();
+    upstreamAllowed = true;
 
     const jobId = await context.jobQueue.enqueue("recovery.second", {
       attempt: "recovered",
