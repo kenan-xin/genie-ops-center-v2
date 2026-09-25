@@ -138,25 +138,19 @@ async function runFailureShutdown(input: {
  * The setup gate of D-2. The latch is a closure over the one context object, which the bootstrap
  * stores in the process-global slot, so every bundle shares it and it never moves back once true.
  *
- * The gate reads `setup_step` on every call (R-15: it reads directly, never a cached reader), and
- * the latch is one-way: the first satisfied read sets it, no later read clears it. A read that
- * fails before the gate ever opened propagates, so the proxy answers a generic 503; once open, a
- * failure is swallowed because the deployment is set up for the life of the process. A concurrent
- * read that started while the gate was closed can resolve `pending` after a later read resolved
- * `done`, and it must not close the gate (finding 3).
+ * The latch short-circuits before any read, so a set-up deployment stops querying `setup_step` per
+ * request. Only a satisfied read opens it and no read ever clears it, so a read that started before
+ * setup finished cannot close it again (finding 3). A read failure before the gate ever opened
+ * propagates, so the proxy answers a generic 503; the gate never reads after it opens.
  */
 function buildSetupGate(tenant: TenantContext): AppContext["setupGate"] {
   let open = false;
 
   return {
     isSatisfied: async () => {
-      try {
-        if (setupSatisfied(await readSetupProgress(tenant))) open = true;
-      } catch (cause) {
-        // The gate has already opened, so its own read failing is not an outage the caller should
-        // answer: a database restored to an earlier state needs a restart, not a 503 per request.
-        if (!open) throw cause;
-      }
+      if (open) return true;
+
+      if (setupSatisfied(await readSetupProgress(tenant))) open = true;
 
       return open;
     },
