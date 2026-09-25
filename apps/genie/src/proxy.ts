@@ -5,6 +5,9 @@
 // subpaths import nothing at all. Everything else the proxy needs, the module
 // route map, the provider map and the failure reporter, comes from the context
 // slot, which the bootstrap filled.
+import { type Dirent, readdirSync } from "node:fs";
+import { join } from "node:path";
+
 import { AppError, CORE_ERRORS, safeBodyFor } from "@genie/core/errors";
 import {
   STANDARD_HEADERS,
@@ -49,15 +52,60 @@ function applyStandardHeaders(response: NextResponse, requestId: string): void {
 }
 
 /**
- * Static assets the setup gate never touches, so a not-set-up deployment still serves the CSS,
- * JavaScript and public files the not-set-up page needs (R-80). It is an extension list, not
- * "contains a dot": a path like `/api/trpc/placeholder.read` has a dot and is not an asset.
+ * The public files the running image actually serves, listed once at module load. Membership is an
+ * exact location-and-existence test, never a suffix: a suffix rule exempted any path ending in
+ * `.json` or `.js`, and a tRPC batch path such as `/api/trpc/placeholder.read,x.json` then ran a
+ * procedure before setup (finding 1). The process runs from the application root — the standalone
+ * server chdirs to its own directory, and `next dev` starts in the project — so `public/` resolves
+ * in both. A missing directory is an empty set, not a startup failure.
  */
-const ASSET_EXTENSIONS =
-  /\.(?:txt|xml|json|webmanifest|ico|png|jpe?g|gif|svg|webp|avif|css|js|mjs|map|woff2?|ttf|otf)$/i;
+function listPublicFiles(): ReadonlySet<string> {
+  const files = new Set<string>();
 
-function isStaticAsset(pathname: string): boolean {
-  return pathname.startsWith("/_next/") || ASSET_EXTENSIONS.test(pathname);
+  const walk = (directory: string, prefix: string): void => {
+    let entries: Dirent[];
+
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const relative = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+
+      if (entry.isDirectory()) {
+        walk(join(directory, entry.name), relative);
+      } else {
+        files.add(`/${relative}`);
+      }
+    }
+  };
+
+  walk(join(process.cwd(), "public"), "");
+
+  return files;
+}
+
+const PUBLIC_FILES = listPublicFiles();
+
+/**
+ * R-80: while the gate is unsatisfied, only health and the static assets the not-set-up page needs
+ * keep serving. Every path under `/api/` other than health refuses whatever it is named, and the
+ * framework's static locations are named exactly — a bare `/_next/` prefix sent
+ * `/_next/not-a-real-static-asset.js` to the framework not-found page, which rendered the root
+ * layout with the full catalogue before setup (findings 1 and 2).
+ */
+function isGateExempt(pathname: string): boolean {
+  if (pathname === "/api/health") return true;
+
+  if (pathname.startsWith("/api/")) return false;
+
+  if (pathname.startsWith("/_next/static/")) return true;
+
+  if (pathname.startsWith("/_next/image")) return true;
+
+  return PUBLIC_FILES.has(pathname);
 }
 
 /**
@@ -218,6 +266,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // separately. Without this a handler sees no id and mints a second one.
   const requestHeaders = new Headers(request.headers);
 
+  // The proxy is the only writer of this header. A client that sends it cannot make the layout
+  // withhold the catalogue on a set-up deployment; the rewrite branch sets it when (and only
+  // when) it serves the not-set-up page (finding 4).
+  requestHeaders.delete(SETUP_REQUIRED_HEADER);
   requestHeaders.set("x-request-id", requestId);
 
   const response = NextResponse.next({
@@ -233,7 +285,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // D-2: the setup gate runs before the module-disabled guard, so an unfinished deployment shows
   // the not-set-up page whatever the route would otherwise do. Static assets and health are the
   // only surfaces R-80 keeps serving, so the gate never even reads `setup_step` for them.
-  if (!isStaticAsset(pathname) && pathname !== "/api/health") {
+  if (!isGateExempt(pathname)) {
     let satisfied: boolean;
 
     try {
@@ -243,15 +295,16 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!satisfied) {
+      // R-80: no tRPC procedure, no inbound endpoint under `/api/m/` and no authentication route
+      // answers. This is checked before the background branch, so an `/api/` request carrying an
+      // RSC header refuses instead of reading as a 200 success (finding 6).
+      if (pathname.startsWith("/api/")) {
+        return unavailableResponse(requestId);
+      }
+
       // RSC and prefetch requests carry no page body while the gate is unsatisfied (D-2).
       if (isBackgroundRequest(request.headers)) {
         return emptyBackgroundResponse(requestId);
-      }
-
-      // R-80: no tRPC procedure, no inbound endpoint under `/api/m/` and no authentication
-      // route answers. The health route was excluded above, so every other `/api/` path refuses.
-      if (pathname.startsWith("/api/")) {
-        return unavailableResponse(requestId);
       }
 
       return notSetUpPageResponse(request, requestId);

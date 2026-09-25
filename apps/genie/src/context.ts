@@ -14,10 +14,10 @@ import type { FrameOriginProvider } from "@genie/core/security";
  */
 export type SetupGate = {
   /**
-   * Whether every known setup step is `done` (R-15). It reads `setup_step` directly until the
-   * answer is first true, then latches open for the life of the process (D-2), so the ordinary
-   * request path stops paying for the read. A failed read throws, which the proxy answers with a
-   * generic 503 rather than the not-set-up page.
+   * Whether every known setup step is `done` (R-15). It reads `setup_step` on each call and latches
+   * open the first time the answer is true; once open it never closes for the life of the process
+   * (D-2). A read that fails before the gate ever opened throws, which the proxy answers with a
+   * generic 503; a read that fails after it opened is swallowed.
    */
   readonly isSatisfied: () => Promise<boolean>;
 };
