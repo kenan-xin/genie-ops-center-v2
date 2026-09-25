@@ -1637,5 +1637,50 @@ describe.concurrent(
 
       expect(result.output).not.toMatch(/no-restricted-imports/);
     });
+
+    // The config src entry replaces the layer-wide `packages/config/**` entry for
+    // its files, so it must carry the config bans as well as the testing one. One
+    // fixture per half: the first fails if CONFIG_LAYER is dropped, the second if
+    // NO_TESTING_IMPORTS is.
+    it("keeps the config layer bans on a config src file", async () => {
+      const result = await lintAt(
+        "packages/config/src/__boundary__/__boundary__.ts",
+        `import "@genie/ui";\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "config imports no internal project (R-7a)."
+      );
+    });
+
+    it("stops a config src file importing the core testing helpers", async () => {
+      const result = await lintAt(
+        "packages/config/src/__boundary__/__boundary__.ts",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "never imports the test-only helpers under @genie/core/testing"
+      );
+    });
+
+    // The schema slice's own entry wins over the generic core src entry, so its
+    // testing-ban half needs a fixture of its own.
+    it("stops a tenant-config src file importing the core testing helpers", async () => {
+      const result = await lintAt(
+        "packages/core/src/lib/tenant-config/__boundary__/__boundary__.ts",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "never imports the test-only helpers under @genie/core/testing"
+      );
+    });
   }
 );
