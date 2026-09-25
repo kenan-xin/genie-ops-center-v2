@@ -1,25 +1,27 @@
-import { readSetupProgress, setupSatisfied } from "@genie/core";
+import { readSetupProgress } from "@genie/core";
+import { headers } from "next/headers.js";
 import { notFound } from "next/navigation.js";
 
 import { requireContext } from "../../context.ts";
+import { SETUP_REQUIRED_HEADER } from "../../setup-required-header.ts";
 import { NotSetUpPage } from "../../setup/not-set-up-page.tsx";
 
 export const dynamic = "force-dynamic";
 
 /**
  * The one document the setup gate rewrites to while the deployment is not set up (R-16, D-2). The
- * proxy owns the decision and this route only renders it, so every route shows the same page with
- * the same database read the proxy just performed. It reads the steps directly, not through the
- * gate's latch, so the page always lists the current state.
+ * proxy owns the decision and marks the rewritten request, and this route trusts that mark: the
+ * proxy is the only writer of the header and the pass-through strips a client copy, so its absence
+ * means a direct call on a set-up deployment rather than the gate's rewrite.
  *
- * A direct caller after setup gets the framework's not-found: the route is an internal rewrite
- * target, not a public page (finding 5).
+ * Deciding on the header, not a second read, keeps a request that raced setup completion on the
+ * not-set-up page instead of turning it into a 404. The read that follows only fills the step list.
  */
 export default async function SetupRequiredPage() {
+  if ((await headers()).get(SETUP_REQUIRED_HEADER) !== "1") notFound();
+
   const { tenant } = requireContext();
   const steps = await readSetupProgress(tenant);
-
-  if (setupSatisfied(steps)) notFound();
 
   return <NotSetUpPage steps={steps} />;
 }

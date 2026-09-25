@@ -36,7 +36,11 @@ const ASSET_LOOKING_DOCUMENTS = [
   "/not-a-real-route.js",
 ] as const;
 
-const NON_ASSET_NEXT_PATH = "/_next/not-a-real-static-asset.js";
+const NON_ASSET_NEXT_PATHS = [
+  "/_next/not-a-real-static-asset.js",
+  "/_next/imagefoo",
+  "/_next/image/x",
+] as const;
 
 const AUTH_PATH = "/api/auth/session";
 
@@ -211,13 +215,20 @@ describe("the setup gate", () => {
   });
 
   it("rewrites an unhandled Next path without serializing the application catalogue", async () => {
-    const response = await fetch(url(NON_ASSET_NEXT_PATH));
-    const body = await response.text();
+    const responses = await Promise.all(
+      NON_ASSET_NEXT_PATHS.map(async (path) => {
+        const response = await fetch(url(path));
 
-    expect(response.status).toBe(200);
-    expect(body).toContain("This deployment is not set up yet");
-    expect(body).not.toContain("Placeholder viewer");
-    expect(body).not.toContain('aria-label="Modules"');
+        return { path, response, body: await response.text() };
+      })
+    );
+
+    for (const { path, response, body } of responses) {
+      expect(response.status, path).toBe(200);
+      expect(body, path).toContain("This deployment is not set up yet");
+      expect(body, path).not.toContain("Placeholder viewer");
+      expect(body, path).not.toContain('aria-label="Modules"');
+    }
   });
 
   it("omits the not-set-up page body from RSC and prefetch requests", async () => {

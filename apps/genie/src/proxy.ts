@@ -103,7 +103,10 @@ function isGateExempt(pathname: string): boolean {
 
   if (pathname.startsWith("/_next/static/")) return true;
 
-  if (pathname.startsWith("/_next/image")) return true;
+  // Exactly the optimizer endpoint, never a path that merely begins with it: `/_next/imagefoo`
+  // and `/_next/image/x` are not the endpoint, and a prefix exempted them into the framework
+  // not-found page, which rendered the catalogue before setup (R1).
+  if (pathname === "/_next/image") return true;
 
   return PUBLIC_FILES.has(pathname);
 }
