@@ -356,8 +356,12 @@ async function runStep(
     // The `migrations` step creates `setup_step` itself, so a fresh database reads the table as
     // absent before the work and present after it. Re-check inside the catch: the failed row
     // R-18 asks for must still be written when the table appeared during the step, and R-65 only
-    // exempts a run where the table never came to exist.
-    if (rowWritable || (await setupStepTableExists(context))) {
+    // exempts a run where the table never came to exist. A re-check that throws (a lost
+    // connection) counts as "not writable", so the step's own failure stays the reported cause.
+    if (
+      rowWritable ||
+      (await setupStepTableExists(context).catch(() => false))
+    ) {
       await recordFailure(
         context,
         step,
