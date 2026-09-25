@@ -120,16 +120,20 @@ function requireBinary(binary, packageName) {
 }
 
 /**
- * The two statements Postgres refuses inside a transaction block, and therefore
- * the ones the migrator's single transaction cannot run (R-27). Squawk's
- * `require-concurrent-index-creation` rule suggests `CONCURRENTLY`, but
- * `REFRESH MATERIALIZED VIEW CONCURRENTLY` is not in that set: Postgres runs it
- * inside a transaction, so refusing it would reject a legal migration (1ia.1
+ * The statements Postgres refuses inside a transaction block, and therefore the
+ * ones the migrator's single transaction cannot run (R-27). Squawk's
+ * `require-concurrent-index-creation` rule suggests `CONCURRENTLY` for a
+ * live-table index and its `require-concurrent-partition-detach` rule suggests
+ * it for a partition detach, but this migrator cannot run any of them:
+ * `REFRESH MATERIALIZED VIEW CONCURRENTLY` is absent because Postgres does run
+ * it inside a transaction, so refusing it would reject a legal migration (1ia.1
  * review L7). Match the statement, not the word.
  */
 const TRANSACTION_FORBIDDEN_CONCURRENTLY = [
   /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\b/i,
   /\bDROP\s+INDEX\s+CONCURRENTLY\b/i,
+  /\bREINDEX\s+(?:\([^)]*\)\s+)?(?:INDEX|TABLE|SCHEMA|DATABASE|SYSTEM)\s+CONCURRENTLY\b/i,
+  /\bALTER\s+TABLE\b[^;]*\bDETACH\s+PARTITION\b[^;]*\bCONCURRENTLY\b/i,
 ];
 
 /** The `$tag$` delimiter that opens a dollar-quoted string at `index`, or null. */
@@ -245,12 +249,12 @@ function refuseConcurrently(file) {
   }
 
   process.stderr.write(
-    `${file}: contains CREATE INDEX CONCURRENTLY or DROP INDEX CONCURRENTLY.\n` +
+    `${file}: contains a CONCURRENTLY form Postgres refuses inside a transaction:\n` +
+      `CREATE INDEX, DROP INDEX, REINDEX or ALTER TABLE ... DETACH PARTITION.\n` +
       `Drizzle applies every history inside one transaction, and Postgres refuses\n` +
-      `both forms inside a transaction block, so the migration would fail at\n` +
-      `container start (R-27). Use a plain statement with a\n` +
-      "`-- squawk-ignore require-concurrent-index-creation` comment and a justification\n" +
-      `instead.\n`
+      `each of those inside a transaction block, so the migration would fail at\n` +
+      `container start (R-27). Use a plain statement with the matching\n` +
+      "`-- squawk-ignore <rule>` comment and a justification instead.\n"
   );
 
   return 1;
@@ -259,8 +263,8 @@ function refuseConcurrently(file) {
 /**
  * Lints one changed migration with Squawk, pinned to the deployed Postgres
  * major. Squawk exits nonzero on a failed rule, including a warning-level one,
- * so its status is the verdict. A migration carrying an index CONCURRENTLY form
- * is refused before Squawk, because Squawk would accept it and the migrator
+ * so its status is the verdict. A migration carrying a CONCURRENTLY form is
+ * refused before Squawk, because Squawk would accept it and the migrator
  * cannot run it.
  */
 function lintMigration(file, pgVersion) {

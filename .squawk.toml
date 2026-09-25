@@ -19,8 +19,10 @@
 #     `CREATE INDEX` on a table an earlier migration created: that is the
 #     live-table case, and the remedy is not CONCURRENTLY. Postgres refuses
 #     `CREATE INDEX CONCURRENTLY` inside the transaction the migrator opens, and
-#     `scripts/check-migrations.mjs` rejects any migration containing it. The
-#     author writes a plain `CREATE INDEX` with a
+#     `scripts/check-migrations.mjs` rejects that and the other CONCURRENTLY
+#     forms Postgres refuses in a transaction (DROP INDEX, REINDEX, and
+#     `ALTER TABLE ... DETACH PARTITION`). The author writes a plain
+#     `CREATE INDEX` with a
 #     `-- squawk-ignore require-concurrent-index-creation` comment and a
 #     justification (for example, a small table), or changes the migrator.
 #   * `prefer-bigint-over-int` is a style rule, not one of R-13's four breaking

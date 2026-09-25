@@ -512,6 +512,34 @@ describe("the migration pull-request gate", () => {
     expect(result.stdout + result.stderr).toMatch(/transaction/i);
   });
 
+  // Postgres refuses these inside a transaction block too, for the same reason
+  // as the index forms: REINDEX CONCURRENTLY and ALTER TABLE ... DETACH
+  // PARTITION CONCURRENTLY.
+  it.each([
+    `REINDEX INDEX CONCURRENTLY "example_col_idx";`,
+    `reindex   table   concurrently   "public"."example";`,
+    `ALTER TABLE "public"."example" DETACH PARTITION "public"."example_2024" CONCURRENTLY;`,
+    `alter table "public"."example" detach   partition "public"."example_2024"   concurrently;`,
+  ])("refuses the REINDEX or partition DETACH CONCURRENTLY form %#", (sql) => {
+    const result = checkMigrationSql(sql);
+
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    expect(result.stdout + result.stderr).toMatch(/CONCURRENTLY/);
+    expect(result.stdout + result.stderr).toMatch(/transaction/i);
+  });
+
+  // The refusal is per statement: a CONCURRENTLY in a later statement must not
+  // fail an earlier CONCURRENTLY-free partition detach.
+  it("does not let a later CONCURRENTLY statement trip a partition detach", () => {
+    const result = checkMigrationSql(
+      `-- squawk-ignore require-concurrent-partition-detach\n` +
+        `ALTER TABLE "public"."example" DETACH PARTITION "public"."example_2024";\n` +
+        `REFRESH MATERIALIZED VIEW CONCURRENTLY "public"."example_mv";\n`
+    );
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
   // A real migration carries the word in the squawk-ignore justification the
   // refusal asks for, so a comment-only match would fail the author twice.
   it("passes a migration whose comment mentions CONCURRENTLY", () => {
