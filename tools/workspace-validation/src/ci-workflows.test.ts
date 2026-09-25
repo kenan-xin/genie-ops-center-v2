@@ -277,6 +277,18 @@ function migrationFixture(sql: string): string {
   return file;
 }
 
+/** Runs the gate against a one-off migration holding `sql`, then removes it. */
+function checkMigrationSql(sql: string): CommandResult {
+  const file = migrationFixture(sql);
+
+  try {
+    return runMigrationCheck(["--migration", file, "--pg-version", "18"]);
+  } finally {
+    rmSync(file, { force: true });
+    rmSync(join(file, ".."), { recursive: true, force: true });
+  }
+}
+
 function conflictingHistoryFixture(): string {
   const root = mkdtempSync(join(tmpdir(), "genie-migration-history-"));
   const meta = join(root, "meta");
@@ -479,6 +491,53 @@ describe("the migration pull-request gate", () => {
       rmSync(file, { force: true });
       rmSync(join(file, ".."), { recursive: true, force: true });
     }
+  });
+
+  // The migrator's transaction forbids only `CREATE INDEX CONCURRENTLY` and
+  // `DROP INDEX CONCURRENTLY`; matching the bare word refused a legal
+  // `REFRESH MATERIALIZED VIEW CONCURRENTLY` (1ia.1 review L7). These pin the
+  // statement match, not the word, across spacing, case and the IF clauses.
+  it.each([
+    `CREATE INDEX CONCURRENTLY "example_col_idx" ON "public"."example" USING btree ("col");`,
+    `create   index   concurrently "example_col_idx" on "public"."example";`,
+    `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "example_col_idx" ON "public"."example" ("col");`,
+    `DROP INDEX CONCURRENTLY "public"."example_col_idx";`,
+    `drop   index   concurrently   if   exists "public"."example_col_idx";`,
+    `DROP INDEX\nCONCURRENTLY IF EXISTS "public"."example_col_idx";`,
+  ])("refuses the index CONCURRENTLY form %#", (sql) => {
+    const result = checkMigrationSql(sql);
+
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    expect(result.stdout + result.stderr).toMatch(/CONCURRENTLY/);
+    expect(result.stdout + result.stderr).toMatch(/transaction/i);
+  });
+
+  // A real migration carries the word in the squawk-ignore justification the
+  // refusal asks for, so a comment-only match would fail the author twice.
+  it("passes a migration whose comment mentions CONCURRENTLY", () => {
+    const result = checkMigrationSql(
+      `-- A plain index; the migrator's transaction forbids CONCURRENTLY.\n` +
+        `CREATE TABLE "public"."example" ("id" uuid PRIMARY KEY);\n`
+    );
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  // Postgres runs this form inside a transaction, unlike the index forms above.
+  it("passes REFRESH MATERIALIZED VIEW CONCURRENTLY", () => {
+    const result = checkMigrationSql(
+      `REFRESH MATERIALIZED VIEW CONCURRENTLY "public"."example_mv";\n`
+    );
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  it("ignores CONCURRENTLY inside a string literal", () => {
+    const result = checkMigrationSql(
+      `CREATE TABLE "public"."example" ("note" text DEFAULT 'CONCURRENTLY');\n`
+    );
+
+    expect(result.status, result.stdout + result.stderr).toBe(0);
   });
 
   it("fails a changed migration that renames a column", () => {

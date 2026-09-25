@@ -120,25 +120,134 @@ function requireBinary(binary, packageName) {
 }
 
 /**
- * Squawk's `require-concurrent-index-creation` rule suggests `CONCURRENTLY`, but
- * this migrator cannot run it: Drizzle applies each history inside one
- * transaction (services/migrator/index.ts), and Postgres refuses
- * `CREATE INDEX CONCURRENTLY` inside a transaction block. A migration that
- * carries it would pass Squawk and fail at container start (R-27). Refuse it
- * here, with the remedy, before Squawk runs.
+ * The two statements Postgres refuses inside a transaction block, and therefore
+ * the ones the migrator's single transaction cannot run (R-27). Squawk's
+ * `require-concurrent-index-creation` rule suggests `CONCURRENTLY`, but
+ * `REFRESH MATERIALIZED VIEW CONCURRENTLY` is not in that set: Postgres runs it
+ * inside a transaction, so refusing it would reject a legal migration (1ia.1
+ * review L7). Match the statement, not the word.
  */
-const CONCURRENTLY = /\bCONCURRENTLY\b/i;
+const TRANSACTION_FORBIDDEN_CONCURRENTLY = [
+  /\bCREATE\s+(?:UNIQUE\s+)?INDEX\s+CONCURRENTLY\b/i,
+  /\bDROP\s+INDEX\s+CONCURRENTLY\b/i,
+];
+
+/** The `$tag$` delimiter that opens a dollar-quoted string at `index`, or null. */
+function dollarQuoteDelimiter(sql, index) {
+  if (sql[index] !== "$") return null;
+
+  let end = index + 1;
+
+  while (/[A-Za-z0-9_]/.test(sql[end] ?? "")) end += 1;
+
+  if (sql[end] !== "$") return null;
+
+  // A dollar tag cannot start with a digit, so `$1` is a parameter, not a quote.
+  if (/[0-9]/.test(sql[index + 1] ?? "")) return null;
+
+  return sql.slice(index, end + 1);
+}
+
+/**
+ * The SQL with line and block comments removed and the contents of string
+ * literals and quoted identifiers blanked, so a statement match cannot fire on
+ * the word appearing in a comment, a literal or a quoted name. A comment becomes
+ * a space because Postgres treats it as whitespace between tokens; a literal or
+ * quoted name keeps an empty pair of its own quotes so a following token is not
+ * glued to the one before it.
+ */
+function sqlWithoutCommentsOrLiterals(sql) {
+  let code = "";
+  let index = 0;
+
+  while (index < sql.length) {
+    if (sql.startsWith("--", index)) {
+      const newline = sql.indexOf("\n", index);
+
+      index = newline === -1 ? sql.length : newline;
+      code += " ";
+      continue;
+    }
+
+    if (sql.startsWith("/*", index)) {
+      let depth = 1;
+
+      index += 2;
+
+      while (index < sql.length && depth > 0) {
+        if (sql.startsWith("/*", index)) {
+          depth += 1;
+          index += 2;
+        } else if (sql.startsWith("*/", index)) {
+          depth -= 1;
+          index += 2;
+        } else {
+          index += 1;
+        }
+      }
+
+      code += " ";
+      continue;
+    }
+
+    const character = sql[index];
+
+    if (character === "'" || character === '"') {
+      const quote = character;
+
+      index += 1;
+
+      while (index < sql.length) {
+        if (sql[index] === quote && sql[index + 1] === quote) {
+          index += 2;
+          continue;
+        }
+
+        if (sql[index] === quote) {
+          index += 1;
+          break;
+        }
+
+        index += 1;
+      }
+
+      code += quote + quote;
+      continue;
+    }
+
+    if (character === "$") {
+      const delimiter = dollarQuoteDelimiter(sql, index);
+
+      if (delimiter !== null) {
+        const close = sql.indexOf(delimiter, index + delimiter.length);
+
+        index = close === -1 ? sql.length : close + delimiter.length;
+        code += "''";
+        continue;
+      }
+    }
+
+    code += character;
+    index += 1;
+  }
+
+  return code;
+}
 
 function refuseConcurrently(file) {
   // A missing file is Squawk's to report; reading it here would throw first.
   if (!existsSync(file)) return 0;
 
-  if (!CONCURRENTLY.test(readFileSync(file, "utf8"))) return 0;
+  const code = sqlWithoutCommentsOrLiterals(readFileSync(file, "utf8"));
+
+  if (!TRANSACTION_FORBIDDEN_CONCURRENTLY.some((form) => form.test(code))) {
+    return 0;
+  }
 
   process.stderr.write(
-    `${file}: contains CONCURRENTLY. Drizzle applies every history inside one\n` +
-      `transaction, and Postgres refuses CREATE INDEX CONCURRENTLY (and every other\n` +
-      `CONCURRENTLY form) inside a transaction block, so the migration would fail at\n` +
+    `${file}: contains CREATE INDEX CONCURRENTLY or DROP INDEX CONCURRENTLY.\n` +
+      `Drizzle applies every history inside one transaction, and Postgres refuses\n` +
+      `both forms inside a transaction block, so the migration would fail at\n` +
       `container start (R-27). Use a plain statement with a\n` +
       "`-- squawk-ignore require-concurrent-index-creation` comment and a justification\n" +
       `instead.\n`
@@ -150,8 +259,9 @@ function refuseConcurrently(file) {
 /**
  * Lints one changed migration with Squawk, pinned to the deployed Postgres
  * major. Squawk exits nonzero on a failed rule, including a warning-level one,
- * so its status is the verdict. A migration carrying CONCURRENTLY is refused
- * before Squawk, because Squawk would accept it and the migrator cannot run it.
+ * so its status is the verdict. A migration carrying an index CONCURRENTLY form
+ * is refused before Squawk, because Squawk would accept it and the migrator
+ * cannot run it.
  */
 function lintMigration(file, pgVersion) {
   if (pgVersion === undefined) {
