@@ -1,5 +1,7 @@
 import type { OxlintOverride } from "oxlint";
 
+import { NON_PRODUCT_FILE_PATTERNS } from "./non-product-files.ts";
+
 type RestrictedGroup = {
   readonly group: readonly string[];
   readonly message: string;
@@ -36,9 +38,10 @@ function serializeRestrictedGroup(
 
 function restrict(
   files: readonly string[],
-  patterns: readonly RestrictedGroup[]
+  patterns: readonly RestrictedGroup[],
+  excludeFiles?: readonly string[]
 ): OxlintOverride {
-  return {
+  const override: OxlintOverride = {
     files: [...files],
     rules: {
       "no-restricted-imports": [
@@ -49,6 +52,12 @@ function restrict(
       ],
     },
   };
+
+  if (excludeFiles !== undefined) {
+    override.excludeFiles = [...excludeFiles];
+  }
+
+  return override;
 }
 
 // Each layer is caught under every spelling: the package specifier, its subpaths,
@@ -60,6 +69,18 @@ const CORE = [
   "@genie/core/**",
   "**/packages/core/**",
   "**/../core/**",
+];
+
+// The test-only helpers under `packages/core/testing` (R-39). A production src
+// file may not import them; a test or fixture may. The forms mirror `CORE`: the
+// package specifier, its subpaths, and the two raw spellings a relative climb
+// carries. A same-package climb from `packages/core/src/` itself carries no
+// `core` segment for any glob to see, so that spelling stays uncaught here.
+const CORE_TESTING = [
+  "@genie/core/testing",
+  "@genie/core/testing/**",
+  "**/packages/core/testing/**",
+  "**/../core/testing/**",
 ];
 
 // `@genie/module-<id>` is the module package name, for the capability folder
@@ -159,6 +180,20 @@ const NO_TOOLING = {
   message: "product code never imports a generator (R-7a).",
 };
 
+const NO_TESTING_IMPORTS: RestrictedGroup = {
+  group: CORE_TESTING,
+  message:
+    "production src code never imports the test-only helpers under @genie/core/testing; keep the import in a test or fixture (R-39).",
+};
+
+// The build-safe tenant schemas. One rule, shared by the whole schema folder and
+// the src slice that repeats it so the testing ban reaches schema src too.
+const TENANT_SCHEMA_DRIVERS: RestrictedGroup = {
+  group: DRIVERS,
+  message:
+    "the tenant schemas stay build-safe: no driver, no connection (R-19a, R-7a).",
+};
+
 // Each layer list is used twice: once for the whole package, and once for the
 // package configuration files, which keep every ban except the one on config.
 const UI_LAYER: readonly RestrictedGroup[] = [
@@ -203,6 +238,44 @@ const APP_LAYER: readonly RestrictedGroup[] = [
   NO_TOOLING,
 ];
 
+// The shared configuration package is an internal project too, so a file inside
+// it reaches its siblings relatively, as `packages/config/vitest.config.ts`
+// does, and never through the `@genie/config` specifier.
+const CONFIG_LAYER: readonly RestrictedGroup[] = [
+  {
+    group: [...INTERNAL, ...CONFIG],
+    message: "config imports no internal project (R-7a).",
+  },
+  { group: DRIVERS, message: "config opens no database connection (DEC-34)." },
+];
+
+// Tooling reads module metadata as data, ships nothing, and reaches core only
+// through the build-safe schema entrypoints of R-7a.
+const TOOLS_LAYER: readonly RestrictedGroup[] = [
+  {
+    group: MODULES,
+    message:
+      "tooling reads module metadata as data. It never imports a module.",
+  },
+  { group: APPS, message: "tooling never imports an app." },
+  { group: CUSTOMERS, message: "tooling never imports a customer folder." },
+  {
+    group: [
+      "@genie/core",
+      "@genie/core/**",
+      "!@genie/core/tenant-config",
+      "**/packages/core/**",
+      "**/../core/**",
+    ],
+    message:
+      "tooling imports only the build-safe core schema entrypoints of R-7a.",
+  },
+  {
+    group: DRIVERS,
+    message: "tooling opens no database connection (DEC-34).",
+  },
+];
+
 // A sibling module is reached by climbing out of the module's own folder, and
 // that spelling carries no `modules/` segment, so no folder glob in `MODULES`
 // can see it. How far `..` has to climb depends on how deep the importing file
@@ -229,16 +302,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     ["packages/core/*.config.ts", "packages/core/*.config.mts"],
     CORE_LAYER
   ),
-  restrict(
-    ["packages/core/src/lib/tenant-config/**"],
-    [
-      {
-        group: DRIVERS,
-        message:
-          "the tenant schemas stay build-safe: no driver, no connection (R-19a, R-7a).",
-      },
-    ]
-  ),
+  restrict(["packages/core/src/lib/tenant-config/**"], [TENANT_SCHEMA_DRIVERS]),
   restrict(
     ["packages/core/contracts/**"],
     [
@@ -310,47 +374,49 @@ export const importBoundaryOverrides: OxlintOverride[] = [
       },
     ]
   ),
+  restrict(["packages/config/**"], CONFIG_LAYER),
+  restrict(["tools/**"], TOOLS_LAYER),
+  // The test-only helpers under `packages/core/testing` (R-39) are the one ban a
+  // layer entry above cannot carry: an import of them is fine in a test, so the
+  // ban has to exempt the test surface while every other layer ban still holds.
+  // Each layer's `src/` files get it as an extra pattern on top of their own
+  // layer list, because a later matching entry replaces the whole rule. The test,
+  // story and fixture files are excluded, so they keep the layer list alone.
   restrict(
-    ["packages/config/**"],
-    [
-      {
-        // The config package is an internal project too, so a file inside it
-        // reaches its siblings relatively, as `packages/config/vitest.config.ts`
-        // does, and never through the `@genie/config` specifier.
-        group: [...INTERNAL, ...CONFIG],
-        message: "config imports no internal project (R-7a).",
-      },
-      {
-        group: DRIVERS,
-        message: "config opens no database connection (DEC-34).",
-      },
-    ]
+    ["packages/ui/src/**"],
+    [...UI_LAYER, NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
   ),
   restrict(
-    ["tools/**"],
-    [
-      {
-        group: MODULES,
-        message:
-          "tooling reads module metadata as data. It never imports a module.",
-      },
-      { group: APPS, message: "tooling never imports an app." },
-      { group: CUSTOMERS, message: "tooling never imports a customer folder." },
-      {
-        group: [
-          "@genie/core",
-          "@genie/core/**",
-          "!@genie/core/tenant-config",
-          "**/packages/core/**",
-          "**/../core/**",
-        ],
-        message:
-          "tooling imports only the build-safe core schema entrypoints of R-7a.",
-      },
-      {
-        group: DRIVERS,
-        message: "tooling opens no database connection (DEC-34).",
-      },
-    ]
+    ["packages/core/src/**"],
+    [...CORE_LAYER, NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  // The schema folder's own entry above wins over the core entry, so this slice
+  // repeats its one rule and adds the testing ban.
+  restrict(
+    ["packages/core/src/lib/tenant-config/**"],
+    [TENANT_SCHEMA_DRIVERS, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(
+    ["packages/modules/*/src/**"],
+    [...MODULE_LAYER, NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(
+    ["apps/*/src/**", "customers/*/app/src/**"],
+    [...APP_LAYER, NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(
+    ["packages/config/src/**"],
+    [...CONFIG_LAYER, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(
+    ["tools/**/src/**"],
+    [...TOOLS_LAYER, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
   ),
 ];

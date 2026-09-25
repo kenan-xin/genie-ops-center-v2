@@ -1,6 +1,7 @@
 import type { OxlintConfig, OxlintOverride } from "oxlint";
 
 import { importBoundaryOverrides } from "./boundaries.ts";
+import { NON_PRODUCT_FILE_PATTERNS } from "./non-product-files.ts";
 
 /**
  * Reserved entrypoints. Each file exists so its package resolves, and stays
@@ -64,14 +65,7 @@ const shadcnProductOverride: OxlintOverride = {
  * entry wins for a rule it sets.
  */
 const shadcnNonProductOverride: OxlintOverride = {
-  files: [
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.stories.ts",
-    "**/*.stories.tsx",
-    "**/testing/**",
-    "**/__fixtures__/**",
-  ],
+  files: [...NON_PRODUCT_FILE_PATTERNS],
   rules: Object.fromEntries(
     Object.keys(shadcnDesignSystemRules).map((rule) => [rule, "off"])
   ),

@@ -1558,3 +1558,84 @@ describe.concurrent(
     });
   }
 );
+
+// The helpers under `packages/core/testing` are test-only (R-39), so a production
+// `src/` file may not reach them. Test and fixture files still may, because that
+// is where the helpers belong.
+describe.concurrent(
+  "the test-only import ban",
+  { timeout: LINT_TIMEOUT },
+  () => {
+    it("stops a src file importing the core testing entrypoint", async () => {
+      const result = await lintAt(
+        "packages/core/src/__boundary__.ts",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "never imports the test-only helpers under @genie/core/testing"
+      );
+    });
+
+    it("stops a src file importing a named binding from a core testing subpath", async () => {
+      const result = await lintAt(
+        "packages/modules/alpha/src/__boundary__.ts",
+        `import { startDisposableDeployment } from "@genie/core/testing";\n\nexport const start = startDisposableDeployment;\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "never imports the test-only helpers under @genie/core/testing"
+      );
+    });
+
+    it("stops a src file reaching core testing by a relative climb", async () => {
+      const result = await lintAt(
+        "packages/modules/alpha/src/__boundary__.ts",
+        `import "../../../core/testing/index.ts";\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toContain(
+        "never imports the test-only helpers under @genie/core/testing"
+      );
+    });
+
+    it("leaves a colocated test file free to import the core testing helpers", async () => {
+      const result = await lintAt(
+        "packages/core/src/__boundary__.test.ts",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(false);
+
+      expect(result.output).not.toMatch(/no-restricted-imports/);
+    });
+
+    it("leaves a module test file free to import the core testing helpers", async () => {
+      const result = await lintAt(
+        "packages/modules/alpha/src/__boundary__.test.ts",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(false);
+
+      expect(result.output).not.toMatch(/no-restricted-imports/);
+    });
+
+    it("leaves a story file free to import the core testing helpers", async () => {
+      const result = await lintAt(
+        "packages/modules/alpha/src/__boundary__.stories.tsx",
+        `import "@genie/core/testing";\n`
+      );
+
+      expect(result.failed).toBe(false);
+
+      expect(result.output).not.toMatch(/no-restricted-imports/);
+    });
+  }
+);
