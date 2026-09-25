@@ -1,5 +1,10 @@
 import type { Pool } from "pg";
-import { PgBoss, type ScheduleOptions, type SendOptions } from "pg-boss";
+import {
+  type ConstructorOptions,
+  PgBoss,
+  type ScheduleOptions,
+  type SendOptions,
+} from "pg-boss";
 
 import type { RedactingLogger } from "../logging/index.ts";
 
@@ -38,24 +43,44 @@ export type JobQueue = {
 };
 
 /**
- * One pg-boss instance over the context pool (D-11). Its `db` adapter sends every statement
- * through `pool.query`, so pg-boss opens no connection of its own, and `useListenNotify` stays
- * off because that connection would sit outside the pool. `worker` turns supervision and
- * scheduling on; every other instance leaves both off, so only the worker runs maintenance and
- * cron passes.
+ * The cron pass and send-it poll intervals. Production passes none and gets pg-boss's defaults
+ * (30 s and 5 s), well inside the 180 s heartbeat staleness; a test injects faster values.
  */
-export function createBoss(
+export type CronTiming = Pick<
+  ConstructorOptions,
+  "cronMonitorIntervalSeconds" | "cronWorkerIntervalSeconds"
+>;
+
+/**
+ * The constructor options of one pg-boss instance over the context pool (D-11). Its `db` adapter
+ * sends every statement through `pool.query`, so pg-boss opens no connection of its own, and
+ * `useListenNotify` stays off because that connection would sit outside the pool. `worker` turns
+ * supervision and scheduling on; every other instance leaves both off, so only the worker runs
+ * maintenance and cron passes.
+ */
+export function bossOptions(
   pool: Pick<Pool, "query">,
-  logger: Pick<RedactingLogger, "error">,
-  worker: boolean
-): PgBoss {
-  const boss = new PgBoss({
+  worker: boolean,
+  timing: CronTiming = {}
+): ConstructorOptions {
+  return {
     db: { executeSql: async (text, values) => pool.query(text, values) },
     schema: JOB_QUEUE_SCHEMA,
     useListenNotify: false,
     supervise: worker,
     schedule: worker,
-  });
+    ...timing,
+  };
+}
+
+/** One pg-boss instance built from `bossOptions`, with its error events logged. */
+export function createBoss(
+  pool: Pick<Pool, "query">,
+  logger: Pick<RedactingLogger, "error">,
+  worker: boolean,
+  timing?: CronTiming
+): PgBoss {
+  const boss = new PgBoss(bossOptions(pool, worker, timing));
 
   // An emitter with no `error` listener throws, and pg-boss emits from its own timers, where
   // nothing awaits the call. The listener keeps a database blip from ending the process.
@@ -80,7 +105,13 @@ export function createJobQueue(
   let started: Promise<PgBoss> | undefined;
 
   async function ready(job: string): Promise<PgBoss> {
-    started ??= boss.start();
+    // One start in flight at a time, but a failed start is forgotten, so the next call retries it
+    // once the database is back instead of rejecting for the life of the process.
+    started ??= boss.start().catch((error: Error) => {
+      started = undefined;
+
+      throw error;
+    });
 
     const instance = await started;
 

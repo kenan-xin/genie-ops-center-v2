@@ -39,6 +39,10 @@ export function renameModule(module: Module, id: string): Module {
         permissionKeyFor(id, actionOf(key, oldId))
       ),
     })),
+    jobs: module.jobs.map((job) => ({
+      ...job,
+      name: `${id}.${job.name.slice(oldId.length + 1)}`,
+    })),
   };
 }
 

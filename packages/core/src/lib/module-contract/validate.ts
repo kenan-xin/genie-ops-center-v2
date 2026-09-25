@@ -109,6 +109,27 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
+  // The worker gates a job on the entitlement of the module whose prefix it carries, and core
+  // owns `core.` for its own queues such as the heartbeat, so a job name outside the module's
+  // prefix would run under another module's entitlement or race a core queue (D-11).
+  const jobNames = new Set<string>();
+
+  for (const { name } of module.jobs) {
+    if (name.startsWith("core.")) {
+      problems.push(
+        `Module "${id}" cannot declare a job in the reserved "core." namespace: "${name}".`
+      );
+    } else if (!name.startsWith(`${id}.`)) {
+      problems.push(`Job name "${name}" must start with "${id}.".`);
+    }
+
+    if (jobNames.has(name)) {
+      problems.push(`Job name "${name}" is declared more than once.`);
+    }
+
+    jobNames.add(name);
+  }
+
   const declared = new Set(module.permissions.map((entry) => entry.key));
 
   const workspace = module.navigation.entries.filter(

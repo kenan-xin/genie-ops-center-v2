@@ -73,8 +73,7 @@ services:
     # The worker serves no HTTP. Its core heartbeat job rewrites the file every minute
     # after a database round trip (D-10), so the check fails once the file is stale.
     healthcheck:
-      # stale_after_seconds: 180, the age the test below refuses (three missed minutes).
-      # start_period covers the migrator lock wait, LOCK_TIMEOUT_MS (120 s by default),
+      # The test refuses a file older than 180 s (three missed minutes). start_period covers the migrator lock wait, LOCK_TIMEOUT_MS (120 s by default),
       # plus one heartbeat interval.
       test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(stat -c %Y \\"$$WORKER_HEARTBEAT_PATH\\") )) -lt 180"]
       interval: 30s

@@ -456,6 +456,7 @@ describe("the core pg-boss worker", () => {
         path: heartbeatPath,
         staleAfterMs: 1800,
       },
+      timing: { cronMonitorIntervalSeconds: 1, cronWorkerIntervalSeconds: 1 },
     });
 
     await waitUntil(async () => {
@@ -536,6 +537,7 @@ describe("the core pg-boss worker", () => {
         path: heartbeatPath,
         staleAfterMs: 1800,
       },
+      timing: { cronMonitorIntervalSeconds: 1, cronWorkerIntervalSeconds: 1 },
     });
 
     await waitUntil(async () => {

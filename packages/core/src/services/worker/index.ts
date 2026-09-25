@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 
@@ -16,7 +17,12 @@ import {
   type TenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
-import { createBoss, type JobData, stopJobQueue } from "../job-queue/index.ts";
+import {
+  createBoss,
+  type CronTiming,
+  type JobData,
+  stopJobQueue,
+} from "../job-queue/index.ts";
 import { createLogger, redact } from "../logging/index.ts";
 import {
   type MigrationHistory,
@@ -36,6 +42,15 @@ const HEARTBEAT_CRON = "* * * * *";
 /** How long a queue loop waits after it finds no job, or finds its module disabled. */
 const POLL_INTERVAL_MS = 1000;
 
+/** Below Docker's default 10 s stop grace, so the worker stops pg-boss itself before SIGKILL. */
+const DEFAULT_SHUTDOWN_TIMEOUT_MS = 8000;
+
+/**
+ * The schedule key a declaration owns. A caller's `jobQueue.schedule` uses its own key (empty by
+ * default), so reconciling a declaration never overwrites a caller's cron or payload.
+ */
+const declarationKey = (job: JobDeclaration) => `genie.module.${job.name}`;
+
 export type WorkerOptions = {
   /** The environment the tenant context is built from, validated before anything connects. */
   readonly source: EnvironmentSource;
@@ -48,6 +63,11 @@ export type WorkerOptions = {
   /** Aborting it stops every queue loop; the run then stops pg-boss and closes the pool. */
   readonly signal: AbortSignal;
   /**
+   * How long the worker waits, after the signal aborts, for running handlers to settle. After it,
+   * the worker stops pg-boss and returns even if a handler never resolves.
+   */
+  readonly shutdownTimeoutMs?: number;
+  /**
    * Test seams for the heartbeat. `path` wins over `WORKER_HEARTBEAT_PATH`. `staleAfterMs` is the
    * age the container health check refuses; the worker itself only writes the file.
    */
@@ -56,6 +76,11 @@ export type WorkerOptions = {
     readonly path?: string;
     readonly staleAfterMs?: number;
   };
+  /**
+   * pg-boss's cron pass and send-it poll intervals. Production passes none and keeps pg-boss's
+   * defaults; a test passes faster ones to see a schedule tick within seconds.
+   */
+  readonly timing?: CronTiming;
 };
 
 /** One queue the worker drains: its name, whether it may run now, and what runs a job. */
@@ -134,9 +159,11 @@ async function reconcileSchedules(
       if (job.schedule === undefined) return;
 
       if (await context.entitlements.isEnabled(moduleId)) {
-        await boss.schedule(job.name, job.schedule);
+        await boss.schedule(job.name, job.schedule, null, {
+          key: declarationKey(job),
+        });
       } else {
-        await boss.unschedule(job.name);
+        await boss.unschedule(job.name, declarationKey(job));
       }
     })
   );
@@ -171,7 +198,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
     return 1;
   }
 
-  const boss = createBoss(context.db.$client, logger, true);
+  const boss = createBoss(context.db.$client, logger, true, options.timing);
 
   try {
     await runMigrations({
@@ -189,7 +216,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
         ),
     });
 
-    if (!options.signal.aborted) await serve(boss, context, options);
+    if (!options.signal.aborted) await serve(boss, context, logger, options);
 
     return 0;
   } catch (caught) {
@@ -213,6 +240,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
 async function serve(
   boss: PgBoss,
   context: TenantContext,
+  logger: ReturnType<typeof createLogger>,
   options: WorkerOptions
 ): Promise<void> {
   const jobs = options.modules.flatMap((module) =>
@@ -239,10 +267,51 @@ async function serve(
   ];
 
   options.output("worker started");
-  await Promise.all(loops.map(async (loop) => drain(boss, loop, options)));
+
+  const limit = options.shutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS;
+  const drained = new AbortController();
+
+  const settled = await Promise.race([
+    Promise.all(loops.map(async (loop) => drain(boss, loop, options))).then(
+      () => true
+    ),
+    elapsedAfterAbort(options.signal, limit, drained.signal),
+  ]);
+
+  drained.abort();
+
+  if (!settled) {
+    logger.error(
+      { shutdownTimeoutMs: limit },
+      "a job handler did not settle before the shutdown timeout; stopping pg-boss anyway"
+    );
+  }
 }
 
-/** The core heartbeat queue: no entitlement gate, a round trip, the file, then the schedules. */
+/**
+ * Answers false `ms` after `signal` aborts. `cancel` ends the wait early once the loops settled,
+ * so no timer outlives the run.
+ */
+async function elapsedAfterAbort(
+  signal: AbortSignal,
+  ms: number,
+  cancel: AbortSignal
+): Promise<false> {
+  try {
+    if (!signal.aborted) await once(signal, "abort", { signal: cancel });
+
+    await sleep(ms, undefined, { signal: cancel });
+  } catch {
+    // Cancelled because the loops settled first; the race already has its answer.
+  }
+
+  return false;
+}
+
+/**
+ * The core heartbeat queue: no entitlement gate, a round trip, the schedules, then the file. The
+ * file is written last, so a reconciliation that keeps failing lets the health check go stale.
+ */
 function heartbeatLoop(
   boss: PgBoss,
   context: TenantContext,
@@ -258,8 +327,8 @@ function heartbeatLoop(
     mayRun: async () => true,
     run: async () => {
       await context.db.$client.query("select 1");
-      await writeFile(path, new Date().toISOString());
       await reconcileSchedules(boss, context, jobs);
+      await writeFile(path, new Date().toISOString());
     },
   };
 }
