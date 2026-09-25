@@ -86,6 +86,31 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/file-storage.integration.test.ts",
+    reason:
+      "Spec 1 AC-8, R-6 and R-32-R-39, D-6 require file storage, sanitizing, link authorization and transaction rollback proof",
+    cases: [
+      "FileStorage against a real Postgres deployment is a fixed member of the tenant context",
+      "FileStorage against a real Postgres deployment stores bytes in file_blob and fetches the original bytes with response metadata",
+      "FileStorage against a real Postgres deployment refuses an upload one byte over FILE_MAX_BYTES",
+      "FileStorage against a real Postgres deployment refuses a content type outside the upload allow-list",
+      "FileStorage against a real Postgres deployment stores a hostile SVG only after scripts, handlers, javascript URLs, foreignObject and external references are removed",
+      "FileStorage against a real Postgres deployment refuses an SVG with no drawable content after sanitizing",
+      "FileStorage against a real Postgres deployment serves a valid tokenized link and refuses the same link after its expiry",
+      "FileStorage against a real Postgres deployment binds each token to its file and refuses a tampered token",
+      "FileStorage against a real Postgres deployment checks permissions through can() before issuing and serving a link",
+      "FileStorage against a real Postgres deployment writes metadata and bytes in the caller transaction so rollback leaves neither",
+    ],
+  },
+  {
+    file: "testing/file-storage-boundary.test.ts",
+    reason:
+      "Spec 1 AC-8 and the Files architecture invariant require the file_blob access boundary check to run",
+    cases: [
+      "file_blob access boundary keeps runtime references to file_blob inside storage adapters",
+    ],
+  },
+  {
     file: "testing/tenant-context.integration.test.ts",
     reason:
       "R-26a's production cross-check, held by genie-ops-center-v2-wwc, requires the containment proof to run",
