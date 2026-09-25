@@ -5,7 +5,24 @@ import { describe, expect, it } from "vitest";
 
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 import { silentLogger } from "../../services/logging/index.ts";
+import type { TenantContext } from "./index.ts";
 import { createTenantContext } from "./index.ts";
+
+type MailerContract = {
+  readonly provider: "none" | "resend" | "smtp";
+  readonly requireConfigured: () => void | Promise<void>;
+  readonly send: (input: {
+    readonly templateId: string;
+    readonly to: string;
+    readonly variables: Readonly<Record<string, string>>;
+  }) => Promise<void>;
+};
+
+function mailerOf(context: TenantContext): MailerContract {
+  // SAFETY: S1-08 adds this fixed member to the context contract.
+  return (context as TenantContext & { readonly mailer: MailerContract })
+    .mailer;
+}
 
 const MINIMAL = {
   DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
@@ -54,10 +71,34 @@ describe("createTenantContext", () => {
         "env",
         "fileStorage",
         "jobQueue",
+        "mailer",
         "settings",
       ]);
       expect(context.env.databaseUrl).toBe(MINIMAL.DATABASE_URL);
       expect(context.env.lockTimeoutMs).toBe(120000);
+      expect(mailerOf(context)).toBeDefined();
+      expect(mailerOf(context).provider).toBe("none");
+    } finally {
+      await context.db.$client.end();
+    }
+  });
+
+  it("builds the mailer once from the validated environment", async () => {
+    const source = {
+      ...MINIMAL,
+      MAIL_FROM: "mailer@example.invalid",
+      MAIL_PROVIDER: "smtp",
+      SMTP_URL: "smtp://mail.invalid",
+    };
+
+    const context = createTenantContext(source, silentLogger(), []);
+    const mailer = mailerOf(context);
+
+    source.MAIL_PROVIDER = "resend";
+
+    try {
+      expect(mailer.provider).toBe("smtp");
+      expect(mailerOf(context)).toBe(mailer);
     } finally {
       await context.db.$client.end();
     }
