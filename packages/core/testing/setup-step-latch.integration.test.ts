@@ -63,7 +63,7 @@ describe("the setup gate latch", () => {
         DATABASE_URL: postgres.url,
         PUBLIC_URL: "https://test.example.invalid",
       },
-      compiledModuleIds: [],
+      compiledModules: [],
       histories: [],
       output: (line: string) => output.push(line),
       errorOutput: (line: string) => output.push(line),
