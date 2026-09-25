@@ -3,6 +3,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import {
+  createFileStorage,
+  type FileStorage,
+} from "../../services/file-storage/index.ts";
+import {
   createJobQueue,
   type JobQueue,
 } from "../../services/job-queue/index.ts";
@@ -42,9 +46,10 @@ export type DeploymentEnvironment = {
 };
 
 /**
- * The one object every procedure, job and page reads through (DEC-34). It holds its three fixed
- * members (`db`, `env`, `jobQueue`) and the three cached tenant readers of R-5, each of which expires ten seconds after it
- * is filled (DEC-46). A later service ticket adds its own flat readonly member here.
+ * The one object every procedure, job and page reads through (DEC-34). It holds its fixed members
+ * (`db`, `env`, `jobQueue`, `fileStorage`) and the three cached tenant readers of R-5, each of
+ * which expires ten seconds after it is filled (DEC-46). A later service ticket adds its own flat
+ * readonly member here.
  */
 export type TenantContext = {
   readonly db: NodePgDatabase<Record<string, never>> & {
@@ -59,6 +64,8 @@ export type TenantContext = {
   readonly entitlements: TenantReaders["entitlements"];
   /** The pg-boss job queue over this context's pool (D-11). It starts on first use. */
   readonly jobQueue: JobQueue;
+  /** The file store of R-6, over the adapter `FILE_STORAGE_ADAPTER` selects. */
+  readonly fileStorage: FileStorage;
 };
 
 /**
@@ -112,6 +119,7 @@ export function createTenantContext(
     env,
     ...readers,
     jobQueue: createJobQueue(pool, logger),
+    fileStorage: createFileStorage(db, env),
   };
 
   // The logger the pool's error listener already uses is recorded off the object, where

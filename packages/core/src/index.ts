@@ -120,6 +120,17 @@ export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
 export type { JobQueue } from "./services/job-queue/index.ts";
 
 export {
+  type FetchedFile,
+  type FetchFileLinkInput,
+  type FileLinkInput,
+  type FileStorage,
+  type StoredFile,
+  type TokenizedFileLink,
+  UPLOAD_ALLOWED_MIME_TYPES,
+  type UploadFileInput,
+} from "./services/file-storage/index.ts";
+
+export {
   DEFAULT_WORKER_HEARTBEAT_PATH,
   HEARTBEAT_JOB,
   runWorker,

@@ -52,6 +52,7 @@ describe("createTenantContext", () => {
         "db",
         "entitlements",
         "env",
+        "fileStorage",
         "jobQueue",
         "settings",
       ]);

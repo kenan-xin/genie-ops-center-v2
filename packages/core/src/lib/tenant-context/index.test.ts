@@ -12,9 +12,15 @@ describe("TenantContext", () => {
     expectTypeOf<TenantContext["env"]>().toEqualTypeOf<DeploymentEnvironment>();
   });
 
-  it("carries the three cached tenant readers and the job queue", () => {
+  it("carries the three cached tenant readers, the job queue and the file store", () => {
     expectTypeOf<keyof TenantContext>().toEqualTypeOf<
-      "db" | "env" | "settings" | "branding" | "entitlements" | "jobQueue"
+      | "db"
+      | "env"
+      | "settings"
+      | "branding"
+      | "entitlements"
+      | "jobQueue"
+      | "fileStorage"
     >();
   });
 });

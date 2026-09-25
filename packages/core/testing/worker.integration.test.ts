@@ -411,6 +411,7 @@ describe("the core pg-boss worker", () => {
       "db",
       "entitlements",
       "env",
+      "fileStorage",
       "jobQueue",
       "settings",
     ]);

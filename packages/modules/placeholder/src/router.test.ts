@@ -70,6 +70,13 @@ function contextWith(
         enqueue: () => Promise.reject(new Error("the router enqueued a job")),
         schedule: () => Promise.reject(new Error("the router scheduled a job")),
       },
+      fileStorage: {
+        store: () => Promise.reject(new Error("the router stored a file")),
+        fetch: () => Promise.reject(new Error("the router fetched a file")),
+        createLink: () => Promise.reject(new Error("the router linked a file")),
+        fetchLink: () =>
+          Promise.reject(new Error("the router served a file link")),
+      },
     },
     caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
   };

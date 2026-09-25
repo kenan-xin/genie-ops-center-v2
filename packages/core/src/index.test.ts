@@ -16,7 +16,7 @@ describe("the core package root", () => {
     expect(core.createTenantContext).toBeTypeOf("function");
   });
 
-  it("builds a context through the package root and holds its five members", async () => {
+  it("builds a context through the package root and holds its fixed members", async () => {
     const context = core.createTenantContext(
       {
         DATABASE_URL: "postgres://genie:secret@db.invalid:5432/genie",
@@ -32,6 +32,7 @@ describe("the core package root", () => {
         "db",
         "entitlements",
         "env",
+        "fileStorage",
         "jobQueue",
         "settings",
       ]);
