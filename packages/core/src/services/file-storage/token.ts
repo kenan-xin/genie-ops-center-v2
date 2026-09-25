@@ -1,5 +1,32 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+import { z } from "zod";
+
+import type {
+  PermissionKey,
+  ResourceRef,
+} from "../../lib/module-contract/keys.ts";
+
+/**
+ * What a download token binds: the file, the permission and the owning record the `can()` check
+ * ran against. `fetchLink` reads the permission and resource back from the verified token, so a
+ * caller cannot widen a link after it was issued (R-38).
+ */
+export type FileLinkScope = {
+  readonly fileId: string;
+  readonly permission: PermissionKey;
+  readonly resource: ResourceRef;
+};
+
+/** The signed payload. `z.number()` is finite, so a `NaN` or infinite expiry is refused. */
+const payloadSchema = z.object({
+  fileId: z.string(),
+  permission: z.string(),
+  resourceType: z.string(),
+  resourceId: z.string(),
+  expiresAt: z.number(),
+});
+
 /**
  * The key that signs a download token. Section 1 has no file-link secret of its own in the
  * environment contract, and R-27 keeps `BETTER_AUTH_SECRET` out of this section, so the context
@@ -12,7 +39,7 @@ export function createFileLinkSecret(): Buffer {
 }
 
 /**
- * One message covers a bad signature, a mismatched file id and an expiry, so a caller learns
+ * One message covers a bad signature, a malformed payload and an expiry, so a caller learns
  * nothing about which check failed.
  */
 function invalidToken(): Error {
@@ -20,16 +47,22 @@ function invalidToken(): Error {
 }
 
 /**
- * Signs the file id with its expiry, so the token names one file and cannot be widened to another
- * (R-38). The payload is bound by an HMAC-SHA256 over the encoded payload.
+ * Signs the link scope with its expiry (R-38). The payload is JSON, so a permission or a resource
+ * id that holds `:` cannot be split apart, and the whole payload is bound by an HMAC-SHA256.
  */
 export function signFileLink(
-  fileId: string,
+  scope: FileLinkScope,
   expiresAt: Date,
   secret: Buffer
 ): string {
   const payload = Buffer.from(
-    `${fileId}:${expiresAt.getTime()}`,
+    JSON.stringify({
+      fileId: scope.fileId,
+      permission: scope.permission,
+      resourceType: scope.resource.type,
+      resourceId: scope.resource.id,
+      expiresAt: expiresAt.getTime(),
+    }),
     "utf8"
   ).toString("base64url");
 
@@ -41,14 +74,11 @@ export function signFileLink(
 }
 
 /**
- * Verifies a token against the secret and the requested file id, and refuses when the signature,
- * the file id or the expiry does not hold.
+ * Verifies a token against the secret and returns the scope it binds. A bad signature, a
+ * non-JSON or wrongly typed payload, and an expiry that has passed are all refused with the same
+ * message. The payload is parsed with a schema, so a forged body never reaches the caller.
  */
-export function readFileLink(
-  token: string,
-  secret: Buffer,
-  fileId: string
-): void {
+export function readFileLink(token: string, secret: Buffer): FileLinkScope {
   const [payload, signature, ...rest] = token.split(".");
 
   if (payload === undefined || signature === undefined || rest.length > 0) {
@@ -63,15 +93,28 @@ export function readFileLink(
     throw invalidToken();
   }
 
-  const [tokenFileId, expiry, ...extra] = Buffer.from(payload, "base64url")
-    .toString("utf8")
-    .split(":");
+  let raw: unknown;
 
-  if (tokenFileId !== fileId || extra.length > 0) throw invalidToken();
-
-  const expiresAt = Number(expiry);
-
-  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+  try {
+    raw = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
     throw invalidToken();
   }
+
+  const parsed = payloadSchema.safeParse(raw);
+
+  if (!parsed.success) throw invalidToken();
+
+  const { fileId, permission, resourceType, resourceId, expiresAt } =
+    parsed.data;
+
+  if (Date.now() > expiresAt) throw invalidToken();
+
+  return {
+    fileId,
+    // SAFETY: the HMAC above proves the payload came from signFileLink, which signed a
+    // PermissionKey; the schema only re-establishes that the value is a string.
+    permission: permission as PermissionKey,
+    resource: { type: resourceType, id: resourceId },
+  };
 }

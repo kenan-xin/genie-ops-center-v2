@@ -59,10 +59,9 @@ export type UploadFileInput = {
   readonly uploadedByUserId: string | null;
 };
 
-/** The identity of a stored file. `storageKey` never records which store holds the bytes (R-34). */
+/** The identity of a stored file. The `storage_key` column stays internal (R-34). */
 export type StoredFile = {
   readonly id: string;
-  readonly storageKey: string;
 };
 
 /** The bytes and response metadata of one file. */
@@ -86,8 +85,14 @@ export type TokenizedFileLink = {
   readonly expiresAt: Date;
 };
 
-/** The link input plus the presented token, for the serve step. */
-export type FetchFileLinkInput = FileLinkInput & { readonly token: string };
+/**
+ * The serve step: the token and the principal asking for it. The permission and the resource are
+ * read from the verified token, never from this input (R-38).
+ */
+export type FetchFileLinkInput = {
+  readonly token: string;
+  readonly principal: RequestPrincipal;
+};
 
 /**
  * The one file store every caller reaches through `context.fileStorage` (R-6, R-32). `store` and
@@ -161,8 +166,12 @@ function createBlobStore(
 }
 
 /** Refuses a link step the one `can()` seam does not grant (R-38, DEC-39). */
-async function assertAllowed(input: FileLinkInput): Promise<void> {
-  const allowed = await can(input.principal, input.permission, input.resource);
+async function assertCan(
+  principal: RequestPrincipal,
+  permission: PermissionKey,
+  resource: ResourceRef
+): Promise<void> {
+  const allowed = await can(principal, permission, resource);
 
   if (!allowed) throw new Error("Permission denied for this file link.");
 }
@@ -228,24 +237,33 @@ export function createFileStorage(
 
       await blobStore.put(id, bytes, tx);
 
-      return { id, storageKey };
+      return { id };
     },
     fetch,
     async createLink(input) {
-      await assertAllowed(input);
+      await assertCan(input.principal, input.permission, input.resource);
 
       const expiresAt = new Date(Date.now() + FILE_LINK_TTL_MS);
 
+      // The scope is signed into the token, so serving cannot widen the authorization decision.
+      const scope = {
+        fileId: input.fileId,
+        permission: input.permission,
+        resource: input.resource,
+      };
+
       return {
-        token: signFileLink(input.fileId, expiresAt, secret),
+        token: signFileLink(scope, expiresAt, secret),
         expiresAt,
       };
     },
     async fetchLink(input) {
-      await assertAllowed(input);
-      readFileLink(input.token, secret, input.fileId);
+      // Verify first: a forged token costs no `can()` work (Section 2 reads the database there).
+      const scope = readFileLink(input.token, secret);
 
-      return fetch(input.fileId);
+      await assertCan(input.principal, scope.permission, scope.resource);
+
+      return fetch(scope.fileId);
     },
   };
 }
