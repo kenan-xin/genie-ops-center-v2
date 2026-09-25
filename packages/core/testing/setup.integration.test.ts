@@ -439,14 +439,6 @@ describe("genie-ops setup", () => {
           metadata: { outcome: "failure" },
         },
       ]);
-
-      await expect(auditRows(fixture.observer)).resolves.toMatchObject([
-        {
-          actor_user_id: null,
-          action: "ops:setup",
-          metadata: { outcome: "failure" },
-        },
-      ]);
     },
     120000
   );
@@ -502,6 +494,13 @@ describe("genie-ops setup", () => {
         },
       ],
     });
+
+    const failedDetail = await fixture.observer.query<{
+      detail: string | null;
+    }>("select detail from setup_step where step = 'seed'");
+
+    expect(failedDetail.rows[0]?.detail).not.toMatch(/insert into|params:/i);
+
     await expect(
       fixture.observer.query("select count(*)::int as count from tenant_module")
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
@@ -542,6 +541,39 @@ describe("genie-ops setup", () => {
       "success",
     ]);
     expect(audits.every((row) => row.action === "ops:setup")).toBe(true);
+  }, 120000);
+
+  it("records the migrations step failed when a module history fails after core creates setup_step", async () => {
+    const fixture = await setupFixture();
+    const files = await configFiles();
+
+    const failing = await history(
+      "fixture",
+      "select * from missing_relation_for_failed_detail;"
+    );
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...setupOptions(fixture, captured),
+        histories: [failing],
+      })
+    ).resolves.not.toBe(0);
+
+    await expect(
+      fixture.observer.query(
+        "select step, state, detail from setup_step order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          step: "migrations",
+          state: "failed",
+          detail: expect.stringContaining("missing_relation_for_failed_detail"),
+        },
+      ],
+    });
   }, 120000);
 
   it("completes without mail variables and logs fresh-database migration progress", async () => {

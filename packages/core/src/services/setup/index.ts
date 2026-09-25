@@ -1,4 +1,4 @@
-import { ne } from "drizzle-orm";
+import { ne, sql } from "drizzle-orm";
 
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import type {
@@ -119,7 +119,10 @@ export function setupSatisfied(steps: readonly SetupStepView[]): boolean {
 }
 
 /**
- * Writes or moves one step's row. `updated_at` advances, which is what orders the run (R-18).
+ * Writes or moves one step's row. The step list, not `updated_at`, is the run order (R-18);
+ * `updated_at` only records when the row last moved. Both the insert (through the database
+ * default) and the update read the database clock, so the two rows cannot invert under clock
+ * skew between the application host and the database host.
  */
 async function writeStep(
   context: TenantContext,
@@ -132,7 +135,7 @@ async function writeStep(
     .values({ step, state, detail })
     .onConflictDoUpdate({
       target: setupStep.step,
-      set: { state, detail, updatedAt: new Date() },
+      set: { state, detail, updatedAt: sql`now()` },
     });
 }
 
@@ -151,7 +154,7 @@ async function markPending(
     .values({ step, state: "pending", detail: null })
     .onConflictDoUpdate({
       target: setupStep.step,
-      set: { state: "pending", detail: null, updatedAt: new Date() },
+      set: { state: "pending", detail: null, updatedAt: sql`now()` },
       setWhere: ne(setupStep.state, "done"),
     });
 }
@@ -350,7 +353,11 @@ async function runStep(
   try {
     await work();
   } catch (caught) {
-    if (rowWritable) {
+    // The `migrations` step creates `setup_step` itself, so a fresh database reads the table as
+    // absent before the work and present after it. Re-check inside the catch: the failed row
+    // R-18 asks for must still be written when the table appeared during the step, and R-65 only
+    // exempts a run where the table never came to exist.
+    if (rowWritable || (await setupStepTableExists(context))) {
       await recordFailure(
         context,
         step,

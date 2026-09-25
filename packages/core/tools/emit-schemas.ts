@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -13,6 +14,12 @@ import {
  * so an editor validates `tenant.yaml` and `branding.seed.json` as an operator types them (R-23,
  * DEC-35). Run through `nx run core:schemas`; the committed files are checked against this
  * emission by `schema-emission.test.ts`, so a stale file fails continuous integration.
+ *
+ * The raw `JSON.stringify` output is not the committed text: the files are oxfmt-formatted, so a
+ * run that only stringified would leave the tree dirty and fail a `git diff --exit-code`. The
+ * target formats its own output with the repository formatter, so running it is idempotent
+ * (AC-6). The formatter reads `oxfmt.config.ts` from the repository root, the same config a
+ * manual `pnpm run format` uses.
  */
 
 const outputDirectory = resolve(import.meta.dirname, "../../../deploy/schemas");
@@ -35,3 +42,7 @@ await Promise.all(
     );
   })
 );
+
+execFileSync("oxfmt", ["--disable-nested-config", outputDirectory], {
+  stdio: "inherit",
+});
