@@ -18,6 +18,8 @@ import { pollHealth, startImage, type RunningImage } from "./image-process.ts";
 
 const PORT = 3441;
 
+const SLOW_READ_PORT = 3442;
+
 const STANDARD_HEADERS = {
   "content-security-policy":
     "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'",
@@ -336,18 +338,42 @@ describe("the setup gate", () => {
   });
 
   it("does not let a slow pending read close the gate after a later read opens it", async () => {
+    const raceDeployment = await startDisposableDeployment([placeholderModule]);
+    let raceImage: RunningImage | undefined;
     let backingTableRenamed = false;
     let viewCreated = false;
     let tableUnavailable = false;
     let staleRead: Promise<Response> | undefined;
 
+    const raceUrl = (path: string) =>
+      `http://127.0.0.1:${SLOW_READ_PORT}${path}`;
+
     try {
-      await deployment.context.db.$client.query(
+      await enableModules(raceDeployment.context, ["placeholder"]);
+      await raceDeployment.context.db.$client.query(`
+        insert into setup_step (step, state)
+        values ('migrations', 'pending'), ('seed', 'pending')
+        on conflict (step) do update
+          set state = 'pending', detail = null, updated_at = now()
+      `);
+      raceImage = await startImage(
+        {
+          DATABASE_URL: raceDeployment.context.env.databaseUrl,
+          PUBLIC_URL: "https://example.invalid",
+        },
+        SLOW_READ_PORT
+      );
+
+      const health = await pollHealth(SLOW_READ_PORT);
+
+      expect(health.some(({ status }) => status === 200)).toBe(true);
+
+      await raceDeployment.context.db.$client.query(
         "alter table setup_step rename to setup_step_backing"
       );
       backingTableRenamed = true;
 
-      await deployment.context.db.$client.query(`
+      await raceDeployment.context.db.$client.query(`
         create function delay_pending_setup_step_state(state text)
         returns text
         language plpgsql
@@ -361,17 +387,17 @@ describe("the setup gate", () => {
         end
         $$
       `);
-      await deployment.context.db.$client.query(`
+      await raceDeployment.context.db.$client.query(`
         create view setup_step as
         select step, delay_pending_setup_step_state(state) as state, detail, updated_at
         from setup_step_backing
       `);
       viewCreated = true;
 
-      staleRead = fetch(url("/"));
+      staleRead = fetch(raceUrl("/"));
       await vi.waitFor(
         async () => {
-          const activeReads = await deployment.context.db.$client.query<{
+          const activeReads = await raceDeployment.context.db.$client.query<{
             count: string;
           }>(`
           select count(*)::text as count
@@ -387,11 +413,11 @@ describe("the setup gate", () => {
         { interval: 20, timeout: 2000 }
       );
 
-      await deployment.context.db.$client.query(
+      await raceDeployment.context.db.$client.query(
         "update setup_step_backing set state = 'done', detail = null"
       );
 
-      const freshResponse = await fetch(url("/"));
+      const freshResponse = await fetch(raceUrl("/"));
       const freshBody = await freshResponse.text();
 
       expect(freshResponse.status).toBe(200);
@@ -400,18 +426,18 @@ describe("the setup gate", () => {
       const staleResponse = await staleRead;
       await staleResponse.text();
 
-      await deployment.context.db.$client.query("drop view setup_step");
+      await raceDeployment.context.db.$client.query("drop view setup_step");
       viewCreated = false;
-      await deployment.context.db.$client.query(
+      await raceDeployment.context.db.$client.query(
         "alter table setup_step_backing rename to setup_step"
       );
       backingTableRenamed = false;
-      await deployment.context.db.$client.query(
+      await raceDeployment.context.db.$client.query(
         "alter table setup_step rename to setup_step_unavailable"
       );
       tableUnavailable = true;
 
-      const afterStaleResponse = await fetch(url("/"));
+      const afterStaleResponse = await fetch(raceUrl("/"));
       const afterStaleBody = await afterStaleResponse.text();
 
       expect(afterStaleResponse.status).toBe(200);
@@ -422,30 +448,26 @@ describe("the setup gate", () => {
         .catch(() => undefined);
 
       if (viewCreated) {
-        await deployment.context.db.$client.query("drop view setup_step");
+        await raceDeployment.context.db.$client.query("drop view setup_step");
       }
 
       if (backingTableRenamed) {
-        await deployment.context.db.$client.query(
+        await raceDeployment.context.db.$client.query(
           "alter table setup_step_backing rename to setup_step"
         );
       }
 
       if (tableUnavailable) {
-        await deployment.context.db.$client.query(
+        await raceDeployment.context.db.$client.query(
           "alter table setup_step_unavailable rename to setup_step"
         );
       }
 
-      if (backingTableRenamed) {
-        await deployment.context.db.$client.query(
-          "alter table setup_step_backing rename to setup_step"
-        );
-      }
-
-      await deployment.context.db.$client.query(
+      await raceDeployment.context.db.$client.query(
         "drop function if exists delay_pending_setup_step_state(text)"
       );
+      await raceImage?.stop();
+      await raceDeployment.stop();
     }
   });
 });
