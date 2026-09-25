@@ -19,11 +19,16 @@ import {
 import { causeChain } from "../../utils/error-cause.ts";
 import {
   createBoss,
+  DECLARATION_SCHEDULE_KEY_PREFIX,
   type CronTiming,
   type JobData,
   stopJobQueue,
 } from "../job-queue/index.ts";
-import { createLogger, redact } from "../logging/index.ts";
+import {
+  createLogger,
+  type RedactingLogger,
+  redact,
+} from "../logging/index.ts";
 import {
   type MigrationHistory,
   migrationPlan,
@@ -39,6 +44,9 @@ export const HEARTBEAT_JOB = "core.worker-heartbeat";
 /** Every minute, so a health check that allows three minutes tolerates two missed passes. */
 const HEARTBEAT_CRON = "* * * * *";
 
+/** Thrown inside a loop when its handler settles after the shutdown timeout, to end the loop. */
+const ABANDONED = new Error("abandoned at shutdown");
+
 /** How long a queue loop waits after it finds no job, or finds its module disabled. */
 const POLL_INTERVAL_MS = 1000;
 
@@ -49,7 +57,18 @@ const DEFAULT_SHUTDOWN_TIMEOUT_MS = 8000;
  * The schedule key a declaration owns. A caller's `jobQueue.schedule` uses its own key (empty by
  * default), so reconciling a declaration never overwrites a caller's cron or payload.
  */
-const declarationKey = (job: JobDeclaration) => `genie.module.${job.name}`;
+const declarationKey = (job: JobDeclaration) =>
+  `${DECLARATION_SCHEDULE_KEY_PREFIX}${job.name}`;
+
+/**
+ * The jobs the loops fetched and have not settled yet, by id. When the shutdown timeout passes,
+ * the worker fails each of them and sets `abandoned`, so a handler that settles later leaves its
+ * job alone: pg-boss retries it by its policy, and handlers are idempotent (module contract).
+ */
+type Claims = {
+  abandoned: boolean;
+  readonly held: Map<string, string>;
+};
 
 export type WorkerOptions = {
   /** The environment the tenant context is built from, validated before anything connects. */
@@ -110,6 +129,8 @@ function describe(error: Error | undefined): string {
 async function drain(
   boss: PgBoss,
   loop: QueueLoop,
+  claims: Claims,
+  logger: Pick<RedactingLogger, "warn">,
   options: WorkerOptions
 ): Promise<void> {
   while (!options.signal.aborted) {
@@ -119,11 +140,17 @@ async function drain(
       if (await loop.mayRun()) [job] = await boss.fetch<JobData>(loop.name);
 
       if (job !== undefined) {
-        await loop.run(job.data);
+        claims.held.set(job.id, loop.name);
+        await loop.run(job.data).finally(() => dropIfAbandoned());
+        claims.held.delete(job.id);
         await boss.complete(loop.name, job.id);
         continue;
       }
     } catch (caught) {
+      if (caught === ABANDONED) return;
+
+      if (job !== undefined) claims.held.delete(job.id);
+
       options.errorOutput(
         `worker: ${loop.name}: ${describe(caught instanceof Error ? caught : undefined)}`
       );
@@ -140,6 +167,18 @@ async function drain(
     await sleep(POLL_INTERVAL_MS, undefined, { signal: options.signal }).catch(
       () => undefined
     );
+  }
+
+  /** Past the shutdown timeout the job is already failed, so a late result is dropped. */
+  function dropIfAbandoned(): void {
+    if (!claims.abandoned) return;
+
+    logger.warn(
+      { queue: loop.name },
+      "a job handler settled after the shutdown timeout; its result is dropped"
+    );
+
+    throw ABANDONED;
   }
 }
 /* oxlint-enable no-await-in-loop */
@@ -270,11 +309,12 @@ async function serve(
 
   const limit = options.shutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS;
   const drained = new AbortController();
+  const claims: Claims = { abandoned: false, held: new Map() };
 
   const settled = await Promise.race([
-    Promise.all(loops.map(async (loop) => drain(boss, loop, options))).then(
-      () => true
-    ),
+    Promise.all(
+      loops.map(async (loop) => drain(boss, loop, claims, logger, options))
+    ).then(() => true),
     elapsedAfterAbort(options.signal, limit, drained.signal),
   ]);
 
@@ -282,10 +322,38 @@ async function serve(
 
   if (!settled) {
     logger.error(
-      { shutdownTimeoutMs: limit },
-      "a job handler did not settle before the shutdown timeout; stopping pg-boss anyway"
+      { shutdownTimeoutMs: limit, jobs: claims.held.size },
+      "a job handler did not settle before the shutdown timeout; failing its job and stopping pg-boss"
     );
+    await failAbandoned(boss, claims, logger);
   }
+}
+
+/**
+ * Marks every still-fetched job failed before pg-boss stops and the pool closes, so pg-boss
+ * retries it by its policy instead of leaving it active until expiry. A failed `fail` is logged;
+ * that job then expires and retries the same way.
+ */
+async function failAbandoned(
+  boss: PgBoss,
+  claims: Claims,
+  logger: Pick<RedactingLogger, "error">
+): Promise<void> {
+  claims.abandoned = true;
+
+  await Promise.all(
+    [...claims.held].map(async ([id, queue]) =>
+      boss
+        .fail(queue, id, {
+          message: "the worker shut down before the handler settled",
+        })
+        .catch((error: Error) =>
+          logger.error({ err: error, queue }, "could not fail an abandoned job")
+        )
+    )
+  );
+
+  claims.held.clear();
 }
 
 /**

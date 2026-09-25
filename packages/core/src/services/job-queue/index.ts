@@ -11,6 +11,9 @@ import type { RedactingLogger } from "../logging/index.ts";
 /** The schema pg-boss creates and migrates at its own start, beside the core tables. */
 export const JOB_QUEUE_SCHEMA = "pgboss";
 
+/** Schedule keys under this prefix belong to module job declarations; the worker owns them. */
+export const DECLARATION_SCHEDULE_KEY_PREFIX = "genie.module.";
+
 /** One JSON value inside a job payload. */
 export type JobValue =
   | string
@@ -123,8 +126,17 @@ export function createJobQueue(
   const queue: JobQueue = {
     enqueue: async (job, data, options) =>
       (await ready(job)).send(job, data, options),
-    schedule: async (job, cron, data, options) =>
-      (await ready(job)).schedule(job, cron, data, options),
+    schedule: async (job, cron, data, options) => {
+      // The worker owns these keys for module declarations and rewrites or removes them every
+      // heartbeat, so a caller schedule under one would be overwritten or deleted.
+      if (options?.key?.startsWith(DECLARATION_SCHEDULE_KEY_PREFIX) === true) {
+        throw new Error(
+          `Schedule key "${options.key}" is reserved: the "${DECLARATION_SCHEDULE_KEY_PREFIX}" prefix belongs to module job declarations.`
+        );
+      }
+
+      await (await ready(job)).schedule(job, cron, data, options);
+    },
   };
 
   stoppers.set(queue, async () => {
