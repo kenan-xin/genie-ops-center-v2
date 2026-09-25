@@ -481,6 +481,10 @@ describe("the core pg-boss worker", () => {
       return afterTick?.lastJobId !== heartbeatBefore?.lastJobId;
     });
 
+    const declarationSchedule = await inspector.getSchedule(
+      "scheduled.read-record",
+      "genie.module.scheduled.read-record"
+    );
     const schedules = await inspector.getSchedules("scheduled.read-record");
     const applicationSchedule = schedules.find(({ key }) => key === "");
     const moduleSchedule = schedules.find(({ cron }) => cron === "0 3 * * *");
@@ -494,6 +498,43 @@ describe("the core pg-boss worker", () => {
     });
     expect(moduleSchedule).toBeDefined();
     expect(moduleSchedule?.key).not.toBe(applicationSchedule?.key);
+    expect(declarationSchedule).toMatchObject({
+      cron: "0 3 * * *",
+      key: "genie.module.scheduled.read-record",
+    });
+  });
+
+  it("rejects a caller schedule key in the declaration-owned namespace", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+
+    cleanups.push(() => context.db.$client.end());
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [],
+    });
+    const scheduleModule = moduleWithJob(
+      "reporting",
+      async () => {},
+      "0 3 * * *"
+    );
+    const reservationKey = `genie.module.${scheduleModule.jobs[0]?.name}`;
+
+    await expect(
+      context.jobQueue.schedule(
+        scheduleModule.jobs[0]?.name ?? "reporting.read-record",
+        "*/5 * * * *",
+        { reportId: "caller" },
+        { key: reservationKey }
+      )
+    ).rejects.toThrow(/reserved/i);
   });
 
   it("preserves an application schedule and payload after declaration reconciliation", async () => {
@@ -722,13 +763,16 @@ describe("the core pg-boss worker", () => {
     expect(heartbeatExists).toBe(false);
   });
 
-  it("settles a hung job handler within shutdownTimeoutMs", async () => {
+  it("settles an abandoned handler job and ignores its late result", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(source(database.url), silentLogger(), [
       "shutdown",
     ]);
     const started = deferred();
-    const neverFinish = deferred();
+    let resolveHandler!: () => void;
+    const neverFinish = new Promise<void>((resolve) => {
+      resolveHandler = resolve;
+    });
     const controller = new AbortController();
 
     cleanups.push(() => context.db.$client.end());
@@ -745,12 +789,23 @@ describe("the core pg-boss worker", () => {
 
     const publisher = await boss(context);
 
-    await publisher.createQueue("shutdown.read-record");
-    await publisher.send("shutdown.read-record", { label: "never-resolves" });
+    const jobName = "shutdown.read-record";
+
+    await publisher.createQueue(jobName);
+    const inserted = await publisher.insert(
+      jobName,
+      [{ data: { label: "never-resolves" } }],
+      { returnId: true }
+    );
+    const queuedId = inserted?.[0];
+
+    if (queuedId === undefined) {
+      throw new Error("the shutdown fixture job was not inserted");
+    }
 
     const shutdownModule = moduleWithJob("shutdown", async () => {
       started.resolve();
-      await neverFinish.promise;
+      await neverFinish;
     });
     const worker = runWorker({
       source: source(database.url),
@@ -769,15 +824,20 @@ describe("the core pg-boss worker", () => {
     await started.promise;
     controller.abort();
 
-    const settledWithinBound = await Promise.race([
-      worker.then(() => true),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000)),
-    ]);
-
-    neverFinish.resolve();
     await worker;
 
-    expect(settledWithinBound).toBe(true);
+    const afterShutdown = await publisher.findJobs(jobName, { id: queuedId });
+
+    expect(afterShutdown[0]?.state).toMatch(/^(failed|retry)$/);
+
+    resolveHandler();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const afterLateHandler = await publisher.findJobs(jobName, {
+      id: queuedId,
+    });
+
+    expect(afterLateHandler[0]?.state).toBe(afterShutdown[0]?.state);
   });
 
   it("uses the tenant context pool for pg-boss rather than a second driver pool", async () => {
