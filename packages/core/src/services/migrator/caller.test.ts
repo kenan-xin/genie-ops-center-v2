@@ -26,6 +26,10 @@ const ENV: DeploymentEnvironment = {
   lockTimeoutMs: 1000,
   logLevel: "silent",
   port: 3000,
+  mailProvider: "none",
+  mailFrom: undefined,
+  resendApiKey: undefined,
+  smtpUrl: undefined,
 };
 
 type Script = {

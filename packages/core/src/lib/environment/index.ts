@@ -93,6 +93,23 @@ const wholeNumber = z
   .transform(Number)
   .refine((value) => value >= 1, "a whole number of at least 1");
 
+/** An unset variable and a blank one are the same thing to the mail rows of the contract. */
+function unsetWhenBlank(value: string | undefined): string | undefined {
+  return value === undefined || value.trim() === "" ? undefined : value;
+}
+
+/** The two schemes a `SMTP_URL` may use; the contract shows the `smtps://` form of the two. */
+function isSmtpUrl(value: string): boolean {
+  if (!URL.canParse(value)) return false;
+
+  const url = new URL(value);
+
+  return (
+    (url.protocol === "smtp:" || url.protocol === "smtps:") &&
+    url.hostname !== ""
+  );
+}
+
 const schema = z.object({
   DATABASE_URL: z
     .string()
@@ -127,7 +144,71 @@ const schema = z.object({
   PORT: wholeNumber
     .refine((port) => port <= 65535, "a port below 65536")
     .default(3000),
+  MAIL_PROVIDER: z.string().optional().transform(unsetWhenBlank),
+  MAIL_FROM: z.string().optional().transform(unsetWhenBlank),
+  RESEND_API_KEY: z.string().optional().transform(unsetWhenBlank),
+  SMTP_URL: z.string().optional().transform(unsetWhenBlank),
 });
+
+/**
+ * The mail values of the environment contract, "Mail". A provider names the mailer of R-43 and
+ * its own credential; `MAIL_PROVIDER` unset means no mailer, which is a valid deployment (R-45).
+ */
+function mailConfiguration(value: {
+  readonly MAIL_PROVIDER: string | undefined;
+  readonly MAIL_FROM: string | undefined;
+  readonly RESEND_API_KEY: string | undefined;
+  readonly SMTP_URL: string | undefined;
+}): Pick<
+  DeploymentEnvironment,
+  "mailProvider" | "mailFrom" | "resendApiKey" | "smtpUrl"
+> {
+  const problems: string[] = [];
+  const raw = value.MAIL_PROVIDER;
+  let provider: DeploymentEnvironment["mailProvider"] = "none";
+
+  if (raw === "resend" || raw === "smtp") provider = raw;
+  else if (raw !== undefined)
+    problems.push('MAIL_PROVIDER: "resend" or "smtp"');
+
+  if (
+    value.MAIL_FROM !== undefined &&
+    !z.email().safeParse(value.MAIL_FROM).success
+  ) {
+    problems.push("MAIL_FROM: a sender email address");
+  }
+
+  if (value.SMTP_URL !== undefined && !isSmtpUrl(value.SMTP_URL)) {
+    problems.push("SMTP_URL: an smtp:// or smtps:// url");
+  }
+
+  if (provider !== "none") {
+    if (value.MAIL_FROM === undefined) {
+      problems.push("MAIL_FROM: required when MAIL_PROVIDER is set");
+    }
+
+    if (provider === "resend" && value.RESEND_API_KEY === undefined) {
+      problems.push("RESEND_API_KEY: required when MAIL_PROVIDER=resend");
+    }
+
+    if (provider === "smtp" && value.SMTP_URL === undefined) {
+      problems.push("SMTP_URL: required when MAIL_PROVIDER=smtp");
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `The environment is not valid. ${problems.join(" ")} No value is shown, because a value can hold a secret.`
+    );
+  }
+
+  return {
+    mailProvider: provider,
+    mailFrom: value.MAIL_FROM,
+    resendApiKey: value.RESEND_API_KEY,
+    smtpUrl: value.SMTP_URL,
+  };
+}
 
 /**
  * Reads and validates the environment of the Section 0 application profile, before anything
@@ -175,5 +256,6 @@ export function validateEnvironment(
     lockTimeoutMs: value.LOCK_TIMEOUT_MS,
     logLevel: value.LOG_LEVEL,
     port: value.PORT,
+    ...mailConfiguration(value),
   };
 }

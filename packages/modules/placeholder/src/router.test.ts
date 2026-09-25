@@ -64,6 +64,10 @@ function contextWith(
         lockTimeoutMs: 120000,
         logLevel: "info",
         port: 3000,
+        mailProvider: "none",
+        mailFrom: undefined,
+        resendApiKey: undefined,
+        smtpUrl: undefined,
       },
       ...readersTripwire(),
       jobQueue: {
@@ -76,6 +80,11 @@ function contextWith(
         createLink: () => Promise.reject(new Error("the router linked a file")),
         fetchLink: () =>
           Promise.reject(new Error("the router served a file link")),
+      },
+      mailer: {
+        provider: "none",
+        requireConfigured: () => {},
+        send: () => Promise.reject(new Error("the router sent mail")),
       },
     },
     caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),

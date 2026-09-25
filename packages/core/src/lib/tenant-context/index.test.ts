@@ -12,7 +12,7 @@ describe("TenantContext", () => {
     expectTypeOf<TenantContext["env"]>().toEqualTypeOf<DeploymentEnvironment>();
   });
 
-  it("carries the three cached tenant readers, the job queue and the file store", () => {
+  it("carries the three cached tenant readers, the job queue, the file store and the mailer", () => {
     expectTypeOf<keyof TenantContext>().toEqualTypeOf<
       | "db"
       | "env"
@@ -21,6 +21,7 @@ describe("TenantContext", () => {
       | "entitlements"
       | "jobQueue"
       | "fileStorage"
+      | "mailer"
     >();
   });
 });

@@ -12,6 +12,11 @@ import {
 } from "../../services/job-queue/index.ts";
 import type { RedactingLogger } from "../../services/logging/index.ts";
 import {
+  createMailer,
+  type Mailer,
+  type MailProvider,
+} from "../../services/mailer/index.ts";
+import {
   type EnvironmentSource,
   validateEnvironment,
 } from "../environment/index.ts";
@@ -43,13 +48,21 @@ export type DeploymentEnvironment = {
   readonly lockTimeoutMs: number;
   readonly logLevel: string;
   readonly port: number;
+  /** The `MAIL_PROVIDER` selection; `none` is the unset value (environment contract, "Mail"). */
+  readonly mailProvider: MailProvider;
+  /** The `MAIL_FROM` sender address, present exactly when a provider is selected. */
+  readonly mailFrom: string | undefined;
+  /** The `RESEND_API_KEY` credential, present exactly when `MAIL_PROVIDER=resend`. */
+  readonly resendApiKey: string | undefined;
+  /** The `SMTP_URL` connection string, present exactly when `MAIL_PROVIDER=smtp`. */
+  readonly smtpUrl: string | undefined;
 };
 
 /**
  * The one object every procedure, job and page reads through (DEC-34). It holds its fixed members
- * (`db`, `env`, `jobQueue`, `fileStorage`) and the three cached tenant readers of R-5, each of
- * which expires ten seconds after it is filled (DEC-46). A later service ticket adds its own flat
- * readonly member here.
+ * (`db`, `env`, `jobQueue`, `fileStorage`, `mailer`) and the three cached tenant readers of R-5,
+ * each of which expires ten seconds after it is filled (DEC-46). A later service ticket adds its
+ * own flat readonly member here.
  */
 export type TenantContext = {
   readonly db: NodePgDatabase<Record<string, never>> & {
@@ -66,6 +79,8 @@ export type TenantContext = {
   readonly jobQueue: JobQueue;
   /** The file store of R-6, over the adapter `FILE_STORAGE_ADAPTER` selects. */
   readonly fileStorage: FileStorage;
+  /** The mailer of R-43, built once from the validated environment; `provider` is `none` when `MAIL_PROVIDER` is unset (D-7). */
+  readonly mailer: Mailer;
 };
 
 /**
@@ -89,7 +104,7 @@ export type TenantContext = {
  */
 export function createTenantContext(
   source: EnvironmentSource,
-  logger: Pick<RedactingLogger, "error">,
+  logger: Pick<RedactingLogger, "error" | "info">,
   compiledModuleIds: readonly string[]
 ): TenantContext {
   const env = validateEnvironment(source);
@@ -120,6 +135,7 @@ export function createTenantContext(
     ...readers,
     jobQueue: createJobQueue(pool, logger),
     fileStorage: createFileStorage(db, env),
+    mailer: createMailer(env, { branding: readers.branding, logger }),
   };
 
   // The logger the pool's error listener already uses is recorded off the object, where

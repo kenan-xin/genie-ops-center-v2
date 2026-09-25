@@ -131,6 +131,17 @@ export {
 } from "./services/file-storage/index.ts";
 
 export {
+  MAIL_TEMPLATE_IDS,
+  renderMailTemplate,
+  type Mailer,
+  type MailProvider,
+  type MailSendInput,
+  type MailTemplateId,
+  type MailTemplateVariables,
+  type RenderedMail,
+} from "./services/mailer/index.ts";
+
+export {
   DEFAULT_WORKER_HEARTBEAT_PATH,
   HEARTBEAT_JOB,
   runWorker,

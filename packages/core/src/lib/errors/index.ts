@@ -19,6 +19,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "forbidden": "You may not do that.",
   "invalid-input": "The request was not valid.",
   "module-disabled": "That module is switched off for this deployment.",
+  "mail-not-configured":
+    "Email is not configured for this deployment, so this action cannot send a notification.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

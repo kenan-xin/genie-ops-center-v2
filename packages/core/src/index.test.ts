@@ -34,6 +34,7 @@ describe("the core package root", () => {
         "env",
         "fileStorage",
         "jobQueue",
+        "mailer",
         "settings",
       ]);
     } finally {

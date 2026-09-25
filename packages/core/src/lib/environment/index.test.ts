@@ -192,9 +192,93 @@ describe("validateEnvironment", () => {
       "fileStorageAdapter",
       "lockTimeoutMs",
       "logLevel",
+      "mailFrom",
+      "mailProvider",
       "port",
       "publicUrl",
+      "resendApiKey",
+      "smtpUrl",
     ]);
+  });
+
+  it("reads an unset mail provider as no mailer", () => {
+    const env = validateEnvironment(MINIMAL);
+
+    expect(env.mailProvider).toBe("none");
+    expect(env.mailFrom).toBeUndefined();
+    expect(env.resendApiKey).toBeUndefined();
+    expect(env.smtpUrl).toBeUndefined();
+  });
+
+  it("reads the resend provider and its key", () => {
+    const env = validateEnvironment({
+      ...MINIMAL,
+      MAIL_PROVIDER: "resend",
+      MAIL_FROM: "mailer@example.invalid",
+      RESEND_API_KEY: "re_test_key",
+    });
+
+    expect(env.mailProvider).toBe("resend");
+    expect(env.mailFrom).toBe("mailer@example.invalid");
+    expect(env.resendApiKey).toBe("re_test_key");
+  });
+
+  it("reads the smtp provider and its url", () => {
+    const env = validateEnvironment({
+      ...MINIMAL,
+      MAIL_PROVIDER: "smtp",
+      MAIL_FROM: "mailer@example.invalid",
+      SMTP_URL: "smtps://mailer:secret@mail.example.invalid:465",
+    });
+
+    expect(env.mailProvider).toBe("smtp");
+    expect(env.smtpUrl).toBe("smtps://mailer:secret@mail.example.invalid:465");
+  });
+
+  it("refuses a provider without a sender address", () => {
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        MAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "re_test_key",
+      })
+    ).toThrow("MAIL_FROM");
+  });
+
+  it("refuses the credential a provider needs and names the variable", () => {
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        MAIL_PROVIDER: "resend",
+        MAIL_FROM: "mailer@example.invalid",
+      })
+    ).toThrow("RESEND_API_KEY");
+
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        MAIL_PROVIDER: "smtp",
+        MAIL_FROM: "mailer@example.invalid",
+      })
+    ).toThrow("SMTP_URL");
+  });
+
+  it("refuses a provider name and an smtp url it does not know", () => {
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        MAIL_PROVIDER: "sendgrid",
+      })
+    ).toThrow("MAIL_PROVIDER");
+
+    expect(() =>
+      validateEnvironment({
+        ...MINIMAL,
+        MAIL_PROVIDER: "smtp",
+        MAIL_FROM: "mailer@example.invalid",
+        SMTP_URL: "https://mail.example.invalid",
+      })
+    ).toThrow("SMTP_URL");
   });
 });
 

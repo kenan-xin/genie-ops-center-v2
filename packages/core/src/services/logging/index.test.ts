@@ -54,6 +54,10 @@ const ENV: DeploymentEnvironment = {
   lockTimeoutMs: 120000,
   logLevel: "info",
   port: 3000,
+  mailProvider: "none",
+  mailFrom: undefined,
+  resendApiKey: undefined,
+  smtpUrl: undefined,
 };
 
 /** Captures the lines one logger writes, so a test reads what a log file would hold. */

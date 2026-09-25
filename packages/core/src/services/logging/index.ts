@@ -529,6 +529,10 @@ function protectLogger(logger: Logger): RedactingLogger {
  * One is built per process from the validated environment. A request or a job run takes a
  * child of it through `forExecution`, which is what puts the three ids on the line. Only the
  * level is read, so a caller that has no destination may pass just that; `silentLogger` does.
+ *
+ * With no destination the lines go to the process stdout stream rather than to a file descriptor
+ * pino binds at construction, so a caller that captures `process.stdout.write` sees them. That is
+ * what lets `forExecution` and the mailer's development log be asserted from the outside.
  */
 export function createLogger(
   env: Pick<DeploymentEnvironment, "logLevel">,
@@ -579,8 +583,7 @@ export function createLogger(
     },
   };
 
-  const logger =
-    destination === undefined ? pino(options) : pino(options, destination);
+  const logger = pino(options, destination ?? process.stdout);
 
   return protectLogger(logger);
 }
