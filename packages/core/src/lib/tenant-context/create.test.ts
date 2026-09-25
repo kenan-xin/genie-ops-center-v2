@@ -98,6 +98,16 @@ describe("createTenantContext", () => {
     ).toThrow("DATABASE_URL");
   });
 
+  it("refuses to build a context with an unimplemented s3 adapter", () => {
+    expect(() =>
+      createTenantContext(
+        { ...MINIMAL, FILE_STORAGE_ADAPTER: "s3" },
+        silentLogger(),
+        []
+      )
+    ).toThrow(/s3.*not implemented/i);
+  });
+
   it("opens no connection while building the context", () => {
     // The pool is lazy: a connection belongs to the first query, and to the
     // migrator's own reserved client, never to the factory (R-19).

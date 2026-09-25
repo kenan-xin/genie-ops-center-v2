@@ -1,5 +1,13 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -33,28 +41,79 @@ function sourceFiles(root: string): string[] {
   });
 }
 
+type SourceFile = { readonly path: string; readonly source: string };
+
 function isStorageAdapter(path: string): boolean {
-  return relative(repositoryRoot, path)
-    .split(sep)
-    .some((segment) => /^adapters?$/i.test(segment));
+  const adapterRoot = join(
+    repositoryRoot,
+    "packages/core/src/services/file-storage/adapters"
+  );
+
+  const relativePath = relative(adapterRoot, path);
+  const adapterPath = relative(repositoryRoot, path);
+
+  return (
+    adapterPath.startsWith(
+      "packages/core/src/services/file-storage/adapters/"
+    ) &&
+    relativePath !== ".." &&
+    !relativePath.startsWith("../")
+  );
+}
+
+function fileBlobViolations(files: readonly SourceFile[]): string[] {
+  return files.flatMap(({ path, source }) => {
+    // The schema declares the table, and only the core file-storage adapter may operate on it.
+    if (path === join(repositoryRoot, "packages/core/src/schema.ts")) return [];
+
+    if (isStorageAdapter(path)) return [];
+
+    return /\b(?:file_blob|fileBlob)\b/.test(source)
+      ? [relative(repositoryRoot, path)]
+      : [];
+  });
 }
 
 describe("file_blob access boundary", () => {
   it("keeps runtime references to file_blob inside storage adapters", () => {
-    const files = sourceRoots.flatMap(sourceFiles);
+    const files = sourceRoots
+      .flatMap(sourceFiles)
+      .map((path) => ({ path, source: readFileSync(path, "utf8") }));
 
-    const violations = files.flatMap((path) => {
-      // The core schema declares the table; storage operations belong in an adapter.
-      if (path === join(repositoryRoot, "packages/core/src/schema.ts"))
-        return [];
-
-      if (isStorageAdapter(path)) return [];
-
-      return /\bfile_blob\b/i.test(readFileSync(path, "utf8"))
-        ? [relative(repositoryRoot, path)]
-        : [];
-    });
+    const violations = fileBlobViolations(files);
 
     expect(violations).toEqual([]);
+  });
+
+  it("catches a planted fileBlob import under a module adapter directory", () => {
+    const temporaryRoot = mkdtempSync(join(tmpdir(), "file-blob-boundary-"));
+
+    const moduleSources = join(
+      temporaryRoot,
+      "packages/modules/example/src/adapters"
+    );
+
+    const plantedPath = join(moduleSources, "file-leak.ts");
+
+    try {
+      mkdirSync(moduleSources, { recursive: true });
+      writeFileSync(
+        plantedPath,
+        'import { fileBlob } from "@genie/core/schema";\n'
+      );
+
+      const plantedFiles = sourceFiles(join(temporaryRoot, "packages/modules"));
+
+      const violations = fileBlobViolations(
+        plantedFiles.map((path) => ({
+          path,
+          source: readFileSync(path, "utf8"),
+        }))
+      );
+
+      expect(violations).toEqual([relative(repositoryRoot, plantedPath)]);
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 });

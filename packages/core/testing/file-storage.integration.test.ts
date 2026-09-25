@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { JSDOM } from "jsdom";
 import { Client } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +17,7 @@ import {
   createStubGrantReader,
   STUB_GRANTED_KEY,
 } from "../src/services/authorization/index.ts";
+import type { PermissionGrants } from "../src/services/authorization/index.ts";
 import { startDisposableDeployment } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -58,9 +60,10 @@ type FileStorageContract = {
   store(input: StoreInput, tx: TenantTransaction): Promise<StoredFile>;
   fetch(fileId: string): Promise<FetchedFile>;
   createLink(input: LinkInput): Promise<TokenizedLink>;
-  fetchLink(
-    input: LinkInput & { readonly token: string }
-  ): Promise<FetchedFile>;
+  fetchLink(input: {
+    readonly token: string;
+    readonly principal: RequestPrincipal;
+  }): Promise<FetchedFile>;
 };
 
 type FileTenantContext = TenantContext & {
@@ -73,6 +76,20 @@ function principal(): RequestPrincipal {
   return createRequestPrincipal(
     { userId: "u1", groups: [] },
     createStubGrantReader()
+  );
+}
+
+function principalWithGrant(
+  permission: PermissionKey,
+  scope: ResourceRef
+): RequestPrincipal {
+  const grants: PermissionGrants = {
+    keys: new Set([permission]),
+    scopes: new Map([[permission, { kind: "some", scopes: [scope] }]]),
+  };
+
+  return createRequestPrincipal({ userId: "u1", groups: [] }, () =>
+    Promise.resolve(grants)
   );
 }
 
@@ -159,6 +176,22 @@ describe("FileStorage against a real Postgres deployment", () => {
     ).rejects.toThrow(/size|limit|FILE_MAX_BYTES/i);
   });
 
+  it("accepts an upload exactly FILE_MAX_BYTES", async () => {
+    const { context } = await startStorageDeployment();
+    const bytes = Buffer.alloc(context.env.fileMaxBytes, 0x41);
+
+    const stored = await withTransaction(context, (tx) =>
+      storageFor(context).store(upload(bytes, "text/plain", "at-limit.txt"), tx)
+    );
+
+    const [row] = await context.db
+      .select({ sizeBytes: file.sizeBytes })
+      .from(file)
+      .where(eq(file.id, stored.id));
+
+    expect(row?.sizeBytes).toBe(context.env.fileMaxBytes);
+  });
+
   it("refuses a content type outside the upload allow-list", async () => {
     const { context } = await startStorageDeployment();
 
@@ -183,6 +216,9 @@ describe("FileStorage against a real Postgres deployment", () => {
         "<foreignObject><div>unsafe</div></foreignObject>" +
         '<image href="https://attacker.invalid/image.png" />' +
         '<use xlink:href="https://attacker.invalid/sprite.svg#payload" />' +
+        '<a href="https://attacker.invalid/page"><text>external href</text></a>' +
+        '<a xlink:href="//attacker.invalid/page"><text>external xlink</text></a>' +
+        '<path fill="url(https://attacker.invalid/fill.svg#g)" stroke="url(https://attacker.invalid/stroke.svg#g)" d="M0 0" />' +
         "</svg>"
     );
 
@@ -204,6 +240,120 @@ describe("FileStorage against a real Postgres deployment", () => {
     expect(sanitized).not.toMatch(
       /<script|onload|javascript:|foreignobject|attacker\.invalid/i
     );
+  });
+
+  it("preserves drawing attributes and same-document paint references in an SVG logo", async () => {
+    const { context } = await startStorageDeployment();
+
+    const logo = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64">' +
+        '<path d="M0 0L64 64" stroke="#000" stroke-width="4" />' +
+        '<circle cx="32" cy="32" r="10" fill="blue" />' +
+        '<defs><linearGradient id="g"><stop offset="0%" stop-color="red" /></linearGradient></defs>' +
+        '<rect x="4" y="4" width="5" height="5" fill="url(#g)" />' +
+        '<a href="https://attacker.invalid/logo.svg"><text>external link</text></a>' +
+        '<a xlink:href="https://attacker.invalid/icon.svg"><text>external xlink</text></a>' +
+        '<path fill="url(https://attacker.invalid/fill.svg#g)" stroke="url(https://attacker.invalid/stroke.svg#g)" d="M1 1" />' +
+        "</svg>"
+    );
+
+    const stored = await withTransaction(context, (tx) =>
+      storageFor(context).store(upload(logo, "image/svg+xml", "logo.svg"), tx)
+    );
+
+    const bytes = (await storageFor(context).fetch(stored.id)).bytes;
+
+    const dom = new JSDOM("");
+
+    try {
+      const document = new dom.window.DOMParser().parseFromString(
+        bytes.toString("utf8"),
+        "image/svg+xml"
+      );
+
+      const svg = document.documentElement;
+      const path = svg.querySelector("path");
+      const circle = svg.querySelector("circle");
+      const rect = svg.querySelector("rect");
+
+      expect(svg.getAttribute("width")).toBe("64");
+      expect(svg.getAttribute("height")).toBe("64");
+      expect(svg.getAttribute("viewBox")).toBe("0 0 64 64");
+      expect(path?.getAttribute("d")).toBe("M0 0L64 64");
+      expect(path?.getAttribute("stroke")).toBe("#000");
+      expect(circle?.getAttribute("cx")).toBe("32");
+      expect(circle?.getAttribute("cy")).toBe("32");
+      expect(circle?.getAttribute("r")).toBe("10");
+      expect(circle?.getAttribute("fill")).toBe("blue");
+      expect(rect?.getAttribute("fill")).toBe("url(#g)");
+      expect(document.getElementById("g")?.tagName).toBe("linearGradient");
+
+      expect(bytes.toString("utf8")).not.toMatch(
+        /attacker\.invalid|url\(https:/i
+      );
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it("stores SVG bytes with a non-breaking space that reparse as XML", async () => {
+    const { context } = await startStorageDeployment();
+
+    const bytes = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>North\u00a0Star</text></svg>'
+    );
+
+    const dom = new JSDOM("");
+
+    try {
+      const stored = await withTransaction(context, (tx) =>
+        storageFor(context).store(
+          upload(bytes, "image/svg+xml", "nbsp.svg"),
+          tx
+        )
+      );
+
+      const fetched = await storageFor(context).fetch(stored.id);
+
+      const document = new dom.window.DOMParser().parseFromString(
+        fetched.bytes.toString("utf8"),
+        "image/svg+xml"
+      );
+
+      expect(document.querySelector("parsererror")).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it("stores a DOCTYPE subset input as well-formed SVG XML", async () => {
+    const { context } = await startStorageDeployment();
+
+    const bytes = Buffer.from(
+      '<!DOCTYPE svg [<!ENTITY label "North Star">]><svg xmlns="http://www.w3.org/2000/svg"><text>&label;</text></svg>'
+    );
+
+    const dom = new JSDOM("");
+
+    try {
+      const stored = await withTransaction(context, (tx) =>
+        storageFor(context).store(
+          upload(bytes, "image/svg+xml", "doctype.svg"),
+          tx
+        )
+      );
+
+      const fetched = await storageFor(context).fetch(stored.id);
+
+      const document = new dom.window.DOMParser().parseFromString(
+        fetched.bytes.toString("utf8"),
+        "image/svg+xml"
+      );
+
+      expect(document.querySelector("parsererror")).toBeNull();
+    } finally {
+      dom.window.close();
+    }
   });
 
   it("refuses an SVG with no drawable content after sanitizing", async () => {
@@ -248,7 +398,11 @@ describe("FileStorage against a real Postgres deployment", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
     const link = await storage.createLink(access);
-    const fetched = await storage.fetchLink({ ...access, token: link.token });
+
+    const fetched = await storage.fetchLink({
+      token: link.token,
+      principal: identity,
+    });
 
     expect(fetched).toEqual({
       bytes: PNG_BYTES,
@@ -259,44 +413,52 @@ describe("FileStorage against a real Postgres deployment", () => {
     vi.setSystemTime(new Date(link.expiresAt.getTime() + 1));
 
     await expect(
-      storage.fetchLink({ ...access, token: link.token })
+      storage.fetchLink({ token: link.token, principal: identity })
     ).rejects.toThrow(/expired|invalid|token/i);
   });
 
-  it("binds each token to its file and refuses a tampered token", async () => {
+  it("binds the permission and resource to the token rather than fetchLink input", async () => {
     const { context } = await startStorageDeployment();
 
     const storage = storageFor(context);
 
-    const ids = await withTransaction(context, async (tx) => {
-      const first = await storage.store(upload(), tx);
+    const fileId = await withTransaction(context, async (tx) => {
+      const stored = await storage.store(upload(), tx);
 
-      const second = await storage.store(
-        upload(PNG_BYTES, "image/png", "other.png"),
-        tx
-      );
-
-      return [first.id, second.id] as const;
+      return stored.id;
     });
 
-    const access = {
-      fileId: ids[0],
-      principal: principal(),
-      permission: STUB_GRANTED_KEY,
-      resource,
-    };
+    const permission: PermissionKey = "documents:read";
+    const ownerResource = { type: "document", id: "document-owner" };
+    const issuingPrincipal = principalWithGrant(permission, ownerResource);
 
-    const link = await storage.createLink(access);
-
-    await expect(
-      storage.fetchLink({ ...access, fileId: ids[1], token: link.token })
-    ).rejects.toThrow();
-
-    const tamperedToken = `${link.token}x`;
+    const link = await storage.createLink({
+      fileId,
+      principal: issuingPrincipal,
+      permission,
+      resource: ownerResource,
+    });
 
     await expect(
-      storage.fetchLink({ ...access, token: tamperedToken })
-    ).rejects.toThrow(/invalid|token|signature/i);
+      storage.fetchLink({ token: link.token, principal: issuingPrincipal })
+    ).resolves.toMatchObject({ fileName: "pixel.png" });
+
+    await expect(
+      storage.fetchLink({
+        token: link.token,
+        principal: principalWithGrant("documents:download", ownerResource),
+      })
+    ).rejects.toThrow(/permission|forbidden|authoriz/i);
+
+    await expect(
+      storage.fetchLink({
+        token: link.token,
+        principal: principalWithGrant(permission, {
+          type: ownerResource.type,
+          id: "another-record",
+        }),
+      })
+    ).rejects.toThrow(/permission|forbidden|authoriz/i);
   });
 
   it("checks permissions through can() before issuing and serving a link", async () => {
@@ -335,11 +497,48 @@ describe("FileStorage against a real Postgres deployment", () => {
 
     await expect(
       storage.fetchLink({
-        ...allowed,
-        permission: deniedPermission,
         token: link.token,
+        principal: principalWithGrant(deniedPermission, denied),
       })
     ).rejects.toThrow(/permission|forbidden|authoriz/i);
+  });
+
+  it("refuses a forged link before reading the principal grants", async () => {
+    const { context } = await startStorageDeployment();
+
+    const storage = storageFor(context);
+
+    const fileId = await withTransaction(context, async (tx) => {
+      const stored = await storage.store(upload(), tx);
+
+      return stored.id;
+    });
+
+    const link = await storage.createLink({
+      fileId,
+      principal: principal(),
+      permission: STUB_GRANTED_KEY,
+      resource,
+    });
+
+    let grantReads = 0;
+
+    const fetchPrincipal = createRequestPrincipal(
+      { userId: "u1", groups: [] },
+      () => {
+        grantReads += 1;
+
+        return Promise.resolve({
+          keys: new Set([STUB_GRANTED_KEY]),
+          scopes: new Map([[STUB_GRANTED_KEY, { kind: "all" } as const]]),
+        });
+      }
+    );
+
+    await expect(
+      storage.fetchLink({ token: `${link.token}x`, principal: fetchPrincipal })
+    ).rejects.toThrow(/invalid|token|signature/i);
+    expect(grantReads).toBe(0);
   });
 
   it("writes metadata and bytes in the caller transaction so rollback leaves neither", async () => {
