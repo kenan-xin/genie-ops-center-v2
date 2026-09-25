@@ -1,17 +1,15 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { RedactingLogger } from "../logging/index.ts";
+import type { MailTemplateId } from "./catalogue.ts";
 import { createResendSender } from "./resend.ts";
 import type { MailSender } from "./sender.ts";
 import { createSmtpSender } from "./smtp.ts";
-import { renderMailTemplate, type MailTemplateId } from "./templates.ts";
-
-export { MAIL_TEMPLATE_IDS, renderMailTemplate } from "./templates.ts";
 
 export type {
   MailTemplateId,
   MailTemplateVariables,
   RenderedMail,
-} from "./templates.ts";
+} from "./catalogue.ts";
 
 export type { MailSender, OutgoingMail } from "./sender.ts";
 
@@ -122,7 +120,16 @@ function configuredSend(
 
   return async (input) => {
     const branding = await deps.branding.get();
-    const rendered = renderMailTemplate(input.templateId, input.variables);
+
+    // The React Email templates are TSX, so they load here rather than while a context is built:
+    // the build-safety probe and the release entry run under Node's native type stripping, which
+    // cannot load a `.tsx` module (R-19). A test that captures image output still awaits this send.
+    const { renderMailTemplate } = await import("./templates.tsx");
+
+    const rendered = await renderMailTemplate(
+      input.templateId,
+      input.variables
+    );
 
     try {
       await sender({

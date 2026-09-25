@@ -19,7 +19,7 @@ Four packages below 1.0 sit in load-bearing places: drizzle-orm and drizzle-kit 
 | Item | Choice | Version | Why |
 | --- | --- | --- | --- |
 | Framework | Next.js, App Router | 16.x | Server components for per-tenant data, route handlers for auth and streaming, one deployable. |
-| UI library | React | 19.x | Required by Next.js 16. |
+| UI library | React (`react`, `react-dom`) | 19.x | Required by Next.js 16. `react-dom/server` also renders the React Email HTML part in core. |
 | React type definitions | `@types/react`, `@types/react-dom` | 19.x, aligned with React | The type definitions must track the React major that the app and the workbench render. |
 | Styling | Tailwind CSS | 4.x | Token-driven utilities. CSS variables carry the fixed and tenant token layers. |
 | Styling build plugin | `@tailwindcss/postcss` | pinned with `tailwindcss` | How Tailwind 4 reaches the Next build. Without it the framework treats the stylesheet as plain CSS, so `@import "tailwindcss"` is not expanded and `@config` is an unknown at-rule, and the shared preset is never read in a production build. Always the same exact version as `tailwindcss`. |
@@ -69,7 +69,7 @@ The tRPC and TanStack Query setup follows the tRPC App Router guide and the TanS
 
 | Item | Choice | Version | Why |
 | --- | --- | --- | --- |
-| Email templates | React Email (`@react-email/components`, `react-email` for preview) | components 1.x, preview tool 6.x | Every email Genie Ops Center initiates, rendered with the tenant's branding values. |
+| Email templates | React Email (`@react-email/components`, which re-exports `@react-email/render`; `react-email` for preview) | components 1.0.12, render 2.0.6, preview tool 6.x | Every email Genie Ops Center initiates, rendered with the tenant's branding values. The HTML part renders from these components; the plain-text part is hand-written per template, never derived from the HTML (R-44). |
 | Email, Genie-hosted deployment | Resend (`resend` package) | 6.x | Hosted delivery behind the core mailer interface. |
 | Email, customer-hosted deployment | SMTP through Nodemailer (`nodemailer`) | 7.x | Government and healthcare deployments will not allow a hosted mail provider. One mailer interface, two adapters. Nodemailer is the established Node.js SMTP client with no runtime dependencies, and it accepts the `SMTP_URL` form of `../architecture/environment-contract.md` directly. |
 | Credential emails, local-account tenants | Keycloak built-in email templates | none | Set password, reset password, verify email carry Keycloak action tokens, so Keycloak sends them, unstyled, with the realm display name (`DEC-40`). Brokered tenants never receive these. |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAIL_TEMPLATE_IDS, renderMailTemplate } from "./templates.ts";
+import { MAIL_TEMPLATE_IDS, renderMailTemplate } from "./templates.tsx";
 
 const VARIABLES = {
   companyName: "Acme Security",
@@ -30,8 +30,8 @@ describe("mailer templates", () => {
   });
 
   for (const id of MAIL_TEMPLATE_IDS) {
-    it(`renders independent HTML and plain-text parts for ${id}`, () => {
-      const { html, text } = renderMailTemplate(id, VARIABLES);
+    it(`renders independent HTML and plain-text parts for ${id}`, async () => {
+      const { html, text } = await renderMailTemplate(id, VARIABLES);
 
       expect(html).toMatch(/<[a-z][^>]*>/i);
       expect(text.trim().length).toBeGreaterThan(0);

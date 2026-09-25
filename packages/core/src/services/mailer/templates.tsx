@@ -4,31 +4,39 @@
  * land with this ticket; the events that send them land in Section 2 item 8 and the first module
  * that notifies.
  *
- * Every template renders an HTML part and a plain-text part that are written separately, so
- * neither adapter derives one part from the other (R-44). A tokenized link lives in the template
- * variables, so the renderer never writes a link to its own output; only the mailer logs, and it
- * logs through the redacting logger (R-49).
+ * The HTML part is rendered from React Email components (`DEC-11`, tech-stack "Email templates").
+ * The plain-text part is a hand-written builder per template and is never produced from the HTML
+ * with React Email's `plainText` option, so neither part is derived from the other (R-44). A
+ * tokenized link lives in the template variables, so the renderer never writes a link to its own
+ * output; only the mailer logs, and it logs through the redacting logger (R-49).
  */
 
-export const MAIL_TEMPLATE_IDS = [
-  "invitation-brokered",
-  "invitation-local-account",
-  "role-granted",
-  "role-removed",
-  "new-device-sign-in",
-  "module-notification",
-] as const;
+import {
+  Body,
+  Container,
+  Head,
+  Heading,
+  Hr,
+  Html,
+  Link,
+  Preview,
+  Text,
+  render,
+} from "@react-email/components";
 
-export type MailTemplateId = (typeof MAIL_TEMPLATE_IDS)[number];
+import type {
+  MailTemplateId,
+  MailTemplateVariables,
+  RenderedMail,
+} from "./catalogue.ts";
 
-/** The values one template reads. A missing value renders empty text, never the word `undefined`. */
-export type MailTemplateVariables = Readonly<Record<string, string>>;
+export { MAIL_TEMPLATE_IDS } from "./catalogue.ts";
 
-export type RenderedMail = {
-  readonly subject: string;
-  readonly html: string;
-  readonly text: string;
-};
+export type {
+  MailTemplateId,
+  MailTemplateVariables,
+  RenderedMail,
+} from "./catalogue.ts";
 
 /** The one link a template offers, as a button in HTML and a labelled url in plain text. */
 type MailAction = {
@@ -39,32 +47,11 @@ type MailAction = {
 type MailContent = {
   readonly subject: string;
   readonly heading: string;
+  readonly preview: string;
   readonly paragraphs: readonly string[];
   readonly action: MailAction;
   readonly footer: string;
 };
-
-/** The five characters that change the meaning of an HTML part once a value is placed in it. */
-function escapeHtmlCharacter(character: string): string {
-  switch (character) {
-    case "&":
-      return "&amp;";
-    case "<":
-      return "&lt;";
-    case ">":
-      return "&gt;";
-    case '"':
-      return "&quot;";
-    case "'":
-      return "&#39;";
-    default:
-      return character;
-  }
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, escapeHtmlCharacter);
-}
 
 /** One variable, or the empty string. A caller that omits a value gets no `undefined` in a body. */
 function value(variables: MailTemplateVariables, key: string): string {
@@ -86,6 +73,7 @@ function invitationBrokered(variables: MailTemplateVariables): MailContent {
   return {
     subject: `You are invited to ${productName}`,
     heading: "You are invited",
+    preview: `${value(variables, "inviterName")} invited you to ${productName}.`,
     paragraphs: [
       greeting(variables),
       `${value(variables, "inviterName")} invited you to join ${value(variables, "companyName")} on ${productName}.`,
@@ -113,6 +101,7 @@ function invitationLocalAccount(variables: MailTemplateVariables): MailContent {
   return {
     subject: `Your ${productName} account is ready`,
     heading: "Your account has been created",
+    preview: `An account was created for you at ${companyName}.`,
     paragraphs: [
       greeting(variables),
       `An account was created for you at ${companyName}.`,
@@ -136,6 +125,7 @@ function roleGranted(variables: MailTemplateVariables): MailContent {
   return {
     subject: `You were granted the ${roleName} role`,
     heading: "Role granted",
+    preview: `You now have the ${roleName} role at ${companyName}.`,
     paragraphs: [
       greeting(variables),
       `You now have the ${roleName} role at ${companyName}.`,
@@ -155,6 +145,7 @@ function roleRemoved(variables: MailTemplateVariables): MailContent {
   return {
     subject: `Your ${roleName} role was removed`,
     heading: "Role removed",
+    preview: `The ${roleName} role was removed from your account.`,
     paragraphs: [
       greeting(variables),
       `The ${roleName} role at ${companyName} was removed from your account.`,
@@ -174,6 +165,7 @@ function newDeviceSignIn(variables: MailTemplateVariables): MailContent {
   return {
     subject: `New sign-in to ${productName}`,
     heading: "New device sign-in",
+    preview: `Your account signed in from ${value(variables, "deviceName")}.`,
     paragraphs: [
       greeting(variables),
       `Your account signed in from ${value(variables, "deviceName")}.`,
@@ -193,6 +185,10 @@ function moduleNotification(variables: MailTemplateVariables): MailContent {
   return {
     subject: `${moduleName} has an update`,
     heading: `${moduleName} notification`,
+    preview: firstNonEmpty(
+      value(variables, "message"),
+      `${moduleName} has an update for you.`
+    ),
     paragraphs: [
       greeting(variables),
       firstNonEmpty(
@@ -205,7 +201,7 @@ function moduleNotification(variables: MailTemplateVariables): MailContent {
   };
 }
 
-/** One builder per catalogue id, so a new id is a compile error until it has a builder. */
+/** One content builder per catalogue id, so a new id is a compile error until it has a builder. */
 const BUILDERS: Readonly<
   Record<MailTemplateId, (variables: MailTemplateVariables) => MailContent>
 > = {
@@ -217,24 +213,47 @@ const BUILDERS: Readonly<
   "module-notification": moduleNotification,
 };
 
-function renderHtml(content: MailContent): string {
-  const paragraphs = content.paragraphs
-    .map((paragraph) => `    <p>${escapeHtml(paragraph)}</p>`)
-    .join("\n");
+const STYLES = {
+  body: { backgroundColor: "#f4f5f7", fontFamily: "sans-serif" },
+  container: {
+    backgroundColor: "#ffffff",
+    margin: "0 auto",
+    maxWidth: "560px",
+    padding: "32px",
+  },
+  heading: { color: "#111827", fontSize: "22px" },
+  paragraph: { color: "#374151", fontSize: "15px", lineHeight: "24px" },
+  button: { color: "#1d4ed8", fontSize: "15px" },
+  rule: { borderColor: "#e5e7eb" },
+  footer: { color: "#6b7280", fontSize: "12px" },
+};
 
-  return [
-    "<!doctype html>",
-    '<html lang="en">',
-    "  <body>",
-    `    <h1>${escapeHtml(content.heading)}</h1>`,
-    paragraphs,
-    `    <p><a href="${escapeHtml(content.action.url)}">${escapeHtml(content.action.label)}</a></p>`,
-    `    <p>${escapeHtml(content.footer)}</p>`,
-    "  </body>",
-    "</html>",
-  ].join("\n");
+/** The one branded layout every catalogue template renders through. */
+function MailLayout({ content }: { readonly content: MailContent }) {
+  return (
+    <Html lang="en">
+      <Head />
+      <Preview>{content.preview}</Preview>
+      <Body style={STYLES.body}>
+        <Container style={STYLES.container}>
+          <Heading style={STYLES.heading}>{content.heading}</Heading>
+          {content.paragraphs.map((paragraph) => (
+            <Text key={paragraph} style={STYLES.paragraph}>
+              {paragraph}
+            </Text>
+          ))}
+          <Link href={content.action.url} style={STYLES.button}>
+            {content.action.label}
+          </Link>
+          <Hr style={STYLES.rule} />
+          <Text style={STYLES.footer}>{content.footer}</Text>
+        </Container>
+      </Body>
+    </Html>
+  );
 }
 
+/** The plain-text part, written here and never derived from the rendered HTML (R-44). */
 function renderText(content: MailContent): string {
   return [
     content.heading,
@@ -248,15 +267,15 @@ function renderText(content: MailContent): string {
 }
 
 /** Renders one catalogue template to its subject, its HTML part and its plain-text part (R-44). */
-export function renderMailTemplate(
+export async function renderMailTemplate(
   id: MailTemplateId,
   variables: MailTemplateVariables
-): RenderedMail {
+): Promise<RenderedMail> {
   const content = BUILDERS[id](variables);
 
   return {
     subject: content.subject,
-    html: renderHtml(content),
+    html: await render(<MailLayout content={content} />),
     text: renderText(content),
   };
 }
