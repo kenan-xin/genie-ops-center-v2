@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AppError,
   createModuleTRPC,
+  createRequestPrincipal,
+  createStubGrantReader,
   type ModuleRequestContext,
   type TenantContext,
 } from "../../index.ts";
@@ -10,18 +12,30 @@ import {
 const REQUEST_ID = "req-module-trpc-test";
 
 function contextWithEntitlement(enabled: boolean) {
-  const isEnabled = vi.fn(() => Promise.resolve(enabled));
+  const calls: string[] = [];
 
-  // SAFETY: the builder reads only entitlements and requestId from this fixture context.
-  const context = {
-    tenant: { entitlements: { isEnabled } },
-    requestId: REQUEST_ID,
-  } as ModuleRequestContext & {
-    readonly tenant: Pick<TenantContext, "entitlements">;
-    readonly requestId: string;
+  const isEnabled = (moduleId: string) => {
+    calls.push(moduleId);
+
+    return Promise.resolve(enabled);
   };
 
-  return { context, isEnabled };
+  // SAFETY: the builder reads only entitlements and requestId from the context, so the
+  // tenant is a stub holding just the entitlement reader and the caller is the
+  // Section 0 stub principal.
+  const tenant = { entitlements: { isEnabled } } as TenantContext;
+
+  return {
+    context: {
+      tenant,
+      caller: createRequestPrincipal(
+        { userId: "test-user", groups: [] },
+        createStubGrantReader()
+      ),
+      requestId: REQUEST_ID,
+    } satisfies ModuleRequestContext & { readonly requestId: string },
+    calls,
+  };
 }
 
 describe("the module tRPC builder", () => {
@@ -29,7 +43,7 @@ describe("the module tRPC builder", () => {
     const resolve = vi.fn(() => "should not run");
     const t = createModuleTRPC("reports");
     const router = t.router({ value: t.procedure.query(resolve) });
-    const { context, isEnabled } = contextWithEntitlement(false);
+    const { context, calls } = contextWithEntitlement(false);
 
     try {
       await router.createCaller(context).value();
@@ -48,7 +62,7 @@ describe("the module tRPC builder", () => {
       });
     }
 
-    expect(isEnabled).toHaveBeenCalledExactlyOnceWith("reports");
+    expect(calls).toEqual(["reports"]);
     expect(resolve).not.toHaveBeenCalled();
   });
 
@@ -56,11 +70,11 @@ describe("the module tRPC builder", () => {
     const resolve = vi.fn(() => "allowed");
     const t = createModuleTRPC("reports");
     const router = t.router({ value: t.procedure.query(resolve) });
-    const { context, isEnabled } = contextWithEntitlement(true);
+    const { context, calls } = contextWithEntitlement(true);
 
     await expect(router.createCaller(context).value()).resolves.toBe("allowed");
 
-    expect(isEnabled).toHaveBeenCalledExactlyOnceWith("reports");
+    expect(calls).toEqual(["reports"]);
     expect(resolve).toHaveBeenCalledOnce();
   });
 });

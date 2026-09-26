@@ -4,7 +4,7 @@ import {
   createStubGrantReader,
   type ModuleRequestContext,
 } from "@genie/core";
-import { startDisposableDeployment } from "@genie/core/testing";
+import { enableModules, startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { placeholderModule } from "../src/module.ts";
@@ -22,6 +22,11 @@ let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
+
+  // The read procedure's `createModuleTRPC` gate refuses a disabled module before `can()`, so
+  // the deployment starts disabled and the setup enables it: the read cases below prove the
+  // authorization path, not the entitlement refusal.
+  await enableModules(deployment.context, ["placeholder"]);
 }, 120000);
 
 afterAll(async () => {

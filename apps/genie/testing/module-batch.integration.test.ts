@@ -59,7 +59,10 @@ const client = createTRPCClient<BatchRouter>({
       fetch: (url, init) =>
         fetchRequestHandler({
           endpoint: "/api/trpc",
-          req: new Request(url, init),
+          req: new Request(url, {
+            ...init,
+            signal: init?.signal ?? null,
+          }),
           router: batchRouter,
           createContext: () => context,
         }),

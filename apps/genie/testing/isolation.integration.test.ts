@@ -4,7 +4,7 @@ import {
   type ModuleRequestContext,
   type TenantContext,
 } from "@genie/core";
-import { startDisposableDeployment } from "@genie/core/testing";
+import { enableModules, startDisposableDeployment } from "@genie/core/testing";
 import {
   placeholderModule,
   placeholderRouter,
@@ -35,6 +35,14 @@ beforeAll(async () => {
   [first, second] = await Promise.all([
     startDisposableDeployment([placeholderModule]),
     startDisposableDeployment([placeholderModule]),
+  ]);
+
+  // The read procedure's `createModuleTRPC` gate refuses a disabled module before `can()`, so
+  // both deployments start disabled and the setup enables them: the read below must reach the
+  // database, not the entitlement refusal.
+  await Promise.all([
+    enableModules(first.context, ["placeholder"]),
+    enableModules(second.context, ["placeholder"]),
   ]);
 }, 180000);
 
