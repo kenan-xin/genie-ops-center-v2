@@ -282,6 +282,20 @@ describe("validateEnvironment", () => {
       })
     ).toThrow("SMTP_URL");
   });
+
+  it("reads the runtime mode from the process, never from an environment source", () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    try {
+      const env = validateEnvironment({ ...MINIMAL, NODE_ENV: "development" });
+
+      expect(env.runtimeMode).toBe("production");
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
 });
 
 /** The message of the failure a broken environment raises. */

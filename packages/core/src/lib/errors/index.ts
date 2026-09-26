@@ -21,6 +21,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "module-disabled": "That module is switched off for this deployment.",
   "mail-not-configured":
     "Email is not configured for this deployment, so this action cannot send a notification.",
+  "mail-delivery-failed":
+    "The email could not be sent, so this action did not complete.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

@@ -393,6 +393,43 @@ describe("mailer adapters and tenant context", () => {
     });
   });
 
+  it("refuses an unconfigured production send without logging the link", async () => {
+    await withNodeEnvironment("production", async () => {
+      const captured = captureLoggerStream();
+      const { context, logger } = await mailerContext({}, undefined, captured);
+      const mailer = mailerOf(context);
+
+      captured.proveCapture(logger);
+      captured.clear();
+
+      const tokenizedLink = QUERY_LINK;
+
+      const { value, output } = await captureConsoleOutput(async () => {
+        try {
+          await mailer.send({
+            ...MAIL,
+            variables: {
+              ...MAIL.variables,
+              link: tokenizedLink,
+              invitationUrl: tokenizedLink,
+            },
+          });
+        } catch (error) {
+          return error;
+        }
+
+        return undefined;
+      });
+
+      expect(value).toMatchObject({ code: "mail-not-configured" });
+
+      const combined = `${captured.output()}${output}`;
+
+      expect(combined).not.toContain(tokenizedLink);
+      expect(combined).not.toContain("query-token-secret");
+    });
+  });
+
   it("logs the development message and full working link rather than sending it", async () => {
     await withNodeEnvironment("development", async () => {
       const captured = captureLoggerStream();
@@ -475,13 +512,23 @@ describe("mailer adapters and tenant context", () => {
           return undefined;
         });
 
-        expect(value).toBeInstanceOf(Error);
+        expect(value).toMatchObject({ code: "mail-delivery-failed" });
 
-        if (!(value instanceof Error)) return;
+        const combined = `${captured.output()}${output}`;
 
-        expect(value.message).toContain(tokenizedLink);
-        expect(`${captured.output()}${output}`).not.toContain(tokenizedLink);
-        expect(`${captured.output()}${output}`).not.toContain(token);
+        // The thrown error is a safe catalogue error: it carries neither the link nor the reply.
+        expect(String(value)).not.toContain(tokenizedLink);
+        expect(String(value)).not.toContain(token);
+
+        // The log line is the leak surface, and it stays clean at every level.
+        expect(combined).not.toContain(tokenizedLink);
+        expect(combined).not.toContain(token);
+
+        // A mailer that logged nothing would pass the checks above, so pin the failure line at
+        // every level that emits an error (all but the two quiet ones).
+        if (logLevel !== "fatal" && logLevel !== "silent") {
+          expect(combined).toContain("mail-delivery-failed");
+        }
       }
       // oxlint-enable no-await-in-loop
     });

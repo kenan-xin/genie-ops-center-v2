@@ -125,6 +125,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "mailer adapters and tenant context selects SMTP and sends both parts from the branded MAIL_FROM through the SMTP sink",
       "mailer adapters and tenant context selects Resend and submits the complete message without a network request",
       "mailer adapters and tenant context rejects an unconfigured production send before a caller creates a row",
+      "mailer adapters and tenant context refuses an unconfigured production send without logging the link",
       "mailer adapters and tenant context logs the development message and full working link rather than sending it",
       "mailer adapters and tenant context never logs an SMTP failure reply containing a query-token link at any level",
       "mailer adapters and tenant context never logs an SMTP failure reply containing a path-token link at any level",

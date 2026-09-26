@@ -100,15 +100,14 @@ function unsetWhenBlank(value: string | undefined): string | undefined {
 }
 
 /**
- * The image's runtime mode. `NODE_ENV` is set by the image and not overridden per deployment
- * (environment contract). The source wins when it carries one, so a test can pin the mode; only
- * `development` is special, and every other value, known or not, fails closed as production
- * (R-49).
+ * The image's runtime mode. It reads `process.env.NODE_ENV` only, never the environment source:
+ * the build inlines that expression as `"production"`, so no `.env` value can flip a production
+ * image into development mode, where a full tokenized link is logged and an unconfigured send is
+ * silently skipped (R-45, R-49). Only the exact value `development` is special; every other value,
+ * known or not, fails closed as production. Tests pin the mode through `process.env`.
  */
-function runtimeModeOf(source: EnvironmentSource): RuntimeMode {
-  const mode = source.NODE_ENV ?? process.env.NODE_ENV;
-
-  return mode === "development" ? "development" : "production";
+function runtimeModeOf(): RuntimeMode {
+  return process.env.NODE_ENV === "development" ? "development" : "production";
 }
 
 /** The two schemes a `SMTP_URL` may use; the contract shows the `smtps://` form of the two. */
@@ -269,7 +268,7 @@ export function validateEnvironment(
     lockTimeoutMs: value.LOCK_TIMEOUT_MS,
     logLevel: value.LOG_LEVEL,
     port: value.PORT,
-    runtimeMode: runtimeModeOf(source),
+    runtimeMode: runtimeModeOf(),
     ...mailConfiguration(value),
   };
 }

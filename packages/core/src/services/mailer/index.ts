@@ -63,8 +63,8 @@ const MAIL_NOT_CONFIGURED = CORE_ERRORS["mail-not-configured"];
 
 const INVALID_INPUT = CORE_ERRORS["invalid-input"];
 
-/** The stable code a failed delivery logs. It carries no text a provider could echo a body in. */
-const MAIL_DELIVERY_FAILED = "mail-delivery-failed";
+/** The safe catalogue error a failed delivery logs and throws. It carries no adapter text. */
+const MAIL_DELIVERY_FAILED = CORE_ERRORS["mail-delivery-failed"];
 
 /**
  * An adapter's failure as far as the log is concerned: an error, and the numeric provider status a
@@ -98,8 +98,9 @@ function providerStatusOf(error: AdapterFailure): number | undefined {
 /**
  * What a failed delivery logs: a stable code, the adapter and the provider's numeric status, plus
  * the recipient and template id. R-49: never the error's message or response, which can echo the
- * message body, including a path-segment token the redactor cannot see. The error itself travels
- * to the caller unchanged, so the full diagnosis reaches the thrower and not the log.
+ * message body, including a path-segment token the redactor cannot see. The caller gets the safe
+ * catalogue error instead, with no cause, so the adapter's own text never leaves this function and
+ * cannot reach a worker log or a job row (R2).
  */
 function deliveryFailureFields(
   error: AdapterFailure,
@@ -107,7 +108,7 @@ function deliveryFailureFields(
   adapter: MailProvider
 ) {
   const fields = {
-    code: MAIL_DELIVERY_FAILED,
+    code: MAIL_DELIVERY_FAILED.code,
     adapter,
     to: input.to,
     templateId: input.templateId,
@@ -216,7 +217,8 @@ function configuredSend(
         "mail delivery failed"
       );
 
-      throw caught;
+      // R2: a safe catalogue error with no cause, so the adapter's text cannot travel onward.
+      throw new AppError(MAIL_DELIVERY_FAILED);
     }
   };
 }
