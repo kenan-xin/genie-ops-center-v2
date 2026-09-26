@@ -25,6 +25,7 @@ describe("validateEnvironment", () => {
     expect(env.lockTimeoutMs).toBe(120000);
     expect(env.logLevel).toBe("info");
     expect(env.port).toBe(3000);
+    expect(env.runtimeMode).toBe("production");
   });
 
   it("refuses a missing database url and names the variable", () => {
@@ -197,6 +198,7 @@ describe("validateEnvironment", () => {
       "port",
       "publicUrl",
       "resendApiKey",
+      "runtimeMode",
       "smtpUrl",
     ]);
   });

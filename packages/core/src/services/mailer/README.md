@@ -16,3 +16,11 @@ logs goes through the redacting logger, so a tokenized link never reaches a log 
 The events that send these templates (Section 2 item 8 and the first notifying module), the
 Keycloak credential emails of DEC-40, and any second copy of the sender name: it is read from the
 branding reader at send time.
+
+## Link rule for Section 2 senders
+
+The redacting logger replaces a token in a query parameter (`token`, `code`, `key`, `signature`
+and similar) and a token in the URL userinfo, but it does not replace a token in a path segment.
+So every tokenized link a Section 2 sender builds must carry its token in a query parameter (or
+in userinfo), never in the path. R-49 holds only while that rule holds. The one exception is the
+development-only log line, which shows the full working link on purpose (R-45).

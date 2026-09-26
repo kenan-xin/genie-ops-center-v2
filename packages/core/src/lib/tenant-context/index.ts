@@ -35,6 +35,13 @@ export type {
 export type FileStorageAdapter = "postgres" | "s3" | "gcs" | "azure";
 
 /**
+ * The image's runtime mode, resolved once from `NODE_ENV` (environment contract). Only
+ * `development` may log a working link; every other value is treated as production so an
+ * unrecognized mode fails closed (R-49).
+ */
+export type RuntimeMode = "development" | "production";
+
+/**
  * The environment values the image reads, after validation (environment contract, Required).
  * Values a tenant administrator owns live in the database, never here.
  */
@@ -48,6 +55,8 @@ export type DeploymentEnvironment = {
   readonly lockTimeoutMs: number;
   readonly logLevel: string;
   readonly port: number;
+  /** The validated runtime mode (`NODE_ENV`); only `development` logs a working link (R-49). */
+  readonly runtimeMode: RuntimeMode;
   /** The `MAIL_PROVIDER` selection; `none` is the unset value (environment contract, "Mail"). */
   readonly mailProvider: MailProvider;
   /** The `MAIL_FROM` sender address, present exactly when a provider is selected. */

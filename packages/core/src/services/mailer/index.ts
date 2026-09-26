@@ -1,8 +1,10 @@
+import { z } from "zod";
+
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { RedactingLogger } from "../logging/index.ts";
 import type { MailTemplateId } from "./catalogue.ts";
 import { createResendSender } from "./resend.ts";
-import type { MailSender } from "./sender.ts";
+import type { MailSender, MailSenderAddress } from "./sender.ts";
 import { createSmtpSender } from "./smtp.ts";
 
 export type {
@@ -11,17 +13,21 @@ export type {
   RenderedMail,
 } from "./catalogue.ts";
 
-export type { MailSender, OutgoingMail } from "./sender.ts";
+export type { MailSender, MailSenderAddress, OutgoingMail } from "./sender.ts";
 
 /** The provider `MAIL_PROVIDER` selects. `none` is the unset value and builds no adapter (R-45). */
 export type MailProvider = "none" | "resend" | "smtp";
 
-/** The validated mail values the mailer is built from once, at context construction (D-7). */
+/** The runtime mode the mailer gates its development-only behaviour on (R-45, R-49). */
+export type MailRuntimeMode = "development" | "production";
+
+/** The validated mail and mode values the mailer is built from once, at context construction (D-7). */
 export type MailerEnvironment = {
   readonly mailProvider: MailProvider;
   readonly mailFrom: string | undefined;
   readonly resendApiKey: string | undefined;
   readonly smtpUrl: string | undefined;
+  readonly runtimeMode: MailRuntimeMode;
 };
 
 /** One send: a catalogue template, its recipient, and the values the template reads (R-48). */
@@ -55,16 +61,61 @@ export type MailerDependencies = {
 
 const MAIL_NOT_CONFIGURED = CORE_ERRORS["mail-not-configured"];
 
-/** The image's runtime mode. Only production refuses an unconfigured send (R-45). */
-function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
-}
+const INVALID_INPUT = CORE_ERRORS["invalid-input"];
+
+/** The stable code a failed delivery logs. It carries no text a provider could echo a body in. */
+const MAIL_DELIVERY_FAILED = "mail-delivery-failed";
+
+/**
+ * An adapter's failure as far as the log is concerned: an error, and the numeric provider status a
+ * Nodemailer or Resend error may carry. Both fields are optional, so any error is one of these.
+ */
+type AdapterFailure = Error & {
+  readonly responseCode?: number;
+  readonly statusCode?: number;
+};
 
 /** The fail-before-write rule of R-45, shared by `requireConfigured` and `send`. */
-function refuseWhenUnconfigured(provider: MailProvider): void {
-  if (provider !== "none") return;
+function refuseWhenUnconfigured(env: MailerEnvironment): void {
+  if (env.mailProvider !== "none") return;
 
-  if (isProduction()) throw new AppError(MAIL_NOT_CONFIGURED);
+  if (env.runtimeMode !== "development")
+    throw new AppError(MAIL_NOT_CONFIGURED);
+}
+
+/** A recipient is exactly one address. A comma-joined list would fan out to several people (F7). */
+function assertRecipient(to: string): void {
+  if (!z.email().safeParse(to).success) throw new AppError(INVALID_INPUT);
+}
+
+/** One provider status, read from whichever name the adapter's error carries it under. */
+function providerStatusOf(error: AdapterFailure): number | undefined {
+  const status = error.responseCode ?? error.statusCode;
+
+  return status === undefined || !Number.isInteger(status) ? undefined : status;
+}
+
+/**
+ * What a failed delivery logs: a stable code, the adapter and the provider's numeric status, plus
+ * the recipient and template id. R-49: never the error's message or response, which can echo the
+ * message body, including a path-segment token the redactor cannot see. The error itself travels
+ * to the caller unchanged, so the full diagnosis reaches the thrower and not the log.
+ */
+function deliveryFailureFields(
+  error: AdapterFailure,
+  input: MailSendInput,
+  adapter: MailProvider
+) {
+  const fields = {
+    code: MAIL_DELIVERY_FAILED,
+    adapter,
+    to: input.to,
+    templateId: input.templateId,
+  };
+
+  const status = providerStatusOf(error);
+
+  return status === undefined ? fields : { ...fields, responseCode: status };
 }
 
 function firstNonEmpty(...values: readonly (string | null)[]): string {
@@ -75,12 +126,14 @@ function firstNonEmpty(...values: readonly (string | null)[]): string {
 
 /**
  * The `from` header: `MAIL_FROM` with the branding sender name, falling back to the company name
- * when the seed omitted one (branding-seed.md), and to the bare address when both are empty.
+ * when the seed omitted one (branding-seed.md), and to the bare address when both are empty. The
+ * adapters do the RFC 5322 quoting, so a name with a comma stays one From.
  */
-function senderFor(branding: MailBranding, address: string): string {
-  const name = firstNonEmpty(branding.emailSenderName, branding.companyName);
-
-  return name === "" ? address : `${name} <${address}>`;
+function senderFor(branding: MailBranding, address: string): MailSenderAddress {
+  return {
+    name: firstNonEmpty(branding.emailSenderName, branding.companyName),
+    address,
+  };
 }
 
 function requireApiKey(env: MailerEnvironment): string {
@@ -100,9 +153,25 @@ function requireSmtpUrl(env: MailerEnvironment): string {
 }
 
 /**
- * One configured send. An unconfigured deployment logs the generated message through the redacting
- * logger in development, which is where R-45 puts the link, and refuses in production.
+ * R-45 and the owner decision on F5: with no provider, development logs the generated message and
+ * its full working link so a developer can follow it, while production refuses before this line
+ * (R-45) and no production log ever carries a link (R-49). The redacting logger cannot carry the
+ * unredacted link by design, so this one development-only message is written straight to stdout.
+ * Section 2 link builders put the token in a query parameter, which this exception does not change.
  */
+function writeDevelopmentMessage(input: MailSendInput): void {
+  process.stdout.write(
+    `${JSON.stringify({
+      level: "info",
+      msg: "mail generated with no provider, nothing was sent",
+      to: input.to,
+      templateId: input.templateId,
+      variables: input.variables,
+    })}\n`
+  );
+}
+
+/** One configured send, over the adapter built once at context construction. */
 function configuredSend(
   env: MailerEnvironment,
   deps: MailerDependencies
@@ -139,15 +208,15 @@ function configuredSend(
         html: rendered.html,
         text: rendered.text,
       });
-    } catch (error) {
-      // R-49: the failure is logged through the redacting logger, so a tokenized link in the
-      // message or in the provider's reply cannot reach a log line.
+    } catch (caught) {
+      const failure = caught instanceof Error ? caught : new Error("delivery");
+
       deps.logger.error(
-        { err: error, to: input.to, templateId: input.templateId },
+        deliveryFailureFields(failure, input, env.mailProvider),
         "mail delivery failed"
       );
 
-      throw error;
+      throw caught;
     }
   };
 }
@@ -157,8 +226,8 @@ function configuredSend(
  * the file store (D-7), so a later change to the environment source cannot move its provider.
  *
  * With `MAIL_PROVIDER` unset the mailer is `none`: production refuses before a caller writes a row
- * (R-45) and development logs the message instead, while the redacting logger keeps a tokenized
- * link out of every line (R-49).
+ * (R-45) and development logs the message and its working link instead. The mode is the validated
+ * `runtimeMode`, so the development exception turns off for any value that is not `development`.
  */
 export function createMailer(
   env: MailerEnvironment,
@@ -173,20 +242,15 @@ export function createMailer(
   return {
     provider: mailProvider,
     requireConfigured() {
-      refuseWhenUnconfigured(mailProvider);
+      refuseWhenUnconfigured(env);
     },
     async send(input) {
-      if (sendConfigured === undefined) {
-        refuseWhenUnconfigured(mailProvider);
+      assertRecipient(input.to);
 
-        deps.logger.info(
-          {
-            to: input.to,
-            templateId: input.templateId,
-            variables: input.variables,
-          },
-          "mail generated with no provider, nothing was sent"
-        );
+      if (sendConfigured === undefined) {
+        refuseWhenUnconfigured(env);
+
+        writeDevelopmentMessage(input);
 
         return;
       }

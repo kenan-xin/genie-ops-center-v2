@@ -530,9 +530,10 @@ function protectLogger(logger: Logger): RedactingLogger {
  * child of it through `forExecution`, which is what puts the three ids on the line. Only the
  * level is read, so a caller that has no destination may pass just that; `silentLogger` does.
  *
- * With no destination the lines go to the process stdout stream rather than to a file descriptor
- * pino binds at construction, so a caller that captures `process.stdout.write` sees them. That is
- * what lets `forExecution` and the mailer's development log be asserted from the outside.
+ * With no destination pino builds its own async destination on fd 1, which filters a broken pipe
+ * and flushes on exit. A caller that must capture the lines, a test or a pipe, passes its own
+ * `DestinationStream`; that is the seam, and production never relies on `process.stdout` being
+ * replaced at runtime.
  */
 export function createLogger(
   env: Pick<DeploymentEnvironment, "logLevel">,
@@ -583,7 +584,8 @@ export function createLogger(
     },
   };
 
-  const logger = pino(options, destination ?? process.stdout);
+  const logger =
+    destination === undefined ? pino(options) : pino(options, destination);
 
   return protectLogger(logger);
 }

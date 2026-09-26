@@ -26,6 +26,7 @@ const ENV: DeploymentEnvironment = {
   lockTimeoutMs: 1000,
   logLevel: "silent",
   port: 3000,
+  runtimeMode: "production",
   mailProvider: "none",
   mailFrom: undefined,
   resendApiKey: undefined,

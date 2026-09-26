@@ -5,6 +5,7 @@ import { z } from "zod";
 import type {
   DeploymentEnvironment,
   FileStorageAdapter,
+  RuntimeMode,
 } from "../tenant-context/index.ts";
 
 /** What one environment source looks like before validation. */
@@ -96,6 +97,18 @@ const wholeNumber = z
 /** An unset variable and a blank one are the same thing to the mail rows of the contract. */
 function unsetWhenBlank(value: string | undefined): string | undefined {
   return value === undefined || value.trim() === "" ? undefined : value;
+}
+
+/**
+ * The image's runtime mode. `NODE_ENV` is set by the image and not overridden per deployment
+ * (environment contract). The source wins when it carries one, so a test can pin the mode; only
+ * `development` is special, and every other value, known or not, fails closed as production
+ * (R-49).
+ */
+function runtimeModeOf(source: EnvironmentSource): RuntimeMode {
+  const mode = source.NODE_ENV ?? process.env.NODE_ENV;
+
+  return mode === "development" ? "development" : "production";
 }
 
 /** The two schemes a `SMTP_URL` may use; the contract shows the `smtps://` form of the two. */
@@ -256,6 +269,7 @@ export function validateEnvironment(
     lockTimeoutMs: value.LOCK_TIMEOUT_MS,
     logLevel: value.LOG_LEVEL,
     port: value.PORT,
+    runtimeMode: runtimeModeOf(source),
     ...mailConfiguration(value),
   };
 }
