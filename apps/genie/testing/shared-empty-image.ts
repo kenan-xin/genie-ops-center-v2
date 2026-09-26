@@ -14,6 +14,7 @@ import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 
 import { dockerBuild } from "./image-process.ts";
+import { testImageTag, worktreeId } from "./image-tag.ts";
 import {
   REPO_ROOT,
   stageFixtureModule,
@@ -43,7 +44,7 @@ const run = promisify(execFile);
  * earlier tag can never be booted in place of this run's empty image. Neither
  * order is privileged, and either suite run alone still builds what it needs.
  */
-export const SHARED_EMPTY_IMAGE = "genie-s011:empty";
+export const SHARED_EMPTY_IMAGE = testImageTag("genie-s011", "empty");
 
 /** The extra fixture module the prune proof stages, so there is a folder to remove. */
 export const PRUNE_FIXTURE_MODULE = "permitted-viewer";
@@ -62,7 +63,10 @@ export type Marker = {
   readonly log: string;
 };
 
-const MARKER_PATH = join(tmpdir(), "genie-s011-shared-empty.json");
+const MARKER_PATH = join(
+  tmpdir(),
+  `genie-s011-shared-empty-${worktreeId()}.json`
+);
 
 /**
  * The paths whose bytes decide the empty image. Hashing them means a changed

@@ -54,8 +54,7 @@ async function waitForDatabaseCondition(
 /* oxlint-enable no-await-in-loop */
 
 /** Named in the staleness failures below, so the fix is one copy-paste away. */
-const REBUILD_IMAGE =
-  "docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .";
+const REBUILD_IMAGE = `docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t ${IMAGE} .`;
 
 /** The image's creation time, or `undefined` when the image does not exist. */
 async function imageCreatedAt(): Promise<string | undefined> {

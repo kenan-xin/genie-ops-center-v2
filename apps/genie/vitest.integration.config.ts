@@ -5,13 +5,18 @@ import { defineConfig } from "vitest/config";
  * purpose, so without this configuration they are collected by nothing and a green unit run
  * would say nothing about the image at all.
  *
- * These tests drive the actual built image, so `docker build -f deploy/Dockerfile
- * --build-arg MODULE_INCLUDE=placeholder -t genie-s005:test .` must have run first. They take a
- * disposable Postgres and never mock the database (R-38).
+ * These tests drive the actual built image, so `pnpm run build-image` (which `test:integration`
+ * depends on) must have run first. It builds the per-worktree tag `testing/image-tag.ts` names,
+ * so two worktrees never share an image tag. They take a disposable Postgres and never mock the
+ * database (R-38).
  *
  * `passWithNoTests` stays false, so a file that stops matching fails this target rather than
  * reporting a quiet success. The timeouts are the image start and the container lifecycle, not
  * the assertions.
+ *
+ * Each caller starts its own Postgres container (see `@genie/core/testing`'s `postgres.ts` for
+ * why one per run was rejected), and `fileParallelism` stays off below, so at most one starts
+ * at a time.
  */
 export default defineConfig({
   test: {
@@ -29,8 +34,7 @@ export default defineConfig({
     passWithNoTests: false,
     testTimeout: 240000,
     hookTimeout: 240000,
-    // The image tests bind fixed host ports and share one disposable database, so they must not
-    // run beside each other.
+    // The image tests bind fixed host ports, so they must not run beside each other.
     fileParallelism: false,
   },
 });

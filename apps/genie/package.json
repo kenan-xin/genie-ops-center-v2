@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node tools/build.ts",
-    "build-image": "docker build -f ../../deploy/Dockerfile --build-arg MODULE_INCLUDE=${MODULE_INCLUDE-placeholder} -t genie-s005:test ../..",
+    "build-image": "node tools/build-image.ts",
     "build-fixture-image": "node tools/build-fixture-image.ts",
     "generate-registry": "node tools/generate-registry.ts",
     "start": "node tools/start-standalone.mjs",

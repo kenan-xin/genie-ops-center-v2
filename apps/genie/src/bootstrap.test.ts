@@ -78,6 +78,15 @@ function diagnosticThrowingLogger(): RedactingLogger {
   return logger;
 }
 
+/**
+ * The one total budget the failure cases exercise (R-19b), and the wall-clock
+ * bound that proves it is one budget rather than one per phase. See the
+ * decisive case below for why the bound sits where it does.
+ */
+const BUDGET_MS = 1000;
+
+const BUDGET_BOUND_MS = 1800;
+
 describe("runBootstrap failure handling", () => {
   it("exits nonzero when validation fails, without connecting", async () => {
     const exit = vi.fn();
@@ -88,7 +97,7 @@ describe("runBootstrap failure handling", () => {
       connect,
       migrate: vi.fn(),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(connect).not.toHaveBeenCalled();
@@ -97,10 +106,15 @@ describe("runBootstrap failure handling", () => {
 
   // R-19b says ONE total budget covering diagnostics, cleanup and logger
   // flushing. So the decisive case hangs both, and the bound must reject a
-  // per-phase implementation. With a 500 ms total, a shared deadline finishes
-  // near 500 ms while a timer per phase takes at least 1000 ms. A bound of
-  // 900 ms separates them; an earlier 900 ms bound against a 300 ms budget did
-  // not, because it accepted two 300 ms phases plus overhead.
+  // per-phase implementation: a shared deadline finishes in about BUDGET_MS
+  // while a timer per phase takes at least twice that.
+  //
+  // The bound is wall-clock, so it also has to absorb the scheduler delay of a
+  // loaded machine. Measured: against a 500 ms budget and a 900 ms bound a
+  // correct run took 902 ms while several worktrees ran suites and failed, the
+  // 400 ms of slack consumed by event-loop delay. A 1000 ms budget with an
+  // 1800 ms bound keeps the same discrimination — a per-phase implementation
+  // still needs at least 2000 ms — and doubles the slack to 800 ms.
   it("spends one total budget when cleanup and the flush both hang", async () => {
     const exit = vi.fn();
     const started = Date.now();
@@ -111,11 +125,11 @@ describe("runBootstrap failure handling", () => {
       connect: () => hangingContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(900);
+    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
   it("exits nonzero inside the budget when cleanup never settles", async () => {
@@ -127,11 +141,11 @@ describe("runBootstrap failure handling", () => {
       connect: () => hangingContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(900);
+    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
   it("exits nonzero inside the budget when the logger flush never settles", async () => {
@@ -146,11 +160,11 @@ describe("runBootstrap failure handling", () => {
       connect: () => settledContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(900);
+    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
   // The failure handler promises never-throws/always-exits, so a secondary
@@ -169,12 +183,12 @@ describe("runBootstrap failure handling", () => {
       connect: () => spiedSettledContext(end),
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(end).toHaveBeenCalledTimes(1);
     expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(900);
+    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
   it("reaches exit when the pool end throws synchronously", async () => {
@@ -186,11 +200,11 @@ describe("runBootstrap failure handling", () => {
       connect: () => syncThrowingEndContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(900);
+    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
   it("publishes the context only after migrations succeed", async () => {
@@ -208,7 +222,7 @@ describe("runBootstrap failure handling", () => {
       },
       publish: () => order.push("publish"),
       exit: vi.fn(),
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(order).toEqual(["connect", "migrate", "publish"]);
@@ -248,7 +262,7 @@ describe("runBootstrap production wiring", () => {
       exit: () => {
         throw new Error("a successful bootstrap must not exit");
       },
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     const pool = published?.tenant.db.$client;
@@ -371,7 +385,7 @@ describe("runBootstrap migration diagnostics", () => {
       exit: () => {
         throw new Error("a successful bootstrap must not exit");
       },
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     const log = lines.join("\n");
@@ -405,7 +419,7 @@ describe("runBootstrap migration diagnostics", () => {
         throw new Error("a failed migration must not publish");
       },
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);
@@ -450,7 +464,7 @@ describe("runBootstrap migration diagnostics", () => {
         throw new Error("a failed migration must not publish");
       },
       exit,
-      budgetMs: 500,
+      budgetMs: BUDGET_MS,
     });
 
     expect(exit).toHaveBeenCalledWith(1);

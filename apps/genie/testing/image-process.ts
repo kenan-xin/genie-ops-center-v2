@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, resolve as resolvePath } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 import {
@@ -8,11 +8,11 @@ import {
   filesystemEntries,
   type ImageFile,
 } from "./image-scan.ts";
+import { IMAGE, WORKSPACE_ROOT } from "./image-tag.ts";
 
 const run = promisify(execFile);
 
-/** The image every integration test drives. */
-export const IMAGE = "genie-s005:test";
+export { IMAGE, WORKSPACE_ROOT };
 
 /**
  * Fails closed when the Docker daemon is unreachable.
@@ -458,9 +458,6 @@ export async function pollHealth(port: number, attempts = 60) {
 
 export const countLines = (logs: string, needle: string) =>
   logs.split("\n").filter((line) => line.includes(needle)).length;
-
-/** The repository root, which holds the Dockerfile and the context it builds from. */
-export const WORKSPACE_ROOT = resolvePath(import.meta.dirname, "../../..");
 
 /**
  * F2: no migration SQL may be publicly downloadable or travel in browser

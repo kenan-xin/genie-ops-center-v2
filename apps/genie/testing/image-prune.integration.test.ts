@@ -9,6 +9,7 @@ import {
   removeImage,
   requireDocker,
 } from "./image-process.ts";
+import { testImageTag } from "./image-tag.ts";
 import {
   PRUNE_FIXTURE_MODULE,
   sharedEmptyImage,
@@ -116,7 +117,7 @@ function sharedPlaceholderBuild(): Promise<DockerBuildResult> {
   placeholderBuild ??= build(
     stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT)),
     "placeholder",
-    "genie-s011:prune-control"
+    testImageTag("genie-s011", "prune-control")
   );
 
   return placeholderBuild;
@@ -154,7 +155,11 @@ describe("the builder-stage module prune", () => {
   }, 900000);
 
   it("refuses an unset MODULE_INCLUDE", async () => {
-    const result = await build(stage(), undefined, "genie-s011:prune-unset");
+    const result = await build(
+      stage(),
+      undefined,
+      testImageTag("genie-s011", "prune-unset")
+    );
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(/\[module-prune\] MODULE_INCLUDE is unset/);
@@ -171,7 +176,11 @@ describe("the builder-stage module prune", () => {
       );
     });
 
-    const result = await build(root, "placeholder", "genie-s011:prune-stray");
+    const result = await build(
+      root,
+      "placeholder",
+      testImageTag("genie-s011", "prune-stray")
+    );
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(
@@ -188,7 +197,11 @@ describe("the builder-stage module prune", () => {
   it("fails the build on a direct import of an excluded module", async () => {
     const root = stage(importing(DIRECT_IMPORT));
 
-    const result = await build(root, "", "genie-s011:prune-direct");
+    const result = await build(
+      root,
+      "",
+      testImageTag("genie-s011", "prune-direct")
+    );
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(
@@ -201,7 +214,11 @@ describe("the builder-stage module prune", () => {
   it("fails the build on a subpath import of an excluded module", async () => {
     const root = stage(importing(SUBPATH_IMPORT));
 
-    const result = await build(root, "", "genie-s011:prune-subpath");
+    const result = await build(
+      root,
+      "",
+      testImageTag("genie-s011", "prune-subpath")
+    );
 
     expect(result.ok, tail(result.log)).toBe(false);
     expect(result.log).toMatch(

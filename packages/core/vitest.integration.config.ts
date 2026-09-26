@@ -9,6 +9,12 @@ import { defineConfig } from "vitest/config";
  * reporting a quiet success. The include covers every `testing/*.test.ts`, which adds the
  * runner's own controls beside the real-database files, matching the app harness.
  *
+ * Each caller starts its own container, because `pg_locks` is cluster-wide and the migrator's
+ * lock assertions must see only their own run's locks (see `testing/postgres.ts`). `maxWorkers`
+ * bounds how many of those starts overlap: a start waits a fixed 10 s for the daemon to publish
+ * the host port, that wait is not configurable, and an unbounded pile-up of starts is what lets
+ * it lose the race when several worktrees run suites at once.
+ *
  * The timeout is the container start, not the assertions.
  */
 export default defineConfig({
@@ -20,5 +26,6 @@ export default defineConfig({
     passWithNoTests: false,
     testTimeout: 120000,
     hookTimeout: 120000,
+    maxWorkers: 4,
   },
 });

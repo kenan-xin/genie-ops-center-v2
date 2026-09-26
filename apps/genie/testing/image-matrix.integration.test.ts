@@ -27,6 +27,7 @@ import {
   scanFiles,
   scanHistory,
 } from "./image-scan.ts";
+import { testImageTag } from "./image-tag.ts";
 import {
   RELEASE_MATRIX_CASES,
   RELEASE_MATRIX_DESCRIBE,
@@ -48,7 +49,7 @@ import { SHARED_EMPTY_IMAGE, sharedEmptyImage } from "./shared-empty-image.ts";
  * makes each build cheap after the first run.
  */
 
-const DEVELOPMENT_IMAGE = "genie-s011:development";
+const DEVELOPMENT_IMAGE = testImageTag("genie-s011", "development");
 
 /**
  * The empty-selection image, shared with the builder-stage prune proof so the

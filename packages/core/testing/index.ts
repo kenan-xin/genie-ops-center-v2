@@ -1,6 +1,3 @@
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-
 import {
   type TenantContext,
   createTenantContext,
@@ -12,42 +9,21 @@ import {
   moduleHistory,
   runMigrations,
 } from "../src/services/migrator/index.ts";
-
-/** The Postgres the image is built against (tech stack, Database row). */
-const POSTGRES_IMAGE = "postgres:18-alpine";
+import { startDisposablePostgres } from "./postgres.ts";
 
 export { enableModules } from "./enable-modules.ts";
 
 export { markSetupDone } from "./mark-setup-done.ts";
+
+export { startDisposablePostgres } from "./postgres.ts";
+
+export type { DisposablePostgres } from "./postgres.ts";
 
 export type DisposableDeployment = {
   readonly context: TenantContext;
   /** Closes the pool and removes the container. Always call it, in a `finally` or an `afterAll`. */
   readonly stop: () => Promise<void>;
 };
-
-export type DisposablePostgres = {
-  /** The connection string of a database with nothing in it. */
-  readonly url: string;
-  /** Removes the container. Always call it, in a `finally` or an `afterEach`. */
-  readonly stop: () => Promise<void>;
-};
-
-/**
- * One disposable Postgres with no history applied. A test that proves the migrator itself takes
- * this, because it must decide when and how the histories run; every other test takes
- * `startDisposableDeployment`, which applies them the way the image does.
- */
-export async function startDisposablePostgres(): Promise<DisposablePostgres> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
-    POSTGRES_IMAGE
-  ).start();
-
-  return {
-    url: container.getConnectionUri(),
-    stop: () => container.stop().then(() => undefined),
-  };
-}
 
 /**
  * One disposable Postgres with the same histories the image applies, in the same order (R-28,
