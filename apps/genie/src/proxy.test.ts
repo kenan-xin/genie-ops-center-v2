@@ -186,3 +186,127 @@ describe("background requests at the viewer url", () => {
     );
   });
 });
+
+// The dev exemption is a build-time process.env.NODE_ENV decision and
+// `isGateExempt` is private, so the seam is the module itself: stub NODE_ENV,
+// drop the module registry and import proxy.ts fresh, which works whether the
+// build-time constant lands at module scope or in the function body.
+async function proxyBuiltAs(mode: "development" | "production") {
+  vi.stubEnv("NODE_ENV", mode);
+  vi.resetModules();
+
+  return (await import("./proxy.ts")).proxy;
+}
+
+function gatedApp(): AppContext {
+  return {
+    // SAFETY: for a gated path the unsatisfied gate answers before anything
+    // below it runs, and an exempt path only reads the two empty maps, so the
+    // empty tenant object is never dereferenced.
+    tenant: {} as AppContext["tenant"],
+    startedAt: 0,
+    contextId: "ctx-gate-dev-hmr",
+    moduleRoutes: new Map(),
+    setupGate: { isSatisfied: async () => false },
+    viewerProviders: new Map(),
+    reportProviderFailure: vi.fn(),
+    logRequest: vi.fn(),
+    logError: vi.fn(),
+  };
+}
+
+describe("the framework dev-tooling paths at the gate", () => {
+  // Same slot discipline as the viewer cases above: publishContext refuses a
+  // second publish, so each test drops the slot again.
+  const CONTEXT_SLOT = Symbol.for("genie.app.context");
+
+  function forgetContext(): void {
+    Reflect.deleteProperty(globalThis, CONTEXT_SLOT);
+  }
+
+  beforeEach(forgetContext);
+  afterEach(forgetContext);
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // Exempt and gated are told apart by the middleware headers the installed
+  // next writes: a pass-through carries `x-middleware-next: 1` and no rewrite,
+  // the not-set-up refusal rewrites to `/setup-required`.
+  it.each(["/_next/hmr", "/_next/webpack-hmr"])(
+    "keeps %s passing through the gate before setup in a development build",
+    async (pathname) => {
+      const devProxy = await proxyBuiltAs("development");
+      publishContext(gatedApp());
+
+      const response = await devProxy(
+        new NextRequest(`https://example.invalid${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    }
+  );
+
+  it("keeps the framework diagnostics endpoint passing through the gate before setup in a development build", async () => {
+    const devProxy = await proxyBuiltAs("development");
+    publishContext(gatedApp());
+
+    const response = await devProxy(
+      new NextRequest(
+        "https://example.invalid/__nextjs_original-stack-frame?address=0x0"
+      )
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each(["/_next/hmr-evil", "/_next/hmrx"])(
+    "still gates the lookalike path %s in a development build",
+    async (pathname) => {
+      const devProxy = await proxyBuiltAs("development");
+      publishContext(gatedApp());
+
+      const response = await devProxy(
+        new NextRequest(`https://example.invalid${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite") ?? "").toContain(
+        "/setup-required"
+      );
+    }
+  );
+
+  it.each([
+    "/_next/hmr",
+    "/_next/webpack-hmr",
+    "/__nextjs_original-stack-frame",
+  ])("still gates %s in a production build", async (pathname) => {
+    const prodProxy = await proxyBuiltAs("production");
+    publishContext(gatedApp());
+
+    const response = await prodProxy(
+      new NextRequest(`https://example.invalid${pathname}`)
+    );
+
+    expect(response.headers.get("x-middleware-rewrite") ?? "").toContain(
+      "/setup-required"
+    );
+  });
+
+  it.each(["/api/health", "/_next/static/chunk.js", "/_next/image"])(
+    "keeps the production exemption for %s unchanged",
+    async (pathname) => {
+      const prodProxy = await proxyBuiltAs("production");
+      publishContext(gatedApp());
+
+      const response = await prodProxy(
+        new NextRequest(`https://example.invalid${pathname}`)
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    }
+  );
+});
