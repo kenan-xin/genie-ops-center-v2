@@ -275,7 +275,8 @@ describe("the rendered deployment folder", () => {
       "KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}"
     );
     expect(keycloak).toContain("KC_PROXY_HEADERS: ${KC_PROXY_HEADERS");
-    expect(keycloak).toContain("KC_HOSTNAME: ${PUBLIC_URL");
+    // Keycloak has its own public hostname, KEYCLOAK_URL (runbooks/reverse-proxy.md).
+    expect(keycloak).toContain("KC_HOSTNAME: ${KEYCLOAK_URL");
 
     const entries = envExampleEntries(example);
 
@@ -365,14 +366,26 @@ describe("the rendered deployment folder", () => {
     const entries = envExampleEntries(read(".env.example"));
     const required = composeRequiredNames(read("compose.yaml"));
 
-    expect(required).toContain("KC_BOOTSTRAP_ADMIN_USERNAME");
-    expect(required).toContain("KC_BOOTSTRAP_ADMIN_PASSWORD");
+    // R-66: the Keycloak server administrator is created once by a command, never from .env.
+    expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_USERNAME");
+    expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD");
+    expect(required).toContain("KC_DB_PASSWORD");
+    expect(required).toContain("KEYCLOAK_URL");
+
+    // The only non-secret stack defaults; every other name outside the catalogue may be a
+    // credential or a host value and stays blank.
+    const stackDefaults = new Map([
+      ["KC_DB", "postgres"],
+      ["KC_DB_URL_DATABASE", "keycloak"],
+      ["KC_PROXY_HEADERS", "xforwarded"],
+    ]);
 
     for (const name of required) {
       expect(entries.has(name), name).toBe(true);
 
-      // A name outside the catalogue has no schema default and may be a credential.
-      if (!catalogueNames.has(name)) expect(entries.get(name), name).toBe("");
+      if (!catalogueNames.has(name)) {
+        expect(entries.get(name), name).toBe(stackDefaults.get(name) ?? "");
+      }
     }
   });
 

@@ -55,7 +55,23 @@ Make sure that the target host has the following. The customer's platform team s
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
 4. Copy `compose.yaml`, `tenant.yaml` and `branding.seed.json` to the host, into one stack folder. They are committed and hold no secret and no host value.
 5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only.
-6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`.
+6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. Before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role. Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`.
+
+   On the first deploy only, create the Keycloak server administrator. Type the two values into the shell of this one command. Never write them to `.env` or to a file (R-66):
+
+   ```bash
+   read -r KC_TEMP_ADMIN_NAME
+   read -rs KC_TEMP_ADMIN_PASSWORD
+   export KC_TEMP_ADMIN_NAME KC_TEMP_ADMIN_PASSWORD
+   docker compose run --rm \
+     -e KC_TEMP_ADMIN_NAME -e KC_TEMP_ADMIN_PASSWORD \
+     keycloak bootstrap-admin user \
+     --username:env KC_TEMP_ADMIN_NAME \
+     --password:env KC_TEMP_ADMIN_PASSWORD
+   unset KC_TEMP_ADMIN_NAME KC_TEMP_ADMIN_PASSWORD
+   ```
+
+   Do not use the names `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` here. Keycloak reads those names at its own start, creates the user, and then the command fails because the user exists. The account is temporary. Replace it with a named administrator after setup (`keycloak-realm.md`, "Keycloak server hardening").
 7. Open `PUBLIC_URL`. The application migrates the database at start and shows the not-set-up page until setup runs.
 8. Run setup with a Keycloak server administrator credential in the environment of that one command. Copy the two configuration files into the app container, then pass their container paths to setup:
 

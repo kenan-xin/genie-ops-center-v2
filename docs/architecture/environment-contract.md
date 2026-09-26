@@ -79,6 +79,14 @@ The table below defines the values; the tables above define when each is require
 | Variable | Default | Meaning |
 |---|---|---|
 | `IMAGE_TAG` | none, required | The version of the customer image that the generated compose file pulls, as `${IMAGE_TAG}` in its `image:` line. An upgrade changes this value and restarts the stack (`runbooks/deployment.md`). The application never reads it. |
+| `KEYCLOAK_URL` | none, required | The Keycloak public address, for example `https://id.example.com`. The compose file passes it to the Keycloak service as `KC_HOSTNAME`, so Keycloak builds its issuer and redirects from it and never from a request host (`runbooks/reverse-proxy.md`). Section 2 also reads it in the application. |
+| `KC_DB` | `postgres` | Keycloak's database vendor. Keycloak runs in production mode (`start`) with its own database. |
+| `KC_DB_URL_HOST` | none, required | The host of the host-supplied Postgres that holds the Keycloak database. |
+| `KC_DB_URL_DATABASE` | `keycloak` | The Keycloak database, beside the application database on the same server. Create it before the first start. |
+| `KC_DB_USERNAME`, `KC_DB_PASSWORD` | none, required | The Postgres role Keycloak connects as. The password is a secret and stays in `.env`. |
+| `KC_PROXY_HEADERS` | `xforwarded` | Keycloak trusts the reverse proxy's `X-Forwarded-*` headers, because the proxy terminates HTTPS (`DEC-19`). |
+
+The Keycloak server administrator is not in `.env`. The operator creates it once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`runbooks/deployment.md`).
 
 ## Build argument, not a variable
 

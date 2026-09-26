@@ -43,6 +43,17 @@ function composeRequiredNames(compose: string): readonly string[] {
 }
 
 /**
+ * Defaults for the non-secret names only the compose file reads. The Keycloak database name and
+ * the proxy header mode are the same on every stack; every other name outside the catalogue is
+ * host-specific or a credential and stays blank.
+ */
+const STACK_DEFAULTS = new Map([
+  ["KC_DB", "postgres"],
+  ["KC_DB_URL_DATABASE", "keycloak"],
+  ["KC_PROXY_HEADERS", "xforwarded"],
+]);
+
+/**
  * The deltas this customer applies to the shared realm template. The generator
  * writes the empty document: a realm difference is authored when the customer has
  * one, and Section 2 owns the template it applies to. No credential is written
@@ -118,18 +129,23 @@ services:
       start_period: 240s
 
   keycloak:
-    # Section 1 placeholder: Keycloak runs start-dev only so the stack starts
-    # beside the app. Production mode (the start command, hostname and TLS
-    # settings) lands with the public-address work in 1ia.12, before any customer
-    # deployment. The identity provider runs beside the stack and is reached at
-    # the ${input.slug}-keycloak alias. The two bootstrap values create its
-    # temporary administrator at first start; they belong to the Keycloak server
-    # and are replaced after setup (runbooks/keycloak-realm.md).
+    # Production mode. The reverse proxy terminates HTTPS and reaches this
+    # service over plain HTTP on 8080 at the ${input.slug}-keycloak alias, so
+    # Keycloak trusts the proxy's X-Forwarded headers and takes its public
+    # address from KEYCLOAK_URL (runbooks/reverse-proxy.md). Its database lives
+    # on the host-supplied Postgres beside the application database. The server
+    # administrator is created once with "docker compose run --rm keycloak
+    # bootstrap-admin user" and is never written to .env (runbooks/deployment.md).
     image: quay.io/keycloak/keycloak:26.4
-    command: ["start-dev", "--http-port=8080", "--proxy-headers=xforwarded"]
+    command: ["start", "--http-enabled=true", "--http-port=8080"]
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: \${KC_BOOTSTRAP_ADMIN_USERNAME:?set KC_BOOTSTRAP_ADMIN_USERNAME in .env}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: \${KC_BOOTSTRAP_ADMIN_PASSWORD:?set KC_BOOTSTRAP_ADMIN_PASSWORD in .env}
+      KC_DB: \${KC_DB:?set KC_DB in .env}
+      KC_DB_URL_HOST: \${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}
+      KC_DB_URL_DATABASE: \${KC_DB_URL_DATABASE:?set KC_DB_URL_DATABASE in .env}
+      KC_DB_USERNAME: \${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}
+      KC_DB_PASSWORD: \${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}
+      KC_PROXY_HEADERS: \${KC_PROXY_HEADERS:?set KC_PROXY_HEADERS in .env}
+      KC_HOSTNAME: \${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
     networks:
       proxy:
         aliases:
@@ -169,7 +185,8 @@ export function envExample(input: TenantRenderInput): string {
   const lines = [...names].toSorted().map((name) => {
     const variable = byName.get(name);
 
-    if (variable === undefined) return `${name}=`;
+    if (variable === undefined)
+      return `${name}=${STACK_DEFAULTS.get(name) ?? ""}`;
 
     const blank = variable.secret || variable.default === undefined;
 

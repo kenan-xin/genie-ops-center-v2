@@ -68,13 +68,14 @@ describe("the generated customer stack smoke", () => {
       databasePassword: DATABASE_PASSWORD,
       filled: {
         PUBLIC_URL: "https://example.invalid",
+        KEYCLOAK_URL: "https://id.example.invalid",
         RESEND_API_KEY: SECRET_VALUE,
         S3_SECRET_ACCESS_KEY: SECRET_VALUE,
         KC_DB: "postgres",
         KC_DB_URL_HOST: `${SLUG}-postgres`,
         KC_DB_URL_DATABASE: "keycloak",
         KC_DB_USERNAME: "genie",
-        KC_DB_PASSWORD: "genie",
+        KC_DB_PASSWORD: DATABASE_PASSWORD,
         KC_PROXY_HEADERS: "xforwarded",
       },
     });
