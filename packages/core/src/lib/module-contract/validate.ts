@@ -1,5 +1,6 @@
 import type { ZodType } from "zod";
 
+import { moduleIdOfRouter } from "../entitlement/module-trpc.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
 import type { Module, NavigationEntry } from "./module.ts";
@@ -102,6 +103,8 @@ export function validateModule(module: Module): readonly string[] {
       `Module "${id}" declares migrations table "${module.schema.migrationsTable}". A module ledger is "${expectedLedger}" (DEC-50).`
     );
   }
+
+  problems.push(...routerProblems(module));
 
   for (const entry of module.permissions) {
     if (!isPermissionKey(entry.key) || !entry.key.startsWith(`${id}:`)) {
@@ -340,6 +343,31 @@ export function validateRegistry(
   }
 
   return problems;
+}
+
+/**
+ * The per-procedure entitlement gate reads the id passed to `createModuleTRPC`, so a router built
+ * elsewhere is ungated and one built for another id is gated on the wrong entitlement (d1y).
+ * Lint bans a static `initTRPC` import in a module, but a dynamic `import("@trpc/server")`
+ * cannot be linted; this check covers it, because a router core did not record is refused.
+ */
+function routerProblems(module: Module): readonly string[] {
+  const id = module.identity.id;
+  const owner = moduleIdOfRouter(module.router);
+
+  if (owner === undefined) {
+    return [
+      `Module "${id}" has a router not built by createModuleTRPC("${id}").`,
+    ];
+  }
+
+  if (owner !== id) {
+    return [
+      `Module "${id}" has a router built by createModuleTRPC("${owner}"). It must use "${id}".`,
+    ];
+  }
+
+  return [];
 }
 
 /** Every field of the navigation contract, so a pinned copy cannot drift. */

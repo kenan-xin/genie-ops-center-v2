@@ -1,5 +1,4 @@
-import type { Module } from "@genie/core";
-import { initTRPC } from "@trpc/server";
+import { createModuleTRPC, type Module } from "@genie/core";
 
 /**
  * A module whose frame-origin provider always fails (AC-25, failed provider).
@@ -21,7 +20,7 @@ const failingViewerModule = {
     migrationsTable: "__drizzle_migrations_failing_viewer",
   },
 
-  router: initTRPC.create().router({}),
+  router: createModuleTRPC("failing-viewer").router({}),
 
   permissions: [],
 

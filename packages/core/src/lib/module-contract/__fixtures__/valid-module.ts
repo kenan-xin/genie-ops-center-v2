@@ -1,8 +1,8 @@
-import { initTRPC } from "@trpc/server";
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
 import { z } from "zod";
 
+import { createModuleTRPC } from "../../entitlement/module-trpc.ts";
 import type { Module } from "../module.ts";
 
 const fixtureRecord = pgTable("fixture_record", {
@@ -35,7 +35,7 @@ export const validModule = {
     migrationsTable: "__drizzle_migrations_fixture",
   },
 
-  router: initTRPC.create().router({}),
+  router: createModuleTRPC("fixture").router({}),
 
   permissions: [
     { key: "fixture:read", label: "Read fixture records" },

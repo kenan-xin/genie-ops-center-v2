@@ -1,4 +1,4 @@
-import { initTRPC } from "@trpc/server";
+import { type AnyTRPCRouter, initTRPC } from "@trpc/server";
 
 import { AppError, CORE_ERRORS } from "../errors/index.ts";
 import type { ModuleRequestContext } from "../module-contract/module.ts";
@@ -11,6 +11,16 @@ import type { ModuleRequestContext } from "../module-contract/module.ts";
 export type ModuleTRPCContext = ModuleRequestContext & {
   readonly requestId?: string;
 };
+
+const routerOwners = new WeakMap<AnyTRPCRouter, string>();
+
+/**
+ * The module id a router was built for by `createModuleTRPC`, or `undefined` for a router core
+ * did not build. Module validation reads this to tie a module's router to its identity.
+ */
+export function moduleIdOfRouter(router: AnyTRPCRouter): string | undefined {
+  return routerOwners.get(router);
+}
 
 /**
  * R-8, the per-procedure half (d1y): one `initTRPC` root built against the module request
@@ -40,8 +50,18 @@ export function createModuleTRPC(moduleId: string) {
     return next();
   });
 
+  // Every router built here is recorded under the gate's id, so validation refuses a module whose
+  // router was built elsewhere or gated on another module's entitlement.
+  const router: typeof t.router = (input) => {
+    const built = t.router(input);
+
+    routerOwners.set(built, moduleId);
+
+    return built;
+  };
+
   return {
-    router: t.router,
+    router,
     procedure: t.procedure.use(gate),
   };
 }

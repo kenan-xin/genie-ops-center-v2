@@ -1,6 +1,8 @@
+import { initTRPC } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { createModuleTRPC } from "../entitlement/module-trpc.ts";
 import {
   renameModule,
   withAdminLanding,
@@ -14,6 +16,25 @@ import { validateModule, validateRegistry } from "./validate.ts";
 describe("validateModule", () => {
   it("accepts the valid fixture", () => {
     expect(validateModule(validModule)).toEqual([]);
+  });
+
+  it("rejects a router that createModuleTRPC did not build", () => {
+    const broken = { ...validModule, router: initTRPC.create().router({}) };
+
+    expect(validateModule(broken)).toEqual([
+      'Module "fixture" has a router not built by createModuleTRPC("fixture").',
+    ]);
+  });
+
+  it("rejects a router built by createModuleTRPC for another module id", () => {
+    const broken = {
+      ...validModule,
+      router: createModuleTRPC("placeholder").router({}),
+    };
+
+    expect(validateModule(broken)).toEqual([
+      'Module "fixture" has a router built by createModuleTRPC("placeholder"). It must use "fixture".',
+    ]);
   });
 
   it("rejects a job name outside its module prefix", () => {

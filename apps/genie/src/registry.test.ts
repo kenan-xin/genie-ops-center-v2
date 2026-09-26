@@ -1,4 +1,9 @@
-import { type Module, type PermissionKey, validateRegistry } from "@genie/core";
+import {
+  createModuleTRPC,
+  type Module,
+  type PermissionKey,
+  validateRegistry,
+} from "@genie/core";
 import { placeholderModule } from "@genie/module-placeholder";
 import { describe, expect, it } from "vitest";
 
@@ -39,6 +44,7 @@ function moduleWithLanding(id: string, landing: boolean): Module {
   return {
     ...placeholderModule,
     identity: { ...placeholderModule.identity, id, displayName: id },
+    router: createModuleTRPC(id).router({}),
     permissions,
     defaultRoles: [{ name: `${id} user`, permissions: [usePermission] }],
     navigation: { pinned: [], entries: [entry] },
