@@ -178,6 +178,18 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
+    // The name is a queue name segment joined with dots, so a dot or a character pg-boss refuses
+    // would collide with another queue or fail at `createQueue` on the first emit (R-56).
+    if (
+      subscription.name !== undefined &&
+      subscription.name.trim() !== "" &&
+      !KEBAB_CASE.test(subscription.name)
+    ) {
+      problems.push(
+        `Subscription name "${subscription.name}" is not kebab-case.`
+      );
+    }
+
     const durable =
       subscription.durable === true || subscription.serializeBy !== undefined;
 

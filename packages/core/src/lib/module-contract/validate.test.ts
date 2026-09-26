@@ -229,6 +229,31 @@ describe("validateModule", () => {
     );
   });
 
+  it.each(["fifo.archive", "Archive", "archive now", "archive.dead-letter"])(
+    "rejects the subscription name %j, which is not kebab-case",
+    (name) => {
+      const broken = {
+        ...validModule,
+        subscriptions: [
+          {
+            event: {
+              name: "fixture.record.created",
+              version: 1,
+              payload: z.object({ id: z.string() }),
+            },
+            name,
+            durable: true,
+            handler: async () => {},
+          },
+        ],
+      };
+
+      expect(validateModule(broken)).toContain(
+        `Subscription name "${name}" is not kebab-case.`
+      );
+    }
+  );
+
   it("rejects an identifier that is not kebab-case", () => {
     const broken = {
       ...validModule,

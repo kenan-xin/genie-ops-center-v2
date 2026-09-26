@@ -261,6 +261,7 @@ const abandonAttempts: string[] = [];
 
 const archiveHandler = async () => {};
 const notifyHandler = async () => {};
+const byId = (payload: { id: string }) => payload.id;
 
 function queueOf(
   entries: ReturnType<typeof durableEventQueues>,
@@ -943,6 +944,69 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     expect(queueOf(declared, archiveHandler)).not.toBe(
       queueOf(declared, notifyHandler)
     );
+  });
+
+  it("refuses two subscriptions that resolve to one queue", () => {
+    const collisionContract: EventContract<{ id: string }> = {
+      name: "event-collision.record-touched",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+    const busFor = () =>
+      createEventBus({
+        jobQueue: context.jobQueue,
+        logger: silentLogger(),
+        tenant: () => context,
+      });
+
+    // Two unnamed durable subscriptions to one event fall back to one queue name.
+    const unnamed = busFor();
+    registerSubscription(unnamed, "event-collision", {
+      event: collisionContract,
+      durable: true,
+      handler: archiveHandler,
+    });
+    expect(() =>
+      registerSubscription(unnamed, "event-collision", {
+        event: collisionContract,
+        durable: true,
+        handler: notifyHandler,
+      })
+    ).toThrow(/already uses/);
+
+    // A durable "fifo.x" and a serialized "x" both join to "....v1.fifo.x".
+    const dotted = busFor();
+    registerSubscription(dotted, "event-collision", {
+      event: collisionContract,
+      name: "fifo.x",
+      durable: true,
+      handler: archiveHandler,
+    });
+    expect(() =>
+      registerSubscription(dotted, "event-collision", {
+        event: collisionContract,
+        name: "x",
+        serializeBy: byId,
+        handler: notifyHandler,
+      })
+    ).toThrow("event.event-collision.event-collision.record-touched.v1.fifo.x");
+
+    // A serialized "x.dead-letter" would drain the dead-letter queue of the serialized "x".
+    const deadLetter = busFor();
+    registerSubscription(deadLetter, "event-collision", {
+      event: collisionContract,
+      name: "x",
+      serializeBy: byId,
+      handler: archiveHandler,
+    });
+    expect(() =>
+      registerSubscription(deadLetter, "event-collision", {
+        event: collisionContract,
+        name: "x.dead-letter",
+        serializeBy: byId,
+        handler: notifyHandler,
+      })
+    ).toThrow(/already uses/);
   });
 
   it("discards an after-commit entry registered through fn inside a rolled-back savepoint and runs a released one", async () => {

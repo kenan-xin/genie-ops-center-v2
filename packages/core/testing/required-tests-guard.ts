@@ -275,6 +275,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the typed event bus against Testcontainers Postgres does not duplicate subscriptions when runtime registration repeats",
       "the typed event bus against Testcontainers Postgres logs each serialized dead-letter move promptly with its blocked key",
       "the typed event bus against Testcontainers Postgres keeps a module subscription's queue name stable when same-mode subscriptions are reordered",
+      "the typed event bus against Testcontainers Postgres refuses two subscriptions that resolve to one queue",
       "the typed event bus against Testcontainers Postgres discards an after-commit entry registered through fn inside a rolled-back savepoint and runs a released one",
       "the typed event bus against Testcontainers Postgres logs the dead-letter move when shutdown fails a last-attempt serialized job",
     ],
