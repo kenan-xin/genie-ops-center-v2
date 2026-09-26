@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { DEV_DB_PORT } from "./global-setup.ts";
+
 /**
  * The development panels, in a real browser.
  *
@@ -111,10 +113,11 @@ test("puts no secret on the screen", async ({ page }) => {
   const shown = await page.locator("body").innerText();
 
   // The connection string this deployment really runs on carries a user, a
-  // password, a host and a port. None of them may be on the page; 5433 is the
-  // port this run's database is published on (`compose.dev-e2e.yaml`).
+  // password, a host and a port. None of them may be on the page; the port is
+  // the one this run's database is published on, read from the setup that
+  // publishes it rather than a literal, so the assertion tracks the scoped port.
   expect(shown).not.toContain("genie:genie");
-  expect(shown).not.toContain("5433");
+  expect(shown).not.toContain(String(DEV_DB_PORT));
   expect(shown).not.toContain("postgres://");
   expect(shown).not.toContain("127.0.0.1");
 });

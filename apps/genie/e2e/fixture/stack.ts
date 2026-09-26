@@ -3,6 +3,9 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { FIXTURE_IMAGE } from "../../testing/image-tag.ts";
+import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
+
 const run = promisify(execFile);
 
 /**
@@ -10,12 +13,18 @@ const run = promisify(execFile);
  * make the fixture gate work with no operator-supplied environment: the image
  * `build-fixture-image` produces, on its own host port, under its own compose
  * project name so the ordinary `genie-s005-e2e` stack is never contended.
+ *
+ * The project name and host port are scoped to this working tree (see
+ * `testing/worktree-scope.ts`), so two worktrees running the fixture gate at
+ * once do not share a container name or a host port.
  */
-export const PROJECT = "genie-s005-fixture";
+export const PROJECT = scopedProject("genie-s005-fixture");
 
-export const IMAGE = process.env.GENIE_IMAGE ?? "genie-s005:fixture";
+export const IMAGE = process.env.GENIE_IMAGE ?? FIXTURE_IMAGE;
 
-export const HOST_PORT = Number(process.env.GENIE_HOST_PORT ?? "3406");
+export const HOST_PORT = Number(
+  process.env.GENIE_HOST_PORT ?? scopedPort(7400)
+);
 
 /** Walk up from this file until the repository root's compose file appears. */
 function composeFile(): string {

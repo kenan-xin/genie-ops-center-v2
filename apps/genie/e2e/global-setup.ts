@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
+
 const run = promisify(execFile);
 
 /**
@@ -14,12 +16,18 @@ const run = promisify(execFile);
 const COMPOSE_FILE = "deploy/stack/compose.e2e.yaml";
 
 const READY_PORT = Number(
-  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? "3400"
+  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? scopedPort(3400)
 );
 
 const READY_URL = `http://127.0.0.1:${READY_PORT}/api/health`;
 
-export const COMPOSE = ["compose", "-p", "genie-s005-e2e", "-f", COMPOSE_FILE];
+export const COMPOSE = [
+  "compose",
+  "-p",
+  scopedProject("genie-s005-e2e"),
+  "-f",
+  COMPOSE_FILE,
+];
 
 /** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
 async function seedTestSetup(): Promise<void> {
@@ -56,9 +64,12 @@ export default async function globalSetup(): Promise<void> {
     );
   }
 
-  // A fixed project name, so teardown and the pre-run cleanup can find this
-  // stack without a state file and without guessing a container id.
-  await run("docker", [...COMPOSE, "up", "-d", "--wait"]);
+  // A project name scoped to this worktree, so teardown and the pre-run cleanup
+  // find this stack without a state file and without another worktree's stack,
+  // and the host port is the one the readiness probe waits on.
+  await run("docker", [...COMPOSE, "up", "-d", "--wait"], {
+    env: { ...process.env, GENIE_HOST_PORT: String(READY_PORT) },
+  });
 
   const deadline = Date.now() + 120000;
 

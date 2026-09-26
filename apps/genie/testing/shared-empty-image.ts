@@ -14,12 +14,13 @@ import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 
 import { dockerBuild } from "./image-process.ts";
-import { testImageTag, worktreeId } from "./image-tag.ts";
+import { testImageTag } from "./image-tag.ts";
 import {
   REPO_ROOT,
   stageFixtureModule,
   stageWorkspace,
 } from "./stage-workspace.ts";
+import { worktreeId } from "./worktree-scope.ts";
 
 const run = promisify(execFile);
 

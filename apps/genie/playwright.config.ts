@@ -1,6 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.E2E_PORT ?? "3400");
+import { scopedPort } from "./testing/worktree-scope.ts";
+
+// The port global setup publishes; the same precedence it uses, so a run that
+// overrides either variable still probes and drives the same port.
+const PORT = Number(
+  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? scopedPort(3400)
+);
 
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 

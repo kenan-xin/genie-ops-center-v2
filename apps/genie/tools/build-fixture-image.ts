@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { FIXTURE_IMAGE } from "../testing/image-tag.ts";
 import {
   stageFixtureModule,
   stageWorkspace,
@@ -31,8 +32,11 @@ import {
  * fixture packages. No repository file, selection, or lockfile changes, so the
  * default image and every other gate keep building exactly what they built
  * before.
+ *
+ * The tag is scoped to this working tree (see `testing/worktree-scope.ts`), so
+ * two worktrees running the fixture gate never replace each other's image.
  */
-const FIXTURE_TAG = "genie-s005:fixture";
+const FIXTURE_TAG = FIXTURE_IMAGE;
 
 const FIXTURE_MODULES = [
   "failing-viewer",

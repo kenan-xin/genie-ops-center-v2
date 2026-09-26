@@ -4,6 +4,8 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
+
 const run = promisify(execFile);
 
 /**
@@ -25,11 +27,25 @@ const COMPOSE_FILE = resolve(
   "../../../../deploy/stack/compose.dev-e2e.yaml"
 );
 
-export const COMPOSE = ["compose", "-p", "genie-s009-dev", "-f", COMPOSE_FILE];
+export const COMPOSE = [
+  "compose",
+  "-p",
+  scopedProject("genie-s009-dev"),
+  "-f",
+  COMPOSE_FILE,
+];
 
-const DB_PORT = process.env.GENIE_DEV_DB_PORT ?? "5433";
+/**
+ * The database's published port. Scoped to this worktree so two runs do not
+ * bind the same host port; `playwright.dev.config.ts` and
+ * `e2e/dev/devtools.spec.ts` read it through this module rather than a literal,
+ * so the leak assertion stays about this run's real port.
+ */
+export const DEV_DB_PORT = Number(
+  process.env.GENIE_DEV_DB_PORT ?? scopedPort(11400)
+);
 
-export const DEV_PORT = Number(process.env.GENIE_DEV_PORT ?? "3401");
+export const DEV_PORT = Number(process.env.GENIE_DEV_PORT ?? scopedPort(5400));
 
 /** Where the server's process id is left, so teardown can stop it. */
 export const PID_FILE = resolve(import.meta.dirname, ".dev-server.pid");
@@ -127,7 +143,9 @@ export default async function globalSetup(): Promise<void> {
     );
   }
 
-  await run("docker", [...COMPOSE, "up", "-d", "--wait"]);
+  await run("docker", [...COMPOSE, "up", "-d", "--wait"], {
+    env: { ...process.env, GENIE_DEV_DB_PORT: String(DEV_DB_PORT) },
+  });
 
   const appRoot = resolve(import.meta.dirname, "../..");
 
@@ -151,7 +169,7 @@ export default async function globalSetup(): Promise<void> {
       cwd: appRoot,
       env: {
         ...process.env,
-        DATABASE_URL: `postgres://genie:genie@127.0.0.1:${DB_PORT}/genie`,
+        DATABASE_URL: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
         PUBLIC_URL: `http://127.0.0.1:${DEV_PORT}`,
       },
       stdio: ["ignore", "pipe", "pipe"],
