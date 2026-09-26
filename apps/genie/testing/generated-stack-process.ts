@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { WORKSPACE_ROOT, scopedProject } from "./worktree-scope.ts";
+
 const run = promisify(execFile);
 
 const PROXY_NETWORK = "proxy";
-
-const WORKSPACE_ROOT = join(import.meta.dirname, "../../..");
 
 const POSTGRES_IMAGE = "postgres:18-alpine";
 
@@ -26,6 +26,8 @@ export type GeneratedTenantDeploy = {
   readonly compose: string;
   readonly envExample: string;
   readonly moduleInclude: string;
+  readonly tenantConfigPath: string;
+  readonly brandingSeedPath: string;
   readonly remove: () => Promise<void>;
 };
 
@@ -87,6 +89,8 @@ export async function generateTenantDeploy(
         .split("\n")
         .filter((id) => id !== "")
         .join(","),
+      tenantConfigPath: join(deployRoot, "tenant.yaml"),
+      brandingSeedPath: join(deployRoot, "branding.seed.json"),
       remove,
     };
   } catch (error) {
@@ -108,10 +112,15 @@ async function ensureNetwork(name: string): Promise<boolean> {
   }
 }
 
+/**
+ * The `.env` an operator writes: every name `.env.example` lists, with defaults preserved unless
+ * the test fills them. Explicit test values may add names absent from the example, such as
+ * Keycloak bootstrap credentials; the render test independently catches omissions in the
+ * operator-facing example.
+ */
 function envValues(
   example: string,
-  compose: string,
-  overrides: Readonly<Record<string, string>>
+  filled: Readonly<Record<string, string>>
 ): string {
   const values = new Map<string, string>();
 
@@ -119,22 +128,12 @@ function envValues(
     const match = /^#?\s*([A-Z][A-Z0-9_]*)=(.*)$/.exec(line);
 
     if (match?.[1] !== undefined) {
-      values.set(match[1], match[2] ?? "");
+      values.set(match[1], filled[match[1]] ?? match[2] ?? "");
     }
   }
 
-  for (const [name, value] of Object.entries(overrides)) {
-    values.set(name, value);
-  }
-
-  for (const [, name] of compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)) {
-    if (name === undefined || (values.get(name) ?? "") !== "") continue;
-
-    const value = name.endsWith("URL")
-      ? "https://example.invalid"
-      : `smoke-${name.toLowerCase()}`;
-
-    values.set(name, value);
+  for (const [name, value] of Object.entries(filled)) {
+    if (!values.has(name)) values.set(name, value);
   }
 
   return [...values]
@@ -149,8 +148,18 @@ export type GeneratedStack = {
   readonly slug: string;
   readonly request: (path: string) => Promise<Response>;
   readonly tableNames: () => Promise<readonly string[]>;
-  readonly markSetupDone: () => Promise<void>;
+  /** Fetches `url` from inside the app container, so compose aliases resolve. */
+  readonly requestFromApp: (url: string) => Promise<Response>;
+  readonly serviceState: (service: string) => Promise<ServiceState>;
+  /** Runs `genie-ops setup` in the running app container with the generated files. */
+  readonly runSetup: () => Promise<CommandResult>;
   readonly stop: () => Promise<void>;
+};
+
+export type ServiceState = {
+  readonly running: boolean;
+  /** Docker's health status, or undefined for a service without a health check. */
+  readonly health: string | undefined;
 };
 
 /** Runs a generated customer compose file against Postgres supplied on its external proxy network. */
@@ -159,8 +168,12 @@ export async function startGeneratedStack(input: {
   readonly imageTag: string;
   readonly compose: string;
   readonly envExample: string;
+  readonly tenantConfigPath: string;
+  readonly brandingSeedPath: string;
+  /** Values the test fills in for names `.env.example` lists. */
+  readonly filled: Readonly<Record<string, string>>;
 }): Promise<GeneratedStack> {
-  const projectName = input.slug;
+  const projectName = scopedProject("genie-generated-stack");
   const databaseName = `${input.slug}-database`;
   const databaseAlias = `${input.slug}-postgres`;
   const composeNetwork = `${projectName}_default`;
@@ -210,12 +223,10 @@ export async function startGeneratedStack(input: {
     await writeFile(composePath, input.compose);
     await writeFile(
       envPath,
-      envValues(input.envExample, input.compose, {
+      envValues(input.envExample, {
+        ...input.filled,
         DATABASE_URL: `postgres://genie:genie@${databaseAlias}:5432/genie`,
-        // TODO: Remove when the Section 0 template switches to IMAGE_TAG.
-        GENIE_IMAGE: input.imageTag,
         IMAGE_TAG: input.imageTag,
-        PUBLIC_URL: "https://example.invalid",
       })
     );
 
@@ -283,16 +294,16 @@ export async function startGeneratedStack(input: {
       throw new Error(`Postgres ${databaseName} did not become ready`);
 
     composeStarted = true;
-    await composeCommand(["up", "--detach", "--no-deps", "app"]);
+    await composeCommand(["up", "--detach"]);
 
-    const request = async (path: string): Promise<Response> => {
+    const requestFromApp = async (url: string): Promise<Response> => {
       const result = await composeCommand([
         "exec",
         "--no-TTY",
         "app",
         "node",
         "-e",
-        `fetch("http://127.0.0.1:3000${path}", { redirect: "manual" }).then(async response => console.log(JSON.stringify({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() }))).catch(error => { console.error(error); process.exitCode = 1; })`,
+        `fetch(${JSON.stringify(url)}, { redirect: "manual" }).then(async response => console.log(JSON.stringify({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() }))).catch(error => { console.error(error); process.exitCode = 1; })`,
       ]);
 
       // SAFETY: the app-side probe serializes this exact response shape as JSON.
@@ -308,6 +319,62 @@ export async function startGeneratedStack(input: {
         status: parsed.status,
         headers: parsed.headers,
       });
+    };
+
+    const request = async (path: string) =>
+      requestFromApp(`http://127.0.0.1:3000${path}`);
+
+    const serviceState = async (service: string): Promise<ServiceState> => {
+      const { stdout } = await composeCommand([
+        "ps",
+        "--all",
+        "--quiet",
+        service,
+      ]);
+
+      const id = stdout.trim();
+
+      if (id === "") return { running: false, health: undefined };
+
+      const inspected = await docker([
+        "inspect",
+        "--format",
+        "{{json .State}}",
+        id,
+      ]);
+
+      // SAFETY: `docker inspect --format '{{json .State}}'` prints the container state object.
+      const state = JSON.parse(inspected.stdout) as {
+        readonly Running: boolean;
+        readonly Health?: { readonly Status: string };
+      };
+
+      return { running: state.Running, health: state.Health?.Status };
+    };
+
+    const runSetup = async (): Promise<CommandResult> => {
+      await composeCommand([
+        "cp",
+        input.tenantConfigPath,
+        "app:/tmp/tenant.yaml",
+      ]);
+      await composeCommand([
+        "cp",
+        input.brandingSeedPath,
+        "app:/tmp/branding.seed.json",
+      ]);
+
+      return composeCommand([
+        "exec",
+        "--no-TTY",
+        "app",
+        "genie-ops",
+        "setup",
+        "--tenant-config",
+        "/tmp/tenant.yaml",
+        "--branding-seed",
+        "/tmp/branding.seed.json",
+      ]);
     };
 
     const databaseCommand = async (sql: string) =>
@@ -341,11 +408,9 @@ export async function startGeneratedStack(input: {
           .map((name) => name.trim())
           .filter((name) => name !== "");
       },
-      markSetupDone: async () => {
-        await databaseCommand(
-          "insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()"
-        );
-      },
+      requestFromApp,
+      serviceState,
+      runSetup,
       stop,
     };
   } catch (error) {

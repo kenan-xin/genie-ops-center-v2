@@ -3,27 +3,69 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   generateTenantDeploy,
   startGeneratedStack,
+  type GeneratedStack,
 } from "./generated-stack-process.ts";
 import { buildImageWith, removeImage, requireDocker } from "./image-process.ts";
+import { testImageTag } from "./image-tag.ts";
 
 const SLUG = `smoke-${process.pid}-${Date.now()}`;
 
-const IMAGE_TAG = `genie-s1-05-${process.pid}-${Date.now()}:test`;
+const IMAGE_TAG = testImageTag("genie-s1-05-stack", "test");
 
+const NOT_SET_UP = "This deployment is not set up yet";
+
+/** Polls `probe` until it returns a value `done` accepts, and returns the last value seen. */
+async function pollUntil<T>(
+  probe: () => Promise<T>,
+  done: (value: T) => boolean,
+  timeoutMs: number
+): Promise<T | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  let last: T | undefined;
+
+  /* eslint-disable no-await-in-loop */
+  while (Date.now() < deadline) {
+    last = await probe().catch(() => undefined);
+
+    if (last !== undefined && done(last)) return last;
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  /* eslint-enable no-await-in-loop */
+
+  return last;
+}
+
+// The cases share one running stack and run in file order: AC-15 is observed before setup,
+// and the served-page case runs after the setup case opened the gate.
 describe("the generated customer stack smoke", () => {
-  let stack: Awaited<ReturnType<typeof startGeneratedStack>> | undefined;
+  let stack: GeneratedStack | undefined;
   let generated: Awaited<ReturnType<typeof generateTenantDeploy>> | undefined;
+
+  const running = (): GeneratedStack => {
+    if (stack === undefined) throw new Error("generated stack did not start");
+
+    return stack;
+  };
 
   beforeAll(async () => {
     await requireDocker();
     generated = await generateTenantDeploy(SLUG);
     expect(generated.moduleInclude).toBe("");
     await buildImageWith(generated.moduleInclude, IMAGE_TAG);
+    // Only the names an operator fills by hand; everything else comes from .env.example.
     stack = await startGeneratedStack({
       slug: SLUG,
       imageTag: IMAGE_TAG,
       compose: generated.compose,
       envExample: generated.envExample,
+      tenantConfigPath: generated.tenantConfigPath,
+      brandingSeedPath: generated.brandingSeedPath,
+      filled: {
+        PUBLIC_URL: "https://example.invalid",
+        KC_BOOTSTRAP_ADMIN_USERNAME: "smoke-admin",
+        KC_BOOTSTRAP_ADMIN_PASSWORD: "smoke-admin-password",
+      },
     });
   }, 900000);
 
@@ -33,31 +75,74 @@ describe("the generated customer stack smoke", () => {
     await removeImage(IMAGE_TAG);
   });
 
-  it("serves the customer page and health while the excluded placeholder module is absent", async () => {
-    if (stack === undefined) throw new Error("generated stack did not start");
+  // AC-15: before setup the health endpoint answers degraded (also 200) and `/` is gated.
+  it("answers degraded health and serves the not-set-up page before setup", async () => {
+    const health = await pollUntil(
+      async () => {
+        const response = await running().request("/api/health");
 
-    const deadline = Date.now() + 120000;
-    let health: Response | undefined;
-
-    /* eslint-disable no-await-in-loop */
-    while (Date.now() < deadline) {
-      health = await stack.request("/api/health").catch(() => undefined);
-
-      if (health?.status === 200) break;
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    /* eslint-enable no-await-in-loop */
+        return { status: response.status, body: await response.text() };
+      },
+      ({ status }) => status === 200,
+      120000
+    );
 
     expect(
       health?.status,
       "generated app never served its health endpoint"
     ).toBe(200);
-    await stack.markSetupDone();
+    expect(health?.body).toBe("degraded");
 
-    const readyHealth = await stack.request("/api/health");
+    const page = await running().request("/");
 
-    const page = await stack.request("/");
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain(NOT_SET_UP);
+  }, 180000);
+
+  // F4: the worker (same image, heartbeat check) and Keycloak start from the generated file.
+  it("brings the worker to healthy and Keycloak to serving", async () => {
+    const worker = await pollUntil(
+      async () => running().serviceState("worker"),
+      ({ health }) => health === "healthy" || health === "unhealthy",
+      300000
+    );
+
+    expect(worker?.running, "worker container is not running").toBe(true);
+    expect(worker?.health).toBe("healthy");
+
+    const keycloakUrl = `http://${SLUG}-keycloak:8080/`;
+
+    const keycloak = await pollUntil(
+      async () => running().requestFromApp(keycloakUrl),
+      ({ status }) => status === 200 || status === 302,
+      240000
+    );
+
+    expect((await running().serviceState("keycloak")).running).toBe(true);
+    expect(
+      [200, 302],
+      `Keycloak never served its root at ${keycloakUrl}`
+    ).toContain(keycloak?.status);
+  }, 600000);
+
+  // AC-16: the real `genie-ops setup` in the running stack sets both steps done.
+  it("runs genie-ops setup in the running stack, clears the page and answers ok", async () => {
+    await running().runSetup();
+
+    const health = await running().request("/api/health");
+
+    expect(await health.text()).toBe("ok");
+
+    const page = await running().request("/");
+
+    expect(page.status).toBe(200);
+    expect(await page.text()).not.toContain(NOT_SET_UP);
+  }, 240000);
+
+  it("serves the customer page and health while the excluded placeholder module is absent", async () => {
+    const readyHealth = await running().request("/api/health");
+
+    const page = await running().request("/");
 
     const excludedRoutes = [
       "/placeholder",
@@ -71,7 +156,7 @@ describe("the generated customer stack smoke", () => {
       "/api/m/placeholder/fixture/hooks",
     ];
 
-    const tableNames = await stack.tableNames();
+    const tableNames = await running().tableNames();
 
     expect(await readyHealth.text()).toBe("ok");
 
@@ -85,7 +170,9 @@ describe("the generated customer stack smoke", () => {
     /* eslint-disable no-await-in-loop */
     for (const route of excludedRoutes) {
       expect(
-        await stack.request(route).then(({ status }) => status),
+        await running()
+          .request(route)
+          .then(({ status }) => status),
         route
       ).toBe(404);
     }

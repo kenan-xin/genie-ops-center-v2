@@ -105,6 +105,17 @@ function envExampleEntries(text: string): ReadonlyMap<string, string> {
   );
 }
 
+/** Every name the compose file refuses to start without (`${NAME:?message}`). */
+function composeRequiredNames(compose: string): readonly string[] {
+  return [
+    ...new Set(
+      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
+        ([, name]) => name ?? ""
+      )
+    ),
+  ].toSorted();
+}
+
 function service(compose: string, name: string): string {
   const start = compose.indexOf(`  ${name}:\n`);
 
@@ -286,7 +297,9 @@ describe("the rendered deployment folder", () => {
         .filter(({ name }) => !name.startsWith("KEYCLOAK_BOOTSTRAP_"))
         .map(({ name }) => name)
     );
-    expectedNames.add("IMAGE_TAG");
+    for (const name of composeRequiredNames(read("compose.yaml"))) {
+      expectedNames.add(name);
+    }
 
     expect([...entries.keys()].toSorted()).toEqual(
       [...expectedNames].toSorted()
@@ -304,6 +317,26 @@ describe("the rendered deployment folder", () => {
     }
 
     expect(entries.get("IMAGE_TAG")).toBe("");
+  });
+
+  // An operator copies .env.example to .env and fills every listed value, then runs
+  // `docker compose up`; a name compose requires but the example omits stops the stack.
+  it("lists every variable the compose file requires in .env.example", () => {
+    const catalogueNames = new Set(
+      environmentCatalogue().map(({ name }) => name)
+    );
+    const entries = envExampleEntries(read(".env.example"));
+    const required = composeRequiredNames(read("compose.yaml"));
+
+    expect(required).toContain("KC_BOOTSTRAP_ADMIN_USERNAME");
+    expect(required).toContain("KC_BOOTSTRAP_ADMIN_PASSWORD");
+
+    for (const name of required) {
+      expect(entries.has(name), name).toBe(true);
+
+      // A name outside the catalogue has no schema default and may be a credential.
+      if (!catalogueNames.has(name)) expect(entries.get(name), name).toBe("");
+    }
   });
 
   it("keeps the customer stack template out of deploy/stack", () => {

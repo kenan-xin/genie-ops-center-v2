@@ -146,6 +146,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/generated-stack.integration.test.ts",
     cases: [
+      "the generated customer stack smoke answers degraded health and serves the not-set-up page before setup",
+      "the generated customer stack smoke brings the worker to healthy and Keycloak to serving",
+      "the generated customer stack smoke runs genie-ops setup in the running stack, clears the page and answers ok",
       "the generated customer stack smoke serves the customer page and health while the excluded placeholder module is absent",
     ],
   },
