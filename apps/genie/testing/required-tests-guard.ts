@@ -58,6 +58,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the built image migrates the real database from the repository SQL",
       "the running Section 1 image processes opens one server-counted pool for the app, worker and migrate command",
       "the running Section 1 image processes redacts planted secrets and tenant-tags JSON output from app, worker and every genie-ops command",
+      "the running Section 1 image processes redacts the framework's console lines with core's redactor and filters them by LOG_LEVEL",
     ],
   },
   {

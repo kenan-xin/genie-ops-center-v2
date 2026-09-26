@@ -7,6 +7,15 @@
 // logger uses. A multi-line message, such as a stack, stays one line.
 import { format, stripVTControlCharacters } from "node:util";
 
+// Core's own line rules, copied into the image beside this file from
+// packages/core/src/services/logging/line-rules.ts and run under Node's type stripping, so the
+// framework's lines redact and filter by the same code as the core logger (R-45, R-75).
+import { LEVEL_VALUES, redactText } from "./line-rules.ts";
+
+// LOG_LEVEL as the core logger reads it; an unknown value falls back to its default, info.
+const threshold =
+  LEVEL_VALUES.get(process.env.LOG_LEVEL ?? "info") ?? LEVEL_VALUES.get("info");
+
 // Only a valid address is a tenant id. An invalid PUBLIC_URL fails the bootstrap, and its value
 // must not reach the log.
 const tenantId = /^https?:$/.test(
@@ -26,9 +35,14 @@ const LEVELS = {
 };
 
 for (const [method, [level, stream]] of Object.entries(LEVELS)) {
+  const enabled = (LEVEL_VALUES.get(level) ?? 0) >= threshold;
+
   console[method] = (...args) => {
-    // The colour codes Next adds for a terminal carry no meaning in a JSON line.
-    const msg = stripVTControlCharacters(format(...args)).trim();
+    if (!enabled) return;
+
+    // The message is formatted with its arguments first, so a secret in an argument or an error's
+    // stack is redacted with the rest. Terminal colour codes carry no meaning in a JSON line.
+    const msg = redactText(stripVTControlCharacters(format(...args))).trim();
 
     if (msg === "") return;
 

@@ -1127,6 +1127,58 @@ describe("the running Section 1 image processes", () => {
     expect(violations).toEqual([]);
   }, 60000);
 
+  it("redacts the framework's console lines with core's redactor and filters them by LOG_LEVEL", async () => {
+    const password = `framework-db-password-${process.pid}`;
+    const token = `framework-link-token-${process.pid}`;
+
+    // The framework writes through `console`; the preload the app entrypoint loads is what turns
+    // those calls into lines. Running it in the app container exercises the image's own copy of
+    // the preload and of core's line rules.
+    const script = [
+      `console.error("connect failed postgres://genie:${password}@db:5432/genie")`,
+      `console.log("GET /api/files/download?token=${token}")`,
+      `console.error(new Error("boom https://id.example.invalid/cb?code=${token}"))`,
+    ].join(";");
+
+    const runAt = (level: string) =>
+      appImage!.exec(
+        [
+          "node",
+          "--import",
+          "/usr/local/lib/genie/json-console.mjs",
+          "-e",
+          script,
+        ],
+        { LOG_LEVEL: level }
+      );
+
+    const lines = async (level: string) => {
+      const { stdout, stderr } = await runAt(level);
+
+      return `${stdout}${stderr}`
+        .split("\n")
+        .filter((line) => line.trim() !== "");
+    };
+
+    const atInfo = await lines("info");
+    const atWarn = await lines("warn");
+
+    for (const line of [...atInfo, ...atWarn]) {
+      expect(line).not.toContain(password);
+      expect(line).not.toContain(token);
+      expect(JSON.parse(line)).toMatchObject({ tenantId, source: "framework" });
+    }
+
+    expect(atInfo).toHaveLength(3);
+    expect(atInfo.every((line) => line.includes("[redacted]"))).toBe(true);
+
+    // warn drops the info line and keeps both error lines, as the core logger would.
+    // SAFETY: every line parsed as a JSON object in the loop above, and the preload sets `level`.
+    expect(
+      atWarn.map((line) => (JSON.parse(line) as { level: string }).level)
+    ).toEqual(["error", "error"]);
+  }, 60000);
+
   it("redacts planted secrets and tenant-tags JSON output from app, worker and every genie-ops command", async () => {
     const request = await fetch(
       `http://127.0.0.1:${port}/api/health?token=${bearerToken}`,

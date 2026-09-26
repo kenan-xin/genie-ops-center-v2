@@ -20,6 +20,7 @@ import {
   forExecution,
   isRedactingLogger,
 } from "./index.ts";
+import { LEVEL_VALUES } from "./line-rules.ts";
 
 /**
  * The identity formatter a call site would use to replace pino's structured-object redactor.
@@ -73,6 +74,15 @@ function capture() {
 
   return { lines, destination };
 }
+
+describe("the shared line rules", () => {
+  it("use pino's own level numbers, so the preload filters like the core logger", () => {
+    expect(Object.fromEntries(LEVEL_VALUES)).toEqual({
+      ...pino({ level: "silent" }).levels.values,
+      silent: Number.POSITIVE_INFINITY,
+    });
+  });
+});
 
 describe("the logger", () => {
   it("writes json lines at the level the environment names", () => {

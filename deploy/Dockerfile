@@ -61,6 +61,7 @@ COPY --from=builder /build/apps/genie/public /staging/public
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY deploy/genie-ops.mjs /usr/local/bin/genie-ops
 COPY deploy/json-console.mjs /usr/local/lib/genie/json-console.mjs
+COPY packages/core/src/services/logging/line-rules.ts /usr/local/lib/genie/line-rules.ts
 
 RUN set -eu; \
     matches=$(find /app -maxdepth 4 -name server.js -not -path '*/node_modules/*'); \
