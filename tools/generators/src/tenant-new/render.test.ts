@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { buildBrandingSeed, buildTenantYaml, renderTenant } from "./render.ts";
@@ -74,6 +77,50 @@ function read(name: string): string {
   return content;
 }
 
+type EnvironmentVariable = {
+  readonly name: string;
+  readonly required: boolean;
+  readonly default?: string | number | boolean;
+  readonly secret: boolean;
+};
+
+function environmentCatalogue(): readonly EnvironmentVariable[] {
+  const path = resolve(
+    import.meta.dirname,
+    "../../../../deploy/schemas/environment.catalogue.json"
+  );
+  // SAFETY: core emits the catalogue as `{ variables: [...] }` and its emission test compares the committed bytes with the environment schema.
+  const catalogue = JSON.parse(readFileSync(path, "utf8")) as {
+    readonly variables: readonly EnvironmentVariable[];
+  };
+
+  return catalogue.variables;
+}
+
+function envExampleEntries(text: string): ReadonlyMap<string, string> {
+  return new Map(
+    [...text.matchAll(/^#?\s*([A-Z][A-Z0-9_]*)=(.*)$/gm)].map(
+      ([, name, value]) => [name ?? "", value ?? ""]
+    )
+  );
+}
+
+function service(compose: string, name: string): string {
+  const start = compose.indexOf(`  ${name}:\n`);
+
+  if (start === -1) return "";
+
+  const bodyStart = start + `  ${name}:\n`.length;
+  const nextService = compose
+    .slice(bodyStart)
+    .search(/\n  [a-z][a-z0-9_-]*:\n|\n(?:networks|volumes):/);
+
+  return compose.slice(
+    bodyStart,
+    nextService === -1 ? undefined : bodyStart + nextService
+  );
+}
+
 describe("the rendered deployment folder", () => {
   it("holds the seven files and nothing else", () => {
     expect([...files.keys()].toSorted()).toEqual([
@@ -140,6 +187,136 @@ describe("the rendered deployment folder", () => {
     expect(checkCommand).toContain("-lt 180");
     expect(startPeriodSeconds).toBeGreaterThan(180);
     expect(staleAfterSeconds).toBeGreaterThanOrEqual(180);
+  });
+
+  it("omits the host-supplied Postgres service", () => {
+    const compose = read("compose.yaml");
+
+    expect(compose).not.toMatch(/^  (?:database|postgres):$/m);
+  });
+
+  it("does not publish a host port", () => {
+    const compose = read("compose.yaml");
+
+    expect(compose).not.toMatch(/^\s+ports:\s*$/m);
+  });
+
+  it("reads IMAGE_TAG only for the application and worker image references", () => {
+    const compose = read("compose.yaml");
+    const imageLines = compose
+      .split("\n")
+      .filter((line) => /^\s+image:/.test(line));
+
+    expect(imageLines.filter((line) => line.includes("IMAGE_TAG"))).toEqual([
+      "    image: ${IMAGE_TAG:?set IMAGE_TAG in .env}",
+      "    image: ${IMAGE_TAG:?set IMAGE_TAG in .env}",
+    ]);
+    expect(compose).not.toContain("GENIE_IMAGE");
+    expect(compose).not.toMatch(/^\s+IMAGE_TAG:/m);
+  });
+
+  it("joins the external proxy network with aliases derived from the customer slug", () => {
+    const compose = read("compose.yaml");
+
+    expect(compose).toContain("  proxy:\n    external: true\n    name: proxy");
+
+    for (const [serviceName, alias] of [
+      ["app", "demo-co-app"],
+      ["keycloak", "demo-co-keycloak"],
+    ]) {
+      const currentService = service(compose, serviceName ?? "");
+
+      expect(currentService, serviceName).toContain("proxy:");
+      expect(currentService, serviceName).toContain(`- ${alias}`);
+    }
+
+    expect(service(compose, "worker")).toContain("proxy:");
+  });
+
+  it("runs the worker from the customer image", () => {
+    const compose = read("compose.yaml");
+    const worker = service(compose, "worker");
+
+    expect(service(compose, "app")).not.toBe("");
+    expect(worker).toContain('command: ["worker"]');
+    expect(worker).toContain("image: ${IMAGE_TAG");
+  });
+
+  it("runs Keycloak in the customer stack", () => {
+    const compose = read("compose.yaml");
+
+    expect(service(compose, "keycloak")).not.toBe("");
+  });
+
+  it("gives the application an HTTP health check", () => {
+    const compose = read("compose.yaml");
+    const app = service(compose, "app");
+
+    const appHealthcheck =
+      /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
+        app
+      )?.[1] ?? "";
+
+    expect(appHealthcheck).toMatch(/\/api\/health/);
+    expect(appHealthcheck).toMatch(/(?:curl|wget|node)/i);
+  });
+
+  it("checks worker health through the heartbeat file", () => {
+    const compose = read("compose.yaml");
+    const worker = service(compose, "worker");
+    const workerHealthcheck =
+      /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
+        worker
+      )?.[1] ?? "";
+
+    expect(workerHealthcheck).toContain("$$WORKER_HEARTBEAT_PATH");
+    expect(workerHealthcheck).toContain("-lt 180");
+  });
+
+  it("renders every environment catalogue variable with its default and no secret value", () => {
+    const catalogue = environmentCatalogue();
+    const entries = envExampleEntries(read(".env.example"));
+
+    expect(catalogue.map(({ name }) => name)).toEqual(
+      catalogue.map(({ name }) => name).toSorted()
+    );
+    expect(catalogue.map(({ name }) => name)).not.toContain("MODULE_INCLUDE");
+    const expectedNames = new Set(
+      catalogue
+        .filter(({ name }) => !name.startsWith("KEYCLOAK_BOOTSTRAP_"))
+        .map(({ name }) => name)
+    );
+    expectedNames.add("IMAGE_TAG");
+
+    expect([...entries.keys()].toSorted()).toEqual(
+      [...expectedNames].toSorted()
+    );
+
+    for (const variable of catalogue.filter(
+      ({ name }) => !name.startsWith("KEYCLOAK_BOOTSTRAP_")
+    )) {
+      const expected =
+        variable.secret || variable.default === undefined
+          ? ""
+          : String(variable.default);
+
+      expect(entries.get(variable.name), variable.name).toBe(expected);
+    }
+
+    expect(entries.get("IMAGE_TAG")).toBe("");
+  });
+
+  it("keeps the customer stack template out of deploy/stack", () => {
+    const stackDirectory = resolve(
+      import.meta.dirname,
+      "../../../../deploy/stack"
+    );
+
+    expect(existsSync(stackDirectory)).toBe(true);
+    expect(readdirSync(stackDirectory).toSorted()).toEqual([
+      "compose.dev-e2e.yaml",
+      "compose.e2e.yaml",
+    ]);
   });
 
   it("points the editor at the published schema", () => {

@@ -143,4 +143,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "health database availability checks the database on each call and answers 503 after the database stops",
     ],
   },
+  {
+    file: "testing/generated-stack.integration.test.ts",
+    cases: [
+      "the generated customer stack smoke serves the customer page and health while the excluded placeholder module is absent",
+    ],
+  },
 ];
