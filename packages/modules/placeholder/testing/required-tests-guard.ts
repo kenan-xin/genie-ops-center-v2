@@ -30,4 +30,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder read procedure against a real database recorded the module's one migration in the module's ledger",
     ],
   },
+  {
+    file: "testing/events.integration.test.ts",
+    reason:
+      "R-53 to R-58 require the placeholder's fast, durable, and serialized subscriptions to run end to end against a real database",
+    cases: [
+      "the placeholder event subscriptions against Testcontainers Postgres runs its fast, durable, and serialized effects end to end",
+    ],
+  },
 ];
