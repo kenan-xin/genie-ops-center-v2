@@ -255,8 +255,45 @@ describe("the rendered deployment folder", () => {
 
   it("runs Keycloak in the customer stack", () => {
     const compose = read("compose.yaml");
+    const keycloak = service(compose, "keycloak");
+    const example = read(".env.example");
 
-    expect(service(compose, "keycloak")).not.toBe("");
+    expect(keycloak).not.toBe("");
+    expect(keycloak).toContain('command: ["start"');
+    expect(keycloak).not.toContain("start-dev");
+    expect(keycloak).toContain("KC_DB: ${KC_DB:?set KC_DB in .env}");
+    expect(keycloak).toContain(
+      "KC_DB_URL_HOST: ${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}"
+    );
+    expect(keycloak).toContain(
+      "KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:?set KC_DB_URL_DATABASE in .env}"
+    );
+    expect(keycloak).toContain(
+      "KC_DB_USERNAME: ${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}"
+    );
+    expect(keycloak).toContain(
+      "KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}"
+    );
+    expect(keycloak).toContain("KC_PROXY_HEADERS: ${KC_PROXY_HEADERS");
+    expect(keycloak).toContain("KC_HOSTNAME: ${PUBLIC_URL");
+
+    const entries = envExampleEntries(example);
+
+    for (const name of [
+      "KC_DB",
+      "KC_DB_URL_HOST",
+      "KC_DB_URL_DATABASE",
+      "KC_DB_USERNAME",
+      "KC_DB_PASSWORD",
+      "KC_PROXY_HEADERS",
+    ]) {
+      expect(entries.has(name), `${name} is missing from .env.example`).toBe(
+        true
+      );
+    }
+    expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
+    expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
+    expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
   });
 
   it("gives the application an HTTP health check", () => {

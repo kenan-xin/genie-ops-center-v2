@@ -170,6 +170,7 @@ export async function startGeneratedStack(input: {
   readonly envExample: string;
   readonly tenantConfigPath: string;
   readonly brandingSeedPath: string;
+  readonly databasePassword: string;
   /** Values the test fills in for names `.env.example` lists. */
   readonly filled: Readonly<Record<string, string>>;
 }): Promise<GeneratedStack> {
@@ -225,7 +226,7 @@ export async function startGeneratedStack(input: {
       envPath,
       envValues(input.envExample, {
         ...input.filled,
-        DATABASE_URL: `postgres://genie:genie@${databaseAlias}:5432/genie`,
+        DATABASE_URL: `postgres://genie:${input.databasePassword}@${databaseAlias}:5432/genie`,
         IMAGE_TAG: input.imageTag,
       })
     );
@@ -245,7 +246,7 @@ export async function startGeneratedStack(input: {
       "--env",
       "POSTGRES_USER=genie",
       "--env",
-      "POSTGRES_PASSWORD=genie",
+      `POSTGRES_PASSWORD=${input.databasePassword}`,
       "--env",
       "POSTGRES_DB=genie",
       POSTGRES_IMAGE,
@@ -292,6 +293,57 @@ export async function startGeneratedStack(input: {
 
     if (!ready)
       throw new Error(`Postgres ${databaseName} did not become ready`);
+
+    // The production Keycloak profile has its own database on the host-supplied
+    // Postgres instance, alongside the application database. `pg_isready` can
+    // report success during Postgres recovery, so wait for `createdb` itself.
+    const keycloakDatabaseDeadline = Date.now() + 60000;
+    let keycloakDatabaseReady = false;
+
+    /* eslint-disable no-await-in-loop */
+    while (Date.now() < keycloakDatabaseDeadline) {
+      const created = await docker([
+        "exec",
+        databaseName,
+        "createdb",
+        "-U",
+        "genie",
+        "keycloak",
+      ]).then(
+        () => true,
+        () => false
+      );
+
+      const exists = await docker([
+        "exec",
+        databaseName,
+        "psql",
+        "-U",
+        "genie",
+        "-d",
+        "genie",
+        "--no-psqlrc",
+        "--tuples-only",
+        "--no-align",
+        "--command",
+        "select 1 from pg_database where datname = 'keycloak'",
+      ]).then(
+        ({ stdout }) => stdout.trim() === "1",
+        () => false
+      );
+
+      if (created || exists) {
+        keycloakDatabaseReady = true;
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    /* eslint-enable no-await-in-loop */
+
+    if (!keycloakDatabaseReady) {
+      throw new Error(`Keycloak database was not created in ${databaseName}`);
+    }
 
     composeStarted = true;
     await composeCommand(["up", "--detach"]);

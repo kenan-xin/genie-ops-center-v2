@@ -1,6 +1,7 @@
 import {
   createRequestPrincipal,
   createStubGrantReader,
+  withTransaction,
   type ModuleRequestContext,
   type TenantContext,
 } from "@genie/core";
@@ -11,6 +12,22 @@ import {
 } from "@genie/module-placeholder";
 import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
+  "base64"
+);
+
+async function seedTenantReaders(tenant: TenantContext, minutes: number) {
+  await tenant.db.$client.query(
+    "insert into tenant_settings (onboarding_mode, local_accounts_enabled, realm_supports_local_accounts, session_idle_minutes) values ('invite', false, false, $1)",
+    [minutes]
+  );
+  await tenant.db.$client.query(
+    "insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ($1, $2, 'en', 'UTC')",
+    [`Company ${minutes}`, `Product ${minutes}`]
+  );
+}
 
 /**
  * The two-database isolation proof (R-20, AC-4). It must never be skipped.
@@ -73,7 +90,36 @@ function callerFor(tenant: TenantContext): ModuleRequestContext {
 }
 
 describe("two tenant contexts in one process", () => {
-  it("each read returns only its own database's row", async () => {
+  it("each TenantContext reader, file store and placeholder router returns only its own database's data", async () => {
+    await Promise.all([
+      seedTenantReaders(first.context, 21),
+      seedTenantReaders(second.context, 42),
+    ]);
+
+    const firstFile = await withTransaction(first.context, (tx) =>
+      first.context.fileStorage.store(
+        {
+          bytes: PNG_BYTES,
+          mimeType: "image/png",
+          fileName: "first-only.png",
+          uploadedByUserId: null,
+        },
+        tx
+      )
+    );
+
+    const secondFile = await withTransaction(second.context, (tx) =>
+      second.context.fileStorage.store(
+        {
+          bytes: PNG_BYTES,
+          mimeType: "image/png",
+          fileName: "second-only.png",
+          uploadedByUserId: null,
+        },
+        tx
+      )
+    );
+
     const firstRow = await insertPlaceholderRecord(first.context, {
       label: "first-only",
     });
@@ -89,6 +135,42 @@ describe("two tenant contexts in one process", () => {
     const fromSecond = await placeholderRouter
       .createCaller(callerFor(second.context))
       .read();
+
+    const [firstSettings, secondSettings] = await Promise.all([
+      first.context.settings.get(),
+      second.context.settings.get(),
+    ]);
+
+    const [firstBranding, secondBranding] = await Promise.all([
+      first.context.branding.get(),
+      second.context.branding.get(),
+    ]);
+
+    const [firstFileContents, secondFileContents] = await Promise.all([
+      first.context.fileStorage.fetch(firstFile.id),
+      second.context.fileStorage.fetch(secondFile.id),
+    ]);
+
+    expect(firstSettings.sessionIdleMinutes).toBe(21);
+    expect(secondSettings.sessionIdleMinutes).toBe(42);
+    expect(firstBranding.companyName).toBe("Company 21");
+    expect(secondBranding.companyName).toBe("Company 42");
+    expect(await first.context.entitlements.isEnabled("placeholder")).toBe(
+      true
+    );
+    expect(await second.context.entitlements.isEnabled("placeholder")).toBe(
+      true
+    );
+    expect(firstFileContents).toEqual({
+      bytes: PNG_BYTES,
+      mimeType: "image/png",
+      fileName: "first-only.png",
+    });
+    expect(secondFileContents).toEqual({
+      bytes: PNG_BYTES,
+      mimeType: "image/png",
+      fileName: "second-only.png",
+    });
 
     // An equality, not a count. Two contexts pointed at one database would each
     // return both labels and fail here, while a count of two would still pass.

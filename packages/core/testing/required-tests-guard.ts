@@ -28,6 +28,16 @@ export * from "./required-tests-validator.ts";
 
 export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
+    file: "testing/public-url.integration.test.ts",
+    reason:
+      "Spec 1 AC-14 and R-70 require the public URL builder to ignore request host headers",
+    cases: [
+      "PUBLIC_URL link construction (Spec 1 AC-14) builds the identity callback URL from PUBLIC_URL regardless of request Host",
+      "PUBLIC_URL link construction (Spec 1 AC-14) builds the email invitation link from PUBLIC_URL regardless of request Host",
+      "PUBLIC_URL link construction (Spec 1 AC-14) builds the tokenized download link from PUBLIC_URL regardless of request Host",
+    ],
+  },
+  {
     file: "testing/migrator.integration.test.ts",
     reason:
       "AC-6 and AC-9, R-25a-R-28, require the migrator matrix to run; R-10, 1ia.2.1 requires the already-applied-history-gains-a-migration case to run",
@@ -54,6 +64,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "MigrationRun compiled-module guards refuses an installed tenant_module row before any history and deletes nothing",
       "MigrationRun compiled-module guards refuses an installed module ledger before any history and leaves the ledger",
+      "MigrationRun compiled-module guards refuses a module omission before a pending core migration and leaves that migration unapplied",
       "MigrationRun compiled-module guards does not register modules until seed is done, then inserts disabled rows idempotently",
       "MigrationRun compiled-module guards starts a fresh database with no drizzle schema and creates an empty module ledger",
       "tenant_module write boundary keeps runtime references allowlisted for the migrator, seed, enable procedure and readers",

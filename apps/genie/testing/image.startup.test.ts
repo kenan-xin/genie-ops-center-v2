@@ -962,6 +962,221 @@ describe("the built image", () => {
   }, 240000);
 });
 
+describe("the running Section 1 image processes", () => {
+  const port = imageHostPort(3440);
+  const tenantId = "https://runtime-acceptance.example.invalid";
+  const databasePassword = `ac18-database-password-${process.pid}`;
+  const runtimeRole = `ac18_test_${process.pid}`;
+  const secretValue = `ac18-secret-value-${process.pid}`;
+  const bearerToken = `ac18-bearer-token-${process.pid}`;
+  let runtimeDatabaseUrl: string;
+  let appImage: RunningImage | undefined;
+  let workerImage: RunningImage | undefined;
+
+  beforeAll(async () => {
+    const connection = new URL(databaseUrl());
+
+    await pool().query(
+      `create role "${runtimeRole}" with login superuser password '${databasePassword}'`
+    );
+    connection.username = runtimeRole;
+    connection.password = databasePassword;
+    runtimeDatabaseUrl = connection.toString();
+
+    const env = {
+      DATABASE_URL: runtimeDatabaseUrl,
+      PUBLIC_URL: tenantId,
+      RESEND_API_KEY: secretValue,
+      SECRET_TEST_VALUE: secretValue,
+    };
+
+    appImage = await startImage(env, port);
+    workerImage = await startImage(env, undefined, IMAGE, ["worker"]);
+
+    await pollHealth(port);
+  }, 180000);
+
+  afterAll(async () => {
+    await Promise.all([appImage?.stop(), workerImage?.stop()]);
+  });
+
+  async function connectionCounts(
+    names: readonly string[]
+  ): Promise<Record<string, number>> {
+    const quoted = names.map((name) => `'${name}'`).join(", ");
+
+    const result = await pool().query<{
+      application_name: string;
+      count: number;
+    }>(
+      `select application_name, count(*)::int as count from pg_stat_activity where datname = current_database() and application_name in (${quoted}) group by application_name order by application_name`
+    );
+
+    return Object.fromEntries(
+      result.rows.map(({ application_name, count }) => [
+        application_name,
+        count,
+      ])
+    );
+  }
+
+  function commandDatabaseUrl(): string {
+    return runtimeDatabaseUrl;
+  }
+
+  it("opens one server-counted pool for the app, worker and migrate command", async () => {
+    const names = ["genie-app", "genie-worker"];
+    const liveCounts = await connectionCounts(names);
+
+    const lockClient = await pool().connect();
+    await lockClient.query("select pg_advisory_lock($1)", [
+      MIGRATION_LOCK_KEY.toString(),
+    ]);
+
+    const migrate = appImage!.exec(["genie-ops", "migrate"], {
+      DATABASE_URL: commandDatabaseUrl(),
+      PUBLIC_URL: tenantId,
+      RESEND_API_KEY: secretValue,
+      SECRET_TEST_VALUE: secretValue,
+    });
+
+    let commandCounts: Record<string, number> = {};
+
+    try {
+      const deadline = Date.now() + 15000;
+
+      /* eslint-disable no-await-in-loop */
+      while (Date.now() < deadline) {
+        commandCounts = await connectionCounts(["genie-ops"]);
+
+        if (commandCounts["genie-ops"] === 1) break;
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      /* eslint-enable no-await-in-loop */
+    } finally {
+      await lockClient.query("select pg_advisory_unlock($1)", [
+        MIGRATION_LOCK_KEY.toString(),
+      ]);
+      lockClient.release();
+    }
+
+    const result = await migrate;
+    const finalCommandCounts = await connectionCounts(["genie-ops"]);
+    const violations: string[] = [];
+
+    if (
+      JSON.stringify(liveCounts) !==
+      JSON.stringify({ "genie-app": 1, "genie-worker": 1 })
+    ) {
+      violations.push(
+        `app and worker connections: ${JSON.stringify(liveCounts)}`
+      );
+    }
+
+    if (JSON.stringify(commandCounts) !== JSON.stringify({ "genie-ops": 1 })) {
+      violations.push(
+        `migrate command connections: ${JSON.stringify(commandCounts)}`
+      );
+    }
+
+    if (result.stdout + result.stderr === "") {
+      violations.push("migrate command produced no output");
+    }
+
+    if (Object.keys(finalCommandCounts).length !== 0) {
+      violations.push(
+        `migrate connections remained open: ${JSON.stringify(finalCommandCounts)}`
+      );
+    }
+
+    expect(violations).toEqual([]);
+  }, 60000);
+
+  it("redacts planted secrets and tenant-tags JSON output from app, worker and every genie-ops command", async () => {
+    const request = await fetch(
+      `http://127.0.0.1:${port}/api/health?token=${bearerToken}`,
+      { headers: { authorization: `Bearer ${bearerToken}` } }
+    );
+
+    expect(request.status).toBe(200);
+
+    const app = appImage!;
+
+    const commandNames = [
+      ["migrate", ["migrate"]],
+      [
+        "setup",
+        [
+          "setup",
+          "--tenant-config",
+          "/tmp/ac18-missing-tenant.yaml",
+          "--branding-seed",
+          "/tmp/ac18-missing-branding.json",
+        ],
+      ],
+      ["module enable", ["module", "enable", "placeholder"]],
+      ["module disable", ["module", "disable", "placeholder"]],
+      ["retire", ["retire", "--confirm"]],
+    ] as const;
+
+    const commandOutputs: [string, string][] = [];
+
+    /* eslint-disable no-await-in-loop */
+    for (const [name, args] of commandNames) {
+      const result = await app.exec(["genie-ops", ...args], {
+        DATABASE_URL: commandDatabaseUrl(),
+        PUBLIC_URL: tenantId,
+        RESEND_API_KEY: secretValue,
+        SECRET_TEST_VALUE: secretValue,
+      });
+
+      commandOutputs.push([`${name} command`, result.stdout + result.stderr]);
+    }
+    /* eslint-enable no-await-in-loop */
+
+    const outputs = [
+      ["application", await app.logs()],
+      ["worker", await workerImage!.logs()],
+      ...commandOutputs,
+    ] as const;
+
+    const plantedSecrets = [databasePassword, secretValue, bearerToken];
+
+    const violations: string[] = [];
+
+    for (const [source, output] of outputs) {
+      const lines = output.split("\n").filter((line) => line.trim() !== "");
+
+      if (lines.length === 0 && ["application", "worker"].includes(source)) {
+        violations.push(`${source} produced no output`);
+      }
+
+      for (const line of lines) {
+        for (const secret of plantedSecrets) {
+          if (line.includes(secret)) {
+            violations.push(`${source} logged a planted secret`);
+          }
+        }
+
+        let json: { tenantId?: unknown } | null;
+
+        try {
+          json = JSON.parse(line);
+        } catch {
+          continue;
+        }
+
+        if (json === null || json.tenantId !== tenantId) {
+          violations.push(`${source} emitted JSON without the tenant id`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  }, 120000);
+});
+
 /**
  * The URL paths the checked-in public folder serves at the site root. Read from
  * the repository rather than from the image, so a probe can tell "the image

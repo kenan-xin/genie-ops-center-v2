@@ -107,6 +107,58 @@ async function tableExists(
 }
 
 describe("MigrationRun compiled-module guards", () => {
+  it("refuses a module omission before a pending core migration and leaves that migration unapplied", async () => {
+    const context = await freshContext();
+    const appliedCoreHistory = migrationPlan([])[0];
+
+    if (appliedCoreHistory === undefined) {
+      throw new Error("the core migration history is missing");
+    }
+
+    await runCore(context);
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('removed-module', false)"
+    );
+
+    const pendingTable = "acceptance_pending_core_migration";
+
+    const pendingCoreHistory: MigrationHistory = {
+      ...appliedCoreHistory,
+      migrations: [
+        ...appliedCoreHistory.migrations,
+        {
+          sql: [`create table ${pendingTable} (id integer primary key);`],
+          bps: true,
+          folderMillis: 1790380800000,
+          hash: "acceptance-pending-core-migration",
+        },
+      ],
+    };
+
+    const before = await context.db.$client.query<{ count: number }>(
+      "select count(*)::int as count from drizzle.__drizzle_migrations"
+    );
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([pendingCoreHistory]),
+        compiledModuleIds: [],
+      })
+    ).rejects.toThrow("removed-module");
+
+    const after = await context.db.$client.query<{ count: number }>(
+      "select count(*)::int as count from drizzle.__drizzle_migrations"
+    );
+
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+    expect(await tableExists(context, "public", pendingTable)).toBe(false);
+    expect(await moduleRows(context)).toEqual([
+      { module_id: "removed-module", enabled: false },
+    ]);
+  });
+
   it("refuses an installed tenant_module row before any history and deletes nothing", async () => {
     const context = await freshContext();
     await runCore(context);

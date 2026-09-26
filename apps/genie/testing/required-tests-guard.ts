@@ -34,7 +34,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/isolation.integration.test.ts",
     cases: [
-      "two tenant contexts in one process each read returns only its own database's row",
+      "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",
       "two tenant contexts in one process the two databases are genuinely separate",
     ],
   },
@@ -43,6 +43,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "the built image runs the worker entrypoint from the built image and migrates a fresh database",
       "the built image starts the app and worker from the same image with only the entrypoint argument different",
+      "the built image becomes healthy, logs one bootstrap line, and invokes no provider before it",
+      "the built image blocks every request-bound path while migrations are still running",
+      "the built image exits nonzero and never answers when the migration lock times out",
+      "the built image exits nonzero for malformed configuration without connecting",
       "the built image shares one context across concurrent page, tRPC and viewer requests",
       "the built image runs genie-ops from PATH through docker exec and migrates",
       "the built image runs genie-ops migrate on a fresh database through the image entrypoint",
@@ -52,6 +56,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the built image fails closed when a migration SQL file is empty",
       "the built image rejects symlinked public corpus entries with a named diagnostic",
       "the built image migrates the real database from the repository SQL",
+      "the running Section 1 image processes opens one server-counted pool for the app, worker and migrate command",
+      "the running Section 1 image processes redacts planted secrets and tenant-tags JSON output from app, worker and every genie-ops command",
     ],
   },
   {
@@ -153,7 +159,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     file: "testing/generated-stack.integration.test.ts",
     cases: [
       "the generated customer stack smoke answers degraded health and serves the not-set-up page before setup",
-      "the generated customer stack smoke brings the worker to healthy and Keycloak to serving",
+      "the generated customer stack smoke brings the worker to healthy and Keycloak to serve in production mode",
       "the generated customer stack smoke runs genie-ops setup in the running stack, clears the page and answers ok",
       "the generated customer stack smoke serves the customer page and health while the excluded placeholder module is absent",
     ],

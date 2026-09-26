@@ -14,6 +14,10 @@ const IMAGE_TAG = testImageTag("genie-s1-05-stack", "test");
 
 const NOT_SET_UP = "This deployment is not set up yet";
 
+const DATABASE_PASSWORD = `generated-stack-password-${process.pid}`;
+
+const SECRET_VALUE = `generated-stack-secret-${process.pid}`;
+
 /** Polls `probe` until it returns a value `done` accepts, and returns the last value seen. */
 async function pollUntil<T>(
   probe: () => Promise<T>,
@@ -61,10 +65,17 @@ describe("the generated customer stack smoke", () => {
       envExample: generated.envExample,
       tenantConfigPath: generated.tenantConfigPath,
       brandingSeedPath: generated.brandingSeedPath,
+      databasePassword: DATABASE_PASSWORD,
       filled: {
         PUBLIC_URL: "https://example.invalid",
-        KC_BOOTSTRAP_ADMIN_USERNAME: "smoke-admin",
-        KC_BOOTSTRAP_ADMIN_PASSWORD: "smoke-admin-password",
+        RESEND_API_KEY: SECRET_VALUE,
+        S3_SECRET_ACCESS_KEY: SECRET_VALUE,
+        KC_DB: "postgres",
+        KC_DB_URL_HOST: `${SLUG}-postgres`,
+        KC_DB_URL_DATABASE: "keycloak",
+        KC_DB_USERNAME: "genie",
+        KC_DB_PASSWORD: "genie",
+        KC_PROXY_HEADERS: "xforwarded",
       },
     });
   }, 900000);
@@ -100,7 +111,7 @@ describe("the generated customer stack smoke", () => {
   }, 180000);
 
   // F4: the worker (same image, heartbeat check) and Keycloak start from the generated file.
-  it("brings the worker to healthy and Keycloak to serving", async () => {
+  it("brings the worker to healthy and Keycloak to serve in production mode", async () => {
     const worker = await pollUntil(
       async () => running().serviceState("worker"),
       ({ health }) => health === "healthy" || health === "unhealthy",
@@ -128,7 +139,6 @@ describe("the generated customer stack smoke", () => {
   // AC-16: the real `genie-ops setup` in the running stack sets both steps done.
   it("runs genie-ops setup in the running stack, clears the page and answers ok", async () => {
     await running().runSetup();
-
     const health = await running().request("/api/health");
 
     expect(await health.text()).toBe("ok");

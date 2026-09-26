@@ -277,17 +277,15 @@ export function reachableFromContainer(url: string): string {
  */
 export async function startImage(
   env: Record<string, string>,
-  port: number,
-  tag: string = IMAGE
+  port: number | undefined,
+  tag: string = IMAGE,
+  command: readonly string[] = []
 ) {
-  const args = [
-    "run",
-    "-d",
-    "-p",
-    `${port}:3000`,
-    "--add-host",
-    `${HOST_ALIAS}:host-gateway`,
-  ];
+  const args = ["run", "-d"];
+
+  if (port !== undefined) args.push("-p", `${port}:3000`);
+
+  args.push("--add-host", `${HOST_ALIAS}:host-gateway`);
 
   for (const [key, value] of Object.entries(env)) {
     const reachable =
@@ -296,7 +294,7 @@ export async function startImage(
     args.push("-e", `${key}=${reachable}`);
   }
 
-  args.push(tag);
+  args.push(tag, ...command);
 
   const { stdout } = await run("docker", args);
   const id = stdout.trim();
@@ -310,6 +308,37 @@ export async function startImage(
       }));
 
       return result.stdout + result.stderr;
+    },
+    exec: async (
+      commandArgs: readonly string[],
+      overrides: Record<string, string> = {}
+    ) => {
+      const envArgs = Object.entries(overrides).flatMap(([key, value]) => [
+        "--env",
+        `${key}=${key === "DATABASE_URL" ? reachableFromContainer(value) : value}`,
+      ]);
+
+      try {
+        const result = await run("docker", [
+          "exec",
+          ...envArgs,
+          id,
+          ...commandArgs,
+        ]);
+
+        return { stdout: result.stdout, stderr: result.stderr };
+      } catch (error) {
+        // SAFETY: execFile rejects with captured stdout/stderr on a nonzero exit.
+        const failure = error as {
+          stdout?: string | Buffer;
+          stderr?: string | Buffer;
+        };
+
+        return {
+          stdout: String(failure.stdout ?? ""),
+          stderr: String(failure.stderr ?? ""),
+        };
+      }
     },
     stop: () => run("docker", ["rm", "-f", id]).catch(() => undefined),
   };
