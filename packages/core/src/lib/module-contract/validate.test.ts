@@ -52,6 +52,85 @@ describe("validateModule", () => {
     );
   });
 
+  it("rejects an event declaration with a version below one", () => {
+    const broken = {
+      ...validModule,
+      events: [
+        { name: "fixture.record.created", version: 0, payload: z.object({}) },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Event "fixture.record.created" has version 0'
+    );
+  });
+
+  it("rejects a subscription to an event with a version below one", () => {
+    const broken = {
+      ...validModule,
+      subscriptions: [
+        {
+          event: {
+            name: "fixture.record.created",
+            version: 0,
+            payload: z.object({}),
+          },
+          durable: true,
+          handler: async () => {},
+        },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Subscription to "fixture.record.created" has version 0'
+    );
+  });
+
+  it("rejects a subscription that sets both durable and serializeBy", () => {
+    const broken = {
+      ...validModule,
+      subscriptions: [
+        {
+          event: {
+            name: "fixture.record.created",
+            version: 1,
+            payload: z.object({ id: z.string() }),
+          },
+          durable: true,
+          serializeBy: (payload: { id: string }) => payload.id,
+          handler: async () => {},
+        },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Subscription to "fixture.record.created" sets both durable and serializeBy'
+    );
+  });
+
+  it("accepts one fast, one durable and one serialized subscription to the same event", () => {
+    const contract = {
+      name: "fixture.record.created",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+
+    expect(
+      validateModule({
+        ...validModule,
+        subscriptions: [
+          { event: contract, handler: async () => {} },
+          { event: contract, durable: true, handler: async () => {} },
+          {
+            event: contract,
+            serializeBy: (payload: { id: string }) => payload.id,
+            handler: async () => {},
+          },
+        ],
+      })
+    ).toEqual([]);
+  });
+
   it("rejects an identifier that is not kebab-case", () => {
     const broken = {
       ...validModule,

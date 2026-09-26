@@ -8,6 +8,13 @@
       "when": 1789948987482,
       "tag": "0000_boring_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790411437006,
+      "tag": "0001_placeholder-event-effect",
+      "breakpoints": true
     }
   ]
 }

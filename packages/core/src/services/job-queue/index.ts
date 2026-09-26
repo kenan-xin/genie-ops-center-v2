@@ -95,6 +95,25 @@ export function createBoss(
 /** Stops the context's lazy pg-boss instance, if it ever started. Off the public type. */
 const stoppers = new WeakMap<JobQueue, () => Promise<void>>();
 
+/** The context's lazy pg-boss start, held once per queue so a core service shares the instance. */
+const starts = new WeakMap<JobQueue, () => Promise<PgBoss>>();
+
+/**
+ * The context's started pg-boss instance, for a core service that manages queues of its own over
+ * the same pool — the event bus. Starting works exactly like an `enqueue`: the instance starts on
+ * the first call and one start is shared, so no second connection opens and no second maintenance
+ * pass runs.
+ */
+export async function bossOf(queue: JobQueue): Promise<PgBoss> {
+  const start = starts.get(queue);
+
+  if (start === undefined) {
+    throw new Error("This job queue was not built by createJobQueue.");
+  }
+
+  return start();
+}
+
 /**
  * The context's job queue. The pg-boss instance starts on the first call, never here, so building
  * a context opens no connection (R-19). The application bootstrap and the worker run the migrator
@@ -107,7 +126,7 @@ export function createJobQueue(
   const boss = createBoss(pool, logger, false);
   let started: Promise<PgBoss> | undefined;
 
-  async function ready(job: string): Promise<PgBoss> {
+  async function instance(): Promise<PgBoss> {
     // One start in flight at a time, but a failed start is forgotten, so the next call retries it
     // once the database is back instead of rejecting for the life of the process.
     started ??= boss.start().catch((error: Error) => {
@@ -116,11 +135,15 @@ export function createJobQueue(
       throw error;
     });
 
-    const instance = await started;
+    return started;
+  }
 
-    await instance.createQueue(job);
+  async function ready(job: string): Promise<PgBoss> {
+    const running = await instance();
 
-    return instance;
+    await running.createQueue(job);
+
+    return running;
   }
 
   const queue: JobQueue = {
@@ -142,6 +165,8 @@ export function createJobQueue(
   stoppers.set(queue, async () => {
     if (started !== undefined) await boss.stop({ graceful: false });
   });
+
+  starts.set(queue, instance);
 
   return queue;
 }

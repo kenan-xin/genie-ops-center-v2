@@ -1,13 +1,19 @@
 import { migrationsFromJournal } from "@genie/core";
 import { sql } from "drizzle-orm";
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 import journal from "../drizzle/meta/_journal.json" with { type: "json" };
 
 /**
- * The module's one table. A primary key is a UUID and an edited table carries both timestamps
- * (data-shape rules 4 and 5). The table belongs to this module: core never reads it, and it
- * exists only in an image that includes this module (DEC-33).
+ * The module's one record table. A primary key is a UUID and an edited table carries both
+ * timestamps (data-shape rules 4 and 5). The table belongs to this module: core never reads it, and
+ * it exists only in an image that includes this module (DEC-33).
  */
 export const placeholderRecord = pgTable("placeholder_record", {
   id: uuid("id")
@@ -22,6 +28,21 @@ export const placeholderRecord = pgTable("placeholder_record", {
     .defaultNow(),
 });
 
+/**
+ * The idempotent effect of one event subscription: one row per handler and event, so a delivery
+ * that runs twice leaves the same result (R-55). Owned by this module for the same reason as the
+ * record table (DEC-33).
+ */
+export const placeholderEventEffect = pgTable(
+  "placeholder_event_effect",
+  {
+    handler: text("handler").notNull(),
+    eventId: uuid("event_id").notNull(),
+    label: text("label").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.handler, table.eventId] })]
+);
+
 /** The module's own migration history table (R-24). */
 export const MIGRATIONS_TABLE = "__drizzle_migrations_placeholder";
 
@@ -35,6 +56,10 @@ export const MIGRATIONS_TABLE = "__drizzle_migrations_placeholder";
 const MIGRATION_FILES = {
   "0000_boring_gargoyle": new URL(
     "../drizzle/0000_boring_gargoyle.sql",
+    import.meta.url
+  ),
+  "0001_placeholder-event-effect": new URL(
+    "../drizzle/0001_placeholder-event-effect.sql",
     import.meta.url
   ),
 };

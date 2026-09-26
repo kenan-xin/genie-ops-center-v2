@@ -3,6 +3,14 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import {
+  createCapabilityRegistry,
+  type CapabilityRegistry,
+} from "../../services/capabilities/index.ts";
+import {
+  createEventBus,
+  type EventBus,
+} from "../../services/event-bus/index.ts";
+import {
   createFileStorage,
   type FileStorage,
 } from "../../services/file-storage/index.ts";
@@ -101,6 +109,10 @@ export type TenantContext = {
   readonly entitlements: TenantReaders["entitlements"];
   /** The pg-boss job queue over this context's pool (D-11). It starts on first use. */
   readonly jobQueue: JobQueue;
+  /** The typed event bus (R-53). Emission happens through `withTransaction`. */
+  readonly events: EventBus;
+  /** The capabilities channel: a provider or nothing, never a module import (R-58). */
+  readonly capabilities: CapabilityRegistry;
   /** The file store of R-6, over the adapter `FILE_STORAGE_ADAPTER` selects. */
   readonly fileStorage: FileStorage;
   /** The mailer of R-43, built once from the validated environment; `provider` is `none` when `MAIL_PROVIDER` is unset (D-7). */
@@ -156,11 +168,22 @@ export function createTenantContext(
   const db = drizzle(pool);
   const readers = createTenantReaders({ db, compiledModuleIds });
 
+  const jobQueue = createJobQueue(pool, logger);
+  const capabilities = createCapabilityRegistry();
+
   const context: TenantContext = {
     db,
     env,
     ...readers,
-    jobQueue: createJobQueue(pool, logger),
+    jobQueue,
+    events: createEventBus({
+      jobQueue,
+      logger,
+      // The context is finished only after this literal, so the bus takes it lazily; the first
+      // dispatched handler finds the whole object, readers included.
+      tenant: () => context,
+    }),
+    capabilities,
     fileStorage: createFileStorage(db, env),
     mailer: createMailer(env, { branding: readers.branding, logger }),
   };

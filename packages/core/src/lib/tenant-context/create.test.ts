@@ -66,9 +66,11 @@ describe("createTenantContext", () => {
     try {
       expect(Object.keys(context).toSorted()).toEqual([
         "branding",
+        "capabilities",
         "db",
         "entitlements",
         "env",
+        "events",
         "fileStorage",
         "jobQueue",
         "mailer",

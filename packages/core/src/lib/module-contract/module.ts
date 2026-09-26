@@ -4,7 +4,11 @@ import type { PgTable } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
 import type { ZodObject, ZodType } from "zod";
 
-import type { CapabilityName } from "../../../contracts/index.ts";
+import type {
+  CapabilityName,
+  EventContract,
+  EventEnvelope,
+} from "../../../contracts/index.ts";
 import type { RequestPrincipal } from "../../services/authorization/index.ts";
 import type { FrameOriginProvider } from "../content-security-policy/index.ts";
 import type { TenantContext } from "../tenant-context/index.ts";
@@ -155,11 +159,50 @@ export type EventDeclaration = {
 /**
  * 12. Capabilities, declaration-site only. The name is a key of the
  * `CapabilityInterfaces` registry in `packages/core/contracts`, so a module
- * cannot provide a capability that does not exist. Section 0 registers none,
- * so `capabilities` is the empty list until a real module needs one and the
- * same change adds it to the registry and to the module contract document.
+ * cannot provide a capability that does not exist. The implementation is the
+ * provider registered under that name; a consumer gets it or nothing (R-58).
+ * Section 0 registers none, so `capabilities` is the empty list until a real
+ * module needs one and the same change adds it to the registry and to the
+ * module contract document.
  */
-export type CapabilityProvision = { readonly name: CapabilityName };
+export type CapabilityProvision = {
+  readonly name: CapabilityName;
+  readonly implementation: unknown;
+};
+
+/**
+ * 15. Subscriptions: the events a module handles. A subscription with no option is fast: it runs
+ * in process after the emitting transaction commits, at most once and best effort. `durable`
+ * runs it as a pg-boss job enqueued inside the emitting transaction, so it commits or rolls back
+ * with the data and is delivered at least once. `serializeBy` implies durable and runs the jobs
+ * for one key one at a time in emission order (R-53 to R-57).
+ */
+export type Subscription<TPayload> = {
+  readonly event: EventContract<string, TPayload>;
+  readonly handler: (
+    event: EventEnvelope<TPayload>,
+    context: TenantContext
+  ) => Promise<void>;
+  readonly durable?: boolean;
+  readonly serializeBy?: (payload: TPayload) => string;
+};
+
+/**
+ * The subscription point as the `Module` type stores it. The payload appears in one covariant
+ * place, the contract's schema, and two contravariant places, the handler's envelope and
+ * `serializeBy`'s argument, so no single type parameter accepts every authored subscription.
+ * `unknown` accepts any schema and `never` accepts any handler, which is what a module list
+ * holds. Authored code uses `Subscription<TPayload>`.
+ */
+export type AnySubscription = {
+  readonly event: EventContract<string, unknown>;
+  readonly handler: (
+    event: EventEnvelope<never>,
+    context: TenantContext
+  ) => Promise<void>;
+  readonly durable?: boolean;
+  readonly serializeBy?: (payload: never) => string;
+};
 
 /** 13. Jobs, declaration-site only. Every handler receives the tenant context (DEC-34). */
 export type JobContext = { readonly tenant: TenantContext };
@@ -198,6 +241,7 @@ export type Module = {
   readonly configuration?: ModuleConfiguration;
   readonly events: readonly EventDeclaration[];
   readonly capabilities: readonly CapabilityProvision[];
+  readonly subscriptions?: readonly AnySubscription[];
   readonly jobs: readonly JobDeclaration[];
   readonly inboundEndpoints: readonly InboundEndpoint[];
   readonly integrationKinds: readonly string[];

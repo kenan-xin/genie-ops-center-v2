@@ -96,7 +96,7 @@ describe("the placeholder module declaration", () => {
     // production image: the bundler follows no folder and copies no folder.
     expect(placeholderModule.schema).not.toHaveProperty("migrationsFolder");
 
-    expect(placeholderModule.schema.migrations()).toHaveLength(1);
+    expect(placeholderModule.schema.migrations()).toHaveLength(2);
   });
 
   it("declares the same migrations drizzle's own folder reader produces", () => {

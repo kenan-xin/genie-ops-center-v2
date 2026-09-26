@@ -130,6 +130,46 @@ export function validateModule(module: Module): readonly string[] {
     jobNames.add(name);
   }
 
+  // An event's version is its payload contract: an integer above zero, on the declarations and on
+  // every subscription, so one name and version always means one shape (R-59).
+  for (const event of module.events) {
+    if (event.name.trim() === "") {
+      problems.push(`Module "${id}" declares an event with no name.`);
+    }
+
+    if (!Number.isInteger(event.version) || event.version < 1) {
+      problems.push(
+        `Event "${event.name}" has version ${event.version}. A version is an integer above zero.`
+      );
+    }
+  }
+
+  for (const subscription of module.subscriptions ?? []) {
+    if (subscription.event.name.trim() === "") {
+      problems.push(`Module "${id}" subscribes to an event with no name.`);
+    }
+
+    if (
+      !Number.isInteger(subscription.event.version) ||
+      subscription.event.version < 1
+    ) {
+      problems.push(
+        `Subscription to "${subscription.event.name}" has version ${subscription.event.version}. A version is an integer above zero.`
+      );
+    }
+
+    // One spelling per semantic: serializeBy already implies durable, so a subscription that sets
+    // both declares its delivery twice (R-53, R-56).
+    if (
+      subscription.durable === true &&
+      subscription.serializeBy !== undefined
+    ) {
+      problems.push(
+        `Subscription to "${subscription.event.name}" sets both durable and serializeBy. serializeBy already implies durable.`
+      );
+    }
+  }
+
   const declared = new Set(module.permissions.map((entry) => entry.key));
 
   const workspace = module.navigation.entries.filter(

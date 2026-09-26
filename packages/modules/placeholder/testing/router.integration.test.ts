@@ -84,6 +84,6 @@ describe("the placeholder read procedure against a real database", () => {
       "select count(*)::int as count from drizzle.__drizzle_migrations_placeholder"
     );
 
-    expect(applied.rows[0]?.count).toBe(1);
+    expect(applied.rows[0]?.count).toBe(2);
   });
 });

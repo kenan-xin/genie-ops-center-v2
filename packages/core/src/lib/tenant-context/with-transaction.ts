@@ -15,11 +15,30 @@ const contextLoggers = new WeakMap<
 >();
 
 /**
- * Marks the async context of a running `withTransaction`, so any call made inside `fn` is refused
- * instead of opening a second, independent top-level transaction. The store follows the async
- * tree, so two concurrent calls in separate chains never see each other's mark.
+ * Marks the async context of a running `withTransaction` with its after-commit registration, so
+ * any call made inside `fn` is refused instead of opening a second, independent top-level
+ * transaction, and a service that emits into the transaction can find the list. The store follows
+ * the async tree, so two concurrent calls in separate chains never see each other's mark.
  */
-const transactionScope = new AsyncLocalStorage<true>();
+const transactionScope = new AsyncLocalStorage<AfterCommit>();
+
+/**
+ * The after-commit registration of the innermost running `withTransaction`. The event bus is the
+ * caller: `events.emit` runs inside `fn` and its fast handlers belong to that transaction's
+ * commit, so it takes the register from here rather than a second parameter. A call outside any
+ * `withTransaction` throws, because there is no commit for a fast handler to follow.
+ */
+export function currentAfterCommit(): AfterCommit {
+  const register = transactionScope.getStore();
+
+  if (register === undefined) {
+    throw new Error(
+      "events.emit requires withTransaction: an event is emitted inside the transaction whose commit delivers it."
+    );
+  }
+
+  return register;
+}
 
 /**
  * Records the process logger for one context. Called by `createTenantContext` only; it is not
@@ -115,7 +134,7 @@ export async function withTransaction<T>(
   context: TenantContext,
   fn: (tx: TenantTransaction, afterCommit: AfterCommit) => Promise<T>
 ): Promise<T> {
-  if (transactionScope.getStore() === true) {
+  if (transactionScope.getStore() !== undefined) {
     throw new Error(
       "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
     );
@@ -131,7 +150,7 @@ export async function withTransaction<T>(
 
   const afterCommit = openAfterCommitList();
 
-  const result = await transactionScope.run(true, () =>
+  const result = await transactionScope.run(afterCommit.register, () =>
     context.db.transaction(async (tx) => {
       try {
         return await fn(tx, afterCommit.register);

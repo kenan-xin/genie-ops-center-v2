@@ -5,7 +5,7 @@ that an emitting module and its subscribers both import, so no module ever impor
 
 ## What belongs here
 
-A cross-module event schema (`defineEventContract`) and a named capability interface added to
+A cross-module event contract (`defineEvent`) and a named capability interface added to
 `CapabilityInterfaces` when a real module needs one, in the same change that documents it in the
 module contract.
 

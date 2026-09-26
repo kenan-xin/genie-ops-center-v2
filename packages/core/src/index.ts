@@ -20,6 +20,8 @@ export {
   withTransaction,
 } from "./lib/tenant-context/with-transaction.ts";
 
+export { registerModuleRuntime } from "./lib/module-contract/runtime.ts";
+
 export {
   type EnvironmentSource,
   validateEnvironment,
@@ -70,6 +72,7 @@ export {
 } from "./lib/module-contract/keys.ts";
 
 export type {
+  AnySubscription,
   JobContext,
   JobDeclaration,
   Module,
@@ -81,6 +84,7 @@ export type {
   ModuleSchema,
   NavigationEntry,
   PermissionDeclaration,
+  Subscription,
 } from "./lib/module-contract/module.ts";
 
 export { moduleLedgerTable } from "./lib/module-contract/ledger.ts";
@@ -118,6 +122,15 @@ export {
 export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
 
 export type { JobQueue } from "./services/job-queue/index.ts";
+
+export type {
+  DurableEventQueue,
+  EventBus,
+  EventHandler,
+  SubscriptionOptions,
+} from "./services/event-bus/index.ts";
+
+export type { CapabilityRegistry } from "./services/capabilities/index.ts";
 
 export {
   type FetchedFile,

@@ -75,6 +75,23 @@ function contextWith(
         enqueue: () => Promise.reject(new Error("the router enqueued a job")),
         schedule: () => Promise.reject(new Error("the router scheduled a job")),
       },
+      events: {
+        emit: () =>
+          Promise.reject(
+            new Error("the router emitted an event outside a transaction")
+          ),
+        on: () => {
+          throw new Error("the router registered an event handler");
+        },
+      },
+      capabilities: {
+        provide: () => {
+          throw new Error("the router provided a capability");
+        },
+        get: () => {
+          throw new Error("the router looked up a capability");
+        },
+      },
       fileStorage: {
         store: () => Promise.reject(new Error("the router stored a file")),
         fetch: () => Promise.reject(new Error("the router fetched a file")),

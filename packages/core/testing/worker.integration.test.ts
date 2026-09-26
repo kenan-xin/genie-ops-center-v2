@@ -508,9 +508,11 @@ describe("the core pg-boss worker", () => {
 
     expect(Object.keys(context).toSorted()).toEqual([
       "branding",
+      "capabilities",
       "db",
       "entitlements",
       "env",
+      "events",
       "fileStorage",
       "jobQueue",
       "mailer",

@@ -20,6 +20,8 @@ describe("TenantContext", () => {
       | "branding"
       | "entitlements"
       | "jobQueue"
+      | "events"
+      | "capabilities"
       | "fileStorage"
       | "mailer"
     >();

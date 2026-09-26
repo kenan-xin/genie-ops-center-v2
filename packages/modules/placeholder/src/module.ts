@@ -1,4 +1,10 @@
-import type { JobDeclaration, Module } from "@genie/core";
+import type {
+  JobDeclaration,
+  Module,
+  Subscription,
+  TenantContext,
+} from "@genie/core";
+import { defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
 
 import {
@@ -6,7 +12,12 @@ import {
   PlaceholderWorkspacePage,
 } from "./presentation/module-pages.tsx";
 import { placeholderRouter } from "./router.ts";
-import { MIGRATIONS, MIGRATIONS_TABLE, placeholderRecord } from "./schema.ts";
+import {
+  MIGRATIONS,
+  MIGRATIONS_TABLE,
+  placeholderEventEffect,
+  placeholderRecord,
+} from "./schema.ts";
 
 /**
  * A category row this deployment holds. The navigation guard of DEC-51 needs a case for a live
@@ -24,6 +35,61 @@ const readRecordJob: JobDeclaration = {
     await tenant.db.select().from(placeholderRecord).limit(1);
   },
 };
+
+/** The event the module emits when one of its records is touched (R-61). */
+const recordTouched = defineEvent({
+  name: "placeholder.record-touched",
+  version: 1,
+  payload: z.object({ id: z.string(), label: z.string() }),
+});
+
+type RecordTouched = { id: string; label: string };
+
+/**
+ * Writes one subscription's idempotent effect: a row per handler and event, upserted, so an
+ * at-least-once delivery that runs twice leaves the same result (R-55). Each of the three
+ * subscriptions writes under its own handler name, which is what proves all three ran.
+ */
+async function writeEffect(
+  handler: "fast" | "durable" | "serialized",
+  event: { readonly id: string; readonly payload: RecordTouched },
+  context: TenantContext
+): Promise<void> {
+  await context.db
+    .insert(placeholderEventEffect)
+    .values({ handler, eventId: event.id, label: event.payload.label })
+    .onConflictDoUpdate({
+      target: [placeholderEventEffect.handler, placeholderEventEffect.eventId],
+      set: { label: event.payload.label },
+    });
+}
+
+/**
+ * The three delivery channels on one event (R-61): a fast in-process handler, a durable pg-boss
+ * handler, and a serialized subscription keyed by the record id.
+ */
+const recordTouchedSubscriptions: readonly Subscription<RecordTouched>[] = [
+  {
+    event: recordTouched,
+    handler: async (event, context) => {
+      await writeEffect("fast", event, context);
+    },
+  },
+  {
+    event: recordTouched,
+    durable: true,
+    handler: async (event, context) => {
+      await writeEffect("durable", event, context);
+    },
+  },
+  {
+    event: recordTouched,
+    serializeBy: (payload) => payload.id,
+    handler: async (event, context) => {
+      await writeEffect("serialized", event, context);
+    },
+  },
+];
 
 const configurationSchema = z.object({
   title: z.string().default("Placeholder"),
@@ -128,10 +194,13 @@ export const placeholderModule = {
     },
   },
 
-  events: [],
+  events: [recordTouched],
 
   // Section 0 registers no capability, so a provision cannot name one (DEC-42).
   capabilities: [],
+
+  // The module's three subscriptions to its own event: fast, durable and serialized (R-61).
+  subscriptions: recordTouchedSubscriptions,
 
   // The job the worker's contract test enqueues: it reads through the tenant context it is given,
   // which proves a handler's reads land in the worker's own database (AC-11).

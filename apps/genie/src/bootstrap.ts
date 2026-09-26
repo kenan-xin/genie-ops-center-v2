@@ -11,6 +11,7 @@ import {
   migrationPlan,
   moduleHistory,
   readSetupProgress,
+  registerModuleRuntime,
   runMigrations,
   setupSatisfied,
   validateEnvironment,
@@ -169,6 +170,11 @@ function buildContext(
 ): AppContext {
   const contextId = randomUUID();
   const tenant = createTenantContext(source, logger, compiledModuleIds);
+
+  // The same registration the worker makes: the compiled modules' capability providers and event
+  // subscriptions go onto the context before it is published, so an emitting request and the
+  // worker that drains it share one queue map. In memory only; no connection opens here.
+  registerModuleRuntime(tenant, modules);
 
   return {
     tenant,
