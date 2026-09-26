@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { DestinationStream } from "pino";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -59,21 +60,24 @@ afterEach(async () => {
 
 function contextWithLogLevel(
   databaseUrl: string,
-  logLevel: (typeof LOG_LEVELS)[number]
+  logLevel: (typeof LOG_LEVELS)[number],
+  destination: DestinationStream
 ) {
+  const logger = createLogger({ logLevel }, destination);
+
   const context = createTenantContext(
     {
       DATABASE_URL: databaseUrl,
       PUBLIC_URL: "https://test.example.invalid",
       LOG_LEVEL: logLevel,
     },
-    createLogger({ logLevel }),
+    logger,
     []
   );
 
   cleanups.push(() => context.db.$client.end());
 
-  return context;
+  return { context, logger };
 }
 
 async function withEnvironment<T>(
@@ -137,6 +141,39 @@ async function captureProcessOutput<T>(
   }
 }
 
+function captureLoggerStream() {
+  const chunks: string[] = [];
+
+  const destination: DestinationStream = {
+    write(chunk) {
+      chunks.push(chunk);
+    },
+  };
+
+  return {
+    destination,
+    output: () => chunks.join(""),
+    clear() {
+      chunks.length = 0;
+    },
+    proveCapture(logger: ReturnType<typeof createLogger>) {
+      const previousLevel = logger.level;
+      logger.level = "trace";
+
+      try {
+        logger.info(
+          { captureControl: "integration-test" },
+          "integration-capture-control"
+        );
+      } finally {
+        logger.level = previousLevel;
+      }
+
+      expect(chunks.join("")).toContain("integration-capture-control");
+    },
+  };
+}
+
 describe("integration resolver against a real database", () => {
   it("returns non-secret configuration and the live secret at call time without storing the credential", async () => {
     const deployment = await startDisposableDeployment();
@@ -174,10 +211,16 @@ describe("integration resolver against a real database", () => {
     let resolved: Awaited<ReturnType<typeof resolveIntegration>> | undefined;
 
     for (const logLevel of LOG_LEVELS) {
-      const context = contextWithLogLevel(
+      const capturedLogger = captureLoggerStream();
+
+      const { context, logger } = contextWithLogLevel(
         deployment.context.env.databaseUrl,
-        logLevel
+        logLevel,
+        capturedLogger.destination
       );
+
+      capturedLogger.proveCapture(logger);
+      capturedLogger.clear();
 
       // The process environment is shared, so each level must be restored before the next.
       // oxlint-disable-next-line no-await-in-loop
@@ -185,7 +228,7 @@ describe("integration resolver against a real database", () => {
         captureProcessOutput(() => resolveIntegration(context, id))
       );
 
-      outputs.push(captured.output);
+      outputs.push(capturedLogger.output() + captured.output);
       resolved = captured.value;
     }
 
@@ -234,9 +277,10 @@ describe("integration resolver against a real database", () => {
     if (integration === undefined)
       throw new Error("Integration insert returned no row.");
 
-    const context = contextWithLogLevel(
+    const { context } = contextWithLogLevel(
       deployment.context.env.databaseUrl,
-      "info"
+      "info",
+      captureLoggerStream().destination
     );
 
     const secretA = "integration-secret-version-a";
@@ -381,10 +425,16 @@ describe("integration resolver against a real database", () => {
     const outputs: string[] = [];
 
     for (const logLevel of LOG_LEVELS) {
-      const context = contextWithLogLevel(
+      const capturedLogger = captureLoggerStream();
+
+      const { context, logger } = contextWithLogLevel(
         deployment.context.env.databaseUrl,
-        logLevel
+        logLevel,
+        capturedLogger.destination
       );
+
+      capturedLogger.proveCapture(logger);
+      capturedLogger.clear();
 
       // The process environment is shared, so each level must be restored before the next.
       // oxlint-disable-next-line no-await-in-loop
@@ -405,7 +455,7 @@ describe("integration resolver against a real database", () => {
           })
       );
 
-      outputs.push(captured.output);
+      outputs.push(capturedLogger.output() + captured.output);
 
       const error = captured.value;
 

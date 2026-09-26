@@ -118,6 +118,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/mailer.integration.test.ts",
+    reason:
+      "Spec 1 AC-10 and R-43-R-49 require adapter, template, log safety, sender, and recipient mailer proofs",
+    cases: [
+      "mailer adapters and tenant context selects SMTP and sends both parts from the branded MAIL_FROM through the SMTP sink",
+      "mailer adapters and tenant context selects Resend and submits the complete message without a network request",
+      "mailer adapters and tenant context rejects an unconfigured production send before a caller creates a row",
+      "mailer adapters and tenant context logs the development message and full working link rather than sending it",
+      "mailer adapters and tenant context never logs an SMTP failure reply containing a query-token link at any level",
+      "mailer adapters and tenant context never logs an SMTP failure reply containing a path-token link at any level",
+      "mailer adapters and tenant context quotes comma and address-like sender names as exactly one From address",
+      "mailer adapters and tenant context refuses an invalid recipient before sending",
+      "mailer adapters and tenant context refuses a comma-joined recipient list before sending",
+    ],
+  },
+  {
     file: "testing/tenant-context.integration.test.ts",
     reason:
       "R-26a's production cross-check, held by genie-ops-center-v2-wwc, requires the containment proof to run",
