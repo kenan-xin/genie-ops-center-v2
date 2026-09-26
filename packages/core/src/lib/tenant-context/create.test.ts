@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 import { silentLogger } from "../../services/logging/index.ts";
 import type { TenantContext } from "./index.ts";
-import { createTenantContext } from "./index.ts";
+import { createPublicUrl, createTenantContext } from "./index.ts";
 
 type MailerContract = {
   readonly provider: "none" | "resend" | "smtp";
@@ -59,6 +59,20 @@ function runProbe(source: string) {
   return { failed: result.failed, report };
 }
 
+describe("createPublicUrl (R-70)", () => {
+  it("keeps a path prefix on PUBLIC_URL and refuses a path without a leading slash", () => {
+    const publicUrl = createPublicUrl("https://genie.example.com/ops/");
+
+    expect(publicUrl("/invite", { token: "a b" })).toBe(
+      "https://genie.example.com/ops/invite?token=a+b"
+    );
+    expect(publicUrl("//evil.example/x")).toBe(
+      "https://genie.example.com/ops//evil.example/x"
+    );
+    expect(() => publicUrl("invite")).toThrow("must start with");
+  });
+});
+
 describe("createTenantContext", () => {
   it("holds the fixed members and three readers and nothing else (R-18)", async () => {
     const context = createTenantContext(MINIMAL, silentLogger(), []);
@@ -74,6 +88,7 @@ describe("createTenantContext", () => {
         "fileStorage",
         "jobQueue",
         "mailer",
+        "publicUrl",
         "settings",
       ]);
       expect(context.env.databaseUrl).toBe(MINIMAL.DATABASE_URL);

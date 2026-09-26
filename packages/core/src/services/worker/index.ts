@@ -411,7 +411,12 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
 
   try {
     logger = createLogger(validateEnvironment(options.source));
-    context = createTenantContext(options.source, logger, compiledModuleIds);
+    context = createTenantContext(
+      options.source,
+      logger,
+      compiledModuleIds,
+      "genie-worker"
+    );
   } catch (caught) {
     options.errorOutput(
       `worker: ${describe(caught instanceof Error ? caught : undefined)}`

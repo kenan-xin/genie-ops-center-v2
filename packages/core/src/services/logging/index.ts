@@ -526,9 +526,10 @@ function protectLogger(logger: Logger): RedactingLogger {
  * The deployment's logger. It writes JSON lines at the level `LOG_LEVEL` names, and every line
  * carries the request, tenant and user ids of the execution that wrote it (R-44).
  *
- * One is built per process from the validated environment. A request or a job run takes a
- * child of it through `forExecution`, which is what puts the three ids on the line. Only the
- * level is read, so a caller that has no destination may pass just that; `silentLogger` does.
+ * One is built per process from the validated environment, and `publicUrl`, when given, puts
+ * the tenant id on every line. A request or a job run takes a child of it through
+ * `forExecution`, which adds the request and user ids. A caller that has no environment may pass
+ * just the level; `silentLogger` does.
  *
  * With no destination pino builds its own async destination on fd 1, which filters a broken pipe
  * and flushes on exit. A caller that must capture the lines, a test or a pipe, passes its own
@@ -536,7 +537,8 @@ function protectLogger(logger: Logger): RedactingLogger {
  * replaced at runtime.
  */
 export function createLogger(
-  env: Pick<DeploymentEnvironment, "logLevel">,
+  env: Pick<DeploymentEnvironment, "logLevel"> &
+    Partial<Pick<DeploymentEnvironment, "publicUrl">>,
   destination?: DestinationStream
 ): RedactingLogger {
   const options = {
@@ -584,10 +586,16 @@ export function createLogger(
     },
   };
 
-  const logger =
-    destination === undefined ? pino(options) : pino(options, destination);
+  const logger = protectLogger(
+    destination === undefined ? pino(options) : pino(options, destination)
+  );
 
-  return protectLogger(logger);
+  // `PUBLIC_URL` is the tenant id (R-75). Bound on the process logger, so a line written outside
+  // any request or job, such as bootstrap or a migration event, still names its tenant.
+  if (env.publicUrl !== undefined)
+    logger.setBindings({ tenantId: env.publicUrl });
+
+  return logger;
 }
 
 /**

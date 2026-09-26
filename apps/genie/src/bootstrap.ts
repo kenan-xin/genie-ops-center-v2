@@ -169,7 +169,13 @@ function buildContext(
   logger: RedactingLogger
 ): AppContext {
   const contextId = randomUUID();
-  const tenant = createTenantContext(source, logger, compiledModuleIds);
+
+  const tenant = createTenantContext(
+    source,
+    logger,
+    compiledModuleIds,
+    "genie-app"
+  );
 
   // The same registration the worker makes: the compiled modules' capability providers and event
   // subscriptions go onto the context before it is published, so an emitting request and the

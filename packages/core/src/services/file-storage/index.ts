@@ -9,6 +9,7 @@ import type {
 import type {
   DeploymentEnvironment,
   FileStorageAdapter,
+  PublicUrlBuilder,
 } from "../../lib/tenant-context/index.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { file } from "../../schema.ts";
@@ -79,9 +80,13 @@ export type FileLinkInput = {
   readonly resource: ResourceRef;
 };
 
-/** A short-lived token and the moment it stops working (R-38). */
+/** The route that serves a tokenized download link (R-38). */
+export const FILE_DOWNLOAD_PATH = "/api/files/download";
+
+/** A short-lived token, its absolute link from `PUBLIC_URL` (R-70), and its expiry (R-38). */
 export type TokenizedFileLink = {
   readonly token: string;
+  readonly url: string;
   readonly expiresAt: Date;
 };
 
@@ -182,7 +187,8 @@ async function assertCan(
  */
 export function createFileStorage(
   db: FileStorageDatabase,
-  env: Pick<DeploymentEnvironment, "fileStorageAdapter" | "fileMaxBytes">
+  env: Pick<DeploymentEnvironment, "fileStorageAdapter" | "fileMaxBytes">,
+  publicUrl: PublicUrlBuilder
 ): FileStorage {
   const blobStore = createBlobStore(env.fileStorageAdapter, db);
   const secret = createFileLinkSecret();
@@ -252,8 +258,11 @@ export function createFileStorage(
         resource: input.resource,
       };
 
+      const token = signFileLink(scope, expiresAt, secret);
+
       return {
-        token: signFileLink(scope, expiresAt, secret),
+        token,
+        url: publicUrl(FILE_DOWNLOAD_PATH, { token }),
         expiresAt,
       };
     },

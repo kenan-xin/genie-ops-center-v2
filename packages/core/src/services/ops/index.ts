@@ -307,7 +307,8 @@ export async function runGenieOps(
     context = createTenantContext(
       options.source,
       createLogger(env),
-      compiledModuleIds
+      compiledModuleIds,
+      "genie-ops"
     );
   } catch (caught) {
     // The environment is validated before anything connects, so a bad one is a refusal, not a

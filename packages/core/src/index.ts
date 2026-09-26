@@ -10,6 +10,8 @@ export {
   createTenantContext,
   type DeploymentEnvironment,
   type FileStorageAdapter,
+  IDENTITY_CALLBACK_PATH,
+  type PublicUrlBuilder,
   type TenantContext,
 } from "./lib/tenant-context/index.ts";
 
@@ -141,6 +143,7 @@ export type { CapabilityRegistry } from "./services/capabilities/index.ts";
 
 export {
   type FetchedFile,
+  FILE_DOWNLOAD_PATH,
   type FetchFileLinkInput,
   type FileLinkInput,
   type FileStorage,

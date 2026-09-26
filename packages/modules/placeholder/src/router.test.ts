@@ -119,6 +119,9 @@ function contextWith(
         requireConfigured: () => {},
         send: () => Promise.reject(new Error("the router sent mail")),
       },
+      publicUrl: () => {
+        throw new Error("the router built a public link");
+      },
     },
     caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
   };

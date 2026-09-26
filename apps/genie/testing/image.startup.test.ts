@@ -1000,16 +1000,17 @@ describe("the running Section 1 image processes", () => {
     await Promise.all([appImage?.stop(), workerImage?.stop()]);
   });
 
-  async function connectionCounts(
-    names: readonly string[]
-  ): Promise<Record<string, number>> {
-    const quoted = names.map((name) => `'${name}'`).join(", ");
-
+  /**
+   * Every server session of the processes under test, grouped by `application_name`. The role is
+   * unique to this block, so an unnamed key ("") would be a second pool or a stray client.
+   */
+  async function connectionCounts(): Promise<Record<string, number>> {
     const result = await pool().query<{
       application_name: string;
       count: number;
     }>(
-      `select application_name, count(*)::int as count from pg_stat_activity where datname = current_database() and application_name in (${quoted}) group by application_name order by application_name`
+      "select application_name, count(*)::int as count from pg_stat_activity where datname = current_database() and usename = $1 group by application_name order by application_name",
+      [runtimeRole]
     );
 
     return Object.fromEntries(
@@ -1025,8 +1026,21 @@ describe("the running Section 1 image processes", () => {
   }
 
   it("opens one server-counted pool for the app, worker and migrate command", async () => {
-    const names = ["genie-app", "genie-worker"];
-    const liveCounts = await connectionCounts(names);
+    // One pool holds up to pg's default `max` of 10 sessions. pg-boss polls its queues in
+    // parallel, so the worker's one pool legitimately holds several; what proves one pool per
+    // process is that every session of the role carries that process's one name, none unnamed.
+    const POOL_MAX = 10;
+
+    const withinOnePool = (
+      counts: Record<string, number>,
+      names: readonly string[]
+    ) =>
+      JSON.stringify(Object.keys(counts)) === JSON.stringify(names) &&
+      names.every(
+        (name) => (counts[name] ?? 0) >= 1 && (counts[name] ?? 0) <= POOL_MAX
+      );
+
+    const liveCounts = await connectionCounts();
 
     const lockClient = await pool().connect();
     await lockClient.query("select pg_advisory_lock($1)", [
@@ -1047,9 +1061,9 @@ describe("the running Section 1 image processes", () => {
 
       /* eslint-disable no-await-in-loop */
       while (Date.now() < deadline) {
-        commandCounts = await connectionCounts(["genie-ops"]);
+        commandCounts = await connectionCounts();
 
-        if (commandCounts["genie-ops"] === 1) break;
+        if ((commandCounts["genie-ops"] ?? 0) >= 1) break;
 
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -1062,19 +1076,18 @@ describe("the running Section 1 image processes", () => {
     }
 
     const result = await migrate;
-    const finalCommandCounts = await connectionCounts(["genie-ops"]);
+    const finalCommandCounts = await connectionCounts();
     const violations: string[] = [];
 
-    if (
-      JSON.stringify(liveCounts) !==
-      JSON.stringify({ "genie-app": 1, "genie-worker": 1 })
-    ) {
+    if (!withinOnePool(liveCounts, ["genie-app", "genie-worker"])) {
       violations.push(
         `app and worker connections: ${JSON.stringify(liveCounts)}`
       );
     }
 
-    if (JSON.stringify(commandCounts) !== JSON.stringify({ "genie-ops": 1 })) {
+    if (
+      !withinOnePool(commandCounts, ["genie-app", "genie-ops", "genie-worker"])
+    ) {
       violations.push(
         `migrate command connections: ${JSON.stringify(commandCounts)}`
       );
@@ -1084,7 +1097,7 @@ describe("the running Section 1 image processes", () => {
       violations.push("migrate command produced no output");
     }
 
-    if (Object.keys(finalCommandCounts).length !== 0) {
+    if (Object.hasOwn(finalCommandCounts, "genie-ops")) {
       violations.push(
         `migrate connections remained open: ${JSON.stringify(finalCommandCounts)}`
       );

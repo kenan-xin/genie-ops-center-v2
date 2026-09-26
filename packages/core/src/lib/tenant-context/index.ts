@@ -117,7 +117,38 @@ export type TenantContext = {
   readonly fileStorage: FileStorage;
   /** The mailer of R-43, built once from the validated environment; `provider` is `none` when `MAIL_PROVIDER` is unset (D-7). */
   readonly mailer: Mailer;
+  /** Builds an absolute link from `PUBLIC_URL` alone, never from a request `Host` (R-70). */
+  readonly publicUrl: PublicUrlBuilder;
 };
+
+/** An absolute link to `path` under `PUBLIC_URL`, with `query` as its search string (R-70). */
+export type PublicUrlBuilder = (
+  path: string,
+  query?: Readonly<Record<string, string>>
+) => string;
+
+/** The identity provider callback path Section 2 registers in the realm (Spec 2 R-5). */
+export const IDENTITY_CALLBACK_PATH = "/api/auth/callback/keycloak";
+
+/**
+ * The one builder of public links (R-70). Its only input is the configured address, so a request
+ * cannot steer it. A path prefix on `PUBLIC_URL` is kept, which `new URL(path, base)` would drop.
+ */
+export function createPublicUrl(base: string): PublicUrlBuilder {
+  return (path, query) => {
+    if (!path.startsWith("/")) {
+      throw new Error(`A public link path must start with "/": ${path}`);
+    }
+
+    const url = new URL(base);
+
+    url.pathname = `${url.pathname.replace(/\/$/, "")}${path}`;
+    url.search = new URLSearchParams(query).toString();
+    url.hash = "";
+
+    return url.toString();
+  };
+}
 
 /**
  * Builds one tenant context (R-17). The environment is validated first, so a deployment with a
@@ -137,16 +168,21 @@ export type TenantContext = {
  * `compiledModuleIds` is required for the same reason: it is the one caller-supplied list of the
  * modules the image compiled, and the entitlement reader closes over it here so the migrator run
  * and the reader cannot disagree (D-12). A caller that has no modules passes `[]`.
+ *
+ * `applicationName` is the Postgres `application_name` of the pool, so the server's session list
+ * tells the application, the worker and a command apart (AC-3).
  */
 export function createTenantContext(
   source: EnvironmentSource,
   logger: Pick<RedactingLogger, "error" | "info">,
-  compiledModuleIds: readonly string[]
+  compiledModuleIds: readonly string[],
+  applicationName?: string
 ): TenantContext {
   const env = validateEnvironment(source);
 
   const pool = new Pool({
     connectionString: env.databaseUrl,
+    application_name: applicationName,
     connectionTimeoutMillis: env.lockTimeoutMs + CONNECTION_TIMEOUT_MARGIN_MS,
   });
 
@@ -170,6 +206,7 @@ export function createTenantContext(
 
   const jobQueue = createJobQueue(pool, logger);
   const capabilities = createCapabilityRegistry();
+  const publicUrl = createPublicUrl(env.publicUrl);
 
   const context: TenantContext = {
     db,
@@ -184,8 +221,13 @@ export function createTenantContext(
       tenant: () => context,
     }),
     capabilities,
-    fileStorage: createFileStorage(db, env),
-    mailer: createMailer(env, { branding: readers.branding, logger }),
+    fileStorage: createFileStorage(db, env, publicUrl),
+    mailer: createMailer(env, {
+      branding: readers.branding,
+      logger,
+      publicUrl,
+    }),
+    publicUrl,
   };
 
   // The logger the pool's error listener already uses is recorded off the object, where

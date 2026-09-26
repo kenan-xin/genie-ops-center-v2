@@ -57,7 +57,37 @@ export type MailBranding = {
 export type MailerDependencies = {
   readonly branding: { readonly get: () => Promise<MailBranding> };
   readonly logger: Pick<RedactingLogger, "info" | "error">;
+  /** Resolves a link variable given as a path against `PUBLIC_URL` (R-70). */
+  readonly publicUrl?: (path: string) => string;
 };
+
+/** The template variables that hold the email's one link (templates.tsx). */
+const LINK_VARIABLES = ["link", "invitationUrl"] as const;
+
+/**
+ * A link variable given as a path (`/invite?token=...`) becomes an absolute link from
+ * `PUBLIC_URL`, so a caller never needs, and never reads, a request host to build one (R-70).
+ */
+function withPublicLinks(
+  input: MailSendInput,
+  publicUrl: MailerDependencies["publicUrl"]
+): MailSendInput {
+  if (publicUrl === undefined) return input;
+
+  const variables = { ...input.variables };
+
+  for (const name of LINK_VARIABLES) {
+    const value = variables[name];
+
+    if (value?.startsWith("/") === true) {
+      const { pathname, search } = new URL(value, "http://path.invalid");
+
+      variables[name] = `${publicUrl(pathname)}${search}`;
+    }
+  }
+
+  return { ...input, variables };
+}
 
 const MAIL_NOT_CONFIGURED = CORE_ERRORS["mail-not-configured"];
 
@@ -246,7 +276,9 @@ export function createMailer(
     requireConfigured() {
       refuseWhenUnconfigured(env);
     },
-    async send(input) {
+    async send(given) {
+      const input = withPublicLinks(given, deps.publicUrl);
+
       assertRecipient(input.to);
 
       if (sendConfigured === undefined) {
