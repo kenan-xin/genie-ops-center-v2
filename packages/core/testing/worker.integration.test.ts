@@ -516,6 +516,7 @@ describe("the core pg-boss worker", () => {
       "fileStorage",
       "jobQueue",
       "mailer",
+      "publicUrl",
       "settings",
     ]);
     expect(context.jobQueue.enqueue).toBeDefined();
