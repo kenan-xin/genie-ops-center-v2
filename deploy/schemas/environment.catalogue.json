@@ -1,0 +1,54 @@
+{
+  "variables": [
+    {
+      "name": "AUTH_TRUSTED_PROXIES",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "DATABASE_URL",
+      "required": true,
+      "secret": true
+    },
+    {
+      "name": "FILE_MAX_BYTES",
+      "required": false,
+      "secret": false,
+      "default": 15728640
+    },
+    {
+      "name": "FILE_STORAGE_ADAPTER",
+      "required": false,
+      "secret": false,
+      "default": "postgres"
+    },
+    {
+      "name": "GENIE_CHAT_API_ALLOWED_ORIGINS",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "LOCK_TIMEOUT_MS",
+      "required": false,
+      "secret": false,
+      "default": 120000
+    },
+    {
+      "name": "LOG_LEVEL",
+      "required": false,
+      "secret": false,
+      "default": "info"
+    },
+    {
+      "name": "PORT",
+      "required": false,
+      "secret": false,
+      "default": 3000
+    },
+    {
+      "name": "PUBLIC_URL",
+      "required": true,
+      "secret": false
+    }
+  ]
+}

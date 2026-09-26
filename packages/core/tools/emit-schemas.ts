@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import { z } from "zod";
 
+import { environmentCatalogue } from "../src/lib/environment/index.ts";
 import {
   brandingSeedSchema,
   tenantYamlSchema,
@@ -12,8 +13,10 @@ import {
 /**
  * Writes the JSON Schema of each strict tenant-config schema into `deploy/schemas/`, committed,
  * so an editor validates `tenant.yaml` and `branding.seed.json` as an operator types them (R-23,
- * DEC-35). Run through `nx run core:schemas`; the committed files are checked against this
- * emission by `schema-emission.test.ts`, so a stale file fails continuous integration.
+ * DEC-35). It also writes the environment catalogue, the variables the tenant generator renders
+ * into a customer's `.env.example` (R-30, R-31). Run through `nx run core:schemas`; the committed
+ * files are checked against this emission by `schema-emission.test.ts` and
+ * `catalogue-emission.test.ts`, so a stale file fails continuous integration.
  *
  * The raw `JSON.stringify` output is not the committed text: the files are oxfmt-formatted, so a
  * run that only stringified would leave the tree dirty and fail a `git diff --exit-code`. The
@@ -24,20 +27,23 @@ import {
 
 const outputDirectory = resolve(import.meta.dirname, "../../../deploy/schemas");
 
-const schemas = {
-  "tenant.schema.json": tenantYamlSchema,
-  "branding.seed.schema.json": brandingSeedSchema,
+const documents = {
+  "tenant.schema.json": z.toJSONSchema(tenantYamlSchema, {
+    unrepresentable: "any",
+  }),
+  "branding.seed.schema.json": z.toJSONSchema(brandingSeedSchema, {
+    unrepresentable: "any",
+  }),
+  "environment.catalogue.json": { variables: environmentCatalogue },
 } as const;
 
 await mkdir(outputDirectory, { recursive: true });
 
 await Promise.all(
-  Object.entries(schemas).map(async ([name, schema]) => {
-    const emitted = z.toJSONSchema(schema, { unrepresentable: "any" });
-
+  Object.entries(documents).map(async ([name, document]) => {
     await writeFile(
       resolve(outputDirectory, name),
-      `${JSON.stringify(emitted, undefined, 2)}\n`,
+      `${JSON.stringify(document, undefined, 2)}\n`,
       "utf8"
     );
   })

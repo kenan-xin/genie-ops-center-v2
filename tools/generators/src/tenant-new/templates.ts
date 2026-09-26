@@ -1,4 +1,35 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import type { TenantRenderInput } from "./render.ts";
+
+/** One variable as core emitted it to `deploy/schemas/environment.catalogue.json` (R-30). */
+type EnvironmentVariable = {
+  readonly name: string;
+  readonly required: boolean;
+  readonly default?: string | number | boolean;
+  readonly secret: boolean;
+};
+
+const CATALOGUE_PATH = resolve(
+  import.meta.dirname,
+  "../../../../deploy/schemas/environment.catalogue.json"
+);
+
+/**
+ * The variables core emitted from its environment schema. Reading the emitted file, rather than
+ * importing the schema, keeps this build-time tool on the same bytes the environment contract is
+ * checked against; `nx run core:schemas` is what writes it.
+ */
+function readEnvironmentCatalogue(): readonly EnvironmentVariable[] {
+  // SAFETY: core emits this file as `{ variables: [...] }`, and core's
+  // catalogue-emission test compares the committed bytes against the environment schema.
+  const catalogue = JSON.parse(readFileSync(CATALOGUE_PATH, "utf8")) as {
+    readonly variables: readonly EnvironmentVariable[];
+  };
+
+  return catalogue.variables;
+}
 
 /**
  * The deltas this customer applies to the shared realm template. The generator
@@ -19,56 +50,50 @@ export function realmOverrides(input: TenantRenderInput): string {
 }
 
 /**
- * The customer's stack: the application, the worker from the same image, and the
- * database. The identity provider arrives with Section 1, and this file gains its
- * service then.
+ * The customer's stack: the application, the worker from the same image, and Keycloak. Postgres
+ * is supplied by the host and reached through `DATABASE_URL`, so this file starts no database
+ * service (DEC-33). The application and Keycloak join the external `proxy` network under
+ * `<slug>-app` and `<slug>-keycloak`, and the file publishes no host port, so several stacks
+ * share one host and one reverse proxy (R-28).
  *
- * Every value that must stay out of the repository is a variable reference read
+ * `IMAGE_TAG` selects the image for both the application and the worker; the image itself never
+ * reads it (R-30). Every value that must stay out of the repository is a variable reference read
  * from the customer's own `.env`, so this file is committed and holds no secret.
  */
 export function stackCompose(input: TenantRenderInput): string {
   return `# The deployment stack for ${input.slug}. Generated from the module include
 # list in tenant.yaml; committed, and free of every secret (DEC-33, DEC-35).
-# The identity provider service arrives with Section 1.
+# The host supplies Postgres through DATABASE_URL, so no database service is
+# started here. No port is published: the reverse proxy reaches the aliases
+# below on the external proxy network (R-28).
 services:
-  database:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: \${POSTGRES_USER:?set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: \${POSTGRES_DB:?set POSTGRES_DB in .env}
-    volumes:
-      - database:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER}"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
-    restart: unless-stopped
-
   app:
-    image: \${GENIE_IMAGE:?set GENIE_IMAGE to this customer's image}
-    depends_on:
-      database:
-        condition: service_healthy
+    image: \${IMAGE_TAG:?set IMAGE_TAG in .env}
     environment:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       PORT: "3000"
-    ports:
-      - "\${GENIE_HOST_PORT:-3000}:3000"
+    networks:
+      proxy:
+        aliases:
+          - ${input.slug}-app
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \\"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   worker:
-    image: \${GENIE_IMAGE:?set GENIE_IMAGE to this customer's image}
+    image: \${IMAGE_TAG:?set IMAGE_TAG in .env}
     command: ["worker"]
-    depends_on:
-      database:
-        condition: service_healthy
     environment:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       WORKER_HEARTBEAT_PATH: /tmp/genie-worker-heartbeat
+    networks:
+      proxy:
     restart: unless-stopped
     # The worker serves no HTTP. Its core heartbeat job rewrites the file every minute
     # after a database round trip (D-10), so the check fails once the file is stale.
@@ -81,42 +106,54 @@ services:
       retries: 1
       start_period: 240s
 
-volumes:
-  database:
+  keycloak:
+    # The identity provider runs beside the stack and is reached at the
+    # ${input.slug}-keycloak alias. The two bootstrap values create its temporary
+    # administrator at first start; they belong to the Keycloak server and are
+    # replaced after setup (runbooks/keycloak-realm.md).
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--http-port=8080", "--proxy-headers=xforwarded"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: \${KC_BOOTSTRAP_ADMIN_USERNAME:?set KC_BOOTSTRAP_ADMIN_USERNAME in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: \${KC_BOOTSTRAP_ADMIN_PASSWORD:?set KC_BOOTSTRAP_ADMIN_PASSWORD in .env}
+    networks:
+      proxy:
+        aliases:
+          - ${input.slug}-keycloak
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+    name: proxy
 `;
 }
 
 /**
- * The variables the image reads, with no value filled in. The real `.env` is never
- * committed, so this file names each variable and its meaning and stops there
- * (`docs/architecture/environment-contract.md`).
+ * The variables the image reads, rendered from the catalogue core emits
+ * (`docs/architecture/environment-contract.md`). A secret or a variable with no default is left
+ * blank for the operator to fill in; every other value is the schema's default. The build-only
+ * `MODULE_INCLUDE` and the setup-only `KEYCLOAK_BOOTSTRAP_*` are not runtime values, so they are
+ * not listed. The real `.env` is never committed.
  */
 export function envExample(input: TenantRenderInput): string {
-  return `# ${input.slug}: copy to .env and fill in. Never commit the filled file.
-# The image reads every value at run time; it carries none of them (DEC-33).
+  const lines = readEnvironmentCatalogue()
+    .filter(({ name }) => !name.startsWith("KEYCLOAK_BOOTSTRAP_"))
+    .map(
+      ({ name, secret, default: fallback }) =>
+        `${name}=${secret || fallback === undefined ? "" : String(fallback)}`
+    );
 
-# Required. Validated before any connection opens.
-DATABASE_URL=
-PUBLIC_URL=
+  lines.push("IMAGE_TAG=");
 
-# Required by the database service in compose.yaml.
-POSTGRES_USER=
-POSTGRES_PASSWORD=
-POSTGRES_DB=
-
-# The image built from this customer's modules.txt.
-GENIE_IMAGE=
-
-# Optional. Each one falls back to the default in the environment contract.
-# FILE_STORAGE_ADAPTER=
-# FILE_MAX_BYTES=
-# GENIE_CHAT_API_ALLOWED_ORIGINS=
-# AUTH_TRUSTED_PROXIES=
-# LOCK_TIMEOUT_MS=
-# LOG_LEVEL=
-# WORKER_HEARTBEAT_PATH=
-# PORT=
-`;
+  return [
+    `# ${input.slug}: copy to .env and fill in. Never commit the filled file.`,
+    `# The image reads every value at run time; it carries none of them (DEC-33).`,
+    `# A value below a name is that variable's default and may be overridden.`,
+    "",
+    ...lines,
+    "",
+  ].join("\n");
 }
 
 /**

@@ -131,7 +131,10 @@ const schema = z.object({
         URL.canParse(value) &&
         (value.startsWith("postgres://") || value.startsWith("postgresql://")),
       "a postgres:// or postgresql:// url"
-    ),
+    )
+    // The url carries the database password, so the generated example leaves it
+    // blank and no consumer may echo it (R-45).
+    .meta({ secret: true }),
   PUBLIC_URL: z.url({ protocol: /^https?$/ }),
   FILE_STORAGE_ADAPTER: z.enum(FILE_STORAGE_ADAPTERS).default("postgres"),
   FILE_MAX_BYTES: wholeNumber.default(DEFAULT_FILE_MAX_BYTES),
@@ -272,3 +275,51 @@ export function validateEnvironment(
     ...mailConfiguration(value),
   };
 }
+
+/** One environment variable as the schema declares it (R-30, `deploy/schemas/environment.catalogue.json`). */
+export type EnvironmentVariable = {
+  readonly name: string;
+  readonly required: boolean;
+  readonly default?: string | number | boolean;
+  readonly secret: boolean;
+};
+
+/**
+ * The scalar a catalogue entry can print. A list or object default is deliberately not one, so
+ * the generated example leaves those variables blank for the operator.
+ */
+const catalogueScalar = z.union([z.string(), z.number(), z.boolean()]);
+
+/**
+ * Derives one catalogue entry from the field itself. Parsing the absent value answers both
+ * questions at once: a field that refuses it is required, and a field that accepts it hands back
+ * the default the schema applies. A field is secret when its own schema says so (`.meta`), so no
+ * answer here is a hand-kept second list.
+ */
+function catalogueEntry(name: string, field: z.ZodType): EnvironmentVariable {
+  const absent = field.safeParse(undefined);
+  const secret = field.meta()?.secret === true;
+
+  if (!absent.success) {
+    return { name, required: true, secret };
+  }
+
+  const resolved = catalogueScalar.safeParse(absent.data);
+
+  if (!resolved.success) {
+    return { name, required: false, secret };
+  }
+
+  return { name, required: false, secret, default: resolved.data };
+}
+
+/**
+ * Every variable the Section 0 environment schema reads, with its requirement, default and
+ * secret flag. Core emits it to `deploy/schemas/environment.catalogue.json` through
+ * `nx run core:schemas`, and the tenant generator renders `.env.example` from that file, so the
+ * schema, the editor's example and the customer stack cannot drift (R-30, R-31).
+ */
+export const environmentCatalogue: readonly EnvironmentVariable[] =
+  Object.entries(schema.shape)
+    .map(([name, field]) => catalogueEntry(name, field))
+    .toSorted((left, right) => left.name.localeCompare(right.name));
