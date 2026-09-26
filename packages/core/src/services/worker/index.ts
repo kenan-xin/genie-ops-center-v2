@@ -70,13 +70,26 @@ const declarationKey = (job: JobDeclaration) =>
   `${DECLARATION_SCHEDULE_KEY_PREFIX}${job.name}`;
 
 /**
+ * One fetched job the loop has not settled yet. The serialized fields are what `failAbandoned`
+ * needs to log the R-57 dead-letter line for a job it fails at shutdown: the queue's dead-letter
+ * name, the key, and the retry position the fetch reported.
+ */
+type HeldClaim = {
+  readonly queue: string;
+  readonly deadLetter: string | undefined;
+  readonly retryCount: number;
+  readonly retryLimit: number;
+  readonly singletonKey: string | null | undefined;
+};
+
+/**
  * The jobs the loops fetched and have not settled yet, by id. When the shutdown timeout passes,
  * the worker fails each of them and sets `abandoned`, so a handler that settles later leaves its
  * job alone: pg-boss retries it by its policy, and handlers are idempotent (module contract).
  */
 type Claims = {
   abandoned: boolean;
-  readonly held: Map<string, string>;
+  readonly held: Map<string, HeldClaim>;
 };
 
 export type WorkerOptions = {
@@ -126,6 +139,21 @@ function safe(text: string): string {
   return redact(text) as string;
 }
 
+/**
+ * The R-57 line for a serialized job that exhausted its retries and moved to the dead-letter
+ * queue. `drainEvents`' catch and `failAbandoned` both write it, so the operator sees one shape
+ * whether the move happened mid-drain or at shutdown, and the blocked keys name what the dead job
+ * still holds.
+ */
+function deadLetterLine(
+  queue: string,
+  deadLetter: string,
+  key: string,
+  blocked: readonly string[]
+): string {
+  return `worker: ${queue}: a serialized job for key "${key}" exhausted its retries and was moved to the dead-letter queue "${deadLetter}"; blocked keys: ${blocked.join(", ") || "none"}`;
+}
+
 /** The redacted cause chain of whatever a `catch` caught. */
 function describe(error: Error | undefined): string {
   return safe(causeChain(error));
@@ -152,7 +180,13 @@ async function drain(
       if (await loop.mayRun()) [job] = await boss.fetch<JobData>(loop.name);
 
       if (job !== undefined) {
-        claims.held.set(job.id, loop.name);
+        claims.held.set(job.id, {
+          queue: loop.name,
+          deadLetter: undefined,
+          retryCount: 0,
+          retryLimit: 0,
+          singletonKey: undefined,
+        });
         await loop.run(job.data).finally(() => dropIfAbandoned());
         claims.held.delete(job.id);
         await boss.complete(loop.name, job.id);
@@ -230,7 +264,13 @@ async function drainEvents(
 
         if (job !== undefined) {
           fetched = true;
-          claims.held.set(job.id, loop.name);
+          claims.held.set(job.id, {
+            queue: loop.name,
+            deadLetter: loop.deadLetter,
+            retryCount: job.retryCount,
+            retryLimit: job.retryLimit,
+            singletonKey: job.singletonKey,
+          });
           inFlight.set(
             job.id,
             (async () => {
@@ -268,11 +308,12 @@ async function drainEvents(
                     .catch(() => [] as string[]);
 
                   options.errorOutput(
-                    `worker: ${loop.name}: a serialized job for key "${
-                      job.singletonKey ?? ""
-                    }" exhausted its retries and was moved to the dead-letter queue "${
-                      loop.deadLetter
-                    }"; blocked keys: ${blocked.join(", ") || "none"}`
+                    deadLetterLine(
+                      loop.name,
+                      loop.deadLetter,
+                      job.singletonKey ?? "",
+                      blocked
+                    )
                   );
                 }
               } finally {
@@ -494,32 +535,62 @@ async function serve(
       { shutdownTimeoutMs: limit, jobs: claims.held.size },
       "a job handler did not settle before the shutdown timeout; failing its job and stopping pg-boss"
     );
-    await failAbandoned(boss, claims, logger);
+    await failAbandoned(boss, claims, logger, options);
   }
 }
 
 /**
  * Marks every still-fetched job failed before pg-boss stops and the pool closes, so pg-boss
  * retries it by its policy instead of leaving it active until expiry. A failed `fail` is logged;
- * that job then expires and retries the same way.
+ * that job then expires and retries the same way. A serialized job whose fetch already reported
+ * its last attempt moves to its dead-letter queue on this `fail`, exactly as it does in
+ * `drainEvents`, so the R-57 line is written here too (R-57).
  */
 async function failAbandoned(
   boss: PgBoss,
   claims: Claims,
-  logger: Pick<RedactingLogger, "error">
+  logger: Pick<RedactingLogger, "error">,
+  options: WorkerOptions
 ): Promise<void> {
   claims.abandoned = true;
 
   await Promise.all(
-    [...claims.held].map(async ([id, queue]) =>
-      boss
-        .fail(queue, id, {
+    [...claims.held].map(async ([id, claim]) => {
+      const failed = await boss
+        .fail(claim.queue, id, {
           message: "the worker shut down before the handler settled",
         })
-        .catch((error: Error) =>
-          logger.error({ err: error, queue }, "could not fail an abandoned job")
-        )
-    )
+        .then(() => true)
+        .catch((error: Error) => {
+          logger.error(
+            { err: error, queue: claim.queue },
+            "could not fail an abandoned job"
+          );
+
+          return false;
+        });
+
+      if (
+        failed &&
+        claim.deadLetter !== undefined &&
+        claim.retryCount >= claim.retryLimit
+      ) {
+        // SAFETY: an empty list is the answer when the queue cannot be asked, so the line is
+        // still written with the dead-letter move it accompanies.
+        const blocked = await boss
+          .getBlockedKeys(claim.queue)
+          .catch(() => [] as string[]);
+
+        options.errorOutput(
+          deadLetterLine(
+            claim.queue,
+            claim.deadLetter,
+            claim.singletonKey ?? "",
+            blocked
+          )
+        );
+      }
+    })
   );
 
   claims.held.clear();
