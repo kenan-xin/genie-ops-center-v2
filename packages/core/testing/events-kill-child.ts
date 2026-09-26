@@ -41,7 +41,7 @@ if (core.registerModuleRuntime === undefined) {
 }
 
 await core.registerModuleRuntime(context, [killCaseModule]);
-await withTransaction(context, async (tx) => {
+await withTransaction(context, async (tx, afterCommit) => {
   // SAFETY: the event bus is registered from the same module list immediately above.
   const events = (
     context as TenantContext & {
@@ -59,8 +59,7 @@ await withTransaction(context, async (tx) => {
     id: eventId,
     label: eventLabel,
   });
+  afterCommit(() => {
+    process.kill(process.pid, "SIGKILL");
+  });
 });
-
-// Simulate a hard process death immediately after the database commit. The pool is deliberately
-// not closed gracefully, and no worker has started in this process.
-process.exit(0);

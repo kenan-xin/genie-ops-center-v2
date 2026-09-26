@@ -88,13 +88,27 @@ const poisonContract: EventContract<{ id: string; label: string }> = {
   version: 1,
   payload: z.object({ id: z.string(), label: z.string() }),
 };
+const fastGateContract: EventContract<{ id: string; label: string }> = {
+  name: "event-fast-gate.record-touched",
+  version: 1,
+  payload: z.object({ id: z.string(), label: z.string() }),
+};
+const queueGateContract: EventContract<{ id: string; label: string }> = {
+  name: "event-queue-gate.record-touched",
+  version: 1,
+  payload: z.object({ id: z.string(), label: z.string() }),
+};
 
 const delivered: EventEnvelope<{ id: string; label: string }>[] = [];
 const fastDelivered: EventEnvelope<{ id: string; label: string }>[] = [];
+const directFastDelivered: EventEnvelope<{ id: string; label: string }>[] = [];
 const serializedStarted: string[] = [];
 const serializedFinished: string[] = [];
 const workerErrors: string[] = [];
 const poisonAttempts = new Map<string, number>();
+const deliveryAttempts = new Map<string, number>();
+const gateDelivered: string[] = [];
+const queueGateDelivered: string[] = [];
 let releaseFirstSerialized: (() => void) | undefined;
 let firstSerializedStarted: (() => void) | undefined;
 
@@ -110,6 +124,8 @@ const subscriptions: readonly Subscription<Payload>[] = [
     event: deliveryContract,
     durable: true,
     handler: async (event, context) => {
+      const attempt = (deliveryAttempts.get(event.payload.label) ?? 0) + 1;
+      deliveryAttempts.set(event.payload.label, attempt);
       delivered.push(event);
       await context.db.$client.query(
         `insert into event_test_effect (handler, event_id, label)
@@ -117,6 +133,15 @@ const subscriptions: readonly Subscription<Payload>[] = [
          on conflict (handler, event_id) do update set label = excluded.label`,
         [event.id, event.payload.label]
       );
+      if (event.payload.label === "retry-once" && attempt === 1) {
+        throw new Error("event-test redelivery once");
+      }
+    },
+  },
+  {
+    event: deliveryContract,
+    handler: async (event) => {
+      fastDelivered.push(event);
     },
   },
   {
@@ -139,12 +164,21 @@ const subscriptions: readonly Subscription<Payload>[] = [
     handler: async (event) => {
       const attempt = (poisonAttempts.get(event.payload.label) ?? 0) + 1;
       poisonAttempts.set(event.payload.label, attempt);
+      serializedStarted.push(event.payload.label);
 
-      if (event.payload.label === "poison") {
+      if (
+        event.payload.label.startsWith("poison") ||
+        (event.payload.label === "retry-first" && attempt === 1)
+      ) {
         throw new Error("event-test poison handler");
       }
 
       delivered.push(event);
+      if (event.payload.label === "retry-first") {
+        serializedFinished.push(event.payload.label);
+      } else if (event.payload.label === "retry-next") {
+        serializedFinished.push(event.payload.label);
+      }
     },
   },
 ];
@@ -171,6 +205,45 @@ const eventModule = {
   integrationKinds: [],
   tests: { presets: [] },
   subscriptions,
+} as RuntimeModule;
+
+// SAFETY: this fixture substitutes the fast-gate module's own declaration over the base module.
+const fastGateModule = {
+  ...eventModule,
+  identity: {
+    id: "event-fast-gate",
+    displayName: "Fast gate",
+    version: "0.0.0",
+  },
+  events: [fastGateContract],
+  subscriptions: [
+    {
+      event: fastGateContract,
+      handler: async (event: EventEnvelope<Payload>) => {
+        gateDelivered.push(event.payload.id);
+      },
+    },
+  ],
+} as RuntimeModule;
+
+// SAFETY: this fixture substitutes the queue-gate module's own declaration over the base module.
+const queueGateModule = {
+  ...eventModule,
+  identity: {
+    id: "event-queue-gate",
+    displayName: "Durable queue gate",
+    version: "0.0.0",
+  },
+  events: [queueGateContract],
+  subscriptions: [
+    {
+      event: queueGateContract,
+      durable: true,
+      handler: async (event: EventEnvelope<Payload>) => {
+        queueGateDelivered.push(event.payload.id);
+      },
+    },
+  ],
 } as RuntimeModule;
 
 let databaseUrl = "";
@@ -239,12 +312,12 @@ beforeAll(async () => {
     createTenantContext(
       { DATABASE_URL: databaseUrl, PUBLIC_URL: "https://test.example.invalid" },
       silentLogger(),
-      [moduleId]
+      [moduleId, "event-queue-gate"]
     )
   );
   observer = new Client({ connectionString: databaseUrl });
   await observer.connect();
-  await registerModules(context, [eventModule]);
+  await registerModules(context, [eventModule, queueGateModule]);
 
   await context.db.$client.query(`
     create table event_test_effect (
@@ -256,7 +329,7 @@ beforeAll(async () => {
   `);
 
   context.events.on(deliveryContract, async (event) => {
-    fastDelivered.push(event);
+    directFastDelivered.push(event);
   });
 
   workerAbort = new AbortController();
@@ -265,7 +338,7 @@ beforeAll(async () => {
       DATABASE_URL: databaseUrl,
       PUBLIC_URL: "https://test.example.invalid",
     },
-    modules: [eventModule],
+    modules: [eventModule, queueGateModule],
     histories: [],
     output: () => {},
     errorOutput: (line) => workerErrors.push(line),
@@ -317,6 +390,9 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     expect(fastDelivered.some((event) => event.payload.id === marker)).toBe(
       false
     );
+    expect(
+      directFastDelivered.some((event) => event.payload.id === marker)
+    ).toBe(false);
     expect(delivered.some((event) => event.payload.id === marker)).toBe(false);
 
     const effect = await observer.query(
@@ -325,7 +401,7 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     expect(effect.rows[0]?.count).toBe(0);
   });
 
-  it("delivers committed events to fast and pg-boss handlers and tolerates duplicate handling", async () => {
+  it("delivers committed events to fast and pg-boss handlers", async () => {
     const marker = crypto.randomUUID();
     await emit(deliveryContract, { id: marker, label: "committed" });
 
@@ -333,6 +409,14 @@ describe("the typed event bus against Testcontainers Postgres", () => {
       async () => delivered.some((event) => event.payload.id === marker),
       "durable event handler did not receive the committed event"
     );
+
+    await waitUntil(async () => {
+      const effect = await observer.query<{ count: number }>(
+        "select count(*)::int as count from event_test_effect where label = 'committed'"
+      );
+
+      return effect.rows[0]?.count === 1;
+    }, "durable handler did not record the committed event");
 
     const envelope = delivered.find((event) => event.payload.id === marker);
     if (envelope === undefined)
@@ -350,12 +434,9 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     expect(
       fastDelivered.filter((event) => event.payload.id === marker)
     ).toHaveLength(1);
-
-    const handler = subscriptions[0]?.handler;
-    if (handler === undefined)
-      throw new Error("durable subscription is missing");
-    await handler(envelope, context);
-    await handler(envelope, context);
+    expect(
+      directFastDelivered.filter((event) => event.payload.id === marker)
+    ).toHaveLength(1);
 
     const effects = await observer.query<{ count: number }>(
       "select count(*)::int as count from event_test_effect where event_id = $1",
@@ -363,6 +444,29 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     );
     expect(effects.rows[0]?.count).toBe(1);
     expect(context.capabilities.get("unprovided")).toBeUndefined();
+  });
+
+  it("keeps an idempotent effect after a durable handler is redelivered", async () => {
+    const marker = crypto.randomUUID();
+    await emit(deliveryContract, { id: marker, label: "retry-once" });
+
+    await waitUntil(
+      async () => (deliveryAttempts.get("retry-once") ?? 0) >= 2,
+      "the durable handler was not redelivered after its first failure"
+    );
+
+    const event = delivered.find((entry) => entry.payload.id === marker);
+    if (event === undefined)
+      throw new Error("redelivered event was not captured");
+    const effects = await observer.query<{ count: number; label: string }>(
+      "select count(*)::int as count, min(label) as label from event_test_effect where event_id = $1",
+      [event.id]
+    );
+    expect(
+      delivered.filter((entry) => entry.payload.id === marker).length
+    ).toBeGreaterThanOrEqual(2);
+    expect(effects.rows[0]?.label).toBe("retry-once");
+    expect(effects.rows[0]?.count).toBe(1);
   });
 
   it("enqueues durable work in the caller transaction so rollback discards the job", async () => {
@@ -429,21 +533,275 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     );
   });
 
-  it("moves an exhausted serialized job to its dead-letter queue and keeps its key blocked", async () => {
+  it("runs three serialized events emitted in one transaction in emission order", async () => {
     const key = crypto.randomUUID();
-    await emit(poisonContract, { id: key, label: "poison" });
+    await withTransaction(context, async (tx) => {
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-1",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-2",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-3",
+      });
+    });
+
+    await waitUntil(
+      async () =>
+        ["batch-1", "batch-2", "batch-3"].every((label) =>
+          serializedFinished.includes(label)
+        ),
+      "same-transaction serialized events did not finish"
+    );
+    expect(
+      serializedStarted.filter((label) => label.startsWith("batch-"))
+    ).toEqual(["batch-1", "batch-2", "batch-3"]);
+  });
+
+  it("keeps later serialized jobs in key order after one delivery fails once", async () => {
+    const key = crypto.randomUUID();
+    await emit(poisonContract, { id: key, label: "retry-first" });
+    await emit(poisonContract, { id: key, label: "retry-next" });
+
+    await waitUntil(
+      async () => serializedFinished.includes("retry-next"),
+      "the serialized retry or its later same-key job did not finish"
+    );
+    expect(poisonAttempts.get("retry-first")).toBeGreaterThanOrEqual(2);
+    expect(
+      serializedStarted.filter((label) =>
+        ["retry-first", "retry-next"].includes(label)
+      )
+    ).toEqual(["retry-first", "retry-first", "retry-next"]);
+    expect(
+      serializedFinished.filter((label) =>
+        ["retry-first", "retry-next"].includes(label)
+      )
+    ).toEqual(["retry-first", "retry-next"]);
+  });
+
+  it("refuses direct durable subscriptions", async () => {
+    const isolated = runtimeContext(
+      createTenantContext(
+        {
+          DATABASE_URL: databaseUrl,
+          PUBLIC_URL: "https://test.example.invalid",
+        },
+        silentLogger(),
+        []
+      )
+    );
+    const contract = {
+      name: "core.direct-registration-check",
+      version: 1,
+      payload: z.object({ id: z.string(), label: z.string() }),
+    };
+    try {
+      expect(() =>
+        isolated.events.on(contract, async () => {}, { durable: true })
+      ).toThrow();
+    } finally {
+      await stopJobQueue(isolated.jobQueue);
+      await isolated.db.$client.end();
+    }
+  });
+
+  it("refuses direct serialized subscriptions", async () => {
+    const isolated = runtimeContext(
+      createTenantContext(
+        {
+          DATABASE_URL: databaseUrl,
+          PUBLIC_URL: "https://test.example.invalid",
+        },
+        silentLogger(),
+        []
+      )
+    );
+    const contract = {
+      name: "core.direct-serialized-registration-check",
+      version: 1,
+      payload: z.object({ id: z.string(), label: z.string() }),
+    };
+
+    try {
+      expect(() =>
+        isolated.events.on(contract, async () => {}, {
+          serializeBy: (payload) => payload.id,
+        })
+      ).toThrow();
+    } finally {
+      await stopJobQueue(isolated.jobQueue);
+      await isolated.db.$client.end();
+    }
+  });
+
+  it("refuses event emission outside withTransaction even without a fast subscriber", async () => {
+    await expect(
+      context.db.transaction(async (tx) => {
+        await context.events.emit(tx, poisonContract, {
+          id: crypto.randomUUID(),
+          label: "raw-transaction",
+        });
+      })
+    ).rejects.toThrow();
+  });
+
+  it("does not dispatch a fast event after its savepoint rolls back", async () => {
+    const marker = crypto.randomUUID();
+    await withTransaction(context, async (tx) => {
+      await expect(
+        tx.transaction(async (savepoint) => {
+          await context.events.emit(savepoint, deliveryContract, {
+            id: marker,
+            label: "savepoint-rolled-back",
+          });
+          throw new Error("rollback savepoint");
+        })
+      ).rejects.toThrow("rollback savepoint");
+    });
+
+    expect(fastDelivered.some((event) => event.payload.id === marker)).toBe(
+      false
+    );
+    expect(
+      directFastDelivered.some((event) => event.payload.id === marker)
+    ).toBe(false);
+  });
+
+  it("does not run a disabled module fast subscription and runs it after enable", async () => {
+    const source = {
+      DATABASE_URL: databaseUrl,
+      PUBLIC_URL: "https://test.example.invalid",
+    };
+    const disabled = runtimeContext(
+      createTenantContext(source, silentLogger(), ["event-fast-gate"])
+    );
+    try {
+      await registerModules(disabled, [fastGateModule]);
+      await disabled.db.$client.query(
+        `insert into tenant_module (module_id, enabled) values ('event-fast-gate', false)
+         on conflict (module_id) do update set enabled = false`
+      );
+      const disabledId = crypto.randomUUID();
+      await withTransaction(disabled, async (tx) => {
+        await disabled.events.emit(tx, fastGateContract, {
+          id: disabledId,
+          label: "disabled",
+        });
+      });
+      expect(gateDelivered).not.toContain(disabledId);
+    } finally {
+      await stopJobQueue(disabled.jobQueue);
+      await disabled.db.$client.end();
+    }
+
+    await observer.query(
+      "update tenant_module set enabled = true where module_id = 'event-fast-gate'"
+    );
+    const enabled = runtimeContext(
+      createTenantContext(source, silentLogger(), ["event-fast-gate"])
+    );
+    try {
+      await registerModules(enabled, [fastGateModule]);
+      const enabledId = crypto.randomUUID();
+      await withTransaction(enabled, async (tx) => {
+        await enabled.events.emit(tx, fastGateContract, {
+          id: enabledId,
+          label: "enabled",
+        });
+      });
+      expect(gateDelivered.filter((id) => id === enabledId)).toHaveLength(1);
+    } finally {
+      await stopJobQueue(enabled.jobQueue);
+      await enabled.db.$client.end();
+    }
+  });
+
+  it("keeps a module-owned durable event queued while its module is disabled", async () => {
+    await observer.query(
+      `insert into tenant_module (module_id, enabled) values ('event-queue-gate', false)
+       on conflict (module_id) do update set enabled = false`
+    );
+    const marker = crypto.randomUUID();
+    await emit(queueGateContract, {
+      id: marker,
+      label: "module-disabled-queue",
+    });
+
+    await waitUntil(async () => {
+      const result = await observer.query<{ state: string }>(
+        "select state from pgboss.job where data::text like $1 limit 1",
+        [`%${marker}%`]
+      );
+
+      return result.rows[0]?.state === "created";
+    }, "module-owned event job was not enqueued while disabled");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(queueGateDelivered).not.toContain(marker);
+  });
+
+  it("does not duplicate subscriptions when runtime registration repeats", async () => {
+    let refused = false;
+    try {
+      await registerModules(context, [eventModule]);
+    } catch {
+      refused = true;
+    }
+    const marker = crypto.randomUUID();
+    await emit(deliveryContract, {
+      id: marker,
+      label: "after-second-registration",
+    });
+    await waitUntil(
+      async () => fastDelivered.some((event) => event.payload.id === marker),
+      "the fast event was not delivered"
+    );
+    if (refused) return;
+    expect(
+      fastDelivered.filter((event) => event.payload.id === marker)
+    ).toHaveLength(1);
+  });
+
+  it("logs each serialized dead-letter move promptly with its blocked key", async () => {
+    const key = crypto.randomUUID();
+    await emit(poisonContract, { id: key, label: "poison-first" });
     await emit(poisonContract, { id: key, label: "later-same-key" });
 
     await waitUntil(
       async () =>
-        workerErrors.some((line) => /dead.?letter/i.test(line)) &&
-        (poisonAttempts.get("poison") ?? 0) > 0,
-      "the exhausted serialized job was not logged as moved to its dead-letter queue",
-      90000
+        workerErrors.some(
+          (line) => /dead.?letter/i.test(line) && line.includes(key)
+        ) && (poisonAttempts.get("poison-first") ?? 0) > 0,
+      "the exhausted job was not promptly logged with its blocked key",
+      10000
     );
-    expect(poisonAttempts.get("poison")).toBeGreaterThan(0);
+    const firstMoveLogs = workerErrors.filter(
+      (line) => /dead.?letter/i.test(line) && line.includes(key)
+    );
+    expect(firstMoveLogs).toHaveLength(1);
+    expect(poisonAttempts.get("poison-first")).toBeGreaterThan(0);
     expect(
       delivered.some((event) => event.payload.label === "later-same-key")
     ).toBe(false);
+
+    await observer.query(
+      "delete from pgboss.job where name = $1 and data::text like $2",
+      [
+        "event.event-test.event-test.poison.v1.fifo.dead-letter",
+        "%poison-first%",
+      ]
+    );
+    const secondKey = crypto.randomUUID();
+    await emit(poisonContract, { id: secondKey, label: "poison-second" });
+    await waitUntil(
+      async () =>
+        workerErrors.filter((line) => /dead.?letter/i.test(line)).length >= 2,
+      "the second dead-letter move was not logged after operator deletion",
+      10000
+    );
   });
 });

@@ -77,10 +77,10 @@ describe("durable event recovery after a process kill", () => {
       child.once("exit", (code, signal) => resolve({ code, signal }));
     });
     const { code, signal } = await exit;
-    if (code !== 0) {
+    if (code !== null || signal !== "SIGKILL") {
       throw new Error(`emitter child exited ${signal ?? code}: ${output}`);
     }
-    expect(signal).toBeNull();
+    expect({ code, signal }).toEqual({ code: null, signal: "SIGKILL" });
 
     const beforeWorker = await deployment.context.db.$client.query<{
       count: number;

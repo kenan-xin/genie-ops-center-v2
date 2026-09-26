@@ -253,4 +253,34 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker pins pg-boss to version 12.33.5",
     ],
   },
+  {
+    file: "testing/events.integration.test.ts",
+    reason:
+      "R-53-R-61, AC-12 and D-5 require the typed event bus acceptance cases",
+    cases: [
+      "the typed event bus against Testcontainers Postgres does not deliver fast or durable work for an event in a rolled-back transaction",
+      "the typed event bus against Testcontainers Postgres delivers committed events to fast and pg-boss handlers",
+      "the typed event bus against Testcontainers Postgres keeps an idempotent effect after a durable handler is redelivered",
+      "the typed event bus against Testcontainers Postgres enqueues durable work in the caller transaction so rollback discards the job",
+      "the typed event bus against Testcontainers Postgres runs one serialized key in emission order while another key runs in parallel",
+      "the typed event bus against Testcontainers Postgres runs three serialized events emitted in one transaction in emission order",
+      "the typed event bus against Testcontainers Postgres keeps later serialized jobs in key order after one delivery fails once",
+      "the typed event bus against Testcontainers Postgres refuses direct durable subscriptions",
+      "the typed event bus against Testcontainers Postgres refuses direct serialized subscriptions",
+      "the typed event bus against Testcontainers Postgres refuses event emission outside withTransaction even without a fast subscriber",
+      "the typed event bus against Testcontainers Postgres does not dispatch a fast event after its savepoint rolls back",
+      "the typed event bus against Testcontainers Postgres does not run a disabled module fast subscription and runs it after enable",
+      "the typed event bus against Testcontainers Postgres keeps a module-owned durable event queued while its module is disabled",
+      "the typed event bus against Testcontainers Postgres does not duplicate subscriptions when runtime registration repeats",
+      "the typed event bus against Testcontainers Postgres logs each serialized dead-letter move promptly with its blocked key",
+    ],
+  },
+  {
+    file: "testing/events-kill.integration.test.ts",
+    reason:
+      "R-55 and D-5 require durable delivery after a hard emitter process death",
+    cases: [
+      "durable event recovery after a process kill delivers a committed event after its emitting process exits hard",
+    ],
+  },
 ];

@@ -86,7 +86,7 @@ describe("validateModule", () => {
     );
   });
 
-  it("rejects a subscription that sets both durable and serializeBy", () => {
+  it("rejects a subscription that sets serializeBy with durable false", () => {
     const broken = {
       ...validModule,
       subscriptions: [
@@ -96,16 +96,14 @@ describe("validateModule", () => {
             version: 1,
             payload: z.object({ id: z.string() }),
           },
-          durable: true,
+          durable: false,
           serializeBy: (payload: { id: string }) => payload.id,
           handler: async () => {},
         },
       ],
     };
 
-    expect(validateModule(broken).join(" ")).toContain(
-      'Subscription to "fixture.record.created" sets both durable and serializeBy'
-    );
+    expect(validateModule(broken)).not.toEqual([]);
   });
 
   it("accepts one fast, one durable and one serialized subscription to the same event", () => {
@@ -123,6 +121,7 @@ describe("validateModule", () => {
           { event: contract, durable: true, handler: async () => {} },
           {
             event: contract,
+            durable: true,
             serializeBy: (payload: { id: string }) => payload.id,
             handler: async () => {},
           },
