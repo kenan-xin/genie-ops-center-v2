@@ -238,7 +238,7 @@ const MODULE_LAYER: readonly RestrictedGroup[] = [
     message: "a module reads the database through ctx.tenant.db (DEC-34).",
   },
   {
-    group: ["@trpc/server"],
+    group: ["@trpc/server", "@trpc/server/**"],
     importNames: ["initTRPC"],
     message:
       "a module builds its router from core's createModuleTRPC, never its own initTRPC root (d1y).",
