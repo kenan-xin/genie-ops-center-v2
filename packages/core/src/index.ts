@@ -7,6 +7,7 @@
  */
 
 export {
+  createPublicUrl,
   createTenantContext,
   type DeploymentEnvironment,
   type FileStorageAdapter,

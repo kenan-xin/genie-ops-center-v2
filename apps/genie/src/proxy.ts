@@ -266,12 +266,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // redirect list, because that list produces a response with no headers at all.
   const destination = APPLICATION_REDIRECTS.get(pathname);
 
-  if (destination !== undefined) {
-    // A relative Location: `request.url` carries the request Host, which R-70 forbids reading.
-    const redirect = new NextResponse(null, {
-      status: 307,
-      headers: { location: destination },
-    });
+  if (destination !== undefined && app !== undefined) {
+    // Built from PUBLIC_URL, never from `request.url`, which carries the request Host (R-70).
+    // Next parses the Location of a proxy response, so it must be absolute; Next itself then
+    // relativizes it to the path when PUBLIC_URL names the host the request came in on.
+    const redirect = NextResponse.redirect(
+      app.tenant.publicUrl(destination),
+      307
+    );
 
     // The id reaches the client on the redirect too, so a redirect and any log
     // line or error body about it share one value.

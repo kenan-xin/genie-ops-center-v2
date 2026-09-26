@@ -1,3 +1,5 @@
+import { request } from "node:http";
+
 import {
   enableModules,
   markSetupDone,
@@ -8,6 +10,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
+
+/** The PUBLIC_URL `startBuiltApp` gives the server. */
+const PUBLIC_URL = "https://example.invalid";
 
 const FIVE = [
   "content-security-policy",
@@ -156,17 +161,44 @@ describe("header coverage on the built application", () => {
     // created itself.
     expect(response.headers.get("content-security-policy")).toBe(BASELINE);
 
-    // The destination is this request's own origin plus the mapped path, and
-    // it is asserted exactly. The location may be relative ("/") or absolute
-    // (Amendment B permits that for the application redirect), so both
-    // spellings are resolved against the request's own origin and the result
-    // must be precisely that origin's root — another origin, another path, or
-    // an unparseable location fails here.
+    // The destination is the deployment's own origin, PUBLIC_URL, plus the
+    // mapped path, asserted exactly (R-70). Behind the proxy the request host is
+    // the PUBLIC_URL host and Next relativizes the location to "/"; this server
+    // is reached on 127.0.0.1, so it stays absolute. Either spelling resolves
+    // to PUBLIC_URL's root, and another origin or path fails here.
     const location = response.headers.get("location");
 
-    expect(new URL(location ?? "", server.baseUrl).toString()).toBe(
-      new URL("/", server.baseUrl).toString()
+    expect(new URL(location ?? "", PUBLIC_URL).toString()).toBe(
+      new URL("/", PUBLIC_URL).toString()
     );
+  });
+
+  it("the application redirect ignores a foreign Host header (R-70)", async () => {
+    const { port } = new URL(server.baseUrl);
+
+    const location = await new Promise<string | undefined>(
+      (resolve, reject) => {
+        request(
+          {
+            host: "127.0.0.1",
+            port,
+            path: "/home",
+            headers: {
+              "host": "attacker.example.invalid",
+              "x-forwarded-host": "attacker.example.invalid",
+            },
+          },
+          (response) => {
+            response.resume();
+            resolve(response.headers.location);
+          }
+        )
+          .on("error", reject)
+          .end();
+      }
+    );
+
+    expect(location).toBe(new URL("/", PUBLIC_URL).toString());
   });
 
   // R-44 says one line per request, and a redirect is a request. The proxy used

@@ -166,13 +166,18 @@ describe("genie-ops migrate", () => {
 
     await expect(runGenieOps(["migrate"], options)).resolves.toBe(0);
 
-    const firstRun = [...captured.lines];
+    // Each line is a pino JSON line (R-75); the event is its message.
+    // SAFETY: the runner writes every line through pino, which always sets `msg`.
+    const messages = () =>
+      captured.lines.map((line) => (JSON.parse(line) as { msg: string }).msg);
+
+    const firstRun = messages();
 
     captured.lines.length = 0;
 
     await expect(runGenieOps(["migrate"], options)).resolves.toBe(0);
 
-    const secondRun = [...captured.lines];
+    const secondRun = messages();
 
     const pending = firstRun.findIndex((line) =>
       line.includes("migration-pending")

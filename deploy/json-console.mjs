@@ -7,7 +7,15 @@
 // logger uses. A multi-line message, such as a stack, stays one line.
 import { format, stripVTControlCharacters } from "node:util";
 
-const tenantId = process.env.PUBLIC_URL;
+// Only a valid address is a tenant id. An invalid PUBLIC_URL fails the bootstrap, and its value
+// must not reach the log.
+const tenantId = /^https?:$/.test(
+  URL.canParse(process.env.PUBLIC_URL ?? "")
+    ? new URL(process.env.PUBLIC_URL).protocol
+    : ""
+)
+  ? process.env.PUBLIC_URL
+  : undefined;
 
 const LEVELS = {
   debug: ["debug", process.stdout],

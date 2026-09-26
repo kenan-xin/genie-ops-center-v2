@@ -1,4 +1,4 @@
-import { BASELINE_POLICY } from "@genie/core";
+import { BASELINE_POLICY, createPublicUrl } from "@genie/core";
 import { NextRequest } from "next/server.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,6 +59,22 @@ describe("buildViewerPolicy", () => {
 });
 
 describe("the application redirect", () => {
+  const CONTEXT_SLOT = Symbol.for("genie.app.context");
+
+  beforeEach(() => {
+    Reflect.deleteProperty(globalThis, CONTEXT_SLOT);
+    publishContext({
+      ...gatedApp(),
+      // SAFETY: the redirect reads only `publicUrl` from the tenant.
+      tenant: {
+        publicUrl: createPublicUrl("https://ops.example.invalid"),
+      } as AppContext["tenant"],
+    });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, CONTEXT_SLOT);
+  });
+
   it("never builds its Location from the request Host (R-70)", async () => {
     const response = await proxy(
       new NextRequest("http://attacker.example.invalid/home", {
@@ -70,7 +86,9 @@ describe("the application redirect", () => {
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/");
+    expect(response.headers.get("location")).toBe(
+      "https://ops.example.invalid/"
+    );
   });
 
   it("carries all five headers and exactly one policy", async () => {
