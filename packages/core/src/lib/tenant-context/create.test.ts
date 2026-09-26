@@ -129,6 +129,21 @@ describe("createTenantContext", () => {
     }
   });
 
+  it("bounds the pool connection wait above the migrator lock wait (dm9)", async () => {
+    const context = createTenantContext(MINIMAL, silentLogger(), []);
+
+    try {
+      // Above the default lock wait, so a concurrent migrator waiting out the advisory lock is
+      // never failed early; finite, so a database that accepts TCP and never answers cannot hold
+      // a pooled client forever.
+      expect(
+        context.db.$client.options.connectionTimeoutMillis
+      ).toBeGreaterThan(context.env.lockTimeoutMs);
+    } finally {
+      await context.db.$client.end();
+    }
+  });
+
   it("refuses an invalid environment and names the variable", () => {
     expect(() =>
       createTenantContext(

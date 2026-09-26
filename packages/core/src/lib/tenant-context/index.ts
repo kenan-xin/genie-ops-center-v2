@@ -42,6 +42,21 @@ export type FileStorageAdapter = "postgres" | "s3" | "gcs" | "azure";
 export type RuntimeMode = "development" | "production";
 
 /**
+ * How long a caller may wait for a pooled connection, kept strictly above the migrator's lock wait
+ * (dm9). A database that accepts TCP and never answers holds every pooled client on its connect
+ * attempt, so without a bound the pool fills after `max` calls and never recovers, starving the
+ * app and the worker even after the database returns. Bounding the wait makes each hung connect
+ * and each queued checkout fail at the bound, so the pool self-heals.
+ *
+ * The bound must exceed `lockTimeoutMs`: the migrator holds one pooled session for up to that long
+ * while it waits for the advisory lock, and a concurrent run (the worker and the app bootstrap
+ * alike) must be allowed to wait out that hold before it fails. `lockTimeoutMs` defaults to
+ * 120000, so the default bound is 125000; a shorter value would turn a slow lock release into a
+ * failed start.
+ */
+const CONNECTION_TIMEOUT_MARGIN_MS = 5000;
+
+/**
  * The environment values the image reads, after validation (environment contract, Required).
  * Values a tenant administrator owns live in the database, never here.
  */
@@ -118,7 +133,10 @@ export function createTenantContext(
 ): TenantContext {
   const env = validateEnvironment(source);
 
-  const pool = new Pool({ connectionString: env.databaseUrl });
+  const pool = new Pool({
+    connectionString: env.databaseUrl,
+    connectionTimeoutMillis: env.lockTimeoutMs + CONNECTION_TIMEOUT_MARGIN_MS,
+  });
 
   pool.on("connect", (client) => {
     // A checked-out pg client has no pool error listener. Keep the error handled while the
