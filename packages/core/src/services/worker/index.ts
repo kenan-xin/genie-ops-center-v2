@@ -2,7 +2,7 @@ import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 
-import type { PgBoss } from "pg-boss";
+import type { CommandResponse, PgBoss } from "pg-boss";
 
 import {
   type EnvironmentSource,
@@ -145,13 +145,30 @@ function safe(text: string): string {
  * whether the move happened mid-drain or at shutdown, and the blocked keys name what the dead job
  * still holds.
  */
-function deadLetterLine(
+async function reportDeadLetterMove(
+  boss: PgBoss,
+  options: WorkerOptions,
   queue: string,
   deadLetter: string,
-  key: string,
-  blocked: readonly string[]
-): string {
-  return `worker: ${queue}: a serialized job for key "${key}" exhausted its retries and was moved to the dead-letter queue "${deadLetter}"; blocked keys: ${blocked.join(", ") || "none"}`;
+  key: string | null | undefined
+): Promise<void> {
+  // SAFETY: an empty list is the answer when the queue cannot be asked, so the line is still
+  // written with the dead-letter move it accompanies.
+  const blocked = await boss.getBlockedKeys(queue).catch(() => [] as string[]);
+
+  options.errorOutput(
+    `worker: ${queue}: a serialized job for key "${key ?? ""}" exhausted its retries and was moved to the dead-letter queue "${deadLetter}"; blocked keys: ${blocked.join(", ") || "none"}`
+  );
+}
+
+/**
+ * Whether a `fail` changed the job. pg-boss fails only a job still below `completed`, so a job its
+ * handler already completed answers `affected: 0`, and only a real move earns the R-57 line.
+ */
+function failedOne(result: CommandResponse): boolean {
+  // SAFETY: pg-boss 12.33.5's `fail` returns `{ jobs, requested, affected }` (manager.js
+  // `mapCommandResponse`), while its declaration types CommandResponse as an empty interface.
+  return ((result as { readonly affected?: number }).affected ?? 0) > 0;
 }
 
 /** The redacted cause chain of whatever a `catch` caught. */
@@ -292,7 +309,7 @@ async function drainEvents(
 
                 const failed = await boss
                   .fail(loop.name, job.id, { message })
-                  .then(() => true)
+                  .then(failedOne)
                   .catch(() => false);
 
                 // The last attempt failed: pg-boss moved the job to the dead-letter queue.
@@ -301,19 +318,12 @@ async function drainEvents(
                   loop.deadLetter !== undefined &&
                   job.retryCount >= job.retryLimit
                 ) {
-                  // SAFETY: an empty list is the answer when the queue cannot be asked, so the
-                  // line is still written with the dead-letter move it accompanies.
-                  const blocked = await boss
-                    .getBlockedKeys(loop.name)
-                    .catch(() => [] as string[]);
-
-                  options.errorOutput(
-                    deadLetterLine(
-                      loop.name,
-                      loop.deadLetter,
-                      job.singletonKey ?? "",
-                      blocked
-                    )
+                  await reportDeadLetterMove(
+                    boss,
+                    options,
+                    loop.name,
+                    loop.deadLetter,
+                    job.singletonKey
                   );
                 }
               } finally {
@@ -544,7 +554,8 @@ async function serve(
  * retries it by its policy instead of leaving it active until expiry. A failed `fail` is logged;
  * that job then expires and retries the same way. A serialized job whose fetch already reported
  * its last attempt moves to its dead-letter queue on this `fail`, exactly as it does in
- * `drainEvents`, so the R-57 line is written here too (R-57).
+ * `drainEvents`, so the R-57 line is written here too (R-57). A job its handler completed before
+ * this `fail` is left alone by pg-boss, and gets no line.
  */
 async function failAbandoned(
   boss: PgBoss,
@@ -560,7 +571,7 @@ async function failAbandoned(
         .fail(claim.queue, id, {
           message: "the worker shut down before the handler settled",
         })
-        .then(() => true)
+        .then(failedOne)
         .catch((error: Error) => {
           logger.error(
             { err: error, queue: claim.queue },
@@ -575,19 +586,12 @@ async function failAbandoned(
         claim.deadLetter !== undefined &&
         claim.retryCount >= claim.retryLimit
       ) {
-        // SAFETY: an empty list is the answer when the queue cannot be asked, so the line is
-        // still written with the dead-letter move it accompanies.
-        const blocked = await boss
-          .getBlockedKeys(claim.queue)
-          .catch(() => [] as string[]);
-
-        options.errorOutput(
-          deadLetterLine(
-            claim.queue,
-            claim.deadLetter,
-            claim.singletonKey ?? "",
-            blocked
-          )
+        await reportDeadLetterMove(
+          boss,
+          options,
+          claim.queue,
+          claim.deadLetter,
+          claim.singletonKey
         );
       }
     })
