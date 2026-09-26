@@ -25,8 +25,11 @@ it as the fixed member `context.fileStorage`; nothing else builds or holds one (
 Every uploaded `image/svg+xml` passes DOMPurify's SVG profile, with the default URI handling kept
 so drawing attributes (`viewBox`, `d`, `fill="url(#g)"`) survive. The same-document rule is one
 `uponSanitizeAttribute` hook: a `href`/`xlink:href` that is not a `#` reference is dropped, and so
-is any attribute holding a `url(...)` that does not point at a `#` reference. The result is
-serialized as XML, not HTML, so U+00A0 and other HTML-only spellings reparse as `image/svg+xml`.
+is any attribute holding a `url(...)` that does not point at a `#` reference. A value holding a
+backslash is dropped too, because CSS decodes `u\72l(` to `url(`. Code points XML 1.0 forbids (the
+C0 controls except tab, line feed and carriage return, and the non-characters U+FFFE/U+FFFF) are
+removed before sanitizing. The result is serialized as XML, not HTML, so U+00A0 and other
+HTML-only spellings reparse as `image/svg+xml`.
 
 DOMPurify removes `<use>` entirely, including `<use href="#c">`, so a sprite-based icon that relies
 on `<use>` loses its shapes. A logo that inlines its paths is unaffected.

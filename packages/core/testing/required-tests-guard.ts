@@ -99,6 +99,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "FileStorage against a real Postgres deployment preserves drawing attributes and same-document paint references in an SVG logo",
       "FileStorage against a real Postgres deployment stores SVG bytes with a non-breaking space that reparse as XML",
       "FileStorage against a real Postgres deployment stores a DOCTYPE subset input as well-formed SVG XML",
+      "FileStorage against a real Postgres deployment stores SVG bytes with XML-invalid control characters removed",
       "FileStorage against a real Postgres deployment refuses an SVG with no drawable content after sanitizing",
       "FileStorage against a real Postgres deployment serves a valid tokenized link and refuses the same link after its expiry",
       "FileStorage against a real Postgres deployment binds the permission and resource to the token rather than fetchLink input",

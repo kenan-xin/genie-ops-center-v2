@@ -219,6 +219,9 @@ describe("FileStorage against a real Postgres deployment", () => {
         '<a href="https://attacker.invalid/page"><text>external href</text></a>' +
         '<a xlink:href="//attacker.invalid/page"><text>external xlink</text></a>' +
         '<path fill="url(https://attacker.invalid/fill.svg#g)" stroke="url(https://attacker.invalid/stroke.svg#g)" d="M0 0" />' +
+        '<path fill="u\\72l(https://attacker.invalid/escaped-fill.svg#g)" d="M0 0" />' +
+        '<path filter="\\75rl(https://attacker.invalid/escaped-filter.svg#g)" d="M0 0" />' +
+        '<path mask="u&#92;72l(//attacker.invalid/escaped-mask)" d="M0 0" />' +
         "</svg>"
     );
 
@@ -321,6 +324,38 @@ describe("FileStorage against a real Postgres deployment", () => {
       );
 
       expect(document.querySelector("parsererror")).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it("stores SVG bytes with XML-invalid control characters removed", async () => {
+    const { context } = await startStorageDeployment();
+
+    const bytes = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>a\u0001b\u000bc</text></svg>'
+    );
+
+    const dom = new JSDOM("");
+
+    try {
+      const stored = await withTransaction(context, (tx) =>
+        storageFor(context).store(
+          upload(bytes, "image/svg+xml", "control.svg"),
+          tx
+        )
+      );
+
+      const fetched = await storageFor(context).fetch(stored.id);
+
+      const document = new dom.window.DOMParser().parseFromString(
+        fetched.bytes.toString("utf8"),
+        "image/svg+xml"
+      );
+
+      expect(document.querySelector("parsererror")).toBeNull();
+      expect(fetched.bytes.toString("utf8")).not.toContain("\u0001");
+      expect(fetched.bytes.toString("utf8")).not.toContain("\u000b");
     } finally {
       dom.window.close();
     }
