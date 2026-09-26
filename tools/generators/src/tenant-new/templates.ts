@@ -31,6 +31,17 @@ function readEnvironmentCatalogue(): readonly EnvironmentVariable[] {
   return catalogue.variables;
 }
 
+/** Every name the compose file refuses to start without (`${NAME:?message}`). */
+function composeRequiredNames(compose: string): readonly string[] {
+  return [
+    ...new Set(
+      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
+        ([, name]) => name ?? ""
+      )
+    ),
+  ];
+}
+
 /**
  * The deltas this customer applies to the shared realm template. The generator
  * writes the empty document: a realm difference is authored when the customer has
@@ -107,10 +118,13 @@ services:
       start_period: 240s
 
   keycloak:
-    # The identity provider runs beside the stack and is reached at the
-    # ${input.slug}-keycloak alias. The two bootstrap values create its temporary
-    # administrator at first start; they belong to the Keycloak server and are
-    # replaced after setup (runbooks/keycloak-realm.md).
+    # Section 1 placeholder: Keycloak runs start-dev only so the stack starts
+    # beside the app. Production mode (the start command, hostname and TLS
+    # settings) lands with the public-address work in 1ia.12, before any customer
+    # deployment. The identity provider runs beside the stack and is reached at
+    # the ${input.slug}-keycloak alias. The two bootstrap values create its
+    # temporary administrator at first start; they belong to the Keycloak server
+    # and are replaced after setup (runbooks/keycloak-realm.md).
     image: quay.io/keycloak/keycloak:26.4
     command: ["start-dev", "--http-port=8080", "--proxy-headers=xforwarded"]
     environment:
@@ -130,26 +144,42 @@ networks:
 }
 
 /**
- * The variables the image reads, rendered from the catalogue core emits
- * (`docs/architecture/environment-contract.md`). A secret or a variable with no default is left
- * blank for the operator to fill in; every other value is the schema's default. The build-only
- * `MODULE_INCLUDE` and the setup-only `KEYCLOAK_BOOTSTRAP_*` are not runtime values, so they are
- * not listed. The real `.env` is never committed.
+ * The variables the stack needs, rendered from two sources so they cannot drift: the catalogue
+ * core emits for the image's variables (`docs/architecture/environment-contract.md`) and every
+ * name the compose template refuses to start without. A secret or a variable with no default is
+ * left blank for the operator to fill in; every other value is the schema's default. The
+ * build-only `MODULE_INCLUDE` and the setup-only `KEYCLOAK_BOOTSTRAP_*` are not runtime values,
+ * so they are not listed. The real `.env` is never committed.
  */
 export function envExample(input: TenantRenderInput): string {
-  const lines = readEnvironmentCatalogue()
-    .filter(({ name }) => !name.startsWith("KEYCLOAK_BOOTSTRAP_"))
-    .map(
-      ({ name, secret, default: fallback }) =>
-        `${name}=${secret || fallback === undefined ? "" : String(fallback)}`
-    );
+  const catalogue = readEnvironmentCatalogue();
 
-  lines.push("IMAGE_TAG=");
+  const byName = new Map(
+    catalogue.map((variable) => [variable.name, variable])
+  );
+
+  const names = new Set<string>();
+
+  for (const { name } of catalogue) {
+    if (!name.startsWith("KEYCLOAK_BOOTSTRAP_")) names.add(name);
+  }
+
+  for (const name of composeRequiredNames(stackCompose(input))) names.add(name);
+
+  const lines = [...names].toSorted().map((name) => {
+    const variable = byName.get(name);
+
+    if (variable === undefined) return `${name}=`;
+
+    const blank = variable.secret || variable.default === undefined;
+
+    return `${name}=${blank ? "" : String(variable.default)}`;
+  });
 
   return [
     `# ${input.slug}: copy to .env and fill in. Never commit the filled file.`,
-    `# The image reads every value at run time; it carries none of them (DEC-33).`,
-    `# A value below a name is that variable's default and may be overridden.`,
+    `# Every value is read at run time; the image carries none of them (DEC-33).`,
+    `# A value after a name is that variable's default and may be overridden.`,
     "",
     ...lines,
     "",

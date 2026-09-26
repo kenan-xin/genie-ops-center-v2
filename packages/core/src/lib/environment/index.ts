@@ -161,8 +161,18 @@ const schema = z.object({
     .default(3000),
   MAIL_PROVIDER: z.string().optional().transform(unsetWhenBlank),
   MAIL_FROM: z.string().optional().transform(unsetWhenBlank),
-  RESEND_API_KEY: z.string().optional().transform(unsetWhenBlank),
-  SMTP_URL: z.string().optional().transform(unsetWhenBlank),
+  // An API key and an smtps url both carry a credential, so the generated
+  // example leaves them blank and no consumer may echo them (R-45).
+  RESEND_API_KEY: z
+    .string()
+    .optional()
+    .transform(unsetWhenBlank)
+    .meta({ secret: true }),
+  SMTP_URL: z
+    .string()
+    .optional()
+    .transform(unsetWhenBlank)
+    .meta({ secret: true }),
 });
 
 /**

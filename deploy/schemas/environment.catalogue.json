@@ -40,6 +40,16 @@
       "default": "info"
     },
     {
+      "name": "MAIL_FROM",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "MAIL_PROVIDER",
+      "required": false,
+      "secret": false
+    },
+    {
       "name": "PORT",
       "required": false,
       "secret": false,
@@ -49,6 +59,16 @@
       "name": "PUBLIC_URL",
       "required": true,
       "secret": false
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "SMTP_URL",
+      "required": false,
+      "secret": true
     }
   ]
 }
