@@ -267,10 +267,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const destination = APPLICATION_REDIRECTS.get(pathname);
 
   if (destination !== undefined) {
-    const redirect = NextResponse.redirect(
-      new URL(destination, request.url),
-      307
-    );
+    // A relative Location: `request.url` carries the request Host, which R-70 forbids reading.
+    const redirect = new NextResponse(null, {
+      status: 307,
+      headers: { location: destination },
+    });
 
     // The id reaches the client on the redirect too, so a redirect and any log
     // line or error body about it share one value.

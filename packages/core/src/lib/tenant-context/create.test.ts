@@ -70,6 +70,10 @@ describe("createPublicUrl (R-70)", () => {
       "https://genie.example.com/ops//evil.example/x"
     );
     expect(() => publicUrl("invite")).toThrow("must start with");
+    expect(() => publicUrl("/invite?token=x")).toThrow(
+      'must not hold "?" or "#"'
+    );
+    expect(() => publicUrl("/invite#top")).toThrow('must not hold "?" or "#"');
   });
 });
 

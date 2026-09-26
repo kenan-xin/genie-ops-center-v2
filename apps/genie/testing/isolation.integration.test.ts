@@ -1,6 +1,8 @@
 import {
   createRequestPrincipal,
   createStubGrantReader,
+  createLogger,
+  createTenantContext,
   withTransaction,
   type ModuleRequestContext,
   type TenantContext,
@@ -26,6 +28,15 @@ async function seedTenantReaders(tenant: TenantContext, minutes: number) {
   await tenant.db.$client.query(
     "insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ($1, $2, 'en', 'UTC')",
     [`Company ${minutes}`, `Product ${minutes}`]
+  );
+}
+
+/** A second context on the same database, with a cold entitlement cache. */
+function cold(tenant: TenantContext): TenantContext {
+  return createTenantContext(
+    { DATABASE_URL: tenant.env.databaseUrl, PUBLIC_URL: tenant.env.publicUrl },
+    createLogger({ logLevel: "silent" }),
+    ["placeholder"]
   );
 }
 
@@ -155,12 +166,39 @@ describe("two tenant contexts in one process", () => {
     expect(secondSettings.sessionIdleMinutes).toBe(42);
     expect(firstBranding.companyName).toBe("Company 21");
     expect(secondBranding.companyName).toBe("Company 42");
-    expect(await first.context.entitlements.isEnabled("placeholder")).toBe(
-      true
+    // A file id from the other deployment is unknown here. A file store bound to a shared pool
+    // would find it.
+    await expect(
+      first.context.fileStorage.fetch(secondFile.id)
+    ).rejects.toThrow("No file is recorded");
+    await expect(
+      second.context.fileStorage.fetch(firstFile.id)
+    ).rejects.toThrow("No file is recorded");
+
+    // The two databases disagree on one entitlement. The router reads above already filled each
+    // context's ten-second cache, so a cold reader per database reads the stored value.
+    await second.context.db.$client.query(
+      "update tenant_module set enabled = false where module_id = 'placeholder'"
     );
-    expect(await second.context.entitlements.isEnabled("placeholder")).toBe(
-      true
-    );
+
+    const firstCold = cold(first.context);
+    const secondCold = cold(second.context);
+
+    try {
+      expect(await firstCold.entitlements.isEnabled("placeholder")).toBe(true);
+      expect(await secondCold.entitlements.isEnabled("placeholder")).toBe(
+        false
+      );
+    } finally {
+      await Promise.all([
+        firstCold.db.$client.end(),
+        secondCold.db.$client.end(),
+      ]);
+      await second.context.db.$client.query(
+        "update tenant_module set enabled = true where module_id = 'placeholder'"
+      );
+    }
+
     expect(firstFileContents).toEqual({
       bytes: PNG_BYTES,
       mimeType: "image/png",

@@ -19,6 +19,7 @@ describe("the mailer's link variables (R-70)", () => {
         resendApiKey: undefined,
         smtpUrl: undefined,
         runtimeMode: "development",
+        publicUrl: "https://genie.example.com",
       },
       {
         branding: {
@@ -42,9 +43,11 @@ describe("the mailer's link variables (R-70)", () => {
 
     // SAFETY: the development path writes one JSON line through process.stdout.write.
     const line = JSON.parse(String(write.mock.calls[0]?.[0])) as {
+      tenantId: string;
       variables: Record<string, string>;
     };
 
+    expect(line.tenantId).toBe("https://genie.example.com");
     expect(line.variables).toEqual({
       link: "https://genie.example.com/invite?token=t1",
       invitationUrl: "https://other.example/x",

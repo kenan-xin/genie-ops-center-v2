@@ -59,6 +59,20 @@ describe("buildViewerPolicy", () => {
 });
 
 describe("the application redirect", () => {
+  it("never builds its Location from the request Host (R-70)", async () => {
+    const response = await proxy(
+      new NextRequest("http://attacker.example.invalid/home", {
+        headers: {
+          "host": "attacker.example.invalid",
+          "x-forwarded-host": "attacker.example.invalid",
+        },
+      })
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("/");
+  });
+
   it("carries all five headers and exactly one policy", async () => {
     const response = await proxy(
       new NextRequest("https://example.invalid/home")

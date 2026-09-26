@@ -28,6 +28,8 @@ import {
 } from "../job-queue/index.ts";
 import {
   createLogger,
+  jsonLineSinks,
+  type LineSinks,
   type RedactingLogger,
   redact,
 } from "../logging/index.ts";
@@ -409,8 +411,15 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
   let context: TenantContext;
   let logger: ReturnType<typeof createLogger>;
 
+  // Plain text until the environment is valid: before that there is no tenant id to carry.
+  let io: LineSinks = options;
+
   try {
-    logger = createLogger(validateEnvironment(options.source));
+    const env = validateEnvironment(options.source);
+
+    // From here every line is a tenant-bound JSON line, like the application's (R-75).
+    io = jsonLineSinks(env, options);
+    logger = createLogger(env);
     context = createTenantContext(
       options.source,
       logger,
@@ -418,12 +427,15 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
       "genie-worker"
     );
   } catch (caught) {
-    options.errorOutput(
+    io.errorOutput(
       `worker: ${describe(caught instanceof Error ? caught : undefined)}`
     );
 
     return 1;
   }
+
+  // Every helper below writes through the JSON sinks.
+  const run: WorkerOptions = { ...options, ...io };
 
   const boss = createBoss(context.db.$client, logger, true, options.timing);
 
@@ -438,7 +450,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
       histories: migrationPlan(options.histories),
       compiledModuleIds,
       log: (event) =>
-        options.output(
+        run.output(
           safe(
             [event.event, event.history, event.count]
               .filter((part) => part !== undefined)
@@ -447,11 +459,11 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
         ),
     });
 
-    if (!options.signal.aborted) await serve(boss, context, logger, options);
+    if (!options.signal.aborted) await serve(boss, context, logger, run);
 
     return 0;
   } catch (caught) {
-    options.errorOutput(
+    run.errorOutput(
       `worker: ${describe(caught instanceof Error ? caught : undefined)}`
     );
 

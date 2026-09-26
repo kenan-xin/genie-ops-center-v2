@@ -12,7 +12,12 @@ import {
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
 import { writeAuditEvent } from "../audit/index.ts";
-import { createLogger, redact } from "../logging/index.ts";
+import {
+  type LineSinks,
+  createLogger,
+  jsonLineSinks,
+  redact,
+} from "../logging/index.ts";
 import {
   type MigrationHistory,
   type MigrationLog,
@@ -297,12 +302,17 @@ export async function runGenieOps(
   }
 
   let context: TenantContext;
+  // Plain text until the environment is valid: before that there is no tenant id to carry.
+  let io: LineSinks = options;
 
   try {
     // Validate before the logger exists and before anything connects (R-25). The factory
     // validates again internally; this first pass is what gives the logger its level and keeps
     // an invalid `LOG_LEVEL` from reaching pino as a crash.
     const env = validateEnvironment(options.source);
+
+    // From here every line is a tenant-bound JSON line, like the application's (R-75).
+    io = jsonLineSinks(env, options);
 
     context = createTenantContext(
       options.source,
@@ -313,7 +323,7 @@ export async function runGenieOps(
   } catch (caught) {
     // The environment is validated before anything connects, so a bad one is a refusal, not a
     // failed run: there is no context to audit through, so the cause reaches the output (R-25).
-    options.errorOutput(
+    io.errorOutput(
       safe(
         `genie-ops: ${causeChain(caught instanceof Error ? caught : undefined)}`
       )
@@ -327,19 +337,21 @@ export async function runGenieOps(
     // still leaves exactly one row (R-64).
     const metadata = { osUser: osUserName(), args: parsed.args };
 
-    await parsed.run(context, options);
+    await parsed.run(context, { ...options, ...io });
 
     await writeAuditEvent(context, {
       action: `ops:${parsed.name}`,
       metadata: { ...metadata, outcome: "success" },
-      output: options.output,
+      output: io.output,
     });
+
+    io.output(`ops:${parsed.name} success`);
 
     return 0;
   } catch (caught) {
     const metadata = { osUser: osUserName(), args: parsed.args };
 
-    options.errorOutput(
+    io.errorOutput(
       safe(
         `genie-ops: ${causeChain(caught instanceof Error ? caught : undefined)}`
       )
@@ -348,7 +360,7 @@ export async function runGenieOps(
     await writeAuditEvent(context, {
       action: `ops:${parsed.name}`,
       metadata: { ...metadata, outcome: "failure" },
-      output: options.output,
+      output: io.output,
     });
 
     return 1;

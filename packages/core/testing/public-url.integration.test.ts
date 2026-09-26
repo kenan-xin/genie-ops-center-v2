@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import {
+  createRequestPrincipal,
+  createStubGrantReader,
+  STUB_GRANTED_KEY,
+} from "../src/services/authorization/index.ts";
+import { FILE_DOWNLOAD_PATH } from "../src/services/file-storage/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 
 const PUBLIC_URL = "https://customer.example.invalid";
@@ -84,11 +90,32 @@ describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
     );
   });
 
-  it("builds the tokenized download link from PUBLIC_URL regardless of request Host", () => {
+  it("builds the tokenized download link from PUBLIC_URL regardless of request Host", async () => {
     assertHostIndependentLink(
       "/api/files/download",
       { token: "download-token" },
       `${PUBLIC_URL}/api/files/download?token=download-token`
     );
+
+    // The file store's own link goes through the same builder.
+    const context = contextWithPublicUrl();
+
+    try {
+      const link = await context.fileStorage.createLink({
+        fileId: "file-1",
+        principal: createRequestPrincipal(
+          { userId: "u1", groups: [] },
+          createStubGrantReader()
+        ),
+        permission: STUB_GRANTED_KEY,
+        resource: { type: "document", id: "document-1" },
+      });
+
+      expect(link.url).toBe(
+        `${PUBLIC_URL}${FILE_DOWNLOAD_PATH}?${new URLSearchParams({ token: link.token }).toString()}`
+      );
+    } finally {
+      await context.db.$client.end();
+    }
   });
 });

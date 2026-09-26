@@ -1000,24 +1000,21 @@ describe("the running Section 1 image processes", () => {
     await Promise.all([appImage?.stop(), workerImage?.stop()]);
   });
 
+  type ProcessSessions = { pools: number; sessions: number; named: boolean };
+
   /**
-   * Every server session of the processes under test, grouped by `application_name`. The role is
-   * unique to this block, so an unnamed key ("") would be a second pool or a stray client.
+   * Every server session of the processes under test, grouped by process. A pool names itself
+   * `<process>:<8 hex>`, so `pools` counts the distinct pool ids of one process. The role is unique
+   * to this block, so an unnamed session shows up under the key "".
    */
-  async function connectionCounts(): Promise<Record<string, number>> {
-    const result = await pool().query<{
-      application_name: string;
-      count: number;
-    }>(
-      "select application_name, count(*)::int as count from pg_stat_activity where datname = current_database() and usename = $1 group by application_name order by application_name",
+  async function connectionCounts(): Promise<Record<string, ProcessSessions>> {
+    const result = await pool().query<ProcessSessions & { process: string }>(
+      "select split_part(application_name, ':', 1) as process, count(distinct application_name)::int as pools, count(*)::int as sessions, bool_and(application_name ~ '^genie-[a-z]+:[0-9a-f]{8}$') as named from pg_stat_activity where datname = current_database() and usename = $1 group by 1 order by 1",
       [runtimeRole]
     );
 
     return Object.fromEntries(
-      result.rows.map(({ application_name, count }) => [
-        application_name,
-        count,
-      ])
+      result.rows.map(({ process, ...counts }) => [process, counts])
     );
   }
 
@@ -1027,18 +1024,26 @@ describe("the running Section 1 image processes", () => {
 
   it("opens one server-counted pool for the app, worker and migrate command", async () => {
     // One pool holds up to pg's default `max` of 10 sessions. pg-boss polls its queues in
-    // parallel, so the worker's one pool legitimately holds several; what proves one pool per
-    // process is that every session of the role carries that process's one name, none unnamed.
+    // parallel, so the worker's one pool legitimately holds several sessions. One pool per process
+    // is proved by one distinct pool id per process, and no unnamed session.
     const POOL_MAX = 10;
 
-    const withinOnePool = (
-      counts: Record<string, number>,
+    const onePoolEach = (
+      counts: Record<string, ProcessSessions>,
       names: readonly string[]
     ) =>
       JSON.stringify(Object.keys(counts)) === JSON.stringify(names) &&
-      names.every(
-        (name) => (counts[name] ?? 0) >= 1 && (counts[name] ?? 0) <= POOL_MAX
-      );
+      names.every((name) => {
+        const entry = counts[name];
+
+        return (
+          entry !== undefined &&
+          entry.named &&
+          entry.pools === 1 &&
+          entry.sessions >= 1 &&
+          entry.sessions <= POOL_MAX
+        );
+      });
 
     const liveCounts = await connectionCounts();
 
@@ -1054,7 +1059,7 @@ describe("the running Section 1 image processes", () => {
       SECRET_TEST_VALUE: secretValue,
     });
 
-    let commandCounts: Record<string, number> = {};
+    let commandCounts: Record<string, ProcessSessions> = {};
 
     try {
       const deadline = Date.now() + 15000;
@@ -1063,7 +1068,7 @@ describe("the running Section 1 image processes", () => {
       while (Date.now() < deadline) {
         commandCounts = await connectionCounts();
 
-        if ((commandCounts["genie-ops"] ?? 0) >= 1) break;
+        if ((commandCounts["genie-ops"]?.sessions ?? 0) >= 1) break;
 
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -1079,14 +1084,16 @@ describe("the running Section 1 image processes", () => {
     const finalCommandCounts = await connectionCounts();
     const violations: string[] = [];
 
-    if (!withinOnePool(liveCounts, ["genie-app", "genie-worker"])) {
+    if (!onePoolEach(liveCounts, ["genie-app", "genie-worker"])) {
       violations.push(
         `app and worker connections: ${JSON.stringify(liveCounts)}`
       );
     }
 
+    // The command waits on the advisory lock through exactly one session of its one pool.
     if (
-      !withinOnePool(commandCounts, ["genie-app", "genie-ops", "genie-worker"])
+      !onePoolEach(commandCounts, ["genie-app", "genie-ops", "genie-worker"]) ||
+      commandCounts["genie-ops"]?.sessions !== 1
     ) {
       violations.push(
         `migrate command connections: ${JSON.stringify(commandCounts)}`
@@ -1161,9 +1168,7 @@ describe("the running Section 1 image processes", () => {
     for (const [source, output] of outputs) {
       const lines = output.split("\n").filter((line) => line.trim() !== "");
 
-      if (lines.length === 0 && ["application", "worker"].includes(source)) {
-        violations.push(`${source} produced no output`);
-      }
+      if (lines.length === 0) violations.push(`${source} produced no output`);
 
       for (const line of lines) {
         for (const secret of plantedSecrets) {
@@ -1174,9 +1179,14 @@ describe("the running Section 1 image processes", () => {
 
         let json: { tenantId?: unknown } | null;
 
+        // R-75: every line of every process is a pino JSON line. The only plain-text lines are
+        // written before the environment is valid, which no run here reaches.
         try {
           json = JSON.parse(line);
         } catch {
+          violations.push(
+            `${source} wrote a non-JSON line: ${line.slice(0, 80)}`
+          );
           continue;
         }
 

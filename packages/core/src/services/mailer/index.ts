@@ -28,6 +28,8 @@ export type MailerEnvironment = {
   readonly resendApiKey: string | undefined;
   readonly smtpUrl: string | undefined;
   readonly runtimeMode: MailRuntimeMode;
+  /** The tenant id the development line carries, like every other line (R-75). */
+  readonly publicUrl?: string;
 };
 
 /** One send: a catalogue template, its recipient, and the values the template reads (R-48). */
@@ -80,9 +82,9 @@ function withPublicLinks(
     const value = variables[name];
 
     if (value?.startsWith("/") === true) {
-      const { pathname, search } = new URL(value, "http://path.invalid");
+      const { pathname, search, hash } = new URL(value, "http://path.invalid");
 
-      variables[name] = `${publicUrl(pathname)}${search}`;
+      variables[name] = `${publicUrl(pathname)}${search}${hash}`;
     }
   }
 
@@ -190,10 +192,14 @@ function requireSmtpUrl(env: MailerEnvironment): string {
  * unredacted link by design, so this one development-only message is written straight to stdout.
  * Section 2 link builders put the token in a query parameter, which this exception does not change.
  */
-function writeDevelopmentMessage(input: MailSendInput): void {
+function writeDevelopmentMessage(
+  input: MailSendInput,
+  tenantId: string | undefined
+): void {
   process.stdout.write(
     `${JSON.stringify({
       level: "info",
+      tenantId,
       msg: "mail generated with no provider, nothing was sent",
       to: input.to,
       templateId: input.templateId,
@@ -284,7 +290,7 @@ export function createMailer(
       if (sendConfigured === undefined) {
         refuseWhenUnconfigured(env);
 
-        writeDevelopmentMessage(input);
+        writeDevelopmentMessage(input, env.publicUrl);
 
         return;
       }

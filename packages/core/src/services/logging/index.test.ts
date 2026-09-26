@@ -107,6 +107,25 @@ describe("the logger", () => {
     }
   });
 
+  it("writes the tenant id once when the process logger already binds it", () => {
+    const raw: string[] = [];
+
+    forExecution(
+      createLogger(ENV, { write: (line: string) => raw.push(line) }),
+      {
+        requestId: "r1",
+        tenantId: ENV.publicUrl,
+        userId: "u1",
+      }
+    ).info("one");
+
+    expect(raw[0]?.match(/"tenantId"/g)).toHaveLength(1);
+    expect(JSON.parse(raw[0] ?? "")).toMatchObject({
+      tenantId: ENV.publicUrl,
+      requestId: "r1",
+    });
+  });
+
   it("names an unauthenticated caller rather than inventing a user", () => {
     const { lines, destination } = capture();
 

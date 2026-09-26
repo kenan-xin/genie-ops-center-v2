@@ -598,6 +598,36 @@ export function createLogger(
   return logger;
 }
 
+/** A command's two line sinks: progress and outcome, and a failure's cause. */
+export type LineSinks = {
+  readonly output: (line: string) => void;
+  readonly errorOutput: (line: string) => void;
+};
+
+/**
+ * Wraps a process's two line sinks so each line becomes one tenant-bound pino JSON line (R-75):
+ * `output` at info, `errorOutput` at error. `genie-ops` and the worker write through these once
+ * the environment is valid, so their lines match the application's. A line written before
+ * validation has no tenant id to carry and stays plain text on the caller's own sink.
+ */
+export function jsonLineSinks(
+  env: Pick<DeploymentEnvironment, "logLevel" | "publicUrl">,
+  sinks: LineSinks
+): LineSinks {
+  const into = (sink: (line: string) => void) =>
+    createLogger(env, {
+      write: (line: string) => sink(line.replace(/\n$/, "")),
+    });
+
+  const out = into(sinks.output);
+  const err = into(sinks.errorOutput);
+
+  return {
+    output: (line) => out.info(line),
+    errorOutput: (line) => err.error(line),
+  };
+}
+
 /**
  * A redacting logger that writes nothing. It is for a caller that must supply the required
  * logger but has no destination, such as a test or a test helper. It redacts like every logger
@@ -621,5 +651,11 @@ export function forExecution(
     throw new Error("forExecution needs a logger built by createLogger.");
   }
 
-  return logger.child({ ...bindings });
+  // A process logger from `createLogger` already binds the tenant id; binding the same id again
+  // would write the key twice on every request and job line.
+  const { tenantId, ...rest } = bindings;
+
+  return logger.child(
+    logger.bindings().tenantId === tenantId ? { ...rest } : { ...bindings }
+  );
 }

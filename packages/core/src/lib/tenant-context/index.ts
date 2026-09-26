@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -140,6 +142,12 @@ export function createPublicUrl(base: string): PublicUrlBuilder {
       throw new Error(`A public link path must start with "/": ${path}`);
     }
 
+    // The query goes in `query`. A `?` or `#` in the path would be percent-encoded into it and
+    // break the link silently.
+    if (/[?#]/.test(path)) {
+      throw new Error(`A public link path must not hold "?" or "#": ${path}`);
+    }
+
     const url = new URL(base);
 
     url.pathname = `${url.pathname.replace(/\/$/, "")}${path}`;
@@ -169,8 +177,9 @@ export function createPublicUrl(base: string): PublicUrlBuilder {
  * modules the image compiled, and the entitlement reader closes over it here so the migrator run
  * and the reader cannot disagree (D-12). A caller that has no modules passes `[]`.
  *
- * `applicationName` is the Postgres `application_name` of the pool, so the server's session list
- * tells the application, the worker and a command apart (AC-3).
+ * `applicationName` names the pool in Postgres `application_name`, with a per-pool id after a
+ * colon (`genie-worker:1a2b3c4d`), so the server's session list tells the application, the worker
+ * and a command apart, and a second pool in one process shows as a second id (AC-3).
  */
 export function createTenantContext(
   source: EnvironmentSource,
@@ -182,7 +191,10 @@ export function createTenantContext(
 
   const pool = new Pool({
     connectionString: env.databaseUrl,
-    application_name: applicationName,
+    application_name:
+      applicationName === undefined
+        ? undefined
+        : `${applicationName}:${randomBytes(4).toString("hex")}`,
     connectionTimeoutMillis: env.lockTimeoutMs + CONNECTION_TIMEOUT_MARGIN_MS,
   });
 
