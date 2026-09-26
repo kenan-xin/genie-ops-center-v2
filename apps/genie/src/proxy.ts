@@ -108,6 +108,22 @@ function isGateExempt(pathname: string): boolean {
   // not-found page, which rendered the catalogue before setup (R1).
   if (pathname === "/_next/image") return true;
 
+  // zwv: `next dev` serves HMR and the error-overlay diagnostics from these framework paths, and
+  // rewriting them to `/setup-required` is what fills the dev log while the not-set-up page never
+  // hydrates. They are exempt only in a development build: `process.env.NODE_ENV` is replaced
+  // literally at build time, so a production bundle gates every one. The two named paths match
+  // exactly and the diagnostics match on the `/__nextjs_` prefix — a bare
+  // `startsWith("/_next/hmr")` would exempt `/_next/hmrx`.
+  if (process.env.NODE_ENV === "development") {
+    if (
+      pathname === "/_next/hmr" ||
+      pathname === "/_next/webpack-hmr" ||
+      pathname.startsWith("/__nextjs_")
+    ) {
+      return true;
+    }
+  }
+
   return PUBLIC_FILES.has(pathname);
 }
 
