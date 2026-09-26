@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { MIGRATION_LOCK_KEY, createTenantContext } from "@genie/core";
@@ -958,6 +960,34 @@ describe("the built image", () => {
   }, 240000);
 });
 
+/**
+ * The URL paths the checked-in public folder serves at the site root. Read from
+ * the repository rather than from the image, so a probe can tell "the image
+ * serves this file at its proper path" from "the image serves it again under a
+ * second path". A missing folder returns an empty list, and the test below
+ * fails closed on it rather than probing nothing.
+ */
+function repositoryPublicUrls(): string[] {
+  const root = join(WORKSPACE_ROOT, "apps/genie/public");
+
+  if (!existsSync(root)) return [];
+
+  const urls: string[] = [];
+
+  const walk = (directory: string, prefix: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const relative = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
+
+      if (entry.isDirectory()) walk(join(directory, entry.name), relative);
+      else urls.push(`/${relative}`);
+    }
+  };
+
+  walk(root, "");
+
+  return urls;
+}
+
 describe("the built image", () => {
   const F2_PORT = 3413;
 
@@ -994,6 +1024,34 @@ describe("the built image", () => {
   afterAll(async () => {
     await f2Image?.stop();
   });
+
+  it("serves each public file at the root and never again under a nested public/ path", async () => {
+    const urls = repositoryPublicUrls();
+
+    // Fail closed on an empty folder: zero probes would make the contract vacuous.
+    expect(urls.length).toBeGreaterThanOrEqual(1);
+
+    const offenders: string[] = [];
+
+    // One request per file, each asserted against the same contract.
+    /* eslint-disable no-await-in-loop */
+    for (const url of urls) {
+      const served = await fetch(`${f2BaseUrl}${url}`, { redirect: "manual" });
+
+      if (served.status !== 200) offenders.push(`${url} -> ${served.status}`);
+
+      const nested = await fetch(`${f2BaseUrl}/public${url}`, {
+        redirect: "manual",
+      });
+
+      if (nested.status !== 404) {
+        offenders.push(`/public${url} -> ${nested.status}`);
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    expect(offenders).toEqual([]);
+  }, 240000);
 
   it("serves no migration SQL url", async () => {
     // The probes are the inventory's own SQL-spelled URLs plus the URL the F2

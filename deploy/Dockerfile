@@ -70,7 +70,8 @@ RUN set -eu; \
     echo "standalone root: $root"; \
     mkdir -p "$root/.next"; \
     cp -r /staging/static "$root/.next/static"; \
-    cp -r /staging/public "$root/public"; \
+    mkdir -p "$root/public"; \
+    cp -r /staging/public/. "$root/public/"; \
     rm -rf /staging; \
     chmod +x /usr/local/bin/entrypoint.sh; \
     chmod +x /usr/local/bin/genie-ops; \
