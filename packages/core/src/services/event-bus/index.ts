@@ -22,9 +22,18 @@ export type EventHandler<TPayload> = (
 /**
  * How a subscription is delivered (R-53). No option is fast; the durable options are below. Only a
  * module's declared `subscriptions` may set them: `context.events.on` refuses both, because only
- * the declared list is registered by the worker that drains the queues.
+ * the declared list is registered by the worker that drains the queues. A durable or serialized
+ * subscription also carries a `name`, required by `validateModule` and unique within its module,
+ * which its queue name derives from so reordering the declared list never reroutes an in-flight
+ * job.
  */
 export type SubscriptionOptions<TPayload> = {
+  /**
+   * The subscription's stable identity. Required for a durable or serialized subscription, whose
+   * queue name is derived from it, so a deploy that reorders same-mode subscriptions keeps every
+   * in-flight job on its own handler. A fast subscription needs no name.
+   */
+  readonly name?: string;
   /**
    * Runs the handler as a pg-boss job enqueued inside the emitting transaction, so the job
    * commits or rolls back with the data and delivery is at least once (D-5, R-55).
@@ -82,7 +91,6 @@ type FastEntry = {
 type Internals = {
   readonly fastByEvent: Map<string, FastEntry[]>;
   readonly durableByEvent: Map<string, DurableEntry[]>;
-  readonly ordinals: Map<string, number>;
   readonly queues: Map<string, Promise<PgBoss>>;
 };
 
@@ -96,21 +104,24 @@ const contractKey = (event: {
 
 /**
  * One subscription's queue name. The event's own name and version decide the delivery contract,
- * the owning module's id keeps two subscribers apart, and the mode keeps one module's durable and
- * serialized subscriptions to the same event apart. An ordinal beyond the first disambiguates a
- * repeated subscription of the same mode, in declaration order.
+ * the owning module's id keeps two subscribers apart, the mode keeps one module's durable and
+ * serialized subscriptions to the same event apart, and the subscription's `name` disambiguates a
+ * repeated subscription of the same mode. The name never comes from the declaration index, so
+ * reordering same-mode subscriptions between releases keeps each in-flight job on its handler
+ * (R-56). A subscription without a name (only possible outside `validateModule`) falls back to the
+ * event itself, which is stable but collides with another unnamed subscription of the same mode.
  */
 function queueName(
   ownerModuleId: string,
   event: { readonly name: string; readonly version: number },
   mode: "durable" | "fifo",
-  ordinal: number
+  name: string | undefined
 ): string {
   const base = `event.${ownerModuleId}.${event.name}.v${event.version}${
     mode === "fifo" ? ".fifo" : ""
   }`;
 
-  return ordinal === 1 ? base : `${base}.${ordinal}`;
+  return name === undefined || name === "" ? base : `${base}.${name}`;
 }
 
 function intern(bus: EventBus): Internals {
@@ -135,6 +146,7 @@ function register(
   event: EventContract<string, unknown>,
   handler: EventHandler<never>,
   options: {
+    readonly name?: string;
     readonly durable?: boolean;
     readonly serializeBy?: (payload: never) => string;
   }
@@ -166,12 +178,7 @@ function register(
 
   const serialized = options.serializeBy !== undefined;
   const mode = serialized ? "fifo" : "durable";
-  const ordinalKey = `${ownerModuleId}:${key}:${mode}`;
-  const ordinal = (internals.ordinals.get(ordinalKey) ?? 0) + 1;
-
-  internals.ordinals.set(ordinalKey, ordinal);
-
-  const queue = queueName(ownerModuleId, event, mode, ordinal);
+  const queue = queueName(ownerModuleId, event, mode, options.name);
 
   const entry: DurableEntry = {
     queue,
@@ -201,7 +208,6 @@ export function createEventBus(input: {
   const internals: Internals = {
     fastByEvent: new Map(),
     durableByEvent: new Map(),
-    ordinals: new Map(),
     queues: new Map(),
   };
 
@@ -348,6 +354,7 @@ export function registerSubscription(
   subscription: {
     readonly event: EventContract<string, unknown>;
     readonly handler: EventHandler<never>;
+    readonly name?: string;
     readonly durable?: boolean;
     readonly serializeBy?: (payload: never) => string;
   }

@@ -147,6 +147,12 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
+  // A durable or serialized subscription's queue is named from its `name`, never from the
+  // declaration index, so a deploy that reorders same-mode subscriptions keeps every in-flight
+  // job on its own handler. The name is therefore required on a durable subscription and unique
+  // within the module (R-56).
+  const durableNames = new Set<string>();
+
   for (const subscription of module.subscriptions ?? []) {
     if (subscription.event.name.trim() === "") {
       problems.push(`Module "${id}" subscribes to an event with no name.`);
@@ -170,6 +176,25 @@ export function validateModule(module: Module): readonly string[] {
       problems.push(
         `Subscription to "${subscription.event.name}" sets serializeBy with durable false. serializeBy delivers durably.`
       );
+    }
+
+    const durable =
+      subscription.durable === true || subscription.serializeBy !== undefined;
+
+    if (durable) {
+      const name = subscription.name;
+
+      if (name === undefined || name.trim() === "") {
+        problems.push(
+          `Durable subscription to "${subscription.event.name}" needs a name. Its queue is named from the name, not the declaration index (R-56).`
+        );
+      } else if (durableNames.has(name)) {
+        problems.push(
+          `Subscription name "${name}" is declared more than once in module "${id}".`
+        );
+      } else {
+        durableNames.add(name);
+      }
     }
   }
 

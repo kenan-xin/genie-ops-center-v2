@@ -66,7 +66,9 @@ async function writeEffect(
 
 /**
  * The three delivery channels on one event (R-61): a fast in-process handler, a durable pg-boss
- * handler, and a serialized subscription keyed by the record id.
+ * handler, and a serialized subscription keyed by the record id. The durable and serialized ones
+ * carry a stable `name`, which their queue name derives from, so reordering them never reroutes an
+ * in-flight job (R-56).
  */
 const recordTouchedSubscriptions: readonly Subscription<RecordTouched>[] = [
   {
@@ -77,6 +79,7 @@ const recordTouchedSubscriptions: readonly Subscription<RecordTouched>[] = [
   },
   {
     event: recordTouched,
+    name: "durable",
     durable: true,
     handler: async (event, context) => {
       await writeEffect("durable", event, context);
@@ -84,6 +87,7 @@ const recordTouchedSubscriptions: readonly Subscription<RecordTouched>[] = [
   },
   {
     event: recordTouched,
+    name: "serialized",
     serializeBy: (payload) => payload.id,
     handler: async (event, context) => {
       await writeEffect("serialized", event, context);

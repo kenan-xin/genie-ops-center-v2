@@ -96,6 +96,7 @@ describe("validateModule", () => {
             version: 0,
             payload: z.object({}),
           },
+          name: "record-created",
           durable: true,
           handler: async () => {},
         },
@@ -139,16 +140,93 @@ describe("validateModule", () => {
         ...validModule,
         subscriptions: [
           { event: contract, handler: async () => {} },
-          { event: contract, durable: true, handler: async () => {} },
           {
             event: contract,
+            name: "durable",
             durable: true,
+            handler: async () => {},
+          },
+          {
+            event: contract,
+            name: "serialized",
             serializeBy: (payload: { id: string }) => payload.id,
             handler: async () => {},
           },
         ],
       })
     ).toEqual([]);
+  });
+
+  it("rejects a durable subscription with no name", () => {
+    const contract = {
+      name: "fixture.record.created",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+
+    const broken = {
+      ...validModule,
+      subscriptions: [
+        { event: contract, durable: true, handler: async () => {} },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Durable subscription to "fixture.record.created" needs a name'
+    );
+  });
+
+  it("rejects a serialized subscription with no name", () => {
+    const contract = {
+      name: "fixture.record.created",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+
+    const broken = {
+      ...validModule,
+      subscriptions: [
+        {
+          event: contract,
+          serializeBy: (payload: { id: string }) => payload.id,
+          handler: async () => {},
+        },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Durable subscription to "fixture.record.created" needs a name'
+    );
+  });
+
+  it("rejects duplicate subscription names within one module", () => {
+    const contract = {
+      name: "fixture.record.created",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+
+    const broken = {
+      ...validModule,
+      subscriptions: [
+        {
+          event: contract,
+          name: "record-created",
+          durable: true,
+          handler: async () => {},
+        },
+        {
+          event: contract,
+          name: "record-created",
+          serializeBy: (payload: { id: string }) => payload.id,
+          handler: async () => {},
+        },
+      ],
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Subscription name "record-created" is declared more than once'
+    );
   });
 
   it("rejects an identifier that is not kebab-case", () => {

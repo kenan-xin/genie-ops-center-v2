@@ -176,6 +176,11 @@ export type CapabilityProvision = {
  * runs it as a pg-boss job enqueued inside the emitting transaction, so it commits or rolls back
  * with the data and is delivered at least once. `serializeBy` implies durable and runs the jobs
  * for one key one at a time in emission order (R-53 to R-57).
+ *
+ * A durable or serialized subscription carries a required `name`, unique within its module and
+ * enforced by `validateModule`. Its pg-boss queue is named from the module id, the event
+ * name/version, the mode and that name, never from the declaration index, so reordering same-mode
+ * subscriptions between releases never reroutes an in-flight job. A fast subscription may omit it.
  */
 export type Subscription<TPayload> = {
   readonly event: EventContract<string, TPayload>;
@@ -183,6 +188,7 @@ export type Subscription<TPayload> = {
     event: EventEnvelope<TPayload>,
     context: TenantContext
   ) => Promise<void>;
+  readonly name?: string;
   readonly durable?: boolean;
   readonly serializeBy?: (payload: TPayload) => string;
 };
@@ -200,6 +206,7 @@ export type AnySubscription = {
     event: EventEnvelope<never>,
     context: TenantContext
   ) => Promise<void>;
+  readonly name?: string;
   readonly durable?: boolean;
   readonly serializeBy?: (payload: never) => string;
 };
