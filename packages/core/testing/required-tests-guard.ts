@@ -263,7 +263,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the typed event bus against Testcontainers Postgres keeps an idempotent effect after a durable handler is redelivered",
       "the typed event bus against Testcontainers Postgres enqueues durable work in the caller transaction so rollback discards the job",
       "the typed event bus against Testcontainers Postgres runs one serialized key in emission order while another key runs in parallel",
-      "the typed event bus against Testcontainers Postgres runs three serialized events emitted in one transaction in emission order",
+      "the typed event bus against Testcontainers Postgres runs eight serialized events emitted in one transaction in emission order",
       "the typed event bus against Testcontainers Postgres keeps later serialized jobs in key order after one delivery fails once",
       "the typed event bus against Testcontainers Postgres refuses direct durable subscriptions",
       "the typed event bus against Testcontainers Postgres refuses direct serialized subscriptions",
@@ -273,6 +273,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the typed event bus against Testcontainers Postgres keeps a module-owned durable event queued while its module is disabled",
       "the typed event bus against Testcontainers Postgres does not duplicate subscriptions when runtime registration repeats",
       "the typed event bus against Testcontainers Postgres logs each serialized dead-letter move promptly with its blocked key",
+      "the typed event bus against Testcontainers Postgres keeps a module subscription's queue name stable when same-mode subscriptions are reordered",
+      "the typed event bus against Testcontainers Postgres discards an after-commit entry registered through fn inside a rolled-back savepoint and runs a released one",
+      "the typed event bus against Testcontainers Postgres logs the dead-letter move when shutdown fails a last-attempt serialized job",
     ],
   },
   {

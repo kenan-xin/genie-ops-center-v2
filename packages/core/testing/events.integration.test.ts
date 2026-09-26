@@ -11,9 +11,15 @@ import {
   type TenantTransaction,
   withTransaction,
 } from "../src/lib/tenant-context/with-transaction.ts";
+import {
+  createEventBus,
+  durableEventQueues,
+  registerSubscription,
+} from "../src/services/event-bus/index.ts";
 import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
+import { startDisposableDeployment } from "./index.ts";
 import { startDisposablePostgres } from "./postgres.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration fixtures group contract data and setup together. */
@@ -241,6 +247,56 @@ const queueGateModule = {
       durable: true,
       handler: async (event: EventEnvelope<Payload>) => {
         queueGateDelivered.push(event.payload.id);
+      },
+    },
+  ],
+} as RuntimeModule;
+
+const abandonContract: EventContract<{ id: string; label: string }> = {
+  name: "event-shutdown.abandoned",
+  version: 1,
+  payload: z.object({ id: z.string(), label: z.string() }),
+};
+const abandonAttempts: string[] = [];
+
+const archiveHandler = async () => {};
+const notifyHandler = async () => {};
+
+function queueOf(
+  entries: ReturnType<typeof durableEventQueues>,
+  handler: () => Promise<void>
+): string | undefined {
+  return entries.find((entry) => entry.handler === handler)?.queue;
+}
+
+// SAFETY: this fixture substitutes the shutdown-abandon module's own declaration over the base
+// module, including its own migration ledger name: the omission check maps that name back to the
+// module id, so the base module's ledger would read as an installed "event-test" module. Its
+// handler never settles, so only the shutdown timeout can move its job.
+const abandonModule = {
+  ...eventModule,
+  identity: {
+    id: "event-shutdown",
+    displayName: "Event shutdown",
+    version: "0.0.0",
+  },
+  schema: {
+    tables: {},
+    migrations: () => [],
+    migrationsTable: "__drizzle_migrations_event_shutdown",
+  },
+  events: [abandonContract],
+  subscriptions: [
+    {
+      event: abandonContract,
+      serializeBy: (payload: Payload) => payload.id,
+      handler: async (event: EventEnvelope<Payload>) => {
+        // push returns the attempt number: one and two are retry fodder; from the third on
+        // (the queue's default retryLimit is 2) the handler hangs, so only the shutdown
+        // timeout can settle the job.
+        const attempt = abandonAttempts.push(event.payload.label);
+        if (attempt < 3) throw new Error("event-shutdown retry fodder");
+        await new Promise<void>(() => {});
       },
     },
   ],
@@ -533,7 +589,7 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     );
   });
 
-  it("runs three serialized events emitted in one transaction in emission order", async () => {
+  it("runs eight serialized events emitted in one transaction in emission order", async () => {
     const key = crypto.randomUUID();
     await withTransaction(context, async (tx) => {
       await context.events.emit(tx, serializedContract, {
@@ -548,18 +604,54 @@ describe("the typed event bus against Testcontainers Postgres", () => {
         id: key,
         label: "batch-3",
       });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-4",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-5",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-6",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-7",
+      });
+      await context.events.emit(tx, serializedContract, {
+        id: key,
+        label: "batch-8",
+      });
     });
 
     await waitUntil(
       async () =>
-        ["batch-1", "batch-2", "batch-3"].every((label) =>
-          serializedFinished.includes(label)
-        ),
+        [
+          "batch-1",
+          "batch-2",
+          "batch-3",
+          "batch-4",
+          "batch-5",
+          "batch-6",
+          "batch-7",
+          "batch-8",
+        ].every((label) => serializedFinished.includes(label)),
       "same-transaction serialized events did not finish"
     );
     expect(
       serializedStarted.filter((label) => label.startsWith("batch-"))
-    ).toEqual(["batch-1", "batch-2", "batch-3"]);
+    ).toEqual([
+      "batch-1",
+      "batch-2",
+      "batch-3",
+      "batch-4",
+      "batch-5",
+      "batch-6",
+      "batch-7",
+      "batch-8",
+    ]);
   });
 
   it("keeps later serialized jobs in key order after one delivery fails once", async () => {
@@ -803,5 +895,164 @@ describe("the typed event bus against Testcontainers Postgres", () => {
       "the second dead-letter move was not logged after operator deletion",
       10000
     );
+  });
+
+  it("keeps a module subscription's queue name stable when same-mode subscriptions are reordered", () => {
+    const namingContract: EventContract<{ id: string }> = {
+      name: "event-naming.record-touched",
+      version: 1,
+      payload: z.object({ id: z.string() }),
+    };
+    // `name` is the smallest stable identity a subscription can carry: a handler's identity does
+    // not survive a rebuild, so the queue name must come from an explicit name (or the event
+    // itself), never from the declaration index.
+    const archive = {
+      event: namingContract,
+      name: "archive",
+      serializeBy: (payload: { id: string }) => payload.id,
+      handler: archiveHandler,
+    };
+    const notify = {
+      event: namingContract,
+      name: "notify",
+      serializeBy: (payload: { id: string }) => payload.id,
+      handler: notifyHandler,
+    };
+
+    const queuesFor = (order: readonly (typeof archive)[]) => {
+      const bus = createEventBus({
+        jobQueue: context.jobQueue,
+        logger: silentLogger(),
+        tenant: () => context,
+      });
+      for (const subscription of order) {
+        registerSubscription(bus, "event-naming", subscription);
+      }
+      return durableEventQueues(bus);
+    };
+
+    const declared = queuesFor([archive, notify]);
+    const reordered = queuesFor([notify, archive]);
+
+    expect(queueOf(declared, archiveHandler)).toBe(
+      queueOf(reordered, archiveHandler)
+    );
+    expect(queueOf(declared, notifyHandler)).toBe(
+      queueOf(reordered, notifyHandler)
+    );
+    expect(queueOf(declared, archiveHandler)).not.toBe(
+      queueOf(declared, notifyHandler)
+    );
+  });
+
+  it("discards an after-commit entry registered through fn inside a rolled-back savepoint and runs a released one", async () => {
+    let rolledBackRan = false;
+    let releasedRan = false;
+
+    await withTransaction(context, async (tx, afterCommit) => {
+      await expect(
+        tx.transaction(async () => {
+          afterCommit(() => {
+            rolledBackRan = true;
+          });
+          throw new Error("rollback savepoint after-commit");
+        })
+      ).rejects.toThrow("rollback savepoint after-commit");
+
+      await tx.transaction(async () => {
+        afterCommit(() => {
+          releasedRan = true;
+        });
+      });
+    });
+
+    expect(rolledBackRan).toBe(false);
+    expect(releasedRan).toBe(true);
+  });
+
+  it("logs the dead-letter move when shutdown fails a last-attempt serialized job", async () => {
+    // The shutdown worker compiles only the abandon module, and the migration omission check
+    // refuses an image that drops an installed module, so this worker takes its own disposable
+    // deployment rather than the suite's database.
+    const deployment = await startDisposableDeployment([abandonModule]);
+    const source = {
+      DATABASE_URL: deployment.context.env.databaseUrl,
+      PUBLIC_URL: deployment.context.env.publicUrl,
+    };
+    const emitter = runtimeContext(deployment.context);
+    await registerModules(emitter, [abandonModule]);
+    await emitter.db.$client.query(
+      `insert into tenant_module (module_id, enabled) values ('event-shutdown', true)`
+    );
+
+    const key = crypto.randomUUID();
+    await withTransaction(emitter, async (tx) => {
+      await emitter.events.emit(tx, abandonContract, {
+        id: key,
+        label: "abandon-last",
+      });
+    });
+
+    const errors: string[] = [];
+    const abort = new AbortController();
+    const run = runWorker({
+      source,
+      modules: [abandonModule],
+      histories: [],
+      output: () => {},
+      errorOutput: (line) => errors.push(line),
+      signal: abort.signal,
+      shutdownTimeoutMs: 400,
+    });
+    void run.catch(() => {});
+
+    try {
+      // The first two attempts fail and are retried; the third fetch is the last attempt
+      // (queue default retryLimit 2), and its handler hangs, so only the shutdown timeout
+      // can settle the job: fetch claims it, abort abandons it, failAbandoned fails it.
+      try {
+        await waitUntil(
+          async () => abandonAttempts.length >= 3,
+          "the serialized job did not reach its last attempt before shutdown"
+        );
+      } catch (caught) {
+        const rows = await emitter.db.$client.query(
+          "select name, state, retry_count, retry_limit from pgboss.job where name like 'event.event-shutdown%'"
+        );
+        const detail = `attempts=${JSON.stringify(abandonAttempts)}; worker=${JSON.stringify(errors)}; jobs=${JSON.stringify(rows.rows)}`;
+        throw new Error(
+          `${caught instanceof Error ? caught.message : String(caught)}; ${detail}`,
+          { cause: caught }
+        );
+      }
+      abort.abort();
+      expect(await run).toBe(0);
+
+      // The move itself is failAbandoned's existing work; the R-57 line about it is the pin.
+      await waitUntil(
+        async () =>
+          (
+            await emitter.db.$client.query<{ count: number }>(
+              "select count(*)::int as count from pgboss.job where name = $1 and data::text like $2",
+              [
+                "event.event-shutdown.event-shutdown.abandoned.v1.fifo.dead-letter",
+                `%${key}%`,
+              ]
+            )
+          ).rows[0]?.count === 1,
+        "the abandoned last-attempt job did not reach the dead-letter queue"
+      );
+
+      const moves = errors.filter(
+        (line) => /dead.?letter/i.test(line) && line.includes(key)
+      );
+      expect(moves).toHaveLength(1);
+      expect(moves[0]).toContain("blocked keys");
+    } finally {
+      abort.abort();
+      await run.catch(() => undefined);
+      await stopJobQueue(emitter.jobQueue);
+      await deployment.stop();
+    }
   });
 });
