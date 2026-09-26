@@ -197,6 +197,23 @@ export async function withTransaction<T>(
 
   const afterCommit = openAfterCommitList();
 
+  /**
+   * The `afterCommit` argument `fn` receives. It resolves the innermost scope at call time, so an
+   * entry registered inside `tx.transaction(...)` joins that savepoint's list: a rolled-back
+   * savepoint discards it and a released one merges it into the parent, exactly like a fast
+   * handler emitted there (R-54, D-5). Registration after `fn` settles throws, because the
+   * enclosing scope is gone and the outer list is closed.
+   */
+  const registerAfterCommit: AfterCommit = (entry) => {
+    const scope = transactionScope.getStore();
+
+    if (scope === undefined) {
+      throw new Error("afterCommit can only be called while fn runs.");
+    }
+
+    scope.register(entry);
+  };
+
   const result = await context.db.transaction(async (tx) => {
     scopeSavepoints(tx, afterCommit.register);
 
@@ -204,7 +221,7 @@ export async function withTransaction<T>(
       { tx, register: afterCommit.register },
       async () => {
         try {
-          return await fn(tx, afterCommit.register);
+          return await fn(tx, registerAfterCommit);
         } finally {
           // Close registration the moment `fn` settles, before the commit, so a late call from an
           // un-awaited promise inside `fn` throws instead of running or vanishing silently.
