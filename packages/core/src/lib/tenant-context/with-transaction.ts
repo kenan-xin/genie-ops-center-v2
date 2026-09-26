@@ -14,30 +14,77 @@ const contextLoggers = new WeakMap<
   Pick<RedactingLogger, "error">
 >();
 
-/**
- * Marks the async context of a running `withTransaction` with its after-commit registration, so
- * any call made inside `fn` is refused instead of opening a second, independent top-level
- * transaction, and a service that emits into the transaction can find the list. The store follows
- * the async tree, so two concurrent calls in separate chains never see each other's mark.
- */
-const transactionScope = new AsyncLocalStorage<AfterCommit>();
+/** The transaction, or savepoint, that the running code holds, with its after-commit register. */
+type Scope = {
+  readonly tx: TenantTransaction;
+  readonly register: AfterCommit;
+};
 
 /**
- * The after-commit registration of the innermost running `withTransaction`. The event bus is the
- * caller: `events.emit` runs inside `fn` and its fast handlers belong to that transaction's
- * commit, so it takes the register from here rather than a second parameter. A call outside any
- * `withTransaction` throws, because there is no commit for a fast handler to follow.
+ * Marks the async context of a running `withTransaction` with its transaction and after-commit
+ * registration, so any call made inside `fn` is refused instead of opening a second, independent
+ * top-level transaction, and a service that emits into the transaction can find the list. A
+ * savepoint opened with `tx.transaction(...)` marks its own callback the same way. The store
+ * follows the async tree, so two concurrent calls in separate chains never see each other's mark.
  */
-export function currentAfterCommit(): AfterCommit {
-  const register = transactionScope.getStore();
+const transactionScope = new AsyncLocalStorage<Scope>();
 
-  if (register === undefined) {
+/**
+ * The after-commit registration of `tx`, which must be the transaction or savepoint that the
+ * innermost running `withTransaction` handed the caller. The event bus is the caller: `events.emit`
+ * runs inside `fn` and its fast handlers belong to that transaction's commit, so it takes the
+ * register from here rather than a second parameter. Any other transaction throws, a raw
+ * `db.transaction` included, because its commit is not one a fast handler can follow.
+ */
+export function currentAfterCommit(tx: TenantTransaction): AfterCommit {
+  const scope = transactionScope.getStore();
+
+  if (scope === undefined) {
     throw new Error(
       "events.emit requires withTransaction: an event is emitted inside the transaction whose commit delivers it."
     );
   }
 
-  return register;
+  if (scope.tx !== tx) {
+    throw new Error(
+      "events.emit takes the transaction that withTransaction, or a savepoint inside it, handed this code."
+    );
+  }
+
+  return scope.register;
+}
+
+/**
+ * Gives each savepoint opened with `tx.transaction(...)` its own after-commit list, which joins the
+ * parent's list only once the savepoint is released. A savepoint that rolls back discards its
+ * registrations with its writes, so a fast handler never runs for an event its durable job lost
+ * (R-54, D-5). Nested savepoints are scoped the same way.
+ */
+function scopeSavepoints(tx: TenantTransaction, register: AfterCommit): void {
+  const open = tx.transaction.bind(tx);
+
+  tx.transaction = async (fn) => {
+    const list = openAfterCommitList();
+
+    const result = await open(async (savepoint) =>
+      transactionScope.run(
+        { tx: savepoint, register: list.register },
+        async () => {
+          scopeSavepoints(savepoint, list.register);
+
+          try {
+            return await fn(savepoint);
+          } finally {
+            list.close();
+          }
+        }
+      )
+    );
+
+    for (const entry of list.entries) register(entry);
+
+    return result;
+  };
 }
 
 /**
@@ -150,17 +197,22 @@ export async function withTransaction<T>(
 
   const afterCommit = openAfterCommitList();
 
-  const result = await transactionScope.run(afterCommit.register, () =>
-    context.db.transaction(async (tx) => {
-      try {
-        return await fn(tx, afterCommit.register);
-      } finally {
-        // Close registration the moment `fn` settles, before the commit, so a late call from an
-        // un-awaited promise inside `fn` throws instead of running or vanishing silently.
-        afterCommit.close();
+  const result = await context.db.transaction(async (tx) => {
+    scopeSavepoints(tx, afterCommit.register);
+
+    return transactionScope.run(
+      { tx, register: afterCommit.register },
+      async () => {
+        try {
+          return await fn(tx, afterCommit.register);
+        } finally {
+          // Close registration the moment `fn` settles, before the commit, so a late call from an
+          // un-awaited promise inside `fn` throws instead of running or vanishing silently.
+          afterCommit.close();
+        }
       }
-    })
-  );
+    );
+  });
 
   await runAfterCommit(afterCommit.entries, logger);
 

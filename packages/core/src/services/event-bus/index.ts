@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { fromDrizzle, type PgBoss, type SendOptions } from "pg-boss";
+import { v7 as uuidv7 } from "uuid";
 
 import type { EventContract, EventEnvelope } from "../../../contracts/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
@@ -18,7 +19,11 @@ export type EventHandler<TPayload> = (
   context: TenantContext
 ) => Promise<void>;
 
-/** How a subscription is delivered (R-53). No option is fast; the durable options are below. */
+/**
+ * How a subscription is delivered (R-53). No option is fast; the durable options are below. Only a
+ * module's declared `subscriptions` may set them: `context.events.on` refuses both, because only
+ * the declared list is registered by the worker that drains the queues.
+ */
 export type SubscriptionOptions<TPayload> = {
   /**
    * Runs the handler as a pg-boss job enqueued inside the emitting transaction, so the job
@@ -56,8 +61,8 @@ export type DurableEventQueue = {
   readonly queue: string;
   /** The declared dead-letter queue, present exactly on a serialized queue (R-57). */
   readonly deadLetter: string | undefined;
-  /** The module whose entitlement gates this queue's jobs; a direct `on` registration has none. */
-  readonly ownerModuleId: string | undefined;
+  /** The module whose entitlement gates this queue's jobs. */
+  readonly ownerModuleId: string;
   readonly handler: (
     event: EventEnvelope<never>,
     context: TenantContext
@@ -68,8 +73,14 @@ type DurableEntry = DurableEventQueue & {
   readonly serializeBy: ((payload: never) => string) | undefined;
 };
 
+/** One fast handler, with the module whose entitlement gates it; a direct `on` has none. */
+type FastEntry = {
+  readonly handler: EventHandler<never>;
+  readonly ownerModuleId: string | undefined;
+};
+
 type Internals = {
-  readonly fastByEvent: Map<string, EventHandler<never>[]>;
+  readonly fastByEvent: Map<string, FastEntry[]>;
   readonly durableByEvent: Map<string, DurableEntry[]>;
   readonly ordinals: Map<string, number>;
   readonly queues: Map<string, Promise<PgBoss>>;
@@ -90,12 +101,12 @@ const contractKey = (event: {
  * repeated subscription of the same mode, in declaration order.
  */
 function queueName(
-  ownerModuleId: string | undefined,
+  ownerModuleId: string,
   event: { readonly name: string; readonly version: number },
   mode: "durable" | "fifo",
   ordinal: number
 ): string {
-  const base = `event.${ownerModuleId ?? "core"}.${event.name}.v${event.version}${
+  const base = `event.${ownerModuleId}.${event.name}.v${event.version}${
     mode === "fifo" ? ".fifo" : ""
   }`;
 
@@ -115,7 +126,8 @@ function intern(bus: EventBus): Internals {
 /**
  * The one registration path behind `on` and `registerSubscription`. A subscription with no
  * durable option joins the fast list of its event; a durable or serialized one takes a queue of
- * its own, with the owning module's id when a module declared it.
+ * its own, named after the module that declared it. A direct `on` has no module, so it may only
+ * register a fast handler.
  */
 function register(
   bus: EventBus,
@@ -128,26 +140,33 @@ function register(
   }
 ): void {
   const key = contractKey(event);
+  const internals = intern(bus);
+
+  // serializeBy is durable delivery, so `durable: false` beside it contradicts it (R-56).
+  if (options.durable === false && options.serializeBy !== undefined) {
+    throw new Error(
+      `Subscription to "${event.name}" sets serializeBy with durable false. serializeBy delivers durably.`
+    );
+  }
 
   if (options.durable !== true && options.serializeBy === undefined) {
-    const handlers = intern(bus).fastByEvent.get(key) ?? [];
+    const handlers = internals.fastByEvent.get(key) ?? [];
 
-    handlers.push(handler);
-    intern(bus).fastByEvent.set(key, handlers);
+    handlers.push({ handler, ownerModuleId });
+    internals.fastByEvent.set(key, handlers);
 
     return;
   }
 
-  if (options.durable === true && options.serializeBy !== undefined) {
+  if (ownerModuleId === undefined) {
     throw new Error(
-      `Subscription to "${event.name}" sets both durable and serializeBy. serializeBy already implies durable.`
+      `events.on("${event.name}") is fast only. Declare a durable or serialized subscription in the module's subscriptions, which the worker drains.`
     );
   }
 
-  const internals = intern(bus);
   const serialized = options.serializeBy !== undefined;
   const mode = serialized ? "fifo" : "durable";
-  const ordinalKey = `${ownerModuleId ?? "core"}:${key}:${mode}`;
+  const ordinalKey = `${ownerModuleId}:${key}:${mode}`;
   const ordinal = (internals.ordinals.get(ordinalKey) ?? 0) + 1;
 
   internals.ordinals.set(ordinalKey, ordinal);
@@ -238,6 +257,9 @@ export function createEventBus(input: {
       ),
 
     emit: async (tx, event, payload) => {
+      // Taken first and always, so an emit on a transaction withTransaction did not open throws
+      // whether or not the event has a fast subscriber today (D-5).
+      const afterCommit = currentAfterCommit(tx);
       // The parse runs before anything is registered, so an invalid payload throws inside the
       // transaction and the whole emission rolls back with it.
       const parsed = event.payload.parse(payload);
@@ -257,14 +279,25 @@ export function createEventBus(input: {
       if (fast !== undefined && fast.length > 0) {
         // The fast channel runs once the commit is durable, at most once and best effort: a crash
         // between the commit and the dispatch loses it (R-53, D-5). A failing handler is recorded
-        // and never stops its siblings or rejects the committed caller.
-        currentAfterCommit()(async () => {
-          for (const handler of fast) {
+        // and never stops its siblings or rejects the committed caller. A module's handler runs only
+        // while the module is enabled, like its durable queues (R-60, D-11).
+        afterCommit(async () => {
+          const tenant = input.tenant();
+
+          for (const { handler, ownerModuleId } of fast) {
             try {
+              if (
+                ownerModuleId !== undefined &&
+                // oxlint-disable-next-line no-await-in-loop -- the reader is cached for 10 s
+                !(await tenant.entitlements.isEnabled(ownerModuleId))
+              ) {
+                continue;
+              }
+
               // SAFETY: the erased registry hands every handler the envelope it was given, whose
               // payload this emit just parsed with the event's own schema.
               // oxlint-disable-next-line no-await-in-loop -- siblings observe each other's effects
-              await handler(envelope as EventEnvelope<never>, input.tenant());
+              await handler(envelope as EventEnvelope<never>, tenant);
             } catch (error) {
               input.logger.error(
                 { err: error, event: event.name },
@@ -282,8 +315,11 @@ export function createEventBus(input: {
         // back with the data. A serialized job carries the key as singletonKey, which the
         // key_strict_fifo policy requires, at the default priority (R-56). Each send awaits its
         // turn: they all run on the caller's one transaction connection, which cannot pipeline.
+        // Every job of one transaction gets the same created_on, the transaction start, so a key's
+        // head falls to the id tie-break: a UUIDv7 minted here, monotonic in this process, keeps
+        // the same-key jobs of one transaction in emission order.
         const boss = await ensureQueue(entry);
-        const options: SendOptions = { db: fromDrizzle(tx, sql) };
+        const options: SendOptions = { db: fromDrizzle(tx, sql), id: uuidv7() };
 
         if (entry.serializeBy !== undefined) {
           // SAFETY: the key function was registered against this event's payload type; the value

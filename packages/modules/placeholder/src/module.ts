@@ -145,7 +145,7 @@ export const placeholderModule = {
   },
 
   schema: {
-    tables: { placeholderRecord },
+    tables: { placeholderRecord, placeholderEventEffect },
     migrations: MIGRATIONS,
     migrationsTable: MIGRATIONS_TABLE,
   },

@@ -158,14 +158,14 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
-    // One spelling per semantic: serializeBy already implies durable, so a subscription that sets
-    // both declares its delivery twice (R-53, R-56).
+    // serializeBy is durable delivery: `durable: true` beside it is redundant but true, while
+    // `durable: false` contradicts it (R-53, R-56).
     if (
-      subscription.durable === true &&
+      subscription.durable === false &&
       subscription.serializeBy !== undefined
     ) {
       problems.push(
-        `Subscription to "${subscription.event.name}" sets both durable and serializeBy. serializeBy already implies durable.`
+        `Subscription to "${subscription.event.name}" sets serializeBy with durable false. serializeBy delivers durably.`
       );
     }
   }

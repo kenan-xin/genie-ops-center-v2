@@ -18,10 +18,7 @@ import {
   type TenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
-import {
-  durableEventQueues,
-  type DurableEventQueue,
-} from "../event-bus/index.ts";
+import { durableEventQueues } from "../event-bus/index.ts";
 import {
   createBoss,
   DECLARATION_SCHEDULE_KEY_PREFIX,
@@ -121,6 +118,9 @@ type QueueLoop = {
   readonly run: (data: JobData) => Promise<void>;
 };
 
+/** One durable event queue: a queue loop plus the dead-letter queue of a serialized one. */
+type EventLoop = QueueLoop & { readonly deadLetter: string | undefined };
+
 function safe(text: string): string {
   // SAFETY: a string in is a string out; the union return is `redact`'s json surface.
   return redact(text) as string;
@@ -201,12 +201,17 @@ async function drain(
  * fetch itself refuses the key of a job that is active, in retry or failed, so the loop keeps
  * fetching while an earlier handler is still running. The entitlement check runs before `fetch`,
  * as with jobs. A cap on in-flight handlers bounds a durable queue's backlog.
+ *
+ * A serialized job that fails its last attempt moves to its dead-letter queue and blocks its key.
+ * The loop reports that move at error level right after the failure, with the key and the queue's
+ * blocked keys, because the line is what tells an operator which keys to retry or delete (R-57).
  */
 /* oxlint-disable no-await-in-loop -- one queue, many concurrent keys. */
 async function drainEvents(
   boss: PgBoss,
-  loop: QueueLoop,
+  loop: EventLoop,
   claims: Claims,
+  logger: Pick<RedactingLogger, "warn">,
   options: WorkerOptions
 ): Promise<void> {
   const inFlight = new Map<string, Promise<void>>();
@@ -219,7 +224,9 @@ async function drainEvents(
         inFlight.size < MAX_EVENT_HANDLERS_IN_FLIGHT &&
         (await loop.mayRun())
       ) {
-        const [job] = await boss.fetch<JobData>(loop.name);
+        const [job] = await boss.fetch<JobData>(loop.name, {
+          includeMetadata: true,
+        });
 
         if (job !== undefined) {
           fetched = true;
@@ -229,23 +236,45 @@ async function drainEvents(
             (async () => {
               try {
                 await loop.run(job.data);
+
+                if (claims.abandoned) return dropLate();
+
                 await boss.complete(loop.name, job.id);
               } catch (caught) {
-                if (caught !== ABANDONED) {
+                // Past the shutdown timeout the job is already failed, so a late result is dropped.
+                if (claims.abandoned) return dropLate();
+
+                const message = describe(
+                  caught instanceof Error ? caught : undefined
+                );
+
+                options.errorOutput(`worker: ${loop.name}: ${message}`);
+
+                const failed = await boss
+                  .fail(loop.name, job.id, { message })
+                  .then(() => true)
+                  .catch(() => false);
+
+                // The last attempt failed: pg-boss moved the job to the dead-letter queue.
+                if (
+                  failed &&
+                  loop.deadLetter !== undefined &&
+                  job.retryCount >= job.retryLimit
+                ) {
+                  // SAFETY: an empty list is the answer when the queue cannot be asked, so the
+                  // line is still written with the dead-letter move it accompanies.
+                  const blocked = await boss
+                    .getBlockedKeys(loop.name)
+                    .catch(() => [] as string[]);
+
                   options.errorOutput(
-                    `worker: ${loop.name}: ${describe(
-                      caught instanceof Error ? caught : undefined
-                    )}`
+                    `worker: ${loop.name}: a serialized job for key "${
+                      job.singletonKey ?? ""
+                    }" exhausted its retries and was moved to the dead-letter queue "${
+                      loop.deadLetter
+                    }"; blocked keys: ${blocked.join(", ") || "none"}`
                   );
                 }
-
-                await boss
-                  .fail(loop.name, job.id, {
-                    message: describe(
-                      caught instanceof Error ? caught : undefined
-                    ),
-                  })
-                  .catch(() => undefined);
               } finally {
                 claims.held.delete(job.id);
                 inFlight.delete(job.id);
@@ -255,8 +284,6 @@ async function drainEvents(
         }
       }
     } catch (caught) {
-      if (caught === ABANDONED) break;
-
       options.errorOutput(
         `worker: ${loop.name}: ${describe(caught instanceof Error ? caught : undefined)}`
       );
@@ -264,9 +291,11 @@ async function drainEvents(
 
     if (fetched) continue;
 
-    // Nothing fetched: wait for a handler to settle or the poll interval to pass, then look again.
+    // Nothing fetched: wait for one handler to settle or the poll interval to pass, then look
+    // again. With nothing in flight only the sleep counts, so a disabled or empty queue never spins.
+    // Each in-flight promise catches its own failure, so the race never rejects.
     await Promise.race([
-      Promise.allSettled(inFlight.values()).then(() => undefined),
+      ...inFlight.values(),
       sleep(POLL_INTERVAL_MS, undefined, { signal: options.signal }).catch(
         () => undefined
       ),
@@ -276,57 +305,11 @@ async function drainEvents(
   // The signal aborted: let the handlers already running settle, like `drain` does, so a graceful
   // stop completes them; the shutdown timeout and `failAbandoned` cover the ones that never do.
   await Promise.allSettled(inFlight.values());
-}
-/* oxlint-enable no-await-in-loop */
 
-/**
- * Watches one serialized queue's dead-letter queue and reports each arrival at error level with
- * the queue's blocked keys (R-56, R-57): a job that exhausted its retries holds its key until an
- * operator retries or deletes it, and this line is what tells the operator which keys those are.
- * The jobs stay in the dead-letter queue for that recovery; this watch never consumes them.
- */
-/* oxlint-disable no-await-in-loop -- a watch polls until the signal aborts. */
-async function watchDeadLetter(
-  boss: PgBoss,
-  subscription: DurableEventQueue & { readonly deadLetter: string },
-  options: WorkerOptions
-): Promise<void> {
-  let reported: number | undefined;
-
-  while (!options.signal.aborted) {
-    try {
-      const deadLetter = await boss.getQueue(subscription.deadLetter);
-      const count = deadLetter?.totalCount ?? 0;
-
-      // The first poll only takes the baseline: moves that happened before this run are the
-      // runbook's to find, and the log names what this run watched arrive.
-      if (reported === undefined || count > reported) {
-        if (reported !== undefined) {
-          // SAFETY: an empty list is the answer when the queue cannot be asked, so the line is
-          // still written with the dead-letter move it accompanies.
-          const blocked = await boss
-            .getBlockedKeys(subscription.queue)
-            .catch(() => [] as string[]);
-
-          options.errorOutput(
-            `worker: ${subscription.queue}: a serialized job exhausted its retries and was moved to the dead-letter queue "${subscription.deadLetter}"; blocked keys: ${
-              blocked.join(", ") || "none"
-            }`
-          );
-        }
-
-        reported = count;
-      }
-    } catch (caught) {
-      options.errorOutput(
-        `worker: ${subscription.queue}: ${describe(
-          caught instanceof Error ? caught : undefined
-        )}`
-      );
-    }
-
-    await sleep(POLL_INTERVAL_MS, undefined, { signal: options.signal }).catch(
-      () => undefined
+  function dropLate(): void {
+    logger.warn(
+      { queue: loop.name },
+      "an event handler settled after the shutdown timeout; its result is dropped"
     );
   }
 }
@@ -474,13 +457,12 @@ async function serve(
     })),
   ];
 
-  // A durable event handler runs under its owning module's entitlement, like a declared job; a
-  // direct `on` registration owns no module, so its queue is core's and never entitled.
+  // A durable event handler runs under its owning module's entitlement, like a declared job.
   // SAFETY: an event queue carries only the envelopes its own subscription enqueued.
-  const eventLoops = subscriptions.map((subscription): QueueLoop => ({
+  const eventLoops = subscriptions.map((subscription): EventLoop => ({
     name: subscription.queue,
+    deadLetter: subscription.deadLetter,
     mayRun: async () =>
-      subscription.ownerModuleId === undefined ||
       context.entitlements.isEnabled(subscription.ownerModuleId),
     run: async (data) => subscription.handler(data as never, context),
   }));
@@ -499,17 +481,8 @@ async function serve(
         drain(boss, loop, claims, logger, options)
       ),
       ...eventLoops.map(async (loop) =>
-        drainEvents(boss, loop, claims, options)
+        drainEvents(boss, loop, claims, logger, options)
       ),
-      ...subscriptions
-        .filter(
-          (
-            subscription
-          ): subscription is DurableEventQueue & {
-            readonly deadLetter: string;
-          } => subscription.deadLetter !== undefined
-        )
-        .map((subscription) => watchDeadLetter(boss, subscription, options)),
     ]).then(() => true),
     elapsedAfterAbort(options.signal, limit, drained.signal),
   ]);
