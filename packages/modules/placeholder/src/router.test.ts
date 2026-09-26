@@ -43,7 +43,21 @@ function readersTripwire(): Pick<
       get: () => Promise.reject(new Error("the router read a reader")),
     },
     entitlements: {
-      isEnabled: () => Promise.reject(new Error("the router read a reader")),
+      isEnabled: () => Promise.resolve(true),
+    },
+  };
+}
+
+function contextWithModuleDisabled(
+  read: Parameters<typeof createRequestPrincipal>[1]
+): ModuleRequestContext {
+  const context = contextWith(read);
+
+  return {
+    ...context,
+    tenant: {
+      ...context.tenant,
+      entitlements: { isEnabled: () => Promise.resolve(false) },
     },
   };
 }
@@ -125,6 +139,16 @@ describe("the placeholder router", () => {
     const caller = placeholderRouter.createCaller(contextWith(grantsNothing));
 
     expect(caller.read).toBeTypeOf("function");
+  });
+
+  it("refuses a disabled placeholder through its own procedure", async () => {
+    const caller = placeholderRouter.createCaller(
+      contextWithModuleDisabled(createStubGrantReader())
+    );
+
+    await expect(caller.read()).rejects.toMatchObject({
+      cause: { code: "module-disabled" },
+    });
   });
 
   it("refuses a caller without placeholder:read, before reading anything", async () => {

@@ -1,4 +1,5 @@
 import {
+  createTenantContext,
   createRequestPrincipal,
   createStubGrantReader,
   type ModuleRequestContext,
@@ -57,6 +58,37 @@ describe("the placeholder read procedure against a real database", () => {
     );
 
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("refuses the read with module-disabled when the placeholder entitlement is off", async () => {
+    const tenant = createTenantContext(
+      {
+        DATABASE_URL: deployment.context.env.databaseUrl,
+        PUBLIC_URL: deployment.context.env.publicUrl,
+      },
+      { error: () => {}, info: () => {} },
+      ["placeholder"]
+    );
+
+    try {
+      await tenant.db.$client.query(
+        "insert into tenant_module (module_id, enabled) values ('placeholder', false) on conflict (module_id) do update set enabled = false"
+      );
+
+      const caller = placeholderRouter.createCaller({
+        tenant,
+        caller: createRequestPrincipal(
+          { userId: "u1", groups: [] },
+          createStubGrantReader()
+        ),
+      } satisfies ModuleRequestContext);
+
+      await expect(caller.read()).rejects.toMatchObject({
+        cause: { code: "module-disabled" },
+      });
+    } finally {
+      await tenant.db.$client.end();
+    }
   });
 
   it("keeps core's ledger and the module's ledger apart", async () => {

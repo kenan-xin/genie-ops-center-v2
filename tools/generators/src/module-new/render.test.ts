@@ -201,6 +201,15 @@ describe("the rendered declaration", () => {
     expect(router).toContain('can(ctx.caller, "demo:read")');
     expect(router).not.toContain("drizzle-orm/node-postgres");
   });
+
+  it("builds the module router with core's per-procedure tRPC builder", () => {
+    const router = read("packages/modules/demo/src/router.ts");
+
+    expect(router).toContain('createModuleTRPC("demo")');
+    expect(router).toContain('from "@genie/core"');
+    expect(router).not.toContain('from "@trpc/server"');
+    expect(router).not.toContain("initTRPC");
+  });
 });
 
 describe("the rendered user interface", () => {

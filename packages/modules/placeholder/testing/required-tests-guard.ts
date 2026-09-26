@@ -26,6 +26,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "the placeholder read procedure against a real database answers the rows this deployment holds",
       "the placeholder read procedure against a real database refuses a caller without the key, and reads nothing",
+      "the placeholder read procedure against a real database refuses the read with module-disabled when the placeholder entitlement is off",
       "the placeholder read procedure against a real database keeps core's ledger and the module's ledger apart",
       "the placeholder read procedure against a real database recorded the module's one migration in the module's ledger",
     ],

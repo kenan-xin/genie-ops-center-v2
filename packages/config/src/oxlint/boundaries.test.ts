@@ -251,6 +251,16 @@ describe.concurrent(
       expect(result.output).not.toMatch(/no-restricted-imports/);
     });
 
+    it("stops a module importing initTRPC from @trpc/server", async () => {
+      const result = await lintAt(
+        "packages/modules/alpha/src/__boundary__.ts",
+        `import { initTRPC } from "@trpc/server";\n\nvoid initTRPC;\n`
+      );
+
+      expect(result.failed).toBe(true);
+      expect(result.output).toContain("no-restricted-imports");
+    });
+
     it("stops a module from importing the application", async () => {
       const result = await lintAt(
         "packages/modules/alpha/__boundary__/__boundary__.ts",

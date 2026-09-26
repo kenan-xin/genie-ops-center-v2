@@ -119,6 +119,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/module-batch.integration.test.ts",
+    cases: [
+      "module procedures in one tRPC batch answers an enabled module call while refusing only the disabled module call",
+    ],
+  },
+  {
     file: "testing/setup-gate.integration.test.ts",
     cases: [
       "the setup gate reports degraded health with the standard security headers before setup",
