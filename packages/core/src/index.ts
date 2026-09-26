@@ -54,10 +54,17 @@ export {
   scopesFor,
 } from "./services/authorization/index.ts";
 
+export { enabledNavigation } from "./lib/entitlement/index.ts";
+
 export {
-  assertModulesEnabled,
-  enabledNavigation,
-} from "./lib/entitlement/index.ts";
+  createModuleTRPC,
+  type ModuleTRPCContext,
+} from "./lib/entitlement/module-trpc.ts";
+
+// The one tRPC value a module still raises, re-exported so a module router builds entirely on
+// core: its `can()` denial throws a `FORBIDDEN` `TRPCError` without importing `@trpc/server`
+// (d1y, the oxlint `no-restricted-imports` override bans `initTRPC` there).
+export { TRPCError } from "@trpc/server";
 
 export type {
   PermissionKey,

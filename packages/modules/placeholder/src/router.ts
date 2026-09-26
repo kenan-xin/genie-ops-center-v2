@@ -1,14 +1,15 @@
-import { can, type ModuleRequestContext } from "@genie/core";
-import { TRPCError, initTRPC } from "@trpc/server";
+import { can, createModuleTRPC, TRPCError } from "@genie/core";
 
 import { placeholderRecord } from "./schema.ts";
 
-const t = initTRPC.context<ModuleRequestContext>().create();
+const t = createModuleTRPC("placeholder");
 
 /**
  * The module's one router, mounted under the module id when the module is enabled. Every
- * procedure checks `can()` first and reads only through `ctx.tenant.db` (DEC-34, DEC-39). The
- * dot in the path `placeholder.read` is a tRPC path, not the permission key.
+ * procedure checks `can()` first and reads only through `ctx.tenant.db` (DEC-34, DEC-39), and
+ * the `createModuleTRPC` base refuses the call with `module-disabled` when the placeholder
+ * entitlement is off, before any resolver runs (d1y). The dot in the path `placeholder.read` is
+ * a tRPC path, not the permission key.
  */
 export const placeholderRouter = t.router({
   read: t.procedure.query(async ({ ctx }) => {

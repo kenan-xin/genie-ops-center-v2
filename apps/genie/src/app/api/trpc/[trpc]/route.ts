@@ -1,19 +1,11 @@
-import {
-  assertModulesEnabled,
-  createRequestPrincipal,
-  createStubGrantReader,
-} from "@genie/core";
+import { createRequestPrincipal, createStubGrantReader } from "@genie/core";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { CONTEXT_HEADER, requireContext } from "../../../../context.ts";
-import { compiledModuleIds } from "../../../../registry.ts";
 import { newRequestId } from "../../../../request-id.ts";
 import { appRouter } from "../../../../trpc/root.ts";
 
 export const dynamic = "force-dynamic";
-
-/** The compiled ids as a set, built once, so the gate answers a call with one lookup. */
-const COMPILED_MODULE_IDS: ReadonlySet<string> = new Set(compiledModuleIds);
 
 async function handler(request: Request): Promise<Response> {
   const app = requireContext();
@@ -29,17 +21,7 @@ async function handler(request: Request): Promise<Response> {
     endpoint: "/api/trpc",
     req: request,
     router: appRouter,
-    createContext: async ({ info }) => {
-      // R-8: refuse a call to a compiled module whose entitlement is off, before
-      // any resolver runs. The throw is a catalogue `AppError`, so the formatter
-      // below answers HTTP 403 with app code `module-disabled`.
-      await assertModulesEnabled({
-        entitlements: app.tenant.entitlements,
-        compiledModuleIds: COMPILED_MODULE_IDS,
-        calls: info.calls,
-        requestId,
-      });
-
+    createContext: async () => {
       return {
         app,
         requestId,

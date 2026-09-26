@@ -282,17 +282,18 @@ export const MIGRATIONS = () => migrationsFromJournal(journal, MIGRATION_FILES);
 `;
 
 const router: Template = (names) =>
-  `import { can, type ModuleRequestContext } from "@genie/core";
-import { TRPCError, initTRPC } from "@trpc/server";
+  `import { can, createModuleTRPC, TRPCError } from "@genie/core";
 
 import { ${names.camel}Record } from "./schema.ts";
 
-const t = initTRPC.context<ModuleRequestContext>().create();
+const t = createModuleTRPC("${names.id}");
 
 /**
  * The module's router, mounted under the module id when the module is enabled. Every procedure
- * checks \`can()\` first and reads only through \`ctx.tenant.db\` (DEC-34, DEC-39). The dot in the
- * path \`${names.id}.read\` is a tRPC path, not the permission key.
+ * checks \`can()\` first and reads only through \`ctx.tenant.db\` (DEC-34, DEC-39), and the
+ * \`createModuleTRPC\` base refuses the call with \`module-disabled\` when the entitlement is
+ * off, before any resolver runs. The dot in the path \`${names.id}.read\` is a tRPC path, not
+ * the permission key.
  */
 export const ${names.camel}Router = t.router({
   read: t.procedure.query(async ({ ctx }) => {
@@ -879,7 +880,7 @@ const integrationTest: Template = (names) =>
   createStubGrantReader,
   type ModuleRequestContext,
 } from "@genie/core";
-import { startDisposableDeployment } from "@genie/core/testing";
+import { enableModules, startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ${names.camel}Module } from "../src/module.ts";
@@ -890,15 +891,18 @@ import { insert${names.pascal}Record } from "./factories.ts";
  * This module against a real Postgres, with the real histories applied. No part of the database
  * is mocked (R-38).
  *
- * The Section 0 authorization stub grants one key, and it is not this module's. So the proof
- * here is refusal: the router denies every caller, and no protected row reaches one. A test
- * that needs a granted key is not fixed by widening the stub; it waits for real roles in
+ * The deployment starts with the module disabled, so the setup enables it: the read procedure's
+ * \`createModuleTRPC\` gate refuses a disabled module with \`module-disabled\` before \`can()\`
+ * runs, and the cases below prove the authorization refusal, not the entitlement one. The Section
+ * 0 authorization stub grants one key, and it is not this module's, so every caller is refused.
+ * A test that needs a granted key is not fixed by widening the stub; it waits for real roles in
  * Section 2.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([${names.camel}Module]);
+  await enableModules(deployment.context, ["${names.id}"]);
 }, 120000);
 
 afterAll(async () => {

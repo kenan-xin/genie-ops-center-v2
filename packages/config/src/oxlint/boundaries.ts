@@ -7,6 +7,8 @@ type RestrictedGroup = {
   readonly message: string;
   /** Oxlint defaults this to false. Only the contracts entry sets it (R-7, DEC-42). */
   readonly allowTypeImports?: boolean;
+  /** Names imported from a module in `group` that are refused; other names stay allowed. */
+  readonly importNames?: readonly string[];
 };
 
 /** The shape Oxlint's `no-restricted-imports` schema accepts, ready to serialize. */
@@ -14,6 +16,7 @@ type SerializedRestrictedGroup = {
   group: string[];
   message: string;
   allowTypeImports?: boolean;
+  importNames?: string[];
 };
 
 /**
@@ -31,6 +34,10 @@ function serializeRestrictedGroup(
 
   if (pattern.allowTypeImports !== undefined) {
     serialized.allowTypeImports = pattern.allowTypeImports;
+  }
+
+  if (pattern.importNames !== undefined) {
+    serialized.importNames = [...pattern.importNames];
   }
 
   return serialized;
@@ -229,6 +236,12 @@ const MODULE_LAYER: readonly RestrictedGroup[] = [
   {
     group: DRIVERS,
     message: "a module reads the database through ctx.tenant.db (DEC-34).",
+  },
+  {
+    group: ["@trpc/server"],
+    importNames: ["initTRPC"],
+    message:
+      "a module builds its router from core's createModuleTRPC, never its own initTRPC root (d1y).",
   },
   NO_TOOLING,
 ];
