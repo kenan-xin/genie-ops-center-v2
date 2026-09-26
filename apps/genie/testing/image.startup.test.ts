@@ -1045,7 +1045,21 @@ describe("the running Section 1 image processes", () => {
         );
       });
 
-    const liveCounts = await connectionCounts();
+    // The setup waits for the app's health only, so the worker may still be starting. Wait until
+    // both processes hold a session, then assert on that reading.
+    let liveCounts = await connectionCounts();
+    const liveDeadline = Date.now() + 60000;
+
+    /* eslint-disable no-await-in-loop */
+    while (
+      Date.now() < liveDeadline &&
+      (liveCounts["genie-app"] === undefined ||
+        liveCounts["genie-worker"] === undefined)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      liveCounts = await connectionCounts();
+    }
+    /* eslint-enable no-await-in-loop */
 
     const lockClient = await pool().connect();
     await lockClient.query("select pg_advisory_lock($1)", [
