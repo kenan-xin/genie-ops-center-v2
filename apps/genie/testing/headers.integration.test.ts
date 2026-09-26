@@ -6,6 +6,7 @@ import {
 import { placeholderModule } from "@genie/module-placeholder";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 const FIVE = [
@@ -32,7 +33,10 @@ beforeAll(async () => {
   // R-8 reads the placeholder as disabled and refuses `placeholder.read`.
   await enableModules(deployment.context, ["placeholder"]);
 
-  server = await startBuiltApp(deployment.context.env.databaseUrl, 3411);
+  server = await startBuiltApp(
+    deployment.context.env.databaseUrl,
+    imageHostPort(3411)
+  );
 }, 240000);
 
 afterAll(async () => {

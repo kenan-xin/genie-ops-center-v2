@@ -5,6 +5,7 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import {
   countInWindow,
   logsUntilOrThrow,
@@ -40,7 +41,7 @@ import {
  * target's own request line cannot serve as the barrier, because the proxy
  * writes it before the provider runs.
  */
-const PORT = 3412;
+const PORT = imageHostPort(3412);
 
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 

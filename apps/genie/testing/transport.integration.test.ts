@@ -17,6 +17,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { t } from "../src/trpc/init.ts";
+import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 // Drizzle creates its ledger in the `drizzle` schema, not `public`.
@@ -103,7 +104,10 @@ beforeAll(async () => {
   // R-8 reads the placeholder as disabled and refuses `placeholder.read`.
   await enableModules(deployment.context, ["placeholder"]);
 
-  server = await startBuiltApp(deployment.context.env.databaseUrl, 3410);
+  server = await startBuiltApp(
+    deployment.context.env.databaseUrl,
+    imageHostPort(3410)
+  );
 }, 240000);
 
 afterAll(async () => {

@@ -14,6 +14,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { CONTEXT_HEADER } from "../src/context.ts";
+import { imageHostPort } from "./image-ports.ts";
 import {
   HOST_ALIAS,
   IMAGE,
@@ -372,11 +373,11 @@ describe("the built image", () => {
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: "https://example.invalid",
       },
-      3415
+      imageHostPort(3415)
     );
 
     try {
-      await pollHealth(3415);
+      await pollHealth(imageHostPort(3415));
 
       const worker = await run("docker", [
         "run",
@@ -441,11 +442,11 @@ describe("the built image", () => {
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: "https://example.invalid",
       },
-      3399
+      imageHostPort(3399)
     );
 
     try {
-      const observations = await pollHealth(3399);
+      const observations = await pollHealth(imageHostPort(3399));
 
       expect(
         observations.some((observation) => observation.status === 200)
@@ -473,11 +474,11 @@ describe("the built image", () => {
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: "https://example.invalid",
       },
-      3406
+      imageHostPort(3406)
     );
 
     try {
-      await pollHealth(3406);
+      await pollHealth(imageHostPort(3406));
 
       const result = await run("docker", [
         "exec",
@@ -548,15 +549,17 @@ describe("the built image", () => {
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: "https://example.invalid",
       },
-      3405
+      imageHostPort(3405)
     );
 
     try {
       // Readiness uses `/api/health`, which never touches `/api/status`, so the
       // status request lines read below are only this test's own request.
-      await pollHealth(3405);
+      await pollHealth(imageHostPort(3405));
 
-      const response = await fetch("http://127.0.0.1:3405/api/status");
+      const response = await fetch(
+        `http://127.0.0.1:${imageHostPort(3405)}/api/status`
+      );
 
       expect(response.status).toBe(200);
 
@@ -605,7 +608,7 @@ describe("the built image", () => {
         PUBLIC_URL: "https://example.invalid",
         LOCK_TIMEOUT_MS: "120000",
       },
-      3404
+      imageHostPort(3404)
     );
 
     try {
@@ -700,11 +703,11 @@ describe("the built image", () => {
         PUBLIC_URL: "https://example.invalid",
         LOCK_TIMEOUT_MS: "3000",
       },
-      3401
+      imageHostPort(3401)
     );
 
     try {
-      const observations = await pollHealth(3401, 20);
+      const observations = await pollHealth(imageHostPort(3401), 20);
 
       expect(
         observations.every((observation) => observation.status !== 200)
@@ -812,16 +815,16 @@ describe("the built image", () => {
         PUBLIC_URL: "https://example.invalid",
         LOG_LEVEL: "info",
       },
-      3402
+      imageHostPort(3402)
     );
 
     try {
-      await pollHealth(3402);
+      await pollHealth(imageHostPort(3402));
 
       const responses = await Promise.all(
         Array.from({ length: 24 }, (_, index) =>
           fetch(
-            `http://127.0.0.1:3402${ROUTE_CLASSES[index % ROUTE_CLASSES.length]}`
+            `http://127.0.0.1:${imageHostPort(3402)}${ROUTE_CLASSES[index % ROUTE_CLASSES.length]}`
           ).then(
             async (response) => ({
               status: response.status,
@@ -932,11 +935,11 @@ describe("the built image", () => {
     try {
       const image = await startImage(
         { DATABASE_URL: second.url, PUBLIC_URL: "https://second.invalid" },
-        3403
+        imageHostPort(3403)
       );
 
       try {
-        const observations = await pollHealth(3403);
+        const observations = await pollHealth(imageHostPort(3403));
 
         expect(
           observations.some((observation) => observation.status === 200)
@@ -988,7 +991,7 @@ function repositoryPublicUrls(): string[] {
 }
 
 describe("the built image", () => {
-  const F2_PORT = 3413;
+  const F2_PORT = imageHostPort(3413);
 
   const f2BaseUrl = `http://127.0.0.1:${F2_PORT}`;
 

@@ -8,6 +8,7 @@ import {
 } from "@genie/core/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import {
   REQUIRED_HEADERS,
   WORKSPACE_ROOT,
@@ -85,16 +86,18 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             DATABASE_URL: database.context.env.databaseUrl,
             PUBLIC_URL: "https://example.invalid",
           },
-          3420,
+          imageHostPort(3420),
           DEVELOPMENT_IMAGE
         );
 
         try {
-          const observations = await pollHealth(3420);
+          const observations = await pollHealth(imageHostPort(3420));
 
           expect(observations.some(({ status }) => status === 200)).toBe(true);
 
-          const health = await fetch("http://127.0.0.1:3420/api/health");
+          const health = await fetch(
+            `http://127.0.0.1:${imageHostPort(3420)}/api/health`
+          );
 
           expect(health.status).toBe(200);
           expect(await health.text()).toBe("ok");
@@ -107,7 +110,9 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
           // headers. Its workspace entry requires `placeholder:use`, and the
           // Section 0 stub grants only `placeholder:read`, so the documented
           // Section 0 result is the denial body, not the module's own content.
-          const page = await fetch("http://127.0.0.1:3420/placeholder");
+          const page = await fetch(
+            `http://127.0.0.1:${imageHostPort(3420)}/placeholder`
+          );
 
           expect(page.status).toBe(200);
           expect(page.headers.get("content-type")).toContain("text/html");
@@ -121,7 +126,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
           // The viewer is the placeholder page whose content does render under the
           // stub, and it is the R-49 fixture.
           const viewer = await fetch(
-            "http://127.0.0.1:3420/viewer/placeholder"
+            `http://127.0.0.1:${imageHostPort(3420)}/viewer/placeholder`
           );
 
           expect(viewer.status).toBe(200);
@@ -151,16 +156,18 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             DATABASE_URL: database.context.env.databaseUrl,
             PUBLIC_URL: "https://example.invalid",
           },
-          3421,
+          imageHostPort(3421),
           EMPTY_IMAGE
         );
 
         try {
-          const observations = await pollHealth(3421);
+          const observations = await pollHealth(imageHostPort(3421));
 
           expect(observations.some(({ status }) => status === 200)).toBe(true);
 
-          const health = await fetch("http://127.0.0.1:3421/api/health");
+          const health = await fetch(
+            `http://127.0.0.1:${imageHostPort(3421)}/api/health`
+          );
 
           expect(health.status).toBe(200);
           expect(await health.text()).toBe("ok");
@@ -169,9 +176,12 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
           );
 
           // The placeholder route does not exist in an image built without it.
-          const page = await fetch("http://127.0.0.1:3421/placeholder", {
-            redirect: "manual",
-          });
+          const page = await fetch(
+            `http://127.0.0.1:${imageHostPort(3421)}/placeholder`,
+            {
+              redirect: "manual",
+            }
+          );
 
           expect(page.status).toBe(404);
 
@@ -224,8 +234,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       // two selections' evidence.
       /* eslint-disable no-await-in-loop */
       for (const [tag, port] of [
-        [DEVELOPMENT_IMAGE, 3422],
-        [EMPTY_IMAGE, 3423],
+        [DEVELOPMENT_IMAGE, imageHostPort(3422)],
+        [EMPTY_IMAGE, imageHostPort(3423)],
       ] as const) {
         const database = await startDisposableDeployment([]);
         // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
@@ -275,12 +285,12 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             DATABASE_URL: database.context.env.databaseUrl,
             PUBLIC_URL: "https://example.invalid",
           },
-          3424,
+          imageHostPort(3424),
           DEVELOPMENT_IMAGE
         );
 
         try {
-          await pollHealth(3424);
+          await pollHealth(imageHostPort(3424));
 
           // History is an image property; the container id would not resolve.
           const history = await dockerHistory(DEVELOPMENT_IMAGE);
@@ -322,7 +332,7 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
           // holds, so the two are independent.
           const corpus = await collectImagePublicCorpus(
             image.id,
-            "http://127.0.0.1:3424"
+            `http://127.0.0.1:${imageHostPort(3424)}`
           );
 
           expect(scanCorpusForMigrationSql(corpus)).toEqual([]);

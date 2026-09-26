@@ -14,11 +14,12 @@ import {
   vi,
 } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import { pollHealth, startImage, type RunningImage } from "./image-process.ts";
 
-const PORT = 3441;
+const PORT = imageHostPort(3441);
 
-const SLOW_READ_PORT = 3442;
+const SLOW_READ_PORT = imageHostPort(3442);
 
 const STANDARD_HEADERS = {
   "content-security-policy":

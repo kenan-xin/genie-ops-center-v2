@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { markSetupDone, startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import {
   REQUIRED_HEADERS,
   WORKSPACE_ROOT,
@@ -78,19 +79,21 @@ describe("the release candidate smoke", () => {
         DATABASE_URL: database.context.env.databaseUrl,
         PUBLIC_URL: "https://example.invalid",
       },
-      3430,
+      imageHostPort(3430),
       candidate
     );
 
     try {
-      const observations = await pollHealth(3430);
+      const observations = await pollHealth(imageHostPort(3430));
 
       expect(
         observations.some(({ status }) => status === 200),
         `candidate ${candidate} never became healthy`
       ).toBe(true);
 
-      const health = await fetch("http://127.0.0.1:3430/api/health");
+      const health = await fetch(
+        `http://127.0.0.1:${imageHostPort(3430)}/api/health`
+      );
 
       expect(health.status).toBe(200);
       expect(await health.text()).toBe("ok");
@@ -105,9 +108,12 @@ describe("the release candidate smoke", () => {
       /* eslint-disable no-await-in-loop */
       for (const id of excluded) {
         for (const path of [`/m/${id}`, `/admin/m/${id}`]) {
-          const response = await fetch(`http://127.0.0.1:3430${path}`, {
-            redirect: "manual",
-          });
+          const response = await fetch(
+            `http://127.0.0.1:${imageHostPort(3430)}${path}`,
+            {
+              redirect: "manual",
+            }
+          );
 
           expect(response.status, `${path} answered for excluded ${id}`).toBe(
             404
@@ -140,12 +146,12 @@ describe("the release candidate smoke", () => {
         DATABASE_URL: database.context.env.databaseUrl,
         PUBLIC_URL: "https://example.invalid",
       },
-      3431,
+      imageHostPort(3431),
       candidate
     );
 
     try {
-      await pollHealth(3431);
+      await pollHealth(imageHostPort(3431));
 
       expect(DECLARED_ARGUMENTS).toEqual(["MODULE_INCLUDE"]);
 

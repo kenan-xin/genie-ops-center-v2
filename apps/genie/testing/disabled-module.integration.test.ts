@@ -2,6 +2,7 @@ import { markSetupDone, startDisposableDeployment } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
@@ -15,7 +16,10 @@ beforeAll(async () => {
   await deployment.context.db.$client.query(
     "insert into tenant_module (module_id, enabled) values ('placeholder', false) on conflict (module_id) do update set enabled = false"
   );
-  server = await startBuiltApp(deployment.context.env.databaseUrl, 3411);
+  server = await startBuiltApp(
+    deployment.context.env.databaseUrl,
+    imageHostPort(3411)
+  );
 }, 240000);
 
 afterAll(async () => {
