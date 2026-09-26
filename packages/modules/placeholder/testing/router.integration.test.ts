@@ -93,6 +93,8 @@ describe("the placeholder read procedure against a real database", () => {
       });
     } finally {
       await tenant.db.$client.end();
+      // Later cases read through the router, so the entitlement is switched back on.
+      await enableModules(deployment.context, ["placeholder"]);
     }
   });
 

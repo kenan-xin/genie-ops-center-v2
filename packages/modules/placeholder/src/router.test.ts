@@ -28,10 +28,11 @@ function databaseTripwire(): TenantContext["db"] {
 }
 
 /**
- * The three readers, at the same tripwire as the database: a module procedure must refuse an
- * unpermitted caller before it reads any of them (R-5, DEC-34). A read here fails the test.
+ * The three readers with the module enabled: the entitlement gate reads `isEnabled` and gets
+ * `true`, while settings and branding stay at the same tripwire as the database, because a module
+ * procedure must refuse an unpermitted caller before it reads them (R-5, DEC-34).
  */
-function readersTripwire(): Pick<
+function readersWithModuleEnabled(): Pick<
   TenantContext,
   "settings" | "branding" | "entitlements"
 > {
@@ -84,7 +85,7 @@ function contextWith(
         resendApiKey: undefined,
         smtpUrl: undefined,
       },
-      ...readersTripwire(),
+      ...readersWithModuleEnabled(),
       jobQueue: {
         enqueue: () => Promise.reject(new Error("the router enqueued a job")),
         schedule: () => Promise.reject(new Error("the router scheduled a job")),

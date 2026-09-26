@@ -174,10 +174,10 @@ export function formatTrpcError(input: {
 /**
  * The request id that correlates a formatted error with its log line.
  *
- * A gate that refuses before any procedure runs throws from the context factory, so tRPC formats
- * it with no context and there is no `requestId` on `ctx`. That error is an `AppError` the gate
- * built with the request id attached (R-46, AC-15), so the formatter reads it from the cause.
- * Every other error reaches the formatter with a context and takes the id from there.
+ * Today every error reaches the formatter with a context and takes the id from there; the module
+ * gate is procedure middleware (d1y). The fallback covers a future throw from the context factory,
+ * which tRPC formats with no context: if that error is an `AppError` built with the request id
+ * attached (R-46, AC-15), the formatter reads the id from the cause.
  */
 function requestIdFor(input: {
   readonly contextRequestId: string | undefined;
