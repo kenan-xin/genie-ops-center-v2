@@ -14,10 +14,15 @@ const contextLoggers = new WeakMap<
   Pick<RedactingLogger, "error">
 >();
 
-/** The transaction, or savepoint, that the running code holds, with its after-commit register. */
+/**
+ * The transaction, or savepoint, that the running code holds, with its after-commit register.
+ * `root` is the outer transaction's register, shared by every savepoint inside it, so an
+ * `afterCommit` can tell its own transaction from another one running at call time.
+ */
 type Scope = {
   readonly tx: TenantTransaction;
   readonly register: AfterCommit;
+  readonly root: AfterCommit;
 };
 
 /**
@@ -60,7 +65,11 @@ export function currentAfterCommit(tx: TenantTransaction): AfterCommit {
  * registrations with its writes, so a fast handler never runs for an event its durable job lost
  * (R-54, D-5). Nested savepoints are scoped the same way.
  */
-function scopeSavepoints(tx: TenantTransaction, register: AfterCommit): void {
+function scopeSavepoints(
+  tx: TenantTransaction,
+  register: AfterCommit,
+  root: AfterCommit
+): void {
   const open = tx.transaction.bind(tx);
 
   tx.transaction = async (fn) => {
@@ -68,9 +77,9 @@ function scopeSavepoints(tx: TenantTransaction, register: AfterCommit): void {
 
     const result = await open(async (savepoint) =>
       transactionScope.run(
-        { tx: savepoint, register: list.register },
+        { tx: savepoint, register: list.register, root },
         async () => {
-          scopeSavepoints(savepoint, list.register);
+          scopeSavepoints(savepoint, list.register, root);
 
           try {
             return await fn(savepoint);
@@ -201,8 +210,9 @@ export async function withTransaction<T>(
    * The `afterCommit` argument `fn` receives. It resolves the innermost scope at call time, so an
    * entry registered inside `tx.transaction(...)` joins that savepoint's list: a rolled-back
    * savepoint discards it and a released one merges it into the parent, exactly like a fast
-   * handler emitted there (R-54, D-5). Registration after `fn` settles throws, because the
-   * enclosing scope is gone and the outer list is closed.
+   * handler emitted there (R-54, D-5). A call outside this transaction's scope throws: after `fn`
+   * settles, from an async chain `fn` did not start, or inside another `withTransaction` that is
+   * running, whose commit this entry must not follow.
    */
   const registerAfterCommit: AfterCommit = (entry) => {
     const scope = transactionScope.getStore();
@@ -211,14 +221,20 @@ export async function withTransaction<T>(
       throw new Error("afterCommit can only be called while fn runs.");
     }
 
+    if (scope.root !== afterCommit.register) {
+      throw new Error(
+        "afterCommit was called inside another withTransaction. It registers only on the transaction that handed it to fn."
+      );
+    }
+
     scope.register(entry);
   };
 
   const result = await context.db.transaction(async (tx) => {
-    scopeSavepoints(tx, afterCommit.register);
+    scopeSavepoints(tx, afterCommit.register, afterCommit.register);
 
     return transactionScope.run(
-      { tx, register: afterCommit.register },
+      { tx, register: afterCommit.register, root: afterCommit.register },
       async () => {
         try {
           return await fn(tx, registerAfterCommit);

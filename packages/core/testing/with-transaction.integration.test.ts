@@ -306,6 +306,29 @@ describe("withTransaction against a real database", () => {
     expect(() => late?.(() => {})).toThrow(/while fn runs/);
   });
 
+  it("refuses an afterCommit kept from a finished transaction inside a second one", async () => {
+    const { context } = await startTransactionFixture();
+
+    let kept: AfterCommit | undefined;
+    let ran = false;
+
+    await withTransaction(context, async (_tx, afterCommit) => {
+      kept = afterCommit;
+    });
+
+    // The second transaction's scope is running, but the entry belongs to the first one, whose
+    // list is closed: joining the second one's commit would run it for the wrong transaction.
+    await withTransaction(context, async () => {
+      expect(() =>
+        kept?.(() => {
+          ran = true;
+        })
+      ).toThrow(/another withTransaction/);
+    });
+
+    expect(ran).toBe(false);
+  });
+
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
     const { context, observer } = await startTransactionFixture();
 

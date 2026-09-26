@@ -159,6 +159,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "withTransaction against a real database rolls a thrown fn's write back and runs no after-commit entry",
       "withTransaction against a real database commits the write and runs each after-commit entry exactly once, after the commit",
+      "withTransaction against a real database refuses an afterCommit kept from a finished transaction inside a second one",
       "withTransaction against a real database serves the transaction from the context's own pool and opens no second connection",
     ],
   },
