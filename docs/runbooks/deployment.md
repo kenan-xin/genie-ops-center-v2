@@ -55,7 +55,7 @@ Make sure that the target host has the following. The customer's platform team s
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
 4. Copy `compose.yaml`, `tenant.yaml` and `branding.seed.json` to the host, into one stack folder. They are committed and hold no secret and no host value.
 5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only.
-6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. Before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role. Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`.
+6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. Before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role, and set `KC_PROXY_TRUSTED_ADDRESSES` to the proxy's address (`reverse-proxy.md`, step 7). Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`.
 
    On the first deploy only, create the Keycloak server administrator. Type the two values into the shell of this one command. Never write them to `.env` or to a file (R-66):
 
@@ -63,7 +63,7 @@ Make sure that the target host has the following. The customer's platform team s
    read -r KC_TEMP_ADMIN_NAME
    read -rs KC_TEMP_ADMIN_PASSWORD
    export KC_TEMP_ADMIN_NAME KC_TEMP_ADMIN_PASSWORD
-   docker compose run --rm \
+   docker compose run --rm -e KC_CACHE=local \
      -e KC_TEMP_ADMIN_NAME -e KC_TEMP_ADMIN_PASSWORD \
      keycloak bootstrap-admin user \
      --username:env KC_TEMP_ADMIN_NAME \
@@ -71,7 +71,7 @@ Make sure that the target host has the following. The customer's platform team s
    unset KC_TEMP_ADMIN_NAME KC_TEMP_ADMIN_PASSWORD
    ```
 
-   Do not use the names `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` here. Keycloak reads those names at its own start, creates the user, and then the command fails because the user exists. The account is temporary. Replace it with a named administrator after setup (`keycloak-realm.md`, "Keycloak server hardening").
+   Do not use the names `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` here. Keycloak reads those names at its own start, creates the user, and then the command fails because the user exists. `KC_CACHE=local` keeps the one-off container out of the running server's cache cluster; `bootstrap-admin user` has no `--cache` option. The account is temporary. Replace it with a named administrator after setup (`keycloak-realm.md`, "Keycloak server hardening").
 7. Open `PUBLIC_URL`. The application migrates the database at start and shows the not-set-up page until setup runs.
 8. Run setup with a Keycloak server administrator credential in the environment of that one command. Copy the two configuration files into the app container, then pass their container paths to setup:
 
@@ -149,6 +149,14 @@ Back up the database and `.env`. The image is rebuilt from the repository. A bro
 ## Logs
 
 Logs stay on the host. Every service in the generated compose file uses Docker's `json-file` driver with rotation, 50 MB per file and 20 files per container, so a container keeps about 1 GB of recent log (`DEC-31`). Read them with `docker compose logs app`, `docker compose logs worker`, or the host's own tools. Every line is JSON with a request id, and an error shown to a person carries the same request id, so search for that id first. No line holds a secret, a session token, or an emailed link. A customer-managed stack sends Genie nothing; attach the relevant lines to a support request.
+
+The application, the worker, and `genie-ops` write the same JSON lines with the tenant id (`PUBLIC_URL`) on each. The framework's own lines in the application, such as its start banner, are JSON with `"source":"framework"`. Three lines are plain text on stderr, because each one is written before a valid environment gives the process a tenant id:
+
+- `genie-ops: unknown or invalid command. Usage: ...`, the refusal for a command line that does not parse.
+- `genie-ops: <cause>`, when the environment of a `genie-ops` run is invalid.
+- `worker: <cause>`, when the worker's environment is invalid.
+
+An invalid environment in the application writes one JSON line with no tenant id and exits. The image launcher also writes plain text on stderr when it finds no single `server.js` or an unknown entrypoint.
 
 ## Retire a customer
 

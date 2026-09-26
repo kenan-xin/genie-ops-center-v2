@@ -50,8 +50,18 @@ function composeRequiredNames(compose: string): readonly string[] {
 const STACK_DEFAULTS = new Map([
   ["KC_DB", "postgres"],
   ["KC_DB_URL_DATABASE", "keycloak"],
+  ["KC_DB_URL_PORT", "5432"],
   ["KC_PROXY_HEADERS", "xforwarded"],
 ]);
+
+/** Every name the compose file reads with a fallback (`${NAME:-default}`), with that fallback. */
+function composeOptionalNames(compose: string): ReadonlyMap<string, string> {
+  return new Map(
+    [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):-([^}]*)\}/g)].map(
+      ([, name, fallback]) => [name ?? "", fallback ?? ""]
+    )
+  );
+}
 
 /**
  * The deltas this customer applies to the shared realm template. The generator
@@ -137,14 +147,21 @@ services:
     # administrator is created once with "docker compose run --rm keycloak
     # bootstrap-admin user" and is never written to .env (runbooks/deployment.md).
     image: quay.io/keycloak/keycloak:26.4
+    # Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, and compose always
+    # sets the variable, so a blank value is unset before kc.sh starts.
+    entrypoint: ["/bin/bash", "-c", "[ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
     command: ["start", "--http-enabled=true", "--http-port=8080"]
     environment:
       KC_DB: \${KC_DB:?set KC_DB in .env}
       KC_DB_URL_HOST: \${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}
+      KC_DB_URL_PORT: \${KC_DB_URL_PORT:?set KC_DB_URL_PORT in .env}
       KC_DB_URL_DATABASE: \${KC_DB_URL_DATABASE:?set KC_DB_URL_DATABASE in .env}
       KC_DB_USERNAME: \${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}
       KC_DB_PASSWORD: \${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}
       KC_PROXY_HEADERS: \${KC_PROXY_HEADERS:?set KC_PROXY_HEADERS in .env}
+      # The reverse proxy's address on the proxy network. Blank trusts forwarded
+      # headers from every peer on that network (runbooks/reverse-proxy.md).
+      KC_PROXY_TRUSTED_ADDRESSES: \${KC_PROXY_TRUSTED_ADDRESSES:-}
       KC_HOSTNAME: \${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
     networks:
       proxy:
@@ -180,13 +197,20 @@ export function envExample(input: TenantRenderInput): string {
     if (!name.startsWith("KEYCLOAK_BOOTSTRAP_")) names.add(name);
   }
 
-  for (const name of composeRequiredNames(stackCompose(input))) names.add(name);
+  const compose = stackCompose(input);
+
+  for (const name of composeRequiredNames(compose)) names.add(name);
+
+  const optional = composeOptionalNames(compose);
+
+  for (const name of optional.keys()) names.add(name);
 
   const lines = [...names].toSorted().map((name) => {
     const variable = byName.get(name);
 
-    if (variable === undefined)
-      return `${name}=${STACK_DEFAULTS.get(name) ?? ""}`;
+    if (variable === undefined) {
+      return `${name}=${STACK_DEFAULTS.get(name) ?? optional.get(name) ?? ""}`;
+    }
 
     const blank = variable.secret || variable.default === undefined;
 

@@ -158,6 +158,9 @@ In the stack's `.env`, set:
 - `PUBLIC_URL=https://ops.example.com`
 - `KEYCLOAK_URL=https://id.example.com`, or the customer's Keycloak address
 - `AUTH_TRUSTED_PROXIES=172.30.0.0/24`, the subnet from step 1
+- `KC_PROXY_TRUSTED_ADDRESSES`, the Traefik container's own address on the `proxy` network, for example `172.30.0.2`. Give Traefik a fixed address with `ipv4_address` under its `proxy` network in its compose file, and read it with `docker network inspect proxy`. Do not use the whole subnet, because every stack on the host shares it.
+
+If `KC_PROXY_TRUSTED_ADDRESSES` is blank, Keycloak trusts `X-Forwarded-*` headers from every container on the `proxy` network, because `KC_PROXY_HEADERS=xforwarded` is set. On a host with several stacks, a container of another stack can then set the client address and the host name that Keycloak records and uses. Accept that risk only on a host that runs one stack. Port 8080 is never published, so a client outside the host cannot reach Keycloak without the proxy.
 
 Start the stack as `deployment.md`, "Set up a new customer", step 6 says. The generated `compose.yaml` already joins the `proxy` network and publishes no port on the host, so the proxy is the only way in.
 

@@ -287,11 +287,25 @@ describe("the rendered deployment folder", () => {
       "KC_DB_USERNAME",
       "KC_DB_PASSWORD",
       "KC_PROXY_HEADERS",
+      "KC_DB_URL_PORT",
+      "KC_PROXY_TRUSTED_ADDRESSES",
     ]) {
       expect(entries.has(name), `${name} is missing from .env.example`).toBe(
         true
       );
     }
+    expect(keycloak).toContain(
+      "KC_DB_URL_PORT: ${KC_DB_URL_PORT:?set KC_DB_URL_PORT in .env}"
+    );
+    expect(keycloak).toContain(
+      "KC_PROXY_TRUSTED_ADDRESSES: ${KC_PROXY_TRUSTED_ADDRESSES:-}"
+    );
+    // Keycloak refuses an empty value, so the entrypoint unsets a blank one.
+    expect(keycloak).toContain(
+      "|| unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh"
+    );
+    expect(entries.get("KC_DB_URL_PORT")).toBe("5432");
+    expect(entries.get("KC_PROXY_TRUSTED_ADDRESSES")).toBe("");
     expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
     expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
     expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
@@ -338,6 +352,8 @@ describe("the rendered deployment folder", () => {
     for (const name of composeRequiredNames(read("compose.yaml"))) {
       expectedNames.add(name);
     }
+    // The one optional compose name, listed blank so an operator sees it.
+    expectedNames.add("KC_PROXY_TRUSTED_ADDRESSES");
 
     expect([...entries.keys()].toSorted()).toEqual(
       [...expectedNames].toSorted()
@@ -377,6 +393,7 @@ describe("the rendered deployment folder", () => {
     const stackDefaults = new Map([
       ["KC_DB", "postgres"],
       ["KC_DB_URL_DATABASE", "keycloak"],
+      ["KC_DB_URL_PORT", "5432"],
       ["KC_PROXY_HEADERS", "xforwarded"],
     ]);
 
