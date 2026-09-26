@@ -8,6 +8,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "testing/**/*.ts",
+    "tools/**/*.ts",
     "vitest.config.ts",
     "vitest.integration.config.ts"
   ]

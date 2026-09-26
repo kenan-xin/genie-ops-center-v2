@@ -51,9 +51,9 @@ const manifest: Template = (names) =>
       "./testing": "./testing/index.ts",
     },
     scripts: {
-      "lint": "oxlint --config ../../../oxlint.config.ts src testing",
+      "lint": "oxlint --config ../../../oxlint.config.ts src testing tools",
       "test": "vitest run",
-      "test:integration": "vitest run --config vitest.integration.config.ts",
+      "test:integration": "node tools/run-required-tests.ts",
       "typecheck": "tsc --noEmit",
     },
     dependencies: {
@@ -87,6 +87,7 @@ const tsconfig: Template = () =>
       "src/**/*.ts",
       "src/**/*.tsx",
       "testing/**/*.ts",
+      "tools/**/*.ts",
       "vitest.config.ts",
       "vitest.integration.config.ts",
     ],
@@ -961,6 +962,82 @@ describe("the ${names.id} read procedure", () => {
 });
 `;
 
+const requiredTestsGuard: Template = (names) =>
+  `import type { RequiredCase } from "@genie/core/testing/required-tests-validator";
+
+/**
+ * The ${names.id} module's integration manifest.
+ *
+ * The manifest is fixed in code and has no invocation flag: a run either proves
+ * these cases or fails. The validator and its case shape are core's, shared
+ * through \`@genie/core/testing/required-tests-validator\`, so this module keeps
+ * only the manifest that is its own. Each entry is derived from a named
+ * acceptance clause: the router and schema proof against a real database, and
+ * the module's own migration ledger (R-24, R-38).
+ */
+export * from "@genie/core/testing/required-tests-validator";
+
+export const REQUIRED_TESTS: readonly RequiredCase[] = [
+  {
+    file: "testing/router.integration.test.ts",
+    reason:
+      "R-24 and R-38 require the ${names.id} router and schema proof to run against a real database",
+    cases: [
+      "the ${names.id} schema against a real database applies its own migration and holds a real row",
+      "the ${names.id} schema against a real database records its history in its own ledger, apart from core's",
+      "the ${names.id} read procedure refuses a caller the stub grants nothing, and returns no row",
+      "the ${names.id} read procedure refuses the Section 0 stub principal, which holds another module's key",
+    ],
+  },
+];
+`;
+
+const runRequiredTests: Template = (names) =>
+  `import { resolve } from "node:path";
+
+import { runRequiredTests } from "@genie/core/testing/required-tests-runner";
+
+import { REQUIRED_TESTS } from "../testing/required-tests-guard.ts";
+
+/**
+ * The ${names.id} module integration entrypoint. All of the behaviour lives in
+ * core's shared runner; this file names only what is the module's: the manifest,
+ * the config, the report-directory prefix, and the vitest binary next to this
+ * checkout.
+ */
+process.exit(
+  await runRequiredTests({
+    manifest: REQUIRED_TESTS,
+    config: "vitest.integration.config.ts",
+    reportPrefix: "genie-module-${names.id}-required-",
+    vitestPath: resolve(import.meta.dirname, "../node_modules/.bin/vitest"),
+    forwardArgs: process.argv.slice(2),
+  })
+);
+`;
+
+const toolsReadme: Template = (names) =>
+  `# ${names.root}/tools
+
+The module's test-time entrypoints.
+
+## What belongs here
+
+The integration entrypoint, \`run-required-tests.ts\`: it runs this module's
+real-database suite through core's shared runner and fails the run when a
+mandatory case did not execute.
+
+## What must not go here
+
+Runtime code the module ships, a database client, an import of another module,
+and any customer-specific content.
+
+## What it imports
+
+\`@genie/core\`'s shared test runner and this module's own guard manifest, never
+another module.
+`;
+
 const packageReadme: Template = (names) =>
   `# ${names.root}
 
@@ -1119,4 +1196,7 @@ export const MODULE_TEMPLATES = {
   "testing/index.ts": testingIndex,
   "testing/factories.ts": factories,
   "testing/router.integration.test.ts": integrationTest,
+  "testing/required-tests-guard.ts": requiredTestsGuard,
+  "tools/README.md": toolsReadme,
+  "tools/run-required-tests.ts": runRequiredTests,
 } satisfies Readonly<Record<string, Template>>;

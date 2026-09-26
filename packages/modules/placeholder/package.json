@@ -9,9 +9,9 @@
     "./testing": "./testing/index.ts"
   },
   "scripts": {
-    "lint": "oxlint --config ../../../oxlint.config.ts src testing",
+    "lint": "oxlint --config ../../../oxlint.config.ts src testing tools",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration": "node tools/run-required-tests.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
