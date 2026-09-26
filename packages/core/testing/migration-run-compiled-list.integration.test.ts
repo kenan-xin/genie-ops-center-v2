@@ -67,6 +67,32 @@ async function moduleRows(
   return result.rows;
 }
 
+async function moduleState(context: Awaited<ReturnType<typeof freshContext>>) {
+  const result = await context.db.$client.query<{
+    module_id: string;
+    enabled: boolean;
+    enabled_at: Date | null;
+    category_id: string | null;
+    config: { label?: string };
+  }>(
+    `select module_id, enabled, enabled_at, category_id, config
+       from tenant_module
+      order by module_id`
+  );
+
+  return result.rows;
+}
+
+async function tenantSettings(
+  context: Awaited<ReturnType<typeof freshContext>>
+) {
+  const result = await context.db.$client.query(
+    "select * from tenant_settings"
+  );
+
+  return result.rows;
+}
+
 async function tableExists(
   context: Awaited<ReturnType<typeof freshContext>>,
   schema: string,
@@ -127,47 +153,184 @@ describe("MigrationRun compiled-module guards", () => {
     expect(await moduleRows(context)).toEqual([]);
   });
 
-  it("does not register modules until seed is done, then inserts disabled rows idempotently", async () => {
-    const compiledModuleIds = ["alpha", "beta"];
-    const context = await freshContext(compiledModuleIds);
-    const histories = migrationPlan(compiledModuleIds.map(emptyHistory));
+  it("refuses the corrected image after a pre-seed image installed a module and retains its data", async () => {
+    const moduleId = "preseed-module";
+    const moduleTable = "preseed_module_record";
+    const context = await freshContext([moduleId]);
+
+    const moduleHistory: MigrationHistory = {
+      ...emptyHistory(moduleId),
+      migrations: [
+        {
+          sql: [
+            `create table "${moduleTable}" (id integer primary key, label text not null);`,
+            `insert into "${moduleTable}" (id, label) values (1, 'retained');`,
+          ],
+          bps: true,
+          folderMillis: 1789948987482,
+          hash: "preseed-module-history",
+        },
+      ],
+    };
 
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
-      histories,
-      compiledModuleIds,
+      histories: migrationPlan([moduleHistory]),
+      compiledModuleIds: [moduleId],
     });
+
+    expect(await moduleRows(context)).toEqual([]);
+    expect(await tableExists(context, "public", moduleTable)).toBe(true);
+    expect(
+      await tableExists(context, "drizzle", moduleLedgerTable(moduleId))
+    ).toBe(true);
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([]),
+        compiledModuleIds: [],
+      })
+    ).rejects.toThrow(moduleId);
+
+    await expect(
+      context.db.$client.query(`select id, label from "${moduleTable}"`)
+    ).resolves.toMatchObject({ rows: [{ id: 1, label: "retained" }] });
+    expect(
+      await tableExists(context, "drizzle", moduleLedgerTable(moduleId))
+    ).toBe(true);
+    expect(await moduleRows(context)).toEqual([]);
+  });
+
+  it("does not register modules until seed is done, then inserts disabled rows idempotently", async () => {
+    const originalCompiledModuleIds = ["alpha"];
+    const upgradedCompiledModuleIds = ["alpha", "beta"];
+    const context = await freshContext(originalCompiledModuleIds);
+
+    const originalHistories = migrationPlan(
+      originalCompiledModuleIds.map(emptyHistory)
+    );
+
+    const upgradedHistories = migrationPlan(
+      upgradedCompiledModuleIds.map(emptyHistory)
+    );
+
+    const categoryId = "11111111-1111-4111-8111-111111111111";
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: originalHistories,
+      compiledModuleIds: originalCompiledModuleIds,
+    });
+
     expect(await moduleRows(context)).toEqual([]);
 
     await context.db.$client.query(
       "insert into setup_step (step, state) values ('seed', 'done')"
     );
     await context.db.$client.query(
-      "insert into tenant_module (module_id, enabled) values ('alpha', true)"
+      "insert into tenant_settings (onboarding_mode, local_accounts_enabled, session_idle_minutes) values ('jit', true, 42)"
     );
 
-    await runMigrations({
-      env: context.env,
-      pool: context.db.$client,
-      histories,
-      compiledModuleIds,
-    });
-    expect(await moduleRows(context)).toEqual([
-      { module_id: "alpha", enabled: true },
-      { module_id: "beta", enabled: false },
-    ]);
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled, enabled_at, category_id, config) values ('alpha', true, $1, $2, $3)",
+      [
+        new Date("2025-04-03T02:01:00.000Z"),
+        categoryId,
+        { label: "administrator value" },
+      ]
+    );
+
+    const originalSettings = await tenantSettings(context);
+    const originalModules = await moduleState(context);
 
     await runMigrations({
       env: context.env,
       pool: context.db.$client,
-      histories,
-      compiledModuleIds,
+      histories: upgradedHistories,
+      compiledModuleIds: upgradedCompiledModuleIds,
     });
-    expect(await moduleRows(context)).toEqual([
-      { module_id: "alpha", enabled: true },
-      { module_id: "beta", enabled: false },
+
+    expect(await moduleState(context)).toEqual([
+      {
+        module_id: "alpha",
+        enabled: true,
+        enabled_at: new Date("2025-04-03T02:01:00.000Z"),
+        category_id: categoryId,
+        config: { label: "administrator value" },
+      },
+      {
+        module_id: "beta",
+        enabled: false,
+        enabled_at: null,
+        category_id: null,
+        config: {},
+      },
     ]);
+
+    expect(await moduleState(context)).toEqual(
+      expect.arrayContaining(originalModules)
+    );
+
+    expect(await tenantSettings(context)).toEqual(originalSettings);
+
+    const registeredState = {
+      modules: await moduleState(context),
+      settings: await tenantSettings(context),
+    };
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: upgradedHistories,
+      compiledModuleIds: upgradedCompiledModuleIds,
+    });
+
+    await expect(moduleState(context)).resolves.toEqual(
+      registeredState.modules
+    );
+    await expect(tenantSettings(context)).resolves.toEqual(
+      registeredState.settings
+    );
+  });
+
+  it("accepts an image omitting a never-installed module on a fresh database", async () => {
+    const moduleId = "never-installed-module";
+    const context = await freshContext();
+
+    expect(await tableExists(context, "drizzle", "__drizzle_migrations")).toBe(
+      false
+    );
+    expect(await tableExists(context, "public", "tenant_module")).toBe(false);
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([]),
+        compiledModuleIds: [],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(await moduleRows(context)).toEqual([]);
+    expect(
+      await tableExists(context, "drizzle", moduleLedgerTable(moduleId))
+    ).toBe(false);
+    expect(await tableExists(context, "drizzle", "__drizzle_migrations")).toBe(
+      true
+    );
+
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([]),
+        compiledModuleIds: [],
+      })
+    ).resolves.toBeUndefined();
   });
 
   it("starts a fresh database with no drizzle schema and creates an empty module ledger", async () => {

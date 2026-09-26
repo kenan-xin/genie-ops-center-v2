@@ -396,6 +396,106 @@ describe("the core pg-boss worker", () => {
     await expectSkippedModuleJob({ id: "disabled", enabled: false });
   });
 
+  it("registers a new module disabled and runs neither its queued job nor its declared schedule", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+    const called = deferred();
+    const moduleId = "newly-registered";
+    const module = moduleWithJob(
+      moduleId,
+      async () => called.resolve(),
+      "*/2 * * * * *"
+    );
+    const moduleHistory = history(moduleId);
+    const controller = new AbortController();
+    const heartbeatPath = `/tmp/genie-worker-disabled-module-${crypto.randomUUID()}`;
+
+    cleanups.push(async () => {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(heartbeatPath).catch(() => undefined);
+      await context.db.$client.end();
+    });
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [],
+    });
+    await context.db.$client.query(
+      "insert into setup_step (step, state) values ('seed', 'done')"
+    );
+    await context.db.$client.query(
+      "insert into tenant_settings default values"
+    );
+
+    const publisher = await boss(context);
+    await publisher.createQueue(`${moduleId}.read-record`);
+    await publisher.send(`${moduleId}.read-record`, {
+      label: "must-stay-queued",
+    });
+
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [module],
+      histories: [moduleHistory],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: {
+        cron: "*/1 * * * * *",
+        path: heartbeatPath,
+        staleAfterMs: 1800,
+      },
+      timing: { cronMonitorIntervalSeconds: 1, cronWorkerIntervalSeconds: 1 },
+    });
+
+    await waitUntil(async () => {
+      const heartbeat = await import("node:fs/promises").then(({ access }) =>
+        access(heartbeatPath).then(
+          () => true,
+          () => false
+        )
+      );
+      const rows = await publisher.getSchedules(`${moduleId}.read-record`);
+
+      return (
+        heartbeat &&
+        rows.every(({ key }) => key !== `genie.module.${moduleId}.read-record`)
+      );
+    });
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    controller.abort();
+    await expect(worker).resolves.toBe(0);
+
+    await expect(
+      context.db.$client.query(
+        "select module_id, enabled from tenant_module where module_id = $1",
+        [moduleId]
+      )
+    ).resolves.toMatchObject({
+      rows: [{ module_id: moduleId, enabled: false }],
+    });
+    expect(called.isResolved()).toBe(false);
+    await expect(
+      publisher.findJobs(`${moduleId}.read-record`)
+    ).resolves.toMatchObject([
+      { state: "created", data: { label: "must-stay-queued" } },
+    ]);
+    await expect(
+      publisher.getSchedules(`${moduleId}.read-record`)
+    ).resolves.toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({
+          key: `genie.module.${moduleId}.read-record`,
+        }),
+      ])
+    );
+  });
+
   it("keeps the job queue as a fixed context member exposing enqueue and schedule", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(
