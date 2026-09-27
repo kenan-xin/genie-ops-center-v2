@@ -100,6 +100,14 @@ services:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       PORT: "3000"
+      # The Section 2 application profile requires the authentication values. KEYCLOAK_URL must be
+      # the one address that both the browser and this container use for Keycloak, and it is the
+      # address setup recorded (Specification 02 R-4, R-54c).
+      BETTER_AUTH_SECRET: \${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      KEYCLOAK_URL: \${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
+      KEYCLOAK_REALM: \${KEYCLOAK_REALM:?set KEYCLOAK_REALM in .env}
+      KEYCLOAK_CLIENT_ID: \${KEYCLOAK_CLIENT_ID:?set KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: \${KEYCLOAK_CLIENT_SECRET:?set KEYCLOAK_CLIENT_SECRET in .env}
       # The Compose profiles this stack was started with. The start-up guard reads it
       # to refuse an impossible realm-mode combination (Specification 02 R-54c).
       STACK_PROFILES: \${COMPOSE_PROFILES:-}

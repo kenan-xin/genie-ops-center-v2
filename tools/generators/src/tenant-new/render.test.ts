@@ -480,10 +480,19 @@ describe("the rendered deployment folder", () => {
     // R-66: the Keycloak server administrator is created once by a command, never from .env.
     expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_USERNAME");
     expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD");
-    // R-54b: no KC_ value is required and KEYCLOAK_URL is not required, because
-    // compose interpolates the keycloak service even when the profile is off.
-    expect(required).not.toContain("KEYCLOAK_URL");
-    expect(required).toEqual(["DATABASE_URL", "IMAGE_TAG", "PUBLIC_URL"]);
+    // R-54b: no KC_ value is required, because compose interpolates the keycloak service even
+    // when the profile is off. The app service requires the Section 2 authentication values,
+    // including KEYCLOAK_URL, which setup records as the realm address (Spec 2 R-4, R-54c).
+    expect(required).toEqual([
+      "BETTER_AUTH_SECRET",
+      "DATABASE_URL",
+      "IMAGE_TAG",
+      "KEYCLOAK_CLIENT_ID",
+      "KEYCLOAK_CLIENT_SECRET",
+      "KEYCLOAK_REALM",
+      "KEYCLOAK_URL",
+      "PUBLIC_URL",
+    ]);
 
     // Every other compose name is defaulted: the KC_ settings carry a fallback in
     // the compose file, and COMPOSE_PROFILES is the one value the example turns on.
@@ -669,6 +678,12 @@ describe("the rendered compose file under docker compose", () => {
     IMAGE_TAG: "example.invalid/genie-demo:test",
     DATABASE_URL: "postgres://genie:genie@database:5432/genie",
     PUBLIC_URL: "https://example.invalid",
+    // The Section 2 application profile requires the authentication values.
+    BETTER_AUTH_SECRET: "test-better-auth-secret-at-least-32-characters",
+    KEYCLOAK_URL: "https://id.example.invalid",
+    KEYCLOAK_REALM: "genie",
+    KEYCLOAK_CLIENT_ID: "genie-ops-center",
+    KEYCLOAK_CLIENT_SECRET: "test-client-secret",
   };
 
   function composeServices(profile: string): readonly string[] {
