@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
+import { signInCause } from "../../auth.ts";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -9,29 +11,10 @@ export const dynamic = "force-dynamic";
  *
  * The five states each have one cause: the default state; signed out after R-17; session expired
  * after R-14; not registered after the R-9 refusal; access disabled after the R-11 refusal. The
- * OAuth refusal codes reach this page through `errorCallbackURL`.
+ * OAuth refusal codes reach this page through `errorCallbackURL`, and `signInCause` maps each one
+ * to the state a person can act on.
  */
 const DEFAULT_STATE = "default";
-
-type SignInCause =
-  | "keycloak_unavailable"
-  | "not_registered"
-  | "access_disabled"
-  | "session_expired"
-  | "session_missing";
-
-function causeFrom(error: string | undefined): SignInCause | undefined {
-  switch (error) {
-    case "keycloak_unavailable":
-    case "not_registered":
-    case "access_disabled":
-    case "session_expired":
-    case "session_missing":
-      return error;
-    default:
-      return undefined;
-  }
-}
 
 export default async function SignInPage(props: {
   readonly searchParams: Promise<{ readonly error?: string }>;
@@ -39,7 +22,7 @@ export default async function SignInPage(props: {
   const { error } = await props.searchParams;
   const t = await getTranslations("signIn");
 
-  const cause = causeFrom(error);
+  const cause = signInCause(error);
 
   // Each cause is its own catalogue call rather than a computed key, so the catalogue-coverage
   // check can read the literal key out of this file.

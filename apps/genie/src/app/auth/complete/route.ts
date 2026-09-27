@@ -1,10 +1,9 @@
-import { landingRoute, permittedNavigation } from "@genie/core";
+import { landingRoute, permittedNavigation, principalFor } from "@genie/core";
 import { NextResponse } from "next/server.js";
 
 import { requireAuth } from "../../../auth.ts";
 import { requireContext } from "../../../context.ts";
 import { modules } from "../../../registry.ts";
-import { requestPrincipal } from "../../../request-principal.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +29,12 @@ export async function GET(request: Request): Promise<Response> {
   const permitted = await permittedNavigation({
     entitlements: app.tenant.entitlements,
     modules,
-    caller: await requestPrincipal(app.tenant, request.headers),
+    // The session was read once above; its user id is the principal (R-27).
+    caller: principalFor({
+      tenant: app.tenant,
+      modules,
+      userId: session.user.id,
+    }),
   });
 
   const landing = landingRoute(permitted) ?? "/";
