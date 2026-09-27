@@ -15,6 +15,13 @@
       "when": 1790516600108,
       "tag": "0001_nappy_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790521441217,
+      "tag": "0002_role_assignment_scope_pair",
+      "breakpoints": true
     }
   ]
 }

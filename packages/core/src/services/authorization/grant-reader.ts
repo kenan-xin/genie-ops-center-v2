@@ -22,10 +22,14 @@ const BYPASS: PermissionGrants = { ...NO_GRANTS, bypass: true };
  * The one assignment query of R-27: the person's own row for the break-glass rule, then every
  * assignment whose principal is the person or a group they belong to, with the role's keys and
  * the scope. A group that is archived contributes nothing, and its rows are kept (R-32). A person
- * without assignments still returns their own row, once, with null role columns.
+ * without assignments still returns their own row, once, with null role columns. `inactive` is a
+ * ban that has not expired, or an erased account; either one grants nothing.
  */
 const ASSIGNMENTS_SQL = `
   select u.is_break_glass, u.must_change_password, u.two_factor_enabled,
+         (u.erased_at is not null
+           or (u.banned is true and (u.ban_expires is null or u.ban_expires > now())))
+           as inactive,
          r.permissions, a.scope_type, a.scope_id
     from "user" u
     left join role_assignment a
@@ -46,6 +50,7 @@ export type AssignmentQuery = (
 
 type AssignmentRow = {
   readonly is_break_glass: boolean;
+  readonly inactive: boolean;
   readonly must_change_password: boolean | null;
   readonly two_factor_enabled: boolean | null;
   readonly permissions: readonly string[] | null;
@@ -55,8 +60,9 @@ type AssignmentRow = {
 
 /**
  * Folds the rows into grants. A key the catalogue does not know, retired or unknown, never
- * grants, while the other keys of the same role still do (R-33b). A null scope is the whole
- * tenant and wins over any list (R-29).
+ * grants, while the other keys of the same role still do (R-33b). A scope whose type and id are
+ * both null is the whole tenant and wins over any list (R-29); a row with only one of the two is
+ * malformed and grants nothing, so the loader fails closed.
  */
 function grantsFrom(
   rows: readonly AssignmentRow[],
@@ -64,7 +70,7 @@ function grantsFrom(
 ): PermissionGrants {
   const person = rows[0];
 
-  if (person === undefined) return NO_GRANTS;
+  if (person === undefined || person.inactive) return NO_GRANTS;
 
   // R-30: the break-glass account bypasses only once its session is no longer limited, and a
   // limited one is refused everything, whatever it holds.
@@ -86,9 +92,9 @@ function grantsFrom(
       // SAFETY: the catalogue holds only declared keys, each a `<prefix>:<action>` string.
       const permission = key as PermissionKey;
 
-      if (row.scope_type === null || row.scope_id === null) {
+      if (row.scope_type === null && row.scope_id === null) {
         tenantWide.add(permission);
-      } else {
+      } else if (row.scope_type !== null && row.scope_id !== null) {
         const scopes = listed.get(permission) ?? [];
 
         scopes.push({ type: row.scope_type, id: row.scope_id });
@@ -129,30 +135,39 @@ export function createGrantReader(
 }
 
 /**
- * The parents of one resource, from the record type a compiled module declares under that type.
- * A type no module declares, or a record its resolver does not find, has no parents.
+ * The parents of one resource, from the record type a compiled module declares under that type,
+ * resolved through the request's own tenant context (DEC-34). A type no module declares, or a
+ * record its resolver does not find, has no parents, and a parent of a type the record type does
+ * not declare is dropped (module contract, Record types).
  */
 export function createParentResolver(
-  modules: readonly Pick<Module, "recordTypes">[]
+  modules: readonly Pick<Module, "recordTypes">[],
+  tenant: TenantContext
 ): ParentResolver {
   return async (resource) => {
     const recordType = modules
       .flatMap((module) => module.recordTypes)
       .find((candidate) => candidate.type === resource.type);
 
-    const descriptor = await recordType?.resolve(resource.id);
+    if (recordType === undefined) return [];
 
-    return descriptor?.parents ?? [];
+    const descriptor = await recordType.resolve({ tenant }, resource.id);
+    const declared = new Set(recordType.parentTypes ?? []);
+
+    return (descriptor?.parents ?? []).filter((parent) =>
+      declared.has(parent.type)
+    );
   };
 }
 
 /**
- * The one lazy loader for a request or a job run (R-27): the tRPC context, the page loader and
- * the worker each call this once per execution and never share the result. `userId` is the
- * signed-in person, or undefined for an anonymous request.
+ * The one lazy loader for a request (R-27): the tRPC context and the page loader call this once
+ * per request and never share the result. `userId` is the signed-in person, or undefined for an
+ * anonymous request. The worker does not build one per job run yet; a job that acts for a person
+ * calls this once per run when that wiring lands.
  */
 export function principalFor(input: {
-  readonly tenant: Pick<TenantContext, "db">;
+  readonly tenant: TenantContext;
   readonly modules: readonly Pick<Module, "permissions" | "recordTypes">[];
   readonly userId: string | undefined;
 }): RequestPrincipal {
@@ -163,6 +178,6 @@ export function principalFor(input: {
       input.userId,
       permissionCatalogue(input.modules)
     ),
-    createParentResolver(input.modules)
+    createParentResolver(input.modules, input.tenant)
   );
 }

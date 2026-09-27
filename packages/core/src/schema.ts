@@ -461,6 +461,13 @@ export const roleAssignment = pgTable(
       table.principalType,
       table.principalId
     ),
+    // A scope is both columns or neither: a half-null row would read as a tenant-wide grant to a
+    // loader that forgot one column, so the database refuses it (data-shape.md, "Roles and
+    // permissions").
+    check(
+      "role_assignment_scope_pair",
+      sql`(${table.scopeType} is null) = (${table.scopeId} is null)`
+    ),
   ]
 );
 

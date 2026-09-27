@@ -43,6 +43,12 @@ const RECORD = { type: "fixture_record", id: "record-1" };
 
 let resolverCalls = 0;
 
+/** The tenant each resolver call received, so the suite can prove it is the request's own. */
+const resolverTenants: unknown[] = [];
+
+/** A parent the fixture's resolver returns but its record type does not declare. */
+const UNDECLARED = { type: "fixture_shelf", id: "shelf-1" };
+
 const trpc = createModuleTRPC("fixture");
 
 /** The fixture's workspace route, refusing in its own `can()` check as every route must. */
@@ -63,10 +69,11 @@ const fixtureModule: Module = {
     {
       type: RECORD.type,
       parentTypes: [FOLDER.type],
-      resolve: async (id) => {
+      resolve: async (ctx, id) => {
         resolverCalls += 1;
+        resolverTenants.push(ctx.tenant);
 
-        return { label: `Record ${id}`, parents: [FOLDER] };
+        return { label: `Record ${id}`, parents: [FOLDER, UNDECLARED] };
       },
     },
   ],
@@ -207,6 +214,62 @@ describe("the access seam against a real database", () => {
     );
   });
 
+  it("resolves parents through the request's tenant and drops an undeclared parent type", async () => {
+    const shelf = await insertPersonWith(
+      deployment.context,
+      ["fixture:read"],
+      UNDECLARED
+    );
+
+    resolverTenants.length = 0;
+
+    expect(await can(request(shelf.userId), "fixture:read", RECORD)).toBe(
+      false
+    );
+    expect(resolverTenants).toEqual([deployment.context]);
+  });
+
+  it("grants nothing to a banned or erased person, and restores an expired ban", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "fixture:use",
+    ]);
+
+    const set = (assignments: string) =>
+      deployment.context.db.$client.query(
+        `update "user" set ${assignments} where id = $1`,
+        [userId]
+      );
+
+    await set("banned = true, ban_expires = null");
+
+    expect(await can(request(userId), "fixture:use")).toBe(false);
+
+    await set("ban_expires = now() + interval '1 day'");
+
+    expect(await can(request(userId), "fixture:use")).toBe(false);
+
+    await set("ban_expires = now() - interval '1 day'");
+
+    expect(await can(request(userId), "fixture:use")).toBe(true);
+
+    await set("banned = false, erased_at = now()");
+
+    expect(await can(request(userId), "fixture:use")).toBe(false);
+  });
+
+  it("refuses a half-null scope at the database", async () => {
+    const { roleId, userId } = await insertPersonWith(deployment.context, [
+      "fixture:read",
+    ]);
+
+    await expect(
+      deployment.context.db.$client.query(
+        "insert into role_assignment (role_id, principal_type, principal_id, scope_type) values ($1, 'user', $2, 'fixture_record')",
+        [roleId, userId]
+      )
+    ).rejects.toThrow("role_assignment_scope_pair");
+  });
+
   it("answers scopesFor with all for a tenant-wide assignment and the list otherwise", async () => {
     const wide = await insertPersonWith(deployment.context, ["fixture:read"]);
 
@@ -324,7 +387,7 @@ describe("the access seam against a real database", () => {
     const anonymous = createRequestPrincipal(
       { userId: "anonymous", groups: [] },
       createGrantReader(pool.counting, undefined, permissionCatalogue(modules)),
-      createParentResolver(modules)
+      createParentResolver(modules, deployment.context)
     );
 
     expect(await can(anonymous, "fixture:use")).toBe(false);

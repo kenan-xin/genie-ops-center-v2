@@ -52,7 +52,14 @@ export type RecordDescriptor = {
 export type RecordTypeDeclaration = {
   readonly type: string;
   readonly parentTypes?: readonly string[];
-  resolve(id: string): Promise<RecordDescriptor | undefined>;
+  /**
+   * Reads one record through the caller's tenant context, never a connection of its own (DEC-34).
+   * Core keeps only the returned parents whose type is in `parentTypes`.
+   */
+  resolve(
+    ctx: { readonly tenant: TenantContext },
+    id: string
+  ): Promise<RecordDescriptor | undefined>;
 };
 
 /** 6. Default roles. Declared in Section 0, seeded in Section 2. */

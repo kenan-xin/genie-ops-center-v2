@@ -43,7 +43,7 @@ describe("the migration plan", () => {
     // Core owns the Section 1 migration and the Section 2 identity migration (R-1), so the
     // history is no longer empty. The SQL still arrives as data read from a declared `new URL`,
     // never as a folder path, which is what keeps it in a production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(2);
+    expect(CORE_HISTORY.migrations).toHaveLength(3);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'

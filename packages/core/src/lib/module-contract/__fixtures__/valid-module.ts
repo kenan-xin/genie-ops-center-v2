@@ -46,7 +46,7 @@ export const validModule = {
   recordTypes: [
     {
       type: "fixture_record",
-      resolve: async (id: string) => ({
+      resolve: async (_ctx, id: string) => ({
         label: `Fixture record ${id}`,
         path: `/fixture/${id}`,
       }),

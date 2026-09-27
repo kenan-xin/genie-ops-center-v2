@@ -101,7 +101,8 @@ function evo(release: {
     recordTypes: [
       {
         type: RECORD.type,
-        resolve: async (id) => ({ label: id, parents: [FOLDER] }),
+        parentTypes: [FOLDER.type],
+        resolve: async (_ctx, id) => ({ label: id, parents: [FOLDER] }),
       },
     ],
     defaultRoles: release.defaultRoles,
