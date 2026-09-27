@@ -1,4 +1,9 @@
-import { KEYCLOAK_UNAVAILABLE, requireAuth } from "../../../../auth.ts";
+import {
+  authRouteAllowed,
+  KEYCLOAK_UNAVAILABLE,
+  readAuthRequestBody,
+  requireAuth,
+} from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +20,20 @@ function realmUnavailable(): Response {
   );
 }
 
+/** The answer for every Better Auth path the allowlist does not serve. */
+function notFound(): Response {
+  return new Response(null, {
+    status: 404,
+    headers: { "cache-control": "no-store" },
+  });
+}
+
 /**
- * The one catch-all route under `/api/auth/` (D2-5). It hands every authentication request to the
- * tenant context's Better Auth instance, which is the only place a session, a callback or a
- * break-glass credential is handled.
+ * The one catch-all route under `/api/auth/` (D2-5). It hands an allowed authentication request
+ * to the tenant context's Better Auth instance, which is the only place a session, a callback or a
+ * break-glass credential is handled. Only the paths `authRouteAllowed` lists reach Better Auth;
+ * every other path answers 404 (R-6, R-7). A later ticket that needs another Better Auth endpoint
+ * adds it to that list in `auth.ts`, with a test, in its own change.
  *
  * R-54d: the realm's discovery document is read before a social sign-in, and while it does not
  * answer the request is refused with the named `keycloak_unavailable` cause. Break-glass email and
@@ -33,6 +48,16 @@ async function handler(
 
   const { all } = await context.params;
   const path = `/${all.join("/")}`;
+
+  if (
+    !authRouteAllowed({
+      method: request.method,
+      path,
+      body: await readAuthRequestBody(request),
+    })
+  ) {
+    return notFound();
+  }
 
   if (request.method === "POST" && path === "/sign-in/social") {
     const discovery = await auth.ensureDiscovery();
