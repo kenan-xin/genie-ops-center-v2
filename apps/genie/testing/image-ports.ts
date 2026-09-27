@@ -19,6 +19,21 @@ const IMAGE_PORT_MIN = 3399;
  */
 const IMAGE_PORT_BASE = 30000;
 
+/**
+ * The first port of Linux's ephemeral range. Docker and Testcontainers take their
+ * automatic host ports from it, so a fixed port at or above it can already be
+ * taken by a neighbouring container.
+ */
+const EPHEMERAL_PORT_MIN = 32768;
+
 export function imageHostPort(configured: number): number {
-  return scopedPort(IMAGE_PORT_BASE + (configured - IMAGE_PORT_MIN));
+  const port = scopedPort(IMAGE_PORT_BASE + (configured - IMAGE_PORT_MIN));
+
+  if (port >= EPHEMERAL_PORT_MIN) {
+    throw new Error(
+      `Image host port ${port} (configured ${configured}) is inside the ephemeral range from ${EPHEMERAL_PORT_MIN}, where Docker assigns automatic ports. Use a configured port closer to ${IMAGE_PORT_MIN}.`
+    );
+  }
+
+  return port;
 }

@@ -58,11 +58,14 @@ test("one process context serves the page, tRPC and viewer bundles", async ({
 test("two stacks of one image keep placeholder data isolated at phone and desktop viewports", async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const first = await startDisposableDeployment([placeholderModule]);
   const second = await startDisposableDeployment([placeholderModule]);
-  const firstPort = imageHostPort(3500 + (process.pid % 1000) * 2);
-  const secondPort = imageHostPort(3501 + (process.pid % 1000) * 2);
+  // The phone and desktop runs can share a moment, so each worker gets its own
+  // pair. The worker index stays small, which keeps the ports below the
+  // ephemeral range that imageHostPort refuses; the process id did not.
+  const firstPort = imageHostPort(3500 + testInfo.workerIndex * 2);
+  const secondPort = imageHostPort(3501 + testInfo.workerIndex * 2);
   let firstImage: Awaited<ReturnType<typeof startImage>> | undefined;
   let secondImage: Awaited<ReturnType<typeof startImage>> | undefined;
 

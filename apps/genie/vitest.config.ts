@@ -26,6 +26,7 @@ export default defineConfig({
       "tools/**/*.test.ts",
       "testing/image-scan.test.ts",
       "testing/shared-empty-image.test.ts",
+      "testing/image-ports.test.ts",
     ],
     exclude: (preset?.exclude ?? []).filter((glob) => glob !== "testing/**"),
   },

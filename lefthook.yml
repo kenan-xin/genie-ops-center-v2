@@ -22,4 +22,6 @@ pre-commit:
       glob: "*.{ts,tsx,mts,cts}"
       # tsc checks whole projects, so Nx picks the projects the staged files
       # belong to and reuses its cache. It reads the working tree, not the index.
-      run: pnpm exec nx affected -t typecheck --files="{staged_files}" --outputStyle=static
+      # printf and sed join the files with commas, without a trailing one. A
+      # space-separated --files value made Nx pass files on to tsc (TS5112).
+      run: pnpm exec nx affected -t typecheck --outputStyle=static --files="$(printf '%s,' {staged_files} | sed 's/,$//')"
