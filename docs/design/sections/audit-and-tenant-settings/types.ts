@@ -1,4 +1,5 @@
 export type OnboardingMode = 'invite' | 'jit'
+
 export type DateRangePreset = 'today' | '7d' | '30d' | 'custom'
 
 /** Server-derived from `audit_event.actor_user_id` joined to `user`; `anonymized` comes from the erasure state, never from the client. */
@@ -32,8 +33,11 @@ export interface AuditEvent {
    */
   targetPath: string | null
   summary: string
-  metadata: Record<string, unknown>
+  /** Non-secret detail only; never a token or an emailed link. */
+  metadata: Record<string, AuditMetadataValue>
 }
+
+export type AuditMetadataValue = string | number | boolean | null | string[]
 
 export interface AuditFilterOptions {
   actors: AuditActor[]
@@ -62,7 +66,7 @@ export interface TenantSettings {
 }
 
 export interface TenantRealm {
-  /** `tenant_settings.realm_supports_local_accounts`, written by the realm step of `genie-ops setup` from the template variant it applied (DEC-36). False for a brokered-only realm; the local accounts switch is then disabled. */
+  /** `tenant_settings.realm_supports_local_accounts`, written by the realm step of `genie-ops setup` from the template variant it applied (DEC-36). False for a brokered-only realm and in client-only mode; the local accounts switch is then disabled. */
   supportsLocalAccounts: boolean
 }
 
@@ -79,11 +83,17 @@ interface ConfigFieldBase {
    */
   keywords?: string[]
 }
+
 export interface StringField extends ConfigFieldBase { kind: 'string'; maxLength?: number; pattern?: string; patternMessage?: string }
+
 export interface NumberField extends ConfigFieldBase { kind: 'number'; min?: number; max?: number; step?: number }
+
 export interface BooleanField extends ConfigFieldBase { kind: 'boolean' }
+
 export interface EnumField extends ConfigFieldBase { kind: 'enum'; options: Array<{ value: string; label: string }> }
+
 export interface StringListField extends ConfigFieldBase { kind: 'string-list'; itemLimit?: number; pattern?: string; patternMessage?: string; placeholder?: string }
+
 /** The five field kinds ConfigForm supports (DEC-28). A module that needs more ships its own page. */
 export type ConfigField = StringField | NumberField | BooleanField | EnumField | StringListField
 

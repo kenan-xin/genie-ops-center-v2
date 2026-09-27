@@ -44,7 +44,7 @@ The template exists so that every realm is identical on the points that matter. 
 The `genie-ops-center` client carries these values.
 
 - Redirect URI: `PUBLIC_URL/api/auth/callback/keycloak`. This is the Better Auth `genericOAuth` callback path and it is fixed (`../core/tech-stack.md`).
-- Post-logout redirect URI: `PUBLIC_URL`. Sign-out ends the application session and then the realm session (`DEC-11`).
+- Post-logout redirect URI: `PUBLIC_URL`. Sign-out ends the application session and then the realm session (`DEC-11`). In client-only mode it ends the application session only (ADR 0010).
 - Web origin: `PUBLIC_URL`.
 - PKCE challenge method: `S256`.
 
@@ -139,7 +139,7 @@ The three credential emails of a local-accounts realm are Keycloak's built-in te
 
 ## Apply the template
 
-Planned. `genie-ops setup` creates the realm and everything in it. The operator does not create a realm by hand. The full procedure, including the database and the stack, is in `deployment.md`. Only the realm steps are repeated here.
+Planned. In managed mode, `genie-ops setup` creates the realm and everything in it. Client-only mode is in the client-file section. The operator does not create a realm by hand. The full procedure, including the database and the stack, is in `deployment.md`. Only the realm steps are repeated here.
 
 1. Make sure that `KEYCLOAK_URL` in `.env` points at the Keycloak server that holds this realm.
 2. Make sure that `KEYCLOAK_REALM` in `.env` matches the realm name that the tenant generator derived from the slug.
@@ -158,6 +158,25 @@ Warning. If the bootstrap credential is written into `.env`, then every later re
 Keycloak. A realm is created with `POST /admin/realms` carrying the whole realm representation, which creates the clients and mappers in the same call. `POST /admin/realms/{realm}/partialImport` applies a file to a realm that already exists, with `ifResourceExists` set to `FAIL`, `SKIP`, or `OVERWRITE`. The first is the path for a fresh realm and the second is the path for a repair.
 
 Setup is resumable through `setup_step` (`../architecture/data-shape.md`). A rerun after the realm step needs no bootstrap credential. The identity provider is not a setup step, because `genie-ops idp set` runs afterwards and a local-accounts deployment never runs it (`DEC-36`).
+
+## Client files (client-only mode)
+
+Planned. In client-only mode (`realm: customer` in `tenant.yaml`, ADR 0010), Genie Ops Center and genie-studio are clients in the customer's existing realm. Setup creates no realm and no client, and no `genie-admin` client exists. The customer's IT imports two client files from `deploy/keycloak/` (Specification 02 R-54a).
+
+1. Give the customer's IT the two files: one for the client `genie-ops-center` and one for `genie-studio`. The files carry no secret.
+2. Make sure that each client requires PKCE.
+3. Make sure that `genie-ops-center` has the redirect URI `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect URI `PUBLIC_URL`, with this deployment's `PUBLIC_URL`.
+4. Make sure that each client carries its own `groups` protocol mapper, so the mapper changes nothing else in the realm: the Group Membership mapper with `full.path` false, or the User Attribute mapper when the customer's realm keeps the person's groups in a user attribute. The claim name is `groups`, in the id token and the access token.
+5. Ask the customer's IT to restrict the `groups` claim to the groups meant for Genie Ops Center. Otherwise the claim carries every realm group the person holds, and the groups sync creates a group for each (`DEC-41`).
+6. Ask the customer's IT to return the `genie-ops-center` client secret. Put it in `.env` as `KEYCLOAK_CLIENT_SECRET`. If they renamed the client, set `KEYCLOAK_CLIENT_ID` to the new id.
+
+The realm-level guarantees of the template become the customer's duties, because Genie holds no rights in their realm:
+
+- A short realm session, so that offboarding at the company login takes effect soon.
+- Brute-force protection on the realm.
+- The forward to their company login, if the realm brokers one.
+
+Warning. Sign-out in client-only mode ends the Genie Ops Center session only. The realm session belongs to the company, so the next sign-in is silent while it lasts.
 
 ## Add the customer's identity provider
 

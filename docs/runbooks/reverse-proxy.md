@@ -174,7 +174,7 @@ curl -sI https://ops.example.com/api/health
 curl -s https://ops.example.com/api/health
 ```
 
-Make sure that the first command returns a 301 or 308 to HTTPS, that the second shows the security headers the application sets (`Strict-Transport-Security` among them), and that the third prints `ok`, or `degraded` before setup has run. Make sure that the certificate shown by the browser is issued to the hostname and not a Traefik default certificate; a default certificate means the challenge failed, and the Traefik log names the reason.
+Make sure that the first command returns a 301 or 308 to HTTPS, that the second shows the security headers the application sets (`Strict-Transport-Security` among them), and that the third prints `ok`, or `degraded` before setup has run or while Keycloak is not answering. Make sure that the certificate shown by the browser is issued to the hostname and not a Traefik default certificate; a default certificate means the challenge failed, and the Traefik log names the reason.
 
 After the first sign-in, open the account page and make sure that the session's IP address is the person's address and not an address from the proxy subnet. If it is the proxy address, `AUTH_TRUSTED_PROXIES` does not match the network.
 
