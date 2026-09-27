@@ -36,7 +36,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",
       "two tenant contexts in one process the two databases are genuinely separate",
-      "the two-context isolation test each context holds its own Better Auth instance and neither answers for the other",
+      "two tenant contexts in one process the two-context isolation test each context holds its own Better Auth instance and neither answers for the other",
     ],
   },
   {
