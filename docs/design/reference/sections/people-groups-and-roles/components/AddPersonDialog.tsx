@@ -72,6 +72,7 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
           <div className="flex flex-wrap gap-2">
             {roles.map((r) => {
               const on = roleIds.includes(r.id)
+
               return (
                 <button
                   key={r.id}
@@ -92,7 +93,7 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
           <Info className="mt-0.5 size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
           <span>
             {settings.onboardingMode === 'jit' && !local ? (
-              <>People in your identity provider can also sign in without being added here. Adding someone now lets you assign roles before their first sign-in; they show as <Pill>Pending</Pill> until then.</>
+              <>People in a group mapped to a role can also sign in without being added here. Adding someone now lets you assign roles before their first sign-in; they show as <Pill>Pending</Pill> until then.</>
             ) : (
               <>The person shows as <Pill>Pending</Pill> until their first sign-in.</>
             )}

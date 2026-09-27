@@ -39,6 +39,17 @@ A tenant administrator maps a group to a role in the admin portal. The mapping i
 
 The mapping lives in Genie Ops Center, not in the provider, because the provider knows nothing about product roles, and because the same mapping must work for every provider. A directory group appears in the Groups screen the first time any member signs in with it. A tenant administrator can also add it before that, by typing the exact value the provider puts in the `groups` claim, for example `Sales` or an Entra group object ID, and assign roles to it at once, so a large launch has its mappings in place before the first sign-in (`DEC-52`). A group added this way shows as "Not seen yet" until a sign-in lists it, and it is the same row the sync uses from then on. It can be archived, never deleted. While a group is archived, the roles assigned to it stop applying, and restoring the group brings them back, so archiving is how an administrator retires a directory group's access without touching the provider.
 
+## Who may sign in the first time
+
+One Keycloak account can reach both Genie Ops Center and genie-studio, so each application decides for itself who gets an account (per-app access, owner decision 2026-09-27, `DEC-7` as amended). A person whose email has no `user` row is admitted at the first sign-in only in these cases:
+
+- An administrator added them in People. This is the only way in under `invite` onboarding, the default.
+- Under `jit` onboarding, their `groups` claim at that sign-in holds at least one mapped group: a directory group that is not archived and holds at least one role assignment in Genie Ops Center, including a group added before first sign-in (`DEC-52`).
+
+Every other first sign-in is refused with the not-registered message, and nothing is written except the audit event. That covers a `jit` sign-in whose claim holds no mapped group, and a `jit` sign-in with no `groups` claim at all, because an absent claim cannot prove a mapped group. So the group-to-role mappings an administrator makes are also the gate: a large customer maps its groups first, then switches to `jit`, and nobody outside those groups gets an account.
+
+The rule decides who gets an account, not what they may do afterwards. Once a person exists, their roles decide everything. A person whose last mapped group is later removed keeps their account, but loses the roles that came from that group at their next sign-in (`DEC-41`); an administrator disables or removes them in People to close the account.
+
 ## Local groups
 
 A tenant whose provider sends no groups, and a tenant on local accounts, uses local groups. A tenant administrator creates one on the Groups screen and adds people from the People screen. Its rows carry source `local`. The sync never touches them, so a local membership survives every sign-in, and `DEC-41` does not apply. A role is assigned to a local group exactly like to a directory group. One person can hold both kinds at once. A local group can be deleted, after a confirm step that shows the count of members and role assignments that go with it.

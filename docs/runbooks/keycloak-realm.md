@@ -202,7 +202,7 @@ Because a federated person holds real realm groups, the `groups` claim comes fro
 3. Restrict the application assignment to the people who must have access.
 4. Emit only the groups that are assigned to the application, never every group of the person.
 
-Step 3 is a requirement before a customer switches onboarding to `jit`, because the provider is then the only gate (`DEC-7`).
+Step 3 is a requirement before a customer switches onboarding to `jit`. In `jit`, Genie Ops Center admits a new person only when their `groups` claim holds a group mapped to one of its roles (`DEC-7` as amended 2026-09-27), so the provider's assignment and those mappings are the two gates. Map the groups before the switch.
 
 Warning. If the provider emits every group of a person, then the claim can exceed the provider's limit and arrive absent. Microsoft Entra ID omits the `groups` claim for a person in more than 200 groups, and for more than 150 in SAML. Genie Ops Center then keeps that person's previous memberships and writes the audit event `auth:groups_claim_absent` (`DEC-41`). Microsoft Entra ID is one example. The same rule is applied to any provider with a limit.
 

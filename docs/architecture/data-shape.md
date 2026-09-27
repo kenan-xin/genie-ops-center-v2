@@ -46,7 +46,7 @@ Self-protection, server-enforced: a person cannot disable or remove themselves, 
 
 `two_factor`: id, user_id, secret, backup_codes, verified, failed_verification_count, locked_until. Added by the Better Auth two-factor plugin and used by the break-glass account only (`DEC-15`). Managed from that account's own account page variant.
 
-`status` is `pending` for a person an administrator pre-added who has not signed in yet, and `active` after the first sign-in or when created under `jit` onboarding. `must_change_password` serves the break-glass admin path only.
+`status` is `pending` for a person an administrator pre-added who has not signed in yet, and `active` after the first sign-in or when created under `jit` onboarding, which admits a new person only with a mapped group in the claim (`DEC-7` as amended 2026-09-27). `must_change_password` serves the break-glass admin path only.
 
 ### Tenant settings
 

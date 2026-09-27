@@ -61,7 +61,7 @@ R-8. `account.accountLinking.enabled` is on with `trustedProviders` equal to `["
 
 ### Onboarding
 
-R-9. A database hook on user creation reads `tenant_settings.onboarding_mode` through the settings reader of `DEC-46` and applies `DEC-7`. In `invite` mode an email with no `user` row is refused before anything is written, no session is created, and the sign-in page shows the not-registered banner. In `jit` mode an email with no `user` row is created with `status` `active` and `onboarding` `jit`.
+R-9. A database hook on user creation reads `tenant_settings.onboarding_mode` through the settings reader of `DEC-46` and applies `DEC-7`. In `invite` mode an email with no `user` row is refused before anything is written, no session is created, and the sign-in page shows the not-registered banner. In `jit` mode an email with no `user` row is created with `status` `active` and `onboarding` `jit` only when the token's `groups` claim holds at least one mapped group: a directory group that is not archived and holds at least one role assignment, including one added before first sign-in (`DEC-52`). A `jit` sign-in with no mapped group in the claim, or with no `groups` claim, is refused exactly like the `invite` refusal: nothing is written except the audit event, no session is created, and the sign-in page shows the not-registered banner (`DEC-7` as amended 2026-09-27, `../architecture/access-model.md`, "Who may sign in the first time").
 
 R-10. A pre-added person has `status` `pending` and `onboarding` `invited`. Their first sign-in sets `status` to `active` and sets `first_sign_in_at`, and leaves `onboarding` unchanged. Activation happens in both onboarding modes.
 
@@ -235,7 +235,7 @@ R-33d. Controlled removal and reintroduction follow [CF-MA-10–11](../flows/mod
 
 AC-1 (roadmap item 1). One Better Auth instance is built inside the tenant context, reaches Keycloak through the discovery URL of the configured realm, answers on `/api/auth/callback/keycloak`, and stores an account whose token columns are unreadable as plain text in the database. Two tenant contexts in one process each hold their own instance and neither answers for the other. Proves R-4, R-5, R-6, R-7.
 
-AC-2 (roadmap item 2). In `invite` mode an unknown email is refused with the not-registered message and no `user` row and no `session` row is written. A pre-added pending person becomes active on first sign-in. In `jit` mode an unknown email is created active. A person who already exists by email links to the realm account instead of gaining a second row. Proves R-8, R-9, R-10, R-12.
+AC-2 (roadmap item 2). In `invite` mode an unknown email is refused with the not-registered message and no `user` row and no `session` row is written. A pre-added pending person becomes active on first sign-in. In `jit` mode an unknown email whose claim holds a mapped group is created active, and an unknown email whose claim holds no mapped group, or has no `groups` claim, is refused with the not-registered message and writes no `user` row. A person who already exists by email links to the realm account instead of gaining a second row. Proves R-8, R-9, R-10, R-12.
 
 AC-3 (roadmap item 3). The break-glass account signs in at `/admin/login`, is absent from the sign-in page, and refuses a credential that is not the break-glass account with a neutral message and no session. Proves R-62.
 
