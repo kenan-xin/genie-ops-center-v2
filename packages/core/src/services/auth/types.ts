@@ -70,14 +70,18 @@ export type AuthMember = {
   readonly getSession: (input: AuthSessionInput) => Promise<AuthSession | null>;
   /**
    * Starts the Keycloak sign-in (`signIn.social({ provider: "keycloak" })`, R-6) and returns the
-   * realm's authorization URL for the caller to redirect the browser to. `errorCallbackURL` is the
-   * sign-in page so a refusal lands there with `?error=` (R-17a).
+   * realm's authorization URL for the caller to redirect the browser to, plus the response headers
+   * (the short-lived OAuth state/PKCE cookie) the caller must copy onto that redirect.
+   * `errorCallbackURL` is the sign-in page so a refusal lands there with `?error=` (R-17a).
    */
   readonly beginKeycloakSignIn: (input: {
     readonly headers: Headers;
     readonly callbackURL: string;
     readonly errorCallbackURL: string;
-  }) => Promise<{ readonly url: string | undefined }>;
+  }) => Promise<{
+    readonly url: string | undefined;
+    readonly headers: Headers;
+  }>;
   /** Deletes the session row, clears the cookie, and reports the provider logout URL (R-17). */
   readonly signOut: (input: AuthSignOutInput) => Promise<AuthSignOutResult>;
   /** The current discovery state, without probing. */

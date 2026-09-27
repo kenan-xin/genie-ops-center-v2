@@ -244,17 +244,21 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
     },
 
     async beginKeycloakSignIn({ headers, callbackURL, errorCallbackURL }) {
-      const result = await instance.api.signInSocial({
-        headers,
-        body: {
-          provider: "keycloak",
-          callbackURL,
-          errorCallbackURL,
-          disableRedirect: true,
-        },
-      });
+      const { headers: responseHeaders, response } =
+        await instance.api.signInSocial({
+          headers,
+          body: {
+            provider: "keycloak",
+            callbackURL,
+            errorCallbackURL,
+            disableRedirect: true,
+          },
+          returnHeaders: true,
+        });
 
-      return { url: result.url };
+      // The state/PKCE cookie Better Auth set lives on `responseHeaders`; the caller must copy it
+      // onto the redirect, or the callback cannot verify the state it issued.
+      return { url: response.url, headers: responseHeaders };
     },
 
     async signOut({ headers, callbackURL }) {

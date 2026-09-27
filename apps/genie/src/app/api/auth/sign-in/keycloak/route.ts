@@ -37,11 +37,21 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!headers.has("origin")) headers.set("origin", publicUrl);
 
-  const { url } = await auth.beginKeycloakSignIn({
+  const started = await auth.beginKeycloakSignIn({
     headers,
     callbackURL: new URL("/auth/complete", publicUrl).toString(),
     errorCallbackURL: signInPage.toString(),
   });
 
-  return url === undefined ? unavailable() : NextResponse.redirect(url);
+  if (started.url === undefined) return unavailable();
+
+  const redirect = NextResponse.redirect(started.url);
+
+  // Better Auth's short-lived OAuth state/PKCE cookie must reach the browser, or the callback
+  // cannot verify the state it issued.
+  for (const cookie of started.headers.getSetCookie()) {
+    redirect.headers.append("set-cookie", cookie);
+  }
+
+  return redirect;
 }
