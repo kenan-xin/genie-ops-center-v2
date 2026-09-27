@@ -69,9 +69,9 @@ const authSchema = { user, session, account, verification, twoFactor } as const;
  *
  * Every option below is one of R-4a, R-5, R-7, R-8 or R-13, and the application columns are
  * `input: false` so no Better Auth endpoint can write them (D2-5). `useSecureCookies` is
- * deliberately off: Better Auth's automatic prefix is `__Secure-`, and R-4a names the cookie
- * `__Host-genie-session`, so the name is supplied in full and the Secure flag comes from
- * `defaultCookieAttributes` (see `sessionCookieName`).
+ * deliberately off: in better-auth 1.7.6 the automatic secure prefix is `__Secure-` (see
+ * `createCookieGetter`), and R-4a names the cookie `__Host-genie-session`, so the name is supplied
+ * in full and the Secure flag comes from `defaultCookieAttributes` (see `sessionCookieName`).
  */
 function buildInstance(input: AuthMemberInput) {
   const secure = isSecurePublicUrl(input.publicUrl);

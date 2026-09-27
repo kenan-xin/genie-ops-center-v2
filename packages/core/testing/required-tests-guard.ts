@@ -325,6 +325,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "Spec 2 AC-1, R-4 to R-8, R-13, R-17 and R-54d, and DEC-34, require the instance, discovery and break-glass proofs to run",
     cases: [
       "the Better Auth instance the two-context auth isolation test each context holds its own instance and neither answers for the other",
+      "the Better Auth instance names the session cookie __Host-genie-session with the secure flag over HTTPS (R-4a)",
       "the Better Auth instance break-glass email and password signs in while the realm discovery does not answer",
       "the Better Auth instance refuses sign-up while email and password sign-in is enabled",
       "the Better Auth instance does not let the update-user endpoint write an input:false application column",

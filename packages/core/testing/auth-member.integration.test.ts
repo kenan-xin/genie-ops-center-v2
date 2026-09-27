@@ -152,6 +152,31 @@ describe("the Better Auth instance", () => {
     expect(session?.user.id).toBe(userId);
   });
 
+  it("names the session cookie __Host-genie-session with the secure flag over HTTPS (R-4a)", async () => {
+    await insertCredentialPerson(first.context, {
+      email: "cookie@example.com",
+      password: PASSWORD,
+    });
+
+    const response = await signInWithPassword(
+      authOf(first),
+      "cookie@example.com"
+    );
+
+    const cookies = response.headers.getSetCookie();
+
+    const sessionCookie = cookies.find((cookie) =>
+      cookie.startsWith("__Host-genie-session=")
+    );
+
+    // R-4a: the exact __Host- name, Secure over HTTPS, HttpOnly, SameSite=Lax and Path=/.
+    expect(sessionCookie, cookies.join(" | ")).toBeDefined();
+    expect(sessionCookie).toContain("Secure");
+    expect(sessionCookie).toContain("HttpOnly");
+    expect(sessionCookie).toContain("SameSite=Lax");
+    expect(sessionCookie).toContain("Path=/");
+  });
+
   it("refuses sign-up while email and password sign-in is enabled", async () => {
     const response = await authOf(first).handler(
       new Request(`${PUBLIC_URL}/api/auth/sign-up/email`, {
