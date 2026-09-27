@@ -39,6 +39,7 @@ const ROUTER_CASES = [
   "the placeholder read procedure against a real database answers the rows this deployment holds",
   "the placeholder read procedure against a real database refuses a caller without the key, and reads nothing",
   "the placeholder read procedure against a real database refuses the read with module-disabled when the placeholder entitlement is off",
+  "the placeholder read procedure against a real database answers only the named record to a person with a record-scoped read grant",
   "the placeholder read procedure against a real database refuses an anonymous caller",
   "the placeholder read procedure against a real database appends placeholder:admin to Tenant administrator on enable and removes it on disable",
   "the placeholder read procedure against a real database keeps core's ledger and the module's ledger apart",

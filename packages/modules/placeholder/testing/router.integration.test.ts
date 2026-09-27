@@ -120,6 +120,29 @@ describe("the placeholder read procedure against a real database", () => {
     }
   });
 
+  it("answers only the named record to a person with a record-scoped read grant", async () => {
+    const named = await insertPlaceholderRecord(deployment.context, {
+      label: "The named row",
+    });
+
+    const other = await insertPlaceholderRecord(deployment.context, {
+      label: "Another row",
+    });
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["placeholder:read"],
+      { type: "placeholder-record", id: named.id }
+    );
+
+    const rows = await placeholderRouter
+      .createCaller(contextFor(userId))
+      .read();
+
+    expect(rows.map((entry) => entry.id)).toEqual([named.id]);
+    expect(rows.map((entry) => entry.id)).not.toContain(other.id);
+  });
+
   it("refuses an anonymous caller", async () => {
     const caller = placeholderRouter.createCaller({
       tenant: deployment.context,

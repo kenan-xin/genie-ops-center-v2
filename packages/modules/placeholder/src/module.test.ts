@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { type NavigationEntry, validateModule } from "@genie/core";
+import {
+  type NavigationEntry,
+  type TenantContext,
+  validateModule,
+} from "@genie/core";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { describe, expect, it } from "vitest";
 
@@ -132,7 +136,11 @@ describe("the placeholder module declaration", () => {
   it("resolves a record to a label and a path", async () => {
     const [recordType] = placeholderModule.recordTypes;
 
-    await expect(recordType?.resolve("r1")).resolves.toEqual({
+    // SAFETY: the placeholder resolver builds its answer from the id and never reads the context,
+    // so an empty context is enough for this pure check.
+    const ctx = { tenant: {} as TenantContext };
+
+    await expect(recordType?.resolve(ctx, "r1")).resolves.toEqual({
       label: "Placeholder record r1",
       path: "/placeholder/r1",
     });

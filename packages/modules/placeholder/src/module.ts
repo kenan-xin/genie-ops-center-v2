@@ -165,7 +165,7 @@ export const placeholderModule = {
   recordTypes: [
     {
       type: "placeholder-record",
-      resolve: async (id: string) => ({
+      resolve: async (_ctx, id: string) => ({
         label: `Placeholder record ${id}`,
         path: `/placeholder/${id}`,
       }),
