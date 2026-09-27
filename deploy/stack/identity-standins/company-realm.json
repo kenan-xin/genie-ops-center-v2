@@ -1,0 +1,128 @@
+{
+  "realm": "company",
+  "enabled": true,
+  "displayName": "Company (stand-in)",
+  "displayNameHtml": "Company (stand-in)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "groups": [
+    { "name": "genie-admins", "path": "/genie-admins" },
+    { "name": "genie-users", "path": "/genie-users" },
+    { "name": "staff", "path": "/staff" }
+  ],
+  "users": [
+    {
+      "username": "alice@company.example",
+      "enabled": true,
+      "email": "alice@company.example",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Administrator",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ],
+      "groups": ["/genie-admins", "/staff"]
+    },
+    {
+      "username": "bob@company.example",
+      "enabled": true,
+      "email": "bob@company.example",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Member",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ],
+      "groups": ["/genie-users", "/staff"]
+    },
+    {
+      "username": "carol@company.example",
+      "enabled": true,
+      "email": "carol@company.example",
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Outsider",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ],
+      "groups": ["/staff"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "genie-oidc",
+      "name": "Genie OIDC broker",
+      "description": "The client the tenant realm brokers to as an OpenID Connect identity provider.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "company-oidc-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "frontchannelLogout": false,
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "genie-saml",
+      "name": "Genie SAML broker",
+      "description": "The client the tenant realm brokers to as a SAML 2.0 identity provider.",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "frontchannelLogout": true,
+      "redirectUris": [],
+      "attributes": {
+        "saml.client.signature": "false",
+        "saml.authnstatement": "true",
+        "saml.force.post.binding": "true",
+        "saml.server.signature": "true",
+        "saml_name_id_format": "username",
+        "saml_assertion_consumer_url_post": "http://*",
+        "saml_assertion_consumer_url_redirect": "http://*",
+        "saml_single_logout_service_url_post": "http://*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "saml",
+          "protocolMapper": "saml-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "single": "true",
+            "attribute.name": "groups",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "groups"
+          }
+        }
+      ]
+    }
+  ]
+}

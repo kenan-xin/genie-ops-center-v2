@@ -1,0 +1,65 @@
+# Identity stand-ins for the end-to-end tests (tech plan D2-2). Test-only: they
+# are never generated into a customer stack, and the generated customer compose
+# file lives in tools/generators/src/tenant-new/templates.ts.
+#
+# One Keycloak imports the `company` realm from ./identity-standins/. That realm
+# plays a customer's company login as an OpenID Connect identity provider (client
+# `genie-oidc`) and as a SAML 2.0 identity provider (client `genie-saml`), with a
+# few seeded users and groups. The tenant realm is the one under test and
+# `genie-ops setup` creates it later; this stack never imports it.
+#
+# The OpenLDAP and Mailpit services are the LDAP federation and the mail sink the
+# Section 2 scenarios need. Host ports are overridable so each worktree's run
+# stays apart; testing/identity-standins-process.ts fills them from the scoped
+# worktree offset, and every port stays below the ephemeral range at 32768.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    # `start-dev` keeps the test server simple; `--import-realm` reads the realm
+    # file mounted below on first start.
+    command: ["start-dev", "--http-port=8080", "--import-realm"]
+    environment:
+      # A throwaway server administrator for the test container only, never a
+      # customer value.
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+      # Opens /health/ready on the management port 9000, which is never published.
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./identity-standins:/opt/keycloak/data/import:ro
+    ports:
+      - "${GENIE_STANDIN_KEYCLOAK_PORT:-15080}:8080"
+    healthcheck:
+      # The image has no curl, so the check is Keycloak's documented bash /dev/tcp
+      # request (keycloak.org/observability/health).
+      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  openldap:
+    # Test-only OpenLDAP with the memberOf overlay and a seeded directory:
+    # admin `cn=admin,dc=planetexpress,dc=com` / `GoodNewsEveryone`, users under
+    # `ou=people`, groups `cn=admin_staff` and `cn=ship_crew` with `memberOf`.
+    # Pinned by digest because the image publishes no version tags.
+    image: ghcr.io/rroemhild/docker-test-openldap@sha256:f8a8d190cac6ba602a080fd6bec351c65fa09729875ac0cd60c492b15c685d82
+    ports:
+      - "${GENIE_STANDIN_LDAP_PORT:-15389}:10389"
+    healthcheck:
+      # The image's own /healthcheck.sh reports unhealthy here, so this bind is
+      # the readiness check `docker compose up --wait` waits on.
+      test: ["CMD", "ldapsearch", "-H", "ldap://127.0.0.1:10389", "-x", "-b", "dc=planetexpress,dc=com", "-D", "cn=admin,dc=planetexpress,dc=com", "-w", "GoodNewsEveryone", "-s", "base", "dn"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  mailpit:
+    # Catches the set-password and invitation emails the Section 2 scenarios send.
+    image: axllent/mailpit:v1.31.3
+    ports:
+      - "${GENIE_STANDIN_SMTP_PORT:-15025}:1025"
+      - "${GENIE_STANDIN_MAILPIT_PORT:-18025}:8025"

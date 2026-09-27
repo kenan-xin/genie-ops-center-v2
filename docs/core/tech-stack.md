@@ -101,6 +101,15 @@ The tRPC and TanStack Query setup follows the tRPC App Router guide and the TanS
 | Git hooks | lefthook | 2.x | Format and lint on staged files. |
 | Type check | tsc | 7.x | `--noEmit` per package. |
 
+## Test identity stand-ins
+
+Test-only containers for the end-to-end stack (tech plan D2-2). They run in `deploy/stack/compose.identity-standins.yaml` and are never generated into a customer image or stack.
+
+| Item | Choice | Version | Why |
+| --- | --- | --- | --- |
+| LDAP federation stand-in | OpenLDAP (`ghcr.io/rroemhild/docker-test-openldap`) | pinned by digest | A real OpenLDAP directory with seeded users, groups, and the memberOf overlay, so the LDAP federation scenarios bind and read group membership; the image publishes no version tags, so the digest is the pin. |
+| Mail sink stand-in | Mailpit (`axllent/mailpit`) | v1.31.3 | Receives the set-password and invitation emails the identity scenarios send over SMTP and exposes them over HTTP for the test to assert. |
+
 ## Delivery
 
 | Item | Choice | Version | Why |

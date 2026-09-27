@@ -1,5 +1,14 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -110,6 +119,17 @@ function composeRequiredNames(compose: string): readonly string[] {
   return [
     ...new Set(
       [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
+        ([, name]) => name ?? ""
+      )
+    ),
+  ].toSorted();
+}
+
+/** Every name the compose file reads with a fallback (`${NAME:-default}`). */
+function composeOptionalNames(compose: string): readonly string[] {
+  return [
+    ...new Set(
+      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):-/g)].map(
         ([, name]) => name ?? ""
       )
     ),
@@ -253,32 +273,34 @@ describe("the rendered deployment folder", () => {
     expect(worker).toContain("image: ${IMAGE_TAG");
   });
 
-  it("runs Keycloak in the customer stack", () => {
+  it("runs Keycloak in the customer stack behind the bundled-keycloak profile", () => {
     const compose = read("compose.yaml");
     const keycloak = service(compose, "keycloak");
     const example = read(".env.example");
 
     expect(keycloak).not.toBe("");
+    // The service starts only while COMPOSE_PROFILES holds bundled-keycloak (R-54b).
+    expect(keycloak).toContain('profiles: ["bundled-keycloak"]');
     // The stack pins the Keycloak patch the deployment is tested against.
     expect(keycloak).toContain("image: quay.io/keycloak/keycloak:26.7.4");
     expect(keycloak).toContain('command: ["start"');
     expect(keycloak).not.toContain("start-dev");
-    expect(keycloak).toContain("KC_DB: ${KC_DB:?set KC_DB in .env}");
+    // Every KC_ value is defaulted, so a stack without the profile does not fail
+    // on unset values while compose still interpolates this service (R-54b).
+    expect(keycloak).toContain("KC_DB: ${KC_DB:-postgres}");
+    expect(keycloak).toContain("KC_DB_URL_HOST: ${KC_DB_URL_HOST:-}");
     expect(keycloak).toContain(
-      "KC_DB_URL_HOST: ${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}"
+      "KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-keycloak}"
     );
+    expect(keycloak).toContain("KC_DB_URL_PORT: ${KC_DB_URL_PORT:-5432}");
+    expect(keycloak).toContain("KC_DB_USERNAME: ${KC_DB_USERNAME:-}");
+    expect(keycloak).toContain("KC_DB_PASSWORD: ${KC_DB_PASSWORD:-}");
     expect(keycloak).toContain(
-      "KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:?set KC_DB_URL_DATABASE in .env}"
+      "KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}"
     );
-    expect(keycloak).toContain(
-      "KC_DB_USERNAME: ${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}"
-    );
-    expect(keycloak).toContain(
-      "KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}"
-    );
-    expect(keycloak).toContain("KC_PROXY_HEADERS: ${KC_PROXY_HEADERS");
+    expect(keycloak).not.toMatch(/\$\{KC_[A-Z0-9_]*:\?/);
     // Keycloak has its own public hostname, KEYCLOAK_URL (runbooks/reverse-proxy.md).
-    expect(keycloak).toContain("KC_HOSTNAME: ${KEYCLOAK_URL");
+    expect(keycloak).toContain("KC_HOSTNAME: ${KEYCLOAK_URL:-}");
     expect(keycloak).toContain('KC_HEALTH_ENABLED: "true"');
     expect(keycloak).not.toContain("ports:");
 
@@ -299,20 +321,47 @@ describe("the rendered deployment folder", () => {
       );
     }
     expect(keycloak).toContain(
-      "KC_DB_URL_PORT: ${KC_DB_URL_PORT:?set KC_DB_URL_PORT in .env}"
-    );
-    expect(keycloak).toContain(
       "KC_PROXY_TRUSTED_ADDRESSES: ${KC_PROXY_TRUSTED_ADDRESSES:-}"
     );
     // Keycloak refuses an empty value, so the entrypoint unsets a blank one.
     expect(keycloak).toContain(
       "|| unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh"
     );
+    expect(entries.get("KC_DB")).toBe("postgres");
     expect(entries.get("KC_DB_URL_PORT")).toBe("5432");
     expect(entries.get("KC_PROXY_TRUSTED_ADDRESSES")).toBe("");
     expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
     expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
     expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
+  });
+
+  it("selects the bundled Keycloak through COMPOSE_PROFILES and marks the KC_ settings", () => {
+    const example = read(".env.example");
+
+    expect(example).toContain("COMPOSE_PROFILES=bundled-keycloak");
+    expect(example).toContain("read only while COMPOSE_PROFILES holds");
+    expect(example).toContain("never with --profile");
+  });
+
+  it("passes the stack profiles to every Genie Ops Center service and depends on no Keycloak", () => {
+    const compose = read("compose.yaml");
+
+    // The start-up guard reads STACK_PROFILES from each Genie Ops Center service (R-54c).
+    expect(service(compose, "app")).toContain(
+      "STACK_PROFILES: ${COMPOSE_PROFILES:-}"
+    );
+    expect(service(compose, "worker")).toContain(
+      "STACK_PROFILES: ${COMPOSE_PROFILES:-}"
+    );
+    // Only the application and the worker are Genie Ops Center services; Keycloak
+    // sets no STACK_PROFILES of its own.
+    expect(service(compose, "keycloak")).not.toContain("STACK_PROFILES:");
+
+    // No Genie Ops Center service reaches Keycloak through depends_on: the
+    // application reaches it only at sign-in and setup (R-54b).
+    expect(service(compose, "app")).not.toMatch(/keycloak/);
+    expect(service(compose, "worker")).not.toMatch(/keycloak/);
+    expect(compose).not.toMatch(/depends_on:[\s\S]*?keycloak/);
   });
 
   it("checks Keycloak readiness on the unpublished management port", () => {
@@ -368,8 +417,10 @@ describe("the rendered deployment folder", () => {
     for (const name of composeRequiredNames(read("compose.yaml"))) {
       expectedNames.add(name);
     }
-    // The one optional compose name, listed blank so an operator sees it.
-    expectedNames.add("KC_PROXY_TRUSTED_ADDRESSES");
+    // Every defaulted compose name, listed so an operator sees it and can fill it.
+    for (const name of composeOptionalNames(read("compose.yaml"))) {
+      expectedNames.add(name);
+    }
 
     expect([...entries.keys()].toSorted()).toEqual(
       [...expectedNames].toSorted()
@@ -391,35 +442,54 @@ describe("the rendered deployment folder", () => {
 
   // An operator copies .env.example to .env and fills every listed value, then runs
   // `docker compose up`; a name compose requires but the example omits stops the stack.
-  it("lists every variable the compose file requires in .env.example", () => {
+  it("lists every compose variable in .env.example, with the Keycloak settings defaulted", () => {
     const catalogueNames = new Set(
       environmentCatalogue().map(({ name }) => name)
     );
     const entries = envExampleEntries(read(".env.example"));
-    const required = composeRequiredNames(read("compose.yaml"));
+    const compose = read("compose.yaml");
+    const required = composeRequiredNames(compose);
+    const optional = composeOptionalNames(compose);
 
     // R-66: the Keycloak server administrator is created once by a command, never from .env.
     expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_USERNAME");
     expect(required).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD");
-    expect(required).toContain("KC_DB_PASSWORD");
-    expect(required).toContain("KEYCLOAK_URL");
+    // R-54b: no KC_ value is required and KEYCLOAK_URL is not required, because
+    // compose interpolates the keycloak service even when the profile is off.
+    expect(required).not.toContain("KEYCLOAK_URL");
+    expect(required).toEqual(["DATABASE_URL", "IMAGE_TAG", "PUBLIC_URL"]);
 
-    // The only non-secret stack defaults; every other name outside the catalogue may be a
-    // credential or a host value and stays blank.
+    // Every other compose name is defaulted: the KC_ settings carry a fallback in
+    // the compose file, and COMPOSE_PROFILES is the one value the example turns on.
     const stackDefaults = new Map([
+      ["COMPOSE_PROFILES", "bundled-keycloak"],
       ["KC_DB", "postgres"],
       ["KC_DB_URL_DATABASE", "keycloak"],
       ["KC_DB_URL_PORT", "5432"],
       ["KC_PROXY_HEADERS", "xforwarded"],
     ]);
 
-    for (const name of required) {
+    for (const name of [...required, ...optional]) {
       expect(entries.has(name), name).toBe(true);
 
       if (!catalogueNames.has(name)) {
         expect(entries.get(name), name).toBe(stackDefaults.get(name) ?? "");
       }
     }
+  });
+
+  it("renders every compose name in .env.example, defaulted or blank", () => {
+    const entries = envExampleEntries(read(".env.example"));
+    const compose = read("compose.yaml");
+
+    expect(entries.get("KEYCLOAK_URL")).toBe("");
+    expect(entries.get("COMPOSE_PROFILES")).toBe("bundled-keycloak");
+    expect(entries.get("KC_DB_PASSWORD")).toBe("");
+    expect(entries.get("KC_DB_URL_HOST")).toBe("");
+    expect(entries.get("KC_DB_USERNAME")).toBe("");
+
+    // The KC_ block is grouped under the profile note, so no KC_ name is required.
+    expect(compose).not.toMatch(/\$\{KC_[A-Z0-9_]*:\?/);
   });
 
   it("keeps the customer stack template out of deploy/stack", () => {
@@ -429,9 +499,13 @@ describe("the rendered deployment folder", () => {
     );
 
     expect(existsSync(stackDirectory)).toBe(true);
+    // The test stacks only: the generated customer stack stays a template here,
+    // and the identity stand-ins of D2-2 are test-only as well.
     expect(readdirSync(stackDirectory).toSorted()).toEqual([
       "compose.dev-e2e.yaml",
       "compose.e2e.yaml",
+      "compose.identity-standins.yaml",
+      "identity-standins",
     ]);
   });
 
@@ -550,5 +624,66 @@ describe("the strict validation seam", () => {
 
   it("renders the same bytes for the same input", () => {
     expect([...renderTenant(INPUT, VALIDATORS)]).toEqual([...files]);
+  });
+});
+
+/**
+ * The generated compose file is the one artifact an operator runs as-is, so it is
+ * rendered through the real `docker compose config` instead of a second YAML
+ * parser. `config` needs the Docker CLI but no running daemon.
+ *
+ * The application values a stack must supply are set here; the profile selects
+ * whether the keycloak service appears. Both answers must render, because a stack
+ * without the bundled Keycloak is a supported shape (Specification 02 R-54b).
+ */
+describe("the rendered compose file under docker compose", () => {
+  const APP_VALUES = {
+    IMAGE_TAG: "example.invalid/genie-demo:test",
+    DATABASE_URL: "postgres://genie:genie@database:5432/genie",
+    PUBLIC_URL: "https://example.invalid",
+  };
+
+  function composeServices(profile: string): readonly string[] {
+    const directory = mkdtempSync(join(tmpdir(), "genie-compose-config-"));
+    const composePath = join(directory, "compose.yaml");
+
+    try {
+      writeFileSync(composePath, read("compose.yaml"));
+
+      return execFileSync(
+        "docker",
+        ["compose", "--file", composePath, "config", "--services"],
+        {
+          encoding: "utf8",
+          env: { ...process.env, ...APP_VALUES, COMPOSE_PROFILES: profile },
+        }
+      )
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
+    } catch (error) {
+      throw new Error(
+        `the generated compose file did not render with \`docker compose config\`; the Docker CLI is required. ${String(error)}`,
+        { cause: error }
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+
+  it("renders valid without the profile and omits the keycloak service", () => {
+    const services = composeServices("");
+
+    expect(services).toContain("app");
+    expect(services).toContain("worker");
+    expect(services).not.toContain("keycloak");
+  });
+
+  it("renders valid with the profile and includes the keycloak service", () => {
+    const services = composeServices("bundled-keycloak");
+
+    expect(services).toContain("app");
+    expect(services).toContain("worker");
+    expect(services).toContain("keycloak");
   });
 });

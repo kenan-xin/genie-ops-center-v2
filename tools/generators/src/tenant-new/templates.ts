@@ -42,18 +42,6 @@ function composeRequiredNames(compose: string): readonly string[] {
   ];
 }
 
-/**
- * Defaults for the non-secret names only the compose file reads. The Keycloak database name and
- * the proxy header mode are the same on every stack; every other name outside the catalogue is
- * host-specific or a credential and stays blank.
- */
-const STACK_DEFAULTS = new Map([
-  ["KC_DB", "postgres"],
-  ["KC_DB_URL_DATABASE", "keycloak"],
-  ["KC_DB_URL_PORT", "5432"],
-  ["KC_PROXY_HEADERS", "xforwarded"],
-]);
-
 /** Every name the compose file reads with a fallback (`${NAME:-default}`), with that fallback. */
 function composeOptionalNames(compose: string): ReadonlyMap<string, string> {
   return new Map(
@@ -62,6 +50,9 @@ function composeOptionalNames(compose: string): ReadonlyMap<string, string> {
     )
   );
 }
+
+/** True for a Keycloak setting, which `.env.example` groups under the bundled-keycloak note. */
+const isBundledKeycloakSetting = (name: string) => name.startsWith("KC_");
 
 /**
  * The deltas this customer applies to the shared realm template. The generator
@@ -82,15 +73,17 @@ export function realmOverrides(input: TenantRenderInput): string {
 }
 
 /**
- * The customer's stack: the application, the worker from the same image, and Keycloak. Postgres
- * is supplied by the host and reached through `DATABASE_URL`, so this file starts no database
- * service (DEC-33). The application and Keycloak join the external `proxy` network under
- * `<slug>-app` and `<slug>-keycloak`, and the file publishes no host port, so several stacks
- * share one host and one reverse proxy (R-28).
+ * The customer's stack: the application, the worker from the same image, and Keycloak behind the
+ * `bundled-keycloak` Compose profile. Postgres is supplied by the host and reached through
+ * `DATABASE_URL`, so this file starts no database service (DEC-33). The application and Keycloak
+ * join the external `proxy` network under `<slug>-app` and `<slug>-keycloak`, and the file
+ * publishes no host port, so several stacks share one host and one reverse proxy (R-28).
  *
- * `IMAGE_TAG` selects the image for both the application and the worker; the image itself never
- * reads it (R-30). Every value that must stay out of the repository is a variable reference read
- * from the customer's own `.env`, so this file is committed and holds no secret.
+ * Whether Keycloak runs is a host fact in `.env`: `COMPOSE_PROFILES` enables the service, and the
+ * file passes it to every Genie Ops Center service as `STACK_PROFILES` for the start-up guard
+ * (R-54b). `IMAGE_TAG` selects the image for both the application and the worker; the image itself
+ * never reads it (R-30). Every value that must stay out of the repository is a variable reference
+ * read from the customer's own `.env`, so this file is committed and holds no secret.
  */
 export function stackCompose(input: TenantRenderInput): string {
   return `# The deployment stack for ${input.slug}. Generated from the module include
@@ -105,6 +98,9 @@ services:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       PORT: "3000"
+      # The Compose profiles this stack was started with. The start-up guard reads it
+      # to refuse an impossible realm-mode combination (Specification 02 R-54c).
+      STACK_PROFILES: \${COMPOSE_PROFILES:-}
     networks:
       proxy:
         aliases:
@@ -124,6 +120,8 @@ services:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       WORKER_HEARTBEAT_PATH: /tmp/genie-worker-heartbeat
+      # The Compose profiles this stack was started with, as passed to the application.
+      STACK_PROFILES: \${COMPOSE_PROFILES:-}
     networks:
       proxy:
     restart: unless-stopped
@@ -146,23 +144,35 @@ services:
     # on the host-supplied Postgres beside the application database. The server
     # administrator is created once with "docker compose run --rm keycloak
     # bootstrap-admin user" and is never written to .env (runbooks/deployment.md).
+    #
+    # This service starts only while COMPOSE_PROFILES holds bundled-keycloak,
+    # which .env sets by default. A customer who runs their own Keycloak removes
+    # the profile and points KEYCLOAK_URL at that server (Specification 02 R-54b).
+    # Enable profiles through COMPOSE_PROFILES only, never with --profile, and
+    # never start this service by name, because the start-up guard reads only
+    # STACK_PROFILES and cannot see either.
+    profiles: ["bundled-keycloak"]
     image: quay.io/keycloak/keycloak:26.7.4
     # Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, and compose always
     # sets the variable, so a blank value is unset before kc.sh starts.
     entrypoint: ["/bin/bash", "-c", "[ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
     command: ["start", "--http-enabled=true", "--http-port=8080"]
+    # Every KC_ value is defaulted rather than required, because compose
+    # interpolates this service even when the profile is off. Keycloak itself
+    # refuses an empty value, so a stack without the profile starts without them
+    # (Specification 02 R-54b).
     environment:
-      KC_DB: \${KC_DB:?set KC_DB in .env}
-      KC_DB_URL_HOST: \${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}
-      KC_DB_URL_PORT: \${KC_DB_URL_PORT:?set KC_DB_URL_PORT in .env}
-      KC_DB_URL_DATABASE: \${KC_DB_URL_DATABASE:?set KC_DB_URL_DATABASE in .env}
-      KC_DB_USERNAME: \${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}
-      KC_DB_PASSWORD: \${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}
-      KC_PROXY_HEADERS: \${KC_PROXY_HEADERS:?set KC_PROXY_HEADERS in .env}
+      KC_DB: \${KC_DB:-postgres}
+      KC_DB_URL_HOST: \${KC_DB_URL_HOST:-}
+      KC_DB_URL_PORT: \${KC_DB_URL_PORT:-5432}
+      KC_DB_URL_DATABASE: \${KC_DB_URL_DATABASE:-keycloak}
+      KC_DB_USERNAME: \${KC_DB_USERNAME:-}
+      KC_DB_PASSWORD: \${KC_DB_PASSWORD:-}
+      KC_PROXY_HEADERS: \${KC_PROXY_HEADERS:-xforwarded}
       # The reverse proxy's address on the proxy network. Blank trusts forwarded
       # headers from every peer on that network (runbooks/reverse-proxy.md).
       KC_PROXY_TRUSTED_ADDRESSES: \${KC_PROXY_TRUSTED_ADDRESSES:-}
-      KC_HOSTNAME: \${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
+      KC_HOSTNAME: \${KEYCLOAK_URL:-}
       # Opens /health/ready on the management port 9000, which is never published.
       KC_HEALTH_ENABLED: "true"
     networks:
@@ -173,7 +183,8 @@ services:
     # The image has no curl, so the check is Keycloak's documented bash /dev/tcp
     # request (keycloak.org/observability/health). No service depends on it: the
     # application reaches Keycloak only at sign-in and setup, and a customer who
-    # runs their own Keycloak drops this service (runbooks/deployment.md).
+    # runs their own Keycloak removes the profile instead of listing this
+    # service (Specification 02 R-54b).
     healthcheck:
       test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\\\r\\\\n\\\\r\\\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
       interval: 10s
@@ -191,10 +202,16 @@ networks:
 /**
  * The variables the stack needs, rendered from two sources so they cannot drift: the catalogue
  * core emits for the image's variables (`docs/architecture/environment-contract.md`) and every
- * name the compose template refuses to start without. A secret or a variable with no default is
- * left blank for the operator to fill in; every other value is the schema's default. The
- * build-only `MODULE_INCLUDE` and the setup-only `KEYCLOAK_BOOTSTRAP_*` are not runtime values,
- * so they are not listed. The real `.env` is never committed.
+ * name the compose template reads, required (`${NAME:?}`) or defaulted (`${NAME:-}`). A secret or
+ * a variable with no default is left blank for the operator to fill in; every other value is the
+ * fallback the compose file carries. The build-only `MODULE_INCLUDE` and the setup-only
+ * `KEYCLOAK_BOOTSTRAP_*` are not runtime values, so they are not listed. The real `.env` is never
+ * committed.
+ *
+ * `COMPOSE_PROFILES` is the one value the example overrides: its fallback keeps the bundled
+ * Keycloak on, which is what an operator runs unless the realm lives on another server (R-54b).
+ * The `KC_*` settings are grouped under one note, because they are read only while that profile
+ * is enabled.
  */
 export function envExample(input: TenantRenderInput): string {
   const catalogue = readEnvironmentCatalogue();
@@ -217,24 +234,48 @@ export function envExample(input: TenantRenderInput): string {
 
   for (const name of optional.keys()) names.add(name);
 
-  const lines = [...names].toSorted().map((name) => {
+  const line = (name: string): string => {
     const variable = byName.get(name);
 
-    if (variable === undefined) {
-      return `${name}=${STACK_DEFAULTS.get(name) ?? optional.get(name) ?? ""}`;
+    if (variable !== undefined) {
+      const blank = variable.secret || variable.default === undefined;
+
+      return `${name}=${blank ? "" : String(variable.default)}`;
     }
 
-    const blank = variable.secret || variable.default === undefined;
+    // Keep the bundled Keycloak on by default; the compose fallback is empty.
+    if (name === "COMPOSE_PROFILES") return `${name}=bundled-keycloak`;
 
-    return `${name}=${blank ? "" : String(variable.default)}`;
-  });
+    return `${name}=${optional.get(name) ?? ""}`;
+  };
+
+  const settings = [...names]
+    .toSorted()
+    .filter(
+      (name) => name !== "COMPOSE_PROFILES" && !isBundledKeycloakSetting(name)
+    );
+
+  const bundledKeycloakSettings = [...names]
+    .toSorted()
+    .filter(isBundledKeycloakSetting);
 
   return [
     `# ${input.slug}: copy to .env and fill in. Never commit the filled file.`,
     `# Every value is read at run time; the image carries none of them (DEC-33).`,
     `# A value after a name is that variable's default and may be overridden.`,
     "",
-    ...lines,
+    "# COMPOSE_PROFILES selects the Compose profiles to start. Keep bundled-keycloak",
+    "# to run this stack's own Keycloak. Remove it, and point KEYCLOAK_URL at the",
+    "# server that holds the realm, when the realm lives elsewhere (Specification 02 R-54b).",
+    "# Enable profiles here only, never with --profile on a command line.",
+    line("COMPOSE_PROFILES"),
+    "",
+    ...settings.map(line),
+    "",
+    "# The KC_ settings below are read only while COMPOSE_PROFILES holds",
+    "# bundled-keycloak. Keycloak refuses an empty value, so leave them blank on a",
+    "# stack that points at another Keycloak server.",
+    ...bundledKeycloakSettings.map(line),
     "",
   ].join("\n");
 }

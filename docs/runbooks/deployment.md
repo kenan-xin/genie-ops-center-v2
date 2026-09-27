@@ -57,6 +57,8 @@ Make sure that the target host has the following. The customer's platform team s
 5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only. Keep `COMPOSE_PROFILES=bundled-keycloak` only when the stack runs its own Keycloak; otherwise remove it and set `KEYCLOAK_URL` to the realm's server (Specification 02 R-54b).
 6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. With the `bundled-keycloak` profile only: before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role, and set `KC_PROXY_TRUSTED_ADDRESSES` to the proxy's address (`reverse-proxy.md`, step 7). Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`. `docker compose ps` shows it `healthy` once `/health/ready` answers on its unpublished management port 9000. The first start can take a minute or two.
 
+   Enable the profile only through `COMPOSE_PROFILES` in `.env`, never with `docker compose --profile` on a command line, and never start the `keycloak` service by name (as the administrator step below does) unless `COMPOSE_PROFILES` holds `bundled-keycloak`. The compose file passes `COMPOSE_PROFILES` to the application as `STACK_PROFILES`, and the start-up guard of Specification 02 R-54c reads only `STACK_PROFILES`; it cannot see a profile enabled with `--profile` or a service started by name, so the guard would disagree with the running stack.
+
    With the `bundled-keycloak` profile only: on the first deploy, create the Keycloak server administrator. Type the two values into the shell of this one command. Never write them to `.env` or to a file (R-66):
 
    ```bash
