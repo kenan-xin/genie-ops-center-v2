@@ -44,7 +44,7 @@ export type SetupOptions = {
 };
 
 /** The steps this section knows, in the run order the `setup_step` table records (R-14, R-18, R-52). */
-const SETUP_STEPS = ["migrations", "seed", "realm", "clients"] as const;
+export const SETUP_STEPS = ["migrations", "seed", "realm", "clients"] as const;
 
 type SetupStep = (typeof SETUP_STEPS)[number];
 

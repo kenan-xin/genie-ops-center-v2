@@ -23,7 +23,7 @@ async function completeKnownSteps(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    "insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
+    "insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done'), ('realm', 'done'), ('clients', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
   ]);
 }
 
@@ -53,6 +53,8 @@ test("AC-2: three routes switch from not-set-up to normal at phone and desktop s
       ).toBeVisible();
       await expect(page.getByText("migrations", { exact: true })).toBeVisible();
       await expect(page.getByText("seed", { exact: true })).toBeVisible();
+      await expect(page.getByText("realm", { exact: true })).toBeVisible();
+      await expect(page.getByText("clients", { exact: true })).toBeVisible();
       await expect(page.getByRole("navigation")).toHaveCount(0);
       await expect(page.getByRole("button")).toHaveCount(0);
       await expect(page.getByRole("link")).toHaveCount(0);

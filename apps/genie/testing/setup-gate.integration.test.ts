@@ -364,7 +364,7 @@ describe("the setup gate", () => {
       await enableModules(raceDeployment.context, ["placeholder"]);
       await raceDeployment.context.db.$client.query(`
         insert into setup_step (step, state)
-        values ('migrations', 'pending'), ('seed', 'pending')
+        values ('migrations', 'pending'), ('seed', 'pending'), ('realm', 'pending'), ('clients', 'pending')
         on conflict (step) do update
           set state = 'pending', detail = null, updated_at = now()
       `);
