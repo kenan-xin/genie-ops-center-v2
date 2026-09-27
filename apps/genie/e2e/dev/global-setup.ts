@@ -63,7 +63,7 @@ async function seedTestSetup(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    "insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
+    "insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done'), ('realm', 'done'), ('clients', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
   ]);
 }
 
