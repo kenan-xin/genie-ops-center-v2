@@ -62,13 +62,24 @@ export type RealmSmtp = {
   readonly fromDisplayName: string | undefined;
   readonly replyTo: string | undefined;
   readonly replyToDisplayName: string | undefined;
+  /** Implicit TLS, from a `smtps:` URL. */
+  readonly ssl: boolean;
+  /** STARTTLS upgrade, from a plain `smtp:` URL. */
+  readonly starttls: boolean;
 };
 
 /**
- * Refuses an override key outside the allow-list, naming the key (D2-3 step 4). The refusal is a
- * named cause, not a Keycloak error: the operator fixes the file and runs setup again.
+ * Refuses a `realm.overrides.json` that is not a JSON object, and an override key outside the
+ * allow-list, naming the key (D2-3 step 4). The refusal is a named cause, not a Keycloak error:
+ * the operator fixes the file and runs setup again.
  */
-export function checkRealmOverrides(overrides: JsonObject): void {
+export function checkRealmOverrides(
+  overrides: JsonValue
+): asserts overrides is JsonObject {
+  if (!isJsonObject(overrides)) {
+    throw new Error("realm.overrides.json must be a JSON object");
+  }
+
   for (const key of Object.keys(overrides)) {
     if (!REALM_OVERRIDE_ALLOW_LIST.includes(key)) {
       throw new Error(
@@ -152,6 +163,8 @@ export function fillRealmRepresentation(
     smtp.user = fill.smtp.username;
     smtp.password = fill.smtp.password;
     smtp.from = fill.smtp.from;
+    smtp.ssl = fill.smtp.ssl ? "true" : "false";
+    smtp.starttls = fill.smtp.starttls ? "true" : "false";
 
     if (fill.smtp.fromDisplayName !== undefined) {
       smtp.fromDisplayName = fill.smtp.fromDisplayName;
@@ -170,13 +183,13 @@ export function fillRealmRepresentation(
 }
 
 /**
- * The full build order of D2-3: check the override's keys against the allow-list, merge the
- * override onto the template, then fill the values core owns. The returned object is a fresh
- * clone, never the template the caller loaded.
+ * The full build order of D2-3: check the override against the allow-list (and that it is an
+ * object), merge the override onto the template, then fill the values core owns. The returned
+ * object is a fresh clone, never the template the caller loaded.
  */
 export function buildRealmRepresentation(
   template: JsonObject,
-  overrides: JsonObject,
+  overrides: JsonValue,
   fill: RealmFill
 ): JsonObject {
   checkRealmOverrides(overrides);

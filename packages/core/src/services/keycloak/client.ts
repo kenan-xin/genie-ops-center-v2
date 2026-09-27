@@ -151,36 +151,45 @@ export async function createRealm(
   await parseResponse(response);
 }
 
-export type KeycloakClient = {
-  readonly id: string;
-  readonly clientId: string;
-  readonly redirectUris: readonly string[];
+export type AuthorizationProbe = {
+  /** The HTTP status. 302 means the redirect URI is registered for the client; 400 otherwise. */
+  readonly status: number;
+  /** True when Keycloak answered `Client not found`, so the client does not exist. */
+  readonly clientNotFound: boolean;
 };
 
-/** Lists the clients of a realm, optionally filtered by client id (R-54). */
-export async function listClients(
+/**
+ * Probes the public authorization endpoint for one client (R-54). A registered redirect URI
+ * answers 302, any other answers 400, and a client that does not exist answers 400 carrying
+ * `Client not found`. With `genie-admin` holding no `view-clients` role, this unauthenticated
+ * endpoint is the only signal for a client's existence and its registered redirect URI. The PKCE
+ * parameters are sent because both product clients require PKCE, so their absence would refuse
+ * the request before the client is resolved.
+ */
+export async function probeAuthorization(
   target: KeycloakTarget,
   realm: string,
-  accessToken: string,
-  clientId?: string
-): Promise<readonly KeycloakClient[]> {
-  const query =
-    clientId === undefined ? "" : `?clientId=${encodeURIComponent(clientId)}`;
+  clientId: string,
+  redirectUri: string
+): Promise<AuthorizationProbe> {
+  const query = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid",
+    code_challenge: "probe",
+    code_challenge_method: "S256",
+  }).toString();
 
   const response = await target.fetch(
-    `${target.baseUrl}/admin/realms/${realm}/clients${query}`,
-    { headers: { authorization: `Bearer ${accessToken}` } }
+    `${target.baseUrl}/realms/${realm}/protocol/openid-connect/auth?${query}`,
+    { redirect: "manual" }
   );
 
-  const body = await parseResponse(response);
+  const body = await response.text();
 
-  if (!Array.isArray(body)) return [];
-
-  return body.filter(isObject).map((client) => ({
-    id: String(client.id ?? ""),
-    clientId: String(client.clientId ?? ""),
-    redirectUris: Array.isArray(client.redirectUris)
-      ? client.redirectUris.map(String)
-      : [],
-  }));
+  return {
+    status: response.status,
+    clientNotFound: body.includes("Client not found"),
+  };
 }

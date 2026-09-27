@@ -25,9 +25,12 @@ import {
 import { normalizeKeycloakUrl } from "./normalize-url.ts";
 import {
   buildRealmRepresentation,
+  isJsonObject,
   type JsonObject,
+  type JsonValue,
   type RealmSmtp,
 } from "./representation.ts";
+import { parseSmtpUrl } from "./smtp.ts";
 import { loadRealmTemplate } from "./templates.ts";
 
 /** What the realm step reads from the raw environment, beside the context's validated values. */
@@ -36,17 +39,48 @@ export type RealmStepOptions = {
   readonly output: (line: string) => void;
 };
 
-/** Reads one `realm.overrides.json`; a missing file is an empty override, not a failure. */
+/**
+ * Reads one `realm.overrides.json`. A missing file is a named refusal, because the tenant
+ * generator always writes it beside `tenant.yaml` and a silently dropped override would leave the
+ * realm weaker than the customer asked for (R-53). A file that is not a JSON object is refused too.
+ */
 async function loadRealmOverrides(path: string): Promise<JsonObject> {
+  let text: string;
+
   try {
-    // SAFETY: a realm override is a checked-in JSON document whose top level is an object (D2-3).
-    return JSON.parse(await readFile(path, "utf8")) as JsonObject;
+    text = await readFile(path, "utf8");
   } catch (cause) {
-    // SAFETY: a Node fs error carries an optional `code`; a thrown non-error is treated as not-ENOENT.
-    if ((cause as { code?: string })?.code === "ENOENT") return {};
+    // SAFETY: a Node fs error carries an optional `code`; a thrown non-error is not an ENOENT.
+    if ((cause as { code?: string })?.code === "ENOENT") {
+      throw new Error(
+        `the realm step needs realm.overrides.json at ${path}; the tenant generator writes it beside tenant.yaml`,
+        { cause }
+      );
+    }
 
     throw cause;
   }
+
+  let parsed: JsonValue;
+
+  try {
+    // SAFETY: the file holds JSON, which is exactly a JsonValue.
+    parsed = JSON.parse(text) as JsonValue;
+  } catch (cause) {
+    const detail =
+      cause instanceof Error ? cause.message : "it could not be parsed";
+
+    throw new Error(
+      `realm.overrides.json at ${path} is not valid JSON: ${detail}`,
+      { cause }
+    );
+  }
+
+  if (!isJsonObject(parsed)) {
+    throw new Error(`realm.overrides.json at ${path} must be a JSON object`);
+  }
+
+  return parsed;
 }
 
 /** The SMTP values the local variant carries, parsed from the mail configuration (R-53, DEC-40). */
@@ -65,14 +99,8 @@ function realmSmtp(
 
   if (from === undefined) return undefined;
 
-  const url = new URL(context.env.smtpUrl);
-
   return {
-    host: url.hostname,
-    port:
-      url.port !== "" ? url.port : url.protocol === "smtps:" ? "465" : "587",
-    username: url.username,
-    password: url.password,
+    ...parseSmtpUrl(context.env.smtpUrl),
     from,
     fromDisplayName: branding.email_sender_name ?? undefined,
     replyTo: branding.email_reply_to ?? undefined,
@@ -122,6 +150,13 @@ export async function realmStep(
   const localAccounts = tenant.local_accounts ?? false;
   const template = loadRealmTemplate(localAccounts);
   const overrides = await loadRealmOverrides(files.realmOverrides);
+  const smtp = realmSmtp(context, branding);
+
+  if (localAccounts && smtp === undefined) {
+    throw new Error(
+      "the local-accounts realm needs MAIL_PROVIDER=smtp with MAIL_FROM and SMTP_URL, because Keycloak sends its own set-password, reset-password and verify-email messages; set them in .env"
+    );
+  }
 
   const representation = buildRealmRepresentation(template, overrides, {
     realm: base.keycloakRealm,
@@ -129,7 +164,7 @@ export async function realmStep(
     publicUrl: context.env.publicUrl,
     clientSecret: secrets.clientSecret,
     adminClientSecret: secrets.adminClientSecret,
-    smtp: realmSmtp(context, branding),
+    smtp,
   });
 
   const target: KeycloakTarget = {

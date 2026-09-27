@@ -53,7 +53,7 @@ Make sure that the target host has the following. The customer's platform team s
 1. In the repository, run `nx g @genie/generators:tenant-new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, `.env.example`, and `values.yaml`.
 2. Fill `tenant.yaml`: the module list, the onboarding mode, `local_accounts`, the realm mode (`realm: managed` by default, `customer` for client-only mode, ADR 0010), the first administrators, and the break-glass email. Every field is read by the generator or by setup (`DEC-35`, `DEC-36`). Keep the onboarding mode at `invite` unless the customer asked for `jit`. In `jit` mode a person the provider lets sign in gets an active account only when their `groups` claim holds a group mapped to a Genie Ops Center role (`DEC-7`, `../architecture/access-model.md`, "Who may sign in the first time"). Before a customer switches to `jit`, map their groups (add them before first sign-in if needed, `DEC-52`), and make sure that the customer restricted the application assignment in their provider to the people who must have access.
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
-4. Copy `compose.yaml`, `tenant.yaml` and `branding.seed.json` to the host, into one stack folder. They are committed and hold no secret and no host value.
+4. Copy `compose.yaml`, `tenant.yaml`, `branding.seed.json` and `realm.overrides.json` to the host, into one stack folder. They are committed and hold no secret and no host value. `realm.overrides.json` is the customer's realm delta; setup reads it beside `tenant.yaml` and refuses when it is missing, so it must travel with them.
 5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only. Keep `COMPOSE_PROFILES=bundled-keycloak` only when the stack runs its own Keycloak; otherwise remove it and set `KEYCLOAK_URL` to the realm's server (Specification 02 R-54b).
 6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. With the `bundled-keycloak` profile only: before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role, and set `KC_PROXY_TRUSTED_ADDRESSES` to the proxy's address (`reverse-proxy.md`, step 7). Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`. `docker compose ps` shows it `healthy` once `/health/ready` answers on its unpublished management port 9000. The first start can take a minute or two.
 
@@ -75,11 +75,12 @@ Make sure that the target host has the following. The customer's platform team s
 
    Do not use the names `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` here. Keycloak reads those names at its own start, creates the user, and then the command fails because the user exists. `KC_CACHE=local` keeps the one-off container out of the running server's cache cluster; `bootstrap-admin user` has no `--cache` option. The account is temporary. Replace it with a named administrator after setup (`keycloak-realm.md`, "Keycloak server hardening").
 7. Open `PUBLIC_URL`. The application migrates the database at start and shows the not-set-up page until setup runs.
-8. In managed mode, run setup with a Keycloak server administrator credential in the environment of that one command. In client-only mode, run the same command without the two `KEYCLOAK_BOOTSTRAP_*` variables. Copy the two configuration files into the app container, then pass their container paths to setup:
+8. In managed mode, run setup with a Keycloak server administrator credential in the environment of that one command. In client-only mode, run the same command without the two `KEYCLOAK_BOOTSTRAP_*` variables. Copy the three configuration files into the app container, then pass their container paths to setup:
 
    ```sh
    docker compose cp tenant.yaml app:/tmp/tenant.yaml
    docker compose cp branding.seed.json app:/tmp/branding.seed.json
+   docker compose cp realm.overrides.json app:/tmp/realm.overrides.json
    docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD='...' app genie-ops setup --tenant-config /tmp/tenant.yaml --branding-seed /tmp/branding.seed.json
    ```
 

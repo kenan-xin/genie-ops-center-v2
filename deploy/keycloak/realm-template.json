@@ -99,7 +99,6 @@
           "manage-users",
           "view-users",
           "query-users",
-          "view-clients",
           "manage-identity-providers"
         ]
       },

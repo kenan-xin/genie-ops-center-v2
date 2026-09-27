@@ -68,6 +68,7 @@ describe("the generated customer stack smoke", () => {
       envExample: generated.envExample,
       tenantConfigPath: generated.tenantConfigPath,
       brandingSeedPath: generated.brandingSeedPath,
+      realmOverridesPath: generated.realmOverridesPath,
       databasePassword: DATABASE_PASSWORD,
       filled: {
         PUBLIC_URL: "https://example.invalid",

@@ -167,6 +167,7 @@ export type GeneratedTenantDeploy = {
   readonly moduleInclude: string;
   readonly tenantConfigPath: string;
   readonly brandingSeedPath: string;
+  readonly realmOverridesPath: string;
   readonly remove: () => Promise<void>;
 };
 
@@ -230,6 +231,7 @@ export async function generateTenantDeploy(
         .join(","),
       tenantConfigPath: join(deployRoot, "tenant.yaml"),
       brandingSeedPath: join(deployRoot, "branding.seed.json"),
+      realmOverridesPath: join(deployRoot, "realm.overrides.json"),
       remove,
     };
   } catch (error) {
@@ -309,6 +311,7 @@ export async function startGeneratedStack(input: {
   readonly envExample: string;
   readonly tenantConfigPath: string;
   readonly brandingSeedPath: string;
+  readonly realmOverridesPath: string;
   readonly databasePassword: string;
   /** Values the test fills in for names `.env.example` lists. */
   readonly filled: Readonly<Record<string, string>>;
@@ -531,6 +534,13 @@ export async function startGeneratedStack(input: {
         "cp",
         input.brandingSeedPath,
         "app:/tmp/branding.seed.json",
+      ]);
+      // The realm step reads the override beside --tenant-config and refuses when it is
+      // missing, so the generated file must reach the container too (Spec 2 R-53).
+      await composeCommand([
+        "cp",
+        input.realmOverridesPath,
+        "app:/tmp/realm.overrides.json",
       ]);
 
       // The realm step signs in to the bundled Keycloak with the one-run bootstrap

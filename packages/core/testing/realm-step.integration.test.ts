@@ -206,6 +206,83 @@ function groupsMapper(client: JsonObject | undefined): string | undefined {
   return undefined;
 }
 
+/** A `master`-realm admin token, for the test's own setup and teardown calls. */
+async function masterToken(): Promise<string> {
+  return masterAdminToken(
+    { baseUrl: keycloak!.baseUrl, fetch: globalThis.fetch },
+    KEYCLOAK_BOOTSTRAP_USER,
+    KEYCLOAK_BOOTSTRAP_PASSWORD
+  );
+}
+
+/** A realm-scoped `genie-admin` service-account token, as the running application would hold. */
+async function adminClientToken(realm: string): Promise<string> {
+  const response = await globalThis.fetch(
+    `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/token`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: "genie-admin",
+        client_secret: "admin-client-secret-value",
+      }).toString(),
+    }
+  );
+
+  // SAFETY: the token endpoint returns a JSON object with an access_token string.
+  return ((await response.json()) as { access_token: string }).access_token;
+}
+
+/** The internal id of one client, read with the master token. */
+async function clientIdOf(
+  realm: string,
+  clientId: string
+): Promise<string | undefined> {
+  const token = await masterToken();
+
+  const response = await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients?clientId=${encodeURIComponent(clientId)}`,
+    { headers: { authorization: `Bearer ${token}` } }
+  );
+
+  const body: unknown = await response.json();
+  const found = Array.isArray(body) ? body.find(isJsonObject) : undefined;
+
+  return found === undefined ? undefined : String(found.id);
+}
+
+/** Deletes one client, the way a broken realm would be missing it. */
+async function deleteClient(realm: string, clientId: string): Promise<void> {
+  const token = await masterToken();
+  const id = await clientIdOf(realm, clientId);
+
+  if (id === undefined)
+    throw new Error(`realm ${realm} has no client ${clientId}`);
+
+  await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${id}`,
+    { method: "DELETE", headers: { authorization: `Bearer ${token}` } }
+  );
+}
+
+/** Every `setup_step` detail joined, for a non-leak assertion on a failed step's cause. */
+async function setupStepDetails(postgresUrl: string): Promise<string> {
+  const observer = new Client({ connectionString: postgresUrl });
+
+  await observer.connect();
+
+  try {
+    const result = await observer.query<{ detail: string | null }>(
+      "select detail from setup_step"
+    );
+
+    return result.rows.map((row) => row.detail ?? "").join("\n");
+  } finally {
+    await observer.end();
+  }
+}
+
 describe("the realm and clients setup steps against a real Keycloak", () => {
   it("creates the brokered realm in one POST with the three clients, PKCE, brute force, the groups mapper and the display name", async () => {
     const postgres = await startDisposablePostgres();
@@ -287,7 +364,9 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
           source(postgres.url, realm, {
             MAIL_PROVIDER: "smtp",
             MAIL_FROM: "no-reply@example.invalid",
-            SMTP_URL: "smtps://mailer:secret@mail.example.invalid:465",
+            // A plain smtp URL selects STARTTLS, and the user and password are percent-encoded.
+            SMTP_URL:
+              "smtp://user%40x:p%2Fq%2Bw%40%25@mail.example.invalid:587",
           })
         )
       )
@@ -297,7 +376,15 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
     expect(realmRep.verifyEmail).toBe(true);
     expect(realmRep.passwordPolicy).toEqual(expect.any(String));
-    expect(realmRep.smtpServer).toMatchObject({ host: "mail.example.invalid" });
+    // Keycloak masks the SMTP password in the representation, so it is the unit test that proves
+    // the decode; here the host, user, port and transport flags prove the fill ran.
+    expect(realmRep.smtpServer).toMatchObject({
+      host: "mail.example.invalid",
+      port: "587",
+      user: "user@x",
+      ssl: "false",
+      starttls: "true",
+    });
 
     const clients = await adminClients(realm);
     const signIn = clientBy(clients, "genie-ops-center");
@@ -350,7 +437,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(output.join("\n")).toContain("allow-list");
   }, 180000);
 
-  it("limits the genie-admin service account to its own realm", async () => {
+  it("limits the genie-admin service account to its own realm and holds no client-reading role", async () => {
     const postgres = await startDisposablePostgres();
     const files = await configFiles();
     const realm = `scoped-${process.pid}-${Date.now()}`;
@@ -361,38 +448,247 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
       runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
     ).resolves.toBe(0);
 
-    const tokenResponse = await globalThis.fetch(
-      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/token`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: "genie-admin",
-          client_secret: "admin-client-secret-value",
-        }).toString(),
-      }
-    );
+    const token = await adminClientToken(realm);
 
-    // SAFETY: the token endpoint returns a JSON object with an access_token string.
-    const tokenBody = (await tokenResponse.json()) as { access_token: string };
-    const token = tokenBody.access_token;
-
-    const own = await globalThis.fetch(
-      `${keycloak!.baseUrl}/admin/realms/${realm}/clients`,
-      {
-        headers: { authorization: `Bearer ${token}` },
-      }
-    );
-
-    expect(own.status).toBe(200);
-
+    // It cannot touch the master realm.
     const master = await globalThis.fetch(
       `${keycloak!.baseUrl}/admin/realms/master/clients`,
       { headers: { authorization: `Bearer ${token}` } }
     );
 
     expect(master.status).toBe(403);
+
+    // It cannot read any client, even in its own realm: view-clients is not held.
+    const own = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/clients`,
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+
+    expect(own.status).toBe(403);
+  }, 180000);
+
+  it("does not let genie-admin create a client or read another client's secret in its own realm", async () => {
+    const postgres = await startDisposablePostgres();
+    const files = await configFiles();
+    const realm = `privilege-${process.pid}-${Date.now()}`;
+
+    cleanups.push(() => postgres.stop());
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    const token = await adminClientToken(realm);
+
+    // Creating a client needs manage-clients, which it does not hold.
+    const created = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/clients`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ clientId: "should-not-exist" }),
+      }
+    );
+
+    expect(created.status).toBe(403);
+
+    // Reading the genie-studio client secret needs view-clients or manage-clients.
+    const studioId = await clientIdOf(realm, "genie-studio");
+
+    if (studioId === undefined) throw new Error("genie-studio is missing");
+
+    const secret = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${studioId}/client-secret`,
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+
+    expect(secret.status).toBe(403);
+  }, 180000);
+
+  it("reuses an existing realm when the realm step has no done row after a crash", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles();
+    const realm = `resume-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    const env = source(postgres.url, realm);
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(env))
+    ).resolves.toBe(0);
+
+    const before = await adminRealm(realm);
+
+    // The crash between `POST /admin/realms` and the `setup_step` write: the realm is on the
+    // server, but the step has no row, so the latch does not skip it.
+    await observer.query(
+      "delete from setup_step where step in ('realm', 'clients')"
+    );
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(env))
+    ).resolves.toBe(0);
+
+    const after = await adminRealm(realm);
+
+    expect(after).toEqual(before);
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
+  }, 180000);
+
+  it("never writes the bootstrap password or a client secret to the output or the setup_step detail", async () => {
+    const postgres = await startDisposablePostgres();
+    const files = await configFiles();
+    const realm = `secrets-${process.pid}-${Date.now()}`;
+
+    cleanups.push(() => postgres.stop());
+
+    const clientSecret = `client-secret-${process.pid}`;
+    const adminSecret = `admin-secret-${process.pid}`;
+    const wrongBootstrap = `wrong-bootstrap-${process.pid}`;
+
+    // A failing run: the wrong bootstrap password must not reach the output or the cause.
+    const failedOutput: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(
+          source(postgres.url, realm, {
+            KEYCLOAK_BOOTSTRAP_PASSWORD: wrongBootstrap,
+            KEYCLOAK_CLIENT_SECRET: clientSecret,
+            KEYCLOAK_ADMIN_CLIENT_SECRET: adminSecret,
+          })
+        ),
+        output: (line) => failedOutput.push(line),
+        errorOutput: (line) => failedOutput.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    const failedText = failedOutput.join("\n");
+
+    expect(failedText).not.toContain(wrongBootstrap);
+    expect(failedText).not.toContain(clientSecret);
+    expect(failedText).not.toContain(adminSecret);
+    expect(await setupStepDetails(postgres.url)).not.toContain(wrongBootstrap);
+
+    // A passing run: the real bootstrap password and the two client secrets stay hidden too.
+    const passedOutput: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(
+          source(postgres.url, realm, {
+            KEYCLOAK_CLIENT_SECRET: clientSecret,
+            KEYCLOAK_ADMIN_CLIENT_SECRET: adminSecret,
+          })
+        ),
+        output: (line) => passedOutput.push(line),
+        errorOutput: (line) => passedOutput.push(line),
+      })
+    ).resolves.toBe(0);
+
+    const passedText = passedOutput.join("\n");
+
+    expect(passedText).not.toContain(KEYCLOAK_BOOTSTRAP_PASSWORD);
+    expect(passedText).not.toContain(clientSecret);
+    expect(passedText).not.toContain(adminSecret);
+    expect(await setupStepDetails(postgres.url)).not.toContain(clientSecret);
+  }, 180000);
+
+  it("refuses and names a missing client", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles();
+    const realm = `missing-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    // Remove genie-studio, then rerun only the clients step.
+    await deleteClient(realm, "genie-studio");
+    await observer.query("delete from setup_step where step = 'clients'");
+
+    const output: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("genie-studio");
+  }, 180000);
+
+  it("resumes after an induced realm step failure", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles();
+    const realm = `resume-fail-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    // A wrong bootstrap password fails the realm step.
+    await expect(
+      runGenieOps(
+        setupArgs(files),
+        runnerOptions(
+          source(postgres.url, realm, {
+            KEYCLOAK_BOOTSTRAP_PASSWORD: "wrong",
+          })
+        )
+      )
+    ).resolves.not.toBe(0);
+
+    await expect(
+      observer.query("select state from setup_step where step = 'realm'")
+    ).resolves.toMatchObject({ rows: [{ state: "failed" }] });
+
+    // The right credential resumes and completes the realm and clients steps.
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
   }, 180000);
 
   it("refuses the realm step before any network call when the bootstrap credential is absent", async () => {

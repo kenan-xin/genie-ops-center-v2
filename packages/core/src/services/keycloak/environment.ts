@@ -88,9 +88,11 @@ export function readRealmSecrets(source: EnvironmentSource): RealmSecrets {
   return { clientSecret, adminClientSecret };
 }
 
+/** The `genie-admin` service-account client id both templates fix, and its secret. */
+export const GENIE_ADMIN_CLIENT_ID = "genie-admin";
+
 /** The `genie-admin` service-account client id and secret the clients step authenticates with. */
 export function readAdminClient(source: EnvironmentSource): AdminClient {
-  const adminClientId = source.KEYCLOAK_ADMIN_CLIENT_ID ?? "genie-admin";
   const adminClientSecret = source.KEYCLOAK_ADMIN_CLIENT_SECRET;
 
   if (adminClientSecret === undefined || adminClientSecret === "") {
@@ -99,5 +101,5 @@ export function readAdminClient(source: EnvironmentSource): AdminClient {
     );
   }
 
-  return { adminClientId, adminClientSecret };
+  return { adminClientId: GENIE_ADMIN_CLIENT_ID, adminClientSecret };
 }

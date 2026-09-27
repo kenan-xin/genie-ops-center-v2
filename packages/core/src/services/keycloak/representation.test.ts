@@ -61,6 +61,14 @@ describe("checkRealmOverrides", () => {
     ).not.toThrow();
   });
 
+  it("refuses a top level that is not a JSON object, naming the file", () => {
+    expect(() => checkRealmOverrides(null)).toThrow(
+      /realm\.overrides\.json.*JSON object/
+    );
+    expect(() => checkRealmOverrides([])).toThrow(/JSON object/);
+    expect(() => checkRealmOverrides("x")).toThrow(/JSON object/);
+  });
+
   it("refuses a key outside the allow-list with a named cause", () => {
     expect(() => checkRealmOverrides({ users: [] })).toThrow(
       /"users".*allow-list/
@@ -144,6 +152,8 @@ describe("fillRealmRepresentation", () => {
         fromDisplayName: "Acme",
         replyTo: "support@example.invalid",
         replyToDisplayName: "Acme Support",
+        ssl: true,
+        starttls: false,
       },
     });
 
@@ -156,6 +166,8 @@ describe("fillRealmRepresentation", () => {
       fromDisplayName: "Acme",
       replyTo: "support@example.invalid",
       replyToDisplayName: "Acme Support",
+      ssl: "true",
+      starttls: "false",
     });
   });
 });

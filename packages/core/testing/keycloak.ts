@@ -12,7 +12,8 @@ import {
  */
 export const KEYCLOAK_BOOTSTRAP_USER = "admin";
 
-export const KEYCLOAK_BOOTSTRAP_PASSWORD = "admin";
+/** A distinct password, so a test can assert it never reaches the output or a `setup_step` cause. */
+export const KEYCLOAK_BOOTSTRAP_PASSWORD = "kc-bootstrap-password-do-not-log";
 
 export const KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.7.4";
 
