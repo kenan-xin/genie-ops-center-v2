@@ -1,10 +1,16 @@
 import {
   createTenantContext,
-  createRequestPrincipal,
-  createStubGrantReader,
+  principalFor,
+  seedRoles,
+  setModuleEnabled,
+  TENANT_ADMINISTRATOR_ROLE,
   type ModuleRequestContext,
 } from "@genie/core";
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+import {
+  enableModules,
+  insertPersonWith,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { placeholderModule } from "../src/module.ts";
@@ -34,11 +40,25 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-function contextFor(read: Parameters<typeof createRequestPrincipal>[1]) {
+/** One request for a real person, read through the real loader. */
+function contextFor(userId: string) {
   return {
     tenant: deployment.context,
-    caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
+    caller: principalFor({
+      tenant: deployment.context,
+      modules: [placeholderModule],
+      userId,
+    }),
   } satisfies ModuleRequestContext;
+}
+
+/** A person holding `placeholder:read` through a real role assignment. */
+async function reader(): Promise<string> {
+  const { userId } = await insertPersonWith(deployment.context, [
+    "placeholder:read",
+  ]);
+
+  return userId;
 }
 
 describe("the placeholder read procedure against a real database", () => {
@@ -47,9 +67,7 @@ describe("the placeholder read procedure against a real database", () => {
       label: "A read row",
     });
 
-    const caller = placeholderRouter.createCaller(
-      contextFor(createStubGrantReader())
-    );
+    const caller = placeholderRouter.createCaller(contextFor(await reader()));
 
     const rows = await caller.read();
 
@@ -58,9 +76,12 @@ describe("the placeholder read procedure against a real database", () => {
   });
 
   it("refuses a caller without the key, and reads nothing", async () => {
-    const caller = placeholderRouter.createCaller(
-      contextFor(() => Promise.resolve({ keys: new Set(), scopes: new Map() }))
-    );
+    // A real person holding another key of this module, which does not open the read.
+    const { userId } = await insertPersonWith(deployment.context, [
+      "placeholder:use",
+    ]);
+
+    const caller = placeholderRouter.createCaller(contextFor(userId));
 
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
   });
@@ -82,10 +103,11 @@ describe("the placeholder read procedure against a real database", () => {
 
       const caller = placeholderRouter.createCaller({
         tenant,
-        caller: createRequestPrincipal(
-          { userId: "u1", groups: [] },
-          createStubGrantReader()
-        ),
+        caller: principalFor({
+          tenant,
+          modules: [placeholderModule],
+          userId: await reader(),
+        }),
       } satisfies ModuleRequestContext);
 
       await expect(caller.read()).rejects.toMatchObject({
@@ -96,6 +118,52 @@ describe("the placeholder read procedure against a real database", () => {
       // Later cases read through the router, so the entitlement is switched back on.
       await enableModules(deployment.context, ["placeholder"]);
     }
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const caller = placeholderRouter.createCaller({
+      tenant: deployment.context,
+      caller: principalFor({
+        tenant: deployment.context,
+        modules: [placeholderModule],
+        userId: undefined,
+      }),
+    });
+
+    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("appends placeholder:admin to Tenant administrator on enable and removes it on disable", async () => {
+    await seedRoles(deployment.context, [placeholderModule]);
+
+    const administrator = async () =>
+      (
+        await deployment.context.db.$client.query<{ permissions: string[] }>(
+          "select permissions from role where name = $1",
+          [TENANT_ADMINISTRATOR_ROLE]
+        )
+      ).rows[0]?.permissions;
+
+    expect(await administrator()).toContain("placeholder:admin");
+
+    await setModuleEnabled(
+      deployment.context,
+      [placeholderModule],
+      "placeholder",
+      false
+    );
+
+    expect(await administrator()).not.toContain("placeholder:admin");
+
+    await setModuleEnabled(
+      deployment.context,
+      [placeholderModule],
+      "placeholder",
+      true
+    );
+
+    expect(await administrator()).toContain("placeholder:admin");
+    expect(await administrator()).not.toContain("placeholder:use");
   });
 
   it("keeps core's ledger and the module's ledger apart", async () => {

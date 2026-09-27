@@ -1,6 +1,5 @@
 import {
   createRequestPrincipal,
-  createStubGrantReader,
   type ModuleRequestContext,
   type TenantContext,
 } from "@genie/core";
@@ -127,7 +126,17 @@ function contextWith(
   };
 }
 
-/** A reader that grants nothing, which is every person in Section 0 but the stub's own. */
+/**
+ * A reader holding `placeholder:read`. This unit layer only proves the check runs before the
+ * tripwire database; the real grant through a real role assignment is proved in `testing/`.
+ */
+const grantsRead = () =>
+  Promise.resolve({
+    keys: new Set(["placeholder:read" as const]),
+    scopes: new Map([["placeholder:read" as const, { kind: "all" } as const]]),
+  });
+
+/** A reader that grants nothing. */
 const grantsNothing = () =>
   Promise.resolve({ keys: new Set<never>(), scopes: new Map() });
 
@@ -147,7 +156,7 @@ describe("the placeholder router", () => {
 
   it("refuses a disabled placeholder through its own procedure", async () => {
     const caller = placeholderRouter.createCaller(
-      contextWithModuleDisabled(createStubGrantReader())
+      contextWithModuleDisabled(grantsRead)
     );
 
     await expect(caller.read()).rejects.toMatchObject({
@@ -169,12 +178,10 @@ describe("the placeholder router", () => {
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
   });
 
-  it("reaches the database once the stub grant allows the read", async () => {
+  it("reaches the database once the grant allows the read", async () => {
     // The tripwire throws the moment the read starts, which is what proves the
     // check passed. The rows themselves are proved in the real-database test.
-    const caller = placeholderRouter.createCaller(
-      contextWith(createStubGrantReader())
-    );
+    const caller = placeholderRouter.createCaller(contextWith(grantsRead));
 
     await expect(caller.read()).rejects.toThrow(
       "the router read the database before the permission check"
