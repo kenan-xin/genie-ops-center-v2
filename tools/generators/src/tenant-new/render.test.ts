@@ -259,6 +259,8 @@ describe("the rendered deployment folder", () => {
     const example = read(".env.example");
 
     expect(keycloak).not.toBe("");
+    // The stack pins the Keycloak patch the deployment is tested against.
+    expect(keycloak).toContain("image: quay.io/keycloak/keycloak:26.7.4");
     expect(keycloak).toContain('command: ["start"');
     expect(keycloak).not.toContain("start-dev");
     expect(keycloak).toContain("KC_DB: ${KC_DB:?set KC_DB in .env}");

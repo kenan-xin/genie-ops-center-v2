@@ -146,7 +146,7 @@ services:
     # on the host-supplied Postgres beside the application database. The server
     # administrator is created once with "docker compose run --rm keycloak
     # bootstrap-admin user" and is never written to .env (runbooks/deployment.md).
-    image: quay.io/keycloak/keycloak:26.4
+    image: quay.io/keycloak/keycloak:26.7.4
     # Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, and compose always
     # sets the variable, so a blank value is unset before kc.sh starts.
     entrypoint: ["/bin/bash", "-c", "[ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
