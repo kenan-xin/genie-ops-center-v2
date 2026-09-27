@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server.js";
 
-import { requireAuth } from "../../../../auth.ts";
+import { requireAuth, signOutDestination } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
 
 export const dynamic = "force-dynamic";
@@ -31,10 +31,11 @@ async function handler(request: Request): Promise<Response> {
 
   const { realmMode } = await app.tenant.settings.get();
 
-  const target =
-    realmMode === "managed" && result.providerLogoutUrl !== undefined
-      ? result.providerLogoutUrl
-      : publicUrl;
+  const target = signOutDestination({
+    realmMode: realmMode === "customer" ? "customer" : "managed",
+    providerLogoutUrl: result.providerLogoutUrl,
+    publicUrl,
+  });
 
   const response = NextResponse.redirect(target, 303);
 

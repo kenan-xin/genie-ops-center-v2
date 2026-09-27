@@ -26,3 +26,21 @@ export const AUTH_COMPLETE_PATH = "/auth/complete";
  * answer (R-54d). It is stable so the sign-in page maps it to a banner and a test can assert it.
  */
 export const KEYCLOAK_UNAVAILABLE = "keycloak_unavailable";
+
+/**
+ * Where sign-out sends the browser (R-17). In managed mode the realm's end-session URL ends the
+ * realm session too, and when there is none the browser still lands on `PUBLIC_URL`. In
+ * client-only mode the realm session is the company's and serves its other applications, so only
+ * the Genie Ops Center session ends and the browser goes to `PUBLIC_URL`.
+ */
+export function signOutDestination(input: {
+  readonly realmMode: "managed" | "customer";
+  readonly providerLogoutUrl: string | undefined;
+  readonly publicUrl: string;
+}): string {
+  if (input.realmMode === "managed" && input.providerLogoutUrl !== undefined) {
+    return input.providerLogoutUrl;
+  }
+
+  return input.publicUrl;
+}
