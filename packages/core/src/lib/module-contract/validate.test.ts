@@ -18,6 +18,90 @@ describe("validateModule", () => {
     expect(validateModule(validModule)).toEqual([]);
   });
 
+  it("reserves the module id core", () => {
+    expect(validateModule(renameModule(validModule, "core"))).toContain(
+      'Module id "core" is reserved for core.'
+    );
+  });
+
+  it("accepts an equivalent rename to a declared key from a retired one", () => {
+    const renamed = {
+      ...validModule,
+      permissionTransformations: [
+        {
+          id: "0001",
+          release: "1.1.0",
+          description: "Rename view to read",
+          change: {
+            kind: "rename",
+            from: "fixture:view",
+            to: "fixture:read",
+          },
+        },
+      ],
+    } as const;
+
+    expect(validateModule(renamed)).toEqual([]);
+  });
+
+  it("refuses a rename that merges two declared keys, a foreign key and a core role rename", () => {
+    const broken = {
+      ...validModule,
+      permissionTransformations: [
+        {
+          id: "0001",
+          release: "1.1.0",
+          description: "Merge read into admin",
+          change: {
+            kind: "rename",
+            from: "fixture:read",
+            to: "fixture:admin",
+          },
+        },
+        {
+          id: "0002",
+          release: "1.1.0",
+          description: "Revoke a core key",
+          change: { kind: "revoke", key: "core:people:manage" },
+        },
+        {
+          id: "0003",
+          release: "1.1.0",
+          description: "Rename to a missing key",
+          change: {
+            kind: "rename",
+            from: "fixture:old",
+            to: "fixture:missing",
+          },
+        },
+        {
+          id: "0004",
+          release: "1.1.0",
+          description: "Take over a core role",
+          change: {
+            kind: "rename-role",
+            from: "Fixture user",
+            to: "Tenant administrator",
+          },
+        },
+        {
+          id: "0004",
+          release: "1.1.0",
+          description: "A repeated id",
+          change: { kind: "revoke", key: "fixture:read" },
+        },
+      ],
+    } as const;
+
+    expect(validateModule(broken)).toEqual([
+      'Permission transformation "0001" renames "fixture:read", which the module still declares; a rename must not merge two keys.',
+      'Permission transformation "0002" changes "core:people:manage", which is not a key of "fixture".',
+      'Permission transformation "0003" renames to "fixture:missing", which the module does not declare.',
+      'Permission transformation "0004" renames the core system role "Tenant administrator".',
+      'Permission transformation "0004" is declared twice.',
+    ]);
+  });
+
   it("rejects a router that createModuleTRPC did not build", () => {
     const broken = { ...validModule, router: initTRPC.create().router({}) };
 

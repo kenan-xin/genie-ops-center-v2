@@ -1,9 +1,23 @@
 import type { ZodType } from "zod";
 
+import {
+  AUDITOR_ROLE,
+  TENANT_ADMINISTRATOR_ROLE,
+} from "../../services/authorization/roles.ts";
 import { moduleIdOfRouter } from "../entitlement/module-trpc.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
-import type { Module, NavigationEntry } from "./module.ts";
+import type {
+  Module,
+  NavigationEntry,
+  PermissionTransformation,
+} from "./module.ts";
+
+/** Core's own system roles, which no module transformation may rename to or from. */
+const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
+  TENANT_ADMINISTRATOR_ROLE,
+  AUDITOR_ROLE,
+]);
 
 /**
  * The module contract's own kebab-case rule: lower-case letters and digits in
@@ -92,6 +106,11 @@ export function validateModule(module: Module): readonly string[] {
 
   if (!KEBAB_CASE.test(id)) {
     problems.push(`Module id "${id}" is not kebab-case.`);
+  }
+
+  // `core` names core's own permission keys, system roles and transformation ledger (R-33c).
+  if (id === "core") {
+    problems.push(`Module id "core" is reserved for core.`);
   }
 
   // The startup omission check finds an installed module by its ledger table, so
@@ -361,21 +380,56 @@ export function validateModule(module: Module): readonly string[] {
 
     transformationIds.add(transformation.id);
 
-    const { change } = transformation;
+    problems.push(...transformationProblems(module, transformation));
+  }
 
-    const keys =
-      change.kind === "rename"
-        ? [change.from, change.to]
-        : change.kind === "revoke"
-          ? [change.key]
-          : [];
+  return problems;
+}
 
-    for (const key of keys) {
-      if (!key.startsWith(`${id}:`)) {
-        problems.push(
-          `Permission transformation "${transformation.id}" changes "${key}", which is not a key of "${id}".`
-        );
-      }
+/**
+ * One transformation's ownership rules (R-33a, R-33c). Every key is one of the module's own
+ * `<id>:<action>` keys. A rename is equivalent, never a merge: the old key is no longer declared
+ * and the new one is, so no holder of one key gains another key the module still declares. A role
+ * rename never names a core system role.
+ */
+function transformationProblems(
+  module: Module,
+  transformation: PermissionTransformation
+): string[] {
+  const id = module.identity.id;
+  const { change } = transformation;
+  const label = `Permission transformation "${transformation.id}"`;
+
+  if (change.kind === "rename-role") {
+    return [change.from, change.to].flatMap((name) =>
+      CORE_SYSTEM_ROLES.has(name)
+        ? [`${label} renames the core system role "${name}".`]
+        : []
+    );
+  }
+
+  const keys =
+    change.kind === "rename" ? [change.from, change.to] : [change.key];
+
+  const problems = keys.flatMap((key) =>
+    isPermissionKey(key) && key.startsWith(`${id}:`)
+      ? []
+      : [`${label} changes "${key}", which is not a key of "${id}".`]
+  );
+
+  if (change.kind === "rename") {
+    const declared = new Set(module.permissions.map((entry) => entry.key));
+
+    if (declared.has(change.from)) {
+      problems.push(
+        `${label} renames "${change.from}", which the module still declares; a rename must not merge two keys.`
+      );
+    }
+
+    if (!declared.has(change.to)) {
+      problems.push(
+        `${label} renames to "${change.to}", which the module does not declare.`
+      );
     }
   }
 

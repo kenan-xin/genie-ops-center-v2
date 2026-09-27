@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+/** Kebab-case, and never `core`, which names core's own keys and ledger (R-33c). */
+const MODULE_ID = /^(?!core$)[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
  * Every field here is read by the generator or by `genie-ops setup`. A value nothing reads is not
@@ -16,7 +17,9 @@ const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
  */
 export const tenantYamlSchema = z
   .strictObject({
-    modules: z.array(z.string().regex(MODULE_ID, "a module id is kebab-case")),
+    modules: z.array(
+      z.string().regex(MODULE_ID, "a module id is kebab-case and not core")
+    ),
     realm: z.enum(["managed", "customer"]).optional(),
     onboarding_mode: z.enum(["invite", "jit"]).optional(),
     local_accounts: z.boolean().optional(),
