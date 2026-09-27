@@ -22,6 +22,13 @@
       "when": 1790521441217,
       "tag": "0002_role_assignment_scope_pair",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790526520590,
+      "tag": "0003_audit_event_keyset_index",
+      "breakpoints": true
     }
   ]
 }

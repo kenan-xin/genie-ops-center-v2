@@ -1,8 +1,10 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { analyzeFeatureGraph } from "../../__testing__/feature-import-graph.ts";
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 
 const NODE = process.execPath;
@@ -87,22 +89,27 @@ describe("the detectors", () => {
 const RUNTIME_SUBPATHS = new Set([".", "./testing"]);
 
 /**
- * Browser-only UI entrypoints. They ship `.tsx`, which Node's type stripper cannot load at all
- * (ERR_UNKNOWN_FILE_EXTENSION), so this Node probe cannot evaluate them. Their browser safety — no
- * driver, no deployment variable, no connection — is proven where they run: the app build and the
- * Storybook host. Excluded from the Node runtime probe, never from the browser-safety requirement.
+ * A browser feature entrypoint: a `./features/*` subpath. It ships `.ts` but reaches `.tsx`, which
+ * Node's type stripper cannot load (ERR_UNKNOWN_FILE_EXTENSION), so the runtime probe below cannot
+ * evaluate it. It gets the static import-graph probe instead, which is TSX-capable: it fails on a
+ * database driver, the node-postgres adapter, a connection builtin, the core runtime, or a
+ * `process.env` read. No subpath is exempt from a safety assertion.
  */
-const BROWSER_SUBPATHS = new Set(["./features/audit"]);
+function isBrowserFeature(subpath: string): boolean {
+  return subpath.startsWith("./features/");
+}
 
-function buildSafeSubpaths(): readonly string[] {
+function buildSafeSubpaths(): {
+  readonly subpath: string;
+  readonly entry: string;
+}[] {
   const manifest: Manifest = JSON.parse(
     readFileSync(join(WORKSPACE_ROOT, "packages/core/package.json"), "utf8")
   );
 
-  return Object.keys(manifest.exports).filter(
-    (subpath) =>
-      !RUNTIME_SUBPATHS.has(subpath) && !BROWSER_SUBPATHS.has(subpath)
-  );
+  return Object.entries(manifest.exports)
+    .filter(([subpath]) => !RUNTIME_SUBPATHS.has(subpath))
+    .map(([subpath, entry]) => ({ subpath, entry }));
 }
 
 describe("the build-safe entrypoints", () => {
@@ -123,8 +130,22 @@ describe("the build-safe entrypoints", () => {
   });
 
   it.each(buildSafeSubpaths())(
-    "imports %s with no deployment variable and starts nothing",
-    (subpath) => {
+    "keeps $subpath free of a driver, a connection and a deployment read",
+    ({ subpath, entry }) => {
+      if (isBrowserFeature(subpath)) {
+        // The browser feature graph is checked statically: it reaches `.tsx`, which the Node
+        // runtime probe cannot load.
+        const report = analyzeFeatureGraph(
+          resolve(WORKSPACE_ROOT, "packages/core", entry)
+        );
+
+        expect(report.violations).toEqual([]);
+        // A walk that resolved nothing would pass vacuously; the real tree is several files.
+        expect(report.files.length).toBeGreaterThan(3);
+
+        return;
+      }
+
       for (const name of CLEARED)
         vi.stubEnv(name, "build-safety-test-sentinel");
 
@@ -156,4 +177,31 @@ console.log("deployment-environment:absent");
       expect(run.report.connections).toEqual([]);
     }
   );
+});
+
+describe("the browser feature graph probe", () => {
+  it("flags a driver import and a process.env read", () => {
+    const dir = mkdtempSync(join(tmpdir(), "genie-feature-graph-"));
+
+    try {
+      const entry = join(dir, "entry.ts");
+
+      writeFileSync(
+        entry,
+        `import { Pool } from "pg";\nimport { other } from "./other.ts";\nexport const x = [Pool, other, process.env.DATABASE_URL];\n`
+      );
+      writeFileSync(join(dir, "other.ts"), `export const other = 1;\n`);
+
+      const report = analyzeFeatureGraph(entry);
+
+      // The walk reached both files, so an empty violation list below would not be vacuous.
+      expect(report.files.length).toBe(2);
+      expect(report.violations.some((line) => line.includes("pg"))).toBe(true);
+      expect(
+        report.violations.some((line) => line.includes("process.env"))
+      ).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

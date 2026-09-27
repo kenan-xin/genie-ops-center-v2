@@ -46,6 +46,13 @@ export type PermissionDeclaration = {
 export type RecordDescriptor = {
   readonly label: string;
   readonly path?: string;
+  /**
+   * The permission `path` requires, checked against the record itself before core renders a link
+   * (module contract, Record types; R-69). A resolver that returns a path without naming one
+   * defaults to the owning module's `<id>:use`. A workspace record is use-gated; an admin route
+   * names its own admin key.
+   */
+  readonly permission?: PermissionKey;
   readonly parents?: readonly Scope[];
 };
 

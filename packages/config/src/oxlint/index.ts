@@ -51,6 +51,10 @@ const shadcnDesignSystemRules: OxlintOverride["rules"] = {
 const shadcnProductOverride: OxlintOverride = {
   files: [
     "packages/ui/src/**",
+    // Browser-safe core feature UI (docs/architecture/ui-development.md). Placement must not
+    // decide whether a screen follows the design system, so these files get the same rules as an
+    // app screen: tokens, no raw palette classes.
+    "packages/core/src/features/**",
     "apps/genie/src/**",
     "packages/modules/*/src/**",
     "customers/*/app/**",

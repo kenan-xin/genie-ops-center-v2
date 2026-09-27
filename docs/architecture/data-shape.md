@@ -105,7 +105,7 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 
 ### Audit
 
-`audit_event`: id, occurred_at, actor_user_id (nullable for system; created in Section 1 with the deployment tables, foreign key added with `user` in Section 2), action (text, `module:verb`), target_type, target_id, summary, metadata (jsonb). Append-only, kept for the tenant's lifetime, readable with `core:audit:read`. A `genie-ops` command writes a row with `actor_user_id` null, `action` `ops:<command>`, and the operating-system user, the non-secret arguments, and the outcome in `metadata` (`DEC-45`). Index on (target_type, target_id) and on occurred_at. Erasing a person keeps their events under the anonymized user id.
+`audit_event`: id, occurred_at, actor_user_id (nullable for system; created in Section 1 with the deployment tables, foreign key added with `user` in Section 2), action (text, `module:verb`), target_type, target_id, summary, metadata (jsonb). Append-only, kept for the tenant's lifetime, readable with `core:audit:read`. A `genie-ops` command writes a row with `actor_user_id` null, `action` `ops:<command>`, and the operating-system user, the non-secret arguments, and the outcome in `metadata` (`DEC-45`). Index on (target_type, target_id) and on (occurred_at descending, id descending), the reader's keyset order (R-67). Erasing a person keeps their events under the anonymized user id.
 
 ## Module tables
 

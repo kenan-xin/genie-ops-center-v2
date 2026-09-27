@@ -4,6 +4,7 @@ import type {
   Scope,
   ScopeSet,
 } from "../../lib/module-contract/keys.ts";
+import type { RecordDescriptor } from "../../lib/module-contract/module.ts";
 
 /** What one read of a person's assignments answers. */
 export type PermissionGrants = {
@@ -20,12 +21,13 @@ export type PermissionGrants = {
 export type GrantReader = () => Promise<PermissionGrants>;
 
 /**
- * The parents the owning module's record-type resolver returns for one resource (DEC-39,
- * module contract, Record types). An unknown type or record has no parents.
+ * The record descriptor one resource's owning module returns (DEC-39, module contract, Record
+ * types): its label, optional authorized path, the path's permission, and its declared parents.
+ * An unknown type or record answers `undefined`. One call resolves one resource.
  */
-export type ParentResolver = (
+export type RecordResolver = (
   resource: ResourceRef
-) => Promise<readonly Scope[]>;
+) => Promise<RecordDescriptor | undefined>;
 
 export type PrincipalIdentity = {
   readonly userId: string;
@@ -40,20 +42,38 @@ export type PrincipalIdentity = {
  */
 export type RequestPrincipal = PrincipalIdentity & {
   readonly grants: () => Promise<PermissionGrants>;
-  /** The resource's declared parents, resolved at most once per resource per principal (R-28). */
-  readonly parentsOf: ParentResolver;
+  /**
+   * The resource's descriptor, resolved at most once per resource per principal (R-28). A reader
+   * that needs the label and path (the audit reader) and the authorization check that needs the
+   * parents read this one memo, so the owning module's resolver runs once for one target.
+   */
+  readonly recordOf: RecordResolver;
+  /** The resource's declared parents, from the same resolution `recordOf` shares (R-28). */
+  readonly parentsOf: (resource: ResourceRef) => Promise<readonly Scope[]>;
 };
 
-const noParents: ParentResolver = () => Promise.resolve([]);
+const noRecord: RecordResolver = () => Promise.resolve(undefined);
 
 export function createRequestPrincipal(
   identity: PrincipalIdentity,
   read: GrantReader,
-  resolveParents: ParentResolver = noParents
+  resolveRecord: RecordResolver = noRecord
 ): RequestPrincipal {
   // The promise is memoised, not the resolved value, so two concurrent calls share one read.
   let pending: Promise<PermissionGrants> | undefined;
-  const parents = new Map<string, Promise<readonly Scope[]>>();
+  const records = new Map<string, Promise<RecordDescriptor | undefined>>();
+
+  const recordOf: RecordResolver = (resource) => {
+    const key = `${resource.type}\u0000${resource.id}`;
+    let resolved = records.get(key);
+
+    if (resolved === undefined) {
+      resolved = resolveRecord(resource);
+      records.set(key, resolved);
+    }
+
+    return resolved;
+  };
 
   return {
     userId: identity.userId,
@@ -63,16 +83,11 @@ export function createRequestPrincipal(
 
       return pending;
     },
-    parentsOf: (resource) => {
-      const key = `${resource.type}\u0000${resource.id}`;
-      let resolved = parents.get(key);
+    recordOf,
+    parentsOf: async (resource) => {
+      const descriptor = await recordOf(resource);
 
-      if (resolved === undefined) {
-        resolved = resolveParents(resource);
-        parents.set(key, resolved);
-      }
-
-      return resolved;
+      return descriptor?.parents ?? [];
     },
   };
 }

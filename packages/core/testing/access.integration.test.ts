@@ -14,7 +14,7 @@ import {
   TENANT_ADMINISTRATOR_ROLE,
   can,
   createGrantReader,
-  createParentResolver,
+  createRecordResolver,
   createRequestPrincipal,
   permissionCatalogue,
   principalFor,
@@ -387,7 +387,7 @@ describe("the access seam against a real database", () => {
     const anonymous = createRequestPrincipal(
       { userId: "anonymous", groups: [] },
       createGrantReader(pool.counting, undefined, permissionCatalogue(modules)),
-      createParentResolver(modules, deployment.context)
+      createRecordResolver(modules, deployment.context)
     );
 
     expect(await can(anonymous, "fixture:use")).toBe(false);

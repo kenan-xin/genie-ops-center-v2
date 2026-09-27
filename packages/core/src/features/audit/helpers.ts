@@ -2,17 +2,16 @@ import type { AuditFilters } from "./types.ts";
 
 /** The one focus ring (design tokens): a 2px offset ring on every interactive element. */
 export const focusRing =
-  "outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950";
+  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background";
 
-export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:disabled:hover:bg-gray-950 ${focusRing}`;
+export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-input bg-white px-3 text-sm font-semibold text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white text-foreground dark:hover:bg-foreground dark:disabled:hover:bg-gray-950 ${focusRing}`;
 
-export const btnGhost = `inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-700 motion-safe:transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent sm:h-8 dark:text-gray-300 dark:hover:bg-gray-900 ${focusRing}`;
+export const btnGhost = `inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent sm:h-8 text-foreground dark:hover:bg-foreground ${focusRing}`;
 
-export const inputClass = `h-10 w-full rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-500 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-100 ${focusRing}`;
+export const inputClass = `h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground dark:border-input text-foreground ${focusRing}`;
 
 /** The label inside the filter panel; caption size, because the panel carries its own title. */
-export const filterLabel =
-  "text-xs font-semibold text-gray-700 dark:text-gray-300";
+export const filterLabel = "text-xs font-semibold text-foreground";
 
 export const RANGE_LABEL = {
   "today": "Today",
@@ -63,7 +62,7 @@ export function fmtExact(iso: string, timeZone: string): string {
   });
 }
 
-export function relativeTime(iso: string, now: Date): string {
+export function relativeTime(iso: string, now: Date, timeZone: string): string {
   const seconds = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 1000);
 
   if (seconds < 60) return "just now";
@@ -80,7 +79,8 @@ export function relativeTime(iso: string, now: Date): string {
 
   if (days < 30) return `${days} d ago`;
 
-  return fmtDate(iso, "UTC");
+  // Older than 30 days: a calendar date in the viewer's own zone, not UTC.
+  return fmtDate(iso, timeZone);
 }
 
 export function initials(name: string): string {

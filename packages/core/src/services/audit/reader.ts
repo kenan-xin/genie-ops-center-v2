@@ -1,12 +1,8 @@
 import { and, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import type { PermissionKey } from "../../lib/module-contract/keys.ts";
 import { permissionKeyFor } from "../../lib/module-contract/keys.ts";
-import type {
-  Module,
-  RecordTypeDeclaration,
-} from "../../lib/module-contract/module.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { auditEvent, user } from "../../schema.ts";
 import { can, type RequestPrincipal } from "../authorization/index.ts";
@@ -38,6 +34,10 @@ export type AuditDateRange = "today" | "7d" | "30d" | "custom";
  * filter that selects operator rows: a null actor and an `ops:`-prefixed action, both required.
  * `action` is `"all"` or one key of the R-45 catalogue. `targetType` is `"all"` or a stored
  * target type. `from` and `to` are `YYYY-MM-DD` and are read only by `custom`.
+ *
+ * Free text reads stored columns only: `summary`, `target_type` and `target_id` (R-67 as
+ * amended). It never reads a resolved target label, which is a live record the viewer may not
+ * open; an audit writer puts the target's name in the summary instead.
  */
 export type AuditEventFilters = {
   readonly query: string;
@@ -53,7 +53,7 @@ export type AuditEventFilters = {
 /**
  * The keyset position of the next page: the `(occurred_at, id)` of the last row the reader
  * returned. The id breaks a tie when two events share one instant, so a page boundary can never
- * drop or repeat a row (R-67).
+ * drop or repeat a row (R-67). The router validates both values before they reach here.
  */
 export type AuditEventCursor = {
   readonly occurredAt: string;
@@ -69,7 +69,14 @@ export type AuditActorView = {
   readonly anonymized: boolean;
 };
 
-/** One row of the audit reader, ready for the screen. */
+/**
+ * One row of the audit reader, ready for the screen.
+ *
+ * The target fields carry no live record data unless the viewer may open the record
+ * (R-69): a resolver's label and existence are gated behind `can()` on the record, so a target the
+ * viewer may not open leaves only the stored `targetType` and `targetId`, exactly as a removed
+ * target does. `targetLabel` is empty and `targetExists` false in both cases.
+ */
 export type AuditEventView = {
   readonly id: string;
   /** ISO instant. */
@@ -78,14 +85,14 @@ export type AuditEventView = {
   readonly action: string;
   readonly targetType: string;
   readonly targetId: string;
-  /** The resolver's label, or the stored id when the record no longer resolves. */
+  /** The resolver's label when the viewer may open the record; empty otherwise. */
   readonly targetLabel: string;
-  /** False when the owning module's resolver found no record for the target. */
+  /** True only for a record that resolves and the viewer may open; false for a missing or denied one. */
   readonly targetExists: boolean;
   /**
    * The path the owning module's resolver returned, kept only when the viewer may open it under
-   * `can()` (R-69). Null when the resolver returned no path, when the record is gone, or when the
-   * viewer may not open it.
+   * `can()` on the path's own permission (R-69). Null when the resolver returned no path, when the
+   * record is gone, or when the viewer may not open it.
    */
   readonly targetPath: string | null;
   readonly summary: string;
@@ -103,11 +110,15 @@ export type AuditFilterOptions = {
 /** One page of the reader, newest first. */
 export type AuditPage = {
   readonly events: readonly AuditEventView[];
-  /** Every row matching the filters, not only this page (the footer reads Showing n of total). */
-  readonly total: number;
+  /**
+   * Every row matching the filters, not only this page. Null off the first page: the exact count
+   * is a full-history scan, so the router asks for it only when the cursor is null (R-67).
+   */
+  readonly total: number | null;
   /** Null when the page is the last one. */
   readonly nextCursor: AuditEventCursor | null;
-  readonly filterOptions: AuditFilterOptions;
+  /** The filter lists, only on the first page, for the same reason as `total`. */
+  readonly filterOptions: AuditFilterOptions | null;
 };
 
 /** Everything one read needs: the context, the request principal, and the compiled record types. */
@@ -123,6 +134,11 @@ export type AuditReadInput = {
   readonly cursor: AuditEventCursor | null;
   /** The page size, already bounded by the caller. */
   readonly limit: number;
+  /**
+   * Whether to compute the exact total and the filter option lists. True only for the first page:
+   * a tenant-lifetime append-only log makes those two aggregates a full-history scan.
+   */
+  readonly includeFacets: boolean;
 };
 
 /* oxlint-disable anti-slop/no-runtime-typeof -- the boundary parse of a jsonb column: these typeof probes turn `unknown` metadata into the closed shape below. */
@@ -174,9 +190,20 @@ function parseMetadata(cause: unknown) {
 /* oxlint-enable anti-slop/no-runtime-typeof */
 
 /**
+ * One `ILIKE` pattern for a literal search term. `%`, `_` and the backslash are escaped and the
+ * pattern is used with `ESCAPE '\'`, so a search for `_` or `%` matches those characters literally
+ * rather than turning into a wildcard (R-67).
+ */
+function likePattern(query: string): string {
+  const escaped = query.replace(/[\\%_]/g, (character) => `\\${character}`);
+
+  return `%${escaped}%`;
+}
+
+/**
  * One SQL condition for the date range. Presets are measured on the server clock in UTC: `today`
  * is the current UTC day, and `7d`/`30d` are rolling windows. A custom range is whole days, so its
- * upper bound is exclusive of the next day.
+ * upper bound is exclusive of the next day. The router validates a custom `from`/`to` as dates.
  */
 function rangeCondition(filters: AuditEventFilters): SQL | undefined {
   if (filters.range === "today") {
@@ -212,10 +239,11 @@ function filterCondition(filters: AuditEventFilters): SQL | undefined {
   const trimmed = filters.query.trim();
 
   if (trimmed !== "") {
-    const like = `%${trimmed}%`;
+    // Stored columns only: summary, target type, target id (R-67 as amended).
+    const like = likePattern(trimmed);
 
     parts.push(
-      sql`(${auditEvent.summary} ilike ${like} or ${auditEvent.targetId} ilike ${like})`
+      sql`(${auditEvent.summary} ilike ${like} escape '\\' or ${auditEvent.targetType} ilike ${like} escape '\\' or ${auditEvent.targetId} ilike ${like} escape '\\')`
     );
   }
 
@@ -260,23 +288,8 @@ function moduleForRecordType(
   );
 }
 
-function recordTypeForType(
-  module: AuditReadInput["modules"][number],
-  type: string
-): RecordTypeDeclaration | undefined {
-  return module.recordTypes.find((recordType) => recordType.type === type);
-}
-
-/** A module's workspace key, the one that opens a record of its own (R-12, R-69). */
-function useKeyOf(
-  module: AuditReadInput["modules"][number]
-): PermissionKey | undefined {
-  const key = permissionKeyFor(module.identity.id, "use");
-
-  return module.permissions.some((entry) => entry.key === key)
-    ? key
-    : undefined;
-}
+/** A target the viewer may not open: no live label, no existence flag, no path (R-69). */
+const HIDDEN_TARGET: ResolvedTarget = { label: "", exists: false, path: null };
 
 type ResolvedTarget = {
   readonly label: string;
@@ -285,9 +298,14 @@ type ResolvedTarget = {
 };
 
 /**
- * Resolves the label and (when the viewer may open it) the path for each distinct target, once
- * per target. A target type no compiled module declares, or a record its resolver does not find,
- * has no path and reads as removed (R-69).
+ * Resolves each distinct target once, through the principal's own record resolver, and keeps the
+ * live label, existence and path only when the viewer may open the record under `can()` on the
+ * path's declared permission (defaulting to the owning module's `<id>:use`). A target the viewer
+ * may not open is returned exactly like a target that no longer resolves: only the stored type and
+ * id remain, so an auditor entitled to the event but not the record learns nothing live (R-69).
+ *
+ * The resolution goes through `caller.recordOf`, the same memo `can()` reads for parents, so the
+ * owning module's resolver runs at most once for one target per request.
  */
 async function resolveTargets(
   input: AuditReadInput,
@@ -302,34 +320,40 @@ async function resolveTargets(
 
     const module = moduleForRecordType(input.modules, target.type);
 
-    const recordType =
-      module === undefined ? undefined : recordTypeForType(module, target.type);
-
-    if (module === undefined || recordType === undefined) {
-      resolved.set(key, { label: target.id, exists: false, path: null });
+    if (module === undefined) {
+      resolved.set(key, HIDDEN_TARGET);
       continue;
     }
 
-    // The resolver reads through the request's own context (DEC-34).
-    // oxlint-disable-next-line no-await-in-loop -- one target at a time; a batch resolver does not exist.
-    const descriptor = await recordType.resolve(
-      { tenant: input.tenant },
-      target.id
-    );
+    // oxlint-disable-next-line no-await-in-loop -- one target at a time; the principal memoises each.
+    const descriptor = await input.caller.recordOf({
+      type: target.type,
+      id: target.id,
+    });
 
-    const useKey = useKeyOf(module);
-    const path = descriptor?.path ?? null;
+    if (descriptor === undefined) {
+      resolved.set(key, HIDDEN_TARGET);
+      continue;
+    }
 
-    const openable =
-      path !== null &&
-      useKey !== undefined &&
-      // oxlint-disable-next-line no-await-in-loop -- the check belongs to this target's resolver answer.
-      (await can(input.caller, useKey, { type: target.type, id: target.id }));
+    const permission =
+      descriptor.permission ?? permissionKeyFor(module.identity.id, "use");
+
+    // oxlint-disable-next-line no-await-in-loop -- the check belongs to this target's resolution.
+    const allowed = await can(input.caller, permission, {
+      type: target.type,
+      id: target.id,
+    });
+
+    if (!allowed) {
+      resolved.set(key, HIDDEN_TARGET);
+      continue;
+    }
 
     resolved.set(key, {
-      label: descriptor?.label ?? target.id,
-      exists: descriptor !== undefined,
-      path: openable ? path : null,
+      label: descriptor.label,
+      exists: true,
+      path: descriptor.path ?? null,
     });
   }
 
@@ -423,6 +447,27 @@ export async function readAuditPage(input: AuditReadInput): Promise<AuditPage> {
     };
   });
 
+  const facets = input.includeFacets ? await readFacets(input, filtered) : null;
+
+  return {
+    events,
+    total: facets?.total ?? null,
+    nextCursor:
+      hasMore && last !== undefined
+        ? { occurredAt: last.occurredAt.toISOString(), id: last.id }
+        : null,
+    filterOptions: facets?.filterOptions ?? null,
+  };
+}
+
+/** The exact total and the filter lists, computed only on the first page (R-67). */
+async function readFacets(
+  input: AuditReadInput,
+  filtered: SQL | undefined
+): Promise<{
+  readonly total: number;
+  readonly filterOptions: AuditFilterOptions;
+}> {
   const totalResult = await input.tenant.db
     .select({ total: sql<number>`count(*)::int` })
     .from(auditEvent)
@@ -445,12 +490,7 @@ export async function readAuditPage(input: AuditReadInput): Promise<AuditPage> {
     .orderBy(auditEvent.targetType);
 
   return {
-    events,
     total: totalResult[0]?.total ?? 0,
-    nextCursor:
-      hasMore && last !== undefined
-        ? { occurredAt: last.occurredAt.toISOString(), id: last.id }
-        : null,
     filterOptions: {
       actors: actorRows.map((row) => ({
         id: row.id,

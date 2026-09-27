@@ -30,15 +30,18 @@ const rawFilters = z.object({
   action: z.string().max(200).optional(),
   targetType: z.string().max(200).optional(),
   range: z.enum(["today", "7d", "30d", "custom"]).optional(),
-  from: z.string().max(10).nullish(),
-  to: z.string().max(10).nullish(),
+  // A custom range is a whole day, so the transport accepts a date, not an arbitrary string.
+  from: z.iso.date().nullish(),
+  to: z.iso.date().nullish(),
   operatorOnly: z.boolean().optional(),
 });
 
 const listInput = z.object({
   filters: rawFilters.optional(),
+  // The keyset position is validated as its real values: a time and a UUID. A malformed cursor is
+  // a bounded input error from zod, never a database cast failure (R-67).
   cursor: z
-    .object({ occurredAt: z.string().max(40), id: z.string().max(64) })
+    .object({ occurredAt: z.iso.datetime({ offset: true }), id: z.uuid() })
     .nullish(),
   limit: z.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
 });
@@ -64,6 +67,10 @@ function normalizeFilters(raw: RawFilters | undefined): AuditEventFilters {
  * carries no entitlement gate: `core:audit:read` is a core key, not a module's, and the read
  * procedure refuses through `can()` inside the service (DEC-39). `list` is a query, because the
  * screen never writes an event: no row is editable and no row is deletable.
+ *
+ * The cursor is not signed: a viewer holding `core:audit:read` may read every row anyway, so a
+ * fabricated position reaches nothing they could not read from page one. Its shape is validated
+ * so a malformed value is a bounded input error, not a cast failure.
  */
 export function createAuditRouter(
   modules: readonly Pick<Module, "identity" | "permissions" | "recordTypes">[]
@@ -71,16 +78,20 @@ export function createAuditRouter(
   const t = initTRPC.context<AuditRouterContext>().create();
 
   return t.router({
-    list: t.procedure.input(listInput).query(({ ctx, input }) =>
-      readAuditPage({
+    list: t.procedure.input(listInput).query(({ ctx, input }) => {
+      const cursor = input.cursor ?? null;
+
+      return readAuditPage({
         tenant: ctx.tenant,
         caller: ctx.caller,
         modules,
         filters: normalizeFilters(input.filters),
-        cursor: input.cursor ?? null,
+        cursor,
         limit: input.limit ?? DEFAULT_PAGE_SIZE,
-      })
-    ),
+        // The total and the filter lists are full-history aggregates, so only page one asks.
+        includeFacets: cursor === null,
+      });
+    }),
   });
 }
 

@@ -11,8 +11,12 @@ The audit capability: the one command-line writer, the action catalogue, and the
   filter has a fixed list to group. A writer that already exists references it; the reader never
   invents an action.
 - `readAuditPage` and `createAuditRouter`, the filterable, keyset-paged reader behind
-  `core:audit:read` (R-67 to R-69, DEC-16). It resolves each target through the owning module's
-  record-type resolver and keeps the link only when the viewer may open it under `can()`.
+  `core:audit:read` (R-67 to R-69, DEC-16). Free text searches stored columns only (`summary`,
+  `target_type`, `target_id`), with `%`, `_` and the backslash escaped, never a resolved label; an
+  audit writer puts the target's name in the summary. Each target resolves through the owning
+  module's record-type resolver, and its live label, existence flag and path are kept only when the
+  viewer may open the record under `can()` on the permission the resolver names (default
+  `<id>:use`). A denied target and a removed one read the same: only the stored type and id.
 
 ## What must not go here
 

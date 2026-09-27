@@ -241,11 +241,11 @@ R-66. The account page variant at `/admin/account` offers change password with t
 
 ### The audit reader
 
-R-67. A filterable Audit log screen in the admin portal sits behind `core:audit:read` (`DEC-16`). It filters on free text over summary and target, actor, action, target type, and a date range, and it loads newest first by keyset on occurrence time and id with a Load more control. No row is editable and no row is deletable.
+R-67. A filterable Audit log screen in the admin portal sits behind `core:audit:read` (`DEC-16`). It filters on free text over the stored summary and the stored target — the target is the stored target type and target id, never a live record resolved by a module (R-69) — then actor, action, target type, and a date range, and it loads newest first by keyset on occurrence time and id with a Load more control. An audit writer puts the target's name in the summary, because a resolved label is not searchable and may not be visible to the reader. No row is editable and no row is deletable.
 
 R-68. One filter selects operator rows, which are the rows with a null actor and an action beginning `ops:` (`DEC-45`). Export and SIEM push are later (`DEC-16`).
 
-R-69. The reader links a target only when the owning module's record-type resolver returns a path and the viewer may open it under `can()` (`../architecture/module-contract.md`, "Record types"). A target that no longer exists is shown without a link.
+R-69. The reader links a target only when the owning module's record-type resolver returns a path and the viewer may open it under `can()` on the permission the resolver names for the path, defaulting to the module's `<id>:use` (`../architecture/module-contract.md`, "Record types"). The resolver's live label and existence flag travel under the same check: a target the viewer may not open is shown exactly like a target that no longer exists, carrying only the stored target type and id, and no live label reaches the browser or the raw event. A target that no longer exists is shown without a link.
 
 ### Hardening and headers
 

@@ -3,12 +3,15 @@ import type {
   Scope,
   ScopeSet,
 } from "../../lib/module-contract/keys.ts";
-import type { Module } from "../../lib/module-contract/module.ts";
+import type {
+  Module,
+  RecordDescriptor,
+} from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import {
   type GrantReader,
-  type ParentResolver,
   type PermissionGrants,
+  type RecordResolver,
   type RequestPrincipal,
   createRequestPrincipal,
 } from "./principal.ts";
@@ -135,28 +138,38 @@ export function createGrantReader(
 }
 
 /**
- * The parents of one resource, from the record type a compiled module declares under that type,
+ * The descriptor of one resource, from the record type a compiled module declares under that type,
  * resolved through the request's own tenant context (DEC-34). A type no module declares, or a
- * record its resolver does not find, has no parents, and a parent of a type the record type does
- * not declare is dropped (module contract, Record types).
+ * record its resolver does not find, answers `undefined` (no label, no path, no parents), and a
+ * parent of a type the record type does not declare is dropped (module contract, Record types).
+ *
+ * The `parents` and the label and path come from one resolution, and `can()` reads the same
+ * descriptor through the principal's memo, so one target's resolver runs once per request.
  */
-export function createParentResolver(
+export function createRecordResolver(
   modules: readonly Pick<Module, "recordTypes">[],
   tenant: TenantContext
-): ParentResolver {
+): RecordResolver {
   return async (resource) => {
     const recordType = modules
       .flatMap((module) => module.recordTypes)
       .find((candidate) => candidate.type === resource.type);
 
-    if (recordType === undefined) return [];
+    if (recordType === undefined) return undefined;
 
     const descriptor = await recordType.resolve({ tenant }, resource.id);
-    const declared = new Set(recordType.parentTypes ?? []);
 
-    return (descriptor?.parents ?? []).filter((parent) =>
-      declared.has(parent.type)
-    );
+    if (descriptor === undefined) return undefined;
+
+    const declared = new Set(recordType.parentTypes ?? []);
+    const parents = descriptor.parents ?? [];
+
+    if (parents.every((parent) => declared.has(parent.type))) return descriptor;
+
+    return {
+      ...descriptor,
+      parents: parents.filter((parent) => declared.has(parent.type)),
+    } satisfies RecordDescriptor;
   };
 }
 
@@ -178,6 +191,6 @@ export function principalFor(input: {
       input.userId,
       permissionCatalogue(input.modules)
     ),
-    createParentResolver(input.modules, input.tenant)
+    createRecordResolver(input.modules, input.tenant)
   );
 }

@@ -46,7 +46,7 @@ function Avatar(props: {
   if (props.actor === null) {
     return (
       <span
-        className={`flex shrink-0 items-center justify-center rounded-full border border-dashed border-gray-400 text-gray-500 dark:border-gray-600 ${box}`}
+        className={`flex shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground text-muted-foreground border-muted-foreground ${box}`}
       >
         <SystemIcon className="size-4" />
       </span>
@@ -57,8 +57,8 @@ function Avatar(props: {
     <span
       className={`flex shrink-0 items-center justify-center rounded-full font-bold ${
         props.actor.anonymized
-          ? "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-          : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          ? "bg-muted text-muted-foreground"
+          : "bg-muted text-foreground"
       } ${box}`}
     >
       {props.actor.anonymized ? "?" : initials(props.actor.name)}
@@ -73,9 +73,9 @@ function ActionPill(props: {
 }): JSX.Element {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300 ${
+      className={`inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-medium text-foreground text-foreground ${
         props.wrap
-          ? "max-w-full whitespace-normal [overflow-wrap:anywhere]"
+          ? "max-w-full whitespace-normal break-all"
           : "whitespace-nowrap"
       }`}
     >
@@ -96,11 +96,11 @@ function Select(props: {
         aria-label={props.ariaLabel}
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
-        className={`h-10 w-full appearance-none rounded-lg border border-gray-500 bg-white pl-3 pr-9 text-sm text-gray-800 dark:border-gray-500 dark:bg-gray-950 dark:text-gray-200 ${focusRing}`}
+        className={`h-10 w-full appearance-none rounded-lg border border-input bg-white pl-3 pr-9 text-sm text-foreground dark:border-input text-foreground ${focusRing}`}
       >
         {props.children}
       </select>
-      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-500" />
+      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
     </span>
   );
 }
@@ -120,7 +120,7 @@ function HelpNote(): JSX.Element {
         aria-label={label}
         title={label}
         onClick={() => setOpen((value) => !value)}
-        className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 ${focusRing}`}
+        className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-primary hover:bg-accent text-primary ${focusRing}`}
       >
         <HelpIcon className="size-5" />
       </button>
@@ -129,7 +129,7 @@ function HelpNote(): JSX.Element {
           id={`${id}-panel`}
           role="group"
           aria-label={label}
-          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left text-xs leading-relaxed text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-white p-4 text-left text-xs leading-relaxed text-foreground shadow-lg bg-card text-foreground"
         >
           <p>
             An event is never edited and never deleted. It keeps the words that
@@ -148,7 +148,7 @@ function HelpNote(): JSX.Element {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}
+            className={`mt-3 rounded text-xs font-semibold text-primary hover:underline text-primary ${focusRing}`}
           >
             Close
           </button>
@@ -224,7 +224,7 @@ function FilterChips(props: {
           key={chip.label}
           type="button"
           onClick={() => props.onChange(chip.next)}
-          className={`inline-flex h-8 items-center gap-1 rounded-full bg-gray-100 pl-2.5 pr-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 ${focusRing}`}
+          className={`inline-flex h-8 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1.5 text-xs font-medium text-foreground hover:bg-muted text-foreground ${focusRing}`}
         >
           {chip.label}
           <CloseIcon className="size-4" />
@@ -233,7 +233,7 @@ function FilterChips(props: {
       <button
         type="button"
         onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
-        className={`h-8 rounded-lg px-1.5 text-xs font-medium text-gray-600 underline-offset-2 hover:underline dark:text-gray-400 ${focusRing}`}
+        className={`h-8 rounded-lg px-1.5 text-xs font-medium text-muted-foreground underline-offset-2 hover:underline text-muted-foreground ${focusRing}`}
       >
         Clear all
       </button>
@@ -347,7 +347,7 @@ function FilterPanel(props: {
             }
             className={inputClass}
           />
-          <span className="shrink-0 text-xs text-gray-500">to</span>
+          <span className="shrink-0 text-xs text-muted-foreground">to</span>
           <input
             type="date"
             aria-label="To"
@@ -361,14 +361,14 @@ function FilterPanel(props: {
         </div>
       ) : null}
 
-      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground text-foreground">
         <input
           type="checkbox"
           checked={filters.operatorOnly}
           onChange={(event) =>
             props.onChange({ ...filters, operatorOnly: event.target.checked })
           }
-          className={`size-4 rounded border-gray-400 text-blue-600 ${focusRing}`}
+          className={`size-4 rounded border-muted-foreground text-primary ${focusRing}`}
         />
         Operator rows only
       </label>
@@ -393,15 +393,13 @@ function FilterButton(props: {
         aria-controls={`${id}-panel`}
         onClick={() => setOpen((value) => !value)}
         className={`${btnSecondary} ${
-          props.count > 0
-            ? "border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
-            : ""
+          props.count > 0 ? "border-primary text-primary" : ""
         }`}
       >
         <FiltersIcon className="size-4" />
         Filters
         {props.count > 0 ? (
-          <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold tabular-nums text-white">
+          <span className="rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-white">
             {props.count}
           </span>
         ) : null}
@@ -409,7 +407,7 @@ function FilterButton(props: {
       {open ? (
         <div
           id={`${id}-panel`}
-          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-white p-4 text-left shadow-lg bg-card"
         >
           <FilterPanel
             filters={props.filters}
@@ -420,7 +418,7 @@ function FilterButton(props: {
             <button
               type="button"
               onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
-              className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}
+              className={`mt-3 rounded text-xs font-semibold text-primary hover:underline text-primary ${focusRing}`}
             >
               Clear filters
             </button>
@@ -428,7 +426,7 @@ function FilterButton(props: {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className={`mt-3 ml-3 rounded text-xs font-semibold text-gray-600 hover:underline dark:text-gray-400 ${focusRing}`}
+            className={`mt-3 ml-3 rounded text-xs font-semibold text-muted-foreground hover:underline text-muted-foreground ${focusRing}`}
           >
             Close
           </button>
@@ -441,14 +439,14 @@ function FilterButton(props: {
 /** The target cell. The table names the record and marks a removed one; the sheet carries the link. */
 function TargetCell(props: { readonly event: AuditEvent }): JSX.Element {
   if (props.event.targetType === "") {
-    return <span className="block text-gray-500">—</span>;
+    return <span className="block text-muted-foreground">—</span>;
   }
 
   return (
     <span className="block truncate">
       {props.event.targetLabel}
       {props.event.targetExists ? null : (
-        <span className="ml-1.5 text-xs font-medium text-gray-500">
+        <span className="ml-1.5 text-xs font-medium text-muted-foreground">
           (removed)
         </span>
       )}
@@ -474,8 +472,8 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-1 md:max-w-md">
-          <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-blue-500 dark:border-gray-500 dark:bg-gray-950">
-            <SearchIcon className="size-4 shrink-0 text-gray-500" />
+          <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-input bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-ring dark:border-input ">
+            <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
             <input
               value={props.filters.query}
               onChange={(event) =>
@@ -483,7 +481,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
               }
               aria-label="Search summary or target"
               placeholder="Search summary or target"
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-gray-500"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
             />
           </label>
           <HelpNote />
@@ -502,11 +500,11 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
         onChange={change}
       />
 
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <section className="overflow-hidden rounded-xl border border-border bg-white bg-card">
         {props.events.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold">No events match</p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               Widen the date range or remove a filter.
             </p>
             <button
@@ -519,13 +517,13 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
+            <ul className="divide-y divide-border md:hidden ">
               {props.events.map((event) => (
                 <li key={event.id}>
                   <button
                     type="button"
                     onClick={() => setOpenId(event.id)}
-                    className={`flex w-full flex-col gap-1.5 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60 ${focusRing}`}
+                    className={`flex w-full flex-col gap-1.5 px-4 py-4 text-left hover:bg-muted/50 ${focusRing}`}
                   >
                     <span className="flex items-center justify-between gap-3">
                       <span className="flex min-w-0 items-center gap-2">
@@ -535,22 +533,26 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                         </span>
                       </span>
                       <span
-                        className="shrink-0 text-xs text-gray-500"
+                        className="shrink-0 text-xs text-muted-foreground"
                         title={fmtExact(
                           event.occurredAt,
                           props.viewer.timeZone
                         )}
                       >
-                        {relativeTime(event.occurredAt, now)}
+                        {relativeTime(
+                          event.occurredAt,
+                          now,
+                          props.viewer.timeZone
+                        )}
                       </span>
                     </span>
                     <span className="flex flex-wrap items-center gap-1.5">
                       <ActionPill action={event.action} />
-                      <span className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {event.targetLabel}
                       </span>
                     </span>
-                    <span className="line-clamp-2 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="line-clamp-2 text-sm text-foreground">
                       {event.summary}
                     </span>
                   </button>
@@ -560,32 +562,32 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
 
             <table className="hidden w-full table-fixed md:table">
               <colgroup>
-                <col className="w-[110px]" />
-                <col className="w-[170px]" />
-                <col className="w-[270px]" />
-                <col className="w-[190px]" />
+                <col className="w-28" />
+                <col className="w-44" />
+                <col className="w-68" />
+                <col className="w-48" />
                 <col />
               </colgroup>
-              <thead className="border-b border-gray-200 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40">
+              <thead className="border-b border-border bg-muted/50 ">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 first:pl-5 dark:text-gray-400">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground first:pl-5 text-muted-foreground">
                     When
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                     Actor
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                     Action
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                     Target
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 last:pr-5 dark:text-gray-400">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground last:pr-5 text-muted-foreground">
                     Summary
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-border">
                 {props.events.map((event) => (
                   <tr
                     key={event.id}
@@ -598,18 +600,22 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                         setOpenId(event.id);
                       }
                     }}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    className="cursor-pointer hover:bg-muted/50"
                   >
-                    <td className="px-4 py-3 align-middle text-sm first:pl-5 text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 align-middle text-sm first:pl-5 text-foreground">
                       <span
                         title={fmtExact(
                           event.occurredAt,
                           props.viewer.timeZone
                         )}
                       >
-                        {relativeTime(event.occurredAt, now)}
+                        {relativeTime(
+                          event.occurredAt,
+                          now,
+                          props.viewer.timeZone
+                        )}
                       </span>
-                      <span className="block text-xs text-gray-500">
+                      <span className="block text-xs text-muted-foreground">
                         {fmtDateTime(event.occurredAt, props.viewer.timeZone)}
                       </span>
                     </td>
@@ -625,12 +631,12 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                       <ActionPill action={event.action} wrap />
                     </td>
                     <td className="px-4 py-3 align-middle text-sm">
-                      <span className="block text-xs text-gray-500">
+                      <span className="block text-xs text-muted-foreground">
                         {humanize(event.targetType)}
                       </span>
                       <TargetCell event={event} />
                     </td>
-                    <td className="px-4 py-3 align-middle text-sm last:pr-5 text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 align-middle text-sm last:pr-5 text-foreground">
                       <span className="block truncate">{event.summary}</span>
                     </td>
                   </tr>
@@ -638,7 +644,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
               </tbody>
             </table>
 
-            <div className="flex flex-col items-center gap-2 border-t border-gray-100 px-5 py-3 text-xs text-gray-600 sm:flex-row sm:justify-between dark:border-gray-800 dark:text-gray-400">
+            <div className="flex flex-col items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:justify-between text-muted-foreground">
               <span>
                 Showing {props.events.length.toLocaleString("en-GB")} of{" "}
                 {props.total.toLocaleString("en-GB")}

@@ -18,9 +18,11 @@ type Cursor = {
 
 type AuditPageView = {
   readonly events: readonly AuditEvent[];
-  readonly total: number;
+  /** Present on the first page only; null on a keyset page. */
+  readonly total: number | null;
   readonly nextCursor: Cursor | null;
-  readonly filterOptions: AuditFilterOptions;
+  /** Present on the first page only; null on a keyset page. */
+  readonly filterOptions: AuditFilterOptions | null;
 };
 
 /**

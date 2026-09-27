@@ -8,9 +8,9 @@ import type { RequestPrincipal } from "./principal.ts";
 
 export type {
   GrantReader,
-  ParentResolver,
   PermissionGrants,
   PrincipalIdentity,
+  RecordResolver,
   RequestPrincipal,
 } from "./principal.ts";
 
@@ -18,7 +18,7 @@ export { createRequestPrincipal } from "./principal.ts";
 
 export {
   createGrantReader,
-  createParentResolver,
+  createRecordResolver,
   principalFor,
 } from "./grant-reader.ts";
 

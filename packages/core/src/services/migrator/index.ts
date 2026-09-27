@@ -56,6 +56,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0002_role_assignment_scope_pair.sql",
     import.meta.url
   ),
+  "0003_audit_event_keyset_index": new URL(
+    "../../../drizzle/0003_audit_event_keyset_index.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

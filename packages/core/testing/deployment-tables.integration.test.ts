@@ -474,7 +474,8 @@ describe("the Section 1 deployment tables", () => {
       }
     }
 
-    // data-shape.md, "Audit": an index on (target_type, target_id) and one on occurred_at.
+    // data-shape.md, "Audit": an index on (target_type, target_id) and the reader's keyset
+    // order on (occurred_at, id) descending (R-67).
     const auditIndexes = indexesByTable.get("audit_event") ?? [];
 
     if (
@@ -483,8 +484,8 @@ describe("the Section 1 deployment tables", () => {
       problems.push("audit_event: no index on (target_type, target_id)");
     }
 
-    if (!auditIndexes.some((index) => covered(index) === "occurred_at")) {
-      problems.push("audit_event: no index on (occurred_at)");
+    if (!auditIndexes.some((index) => covered(index) === "occurred_at,id")) {
+      problems.push("audit_event: no index on (occurred_at, id)");
     }
 
     // data-shape.md, "Files": storage_key is unique, because every adapter derives it from

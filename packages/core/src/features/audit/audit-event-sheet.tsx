@@ -37,7 +37,7 @@ function SheetSection(props: {
 }): JSX.Element {
   return (
     <section className="flex flex-col gap-1.5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {props.title}
       </h3>
       {props.children}
@@ -50,7 +50,7 @@ function SheetAvatar(props: {
 }): JSX.Element {
   if (props.actor === null) {
     return (
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-400 text-gray-500 dark:border-gray-600">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground text-muted-foreground border-muted-foreground">
         <SystemIcon className="size-4" />
       </span>
     );
@@ -60,8 +60,8 @@ function SheetAvatar(props: {
     <span
       className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
         props.actor.anonymized
-          ? "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-          : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          ? "bg-muted text-muted-foreground"
+          : "bg-muted text-foreground"
       }`}
     >
       {props.actor.anonymized
@@ -123,16 +123,16 @@ export function AuditEventSheet(
         tabIndex={-1}
         aria-hidden="true"
         onClick={props.onClose}
-        className="absolute inset-0 bg-gray-900/25 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-foreground/25 backdrop-blur-sm"
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Audit event"
-        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl sm:inset-y-3 sm:right-3 sm:w-[480px] sm:rounded-xl sm:border sm:border-gray-200 dark:bg-gray-900 dark:sm:border-gray-800"
+        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl sm:inset-y-3 sm:right-3 sm:w-120 sm:rounded-xl sm:border sm:border-border bg-card "
       >
-        <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3.5 dark:border-gray-800">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5 ">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-medium text-foreground text-foreground">
             {event.action}
           </span>
           <button
@@ -140,7 +140,7 @@ export function AuditEventSheet(
             type="button"
             aria-label="Close"
             onClick={props.onClose}
-            className={`${btnGhost} size-11 justify-center px-0 text-gray-500 sm:size-8`}
+            className={`${btnGhost} size-11 justify-center px-0 text-muted-foreground sm:size-8`}
           >
             <CloseIcon className="size-5" />
           </button>
@@ -154,7 +154,7 @@ export function AuditEventSheet(
                 <p className="truncate text-sm font-semibold">
                   {event.actor?.name ?? "System"}
                 </p>
-                <p className="truncate text-xs text-gray-600 dark:text-gray-400">
+                <p className="truncate text-xs text-muted-foreground">
                   {event.actor === null
                     ? "A job, provisioning, or the operator command line."
                     : event.actor.anonymized
@@ -169,34 +169,34 @@ export function AuditEventSheet(
             <p className="text-sm font-medium">
               {fmtExact(event.occurredAt, props.timeZone)}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {relativeTime(event.occurredAt, props.now)} · shown in{" "}
-              {props.timeZone.replace("_", " ")}
+            <p className="text-xs text-muted-foreground">
+              {relativeTime(event.occurredAt, props.now, props.timeZone)} ·
+              shown in {props.timeZone.replace("_", " ")}
             </p>
           </SheetSection>
 
           <SheetSection title="Target">
             {event.targetType === "" ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 This event names no target.
               </p>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {humanize(event.targetType)}
                   </p>
                   <p className="truncate text-sm font-semibold">
                     {event.targetLabel}
                   </p>
-                  <p className="truncate font-mono text-xs text-gray-500">
+                  <p className="truncate font-mono text-xs text-muted-foreground">
                     {event.targetId}
                   </p>
                 </div>
                 {event.targetPath !== null ? (
                   <button
                     type="button"
-                    className={`${btnGhost} shrink-0 text-blue-700 dark:text-blue-400`}
+                    className={`${btnGhost} shrink-0 text-primary`}
                     onClick={() => props.onOpenTarget?.(event.targetPath ?? "")}
                   >
                     Open
@@ -205,12 +205,12 @@ export function AuditEventSheet(
                 ) : event.targetExists ? (
                   <span
                     title="This record has no page you can open from here."
-                    className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-foreground text-foreground"
                   >
                     No link
                   </span>
                 ) : (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-foreground text-foreground">
                     Removed
                   </span>
                 )}
@@ -219,30 +219,27 @@ export function AuditEventSheet(
           </SheetSection>
 
           <SheetSection title="Summary">
-            <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+            <p className="text-sm leading-relaxed text-foreground text-foreground">
               {event.summary}
             </p>
           </SheetSection>
 
           <SheetSection title="Details">
             {entries.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 This event carries no extra details.
               </p>
             ) : (
-              <dl className="divide-y divide-gray-100 dark:divide-gray-800">
+              <dl className="divide-y divide-border">
                 {entries.map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="grid grid-cols-[minmax(0,150px)_1fr] gap-3 py-2 text-sm"
-                  >
-                    <dt className="break-words text-gray-600 dark:text-gray-400">
+                  <div key={key} className="flex gap-3 py-2 text-sm">
+                    <dt className="w-36 shrink-0 break-words text-muted-foreground">
                       {humanize(
                         key.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()
                       )}
                     </dt>
                     <dd
-                      className={`min-w-0 break-words ${
+                      className={`min-w-0 flex-1 break-words ${
                         looksLikeCode(value) ? "font-mono text-xs" : ""
                       }`}
                     >
@@ -254,21 +251,21 @@ export function AuditEventSheet(
             )}
             <details className="group mt-1">
               <summary
-                className={`w-fit cursor-pointer select-none rounded-lg text-sm font-medium text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}
+                className={`w-fit cursor-pointer select-none rounded-lg text-sm font-medium text-primary hover:underline text-primary ${focusRing}`}
               >
                 <span className="group-open:hidden">Show JSON</span>
                 <span className="hidden group-open:inline">Hide JSON</span>
               </summary>
-              <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
+              <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-muted p-3 font-mono text-xs leading-relaxed text-foreground bg-card text-foreground">
                 {JSON.stringify(event, null, 2)}
               </pre>
             </details>
           </SheetSection>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3 ">
           <p
-            className="min-w-0 truncate font-mono text-xs text-gray-600 dark:text-gray-400"
+            className="min-w-0 truncate font-mono text-xs text-muted-foreground"
             title={event.id}
           >
             Event id {event.id}
@@ -280,7 +277,7 @@ export function AuditEventSheet(
           >
             {copied ? (
               <>
-                <CheckIcon className="size-4 text-emerald-600" />
+                <CheckIcon className="size-4 text-primary" />
                 Copied
               </>
             ) : (

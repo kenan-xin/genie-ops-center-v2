@@ -6,7 +6,7 @@ import type { NavigationEntry } from "../../lib/module-contract/module.ts";
 import { can, scopesFor } from "./index.ts";
 import {
   type PermissionGrants,
-  type ParentResolver,
+  type RecordResolver,
   createRequestPrincipal,
 } from "./principal.ts";
 
@@ -36,7 +36,7 @@ function grants(
   return { keys: new Set(scopes.keys()), scopes, bypass };
 }
 
-function principal(held: PermissionGrants, resolve?: ParentResolver) {
+function principal(held: PermissionGrants, resolve?: RecordResolver) {
   return createRequestPrincipal(
     { userId: "u1", groups: [] },
     () => Promise.resolve(held),
@@ -52,7 +52,7 @@ function countingResolver(parents: readonly Scope[]) {
     resolve: async () => {
       calls += 1;
 
-      return parents;
+      return { label: "Record", parents };
     },
   };
 }

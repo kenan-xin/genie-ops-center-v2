@@ -4,7 +4,9 @@ import {
   createAuditRouter,
   principalFor,
   readAuditPage,
+  type AuditEventCursor,
   type AuditEventFilters,
+  type RequestPrincipal,
 } from "../src/index.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
 import { auditEvent } from "../src/schema.ts";
@@ -15,23 +17,47 @@ import { insertPersonWith, startDisposableDeployment } from "./index.ts";
  * database is mocked (R-38): every principal reads real `role_assignment` rows through the real
  * loader, and every target link is resolved through a real record-type resolver.
  *
- * The record type is a local fixture, because core imports no module (R-39). Its resolver answers a
- * label and a path for every id but `gone-*`, which stands for a target removed since its event was
- * written (R-69).
+ * The record types are local fixtures, because core imports no module (R-39). Their resolver
+ * answers a label and a path for every id but `gone-*` (a target removed since), returns no path
+ * for `nopath-*` (an existing target with nothing to open), and counts its calls so the suite can
+ * prove the record resolver runs at most once per target.
  */
+const FOLDER_ID = "folder-1";
+
+let resolverCalls = 0;
+
 const recordModule: Pick<Module, "identity" | "permissions" | "recordTypes"> = {
   identity: { id: "fixture", displayName: "Fixture", version: "0.0.0" },
   permissions: [
     { key: "fixture:use", label: "Use the fixture" },
     { key: "fixture:read", label: "Read the fixture" },
+    { key: "fixture:admin", label: "Administer the fixture" },
   ],
   recordTypes: [
     {
       type: "fixture-record",
-      resolve: async (_ctx, id: string) =>
-        id.startsWith("gone-")
-          ? undefined
-          : { label: `Record ${id}`, path: `/fixture/${id}` },
+      parentTypes: ["fixture-folder"],
+      resolve: async (_ctx, id: string) => {
+        resolverCalls += 1;
+
+        if (id.startsWith("gone-")) return undefined;
+
+        const parents = [{ type: "fixture-folder", id: FOLDER_ID }];
+
+        if (id.startsWith("nopath-")) {
+          return { label: `Record ${id}`, parents };
+        }
+
+        return { label: `Record ${id}`, path: `/fixture/${id}`, parents };
+      },
+    },
+    {
+      type: "fixture-admin-record",
+      resolve: async (_ctx, id: string) => ({
+        label: `Admin ${id}`,
+        path: `/admin/fixture/${id}`,
+        permission: "fixture:admin",
+      }),
     },
   ],
 };
@@ -63,8 +89,26 @@ function filters(patch: Partial<AuditEventFilters> = {}): AuditEventFilters {
   return { ...FILTERS, ...patch };
 }
 
-function request(userId: string | undefined) {
+function request(userId: string | undefined): RequestPrincipal {
   return principalFor({ tenant: deployment.context, modules, userId });
+}
+
+function read(options: {
+  readonly caller: RequestPrincipal;
+  readonly filters?: AuditEventFilters;
+  readonly cursor?: AuditEventCursor | null;
+  readonly limit?: number;
+  readonly includeFacets?: boolean;
+}) {
+  return readAuditPage({
+    tenant: deployment.context,
+    caller: options.caller,
+    modules,
+    filters: options.filters ?? filters(),
+    cursor: options.cursor ?? null,
+    limit: options.limit ?? 50,
+    includeFacets: options.includeFacets ?? true,
+  });
 }
 
 /** One row written for a test, with the actor and instant the case needs. */
@@ -103,16 +147,7 @@ describe("the audit reader against a real database", () => {
 
     const caller = request(userId);
 
-    await expect(
-      readAuditPage({
-        tenant: deployment.context,
-        caller,
-        modules,
-        filters: filters(),
-        cursor: null,
-        limit: 50,
-      })
-    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(read({ caller })).rejects.toMatchObject({ code: "forbidden" });
 
     // The router, the transport the app mounts, refuses the same way: tRPC wraps the catalogue
     // `forbidden` error, which the app's formatter maps to a 403 with a FORBIDDEN body code.
@@ -126,20 +161,28 @@ describe("the audit reader against a real database", () => {
     });
   });
 
+  it("refuses an anonymous caller", async () => {
+    await expect(read({ caller: request(undefined) })).rejects.toMatchObject({
+      code: "forbidden",
+    });
+
+    const router = createAuditRouter(modules).createCaller({
+      tenant: deployment.context,
+      caller: request(undefined),
+    });
+
+    await expect(router.list({})).rejects.toMatchObject({
+      cause: { code: "forbidden" },
+    });
+  });
+
   it("answers a caller holding the key", async () => {
     const id = await insertEvent({
       action: "core:person_added",
       summary: "A readable row",
     });
 
-    const page = await readAuditPage({
-      tenant: deployment.context,
-      caller: request(await insertAuditReader()),
-      modules,
-      filters: filters(),
-      cursor: null,
-      limit: 50,
-    });
+    const page = await read({ caller: request(await insertAuditReader()) });
 
     expect(page.events.some((event) => event.id === id)).toBe(true);
   });
@@ -165,12 +208,9 @@ describe("the audit reader against a real database", () => {
 
     const caller = request(await insertAuditReader());
 
-    const first = await readAuditPage({
-      tenant: deployment.context,
+    const first = await read({
       caller,
-      modules,
       filters: filters({ query: "same instant" }),
-      cursor: null,
       limit: 2,
     });
 
@@ -179,17 +219,19 @@ describe("the audit reader against a real database", () => {
     expect(first.total).toBe(3);
     expect(first.nextCursor).toEqual({ occurredAt: instant, id: ids[1] });
 
-    const second = await readAuditPage({
-      tenant: deployment.context,
+    const second = await read({
       caller,
-      modules,
       filters: filters({ query: "same instant" }),
       cursor: first.nextCursor,
       limit: 2,
+      includeFacets: false,
     });
 
     expect(second.events.map((event) => event.id)).toEqual([ids[0]]);
     expect(second.nextCursor).toBeNull();
+    // Off the first page, the total and option lists are not computed.
+    expect(second.total).toBeNull();
+    expect(second.filterOptions).toBeNull();
 
     const seen = [...first.events, ...second.events].map((event) => event.id);
 
@@ -220,67 +262,47 @@ describe("the audit reader against a real database", () => {
 
     const caller = request(userId);
 
-    const byAction = await readAuditPage({
-      tenant: deployment.context,
+    const byAction = await read({
       caller,
-      modules,
       filters: filters({ action: "core:group_label_changed" }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(byAction.events.map((event) => event.action)).toEqual([
       "core:group_label_changed",
     ]);
 
-    const byActor = await readAuditPage({
-      tenant: deployment.context,
+    const byActor = await read({
       caller,
-      modules,
       filters: filters({ actorId: userId }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(byActor.events.every((event) => event.actor?.id === userId)).toBe(
       true
     );
 
-    const byTarget = await readAuditPage({
-      tenant: deployment.context,
+    const byTarget = await read({
       caller,
-      modules,
       filters: filters({ targetType: "directory-group" }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(
       byTarget.events.every((event) => event.targetType === "directory-group")
     ).toBe(true);
 
-    const bySystem = await readAuditPage({
-      tenant: deployment.context,
+    const bySystem = await read({
       caller,
-      modules,
       filters: filters({ actorId: "system" }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(bySystem.events.every((event) => event.actor === null)).toBe(true);
 
-    const inRange = await readAuditPage({
-      tenant: deployment.context,
+    const inRange = await read({
       caller,
-      modules,
       filters: filters({
         range: "custom",
         from: "2026-02-03",
         to: "2026-02-03",
       }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(
@@ -290,39 +312,104 @@ describe("the audit reader against a real database", () => {
     ).toBe(true);
   });
 
-  it("searches the summary and the target under free text", async () => {
+  it("searches stored columns only: summary, target type and target id", async () => {
     await insertEvent({
       action: "core:person_added",
       targetType: "person",
-      targetId: "needauniquesearch",
-      summary: "A person",
+      targetId: "needle-summary",
+      summary: "the stored summary carries the word zebra",
+    });
+
+    await insertEvent({
+      action: "core:person_added",
+      targetType: "widget-target-type",
+      targetId: "needle-target",
+      summary: "a plain summary",
     });
 
     const caller = request(await insertAuditReader());
 
-    const bySummary = await readAuditPage({
-      tenant: deployment.context,
+    const bySummary = await read({
       caller,
-      modules,
-      filters: filters({ query: "A person" }),
-      cursor: null,
-      limit: 50,
+      filters: filters({ query: "zebra" }),
     });
 
-    expect(bySummary.events.length).toBeGreaterThan(0);
-
-    const byTarget = await readAuditPage({
-      tenant: deployment.context,
-      caller,
-      modules,
-      filters: filters({ query: "needauniquesearch" }),
-      cursor: null,
-      limit: 50,
-    });
-
-    expect(byTarget.events.map((event) => event.targetId)).toContain(
-      "needauniquesearch"
+    expect(bySummary.events.map((event) => event.targetId)).toContain(
+      "needle-summary"
     );
+
+    const byTargetId = await read({
+      caller,
+      filters: filters({ query: "needle-target" }),
+    });
+
+    expect(byTargetId.events.map((event) => event.targetId)).toContain(
+      "needle-target"
+    );
+
+    const byTargetType = await read({
+      caller,
+      filters: filters({ query: "widget-target-type" }),
+    });
+
+    expect(
+      byTargetType.events.some(
+        (event) => event.targetType === "widget-target-type"
+      )
+    ).toBe(true);
+  });
+
+  it("treats LIKE metacharacters as literal text", async () => {
+    await insertEvent({
+      action: "core:person_added",
+      summary: "literal percent 100% here",
+    });
+
+    await insertEvent({
+      action: "core:person_added",
+      summary: "literal underscore a_b here",
+    });
+
+    await insertEvent({
+      action: "core:person_added",
+      summary: "literal backslash a\\b here",
+    });
+
+    const caller = request(await insertAuditReader());
+
+    const percent = await read({
+      caller,
+      filters: filters({ query: "100%" }),
+    });
+
+    expect(percent.events.map((event) => event.summary)).toEqual([
+      "literal percent 100% here",
+    ]);
+
+    const underscore = await read({
+      caller,
+      filters: filters({ query: "a_b" }),
+    });
+
+    expect(underscore.events.map((event) => event.summary)).toEqual([
+      "literal underscore a_b here",
+    ]);
+
+    const backslash = await read({
+      caller,
+      filters: filters({ query: "a\\b" }),
+    });
+
+    expect(backslash.events.map((event) => event.summary)).toEqual([
+      "literal backslash a\\b here",
+    ]);
+
+    // A bare `%` matches only the row holding one, not the whole table.
+    const bare = await read({ caller, filters: filters({ query: "%" }) });
+
+    expect(bare.events.map((event) => event.summary)).toEqual([
+      "literal percent 100% here",
+    ]);
   });
 
   it("selects operator rows by a null actor and an ops: action only", async () => {
@@ -334,15 +421,9 @@ describe("the audit reader against a real database", () => {
       summary: "A transformation",
     });
 
-    const caller = request(await insertAuditReader());
-
-    const page = await readAuditPage({
-      tenant: deployment.context,
-      caller,
-      modules,
+    const page = await read({
+      caller: request(await insertAuditReader()),
       filters: filters({ operatorOnly: true }),
-      cursor: null,
-      limit: 50,
     });
 
     expect(page.events.length).toBeGreaterThan(0);
@@ -352,15 +433,16 @@ describe("the audit reader against a real database", () => {
     );
   });
 
-  it("links a target only when the resolver returns a path the viewer may open", async () => {
-    const recordId = "record-open";
-    const closedId = "record-closed";
+  it("shows a live target only when the viewer may open the record, else it looks removed", async () => {
+    const openId = "record-open";
+    const closedId = "nopath-record-closed";
+    const deniedId = "record-denied";
     const goneId = "gone-removed";
 
     await insertEvent({
       action: "core:person_added",
       targetType: "fixture-record",
-      targetId: recordId,
+      targetId: openId,
       summary: "Openable target",
     });
 
@@ -368,7 +450,14 @@ describe("the audit reader against a real database", () => {
       action: "core:person_added",
       targetType: "fixture-record",
       targetId: closedId,
-      summary: "Existing target without a path",
+      summary: "Existing target with no path",
+    });
+
+    await insertEvent({
+      action: "core:person_added",
+      targetType: "fixture-record",
+      targetId: deniedId,
+      summary: "Denied existing target",
     });
 
     await insertEvent({
@@ -378,56 +467,133 @@ describe("the audit reader against a real database", () => {
       summary: "Removed target",
     });
 
-    // The reader holds core:audit:read and a record-scoped fixture:use grant, so one target
-    // resolves to a path and the rest do not.
-    const { userId } = await insertPersonWith(
+    // The reader holds core:audit:read and a record-scoped fixture:use grant on the one record.
+    const allowed = await insertPersonWith(
       deployment.context,
       ["core:audit:read", "fixture:use"],
-      { type: "fixture-record", id: recordId }
+      { type: "fixture-record", id: openId }
     );
 
-    const opened = await readAuditPage({
-      tenant: deployment.context,
-      caller: request(userId),
-      modules,
+    const opened = await read({
+      caller: request(allowed.userId),
       filters: filters({ query: "target" }),
-      cursor: null,
-      limit: 50,
     });
 
     const rows = opened.events.filter(
       (event) => event.targetType === "fixture-record"
     );
 
-    const openable = rows.find((event) => event.targetId === recordId);
-    const closed = rows.find((event) => event.targetId === closedId);
+    const openable = rows.find((event) => event.targetId === openId);
+    const denied = rows.find((event) => event.targetId === deniedId);
     const gone = rows.find((event) => event.targetId === goneId);
 
+    expect(openable?.targetLabel).toBe(`Record ${openId}`);
     expect(openable?.targetExists).toBe(true);
-    expect(openable?.targetPath).toBe(`/fixture/${recordId}`);
+    expect(openable?.targetPath).toBe(`/fixture/${openId}`);
 
-    expect(closed?.targetExists).toBe(true);
-    expect(closed?.targetPath).toBeNull();
+    // The denied record and the removed one are indistinguishable: no label, no flag, no path.
+    expect(denied?.targetLabel).toBe("");
+    expect(denied?.targetExists).toBe(false);
+    expect(denied?.targetPath).toBeNull();
 
+    expect(gone?.targetLabel).toBe("");
     expect(gone?.targetExists).toBe(false);
     expect(gone?.targetPath).toBeNull();
+
+    // A viewer who may open the label-only record sees its label and the No link state.
+    const closed = await insertPersonWith(
+      deployment.context,
+      ["core:audit:read", "fixture:use"],
+      { type: "fixture-record", id: closedId }
+    );
+
+    const withClosed = await read({
+      caller: request(closed.userId),
+      filters: filters({ query: "Existing target with no path" }),
+    });
+
+    expect(withClosed.events[0]?.targetLabel).toBe(`Record ${closedId}`);
+    expect(withClosed.events[0]?.targetExists).toBe(true);
+    expect(withClosed.events[0]?.targetPath).toBeNull();
+  });
+
+  it("opens an admin path only for the permission the resolver named", async () => {
+    const adminRecordId = "admin-1";
+
+    await insertEvent({
+      action: "core:person_added",
+      targetType: "fixture-admin-record",
+      targetId: adminRecordId,
+      summary: "Admin path target",
+    });
+
+    const admin = await insertPersonWith(
+      deployment.context,
+      ["core:audit:read", "fixture:admin"],
+      { type: "fixture-admin-record", id: adminRecordId }
+    );
+
+    const withAdmin = await read({
+      caller: request(admin.userId),
+      filters: filters({ query: "Admin path target" }),
+    });
+
+    expect(withAdmin.events[0]?.targetPath).toBe(
+      `/admin/fixture/${adminRecordId}`
+    );
+
+    // A member with `fixture:use` but not `fixture:admin` sees the same record as removed.
+    const member = await insertPersonWith(
+      deployment.context,
+      ["core:audit:read", "fixture:use"],
+      { type: "fixture-record", id: adminRecordId }
+    );
+
+    const withoutAdmin = await read({
+      caller: request(member.userId),
+      filters: filters({ query: "Admin path target" }),
+    });
+
+    expect(withoutAdmin.events[0]?.targetLabel).toBe("");
+    expect(withoutAdmin.events[0]?.targetExists).toBe(false);
+    expect(withoutAdmin.events[0]?.targetPath).toBeNull();
+  });
+
+  it("resolves a target once per request, even when the grant is a declared parent", async () => {
+    const friendlyId = "record-parent-scoped";
+
+    await insertEvent({
+      action: "core:person_added",
+      targetType: "fixture-record",
+      targetId: friendlyId,
+      summary: "parent scoped target unique",
+    });
+
+    // The grant is on the parent folder, so `can()` must resolve the record's parents.
+    const parent = await insertPersonWith(
+      deployment.context,
+      ["core:audit:read", "fixture:use"],
+      { type: "fixture-folder", id: FOLDER_ID }
+    );
+
+    resolverCalls = 0;
+
+    const page = await read({
+      caller: request(parent.userId),
+      filters: filters({ query: "parent scoped target unique" }),
+    });
+
+    expect(page.events[0]?.targetPath).toBe(`/fixture/${friendlyId}`);
+    // The reader's label lookup and `can()`'s parent lookup share one resolution.
+    expect(resolverCalls).toBe(1);
   });
 
   it("offers the fixed catalogue and the tenant's own actors and target types as filter options", async () => {
-    const caller = request(await insertAuditReader());
+    const page = await read({ caller: request(await insertAuditReader()) });
 
-    const page = await readAuditPage({
-      tenant: deployment.context,
-      caller,
-      modules,
-      filters: filters(),
-      cursor: null,
-      limit: 50,
-    });
-
-    expect(page.filterOptions.actions).toContain("auth:sign_in");
-    expect(page.filterOptions.actions).toContain("core:person_added");
-    expect(page.filterOptions.actions).toContain(
+    expect(page.filterOptions?.actions).toContain("auth:sign_in");
+    expect(page.filterOptions?.actions).toContain("core:person_added");
+    expect(page.filterOptions?.actions).toContain(
       "core:permission_transformation"
     );
   });

@@ -189,7 +189,12 @@ export const auditEvent = pgTable(
   },
   (table) => [
     index("audit_event_target_idx").on(table.targetType, table.targetId),
-    index("audit_event_occurred_at_idx").on(table.occurredAt),
+    // The reader's keyset order: newest first on (occurred_at, id) descending (R-67). The
+    // composite index matches the ORDER BY, so a page is an index scan, not a sort of the history.
+    index("audit_event_occurred_at_id_idx").on(
+      table.occurredAt.desc(),
+      table.id.desc()
+    ),
   ]
 );
 
