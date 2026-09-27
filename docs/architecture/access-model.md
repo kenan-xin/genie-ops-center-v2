@@ -37,7 +37,7 @@ The absent case exists because the earlier rule, replace on every sign-in, delet
 
 A tenant administrator maps a group to a role in the admin portal. The mapping is a `role_assignment` row with `principal_type` equal to `group`, optionally at a scope such as one office or one record. Example: the directory group `Finance-Managers` gets the role `Invoice approver`. From then on `can(user, "invoices:approve")` returns true for every person whose last sign-in listed that group. When the provider removes the person from the group, the next sign-in rewrites their list, and the role is gone. Nobody touches Genie Ops Center for that.
 
-The mapping lives in Genie Ops Center, not in the provider, because the provider knows nothing about product roles, and because the same mapping must work for every provider. A directory group appears in the Groups screen the first time any member signs in with it. It can be archived, never deleted. While a group is archived, the roles assigned to it stop applying, and restoring the group brings them back, so archiving is how an administrator retires a directory group's access without touching the provider.
+The mapping lives in Genie Ops Center, not in the provider, because the provider knows nothing about product roles, and because the same mapping must work for every provider. A directory group appears in the Groups screen the first time any member signs in with it. A tenant administrator can also add it before that, by typing the exact value the provider puts in the `groups` claim, for example `Sales` or an Entra group object ID, and assign roles to it at once, so a large launch has its mappings in place before the first sign-in (`DEC-52`). A group added this way shows as "Not seen yet" until a sign-in lists it, and it is the same row the sync uses from then on. It can be archived, never deleted. While a group is archived, the roles assigned to it stop applying, and restoring the group brings them back, so archiving is how an administrator retires a directory group's access without touching the provider.
 
 ## Local groups
 
@@ -45,7 +45,7 @@ A tenant whose provider sends no groups, and a tenant on local accounts, uses lo
 
 ## The first administrator
 
-No directory group is known before the first sign-in, so setup seeds the local group `Genie Administrators` with the role `Tenant administrator`, and pre-adds the first administrators from `tenant.yaml` as pending members. Their first sign-in activates them. `genie-ops admin add <email>` adds a person to that group later, which is the recovery path when the last administrator leaves (`DEC-23`).
+Setup does not ask for a directory group, so it seeds the local group `Genie Administrators` with the role `Tenant administrator`, and pre-adds the first administrators from `tenant.yaml` as pending members. Their first sign-in activates them. `genie-ops admin add <email>` adds a person to that group later, which is the recovery path when the last administrator leaves (`DEC-23`).
 
 ## Per-person assignments
 
