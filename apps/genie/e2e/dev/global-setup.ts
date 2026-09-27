@@ -4,6 +4,7 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
 const run = promisify(execFile);
@@ -169,6 +170,7 @@ export default async function globalSetup(): Promise<void> {
       cwd: appRoot,
       env: {
         ...process.env,
+        ...TEST_AUTH_ENV,
         DATABASE_URL: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
         PUBLIC_URL: `http://127.0.0.1:${DEV_PORT}`,
       },

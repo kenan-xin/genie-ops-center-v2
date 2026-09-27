@@ -1,3 +1,7 @@
+import {
+  startE2eKeycloak,
+  type E2eKeycloak,
+} from "../../testing/e2e-keycloak.ts";
 import { compose, HOST_PORT } from "./stack.ts";
 
 async function waitForHealth(deadline: number): Promise<void> {
@@ -26,6 +30,27 @@ export default async function setupGateGlobalSetup(): Promise<void> {
   // The gate acceptance run owns a fresh, incomplete database; unlike other E2E
   // projects it must not use the ordinary working-app fixture seed.
   await compose(["down", "-v"]).catch(() => undefined);
-  await compose(["up", "-d", "--wait"]);
-  await waitForHealth(Date.now() + 120000);
+
+  // The realm lives in the identity stand-in Keycloak. The spec completes the setup steps itself,
+  // so after that the app's discovery must answer for `/api/health` to read `ok` (R-54d).
+  let keycloak: E2eKeycloak | undefined;
+
+  try {
+    keycloak = await startE2eKeycloak({
+      publicUrl: `http://127.0.0.1:${HOST_PORT}`,
+    });
+
+    await compose(["up", "-d", "--wait"], {
+      KEYCLOAK_URL: keycloak.keycloakUrl,
+      KEYCLOAK_REALM: keycloak.realm,
+      KEYCLOAK_CLIENT_ID: keycloak.clientId,
+      KEYCLOAK_CLIENT_SECRET: keycloak.clientSecret,
+    });
+
+    await waitForHealth(Date.now() + 120000);
+  } catch (error) {
+    await keycloak?.stop();
+
+    throw error;
+  }
 }

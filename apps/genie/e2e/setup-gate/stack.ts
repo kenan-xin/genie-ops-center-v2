@@ -20,12 +20,16 @@ const COMPOSE = [
   resolve(import.meta.dirname, "../../../../deploy/stack/compose.e2e.yaml"),
 ];
 
-export function compose(args: readonly string[]) {
+export function compose(
+  args: readonly string[],
+  extraEnv: Readonly<Record<string, string>> = {}
+) {
   return run("docker", [...COMPOSE, ...args], {
     encoding: "utf8",
     env: {
       ...process.env,
       GENIE_HOST_PORT: String(HOST_PORT),
+      ...extraEnv,
     },
   });
 }
