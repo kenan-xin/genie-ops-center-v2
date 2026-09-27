@@ -117,6 +117,11 @@ export const sharedOxlintConfig: OxlintConfig = {
     // Agent-tool shims the graft CLI regenerates on each update, so hand
     // repairs would only drift from the generator output.
     ".claude/helpers/**",
+    // Screen-design sketches kept as a visual reference, never built on
+    // (docs/design/reference/README.md). No project lints them, so the
+    // pre-commit hook must not either, or a one-line copy edit fails on
+    // unrelated sketch code.
+    "docs/design/reference/**",
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
     // Test fixtures the resolver must never evaluate. The throwing fixture exists
