@@ -8,6 +8,7 @@ import {
 } from "./generated-stack-process.ts";
 import { buildImageWith, removeImage, requireDocker } from "./image-process.ts";
 import { testImageTag } from "./image-tag.ts";
+import { scopedPort } from "./worktree-scope.ts";
 
 const SLUG = `smoke-${process.pid}-${Date.now()}`;
 
@@ -73,10 +74,10 @@ describe("the generated customer stack smoke", () => {
       databasePassword: DATABASE_PASSWORD,
       filled: {
         PUBLIC_URL: "https://example.invalid",
-        // One address for the app and setup: the internal Compose alias, which both the app
-        // container and the keycloak service use. A real stack sets the browser-visible address
-        // instead; the address guard is Specification 02 R-54c/d (bead d8l5.18).
-        KEYCLOAK_URL: `http://${SLUG}-keycloak:8080`,
+        // The one browser-visible Keycloak address (Spec 2 R-54c/d): the app container reaches it
+        // through the host-gateway alias, and the smoke publishes the bundled Keycloak on this host
+        // port and points KC_HOSTNAME at the same address.
+        KEYCLOAK_URL: `http://host.docker.internal:${scopedPort(16080)}`,
         KEYCLOAK_REALM: SMOKE_REALM,
         KEYCLOAK_CLIENT_ID: "genie-ops-center",
         BETTER_AUTH_SECRET: "smoke-better-auth-secret-at-least-32-chars",

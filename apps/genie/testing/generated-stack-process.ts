@@ -322,7 +322,27 @@ export async function startGeneratedStack(input: {
   const composeNetwork = `${projectName}_default`;
   const directory = await mkdtemp(join(tmpdir(), "genie-generated-stack-"));
   const composePath = join(directory, "compose.yaml");
+  const overridePath = join(directory, "override.yaml");
   const envPath = join(directory, ".env");
+
+  // The one Keycloak address rule (Spec 2 R-54c/d): the app and setup use `KEYCLOAK_URL`, and the
+  // app fetches discovery from it, so the app container must reach Keycloak there. When the test
+  // names `host.docker.internal`, the bundled Keycloak is published on that host port and the app
+  // reaches it through the host-gateway alias; a real deployment uses a public address instead and
+  // needs no override.
+  const keycloakUrl = input.filled.KEYCLOAK_URL ?? "";
+
+  const hostKeycloak = /^http:\/\/host\.docker\.internal:(\d+)$/.exec(
+    keycloakUrl
+  );
+
+  const keycloakHostPort = hostKeycloak?.[1];
+
+  const composeFiles =
+    keycloakHostPort === undefined
+      ? ["--file", composePath]
+      : ["--file", composePath, "--file", overridePath];
+
   let networkCreated = false;
   let composeNetworkCreated = false;
   let databaseStarted = false;
@@ -333,8 +353,7 @@ export async function startGeneratedStack(input: {
       "compose",
       "--project-name",
       projectName,
-      "--file",
-      composePath,
+      ...composeFiles,
       "--env-file",
       envPath,
       ...args,
@@ -364,6 +383,23 @@ export async function startGeneratedStack(input: {
 
   try {
     await writeFile(composePath, input.compose);
+
+    if (keycloakHostPort !== undefined) {
+      await writeFile(
+        overridePath,
+        [
+          "services:",
+          "  app:",
+          "    extra_hosts:",
+          '      - "host.docker.internal:host-gateway"',
+          "  keycloak:",
+          "    ports:",
+          `      - "${keycloakHostPort}:8080"`,
+          "",
+        ].join("\n")
+      );
+    }
+
     await writeFile(
       envPath,
       envValues(input.envExample, {
@@ -544,13 +580,14 @@ export async function startGeneratedStack(input: {
       ]);
 
       // The realm step signs in to the bundled Keycloak with the one-run bootstrap
-      // credential and fills the two client secrets. These reach the setup command
-      // only, never the app service environment (DEC-37, Spec 2 R-53).
+      // credential and fills the two client secrets. It uses the app's own `KEYCLOAK_URL`, so the
+      // address setup records is the one the app and the browser use (Spec 2 R-54c). These reach
+      // the setup command only, never the app service environment (DEC-37, Spec 2 R-53).
       return composeCommand([
         "exec",
         "--no-TTY",
         "-e",
-        `KEYCLOAK_URL=http://${input.slug}-keycloak:8080`,
+        `KEYCLOAK_URL=${input.filled.KEYCLOAK_URL ?? `http://${input.slug}-keycloak:8080`}`,
         "-e",
         `KEYCLOAK_REALM=${SMOKE_REALM}`,
         "-e",
