@@ -9,7 +9,7 @@ Accepted architectural choices and their trade-offs live here. Product behavior 
 | [0003](0003-one-image-all-modules.md) | Original image model; amended by 0007 |
 | [0004](0004-authorization-in-application.md) | Application-owned authorization |
 | [0005](0005-tenant-migrations-at-deploy.md) | Migration lifecycle; amended by 0007 |
-| [0006](0006-keycloak-and-better-auth-split.md) | Identity/session split |
+| [0006](0006-keycloak-and-better-auth-split.md) | Identity/session split; sign-out amended by 0010 |
 | [0007](0007-one-deployment-per-customer.md) | Separate deployment and selected-module image per customer |
 | [0008](0008-foundation-integration-and-generated-registry.md) | Native-first integration, generated registry and minimal Storybook host |
 | [0009](0009-storybook-pins-the-vitest-major.md) | Storybook-compatible Vitest major |

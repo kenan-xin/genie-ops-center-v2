@@ -42,8 +42,8 @@ The table below defines the values; the tables above define when each is require
 | `KEYCLOAK_URL` | Base URL of the Keycloak server that holds this customer's realm. |
 | `KEYCLOAK_REALM` | The realm name. |
 | `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET` | The `genie-ops-center` client in the realm, used for sign-in. |
-| `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET` | The `genie-admin` service client in the realm, used by every setup step after the realm exists, by `genie-ops idp set`, and by local-account creation and set-password emails. It holds realm-management roles in this realm only, for user management, reading clients, and identity provider configuration (`../runbooks/keycloak-realm.md`). The three clients with their secrets and redirect URIs, the realm display name, and the SMTP settings are written at realm creation with the bootstrap credential (`DEC-37`, `DEC-40`). |
-| `KEYCLOAK_BOOTSTRAP_USER`, `KEYCLOAK_BOOTSTRAP_PASSWORD` | A Keycloak server administrator, read by `genie-ops setup` for the realm-creation step only. Passed in the environment of that one command, never written to `.env` (`DEC-37`). Not read by the application. |
+| `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET` | The `genie-admin` service client in the realm, used by every setup step after the realm exists, by `genie-ops idp set`, and by local-account creation and set-password emails. It holds realm-management roles in this realm only, for user management, reading clients, and identity provider configuration (`../runbooks/keycloak-realm.md`). The three clients with their secrets and redirect URIs, the realm display name, and the SMTP settings are written at realm creation with the bootstrap credential (`DEC-37`, `DEC-40`). Not set in client-only mode (ADR 0010). |
+| `KEYCLOAK_BOOTSTRAP_USER`, `KEYCLOAK_BOOTSTRAP_PASSWORD` | A Keycloak server administrator, read by `genie-ops setup` for the realm-creation step only. Passed in the environment of that one command, never written to `.env` (`DEC-37`). Not read by the application. Not used in client-only mode (ADR 0010). |
 
 ## Mail
 

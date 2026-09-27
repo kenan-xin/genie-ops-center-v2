@@ -50,7 +50,7 @@ Self-protection, server-enforced: a person cannot disable or remove themselves, 
 
 ### Tenant settings
 
-`tenant_settings`: one row. onboarding_mode (`invite` or `jit`, default `invite`), local_accounts_enabled (default false; when true, "Add person" also creates the account in the tenant realm), realm_supports_local_accounts (default false; written once by the `realm` step of `genie-ops setup` from the template variant it applied, `DEC-36`; the Local accounts switch on Tenant Settings is disabled while it is false, and no page reads the realm for it), session_idle_minutes (default 15), updated_by_user_id (nullable; the foreign key to `user` arrives with that table in Section 2, so setup writes null), updated_at. Settings the tenant administrator owns and that are not branding.
+`tenant_settings`: one row. onboarding_mode (`invite` or `jit`, default `invite`), local_accounts_enabled (default false; when true, "Add person" also creates the account in the tenant realm), realm_supports_local_accounts (default false; written once by the `realm` step of `genie-ops setup` from the template variant it applied, `DEC-36`; in client-only mode (ADR 0010) the `realm` and `clients` steps record that they were skipped and the value stays false; the Local accounts switch on Tenant Settings is disabled while it is false, and no page reads the realm for it), session_idle_minutes (default 15), updated_by_user_id (nullable; the foreign key to `user` arrives with that table in Section 2, so setup writes null), updated_at. Settings the tenant administrator owns and that are not branding.
 
 ### Groups
 

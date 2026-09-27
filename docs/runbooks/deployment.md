@@ -138,9 +138,9 @@ Both paths write an audit event. Record the request and the date in the customer
 
 ## A customer who already runs Keycloak
 
-Supported. Point `KEYCLOAK_URL` at the customer's server and run setup as usual. Setup creates a fresh Genie realm there from the template. The customer's existing identity provider is then added to that realm with `genie-ops idp set`, so their people still sign in once with the account they already have.
+Supported. Point `KEYCLOAK_URL` at the customer's server and run setup as usual. Setup creates a fresh Genie Ops Center realm there from the template. The customer's existing identity provider is then added to that realm with `genie-ops idp set`, so their people still sign in once with the account they already have.
 
-This fresh realm is the default. A customer that refuses a second realm can instead choose client-only mode (ADR 0010, `DEC-36` as amended 2026-09-27): the customer imports the two client files for Genie Ops Center and genie-studio into its existing realm, and setup creates no realm, no clients, and no admin service client. The realm template's guarantees then become the customer's duties: a short realm session, brute-force protection, and the forward to their company login. Local accounts, `genie-ops idp set`, and deleting the realm user on erasure are not available in that mode. The procedure is written with Section 2; until then, use the fresh realm.
+This fresh realm is the default. A customer that refuses a second realm can instead choose client-only mode (ADR 0010, `DEC-36` as amended 2026-09-27): the customer imports the two client files for Genie Ops Center and genie-studio into its existing realm, and setup creates no realm, no clients, and no admin service client. The realm template's guarantees then become the customer's duties: a short realm session, brute-force protection, and the forward to their company login. Local accounts, `genie-ops idp set`, and deleting the realm user on erasure are not available in that mode. Sign-out in Genie Ops Center ends its own session only, so the person stays signed in to the company's other apps; tell the customer's IT. The procedure is written with Section 2; until then, use the fresh realm.
 
 ## Backups
 

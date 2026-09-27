@@ -303,7 +303,7 @@ Use the break-glass account only for the rows that name it, and sign out as soon
 
 | Not supported | Why | What to do instead |
 | --- | --- | --- |
-| Setup that edits an existing realm's settings, users, or other clients. | Setup never holds administrator rights in a realm Genie does not own (ADR 0010). | Use the fresh realm (the default), or client-only mode, where the customer imports our two client files and keeps the realm duties that ADR 0010 lists. |
+| Setup that edits an existing realm's settings, users, or other clients. | Setup never holds administrator rights in a realm Genie does not own (ADR 0010). | Use the fresh realm (the default), or client-only mode, where the customer imports the two client files Genie ships and keeps the realm duties that ADR 0010 lists. |
 | A second identity provider in one realm. | Not described until a customer needs it (`../architecture/access-model.md`). | Record the request and settle it with a decision first. |
 | Branding written into the realm. | One template system only (`DEC-40`). | The realm display name is the only branded value, and it equals the company name. |
 | A custom Keycloak email theme. | No theme is built or deployed (`DEC-40`). | Local-account credential emails stay on Keycloak's built-in templates. |

@@ -43,7 +43,7 @@ R-4. Every runbook carries a status date and the release it was last rehearsed a
 
 ### Item 1: the new-customer runbook
 
-R-5. The new-customer runbook covers the path from the filled checklist to the first administrator's sign-in, in this order (`../core/roadmap.md`, Section 5, item 1, and `../runbooks/deployment.md`, "Set up a new customer"): `nx g @genie/generators:tenant-new <slug>`, fill `tenant.yaml` and `branding.seed.json`, run `scripts/build-customer-image.sh <slug> <version>`, deliver and run the stack, run `genie-ops setup` with the bootstrap credential in the environment of that one command (`DEC-37`), set the identity provider with `genie-ops idp set` unless `local_accounts` is on (`DEC-36`), smoke test, and hand branding to the tenant administrator.
+R-5. The new-customer runbook covers the path from the filled checklist to the first administrator's sign-in, in this order (`../core/roadmap.md`, Section 5, item 1, and `../runbooks/deployment.md`, "Set up a new customer"): `nx g @genie/generators:tenant-new <slug>`, fill `tenant.yaml` and `branding.seed.json`, run `scripts/build-customer-image.sh <slug> <version>`, deliver and run the stack, run `genie-ops setup` with the bootstrap credential in the environment of that one command (`DEC-37`), set the identity provider with `genie-ops idp set` unless `local_accounts` is on (`DEC-36`) or the deployment is in client-only mode (ADR 0010), which runs setup without the bootstrap credential and skips `idp set`, smoke test, and hand branding to the tenant administrator.
 
 R-6. The runbook states which of its steps the customer must do and which Genie must do, per hosting mode, because in a customer-hosted mode the customer's platform team types the Keycloak server administrator credential and Genie never holds it (`DEC-37`).
 
@@ -51,7 +51,7 @@ R-7. The runbook names the smoke test explicitly: the not-set-up page is gone, t
 
 R-7a. The runbook states the failure path for setup. Setup is resumable through `setup_step`, so a failed step is fixed and the same command is run again, and a rerun after the realm step does not need the bootstrap credential (`DEC-37`, `../architecture/data-shape.md`, "Deployment tables"). The runbook forbids any manual repair of a half-finished realm.
 
-R-7b. The runbook covers the customer who already runs a Keycloak server: `KEYCLOAK_URL` points at that server and setup creates a fresh Genie realm on it by default. A customer that refuses a second realm uses client-only mode, where it imports the two client files into its existing realm and keeps the realm duties that ADR 0010 lists; the runbook states which operator steps that mode skips and which commands it lacks (`DEC-36` as amended 2026-09-27, ADR 0010).
+R-7b. The runbook covers the customer who already runs a Keycloak server: `KEYCLOAK_URL` points at that server and setup creates a fresh Genie Ops Center realm on it by default. A customer that refuses a second realm uses client-only mode, where it imports the two client files into its existing realm and keeps the realm duties that ADR 0010 lists; the runbook states which operator steps that mode skips and which commands it lacks (`DEC-36` as amended 2026-09-27, ADR 0010).
 
 R-8. The runbook ends by requiring that the operator record the deployment facts in the per-customer record of R-11 and in the deployment inventory of R-30.
 
@@ -112,7 +112,7 @@ R-26c. Reintroduction uses the same stable identity and compatible retained hist
 
 ### Item 5: the cross-product step
 
-R-27. For a customer that runs both products, the new-customer runbook carries one extra step: configure that customer's genie-studio deployment with the tenant realm issuer and the `genie-studio` client credentials that the realm template created (`DEC-8`, `../core/roadmap.md`, Section 2, item 9). The step changes nothing in Genie Ops Center and adds no field to any configuration file. The realm side of it belongs to `../runbooks/keycloak-realm.md`.
+R-27. For a customer that runs both products, the new-customer runbook carries one extra step: configure that customer's genie-studio deployment with the tenant realm issuer and the `genie-studio` client credentials that the realm template created, or, in client-only mode, that the customer's IT returns after importing the `genie-studio` client file (ADR 0010) (`DEC-8`, `../core/roadmap.md`, Section 2, item 9). The step changes nothing in Genie Ops Center and adds no field to any configuration file. The realm side of it belongs to `../runbooks/keycloak-realm.md`.
 
 ### Item 6: environments
 
@@ -126,7 +126,7 @@ R-30. Genie keeps one deployment inventory that lists every stack, its customer 
 
 R-31. Section 1 item 10 ships `genie-ops retire`, the `retirement` row, and the refusal rules, and Section 5 ships `--confirm` deletion after the hold, the deletion hold, and personal erasure (`../specs/README.md`, "Cross-section calls", row "`genie-ops retire`"). `genie-ops retire` records the retirement in the single `retirement` row with `retired_at` and leaves `deletion_hold` false (`../architecture/data-shape.md`, "Deployment tables", and `DEC-17`). The operator then stops the stack. The database, the realm, the bucket, and the last backup are kept for 90 days.
 
-R-32. `genie-ops retire --confirm` deletes the database, the realm, and the bucket. It refuses before 90 days have passed since `retired_at`, and it refuses while `deletion_hold` is set, with a message that names which of the two refused it. Nothing runs on a schedule, so the deletion is always an operator action (`DEC-17`, `../architecture/data-shape.md`).
+R-32. `genie-ops retire --confirm` deletes the database, the realm, and the bucket. In client-only mode it deletes no realm, and the customer's IT removes the two clients (ADR 0010). It refuses before 90 days have passed since `retired_at`, and it refuses while `deletion_hold` is set, with a message that names which of the two refused it. Nothing runs on a schedule, so the deletion is always an operator action (`DEC-17`, `../architecture/data-shape.md`).
 
 R-33. The deletion hold is set and cleared by an operator and is visible in the retirement row. A legal hold, a dispute, or an unfinished data export are the reasons the runbook names.
 
@@ -134,7 +134,7 @@ R-34. A customer-managed deployment retires itself. Genie deletes only what Geni
 
 R-35. Personal erasure anonymizes one person and keeps the audit trail. It sets `user.erased_at`, replaces `name` with `Erased person`, replaces `email` with `erased-<id>@invalid`, clears `image`, sets `banned`, and deletes that person's account and session rows. Every other column, the id, and the audit events that name the id stay (`../architecture/data-shape.md`, `user`, and `DEC-17`).
 
-R-36. Erasure also deletes the person's user record in the Keycloak realm through the `genie-admin` client, on every deployment: a local-accounts realm holds their name, email, password, and second factor, and a brokered realm holds a local user record with the imported name and email and the federated identity link, so an anonymized application row alone does not erase them (`DEC-17` as amended 2026-09-18, `DEC-10`, ADR 0006). The realm delete runs first, so an unreachable realm fails the command before the application row changes. The person's account at the customer's identity provider is never touched. A realm that has no record for the email, because the person never signed in, is not an error.
+R-36. Except in client-only mode (ADR 0010), where the realm user is left to the customer's IT, erasure also deletes the person's user record in the Keycloak realm through the `genie-admin` client, on every deployment: a local-accounts realm holds their name, email, password, and second factor, and a brokered realm holds a local user record with the imported name and email and the federated identity link, so an anonymized application row alone does not erase them (`DEC-17` as amended 2026-09-18, `DEC-10`, ADR 0006). The realm delete runs first, so an unreachable realm fails the command before the application row changes. The person's account at the customer's identity provider is never touched. A realm that has no record for the email, because the person never signed in, is not an error.
 
 R-37. Erasure runs only on a written request that names the person, and the runbook requires recording the request and the date in the customer's record, by the same rule that governs administrator recovery (`DEC-23`). Erasure is irreversible and the runbook says so before the command.
 
