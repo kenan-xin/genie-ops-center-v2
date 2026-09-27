@@ -44,6 +44,22 @@ const AUTH_ROUTES = new Map([
   ["/get-session", ["GET"]],
 ]);
 
+/** The path Better Auth is mounted under (D2-5). */
+const AUTH_BASE_PATH = "/api/auth";
+
+/**
+ * The Better Auth path of a request, read from the raw URL. Better Auth routes on the undecoded
+ * pathname, so the allowlist reads that same value: a percent-encoded path never matches an entry
+ * by decoding to one, and Better Auth cannot route it to an endpoint the list closed.
+ */
+export function authPath(requestUrl: string): string {
+  const { pathname } = new URL(requestUrl);
+
+  return pathname.startsWith(`${AUTH_BASE_PATH}/`)
+    ? pathname.slice(AUTH_BASE_PATH.length)
+    : pathname;
+}
+
 /** What the allowlist reads from a request body: a JSON object or not, and an `idToken` field. */
 export type AuthRequestBody =
   | { readonly kind: "object"; readonly carriesIdToken: boolean }

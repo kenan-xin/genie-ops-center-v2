@@ -1,4 +1,5 @@
 import {
+  authPath,
   authRouteAllowed,
   KEYCLOAK_UNAVAILABLE,
   readAuthRequestBody,
@@ -39,15 +40,12 @@ function notFound(): Response {
  * answer the request is refused with the named `keycloak_unavailable` cause. Break-glass email and
  * password (`/sign-in/email`) is not a social sign-in, so it still works while the realm is down.
  */
-async function handler(
-  request: Request,
-  context: { readonly params: Promise<{ readonly all: string[] }> }
-): Promise<Response> {
+async function handler(request: Request): Promise<Response> {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
 
-  const { all } = await context.params;
-  const path = `/${all.join("/")}`;
+  // The raw path Better Auth routes on, not the segments Next decoded (see `authPath`).
+  const path = authPath(request.url);
 
   if (
     !authRouteAllowed({

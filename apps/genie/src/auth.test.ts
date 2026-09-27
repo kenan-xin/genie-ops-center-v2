@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  authPath,
   authRouteAllowed,
   readAuthRequestBody,
   signInCause,
@@ -82,6 +83,24 @@ describe("the auth route allowlist", () => {
     expect(
       authRouteAllowed({ method: "POST", path: "/get-session", body: PLAIN })
     ).toBe(false);
+  });
+});
+
+describe("the auth path", () => {
+  it("reads the raw pathname, so an encoded path stays encoded and is refused", () => {
+    const base = "https://genie.example.com/api/auth";
+
+    expect(authPath(`${base}/get-session`)).toBe("/get-session");
+    expect(authPath(`${base}/get%2Dsession`)).toBe("/get%2Dsession");
+    expect(authPath(`${base}/callback%2Fkeycloak`)).toBe(
+      "/callback%2Fkeycloak"
+    );
+
+    for (const path of ["/get%2Dsession", "/callback%2Fkeycloak"]) {
+      expect(authRouteAllowed({ method: "GET", path, body: NONE }), path).toBe(
+        false
+      );
+    }
   });
 });
 

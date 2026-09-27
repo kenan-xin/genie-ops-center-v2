@@ -338,6 +338,9 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
         ? next
         : undefined;
     } catch {
+      // ponytail: the dropped instance keeps its untimed plugin discovery fetch open until undici's
+      // own timeouts end it (connect 10 s, headers 300 s), one per 10 s retry at most. If that
+      // shows in practice, pass the plugin a fetch with an AbortSignal once genericOAuth accepts one.
       return undefined;
     }
   }
@@ -366,6 +369,9 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
 
   async function ensureDiscovery(): Promise<AuthDiscoveryState> {
     if (discovery.ready) return discovery;
+
+    // A caller during a probe waits for its answer instead of reading the stale state.
+    if (inFlight !== undefined) return inFlight;
 
     if (now() - lastProbeAt < DISCOVERY_RETRY_MS) return discovery;
 
