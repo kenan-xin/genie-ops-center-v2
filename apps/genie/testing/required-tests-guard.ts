@@ -165,4 +165,11 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the generated customer stack smoke serves the customer page and health while the excluded placeholder module is absent",
     ],
   },
+  {
+    file: "testing/generated-stack-wait.integration.test.ts",
+    cases: [
+      "the generated-stack readiness wait fails at once, with state and logs, once the container has exited",
+      "the generated-stack readiness wait reports a timeout with the still-running container's state and logs",
+    ],
+  },
 ];
