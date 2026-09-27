@@ -1,4 +1,4 @@
-import { type PermissionKey, can } from "@genie/core";
+import { type PermissionKey, type RequestPrincipal, can } from "@genie/core";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
 import type { ReactNode } from "react";
@@ -11,10 +11,14 @@ import { requestPrincipal } from "./request-principal.ts";
  * authorization seam of DEC-39. A workspace entry requires `<id>:use` and an admin page
  * `<id>:admin`; a person without the key gets the denied response, and the route stays mounted
  * (R-35).
+ *
+ * The caller is handed to `render`, so a page that needs the signed-in person's own values (the
+ * audit page's viewer, for example) reads the same request principal the check used rather than
+ * building a second one, and those reads happen only after the check passes.
  */
 export async function renderIfPermitted(
   permission: PermissionKey,
-  render: () => ReactNode
+  render: (caller: RequestPrincipal) => ReactNode | Promise<ReactNode>
 ): Promise<ReactNode> {
   const caller = await requestPrincipal(
     requireContext().tenant,
@@ -28,5 +32,5 @@ export async function renderIfPermitted(
     return <main data-testid="permission-denied">{t("denied")}</main>;
   }
 
-  return render();
+  return render(caller);
 }
