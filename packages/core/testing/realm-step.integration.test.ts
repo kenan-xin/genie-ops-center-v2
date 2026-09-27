@@ -266,6 +266,31 @@ async function deleteClient(realm: string, clientId: string): Promise<void> {
   );
 }
 
+/** Turns the standard flow off on one client, the way a mis-made client would be. */
+async function disableStandardFlow(
+  realm: string,
+  clientId: string
+): Promise<void> {
+  const token = await masterToken();
+  const client = clientBy(await adminClients(realm), clientId);
+
+  if (client === undefined) {
+    throw new Error(`realm ${realm} has no client ${clientId}`);
+  }
+
+  await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...client, standardFlowEnabled: false }),
+    }
+  );
+}
+
 /** Every `setup_step` detail joined, for a non-leak assertion on a failed step's cause. */
 async function setupStepDetails(postgresUrl: string): Promise<string> {
   const observer = new Client({ connectionString: postgresUrl });
@@ -644,6 +669,82 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     ).resolves.not.toBe(0);
 
     expect(output.join("\n")).toContain("genie-studio");
+  }, 180000);
+
+  it("refuses a missing genie-studio even when the realm error page is not English", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+
+    const files = await configFiles({
+      overrides: {
+        internationalizationEnabled: true,
+        supportedLocales: ["de"],
+        defaultLocale: "de",
+      },
+    });
+
+    const realm = `locale-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    // A German realm renders `Client nicht gefunden.`, so a word-based check would pass; the
+    // random-client comparison does not.
+    await deleteClient(realm, "genie-studio");
+    await observer.query("delete from setup_step where step = 'clients'");
+
+    const output: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("genie-studio");
+  }, 180000);
+
+  it("refuses when the sign-in client's standard flow is off", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles();
+    const realm = `flowoff-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    // With the standard flow off the authorization endpoint still 302s to the redirect URI, but
+    // with `error=unauthorized_client`, which the healthy-answer check refuses.
+    await disableStandardFlow(realm, "genie-ops-center");
+    await observer.query("delete from setup_step where step = 'clients'");
+
+    const output: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("genie-ops-center");
   }, 180000);
 
   it("resumes after an induced realm step failure", async () => {

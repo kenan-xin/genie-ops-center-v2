@@ -253,6 +253,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the realm and clients setup steps against a real Keycloak reuses an existing realm when the realm step has no done row after a crash",
       "the realm and clients setup steps against a real Keycloak never writes the bootstrap password or a client secret to the output or the setup_step detail",
       "the realm and clients setup steps against a real Keycloak refuses and names a missing client",
+      "the realm and clients setup steps against a real Keycloak refuses a missing genie-studio even when the realm error page is not English",
+      "the realm and clients setup steps against a real Keycloak refuses when the sign-in client's standard flow is off",
       "the realm and clients setup steps against a real Keycloak resumes after an induced realm step failure",
       "the realm and clients setup steps against a real Keycloak refuses the realm step before any network call when the bootstrap credential is absent",
     ],

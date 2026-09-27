@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 
 import type { EnvironmentSource } from "../../lib/environment/index.ts";
@@ -7,6 +9,7 @@ import {
 } from "../../lib/tenant-context/index.ts";
 import { tenantSettings } from "../../schema.ts";
 import {
+  type AuthorizationProbe,
   probeAuthorization,
   serviceAccountToken,
   type KeycloakTarget,
@@ -25,13 +28,32 @@ function messageOf(cause: unknown): string {
 }
 
 /**
- * The `clients` step (R-54): verify, through the realm-scoped `genie-admin` client, that the
- * three clients exist with the expected redirect URI, then record the Keycloak address setup used
- * (R-54c). `genie-admin` holds no client-management role and no `view-clients` role, so the admin
- * client list is not available: `genie-admin` authenticating proves its own client exists, a 302
- * from the public authorization endpoint proves `genie-ops-center` carries the expected redirect
- * URI, and a found-but-refused redirect proves `genie-studio` exists. A missing client is refused
- * by name.
+ * True when the authorization probe answers a healthy client: a 302 whose Location is the client's
+ * registered redirect URI and carries `error=login_required`, which is what a client with the
+ * standard flow on returns for the `prompt=none` probe with no session. A reverse-proxy 302, a
+ * foreign Location, `error=unauthorized_client` (standard flow off) and any other answer fail.
+ */
+function isHealthyAuthorization(
+  probe: AuthorizationProbe,
+  expectedRedirect: string
+): boolean {
+  if (probe.status !== 302 || probe.location === undefined) return false;
+
+  if (!probe.location.startsWith(expectedRedirect)) return false;
+
+  if (!URL.canParse(probe.location)) return false;
+
+  return new URL(probe.location).searchParams.get("error") === "login_required";
+}
+
+/**
+ * The `clients` step (R-54): verify that the three clients exist and refuse with a message that
+ * names the missing client when they do not, then record the Keycloak address setup used (R-54c).
+ * `genie-admin` holds no client-management role and no `view-clients` role, so the admin client
+ * list is not available, and the public authorization endpoint is used instead: `genie-admin`
+ * authenticating proves its own client exists, a healthy redirect proves `genie-ops-center`
+ * carries the expected redirect URI, and an error text that differs from a probe of a client that
+ * cannot exist proves `genie-studio` exists.
  *
  * In customer mode the clients check is S2-15's work; this step records nothing and does no work
  * there (the `skipped` state lands with S2-15).
@@ -70,6 +92,8 @@ export async function clientsStep(
 
   const expectedRedirect = `${context.env.publicUrl}${IDENTITY_CALLBACK_PATH}`;
 
+  // genie-ops-center: a healthy client with no session redirects to its registered redirect URI
+  // with `error=login_required`, because the probe asks with `prompt=none`.
   const signIn = await probeAuthorization(
     target,
     base.keycloakRealm,
@@ -77,18 +101,17 @@ export async function clientsStep(
     expectedRedirect
   );
 
-  if (signIn.clientNotFound) {
+  if (!isHealthyAuthorization(signIn, expectedRedirect)) {
     throw new Error(
-      `realm "${base.keycloakRealm}" is missing the genie-ops-center client`
+      `the genie-ops-center client is missing its redirect URI "${expectedRedirect}" in realm "${base.keycloakRealm}" (the authorization endpoint answered status ${signIn.status})`
     );
   }
 
-  if (signIn.status !== 302) {
-    throw new Error(
-      `the genie-ops-center client is missing its redirect URI "${expectedRedirect}" in realm "${base.keycloakRealm}"`
-    );
-  }
-
+  // genie-studio: prove it exists without reading the error text's wording or language. A client
+  // that exists but refuses the redirect answers different text from a client that does not exist,
+  // in the realm's own locale, so the two probes are compared. A disabled genie-studio counts as
+  // present: it keeps the same "invalid redirect" answer as an enabled one, so the operator meets
+  // it at genie-studio's own sign-in rather than here.
   const studio = await probeAuthorization(
     target,
     base.keycloakRealm,
@@ -96,7 +119,19 @@ export async function clientsStep(
     expectedRedirect
   );
 
-  if (studio.clientNotFound) {
+  const absent = await probeAuthorization(
+    target,
+    base.keycloakRealm,
+    `genie-probe-${randomUUID()}`,
+    expectedRedirect
+  );
+
+  if (
+    studio.status !== 400 ||
+    absent.status !== 400 ||
+    studio.errorText === "" ||
+    studio.errorText === absent.errorText
+  ) {
     throw new Error(
       `realm "${base.keycloakRealm}" is missing the genie-studio client`
     );

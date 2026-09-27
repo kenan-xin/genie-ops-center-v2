@@ -152,19 +152,36 @@ export async function createRealm(
 }
 
 export type AuthorizationProbe = {
-  /** The HTTP status. 302 means the redirect URI is registered for the client; 400 otherwise. */
+  /** The HTTP status. 302 means the client answers; 400 otherwise. */
   readonly status: number;
-  /** True when Keycloak answered `Client not found`, so the client does not exist. */
-  readonly clientNotFound: boolean;
+  /** The Location header when the answer redirects, else nothing. */
+  readonly location: string | undefined;
+  /**
+   * Keycloak's error-message text, or nothing when the page carries none. The text is in the
+   * realm's locale, so a caller compares two probes rather than reading it.
+   */
+  readonly errorText: string;
 };
 
 /**
- * Probes the public authorization endpoint for one client (R-54). A registered redirect URI
- * answers 302, any other answers 400, and a client that does not exist answers 400 carrying
- * `Client not found`. With `genie-admin` holding no `view-clients` role, this unauthenticated
- * endpoint is the only signal for a client's existence and its registered redirect URI. The PKCE
- * parameters are sent because both product clients require PKCE, so their absence would refuse
- * the request before the client is resolved.
+ * The RFC 7636 appendix B S256 challenge. A valid challenge value is required so Keycloak passes
+ * the PKCE check and answers the `prompt=none` question instead of refusing the request.
+ */
+const PROBE_CODE_CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+
+/** The text of Keycloak's error page, read from the markup so the language does not matter. */
+function errorTextOf(body: string): string {
+  const match = /id="kc-error-message"[^>]*>\s*<p[^>]*>([^<]*)<\/p>/.exec(body);
+
+  return match?.[1]?.trim() ?? "";
+}
+
+/**
+ * Probes the public authorization endpoint for one client (R-54). With `genie-admin` holding no
+ * `view-clients` role, this unauthenticated endpoint is the only signal for a client's existence
+ * and its registered redirect URI. `prompt=none` makes a healthy client with no session redirect
+ * to its registered URI with `error=login_required`; a client that does not exist answers a 400
+ * whose error text differs from a client that exists but refuses the redirect.
  */
 export async function probeAuthorization(
   target: KeycloakTarget,
@@ -177,8 +194,9 @@ export async function probeAuthorization(
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid",
-    code_challenge: "probe",
+    code_challenge: PROBE_CODE_CHALLENGE,
     code_challenge_method: "S256",
+    prompt: "none",
   }).toString();
 
   const response = await target.fetch(
@@ -190,6 +208,7 @@ export async function probeAuthorization(
 
   return {
     status: response.status,
-    clientNotFound: body.includes("Client not found"),
+    location: response.headers.get("location") ?? undefined,
+    errorText: errorTextOf(body),
   };
 }
