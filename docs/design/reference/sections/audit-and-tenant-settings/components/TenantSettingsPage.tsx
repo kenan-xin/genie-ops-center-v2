@@ -270,7 +270,7 @@ export function TenantSettingsPage(p: TenantSettingsPageProps) {
             <div className={`flex flex-col gap-1.5 ${lit('onboardingMode')}`}>
               <span className={labelClass}>Onboarding mode</span>
               <div role="radiogroup" aria-label="Onboarding mode" className="flex flex-col gap-2">
-                {([['invite', 'Invite only', 'Only people an administrator adds can sign in.'], ['jit', 'Just-in-time', 'Anyone your identity provider signs in is added on first sign-in.']] as Array<[OnboardingMode, string, string]>).map(([id, label, help], i) => {
+                {([['invite', 'Invite only', 'Only people an administrator adds can sign in.'], ['jit', 'Just-in-time', 'People in a group mapped to a role are added on first sign-in.']] as Array<[OnboardingMode, string, string]>).map(([id, label, help], i) => {
                   const checked = accountsValue.onboardingMode === id
                   return (
                     <label key={id} className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 motion-safe:transition-colors ${checked ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/30' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60'}`}>

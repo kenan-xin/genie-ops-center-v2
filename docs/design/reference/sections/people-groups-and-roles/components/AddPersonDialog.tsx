@@ -97,7 +97,7 @@ export function AddPersonDialog({ open, onClose, roles, settings, onSubmit, rate
             ) : (
               <>The person shows as <Pill>Pending</Pill> until their first sign-in.</>
             )}
-            {local ? ' The realm sends a set-password email to this address; there is no manual activation.' : settings.onboardingMode === 'jit' ? '' : ` Make sure that they are assigned to Genie in ${settings.identitySource}.`}
+            {local ? ' The realm sends a set-password email to this address; there is no manual activation.' : settings.onboardingMode === 'jit' ? '' : ` Make sure that they are assigned to Genie Ops Center in ${settings.identitySource}.`}
           </span>
         </div>
       </div>

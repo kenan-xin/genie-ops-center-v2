@@ -47,7 +47,7 @@
   ],
   "cards": [
     { "dot": "rose", "title": "Who decides entry", "items": ["The customer's identity provider: only people it assigns can sign in", "Keycloak brokers it per realm and stores no employee password"] },
-    { "dot": "emerald", "title": "Provisioning", "items": ["Invite mode: pre-added person activated, unknown email refused. JIT mode: unknown email created", "The break-glass admin is the only account with a password"] },
+    { "dot": "emerald", "title": "Provisioning", "items": ["Invite mode: pre-added person activated, unknown email refused. JIT mode: unknown email created only with a mapped group in the claim, otherwise refused", "The break-glass admin is the only account with a password"] },
     { "dot": "amber", "title": "Offboarding", "items": ["Removal in the identity provider blocks the next authorize step", "The live session ends at the idle timeout or at the 24 hour cap at the latest (DEC-46)"] }
   ]
 }

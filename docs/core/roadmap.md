@@ -89,7 +89,7 @@ Work items:
 11. Break-glass lifecycle: authenticator app required through Better Auth's two-factor plugin, forced password change and enrollment on first sign-in with a limited session until both are done, the shared password rule (14 characters, three of four classes), `genie-ops break-glass rotate` revoking sessions, an account page variant with change password, re-enroll, and sessions, hidden from People, Groups, and Roles (`DEC-15`, `DEC-24`).
 12. Audit reader: `core:audit:read` permission and a filterable audit screen in the admin portal, with a filter for operator rows (`DEC-45`). Export and SIEM push are later (`DEC-16`).
 
-Done when: `genie-ops setup` on a fresh stack creates the realm and the first administrator signs in, a person assigned in a test identity provider signs in once, appears in People with their groups, receives a role through a group, and sees the module that role grants. Removing them in the identity provider blocks their next sign-in.
+Done when: `genie-ops setup` on a fresh stack creates the realm and the first administrator signs in, a person assigned in a test identity provider signs in once (pre-added, or in `jit` through a group mapped before that sign-in), appears in People with their groups, receives a role through another group, and sees the module that role grants. Removing them in the identity provider blocks their next sign-in.
 
 ## Section 3: Shell, branding, and design system
 

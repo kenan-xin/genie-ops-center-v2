@@ -549,13 +549,13 @@ Designed in: Section 0, the Navigation row. Implemented: Section 3 item 11 for t
 
 ## DEC-52. A directory group can be mapped before any member signs in
 
-Question: a directory group reaches the Groups screen only when a member first signs in with it. A customer that opens Genie Ops Center to thousands of people at once in `jit` mode (`DEC-7`) needs its group-to-role mappings in place before launch, or the first people arrive with no roles and an administrator maps their groups after the fact. How does an administrator map a group in advance?
+Question: a directory group reaches the Groups screen only when a member first signs in with it. A customer that opens Genie Ops Center to thousands of people at once in `jit` mode (`DEC-7`) needs its group-to-role mappings in place before launch, or, since a `jit` sign-in needs a mapped group (`DEC-7` as amended 2026-09-27), the first people are refused until an administrator maps their groups. How does an administrator map a group in advance?
 
 Decision: on the Groups screen, a tenant administrator can add a directory group by typing its claim value: the exact string the provider puts in the `groups` claim, which is a group name or, for Microsoft Entra ID cloud-only groups by default, the group object ID. The row has source `idp`, like a group created by the sync, and carries no members until a sign-in lists it. Roles are assigned to it at once, like to any group. Until the first sign-in lists the value, the screen marks the group "Not seen yet". The sync matches the claim value exactly, so the first sign-in that carries it adds the person to this same row, never a second one. Adding and deleting a not-yet-seen group are audit events.
 
 Why not a Microsoft Graph lookup of the tenant's groups: it is a per-provider integration with its own credential, which is what the normalized `groups` claim was chosen to avoid (`DEC-41`). Why not a pilot sign-in per group: it puts a manual step per group in front of every launch.
 
-Trade-off: a typing mistake creates a group that never fills, and it holds roles that grant nobody. The "Not seen yet" marker makes that visible. A not-yet-seen group can be deleted, unlike a group the sync has filled, which can only be archived. The administrator must also learn the exact claim value from the customer's IT, and with Entra that is often an object ID until bead `genie-ops-center-v2-uxl` settles readable names.
+Trade-off: a typing mistake creates a group that never fills, and it holds roles that grant nobody; under `jit` it also refuses every newcomer of the intended group. The "Not seen yet" marker makes that visible. A not-yet-seen group can be deleted, unlike a group the sync has filled, which can only be archived. The administrator must also learn the exact claim value from the customer's IT, and with Entra that is often an object ID until bead `genie-ops-center-v2-uxl` settles readable names.
 
 Guard: the sync looks up directory groups by claim value only, so a pre-added row and a synced row are the same kind of row. The group sync test covers a pre-added group that a later sign-in fills, and a pre-added group whose value never arrives.
 
