@@ -1,7 +1,7 @@
 # Open decisions for the product owner — 2026-09-19
 
 Status on 2026-09-19: **B4 and B5 are accepted and documented in v2. B1 to B3 and B6 to B8 remain
-open.** The accepted text is `docs/architecture/module-contract.md` in v2, under "Category
+open.** On 2026-09-27 the product owner accepted option A of B1 and option A of B6; Specification 02 R-40 and R-51a record them. B2, B3, B7 and B8 remain open. The accepted text is `docs/architecture/module-contract.md` in v2, under "Category
 assignment boundary" and "Settings discovery and authorization". That file is the authority; the
 summaries below are a pointer, not a copy, and the design source follows it.
 
