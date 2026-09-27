@@ -8,6 +8,21 @@
 # few seeded users and groups. The tenant realm is the one under test and
 # `genie-ops setup` creates it later; this stack never imports it.
 #
+# Every service joins one named network, so the e2e app stack joins it as an
+# external network and reaches Keycloak, OpenLDAP and Mailpit by name instead of
+# through a published port. The name is fixed by default and overridable through
+# GENIE_STANDIN_NETWORK, which the test harness sets to its worktree-scoped value
+# so two worktrees never share the network.
+#
+# Keycloak carries one fixed frontend hostname, so the discovery issuer is the
+# same value for the host browser and for every container (Specification 02
+# R-54d), and a tenant-realm broker can call the company realm back-channel over
+# it. `host.docker.internal` is the host as a container reaches it; the URL names
+# the published host port (GENIE_STANDIN_KEYCLOAK_PORT), so the host browser and
+# a container land on the same server. `extra_hosts` makes the name resolve even
+# where the engine does not add it for us. This stack still imports no tenant
+# realm and runs no brokering flow; that belongs to S2-13.
+#
 # The OpenLDAP and Mailpit services are the LDAP federation and the mail sink the
 # Section 2 scenarios need. Host ports are overridable so each worktree's run
 # stays apart; testing/identity-standins-process.ts fills them from the scoped
@@ -15,6 +30,9 @@
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.4
+    # A stable container hostname, so the stand-in is `keycloak` on the shared
+    # network as well as by its service name.
+    hostname: keycloak
     # `start-dev` keeps the test server simple; `--import-realm` reads the realm
     # file mounted below on first start.
     command: ["start-dev", "--http-port=8080", "--import-realm"]
@@ -24,13 +42,24 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: "8080"
-      KC_HOSTNAME_STRICT: "false"
+      # One fixed issuer for the whole stack, on the published host port, so the
+      # host browser and a container reach and see the same Keycloak.
+      KC_HOSTNAME: http://host.docker.internal:${GENIE_STANDIN_KEYCLOAK_PORT:-15080}
       # Opens /health/ready on the management port 9000, which is never published.
       KC_HEALTH_ENABLED: "true"
+    extra_hosts:
+      # Resolve the fixed hostname inside the container even where the engine
+      # does not provide it.
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./identity-standins:/opt/keycloak/data/import:ro
     ports:
       - "${GENIE_STANDIN_KEYCLOAK_PORT:-15080}:8080"
+    networks:
+      standins:
+        aliases:
+          - keycloak
+          - company-keycloak
     healthcheck:
       # The image has no curl, so the check is Keycloak's documented bash /dev/tcp
       # request (keycloak.org/observability/health).
@@ -46,8 +75,13 @@ services:
     # `ou=people`, groups `cn=admin_staff` and `cn=ship_crew` with `memberOf`.
     # Pinned by digest because the image publishes no version tags.
     image: ghcr.io/rroemhild/docker-test-openldap@sha256:f8a8d190cac6ba602a080fd6bec351c65fa09729875ac0cd60c492b15c685d82
+    hostname: openldap
     ports:
       - "${GENIE_STANDIN_LDAP_PORT:-15389}:10389"
+    networks:
+      standins:
+        aliases:
+          - openldap
     healthcheck:
       # The image's own /healthcheck.sh reports unhealthy here, so this bind is
       # the readiness check `docker compose up --wait` waits on.
@@ -60,6 +94,15 @@ services:
   mailpit:
     # Catches the set-password and invitation emails the Section 2 scenarios send.
     image: axllent/mailpit:v1.31.3
+    hostname: mailpit
     ports:
       - "${GENIE_STANDIN_SMTP_PORT:-15025}:1025"
       - "${GENIE_STANDIN_MAILPIT_PORT:-18025}:8025"
+    networks:
+      standins:
+        aliases:
+          - mailpit
+
+networks:
+  standins:
+    name: ${GENIE_STANDIN_NETWORK:-genie-identity-standins}

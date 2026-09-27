@@ -39,7 +39,12 @@ function standinPort(base: number): number {
 }
 
 export type IdentityStandins = {
+  /** The published host address the test fetches from, on loopback. */
   readonly keycloakUrl: string;
+  /** The one fixed issuer Keycloak advertises, the same for host and containers. */
+  readonly keycloakIssuer: string;
+  /** The shared network the e2e app stack joins as an external network. */
+  readonly networkName: string;
   readonly mailpitUrl: string;
   readonly smtpPort: number;
   readonly stop: () => Promise<void>;
@@ -53,6 +58,9 @@ export type IdentityStandins = {
 
 export async function startIdentityStandins(): Promise<IdentityStandins> {
   const projectName = scopedProject("genie-identity-standins");
+  // The shared network carries the worktree scope, so two worktrees never share a
+  // network while the app stack in this one joins it by the same name.
+  const networkName = projectName;
   const keycloakPort = standinPort(15080);
   const ldapPort = standinPort(15389);
   const smtpPort = standinPort(15025);
@@ -63,6 +71,7 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
       maxBuffer: 16 * 1024 * 1024,
       env: {
         ...process.env,
+        GENIE_STANDIN_NETWORK: networkName,
         GENIE_STANDIN_KEYCLOAK_PORT: String(keycloakPort),
         GENIE_STANDIN_LDAP_PORT: String(ldapPort),
         GENIE_STANDIN_SMTP_PORT: String(smtpPort),
@@ -124,6 +133,8 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
 
   return {
     keycloakUrl: `http://127.0.0.1:${keycloakPort}`,
+    keycloakIssuer: `http://host.docker.internal:${keycloakPort}`,
+    networkName,
     mailpitUrl: `http://127.0.0.1:${mailpitPort}`,
     smtpPort,
     stop,

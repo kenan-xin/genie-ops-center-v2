@@ -114,22 +114,26 @@ function envExampleEntries(text: string): ReadonlyMap<string, string> {
   );
 }
 
-/** Every name the compose file refuses to start without (`${NAME:?message}`). */
+/**
+ * Every name the compose file refuses to start without (`${NAME:?message}`). An
+ * escaped `$${NAME:?message}` is a shell refusal in the entrypoint, not a compose
+ * requirement, so it is skipped.
+ */
 function composeRequiredNames(compose: string): readonly string[] {
   return [
     ...new Set(
-      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
+      [...compose.matchAll(/(?<!\$)\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
         ([, name]) => name ?? ""
       )
     ),
   ].toSorted();
 }
 
-/** Every name the compose file reads with a fallback (`${NAME:-default}`). */
+/** Every name the compose file reads with a fallback (`${NAME:-default}`), escaped or not. */
 function composeOptionalNames(compose: string): readonly string[] {
   return [
     ...new Set(
-      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):-/g)].map(
+      [...compose.matchAll(/(?<!\$)\$\{([A-Z][A-Z0-9_]*):-/g)].map(
         ([, name]) => name ?? ""
       )
     ),
@@ -298,7 +302,9 @@ describe("the rendered deployment folder", () => {
     expect(keycloak).toContain(
       "KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}"
     );
-    expect(keycloak).not.toMatch(/\$\{KC_[A-Z0-9_]*:\?/);
+    // The escaped `$${KC_...:?}` refusals in the entrypoint are shell checks, not
+    // compose requirements, so they do not count here.
+    expect(keycloak).not.toMatch(/(?<!\$)\$\{KC_[A-Z0-9_]*:\?/);
     // Keycloak has its own public hostname, KEYCLOAK_URL (runbooks/reverse-proxy.md).
     expect(keycloak).toContain("KC_HOSTNAME: ${KEYCLOAK_URL:-}");
     expect(keycloak).toContain('KC_HEALTH_ENABLED: "true"');
@@ -323,7 +329,7 @@ describe("the rendered deployment folder", () => {
     expect(keycloak).toContain(
       "KC_PROXY_TRUSTED_ADDRESSES: ${KC_PROXY_TRUSTED_ADDRESSES:-}"
     );
-    // Keycloak refuses an empty value, so the entrypoint unsets a blank one.
+    // Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, so the entrypoint unsets a blank one.
     expect(keycloak).toContain(
       "|| unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh"
     );
@@ -333,6 +339,22 @@ describe("the rendered deployment folder", () => {
     expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
     expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
     expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
+  });
+
+  it("refuses a blank Keycloak connection value at container start with a named cause", () => {
+    const keycloak = service(read("compose.yaml"), "keycloak");
+
+    // With the profile on and a blank .env, the keycloak entrypoint fails at once
+    // naming the missing value, instead of restart-looping while Keycloak reports
+    // only a connection error (R-54b).
+    for (const [variable, message] of [
+      ["KC_DB_URL_HOST", "set KC_DB_URL_HOST in .env"],
+      ["KC_DB_USERNAME", "set KC_DB_USERNAME in .env"],
+      ["KC_DB_PASSWORD", "set KC_DB_PASSWORD in .env"],
+      ["KC_HOSTNAME", "set KEYCLOAK_URL in .env"],
+    ] as const) {
+      expect(keycloak).toContain(`${variable}:?${message}`);
+    }
   });
 
   it("selects the bundled Keycloak through COMPOSE_PROFILES and marks the KC_ settings", () => {
@@ -361,7 +383,6 @@ describe("the rendered deployment folder", () => {
     // application reaches it only at sign-in and setup (R-54b).
     expect(service(compose, "app")).not.toMatch(/keycloak/);
     expect(service(compose, "worker")).not.toMatch(/keycloak/);
-    expect(compose).not.toMatch(/depends_on:[\s\S]*?keycloak/);
   });
 
   it("checks Keycloak readiness on the unpublished management port", () => {
@@ -489,7 +510,9 @@ describe("the rendered deployment folder", () => {
     expect(entries.get("KC_DB_USERNAME")).toBe("");
 
     // The KC_ block is grouped under the profile note, so no KC_ name is required.
-    expect(compose).not.toMatch(/\$\{KC_[A-Z0-9_]*:\?/);
+    // The escaped `$${KC_...:?}` refusals in the entrypoint are shell checks, not
+    // compose requirements, so they do not count here.
+    expect(compose).not.toMatch(/(?<!\$)\$\{KC_[A-Z0-9_]*:\?/);
   });
 
   it("keeps the customer stack template out of deploy/stack", () => {

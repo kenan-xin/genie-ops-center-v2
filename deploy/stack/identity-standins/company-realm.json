@@ -92,7 +92,7 @@
     {
       "clientId": "genie-saml",
       "name": "Genie SAML broker",
-      "description": "The client the tenant realm brokers to as a SAML 2.0 identity provider.",
+      "description": "The client the tenant realm brokers to as a SAML 2.0 identity provider. The brokering tenant realm's identity provider must set its SP entity ID to genie-saml, the client id here.",
       "enabled": true,
       "protocol": "saml",
       "publicClient": false,

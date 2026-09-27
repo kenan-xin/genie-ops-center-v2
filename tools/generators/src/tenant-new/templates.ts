@@ -31,21 +31,29 @@ function readEnvironmentCatalogue(): readonly EnvironmentVariable[] {
   return catalogue.variables;
 }
 
-/** Every name the compose file refuses to start without (`${NAME:?message}`). */
+/**
+ * Every name the compose file refuses to start without (`${NAME:?message}`).
+ * A `$${NAME:?message}` is the escaped form a container's shell evaluates at run
+ * time, not a compose interpolation, so it is not one of these.
+ */
 function composeRequiredNames(compose: string): readonly string[] {
   return [
     ...new Set(
-      [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
+      [...compose.matchAll(/(?<!\$)\$\{([A-Z][A-Z0-9_]*):\?[^}]*\}/g)].map(
         ([, name]) => name ?? ""
       )
     ),
   ];
 }
 
-/** Every name the compose file reads with a fallback (`${NAME:-default}`), with that fallback. */
+/**
+ * Every name the compose file reads with a fallback (`${NAME:-default}`), with
+ * that fallback. The escaped `$${NAME:-default}` form is skipped for the same
+ * reason as above.
+ */
 function composeOptionalNames(compose: string): ReadonlyMap<string, string> {
   return new Map(
-    [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):-([^}]*)\}/g)].map(
+    [...compose.matchAll(/(?<!\$)\$\{([A-Z][A-Z0-9_]*):-([^}]*)\}/g)].map(
       ([, name, fallback]) => [name ?? "", fallback ?? ""]
     )
   );
@@ -153,14 +161,17 @@ services:
     # STACK_PROFILES and cannot see either.
     profiles: ["bundled-keycloak"]
     image: quay.io/keycloak/keycloak:26.7.4
-    # Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, and compose always
-    # sets the variable, so a blank value is unset before kc.sh starts.
-    entrypoint: ["/bin/bash", "-c", "[ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
+    # The refusal checks name the missing connection value, so a stack with the
+    # profile on fails with a cause instead of restart-looping on an empty
+    # variable; a blank KC_PROXY_TRUSTED_ADDRESSES is unset because Keycloak
+    # rejects the empty string for that one.
+    entrypoint: ["/bin/bash", "-c", ": \\"$\${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}\\"; : \\"$\${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}\\"; : \\"$\${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}\\"; : \\"$\${KC_HOSTNAME:?set KEYCLOAK_URL in .env}\\"; [ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
     command: ["start", "--http-enabled=true", "--http-port=8080"]
     # Every KC_ value is defaulted rather than required, because compose
-    # interpolates this service even when the profile is off. Keycloak itself
-    # refuses an empty value, so a stack without the profile starts without them
-    # (Specification 02 R-54b).
+    # interpolates this service even when the profile is off. The entrypoint
+    # refuses a blank connection value while the profile is on, naming the
+    # variable, so a stack without the profile starts without them and a stack
+    # with it fails with a cause (Specification 02 R-54b).
     environment:
       KC_DB: \${KC_DB:-postgres}
       KC_DB_URL_HOST: \${KC_DB_URL_HOST:-}
@@ -273,8 +284,9 @@ export function envExample(input: TenantRenderInput): string {
     ...settings.map(line),
     "",
     "# The KC_ settings below are read only while COMPOSE_PROFILES holds",
-    "# bundled-keycloak. Keycloak refuses an empty value, so leave them blank on a",
-    "# stack that points at another Keycloak server.",
+    "# bundled-keycloak. Leave them blank on a stack that points at another",
+    "# Keycloak server; with the profile on, the keycloak entrypoint refuses a",
+    "# blank connection value with a message naming it.",
     ...bundledKeycloakSettings.map(line),
     "",
   ].join("\n");

@@ -123,9 +123,12 @@ describe("the identity stand-ins", () => {
       discovery,
       "the company realm discovery document never answered"
     ).toBeDefined();
+    // The issuer is the one fixed frontend hostname, not the host that asked, so
+    // the host browser and a container see the same value (Specification 02 R-54d).
     expect(discovery?.issuer).toBe(
-      `${running().keycloakUrl}/realms/${COMPANY_REALM}`
+      `${running().keycloakIssuer}/realms/${COMPANY_REALM}`
     );
+    expect(discovery?.issuer).not.toContain("127.0.0.1");
     expect(String(discovery?.authorization_endpoint)).toContain(
       `/realms/${COMPANY_REALM}/protocol/openid-connect/auth`
     );
