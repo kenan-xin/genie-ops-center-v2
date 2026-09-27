@@ -289,7 +289,9 @@ Trade-off: a customer with a realm they like gets a second realm on their server
 
 Amended 2026-09-18: the `realm` step records the variant it applied in `tenant_settings.realm_supports_local_accounts`, so the Tenant Settings page disables the Local accounts switch on a brokered realm without reading Keycloak. The value changes only through an operator command that applies the local-accounts variant to an existing realm, which is not built; a realm edited by hand is outside this decision and fails safely at the first realm write. Reopen with that command when a brokered customer asks for local accounts after go-live.
 
-Designed in: Section 1. Implemented: Section 1. Revisit when a contract requires reuse of an existing realm; the change is a `--existing-realm` flag on setup plus the checklist above, and it needs its own decision.
+Amended 2026-09-27 (owner decision, ADR 0010): reuse of an existing realm is now supported as client-only mode, next to the fresh realm, which stays the default. In client-only mode setup creates no realm, no clients and no `genie-admin` service client; the customer imports the two client files Genie ships, and the template's guarantees become customer duties that the runbook lists. Local accounts, `genie-ops idp set` and realm-side erasure are not available in that mode. The paragraph above, which rejected reuse, stays as the reasoning for keeping the fresh realm as the default.
+
+Designed in: Section 1. Implemented: Section 1 (fresh realm); client-only mode in Section 2 after bead cla. Revisit when a customer in client-only mode needs local accounts or erasure from Genie Ops Center (ADR 0010, Revisit).
 
 ## DEC-37. The credential that creates the realm is passed to setup for one run
 

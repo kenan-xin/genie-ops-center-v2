@@ -51,7 +51,7 @@ R-7. The runbook names the smoke test explicitly: the not-set-up page is gone, t
 
 R-7a. The runbook states the failure path for setup. Setup is resumable through `setup_step`, so a failed step is fixed and the same command is run again, and a rerun after the realm step does not need the bootstrap credential (`DEC-37`, `../architecture/data-shape.md`, "Deployment tables"). The runbook forbids any manual repair of a half-finished realm.
 
-R-7b. The runbook covers the customer who already runs a Keycloak server: `KEYCLOAK_URL` points at that server and setup creates a fresh Genie realm on it. Reuse of an existing realm with its own users and clients is not supported, and the runbook states that plainly so an operator does not attempt it (`DEC-36`).
+R-7b. The runbook covers the customer who already runs a Keycloak server: `KEYCLOAK_URL` points at that server and setup creates a fresh Genie realm on it by default. A customer that refuses a second realm uses client-only mode, where it imports the two client files into its existing realm and keeps the realm duties that ADR 0010 lists; the runbook states which operator steps that mode skips and which commands it lacks (`DEC-36` as amended 2026-09-27, ADR 0010).
 
 R-8. The runbook ends by requiring that the operator record the deployment facts in the per-customer record of R-11 and in the deployment inventory of R-30.
 

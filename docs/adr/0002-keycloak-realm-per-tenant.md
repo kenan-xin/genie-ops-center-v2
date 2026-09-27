@@ -5,6 +5,8 @@ date: 2026-09-16
 
 # One Keycloak realm per tenant
 
+Amended 2026-09-27 by ADR 0010: a customer that already runs Keycloak can choose client-only mode, where both clients live in the customer's existing realm and setup creates no realm. The fresh realm below stays the default.
+
 Keycloak brokers every customer's identity provider for Genie Ops Center. It can host many tenants in one realm through its Organizations feature, or one realm per tenant. We decided on one realm per tenant, created from one realm template by `genie-ops setup`. A tenant is the one customer of a deployment (ADR 0007); Genie-hosted deployments share one Keycloak server with one realm each, and a customer-hosted stack carries its own Keycloak unless the customer already runs one.
 
 ## Why
