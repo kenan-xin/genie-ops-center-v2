@@ -76,4 +76,16 @@ describe("mailer templates", () => {
       ).not.toBe(text.replace(/\s+/g, " ").trim());
     });
   }
+
+  it("renders a link on another origin, which only the mailer may refuse", async () => {
+    const foreign = "https://support.example.com/accept?token=invite-token";
+
+    const { html, text } = await renderMailTemplate("invitation-brokered", {
+      ...VARIABLES,
+      invitationUrl: foreign,
+    });
+
+    expect(text).toContain(foreign);
+    expect(html).toContain(`href="${foreign}"`);
+  });
 });
