@@ -1,6 +1,7 @@
 import { CORE_ERROR_MESSAGES, CORE_HISTORY } from "@genie/core";
 import {
   enableModules,
+  insertCredentialPerson,
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
@@ -8,6 +9,7 @@ import {
   type PlaceholderRouter,
   placeholderModule,
 } from "@genie/module-placeholder";
+import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
 import {
   type TRPCClientError,
   createTRPCClient,
@@ -119,13 +121,54 @@ describe("both transports", () => {
   it("the module transport reaches the procedure and answers its refusal", async () => {
     const failure = await readFailure(placeholderClient());
 
-    // The positive control for this transport. Sign-in arrives with S2-04, so
-    // the request is anonymous and the real evaluator refuses it: FORBIDDEN is
-    // the procedure's own `can()` answer, which proves the context reached the
-    // module's procedure rather than an unknown path. The authorized read
-    // through real role assignments is proved in the placeholder's own
-    // integration suite; S2-04 brings the signed-in read back here.
+    // The positive control for this transport. An anonymous request is refused by the real
+    // evaluator: FORBIDDEN is the procedure's own `can()` answer, which proves the context reached
+    // the module's procedure rather than an unknown path. The signed-in read is the next case.
     expect(failure?.data?.code).toBe("FORBIDDEN");
+  });
+
+  it("the module transport reads the placeholder row for a signed-in person with a real grant", async () => {
+    const email = "transport-reader@example.com";
+    const password = "transport-reader-password-14";
+
+    await insertCredentialPerson(deployment.context, {
+      email,
+      password,
+      isBreakGlass: false,
+      permissions: ["placeholder:read"],
+    });
+
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: "transport-visible",
+    });
+
+    // Break-glass sign-in through the app's own auth, the one non-OAuth path (R-62, D2-5). The
+    // public origin is the trusted origin, so the CSRF check passes.
+    const signIn = await fetch(`${baseUrl()}/api/auth/sign-in/email`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "origin": "https://example.invalid",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    expect(signIn.status, await signIn.clone().text()).toBe(200);
+
+    const cookie = signIn.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0] ?? "")
+      .join("; ");
+
+    expect(cookie.length).toBeGreaterThan(0);
+
+    const read = await fetch(
+      `${baseUrl()}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
+      { headers: { cookie } }
+    );
+
+    expect(read.status).toBe(200);
+    expect(await read.text()).toContain(record.label);
   });
 
   it("answers normally while the database is reachable", async () => {
