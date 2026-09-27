@@ -1,6 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -91,8 +92,10 @@ test("the placeholder read procedure refuses an anonymous request through the re
 // and the read returns the row. Anonymous refusal above stays as the R-35 control.
 test("a signed-in person with a real grant sees the module entry and reads the placeholder row", async ({
   page,
-}) => {
-  await signInThroughKeycloak(page);
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("placeholder", testInfo.project.name),
+  });
 
   await expect(
     page.getByRole("link", { name: "Placeholder", exact: true })

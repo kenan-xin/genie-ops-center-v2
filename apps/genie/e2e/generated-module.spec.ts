@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -87,8 +88,10 @@ test("its navigation entry is omitted and its route still refuses", async ({
 // sees the entry, renders the module page, and reads it. The refusal cases above stay as controls.
 test("a signed-in person with a real grant sees the generated module and reads it", async ({
   page,
-}) => {
-  await signInThroughKeycloak(page);
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("generated", testInfo.project.name),
+  });
 
   await expect(
     page.getByRole("link", { name: displayName, exact: true })

@@ -36,9 +36,7 @@ export default async function setupGateGlobalSetup(): Promise<void> {
   let keycloak: E2eKeycloak | undefined;
 
   try {
-    keycloak = await startE2eKeycloak({
-      publicUrl: `http://127.0.0.1:${HOST_PORT}`,
-    });
+    keycloak = await startE2eKeycloak();
 
     await compose(["up", "-d", "--wait"], {
       KEYCLOAK_URL: keycloak.keycloakUrl,
