@@ -78,6 +78,8 @@ const DEPLOYMENT_TABLES = {
   tenant_settings: {
     columns: {
       onboarding_mode: { default: "'invite'::text" },
+      realm_mode: { default: "'managed'::text" },
+      keycloak_url_at_setup: { nullable: true },
       local_accounts_enabled: { default: "false" },
       realm_supports_local_accounts: { default: "false" },
       session_idle_minutes: { default: "15" },
@@ -179,9 +181,10 @@ const documentedEntries = Object.entries(DEPLOYMENT_TABLES) as Array<
 >;
 
 /**
- * The columns of R-2, in the order the requirement lists them: every column this migration
- * creates that names a person is nullable and carries no foreign key, because the `user` table
- * is Section 2 and its migration adds the foreign keys.
+ * The columns of R-2, in the order the requirement lists them: every Section 1 column that names
+ * a person is nullable, because a row written before a person existed survives. The Section 2
+ * migration that creates `user` adds each column's foreign key; that key is proved by the
+ * identity-tables test, and this test keeps only the nullability invariant.
  */
 const PERSON_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ["tenant_settings", "updated_by_user_id"],
@@ -546,7 +549,7 @@ describe("the Section 1 deployment tables", () => {
     expect(present).not.toContain("user_preference");
   });
 
-  it("leaves every person-naming column and tenant_module.category_id nullable with no foreign key", async () => {
+  it("keeps every person-naming column nullable and leaves tenant_module.category_id without a foreign key", async () => {
     const deployment = await startDisposableDeployment();
 
     cleanups.push(deployment.stop);
@@ -555,14 +558,15 @@ describe("the Section 1 deployment tables", () => {
     const present = await publicTables(client);
     const problems: string[] = [];
 
-    const watched: ReadonlyArray<readonly [string, string]> = [
-      ...PERSON_COLUMNS,
-      ["tenant_module", "category_id"],
-    ];
-
     const factsByTable = new Map(
       await Promise.all(
-        [...new Set(watched.map(([table]) => table))].map(
+        [
+          ...new Set(
+            [...PERSON_COLUMNS, ["tenant_module", "category_id"] as const].map(
+              ([table]) => table
+            )
+          ),
+        ].map(
           async (
             table
           ): Promise<
@@ -584,7 +588,7 @@ describe("the Section 1 deployment tables", () => {
       )
     );
 
-    for (const [table, column] of watched) {
+    for (const [table, column] of PERSON_COLUMNS) {
       if (!present.includes(table)) {
         problems.push(`${table}: the table does not exist`);
 
@@ -603,12 +607,20 @@ describe("the Section 1 deployment tables", () => {
       if (!fact.nullable) {
         problems.push(`${table}.${column}: must be nullable`);
       }
+    }
 
-      if (tableFacts?.foreignKeys.includes(column)) {
-        problems.push(
-          `${table}.${column}: carries a foreign key, and none may exist yet`
-        );
-      }
+    // tenant_module.category_id stays nullable with no foreign key until Section 3 creates
+    // `category`; the six person columns gain their key in Section 2 and are not checked here.
+    const categoryFacts = factsByTable.get("tenant_module");
+
+    if (!categoryFacts?.columns.get("category_id")?.nullable) {
+      problems.push("tenant_module.category_id: must be nullable");
+    }
+
+    if (categoryFacts?.foreignKeys.includes("category_id")) {
+      problems.push(
+        "tenant_module.category_id: carries a foreign key, and none may exist yet"
+      );
     }
 
     expect(problems).toEqual([]);

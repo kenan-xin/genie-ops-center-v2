@@ -164,6 +164,19 @@ function validTenantYaml(): string {
   ].join("\n");
 }
 
+function customerTenantYaml(): string {
+  return [
+    "modules:",
+    "  - fixture",
+    "realm: customer",
+    "local_accounts: false",
+    "first_administrators:",
+    "  - admin@example.com",
+    "break_glass_email: break-glass@example.com",
+    "",
+  ].join("\n");
+}
+
 function validBrandingSeed(): string {
   return `${JSON.stringify(
     {
@@ -395,6 +408,66 @@ describe("genie-ops setup", () => {
         },
       ],
     });
+  }, 120000);
+
+  it("writes realm_mode from tenant.yaml's realm, and defaults it to managed", async () => {
+    const fixture = await setupFixture();
+
+    const customer = await configFiles({ tenantYaml: customerTenantYaml() });
+
+    await expect(
+      runGenieOps(setupArgs(customer), setupOptions(fixture, outputCapture()))
+    ).resolves.toBe(0);
+
+    await expect(
+      fixture.observer.query("select realm_mode from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
+
+    const managed = await configFiles();
+
+    await expect(
+      runGenieOps(setupArgs(managed), setupOptions(fixture, outputCapture()))
+    ).resolves.not.toBe(0);
+
+    await expect(
+      fixture.observer.query("select realm_mode from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
+  }, 120000);
+
+  it("refuses a setup run whose tenant.yaml realm differs from the recorded realm_mode", async () => {
+    const fixture = await setupFixture();
+    const customer = await configFiles({ tenantYaml: customerTenantYaml() });
+
+    await expect(
+      runGenieOps(setupArgs(customer), setupOptions(fixture, outputCapture()))
+    ).resolves.toBe(0);
+
+    await expect(
+      fixture.observer.query("select realm_mode from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
+
+    const managed = await configFiles({ tenantYaml: validTenantYaml() });
+    const refusedOutput = outputCapture();
+
+    await expect(
+      runGenieOps(setupArgs(managed), setupOptions(fixture, refusedOutput))
+    ).resolves.not.toBe(0);
+
+    expect(refusedOutput.lines.join("\n")).toContain("realm_mode");
+
+    // The refusal is a reconciliation guard, not a step failure: the two steps stay done and the
+    // recorded realm_mode is unchanged, so the mode was never changed by editing tenant.yaml.
+    await expect(
+      fixture.observer.query("select step, state from setup_step order by step")
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "migrations", state: "done" },
+        { step: "seed", state: "done" },
+      ],
+    });
+    await expect(
+      fixture.observer.query("select realm_mode from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
   }, 120000);
 
   it.each([

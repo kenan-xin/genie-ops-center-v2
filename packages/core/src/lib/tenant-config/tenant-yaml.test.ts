@@ -72,4 +72,53 @@ describe("tenantYamlSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("omits realm by default, so the column default managed applies", () => {
+    expect(tenantYamlSchema.parse(VALID).realm).toBeUndefined();
+  });
+
+  it("accepts each documented realm mode", () => {
+    expect(tenantYamlSchema.parse({ ...VALID, realm: "managed" }).realm).toBe(
+      "managed"
+    );
+    expect(tenantYamlSchema.parse({ ...VALID, realm: "customer" }).realm).toBe(
+      "customer"
+    );
+  });
+
+  it("rejects a realm mode outside the documented set", () => {
+    const result = tenantYamlSchema.safeParse({
+      ...VALID,
+      realm: "bundled",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("refuses realm customer together with local_accounts true (R-54a)", () => {
+    const result = tenantYamlSchema.safeParse({
+      ...VALID,
+      realm: "customer",
+      local_accounts: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts realm customer with local accounts off, and managed with them on", () => {
+    expect(
+      tenantYamlSchema.parse({
+        ...VALID,
+        realm: "customer",
+        local_accounts: false,
+      }).realm
+    ).toBe("customer");
+    expect(
+      tenantYamlSchema.parse({
+        ...VALID,
+        realm: "managed",
+        local_accounts: true,
+      }).realm
+    ).toBe("managed");
+  });
 });

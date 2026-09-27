@@ -191,6 +191,10 @@ function settingsRow(tenant: TenantYaml): typeof tenantSettings.$inferInsert {
     settings.localAccountsEnabled = tenant.local_accounts;
   }
 
+  if (tenant.realm !== undefined) {
+    settings.realmMode = tenant.realm;
+  }
+
   return settings;
 }
 
@@ -376,6 +380,31 @@ async function runStep(
 }
 
 /**
+ * The realm-mode reconciliation (R-54a): every setup run compares `tenant.yaml`'s `realm` with the
+ * `realm_mode` the seed step wrote, and refuses with a named cause when they differ, so the mode
+ * is never changed by editing `tenant.yaml`. The seed step writes the value once on its insert
+ * (`ON CONFLICT DO NOTHING` leaves a later value alone). The "write once for a stack seeded
+ * before the column existed" recovery belongs to the `realm` step, whose row is S2-03 and out of
+ * scope here.
+ */
+async function reconcileRealmMode(
+  context: TenantContext,
+  files: SetupConfigFiles
+): Promise<void> {
+  const tenant = await loadTenantYaml(files.tenantConfig);
+  const expected = tenant.realm ?? "managed";
+
+  const [row] = await context.db.select().from(tenantSettings).limit(1);
+  const stored = row?.realmMode ?? "managed";
+
+  if (expected !== stored) {
+    throw new Error(
+      `tenant.yaml realm "${expected}" differs from the recorded realm_mode "${stored}"; the realm mode is fixed at setup and cannot be changed by editing tenant.yaml`
+    );
+  }
+}
+
+/**
  * The resumable `genie-ops setup` (R-18): each step this section knows runs in order, a step
  * already `done` is skipped so a rerun never moves it back and never overwrites seeded rows, and
  * a `failed` step runs again. The runner owns the context and closes its pool; this function
@@ -398,4 +427,8 @@ export async function runSetup(
       stepWork(step, context, files, options, log)
     );
   }
+
+  // The reconciliation runs after the steps, on every run, so a rerun whose steps are all done
+  // still refuses a realm change in `tenant.yaml` (R-54a).
+  await reconcileRealmMode(context, files);
 }

@@ -40,6 +40,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0000_tearful_luminals.sql",
     import.meta.url
   ),
+  "0001_chubby_joshua_kane": new URL(
+    "../../../drizzle/0001_chubby_joshua_kane.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

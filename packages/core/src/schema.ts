@@ -21,9 +21,9 @@ import {
  * history reads it.
  *
  * Nothing here carries a `tenant_id`: the database is the tenant (ADR 0007). The six
- * person-naming columns and `tenant_module.category_id` stay nullable and carry no foreign key
- * here; the Section 2 migration that creates `user` adds each person key, and the Section 3
- * migration that creates `category` adds the category key (R-2, R-1a, data-shape rules 4 and 7).
+ * person-naming columns stay nullable and each points at `user.id` (R-2, data-shape rule 7);
+ * `tenant_module.category_id` stays nullable and still carries no foreign key, because the
+ * Section 3 migration that creates `category` adds the category key (data-shape rules 4 and 7).
  */
 
 /**
@@ -56,7 +56,7 @@ export const tenantApiKey = pgTable(
     moduleId: text("module_id").notNull(),
     name: text("name").notNull(),
     keyHash: text("key_hash").notNull(),
-    createdBy: text("created_by"),
+    createdBy: text("created_by").references(() => user.id),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at", withTimeZone),
     revokedAt: timestamp("revoked_at", withTimeZone),
@@ -107,6 +107,8 @@ export const tenantSettings = pgTable(
   "tenant_settings",
   {
     onboardingMode: text("onboarding_mode").notNull().default("invite"),
+    realmMode: text("realm_mode").notNull().default("managed"),
+    keycloakUrlAtSetup: text("keycloak_url_at_setup"),
     localAccountsEnabled: boolean("local_accounts_enabled")
       .notNull()
       .default(false),
@@ -114,7 +116,7 @@ export const tenantSettings = pgTable(
       .notNull()
       .default(false),
     sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
-    updatedByUserId: text("updated_by_user_id"),
+    updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },
   // A constant unique key makes the row a singleton (data-shape rule 4 keeps every non-user key
@@ -162,7 +164,7 @@ export const tenantBranding = pgTable(
     defaultTimeZone: text("default_time_zone").notNull(),
     dateFormat: text("date_format"),
     numberFormat: text("number_format"),
-    updatedByUserId: text("updated_by_user_id"),
+    updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },
   // A constant unique key makes the row a singleton, so the seed can use `INSERT ... ON
@@ -176,7 +178,7 @@ export const auditEvent = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     occurredAt: timestamp("occurred_at", withTimeZone).notNull().defaultNow(),
-    actorUserId: text("actor_user_id"),
+    actorUserId: text("actor_user_id").references(() => user.id),
     action: text("action").notNull(),
     targetType: text("target_type"),
     targetId: text("target_id"),
@@ -200,7 +202,7 @@ export const file = pgTable(
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     checksum: text("checksum").notNull(),
     scanStatus: text("scan_status").notNull(),
-    uploadedByUserId: text("uploaded_by_user_id"),
+    uploadedByUserId: text("uploaded_by_user_id").references(() => user.id),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("file_storage_key_idx").on(table.storageKey)]
@@ -226,10 +228,246 @@ export const tenantIntegration = pgTable("tenant_integration", {
   status: text("status").notNull().default("active"),
   lastCheckedAt: timestamp("last_checked_at", withTimeZone),
   lastError: text("last_error"),
-  createdByUserId: text("created_by_user_id"),
+  createdByUserId: text("created_by_user_id").references(() => user.id),
   createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
 });
+
+/**
+ * The Better Auth identity tables, generated once with the Better Auth CLI (better-auth 1.7.6)
+ * and copied here; the core schema is then the source of truth (Spec 2 D2-5). The application
+ * columns (`banned`, `status`, `is_break_glass` and the rest) are declared `input: false` in the
+ * Better Auth configuration, so no Better Auth endpoint writes them; setup steps, operator
+ * commands and Add person write them with Drizzle. The one deviation from the CLI output is that
+ * timestamps carry the repository's `with time zone` convention, so `session.expires_at` and the
+ * rest compare against `now()` like every other core timestamp. No Better Auth runtime code
+ * lives here yet (that is S2-04); this is the schema and nothing else.
+ */
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  role: text("role"),
+  banned: boolean("banned").default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires", withTimeZone),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  status: text("status"),
+  mustChangePassword: boolean("must_change_password").default(false),
+  isBreakGlass: boolean("is_break_glass").notNull().default(false),
+  onboarding: text("onboarding"),
+  firstSignInAt: timestamp("first_sign_in_at", withTimeZone),
+  lastSignInAt: timestamp("last_sign_in_at", withTimeZone),
+  erasedAt: timestamp("erased_at", withTimeZone),
+  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", withTimeZone)
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+/** A database-backed session; `expires_at` is the fixed 24 hour cap (R-13). */
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", withTimeZone).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone)
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    impersonatedBy: text("impersonated_by"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("session_user_id_idx").on(table.userId)]
+);
+
+/**
+ * One identity-provider or credential account per `user`; the three token columns rest encrypted
+ * with the application secret (`encryptOAuthTokens`, R-7).
+ */
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", withTimeZone),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", withTimeZone),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone)
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("account_user_id_idx").on(table.userId)]
+);
+
+/** Better Auth's store for short-lived values; no application code reads it (data-shape.md). */
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", withTimeZone).notNull(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone)
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)]
+);
+
+/** The two-factor plugin's row, used by the break-glass account only (DEC-15, R-63). */
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count").default(0),
+    lockedUntil: timestamp("locked_until", withTimeZone),
+  },
+  (table) => [
+    index("two_factor_secret_idx").on(table.secret),
+    index("two_factor_user_id_idx").on(table.userId),
+  ]
+);
+
+/** A directory group the identity provider sent, or a local group an administrator made. */
+export const group = pgTable(
+  "group",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    externalId: text("external_id"),
+    displayLabel: text("display_label"),
+    source: text("source").notNull(),
+    description: text("description"),
+    lastSeenAt: timestamp("last_seen_at", withTimeZone),
+    archivedAt: timestamp("archived_at", withTimeZone),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  // A directory group is one identity-provider id per source; a local group has no external id,
+  // so the unique only binds the rows that carry one (data-shape.md, "Groups").
+  (table) => [
+    uniqueIndex("group_source_external_id_idx")
+      .on(table.source, table.externalId)
+      .where(sql`${table.externalId} is not null`),
+  ]
+);
+
+/** A person's membership in a group; `idp` memberships are replaced on every sign-in (R-23). */
+export const groupMember = pgTable(
+  "group_member",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => group.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    source: text("source").notNull(),
+    syncedAt: timestamp("synced_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.groupId, table.userId] }),
+    index("group_member_user_group_idx").on(table.userId, table.groupId),
+  ]
+);
+
+/** A named role with its permission keys; system roles are seeded by the `roles` step (R-33). */
+export const role = pgTable("role", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  moduleId: text("module_id"),
+  permissions: text("permissions").array().notNull(),
+  isSystem: boolean("is_system").notNull().default(false),
+  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+});
+
+/**
+ * One grant of a role to a person or a group, optionally scoped to a record. `principal_id` is
+ * text because it names either `user.id` or `group.id`, so it carries no foreign key; a scope is
+ * a `type:id` pair, never a foreign key (data-shape rule 3).
+ */
+export const roleAssignment = pgTable(
+  "role_assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => role.id),
+    principalType: text("principal_type").notNull(),
+    principalId: text("principal_id").notNull(),
+    scopeType: text("scope_type"),
+    scopeId: text("scope_id"),
+    createdByUserId: text("created_by_user_id").references(() => user.id),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("role_assignment_unique_idx").on(
+      table.roleId,
+      table.principalType,
+      table.principalId,
+      table.scopeType,
+      table.scopeId
+    ),
+    index("role_assignment_principal_idx").on(
+      table.principalType,
+      table.principalId
+    ),
+  ]
+);
+
+/** An in-app notification written by the same events that send email (R-46). */
+export const notification = pgTable(
+  "notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    readAt: timestamp("read_at", withTimeZone),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    index("notification_user_read_created_idx").on(
+      table.userId,
+      table.readAt,
+      table.createdAt
+    ),
+  ]
+);
 
 /** Every core table by its SQL name, the one place a core table is registered. */
 export const coreTables = {
@@ -244,4 +482,14 @@ export const coreTables = {
   file,
   file_blob: fileBlob,
   tenant_integration: tenantIntegration,
+  user,
+  session,
+  account,
+  verification,
+  two_factor: twoFactor,
+  group,
+  group_member: groupMember,
+  role,
+  role_assignment: roleAssignment,
+  notification,
 } satisfies Readonly<Record<string, PgTable>>;
