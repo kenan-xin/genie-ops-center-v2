@@ -98,7 +98,7 @@ R-23. A release tag builds every customer image, one build per customer folder w
 
 R-24. Upgrading one stack is three steps and is the same in every hosting mode: change `IMAGE_TAG` in `.env`, pull, and bring the stack up (`../architecture/environment-contract.md`, "Read by Docker Compose, not the image", and `../runbooks/deployment.md`, "Upgrade"). A Genie-operated stack may be upgraded through a panel that performs those same steps. A customer-managed stack pulls the next tag itself.
 
-R-24a. An upgrade has a fourth step when the release notes name a new `genie-ops setup` step: run `genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done (`../runbooks/deployment.md`, "Upgrade", step 5). The upgrade runbook requires reading the release notes for that line before the pull.
+R-24a. An upgrade has a fourth step when the release notes name a new `genie-ops setup` step: run `genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done, or skipped in client-only mode (`../runbooks/deployment.md`, "Upgrade", step 5). The upgrade runbook requires reading the release notes for that line before the pull.
 
 R-25. Every release upgrades from the last three releases (`DEC-9`, `DEC-43`). The lagging-stack rule: a stack more than three releases behind upgrades through the intermediate releases one at a time, in order, and the release notes name the oldest release that each version upgrades from. The runbook requires reading the pending-migration count that the migrator logs at start after upgrading a stack that was behind (`DEC-43`).
 

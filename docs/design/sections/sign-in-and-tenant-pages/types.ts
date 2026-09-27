@@ -81,7 +81,7 @@ export type SetupStepName = 'migrations' | 'seed' | 'realm' | 'clients' | 'roles
 
 export interface SetupStep {
   step: SetupStepName
-  state: 'pending' | 'done' | 'failed'
+  state: 'pending' | 'done' | 'failed' | 'skipped'
   /** Set only when failed. */
   detail: string | null
   updatedAt: string

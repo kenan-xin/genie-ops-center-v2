@@ -73,7 +73,7 @@ genie-ops-center/
                                     supplied, object storage, delivery path, image version, recovery requests.
                                     Values no code reads (DEC-35). From the template in docs/runbooks/.
       deploy/
-        tenant.yaml                 Modules, onboarding mode, local_accounts, first administrators,
+        tenant.yaml                 Modules, onboarding mode, local_accounts, realm mode, first administrators,
                                     break-glass email. Input to the generator and to genie-ops setup.
                                     Every field is read by one of them; nothing here is a note, nothing
                                     here repeats .env, and nothing here is branding (DEC-35, DEC-36).
