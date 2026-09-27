@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { z } from "zod";
 
 import type {
+  AuthEnvironment,
   DeploymentEnvironment,
   FileStorageAdapter,
   RuntimeMode,
@@ -173,6 +174,18 @@ const schema = z.object({
     .optional()
     .transform(unsetWhenBlank)
     .meta({ secret: true }),
+  // Section 2 authentication values (environment contract, Required). They are optional in the
+  // base schema so `genie-ops migrate` and the worker still start without them; the application
+  // profile requires them, and the Section 2 commands validate their own consuming profile.
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "at least 32 characters")
+    .optional()
+    .meta({ secret: true }),
+  KEYCLOAK_URL: z.string().min(1).optional(),
+  KEYCLOAK_REALM: z.string().min(1).optional(),
+  KEYCLOAK_CLIENT_ID: z.string().min(1).optional(),
+  KEYCLOAK_CLIENT_SECRET: z.string().min(1).optional().meta({ secret: true }),
 });
 
 /**
@@ -236,15 +249,73 @@ function mailConfiguration(value: {
 }
 
 /**
- * Reads and validates the environment of the Section 0 application profile, before anything
- * opens a connection (R-25, environment contract, Required). A value of a later section is
- * ignored here: a section adds its requirement when it delivers the runtime that consumes it.
+ * Which runtime is asking. The base schema is one catalogue for every profile; a profile decides
+ * which of its values are *required* (environment contract, "Required").
  *
- * A failure names every broken variable at once and never repeats the value it rejected, so a
- * password in a malformed `DATABASE_URL` cannot reach a log through the message (R-45).
+ * - `core`: `DATABASE_URL`, `PUBLIC_URL` and the defaulted values. The migrator, a command and a
+ *   test use this, so `genie-ops migrate` runs without sign-in or realm credentials.
+ * - `application`: `core` plus the Section 2 authentication values, which the app must refuse to
+ *   start without (`BETTER_AUTH_SECRET`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`,
+ *   `KEYCLOAK_CLIENT_SECRET`). A valid set does not require the realm to exist yet.
+ */
+export type EnvironmentProfile = "core" | "application";
+
+/** The values the base schema parses to, before the profile decides what is required. */
+type ParsedEnvironment = z.infer<typeof schema>;
+
+/** The five Section 2 values the application profile requires (environment contract, Required). */
+const authSchema = z.object({
+  BETTER_AUTH_SECRET: z.string().min(32, "at least 32 characters"),
+  KEYCLOAK_URL: z.string().min(1),
+  KEYCLOAK_REALM: z.string().min(1),
+  KEYCLOAK_CLIENT_ID: z.string().min(1),
+  KEYCLOAK_CLIENT_SECRET: z.string().min(1),
+});
+
+/**
+ * The Section 2 authentication values. The application profile requires all five. Any other
+ * profile passes them through only when all five are present, so a context built by a test or a
+ * command with the full set still builds its Better Auth member while a partial set is ignored.
+ */
+function authConfiguration(
+  value: ParsedEnvironment,
+  profile: EnvironmentProfile
+): AuthEnvironment | undefined {
+  const parsed = authSchema.safeParse(value);
+
+  if (!parsed.success) {
+    if (profile === "application") {
+      const missing = parsed.error.issues
+        .map((issue) => issue.path.join("."))
+        .filter((name) => name !== "");
+
+      throw new Error(
+        `The environment is not valid. ${missing.join(", ")}: required by the Section 2 application profile. No value is shown, because a value can hold a secret.`
+      );
+    }
+
+    return undefined;
+  }
+
+  return {
+    betterAuthSecret: parsed.data.BETTER_AUTH_SECRET,
+    // R-54c: a trailing slash is removed once, so a later issuer comparison is exact.
+    keycloakUrl: parsed.data.KEYCLOAK_URL.replace(/\/+$/, ""),
+    keycloakRealm: parsed.data.KEYCLOAK_REALM,
+    keycloakClientId: parsed.data.KEYCLOAK_CLIENT_ID,
+    keycloakClientSecret: parsed.data.KEYCLOAK_CLIENT_SECRET,
+  };
+}
+
+/**
+ * Reads and validates the environment of the selected profile, before anything opens a
+ * connection (R-25, environment contract, Required). A failure names every broken variable at
+ * once and never repeats the value it rejected, so a password in a malformed `DATABASE_URL`
+ * cannot reach a log through the message (R-45).
  */
 export function validateEnvironment(
-  source: EnvironmentSource = process.env
+  source: EnvironmentSource = process.env,
+  profile: EnvironmentProfile = "core"
 ): DeploymentEnvironment {
   const result = schema.safeParse(source);
 
@@ -271,7 +342,9 @@ export function validateEnvironment(
     );
   }
 
-  return {
+  const auth = authConfiguration(value, profile);
+
+  const environment: DeploymentEnvironment = {
     databaseUrl: value.DATABASE_URL,
     publicUrl: value.PUBLIC_URL,
     fileStorageAdapter: value.FILE_STORAGE_ADAPTER,
@@ -284,6 +357,10 @@ export function validateEnvironment(
     runtimeMode: runtimeModeOf(),
     ...mailConfiguration(value),
   };
+
+  // `auth` is added only when it is present, so a profile that does not read it leaves the key off
+  // the object entirely rather than carrying an explicit `undefined` (environment contract).
+  return auth === undefined ? environment : { ...environment, auth };
 }
 
 /** One environment variable as the schema declares it (R-30, `deploy/schemas/environment.catalogue.json`). */

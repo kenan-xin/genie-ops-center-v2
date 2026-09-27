@@ -320,6 +320,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/auth-member.integration.test.ts",
+    reason:
+      "Spec 2 AC-1, R-4 to R-8, R-13, R-17 and R-54d, and DEC-34, require the instance, discovery and break-glass proofs to run",
+    cases: [
+      "the Better Auth instance the two-context auth isolation test each context holds its own instance and neither answers for the other",
+      "the Better Auth instance break-glass email and password signs in while the realm discovery does not answer",
+      "the Better Auth instance refuses sign-up while email and password sign-in is enabled",
+      "the Better Auth instance does not let the update-user endpoint write an input:false application column",
+      "the discovery retry and swap builds a fresh instance on the first good answer, so the provider comes back (R-54d)",
+    ],
+  },
+  {
     file: "testing/access.integration.test.ts",
     reason:
       "Spec 2 AC-8 and the named tests of DEC-48 and R-30/R-34 must run: single query, revoke on the next request, limited break-glass refused, navigation omitted with the route still refused",

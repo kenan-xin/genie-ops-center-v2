@@ -25,6 +25,7 @@ describe("TenantContext", () => {
       | "fileStorage"
       | "mailer"
       | "publicUrl"
+      | "auth"
     >();
   });
 });

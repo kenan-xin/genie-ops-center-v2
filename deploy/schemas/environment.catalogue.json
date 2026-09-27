@@ -6,6 +6,11 @@
       "secret": false
     },
     {
+      "name": "BETTER_AUTH_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
       "name": "DATABASE_URL",
       "required": true,
       "secret": true
@@ -24,6 +29,26 @@
     },
     {
       "name": "GENIE_CHAT_API_ALLOWED_ORIGINS",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_ID",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "KEYCLOAK_REALM",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_URL",
       "required": false,
       "secret": false
     },

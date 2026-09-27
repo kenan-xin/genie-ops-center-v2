@@ -1,3 +1,4 @@
+import type { EnvironmentProfile } from "../src/lib/environment/index.ts";
 import {
   type TenantContext,
   createTenantContext,
@@ -21,6 +22,8 @@ export {
   insertUser,
 } from "./access-fixtures.ts";
 
+export { insertCredentialPerson } from "./auth-fixtures.ts";
+
 export { markSetupDone } from "./mark-setup-done.ts";
 
 export { startDisposablePostgres } from "./postgres.ts";
@@ -33,6 +36,13 @@ export type DisposableDeployment = {
   readonly stop: () => Promise<void>;
 };
 
+export type DisposableDeploymentOptions = {
+  /** Extra environment values; a test whose subject is authentication supplies the auth set. */
+  readonly env?: Readonly<Record<string, string>>;
+  /** The environment profile the context is built with. The default builds no auth member. */
+  readonly profile?: EnvironmentProfile;
+};
+
 /**
  * One disposable Postgres with the same histories the image applies, in the same order (R-28,
  * R-38). Every integration test takes one of these; none mocks the database.
@@ -41,7 +51,8 @@ export type DisposableDeployment = {
  * The app harness composes this helper with the included modules' declarations.
  */
 export async function startDisposableDeployment(
-  modules: readonly ModuleHistorySource[] = []
+  modules: readonly ModuleHistorySource[] = [],
+  options: DisposableDeploymentOptions = {}
 ): Promise<DisposableDeployment> {
   const postgres = await startDisposablePostgres();
 
@@ -51,9 +62,12 @@ export async function startDisposableDeployment(
     {
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
+      ...options.env,
     },
     silentLogger(),
-    compiledModuleIds
+    compiledModuleIds,
+    undefined,
+    options.profile ?? "core"
   );
 
   const stop = async () => {

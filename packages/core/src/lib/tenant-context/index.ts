@@ -5,6 +5,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import {
+  createAuthMember,
+  type AuthMember,
+} from "../../services/auth/index.ts";
+import {
   createCapabilityRegistry,
   type CapabilityRegistry,
 } from "../../services/capabilities/index.ts";
@@ -27,6 +31,7 @@ import {
   type MailProvider,
 } from "../../services/mailer/index.ts";
 import {
+  type EnvironmentProfile,
   type EnvironmentSource,
   validateEnvironment,
 } from "../environment/index.ts";
@@ -67,6 +72,21 @@ export type RuntimeMode = "development" | "production";
 const CONNECTION_TIMEOUT_MARGIN_MS = 5000;
 
 /**
+ * The Section 2 authentication values the application profile requires and the other profiles do
+ * not read (environment contract, Required). They are configuration only: a valid set does not
+ * require the realm to exist yet, so the app serves the not-set-up page first (Spec 2 R-4).
+ */
+export type AuthEnvironment = {
+  /** `BETTER_AUTH_SECRET`, at least 32 characters; signs the session cookie (R-4). */
+  readonly betterAuthSecret: string;
+  /** `KEYCLOAK_URL` without a trailing slash (R-4, R-54c). */
+  readonly keycloakUrl: string;
+  readonly keycloakRealm: string;
+  readonly keycloakClientId: string;
+  readonly keycloakClientSecret: string;
+};
+
+/**
  * The environment values the image reads, after validation (environment contract, Required).
  * Values a tenant administrator owns live in the database, never here.
  */
@@ -90,6 +110,12 @@ export type DeploymentEnvironment = {
   readonly resendApiKey: string | undefined;
   /** The `SMTP_URL` connection string, present exactly when `MAIL_PROVIDER=smtp`. */
   readonly smtpUrl: string | undefined;
+  /**
+   * The Section 2 authentication values, present exactly when the profile that builds this
+   * context consumes them (the application profile requires them; a worker, a command or a test
+   * may omit them). The member `auth` is built iff this is present.
+   */
+  readonly auth?: AuthEnvironment;
 };
 
 /**
@@ -121,6 +147,12 @@ export type TenantContext = {
   readonly mailer: Mailer;
   /** Builds an absolute link from `PUBLIC_URL` alone, never from a request `Host` (R-70). */
   readonly publicUrl: PublicUrlBuilder;
+  /**
+   * The one Better Auth instance of this context (R-4). It is present exactly when the environment
+   * carried the authentication values; the application profile requires them, and a worker or
+   * command profile that does not consume authentication builds no member.
+   */
+  readonly auth?: AuthMember;
 };
 
 /** An absolute link to `path` under `PUBLIC_URL`, with `query` as its search string (R-70). */
@@ -185,9 +217,15 @@ export function createTenantContext(
   source: EnvironmentSource,
   logger: Pick<RedactingLogger, "error" | "info">,
   compiledModuleIds: readonly string[],
-  applicationName?: string
+  applicationName?: string,
+  /**
+   * Which runtime is building this context. The application profile requires the Section 2
+   * authentication values; every other profile does not, so `genie-ops migrate` and the worker
+   * still start without a realm or sign-in secret (environment contract, "Required").
+   */
+  profile: EnvironmentProfile = "core"
 ): TenantContext {
-  const env = validateEnvironment(source);
+  const env = validateEnvironment(source, profile);
 
   const pool = new Pool({
     connectionString: env.databaseUrl,
@@ -220,7 +258,21 @@ export function createTenantContext(
   const capabilities = createCapabilityRegistry();
   const publicUrl = createPublicUrl(env.publicUrl);
 
-  const context: TenantContext = {
+  // The one Better Auth instance (R-4), built here from values this context already holds and
+  // over this context's own pool. It opens no connection. A profile without the auth values
+  // builds no member (environment contract, worker and command rows).
+  const auth =
+    env.auth === undefined
+      ? undefined
+      : createAuthMember({
+          db,
+          publicUrl: env.publicUrl,
+          auth: env.auth,
+          trustedProxies: env.authTrustedProxies,
+          runtimeMode: env.runtimeMode,
+        });
+
+  const base: Omit<TenantContext, "auth"> = {
     db,
     env,
     ...readers,
@@ -241,6 +293,11 @@ export function createTenantContext(
     }),
     publicUrl,
   };
+
+  // The auth member is added only when the environment carried it, so a profile that does not
+  // consume authentication leaves the key off the object rather than carrying an explicit
+  // `undefined` (environment contract, worker and command rows).
+  const context: TenantContext = auth === undefined ? base : { ...base, auth };
 
   // The logger the pool's error listener already uses is recorded off the object, where
   // `withTransaction` reads it for its after-commit diagnostics. A context this factory did not

@@ -9,12 +9,33 @@
 export {
   createPublicUrl,
   createTenantContext,
+  type AuthEnvironment,
   type DeploymentEnvironment,
   type FileStorageAdapter,
   IDENTITY_CALLBACK_PATH,
   type PublicUrlBuilder,
   type TenantContext,
 } from "./lib/tenant-context/index.ts";
+
+export {
+  APPLICATION_USER_FIELDS,
+  type AuthDiscoveryCause,
+  type AuthDiscoveryState,
+  type AuthMember,
+  type AuthSession,
+  type AuthSessionUser,
+  createAuthMember,
+  createDiscoveryProbe,
+  DISCOVERY_RETRY_MS,
+  discoveryDocumentUrl,
+  KEYCLOAK_PROVIDER_ID,
+  keycloakIssuer,
+  keycloakProviderConfig,
+  normalizeKeycloakUrl,
+  SESSION_ABSOLUTE_SECONDS,
+  SESSION_COOKIE_NAME,
+  sessionCookieName,
+} from "./services/auth/index.ts";
 
 export {
   type AfterCommit,
@@ -26,6 +47,7 @@ export {
 export { registerModuleRuntime } from "./lib/module-contract/runtime.ts";
 
 export {
+  type EnvironmentProfile,
   type EnvironmentSource,
   validateEnvironment,
 } from "./lib/environment/index.ts";
