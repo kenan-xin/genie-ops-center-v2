@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeFeatureGraph } from "../../__testing__/feature-import-graph.ts";
+import type { WorkspaceResolver } from "../../__testing__/feature-import-graph.ts";
 import { WORKSPACE_ROOT, probe } from "../../__testing__/target-probe.ts";
 
 const NODE = process.execPath;
@@ -200,6 +201,37 @@ describe("the browser feature graph probe", () => {
       expect(
         report.violations.some((line) => line.includes("process.env"))
       ).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("follows a workspace package into its source and fails on a driver it reaches", () => {
+    const dir = mkdtempSync(join(tmpdir(), "genie-feature-workspace-"));
+
+    try {
+      const entry = join(dir, "entry.ts");
+      const library = join(dir, "fixture-lib.ts");
+
+      writeFileSync(
+        entry,
+        `import { thing } from "@genie/fixture-lib";\nexport const x = thing;\n`
+      );
+      writeFileSync(
+        library,
+        `import { Pool } from "pg";\nexport const thing = Pool;\n`
+      );
+
+      // The real resolver walks Node's installed workspace packages; this fixture is not
+      // installed, so the test supplies the resolution the real one would do.
+      const resolveWorkspace: WorkspaceResolver = (specifier) =>
+        specifier === "@genie/fixture-lib" ? library : undefined;
+
+      const report = analyzeFeatureGraph(entry, resolveWorkspace);
+
+      // The workspace package was followed into its source, and its driver reach was caught.
+      expect(report.files).toContain(library);
+      expect(report.violations.some((line) => line.includes("pg"))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
 import ts from "typescript";
@@ -12,12 +13,40 @@ import ts from "typescript";
  * anything that would put a database driver, a connection-capable builtin, the core runtime, or a
  * deployment environment read into a browser bundle. It resolves imports statically and starts
  * nothing.
+ *
+ * A relative import is followed, and an `@genie/*` workspace package is followed into its source
+ * through its `package.json` `exports`, so a driver or an environment read reached through a
+ * workspace dependency is caught too. A third-party package is a leaf: its own specifier is
+ * checked against the banned names, but its internals are not walked.
  */
 export type FeatureGraphReport = {
   /** Every module reached, absolute, the entry first. */
   readonly files: readonly string[];
   /** One line per forbidden reach, or an unresolved relative import that breaks the walk. */
   readonly violations: readonly string[];
+};
+
+/**
+ * Resolves one `@genie/*` specifier to the source file its package `exports` names, from the file
+ * that imported it, or `undefined` when it does not resolve. Overridable so the probe's follow
+ * behaviour can be tested without installing a fixture workspace package.
+ */
+export type WorkspaceResolver = (
+  specifier: string,
+  fromFile: string
+) => string | undefined;
+
+/**
+ * The real resolver: Node resolution from the importing file, which honours a workspace package's
+ * `exports` map through the `node_modules` symlink, so the walk enters its source and not a build
+ * output.
+ */
+const defaultResolveWorkspace: WorkspaceResolver = (specifier, fromFile) => {
+  try {
+    return createRequire(fromFile).resolve(specifier);
+  } catch {
+    return undefined;
+  }
 };
 
 /** Bare specifiers that must never be reachable from a browser feature entry. */
@@ -131,7 +160,10 @@ function resolveRelative(
 }
 
 /** The whole graph reachable from `entryPath`, and every forbidden reach it holds. */
-export function analyzeFeatureGraph(entryPath: string): FeatureGraphReport {
+export function analyzeFeatureGraph(
+  entryPath: string,
+  resolveWorkspace: WorkspaceResolver = defaultResolveWorkspace
+): FeatureGraphReport {
   const files: string[] = [];
   const violations: string[] = [];
   const visited = new Set<string>();
@@ -183,7 +215,26 @@ export function analyzeFeatureGraph(entryPath: string): FeatureGraphReport {
         }
 
         queue.push(next);
+        continue;
       }
+
+      // A workspace package is followed into its source, so a driver or an environment read it
+      // reaches cannot hide behind the package boundary.
+      if (specifier.startsWith("@genie/")) {
+        const next = resolveWorkspace(specifier, file);
+
+        if (next === undefined) {
+          violations.push(
+            `${file} imports a workspace package that does not resolve (${specifier})`
+          );
+          continue;
+        }
+
+        queue.push(next);
+      }
+
+      // Any other bare specifier is a third-party leaf: its own name was checked above, and its
+      // internals stay out of the graph.
     }
   }
 
