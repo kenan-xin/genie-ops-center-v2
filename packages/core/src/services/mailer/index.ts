@@ -101,9 +101,15 @@ function parseAbsoluteLink(value: string): URL | undefined {
   }
 }
 
-/** True when an absolute link has the public origin and carries no userinfo (R-70). */
+/**
+ * True when an absolute link has the public origin and scheme and carries no userinfo (R-70).
+ * The scheme check matters because a `blob:` URL reports its inner origin. The boundary is the
+ * origin: a link may leave a `PUBLIC_URL` path prefix, because one deployment owns its host.
+ */
 function isSendableAbsoluteLink(url: URL, origin: string): boolean {
   if (url.origin !== origin) return false;
+
+  if (url.protocol !== new URL(origin).protocol) return false;
 
   return url.username === "" && url.password === "";
 }

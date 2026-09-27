@@ -175,6 +175,10 @@ const REFUSED_LINKS: readonly RefusedLink[] = [
   },
   { name: "a data link", value: "data:text/html,x" },
   { name: "a backslash-pair host", value: "\\\\evil.example" },
+  {
+    name: "a blob link on the public origin",
+    value: "blob:https://genie.example.com/uuid",
+  },
 ];
 
 /** No refused value and no token from its query may reach the error or a line a log holds. */
