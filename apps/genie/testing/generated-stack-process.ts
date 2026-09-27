@@ -13,6 +13,9 @@ const PROXY_NETWORK = "proxy";
 
 export const POSTGRES_IMAGE = "postgres:18-alpine";
 
+/** The realm `genie-ops setup` creates in the bundled Keycloak for the smoke test. */
+const SMOKE_REALM = "smoke";
+
 /** How long a database readiness wait may run before it fails with diagnostics. */
 const READINESS_TIMEOUT_MS = 60000;
 
@@ -530,9 +533,24 @@ export async function startGeneratedStack(input: {
         "app:/tmp/branding.seed.json",
       ]);
 
+      // The realm step signs in to the bundled Keycloak with the one-run bootstrap
+      // credential and fills the two client secrets. These reach the setup command
+      // only, never the app service environment (DEC-37, Spec 2 R-53).
       return composeCommand([
         "exec",
         "--no-TTY",
+        "-e",
+        `KEYCLOAK_URL=http://${input.slug}-keycloak:8080`,
+        "-e",
+        `KEYCLOAK_REALM=${SMOKE_REALM}`,
+        "-e",
+        `KEYCLOAK_BOOTSTRAP_USER=${input.filled.KC_BOOTSTRAP_ADMIN_USERNAME ?? ""}`,
+        "-e",
+        `KEYCLOAK_BOOTSTRAP_PASSWORD=${input.filled.KC_BOOTSTRAP_ADMIN_PASSWORD ?? ""}`,
+        "-e",
+        `KEYCLOAK_CLIENT_SECRET=${input.filled.KEYCLOAK_CLIENT_SECRET ?? ""}`,
+        "-e",
+        `KEYCLOAK_ADMIN_CLIENT_SECRET=${input.filled.KEYCLOAK_ADMIN_CLIENT_SECRET ?? ""}`,
         "app",
         "genie-ops",
         "setup",

@@ -18,6 +18,9 @@ const DATABASE_PASSWORD = `generated-stack-password-${process.pid}`;
 
 const SECRET_VALUE = `generated-stack-secret-${process.pid}`;
 
+/** The one-run Keycloak administrator the realm step signs in with (KC_BOOTSTRAP_ADMIN_*). */
+const BOOTSTRAP_PASSWORD = `smoke-bootstrap-${process.pid}`;
+
 /** Polls `probe` until it returns a value `done` accepts, and returns the last value seen. */
 async function pollUntil<T>(
   probe: () => Promise<T>,
@@ -77,6 +80,12 @@ describe("the generated customer stack smoke", () => {
         KC_DB_USERNAME: "genie",
         KC_DB_PASSWORD: DATABASE_PASSWORD,
         KC_PROXY_HEADERS: "xforwarded",
+        // The one-run master administrator the setup realm step signs in with, and
+        // the two client secrets it fills into the realm (Spec 2 R-53, DEC-37).
+        KC_BOOTSTRAP_ADMIN_USERNAME: "admin",
+        KC_BOOTSTRAP_ADMIN_PASSWORD: BOOTSTRAP_PASSWORD,
+        KEYCLOAK_CLIENT_SECRET: SECRET_VALUE,
+        KEYCLOAK_ADMIN_CLIENT_SECRET: SECRET_VALUE,
       },
     });
   }, 900000);

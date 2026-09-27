@@ -302,7 +302,7 @@ These are obligations of the Keycloak server, not of the realm. They belong to w
 
 Keycloak. `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` create a temporary administrator in the `master` realm at the first start, when the `master` realm does not exist yet. The console marks the account as temporary with a banner. From Keycloak 26.4 the welcome page creates a regular administrator instead, but the environment and command-line path still creates a temporary one.
 
-The generated stack never sets them. The operator creates the temporary administrator once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`deployment.md`, "Set up a new customer", step 6).
+The generated stack passes `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` from `.env`, blank by default, and unsets a blank value, so production starts without a bootstrap administrator. The operator creates the temporary administrator once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`deployment.md`, "Set up a new customer", step 6). The generated-stack smoke test sets the two in its own transient `.env` to create the administrator its `genie-ops setup` signs in with.
 
 Those two variable names belong to the Keycloak server. They are not `KEYCLOAK_BOOTSTRAP_USER` and `KEYCLOAK_BOOTSTRAP_PASSWORD`, which `genie-ops setup` reads for one run (`DEC-37`). Do not confuse the pairs.
 

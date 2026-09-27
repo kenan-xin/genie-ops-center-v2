@@ -330,15 +330,20 @@ describe("the rendered deployment folder", () => {
       "KC_PROXY_TRUSTED_ADDRESSES: ${KC_PROXY_TRUSTED_ADDRESSES:-}"
     );
     // Keycloak refuses an empty KC_PROXY_TRUSTED_ADDRESSES, so the entrypoint unsets a blank one.
-    expect(keycloak).toContain(
-      "|| unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh"
-    );
+    expect(keycloak).toContain("|| unset KC_PROXY_TRUSTED_ADDRESSES; ");
+    // A blank bootstrap administrator is unset too, so production starts without one and the
+    // operator creates it with "bootstrap-admin user" (R-66).
+    expect(keycloak).toContain("|| unset KC_BOOTSTRAP_ADMIN_USERNAME; ");
+    expect(keycloak).toContain("|| unset KC_BOOTSTRAP_ADMIN_PASSWORD; ");
     expect(entries.get("KC_DB")).toBe("postgres");
     expect(entries.get("KC_DB_URL_PORT")).toBe("5432");
     expect(entries.get("KC_PROXY_TRUSTED_ADDRESSES")).toBe("");
     expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
     expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
-    expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
+    // The bootstrap administrator is blank by default and created by a command in
+    // production; the smoke test sets it in its own transient .env (R-66).
+    expect(entries.get("KC_BOOTSTRAP_ADMIN_USERNAME")).toBe("");
+    expect(entries.get("KC_BOOTSTRAP_ADMIN_PASSWORD")).toBe("");
   });
 
   it("refuses a blank Keycloak connection value at container start with a named cause", () => {

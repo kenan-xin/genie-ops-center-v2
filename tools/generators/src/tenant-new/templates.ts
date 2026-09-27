@@ -159,7 +159,7 @@ services:
     # profile on fails with a cause instead of restart-looping on an empty
     # variable; a blank KC_PROXY_TRUSTED_ADDRESSES is unset because Keycloak
     # rejects the empty string for that one.
-    entrypoint: ["/bin/bash", "-c", ": \\"$\${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}\\"; : \\"$\${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}\\"; : \\"$\${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}\\"; : \\"$\${KC_HOSTNAME:?set KEYCLOAK_URL in .env}\\"; [ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
+    entrypoint: ["/bin/bash", "-c", ": \\"$\${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}\\"; : \\"$\${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}\\"; : \\"$\${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}\\"; : \\"$\${KC_HOSTNAME:?set KEYCLOAK_URL in .env}\\"; [ -n \\"$\${KC_PROXY_TRUSTED_ADDRESSES:-}\\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; [ -n \\"$\${KC_BOOTSTRAP_ADMIN_USERNAME:-}\\" ] || unset KC_BOOTSTRAP_ADMIN_USERNAME; [ -n \\"$\${KC_BOOTSTRAP_ADMIN_PASSWORD:-}\\" ] || unset KC_BOOTSTRAP_ADMIN_PASSWORD; exec /opt/keycloak/bin/kc.sh \\"$$@\\"", "kc.sh"]
     command: ["start", "--http-enabled=true", "--http-port=8080"]
     # Every KC_ value is defaulted rather than required, because compose
     # interpolates this service even when the profile is off. The entrypoint
@@ -178,6 +178,12 @@ services:
       # headers from every peer on that network (runbooks/reverse-proxy.md).
       KC_PROXY_TRUSTED_ADDRESSES: \${KC_PROXY_TRUSTED_ADDRESSES:-}
       KC_HOSTNAME: \${KEYCLOAK_URL:-}
+      # The temporary master-realm administrator the setup realm step signs in
+      # with, blank by default. The operator creates the administrator with
+      # "bootstrap-admin user" and these stay blank (runbooks/keycloak-realm.md);
+      # the smoke test sets them in its own transient .env.
+      KC_BOOTSTRAP_ADMIN_USERNAME: \${KC_BOOTSTRAP_ADMIN_USERNAME:-}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: \${KC_BOOTSTRAP_ADMIN_PASSWORD:-}
       # Opens /health/ready on the management port 9000, which is never published.
       KC_HEALTH_ENABLED: "true"
     networks:

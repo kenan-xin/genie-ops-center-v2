@@ -90,6 +90,7 @@ The table below defines the values; the tables above define when each is require
 | `KC_DB_USERNAME`, `KC_DB_PASSWORD` | none, required with the profile | The Postgres role Keycloak connects as. The password is a secret and stays in `.env`. |
 | `KC_PROXY_HEADERS` | `xforwarded` | Keycloak trusts the reverse proxy's `X-Forwarded-*` headers, because the proxy terminates HTTPS (`DEC-19`). |
 | `KC_PROXY_TRUSTED_ADDRESSES` | blank, not set | The proxy's address, from which alone Keycloak accepts forwarded headers. Blank trusts every peer on the `proxy` network (`runbooks/reverse-proxy.md`, step 7). |
+| `KC_BOOTSTRAP_ADMIN_USERNAME`, `KC_BOOTSTRAP_ADMIN_PASSWORD` | blank, not set | The temporary `master`-realm administrator Keycloak creates at first start when both are set. Blank by default, and the entrypoint unsets a blank value: the operator creates the administrator once with `docker compose run --rm keycloak bootstrap-admin user`, and the generated-stack smoke test sets these two in its own transient `.env`. Not the `KEYCLOAK_BOOTSTRAP_*` pair that `genie-ops setup` reads. |
 
 The compose file sets `KC_HEALTH_ENABLED=true` itself, not from `.env`. Its Keycloak health check requests `/health/ready` on the management port 9000, which is never published to the host.
 
