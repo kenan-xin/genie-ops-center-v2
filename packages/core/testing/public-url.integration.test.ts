@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
-import {
-  createRequestPrincipal,
-  createStubGrantReader,
-  STUB_GRANTED_KEY,
-} from "../src/services/authorization/index.ts";
+import { createRequestPrincipal } from "../src/services/authorization/index.ts";
+
+/** The one key the link below is created under; the file store only records it. */
+const GRANTED_KEY = "placeholder:read";
+
 import { FILE_DOWNLOAD_PATH } from "../src/services/file-storage/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 
@@ -103,11 +103,13 @@ describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
     try {
       const link = await context.fileStorage.createLink({
         fileId: "file-1",
-        principal: createRequestPrincipal(
-          { userId: "u1", groups: [] },
-          createStubGrantReader()
+        principal: createRequestPrincipal({ userId: "u1", groups: [] }, () =>
+          Promise.resolve({
+            keys: new Set([GRANTED_KEY] as const),
+            scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
+          })
         ),
-        permission: STUB_GRANTED_KEY,
+        permission: GRANTED_KEY,
         resource: { type: "document", id: "document-1" },
       });
 

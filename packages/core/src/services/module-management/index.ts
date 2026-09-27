@@ -4,6 +4,7 @@ import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { tenantModule } from "../../schema.ts";
+import { syncModuleAdminKey } from "../authorization/roles.ts";
 
 /**
  * One actionable validation failure of R-68a: the configuration field a person has to fix
@@ -143,6 +144,10 @@ export async function setModuleEnabled(
         )
       )
       .returning({ moduleId: tenantModule.moduleId });
+
+    // R-31: the real transition appends or removes the module's admin key on `Tenant
+    // administrator` in the same transaction, so the two never disagree.
+    if (updated.length > 0) await syncModuleAdminKey(tx, module, enabled);
 
     return { changed: updated.length > 0 };
   });

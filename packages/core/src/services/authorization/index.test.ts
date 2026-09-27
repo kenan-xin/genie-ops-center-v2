@@ -1,130 +1,222 @@
 import { describe, expect, it } from "vitest";
 
+import { landingRoute } from "../../lib/entitlement/index.ts";
+import type { PermissionKey, Scope } from "../../lib/module-contract/keys.ts";
+import type { NavigationEntry } from "../../lib/module-contract/module.ts";
 import { can, scopesFor } from "./index.ts";
-import { createRequestPrincipal } from "./principal.ts";
-import { STUB_GRANTED_KEY, createStubGrantReader } from "./stub.ts";
+import {
+  type PermissionGrants,
+  type ParentResolver,
+  createRequestPrincipal,
+} from "./principal.ts";
 
-function countingReader() {
-  const reader = createStubGrantReader();
-  let reads = 0;
+/**
+ * The pure half of the seam: the scope match, the declared-parent match, the bypass and the lazy
+ * loader. The assignment query itself is proved against a real Postgres in
+ * `testing/access.integration.test.ts`.
+ */
+const RECORD = { type: "placeholder-record", id: "r1" };
+
+const FOLDER: Scope = { type: "placeholder-folder", id: "f1" };
+
+function grants(
+  entries: Readonly<Record<string, "all" | readonly Scope[]>>,
+  bypass = false
+): PermissionGrants {
+  const scopes = new Map(
+    Object.entries(entries).map(([key, value]) => [
+      // SAFETY: every key a case below writes is a `<prefix>:<action>` literal.
+      key as PermissionKey,
+      value === "all"
+        ? ({ kind: "all" } as const)
+        : ({ kind: "some", scopes: value } as const),
+    ])
+  );
+
+  return { keys: new Set(scopes.keys()), scopes, bypass };
+}
+
+function principal(held: PermissionGrants, resolve?: ParentResolver) {
+  return createRequestPrincipal(
+    { userId: "u1", groups: [] },
+    () => Promise.resolve(held),
+    resolve
+  );
+}
+
+function countingResolver(parents: readonly Scope[]) {
+  let calls = 0;
 
   return {
-    reads: () => reads,
-    read: async () => {
-      reads += 1;
+    calls: () => calls,
+    resolve: async () => {
+      calls += 1;
 
-      return reader();
+      return parents;
     },
   };
 }
 
-function principalWith(
-  read: () => Promise<
-    Awaited<ReturnType<ReturnType<typeof createStubGrantReader>>>
-  >
-) {
-  return createRequestPrincipal({ userId: "u1", groups: [] }, read);
-}
+describe("the scope match", () => {
+  it("grants a tenant-wide key for any resource", async () => {
+    const user = principal(grants({ "placeholder:use": "all" }));
 
-describe("the Section 0 authorization stub", () => {
-  it("grants placeholder:read", async () => {
-    const user = principalWith(createStubGrantReader());
-
-    await expect(can(user, STUB_GRANTED_KEY)).resolves.toBe(true);
+    await expect(can(user, "placeholder:use", RECORD)).resolves.toBe(true);
   });
 
-  it("refuses every other key", async () => {
-    const user = principalWith(createStubGrantReader());
+  it("grants a record scope on that record only", async () => {
+    const user = principal(grants({ "placeholder:use": [RECORD] }));
 
-    await expect(can(user, "placeholder:admin")).resolves.toBe(false);
-    await expect(can(user, "placeholder:use")).resolves.toBe(false);
-    await expect(can(user, "invoices:approve")).resolves.toBe(false);
-  });
-
-  it("refuses a resource check for a key it does not grant", async () => {
-    const user = principalWith(createStubGrantReader());
-
+    await expect(can(user, "placeholder:use", RECORD)).resolves.toBe(true);
     await expect(
-      can(user, "placeholder:admin", { type: "placeholder-record", id: "r1" })
+      can(user, "placeholder:use", { type: RECORD.type, id: "r2" })
     ).resolves.toBe(false);
   });
 
-  it("answers scopesFor with none for a refused key", async () => {
-    const user = principalWith(createStubGrantReader());
+  it("grants through a declared parent, resolving the record once", async () => {
+    const resolver = countingResolver([FOLDER]);
 
-    await expect(scopesFor(user, "invoices:approve")).resolves.toEqual({
+    const user = principal(
+      grants({ "placeholder:use": [FOLDER], "placeholder:admin": [FOLDER] }),
+      resolver.resolve
+    );
+
+    await expect(can(user, "placeholder:use", RECORD)).resolves.toBe(true);
+    await expect(can(user, "placeholder:admin", RECORD)).resolves.toBe(true);
+
+    expect(resolver.calls()).toBe(1);
+  });
+
+  it("does not resolve when the record scope already matched", async () => {
+    const resolver = countingResolver([FOLDER]);
+
+    const user = principal(
+      grants({ "placeholder:use": [RECORD] }),
+      resolver.resolve
+    );
+
+    await can(user, "placeholder:use", RECORD);
+
+    expect(resolver.calls()).toBe(0);
+  });
+
+  it("refuses a parent the record does not declare", async () => {
+    const user = principal(
+      grants({ "placeholder:use": [FOLDER] }),
+      countingResolver([]).resolve
+    );
+
+    await expect(can(user, "placeholder:use", RECORD)).resolves.toBe(false);
+  });
+
+  it("refuses a key it does not hold", async () => {
+    const user = principal(grants({ "placeholder:use": "all" }));
+
+    await expect(can(user, "placeholder:admin")).resolves.toBe(false);
+    await expect(scopesFor(user, "placeholder:admin")).resolves.toEqual({
       kind: "none",
     });
   });
 
-  it("answers scopesFor with all for the granted key", async () => {
-    const user = principalWith(createStubGrantReader());
+  it("answers scopesFor with all or the list, parents unchanged", async () => {
+    const user = principal(
+      grants({ "placeholder:use": "all", "placeholder:read": [FOLDER] })
+    );
 
-    await expect(scopesFor(user, STUB_GRANTED_KEY)).resolves.toEqual({
+    await expect(scopesFor(user, "placeholder:use")).resolves.toEqual({
+      kind: "all",
+    });
+    await expect(scopesFor(user, "placeholder:read")).resolves.toEqual({
+      kind: "some",
+      scopes: [FOLDER],
+    });
+  });
+
+  it("lets only the bypass answer everything", async () => {
+    const user = principal(grants({}, true));
+
+    await expect(can(user, "invoices:approve", RECORD)).resolves.toBe(true);
+    await expect(scopesFor(user, "invoices:approve")).resolves.toEqual({
       kind: "all",
     });
   });
 });
 
 describe("the lazy loader", () => {
-  it("reads once however many calls one execution makes", async () => {
-    const counting = countingReader();
-    const user = principalWith(counting.read);
+  function counting() {
+    let reads = 0;
 
-    expect(counting.reads()).toBe(0);
+    return {
+      reads: () => reads,
+      read: async () => {
+        reads += 1;
 
-    await can(user, STUB_GRANTED_KEY);
-    await can(user, "placeholder:admin");
-    await scopesFor(user, STUB_GRANTED_KEY);
-    await can(user, STUB_GRANTED_KEY);
+        return grants({ "placeholder:read": "all" });
+      },
+    };
+  }
 
-    expect(counting.reads()).toBe(1);
-  });
+  it("reads once however many calls one execution makes, even concurrent ones", async () => {
+    const reader = counting();
 
-  it("reads once even when calls start before the first read settles", async () => {
-    const counting = countingReader();
-    const user = principalWith(counting.read);
+    const user = createRequestPrincipal(
+      { userId: "u1", groups: [] },
+      reader.read
+    );
+
+    expect(reader.reads()).toBe(0);
 
     await Promise.all([
-      can(user, STUB_GRANTED_KEY),
-      can(user, STUB_GRANTED_KEY),
-      scopesFor(user, STUB_GRANTED_KEY),
+      can(user, "placeholder:read"),
+      scopesFor(user, "placeholder:read"),
     ]);
+    await can(user, "placeholder:admin");
 
-    expect(counting.reads()).toBe(1);
+    expect(reader.reads()).toBe(1);
   });
 
   it("memoises a rejected read for the principal's lifetime", async () => {
     let reads = 0;
 
-    const user = principalWith(async () => {
-      reads += 1;
+    const user = createRequestPrincipal(
+      { userId: "u1", groups: [] },
+      async () => {
+        reads += 1;
 
-      throw new Error("loader down");
-    });
+        throw new Error("loader down");
+      }
+    );
 
-    await expect(can(user, STUB_GRANTED_KEY)).rejects.toThrow("loader down");
-    await expect(can(user, STUB_GRANTED_KEY)).rejects.toThrow("loader down");
+    await expect(can(user, "placeholder:read")).rejects.toThrow("loader down");
+    await expect(can(user, "placeholder:read")).rejects.toThrow("loader down");
 
     expect(reads).toBe(1);
   });
+});
 
-  it("keeps two executions apart", async () => {
-    const first = countingReader();
-    const second = countingReader();
+const ARCHIVE: NavigationEntry = {
+  id: "archive",
+  label: "Archive",
+  path: "/archive",
+  surface: "workspace",
+  requiredPermission: "placeholder:use",
+};
 
-    await can(principalWith(first.read), STUB_GRANTED_KEY);
-    await can(principalWith(second.read), STUB_GRANTED_KEY);
+const HOME: NavigationEntry = {
+  id: "home",
+  label: "Home",
+  path: "/home",
+  surface: "workspace",
+  requiredPermission: "placeholder:use",
+  landing: true,
+};
 
-    expect(first.reads()).toBe(1);
-    expect(second.reads()).toBe(1);
+describe("the landing route", () => {
+  it("is the landing entry's path when it survived the filter", () => {
+    expect(landingRoute([ARCHIVE, HOME])).toBe("/home");
   });
 
-  it("does not read until a permission is asked for", () => {
-    const counting = countingReader();
-
-    principalWith(counting.read);
-
-    expect(counting.reads()).toBe(0);
+  it("is undefined when the landing entry was omitted", () => {
+    expect(landingRoute([ARCHIVE])).toBeUndefined();
   });
 });

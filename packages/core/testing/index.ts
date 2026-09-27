@@ -13,6 +13,14 @@ import { startDisposablePostgres } from "./postgres.ts";
 
 export { enableModules } from "./enable-modules.ts";
 
+export {
+  assignRole,
+  insertGroup,
+  insertPersonWith,
+  insertRole,
+  insertUser,
+} from "./access-fixtures.ts";
+
 export { markSetupDone } from "./mark-setup-done.ts";
 
 export { startDisposablePostgres } from "./postgres.ts";

@@ -1,3 +1,5 @@
+import { can } from "../../services/authorization/index.ts";
+import type { RequestPrincipal } from "../../services/authorization/principal.ts";
 import type { Module, NavigationEntry } from "../module-contract/module.ts";
 import type { EntitlementReader } from "../tenant-context/readers.ts";
 
@@ -31,4 +33,36 @@ export async function enabledNavigation(input: {
   return decided.flatMap(({ module, enabled }) =>
     enabled ? module.navigation.entries : []
   );
+}
+
+/**
+ * R-34, the permission half beside the entitlement half: an entry of an included, entitled module
+ * stays only when `can()` grants its required permission, through the request's one loader. A
+ * module whose entries all go contributes nothing. Hiding is never the enforcement: the route
+ * behind an omitted entry still refuses in its own `can()` check (R-35).
+ */
+export async function permittedNavigation(input: {
+  readonly entitlements: EntitlementReader;
+  readonly modules: readonly Module[];
+  readonly caller: RequestPrincipal;
+}): Promise<readonly NavigationEntry[]> {
+  const entries = await enabledNavigation(input);
+
+  const allowed = await Promise.all(
+    entries.map((entry) => can(input.caller, entry.requiredPermission))
+  );
+
+  return entries.filter((_, index) => allowed[index] === true);
+}
+
+/**
+ * Where a person goes after sign-in (R-36, DEC-49): the landing entry's path when it survived
+ * `permittedNavigation`, otherwise undefined, and the shell shows the no-grants empty state.
+ */
+export function landingRoute(
+  permitted: readonly NavigationEntry[]
+): string | undefined {
+  return permitted.find(
+    (entry) => entry.surface === "workspace" && entry.landing === true
+  )?.path;
 }

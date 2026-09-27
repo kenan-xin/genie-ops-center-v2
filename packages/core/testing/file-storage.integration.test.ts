@@ -12,13 +12,12 @@ import type {
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { file, fileBlob } from "../src/schema.ts";
 import type { RequestPrincipal } from "../src/services/authorization/index.ts";
-import {
-  createRequestPrincipal,
-  createStubGrantReader,
-  STUB_GRANTED_KEY,
-} from "../src/services/authorization/index.ts";
+import { createRequestPrincipal } from "../src/services/authorization/index.ts";
 import type { PermissionGrants } from "../src/services/authorization/index.ts";
 import { startDisposableDeployment } from "./index.ts";
+
+/** The key the file links in this file are created under; the file store only records it. */
+const GRANTED_KEY: PermissionKey = "placeholder:read";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -73,9 +72,11 @@ type FileTenantContext = TenantContext & {
 const resource: ResourceRef = { type: "document", id: "document-1" };
 
 function principal(): RequestPrincipal {
-  return createRequestPrincipal(
-    { userId: "u1", groups: [] },
-    createStubGrantReader()
+  return createRequestPrincipal({ userId: "u1", groups: [] }, () =>
+    Promise.resolve({
+      keys: new Set([GRANTED_KEY]),
+      scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
+    })
   );
 }
 
@@ -425,7 +426,7 @@ describe("FileStorage against a real Postgres deployment", () => {
     const access = {
       fileId,
       principal: identity,
-      permission: STUB_GRANTED_KEY,
+      permission: GRANTED_KEY,
       resource,
     };
 
@@ -524,7 +525,7 @@ describe("FileStorage against a real Postgres deployment", () => {
     const allowed = {
       fileId,
       principal: allowedPrincipal,
-      permission: STUB_GRANTED_KEY,
+      permission: GRANTED_KEY,
       resource: denied,
     };
 
@@ -552,7 +553,7 @@ describe("FileStorage against a real Postgres deployment", () => {
     const link = await storage.createLink({
       fileId,
       principal: principal(),
-      permission: STUB_GRANTED_KEY,
+      permission: GRANTED_KEY,
       resource,
     });
 
@@ -564,8 +565,8 @@ describe("FileStorage against a real Postgres deployment", () => {
         grantReads += 1;
 
         return Promise.resolve({
-          keys: new Set([STUB_GRANTED_KEY]),
-          scopes: new Map([[STUB_GRANTED_KEY, { kind: "all" } as const]]),
+          keys: new Set([GRANTED_KEY]),
+          scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
         });
       }
     );

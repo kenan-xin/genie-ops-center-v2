@@ -4,7 +4,6 @@ import {
   AppError,
   createModuleTRPC,
   createRequestPrincipal,
-  createStubGrantReader,
   type ModuleRequestContext,
   type TenantContext,
 } from "../../index.ts";
@@ -28,9 +27,8 @@ function contextWithEntitlement(enabled: boolean) {
   return {
     context: {
       tenant,
-      caller: createRequestPrincipal(
-        { userId: "test-user", groups: [] },
-        createStubGrantReader()
+      caller: createRequestPrincipal({ userId: "test-user", groups: [] }, () =>
+        Promise.resolve({ keys: new Set(), scopes: new Map() })
       ),
       requestId: REQUEST_ID,
     } satisfies ModuleRequestContext & { readonly requestId: string },
