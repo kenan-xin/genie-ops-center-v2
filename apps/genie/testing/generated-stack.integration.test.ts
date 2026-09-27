@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  SMOKE_REALM,
   generateTenantDeploy,
   startGeneratedStack,
   type GeneratedStack,
@@ -72,7 +73,13 @@ describe("the generated customer stack smoke", () => {
       databasePassword: DATABASE_PASSWORD,
       filled: {
         PUBLIC_URL: "https://example.invalid",
-        KEYCLOAK_URL: "https://id.example.invalid",
+        // One address for the app and setup: the internal Compose alias, which both the app
+        // container and the keycloak service use. A real stack sets the browser-visible address
+        // instead; the address guard is Specification 02 R-54c/d (bead d8l5.18).
+        KEYCLOAK_URL: `http://${SLUG}-keycloak:8080`,
+        KEYCLOAK_REALM: SMOKE_REALM,
+        KEYCLOAK_CLIENT_ID: "genie-ops-center",
+        BETTER_AUTH_SECRET: "smoke-better-auth-secret-at-least-32-chars",
         RESEND_API_KEY: SECRET_VALUE,
         S3_SECRET_ACCESS_KEY: SECRET_VALUE,
         KC_DB: "postgres",

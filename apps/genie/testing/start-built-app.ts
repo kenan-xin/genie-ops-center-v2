@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
+import { TEST_AUTH_ENV } from "./auth-env.ts";
+import { startDiscoveryStub } from "./identity-discovery-stub.ts";
+
 export type BuiltApp = {
   readonly baseUrl: string;
   readonly logs: () => string;
@@ -48,7 +51,10 @@ async function waitForReady(
  *
  * `PUBLIC_URL` is supplied as well as `DATABASE_URL`, because environment
  * validation requires both and the process would otherwise exit before either
- * transport could be exercised.
+ * transport could be exercised. The Section 2 application profile also requires
+ * the authentication values; unless the caller's environment names a realm, a
+ * throwaway discovery stub answers, so health is `ok` and only a test that
+ * proves sign-in uses a real realm.
  */
 export async function startBuiltApp(
   databaseUrl: string,
@@ -62,9 +68,18 @@ export async function startBuiltApp(
     "../tools/start-standalone.mjs"
   );
 
+  const realmOverride = process.env.KEYCLOAK_URL ?? TEST_AUTH_ENV.KEYCLOAK_URL;
+
+  const stub = await (realmOverride === TEST_AUTH_ENV.KEYCLOAK_URL
+    ? startDiscoveryStub()
+    : Promise.resolve(undefined));
+
   const child = spawn("node", [launcher], {
     env: {
       ...process.env,
+      ...TEST_AUTH_ENV,
+      // The stub's address when the caller named no realm, else the caller's own value.
+      KEYCLOAK_URL: stub?.hostUrl ?? realmOverride,
       DATABASE_URL: databaseUrl,
       PUBLIC_URL: "https://example.invalid",
       PORT: String(port),
@@ -84,6 +99,8 @@ export async function startBuiltApp(
   if (!ready) {
     child.kill("SIGKILL");
 
+    await stub?.stop();
+
     throw new Error(`The built application did not become ready.\n${output}`);
   }
 
@@ -96,6 +113,8 @@ export async function startBuiltApp(
       // the server orphaned, still holding the port, and the next run then
       // probes a stale bundle and reads its 404s as this run's results.
       if (child.exitCode !== null || child.signalCode !== null) {
+        await stub?.stop();
+
         return;
       }
 
@@ -106,6 +125,7 @@ export async function startBuiltApp(
       child.kill("SIGTERM");
 
       await exited;
+      await stub?.stop();
     },
   };
 }

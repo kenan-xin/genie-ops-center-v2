@@ -11,6 +11,13 @@ import type { AppContext } from "./context.ts";
 const VALID_SOURCE = {
   DATABASE_URL: "postgres://u:p@h:5432/d",
   PUBLIC_URL: "https://example.invalid",
+  // The Section 2 application profile requires the authentication values; the realm address is
+  // unreachable, so the built context has an auth member in the `degraded` discovery state.
+  BETTER_AUTH_SECRET: "test-better-auth-secret-at-least-32-characters",
+  KEYCLOAK_URL: "http://127.0.0.1:1",
+  KEYCLOAK_REALM: "genie",
+  KEYCLOAK_CLIENT_ID: "genie-ops-center",
+  KEYCLOAK_CLIENT_SECRET: "test-client-secret",
 };
 
 // SAFETY: the bootstrap reads only `tenant.db.$client.end` from the context it

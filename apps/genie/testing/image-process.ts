@@ -3,6 +3,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { TEST_AUTH_ENV } from "./auth-env.ts";
+import { startDiscoveryStub } from "./identity-discovery-stub.ts";
 import {
   MAX_SCANNED_FILE_BYTES,
   filesystemEntries,
@@ -281,13 +283,26 @@ export async function startImage(
   tag: string = IMAGE,
   command: readonly string[] = []
 ) {
+  // The Section 2 application profile requires the authentication values. A test that does not
+  // name a realm gets a throwaway discovery stub, so the app starts and health is `ok`; a test
+  // that proves sign-in passes its own `KEYCLOAK_URL`.
+  const stub =
+    env.KEYCLOAK_URL === undefined ? await startDiscoveryStub() : undefined;
+
   const args = ["run", "-d"];
 
   if (port !== undefined) args.push("-p", `${port}:3000`);
 
   args.push("--add-host", `${HOST_ALIAS}:host-gateway`);
 
-  for (const [key, value] of Object.entries(env)) {
+  const entries: [string, string][] = Object.entries({
+    ...TEST_AUTH_ENV,
+    ...env,
+  });
+
+  if (stub !== undefined) entries.push(["KEYCLOAK_URL", stub.containerUrl]);
+
+  for (const [key, value] of entries) {
     const reachable =
       key === "DATABASE_URL" ? reachableFromContainer(value) : value;
 
@@ -340,7 +355,10 @@ export async function startImage(
         };
       }
     },
-    stop: () => run("docker", ["rm", "-f", id]).catch(() => undefined),
+    stop: async () => {
+      await run("docker", ["rm", "-f", id]).catch(() => undefined);
+      await stub?.stop();
+    },
   };
 }
 

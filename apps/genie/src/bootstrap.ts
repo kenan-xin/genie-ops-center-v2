@@ -174,7 +174,8 @@ function buildContext(
     source,
     logger,
     compiledModuleIds,
-    "genie-app"
+    "genie-app",
+    "application"
   );
 
   // The same registration the worker makes: the compiled modules' capability providers and event
@@ -254,7 +255,7 @@ export async function runBootstrap(
   let failed = false;
 
   try {
-    const env = validateEnvironment(source);
+    const env = validateEnvironment(source, "application");
     const activeLogger = options.logger ?? createLogger(env);
 
     logger = activeLogger;

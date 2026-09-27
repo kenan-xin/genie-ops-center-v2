@@ -10,5 +10,16 @@
   },
   "access": {
     "denied": "You may not view this page."
+  },
+  "signIn": {
+    "title": "Sign in",
+    "action": "Sign in with your company account",
+    "errors": {
+      "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
+      "notRegistered": "This account is not registered for this service.",
+      "accessDisabled": "Access for this account is disabled.",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "sessionMissing": "Sign in to continue."
+    }
   }
 }

@@ -14,7 +14,7 @@ const PROXY_NETWORK = "proxy";
 export const POSTGRES_IMAGE = "postgres:18-alpine";
 
 /** The realm `genie-ops setup` creates in the bundled Keycloak for the smoke test. */
-const SMOKE_REALM = "smoke";
+export const SMOKE_REALM = "smoke";
 
 /** How long a database readiness wait may run before it fails with diagnostics. */
 const READINESS_TIMEOUT_MS = 60000;

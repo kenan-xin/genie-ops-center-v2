@@ -29,8 +29,9 @@ async function handler(request: Request): Promise<Response> {
         // reaches its data only through this, so omitting it makes every
         // procedure throw before it reads anything (DEC-34).
         tenant: app.tenant,
-        // One principal per request, never shared (R-27).
-        caller: requestPrincipal(app.tenant),
+        // One principal per request, never shared (R-27). The signed-in person comes from this
+        // request's Better Auth session, read once here.
+        caller: await requestPrincipal(app.tenant, request.headers),
       };
     },
     // AC-15: the id the client receives must match a redacted server log entry.

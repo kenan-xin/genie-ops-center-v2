@@ -1,5 +1,6 @@
 import { type PermissionKey, can } from "@genie/core";
 import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers.js";
 import type { ReactNode } from "react";
 
 import { requireContext } from "./context.ts";
@@ -15,7 +16,10 @@ export async function renderIfPermitted(
   permission: PermissionKey,
   render: () => ReactNode
 ): Promise<ReactNode> {
-  const caller = requestPrincipal(requireContext().tenant);
+  const caller = await requestPrincipal(
+    requireContext().tenant,
+    await headers()
+  );
 
   if (!(await can(caller, permission))) {
     const t = await getTranslations("access");

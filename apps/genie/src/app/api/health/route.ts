@@ -1,5 +1,6 @@
 import { readSetupProgress, setupSatisfied } from "@genie/core";
 
+import { requireAuth } from "../../../auth.ts";
 import { readContext } from "../../../context.ts";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,18 @@ function withTimeout<T>(work: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
+function body(text: "ok" | "degraded"): Response {
+  return new Response(text, {
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
 /**
- * R-11: unauthenticated, body `ok` or `degraded` and nothing else. `degraded` means only that
- * setup is incomplete; an unreachable database is a 503 with no detail (D-14). It checks the
- * database on every call and does not use the setup gate's latch, so a database that stops after
- * startup is visible here even while the gate stays open in the proxy.
+ * R-11: unauthenticated, body `ok` or `degraded` and nothing else. `degraded` means setup is
+ * incomplete or, once it is complete, the realm's discovery document does not answer (R-54d). An
+ * unreachable database is a 503 with no detail (D-14). It checks the database on every call and
+ * does not use the setup gate's latch, so a database that stops after startup is visible here
+ * even while the gate stays open in the proxy.
  *
  * No request line is written here. The proxy is the one request logger (R-44), and it runs before
  * the filesystem check, so `/api/health` is recorded there with the context id the
@@ -51,9 +59,14 @@ export async function GET(): Promise<Response> {
       DATABASE_PROBE_TIMEOUT_MS
     );
 
-    return new Response(setupSatisfied(steps) ? "ok" : "degraded", {
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
+    if (!setupSatisfied(steps)) return body("degraded");
+
+    // R-54d: before setup the answer is already `degraded`; once it is done, the realm's
+    // discovery document decides. `ensureDiscovery` retries at most every ten seconds, so a
+    // recovered realm is reported without a restart.
+    const discovery = await requireAuth(context.tenant).ensureDiscovery();
+
+    return body(discovery.ready ? "ok" : "degraded");
   } catch {
     // The cause stays in the server; the body carries no database text (R-11 amendment).
     return new Response("unavailable", { status: 503 });

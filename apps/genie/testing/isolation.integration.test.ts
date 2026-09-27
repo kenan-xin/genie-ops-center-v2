@@ -8,6 +8,7 @@ import {
 } from "@genie/core";
 import {
   enableModules,
+  insertCredentialPerson,
   insertPersonWith,
   startDisposableDeployment,
 } from "@genie/core/testing";
@@ -22,6 +23,17 @@ const PNG_BYTES = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
   "base64"
 );
+
+/** The Section 2 auth values, so each context builds its own Better Auth instance (DEC-34, R-4). */
+const AUTH_ENV = {
+  BETTER_AUTH_SECRET: "x".repeat(32),
+  KEYCLOAK_URL: "http://127.0.0.1:1",
+  KEYCLOAK_REALM: "genie",
+  KEYCLOAK_CLIENT_ID: "genie-ops-center",
+  KEYCLOAK_CLIENT_SECRET: "test-client-secret",
+};
+
+const AUTH_PASSWORD = "break-glass-password-14";
 
 async function seedTenantReaders(tenant: TenantContext, minutes: number) {
   await tenant.db.$client.query(
@@ -68,8 +80,14 @@ let isolationRan = false;
 
 beforeAll(async () => {
   [first, second] = await Promise.all([
-    startDisposableDeployment([placeholderModule]),
-    startDisposableDeployment([placeholderModule]),
+    startDisposableDeployment([placeholderModule], {
+      env: AUTH_ENV,
+      profile: "application",
+    }),
+    startDisposableDeployment([placeholderModule], {
+      env: AUTH_ENV,
+      profile: "application",
+    }),
   ]);
 
   // The read procedure's `createModuleTRPC` gate refuses a disabled module before `can()`, so
@@ -280,5 +298,57 @@ describe("two tenant contexts in one process", () => {
 
     expect(own.rowCount).toBe(1);
     expect(crossed.rowCount).toBe(0);
+  });
+
+  // R-4 and DEC-34: the instance is a member of its context, never a module singleton, so two
+  // contexts in one process hold two instances and a session one created is invisible to the
+  // other.
+  it("the two-context isolation test each context holds its own Better Auth instance and neither answers for the other", async () => {
+    const firstAuth = first.context.auth;
+    const secondAuth = second.context.auth;
+
+    if (firstAuth === undefined || secondAuth === undefined) {
+      throw new Error("a deployment built no auth member");
+    }
+
+    expect(firstAuth).not.toBe(secondAuth);
+
+    const userId = await insertCredentialPerson(first.context, {
+      email: "isolation@example.com",
+      password: AUTH_PASSWORD,
+    });
+
+    const response = await firstAuth.handler(
+      new Request(`${first.context.env.publicUrl}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "origin": first.context.env.publicUrl,
+        },
+        body: JSON.stringify({
+          email: "isolation@example.com",
+          password: AUTH_PASSWORD,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+
+    const cookie = response.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0] ?? "")
+      .join("; ");
+
+    const mine = await firstAuth.getSession({
+      headers: new Headers({ cookie }),
+    });
+
+    expect(mine?.user.id).toBe(userId);
+
+    const theirs = await secondAuth.getSession({
+      headers: new Headers({ cookie }),
+    });
+
+    expect(theirs).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { permittedNavigation } from "@genie/core";
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers.js";
 
 import { requireContext } from "../context.ts";
 import { modules } from "../registry.ts";
@@ -27,7 +28,7 @@ export default async function HomePage() {
   const entries = await permittedNavigation({
     entitlements: tenant.entitlements,
     modules,
-    caller: requestPrincipal(tenant),
+    caller: await requestPrincipal(tenant, await headers()),
   });
 
   const items = entries.map((entry) => ({
