@@ -1,4 +1,5 @@
 import { userInfo } from "node:os";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
 import {
@@ -153,10 +154,18 @@ function parseCommand(
         run: (context, options) =>
           runSetup(
             context,
-            { tenantConfig, brandingSeed },
+            {
+              tenantConfig,
+              brandingSeed,
+              realmOverrides: join(
+                dirname(tenantConfig),
+                "realm.overrides.json"
+              ),
+            },
             {
               compiledModuleIds,
               histories: options.histories,
+              source: options.source,
               output: options.output,
               errorOutput: options.errorOutput,
             },

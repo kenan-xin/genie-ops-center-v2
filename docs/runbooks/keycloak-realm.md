@@ -25,9 +25,9 @@ Two templates live in the repository under `deploy/keycloak/`.
 | `realm-template.json` | Brokered | The customer has an identity provider. |
 | `realm-template.local.json` | Local accounts | `local_accounts` is true in `tenant.yaml` (`DEC-10`, `DEC-36`). |
 
-One customer delta file sits beside them, in `customers/<slug>/deploy/realm.overrides.json`. It holds only the values that differ for that customer. Keep it small. A value that the template already sets correctly must not be repeated there.
+One customer delta file sits beside them, in `customers/<slug>/deploy/realm.overrides.json`. It holds only the values that differ for that customer. Keep it small. A value that the template already sets correctly must not be repeated there. The override may set only these top-level keys, and a key outside the list refuses the realm step by name (Spec 2 D2-3): `ssoSessionIdleTimeout`, `ssoSessionMaxLifespan`, `accessTokenLifespan`, `passwordPolicy`, `loginTheme`, `internationalizationEnabled`, `supportedLocales` and `defaultLocale`. The clients, the `users` service account, the identity providers and their mappers, the authentication flows, brute-force settings, the email theme, the display name, the SMTP server, and every secret are fixed by the template and core, and cannot be overridden.
 
-Planned. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it, and applies the result. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
+Keycloak. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it (objects merge key by key, a list in the override replaces the whole list), fills the values core owns (the client secrets, the redirect URIs from `PUBLIC_URL`, the display name, the SMTP settings), and applies the result in one `POST /admin/realms`. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
 
 ## What the realm template guarantees
 
@@ -332,11 +332,11 @@ Use the break-glass account only for the rows that name it, and sign out as soon
 
 Every line here must be confirmed at the first provisioning against a running Keycloak 26 server, and this file corrected.
 
-1. That the settled role set for `genie-admin`, `manage-users`, `view-users`, `query-users`, `view-clients`, and `manage-identity-providers`, carries every planned command, and that no command needs `manage-realm` or `manage-clients` once the clients, the display name, and the SMTP settings are written at realm creation.
+1. That the settled role set for `genie-admin`, `manage-users`, `view-users`, `query-users`, `view-clients`, and `manage-identity-providers`, carries every planned command, and that no command needs `manage-realm` or `manage-clients` once the clients, the display name, and the SMTP settings are written at realm creation. The `clients` step proves `view-clients` reaches the three clients; `manage-users` is proven when Add person lands.
 2. That the `groups` claim arrives as bare names with `full.path` set to `false`, on a brokered realm and on a local-accounts realm alike.
 3. The exact broker endpoint path that a customer registers, `KEYCLOAK_URL/realms/<realm>/broker/<alias>/endpoint`.
 4. The Trust Email setting on the identity provider, and whether the brokered variant needs it when the realm does not verify email at all.
 5. The correct `sslRequired` value behind a reverse proxy that terminates TLS, together with the Keycloak proxy headers setting.
 6. Whether one realm can carry both the User Attribute mapper and the Group Membership mapper on the same claim name without a conflict, which an LDAP realm would need if it also brokers a provider.
-7. The exact merge behavior of `realm.overrides.json` over a template, which is a Genie Ops Center design point and not a Keycloak feature.
+7. Settled (Spec 2 D2-3): `realm.overrides.json` merges over the template with es-toolkit `mergeWith` — objects merge key by key, a list replaces the whole list — and is then checked against the allow-list named in "Where the realm templates live". A key outside the list refuses the step.
 8. Whether the application idle window and the realm SSO idle timeout can be equal without a race at the boundary.

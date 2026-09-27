@@ -35,6 +35,7 @@ describe("the setup gate latch", () => {
       tenantConfig,
       [
         "modules: []",
+        "realm: customer",
         'onboarding_mode: "invite"',
         "local_accounts: false",
         "first_administrators:",
@@ -87,7 +88,7 @@ describe("the setup gate latch", () => {
       .filter(({ state }) => state === "done")
       .map(({ step }) => step);
 
-    expect(completedSteps).toEqual(["migrations", "seed"]);
+    expect(completedSteps).toEqual(["clients", "migrations", "realm", "seed"]);
 
     await expect(runGenieOps(args, options)).resolves.toBe(0);
 

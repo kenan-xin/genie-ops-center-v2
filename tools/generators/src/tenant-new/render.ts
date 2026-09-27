@@ -193,7 +193,7 @@ export function renderTenant(
         `${tenantYamlBody(tenant)}\n`,
     ],
     [`${root}/modules.txt`, tenant.modules.map((id) => `${id}\n`).join("")],
-    [`${root}/realm.overrides.json`, realmOverrides(input)],
+    [`${root}/realm.overrides.json`, realmOverrides()],
     [
       `${root}/branding.seed.json`,
       json({

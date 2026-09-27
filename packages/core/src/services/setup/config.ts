@@ -10,10 +10,11 @@ import {
   tenantYamlSchema,
 } from "../../lib/tenant-config/index.ts";
 
-/** The two configuration files one `genie-ops setup` run reads (R-21). */
+/** The configuration files one `genie-ops setup` run reads (R-21, R-53). */
 export type SetupConfigFiles = {
   readonly tenantConfig: string;
   readonly brandingSeed: string;
+  readonly realmOverrides: string;
 };
 
 /** Every problem zod found, keyed by path, in one line. */

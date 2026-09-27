@@ -22,6 +22,10 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json nx.json tsconfig.base.json 
 COPY packages ./packages
 COPY tools ./tools
 COPY apps/genie ./apps/genie
+# The realm templates the realm step reads are referenced from core through `new URL`, which the
+# production bundler traces the same way it traces the migration SQL. Copy them into the builder so
+# that trace has them.
+COPY deploy/keycloak ./deploy/keycloak
 
 # Build-input exclusion (Spec 0 AC-5/AC-24, pg4): remove every packages/modules
 # folder the selection does not name, fail unless the remaining folders equal

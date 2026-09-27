@@ -28,6 +28,7 @@
     "better-auth": "1.7.6",
     "dompurify": "3.4.16",
     "drizzle-orm": "0.45.2",
+    "es-toolkit": "1.52.0",
     "jsdom": "30.1.1",
     "nodemailer": "7.0.13",
     "pg": "8.23.0",

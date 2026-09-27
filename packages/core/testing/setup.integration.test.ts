@@ -235,7 +235,7 @@ async function auditRows(observer: Client): Promise<AuditRow[]> {
 describe("genie-ops setup", () => {
   it("runs migrations before seed, inserts the configured rows, and leaves a rerun unchanged", async () => {
     const fixture = await setupFixture();
-    const files = await configFiles();
+    const files = await configFiles({ tenantYaml: customerTenantYaml() });
     const firstOutput = outputCapture();
 
     await expect(
@@ -255,7 +255,9 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
+        { step: "realm", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
@@ -382,6 +384,7 @@ describe("genie-ops setup", () => {
       tenantYaml: [
         "modules:",
         "  - fixture",
+        "realm: customer",
         "first_administrators:",
         "  - admin@example.com",
         "break_glass_email: break-glass@example.com",
@@ -461,7 +464,9 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
+        { step: "realm", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
@@ -518,7 +523,7 @@ describe("genie-ops setup", () => {
 
   it("resumes after a seed transaction fails without leaving partial seed rows", async () => {
     const fixture = await setupFixture();
-    const files = await configFiles();
+    const files = await configFiles({ tenantYaml: customerTenantYaml() });
 
     const migrationContext = createTenantContext(
       fixture.source,
@@ -602,7 +607,9 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
+        { step: "realm", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
@@ -651,7 +658,7 @@ describe("genie-ops setup", () => {
 
   it("completes without mail variables and logs fresh-database migration progress", async () => {
     const fixture = await setupFixture();
-    const files = await configFiles();
+    const files = await configFiles({ tenantYaml: customerTenantYaml() });
     const captured = outputCapture();
 
     expect(fixture.source).not.toHaveProperty("MAIL_PROVIDER");

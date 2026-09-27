@@ -1,6 +1,7 @@
 import { ne, sql } from "drizzle-orm";
 
 import { foregroundFor } from "../../lib/branding/foreground.ts";
+import type { EnvironmentSource } from "../../lib/environment/index.ts";
 import type {
   BrandingSeed,
   TenantYaml,
@@ -13,6 +14,8 @@ import {
   tenantSettings,
 } from "../../schema.ts";
 import { rootCauseMessage } from "../../utils/error-cause.ts";
+import { clientsStep } from "../keycloak/clients-step.ts";
+import { realmStep } from "../keycloak/realm-step.ts";
 import {
   type MigrationHistory,
   type MigrationLog,
@@ -34,12 +37,14 @@ export type SetupOptions = {
   readonly compiledModuleIds: readonly string[];
   /** The module histories only; the migrator run prepends core's own (R-25). */
   readonly histories: readonly MigrationHistory[];
+  /** The raw environment, for the Section 2 values the realm and clients steps read at step time. */
+  readonly source: EnvironmentSource;
   readonly output: (line: string) => void;
   readonly errorOutput: (line: string) => void;
 };
 
-/** The steps this section knows, in the run order the `setup_step` table records (R-14, R-18). */
-const SETUP_STEPS = ["migrations", "seed"] as const;
+/** The steps this section knows, in the run order the `setup_step` table records (R-14, R-18, R-52). */
+const SETUP_STEPS = ["migrations", "seed", "realm", "clients"] as const;
 
 type SetupStep = (typeof SETUP_STEPS)[number];
 
@@ -322,6 +327,18 @@ async function stepWork(
 
     case "seed":
       return seedStep(context, files, options);
+
+    case "realm":
+      return realmStep(context, files, {
+        source: options.source,
+        output: options.output,
+      });
+
+    case "clients":
+      return clientsStep(context, {
+        source: options.source,
+        output: options.output,
+      });
   }
 }
 
@@ -381,12 +398,12 @@ async function runStep(
 
 /**
  * The realm-mode reconciliation (R-54a): every setup run compares `tenant.yaml`'s `realm` with the
- * `realm_mode` the seed step wrote, and refuses with a named cause when they differ, so the mode
- * is never changed by editing `tenant.yaml`. It runs after the seed step and before any later
- * step, so the `realm` and `clients` steps never act on a mode the file would change. The seed
- * step writes the value once on its insert (`ON CONFLICT DO NOTHING` leaves a later value alone).
- * The "write once for a stack seeded before the column existed" recovery belongs to the `realm`
- * step, whose row is S2-03 and out of scope here.
+ * `realm_mode` the seed step wrote. While the `realm` step has no row, a difference is written
+ * from `tenant.yaml` once — the recovery for a stack seeded before the column existed, whose
+ * `realm_mode` keeps the `managed` default — and after the `realm` step has a row a difference is
+ * refused, so the mode is never changed by editing `tenant.yaml`. It runs after the seed step and
+ * before any later step, so the `realm` and `clients` steps never act on a mode the file would
+ * change. The seed step writes the value once on its insert (`ON CONFLICT DO NOTHING`).
  */
 async function reconcileRealmMode(
   context: TenantContext,
@@ -398,11 +415,19 @@ async function reconcileRealmMode(
   const [row] = await context.db.select().from(tenantSettings).limit(1);
   const stored = row?.realmMode ?? "managed";
 
-  if (expected !== stored) {
+  if (expected === stored) return;
+
+  if ((await stepState(context, "realm")) !== undefined) {
     throw new Error(
       `tenant.yaml realm "${expected}" differs from the recorded realm_mode "${stored}"; the realm mode is fixed at setup and cannot be changed by editing tenant.yaml`
     );
   }
+
+  // The write-once recovery: the realm step has not run, so the mode still follows `tenant.yaml`.
+  await context.db
+    .update(tenantSettings)
+    .set({ realmMode: expected })
+    .where(sql`true`);
 }
 
 /**

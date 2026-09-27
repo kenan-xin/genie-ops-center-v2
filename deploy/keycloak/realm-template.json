@@ -1,0 +1,109 @@
+{
+  "realm": "",
+  "enabled": true,
+  "displayName": "",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "emailTheme": "",
+  "ssoSessionIdleTimeout": 900,
+  "ssoSessionMaxLifespan": 86400,
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "clientId": "genie-ops-center",
+      "name": "Genie Ops Center",
+      "description": "Sign-in client for the Genie Ops Center application. Its secret is KEYCLOAK_CLIENT_SECRET.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [""],
+      "webOrigins": [""],
+      "attributes": {
+        "post.logout.redirect.uris": "",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "groups",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true",
+            "aggregate.attrs": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "genie-studio",
+      "name": "Genie Studio",
+      "description": "The second product in the same realm, so a person signs in once for both (DEC-8).",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "genie-admin",
+      "name": "Genie admin service client",
+      "description": "Service client for genie-ops realm administration, with rights in this realm only. Its secret is KEYCLOAK_ADMIN_CLIENT_SECRET.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {}
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-genie-admin",
+      "enabled": true,
+      "serviceAccountClientId": "genie-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "view-clients",
+          "manage-identity-providers"
+        ]
+      },
+      "realmRoles": []
+    }
+  ]
+}

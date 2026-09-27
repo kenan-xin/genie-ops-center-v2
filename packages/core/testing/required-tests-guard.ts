@@ -240,6 +240,19 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/realm-step.integration.test.ts",
+    reason:
+      "Spec 2 AC-11 and AC-12 require the realm and clients steps to run against a real Keycloak 26.7.4",
+    cases: [
+      "the realm and clients setup steps against a real Keycloak creates the brokered realm in one POST with the three clients, PKCE, brute force, the groups mapper and the display name",
+      "the realm and clients setup steps against a real Keycloak creates the local-accounts realm with email verification, a password policy, SMTP and the group membership mapper",
+      "the realm and clients setup steps against a real Keycloak leaves an existing realm unchanged and records the step done on a rerun",
+      "the realm and clients setup steps against a real Keycloak refuses a realm override whose key is outside the allow-list with a named cause",
+      "the realm and clients setup steps against a real Keycloak limits the genie-admin service account to its own realm",
+      "the realm and clients setup steps against a real Keycloak refuses the realm step before any network call when the bootstrap credential is absent",
+    ],
+  },
+  {
     file: "testing/worker.integration.test.ts",
     reason:
       "AC-11, R-4, R-5, R-27 and R-50 to R-52 require the pg-boss worker against real Postgres",

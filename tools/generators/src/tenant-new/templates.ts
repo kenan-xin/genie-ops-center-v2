@@ -63,21 +63,15 @@ function composeOptionalNames(compose: string): ReadonlyMap<string, string> {
 const isBundledKeycloakSetting = (name: string) => name.startsWith("KC_");
 
 /**
- * The deltas this customer applies to the shared realm template. The generator
- * writes the empty document: a realm difference is authored when the customer has
- * one, and Section 2 owns the template it applies to. No credential is written
- * here or anywhere else in the folder (DEC-35).
+ * The deltas this customer applies to the shared realm template, merged by the `realm` step of
+ * `genie-ops setup` (Spec 2 D2-3). The generator writes the empty document: a realm difference is
+ * authored when the customer has one, and only the keys of the realm step's allow-list may appear
+ * here. The realm name comes from `KEYCLOAK_REALM` (derived from the slug) and the display name
+ * from `branding.seed.json`, so neither is a field here, and no credential is written in this
+ * folder (DEC-35).
  */
-export function realmOverrides(input: TenantRenderInput): string {
-  return `${JSON.stringify(
-    {
-      realm: input.slug,
-      displayName: input.productName,
-      overrides: {},
-    },
-    undefined,
-    2
-  )}\n`;
+export function realmOverrides(): string {
+  return `${JSON.stringify({}, undefined, 2)}\n`;
 }
 
 /**
