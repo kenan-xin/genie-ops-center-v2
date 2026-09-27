@@ -155,6 +155,8 @@ Planned. In managed mode, `genie-ops setup` creates the realm and everything in 
 
 Warning. If the bootstrap credential is written into `.env`, then every later reader of that file holds rights over every realm on that server. Pass it in the command environment only.
 
+One address. `KEYCLOAK_URL` is the address the browser and the application both use (Specification 02 R-54c/d). The compose file sets the bundled Keycloak's `KC_HOSTNAME` from it, so Keycloak's issuer and every redirect use that address and never a request host; the app service requires the same value and fetches `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration` from it, comparing the document's `issuer` to `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}` exactly. The app container must therefore resolve and reach that public address — through public DNS, or a host mapping to the reverse proxy — and it must never be given an internal compose alias, whose issuer would not match and which the browser could not follow. The generated `.env.example` lists `KEYCLOAK_URL` as required for the app service.
+
 Keycloak. A realm is created with `POST /admin/realms` carrying the whole realm representation, which creates the clients and mappers in the same call. `POST /admin/realms/{realm}/partialImport` applies a file to a realm that already exists, with `ifResourceExists` set to `FAIL`, `SKIP`, or `OVERWRITE`. The first is the path for a fresh realm and the second is the path for a repair.
 
 Setup is resumable through `setup_step` (`../architecture/data-shape.md`). A rerun after the realm step needs no bootstrap credential. The identity provider is not a setup step, because `genie-ops idp set` runs afterwards and a local-accounts deployment never runs it (`DEC-36`).
