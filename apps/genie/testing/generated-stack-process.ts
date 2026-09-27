@@ -11,7 +11,17 @@ const run = promisify(execFile);
 
 const PROXY_NETWORK = "proxy";
 
-const POSTGRES_IMAGE = "postgres:18-alpine";
+export const POSTGRES_IMAGE = "postgres:18-alpine";
+
+/** How long a database readiness wait may run before it fails with diagnostics. */
+const READINESS_TIMEOUT_MS = 60000;
+
+const READINESS_POLL_MS = 500;
+
+/** The Docker states in which a container can never become ready. */
+const TERMINAL_CONTAINER_STATES = new Set(["exited", "dead"]);
+
+const LOG_TAIL_LINES = 40;
 
 type CommandResult = {
   readonly stdout: string;
@@ -20,6 +30,132 @@ type CommandResult = {
 
 async function docker(args: readonly string[]): Promise<CommandResult> {
   return run("docker", [...args], { maxBuffer: 16 * 1024 * 1024 });
+}
+
+/** Runs docker and reports only whether it exited zero, treating any failure as "not yet". */
+function succeeded(args: readonly string[]): Promise<boolean> {
+  return docker(args).then(
+    () => true,
+    () => false
+  );
+}
+
+/** The fields of Docker's `inspect .State` that explain a failed readiness wait. */
+type ContainerState = {
+  readonly Status: string;
+  readonly ExitCode: number;
+  readonly OOMKilled: boolean;
+  readonly Error: string;
+};
+
+/** Whether the container has reached a state from which it cannot become ready. */
+function isTerminal(
+  state: ContainerState | undefined
+): state is ContainerState {
+  return state !== undefined && TERMINAL_CONTAINER_STATES.has(state.Status);
+}
+
+/** Runs docker and returns stdout+stderr even on a nonzero exit, for a diagnostic dump. */
+async function dockerText(args: readonly string[]): Promise<string> {
+  try {
+    const { stdout, stderr } = await docker(args);
+
+    return stdout + stderr;
+  } catch (error) {
+    // SAFETY: execFile rejects with the captured streams on a nonzero exit.
+    const failure = error as {
+      readonly stdout?: string | Buffer;
+      readonly stderr?: string | Buffer;
+    };
+
+    return String(failure.stdout ?? "") + String(failure.stderr ?? "");
+  }
+}
+
+/** Docker's `.State` for `name`, or undefined when the container no longer exists. */
+async function containerState(
+  name: string
+): Promise<ContainerState | undefined> {
+  const inspected = await docker([
+    "inspect",
+    "--format",
+    "{{json .State}}",
+    name,
+  ]).catch(() => undefined);
+
+  if (inspected === undefined) return undefined;
+
+  // SAFETY: `docker inspect --format '{{json .State}}'` prints the state object.
+  return JSON.parse(inspected.stdout) as ContainerState;
+}
+
+/**
+ * Docker's own account of a container that did not become ready: its state and
+ * the tail of its logs. The containers are started without `--rm`, so both
+ * survive an exit; that is what names the cause the old "did not become ready"
+ * message hid.
+ */
+async function containerDiagnostics(
+  name: string,
+  state: ContainerState | undefined
+): Promise<string> {
+  const summary =
+    state === undefined
+      ? "inspect found no container (it may have been removed)"
+      : `Status=${state.Status} ExitCode=${state.ExitCode} OOMKilled=${state.OOMKilled} Error=${JSON.stringify(state.Error)}`;
+
+  const logs = await dockerText([
+    "logs",
+    "--tail",
+    String(LOG_TAIL_LINES),
+    name,
+  ]);
+
+  return `state: ${summary}\nlast ${LOG_TAIL_LINES} log lines:\n${logs.trimEnd()}`;
+}
+
+/**
+ * Waits for `probe` to succeed, failing at once if the container exits.
+ *
+ * A container that has exited cannot become ready, so waiting out the deadline
+ * only hides the reason behind a timeout it never reached. `probe` is trusted
+ * once it succeeds: a single re-check after the loop raced Postgres's own
+ * init-to-serving handover and threw on a database that was in fact ready. The
+ * thrown error carries the container's Docker state and log tail either way.
+ */
+export async function waitForContainer(input: {
+  readonly name: string;
+  readonly timeoutMs: number;
+  readonly failure: string;
+  readonly probe: () => Promise<boolean>;
+}): Promise<void> {
+  const deadline = Date.now() + input.timeoutMs;
+  let exited: ContainerState | undefined;
+
+  /* eslint-disable no-await-in-loop */
+  while (Date.now() < deadline) {
+    if (await input.probe()) return;
+
+    const state = await containerState(input.name);
+
+    if (isTerminal(state)) {
+      exited = state;
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, READINESS_POLL_MS));
+  }
+  /* eslint-enable no-await-in-loop */
+
+  const state = exited ?? (await containerState(input.name));
+
+  const cause = isTerminal(state)
+    ? `the container ${state.Status} (exit code ${state.ExitCode}, OOMKilled ${state.OOMKilled})`
+    : `it did not become ready within ${input.timeoutMs / 1000}s`;
+
+  throw new Error(
+    `${input.failure}: ${cause}\n${await containerDiagnostics(input.name, state)}`
+  );
 }
 
 export type GeneratedTenantDeploy = {
@@ -261,89 +397,67 @@ export async function startGeneratedStack(input: {
       databaseName,
     ]);
 
-    const databaseDeadline = Date.now() + 60000;
-
-    /* eslint-disable no-await-in-loop */
-    while (Date.now() < databaseDeadline) {
-      const ready = await docker([
-        "exec",
-        databaseName,
-        "pg_isready",
-        "-U",
-        "genie",
-      ])
-        .then(() => true)
-        .catch(() => false);
-
-      if (ready) break;
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    /* eslint-enable no-await-in-loop */
-
-    const ready = await docker([
-      "exec",
-      databaseName,
-      "pg_isready",
-      "-U",
-      "genie",
-    ])
-      .then(() => true)
-      .catch(() => false);
-
-    if (!ready)
-      throw new Error(`Postgres ${databaseName} did not become ready`);
+    // The official image runs a temporary init server that listens only on the
+    // Unix socket, so a socket `pg_isready` succeeds while the real server has
+    // not started; the next probe then lands in the init-to-serving gap and
+    // fails. Probe TCP on loopback, which only the real server binds, and that
+    // is the address the app reaches over the compose network.
+    await waitForContainer({
+      name: databaseName,
+      timeoutMs: READINESS_TIMEOUT_MS,
+      failure: `Postgres ${databaseName} did not become ready`,
+      probe: () =>
+        succeeded([
+          "exec",
+          databaseName,
+          "pg_isready",
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "5432",
+          "-U",
+          "genie",
+        ]),
+    });
 
     // The production Keycloak profile has its own database on the host-supplied
     // Postgres instance, alongside the application database. `pg_isready` can
     // report success during Postgres recovery, so wait for `createdb` itself.
-    const keycloakDatabaseDeadline = Date.now() + 60000;
-    let keycloakDatabaseReady = false;
+    await waitForContainer({
+      name: databaseName,
+      timeoutMs: READINESS_TIMEOUT_MS,
+      failure: `Keycloak database was not created in ${databaseName}`,
+      probe: async () => {
+        const created = await succeeded([
+          "exec",
+          databaseName,
+          "createdb",
+          "-U",
+          "genie",
+          "keycloak",
+        ]);
 
-    /* eslint-disable no-await-in-loop */
-    while (Date.now() < keycloakDatabaseDeadline) {
-      const created = await docker([
-        "exec",
-        databaseName,
-        "createdb",
-        "-U",
-        "genie",
-        "keycloak",
-      ]).then(
-        () => true,
-        () => false
-      );
+        if (created) return true;
 
-      const exists = await docker([
-        "exec",
-        databaseName,
-        "psql",
-        "-U",
-        "genie",
-        "-d",
-        "genie",
-        "--no-psqlrc",
-        "--tuples-only",
-        "--no-align",
-        "--command",
-        "select 1 from pg_database where datname = 'keycloak'",
-      ]).then(
-        ({ stdout }) => stdout.trim() === "1",
-        () => false
-      );
-
-      if (created || exists) {
-        keycloakDatabaseReady = true;
-        break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    /* eslint-enable no-await-in-loop */
-
-    if (!keycloakDatabaseReady) {
-      throw new Error(`Keycloak database was not created in ${databaseName}`);
-    }
+        return docker([
+          "exec",
+          databaseName,
+          "psql",
+          "-U",
+          "genie",
+          "-d",
+          "genie",
+          "--no-psqlrc",
+          "--tuples-only",
+          "--no-align",
+          "--command",
+          "select 1 from pg_database where datname = 'keycloak'",
+        ]).then(
+          ({ stdout }) => stdout.trim() === "1",
+          () => false
+        );
+      },
+    });
 
     composeStarted = true;
     await composeCommand(["up", "--detach"]);
