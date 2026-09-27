@@ -1,16 +1,47 @@
 import {
   enableModules,
+  insertCredentialPerson,
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
-import { type Page, expect, test } from "@playwright/test";
+import {
+  type APIRequestContext,
+  type Page,
+  expect,
+  test,
+} from "@playwright/test";
 
 import { imageHostPort } from "../testing/image-ports.ts";
 import { startImage } from "../testing/image-process.ts";
 
 const CONTEXT_HEADER = "x-genie-context-id";
+
+/** The password of each stack's reader, created per stack because each database is separate. */
+const READER_PASSWORD = "two-stack-reader-password-14";
+
+/**
+ * Signs one stack's reader in through the app's own break-glass email-password path (R-62) and
+ * returns the session cookie. The two stacks use the same public origin, so the CSRF check passes
+ * with that origin; each read below carries its own stack's cookie.
+ */
+async function signIn(
+  request: APIRequestContext,
+  url: string,
+  email: string
+): Promise<string> {
+  const response = await request.post(`${url}/api/auth/sign-in/email`, {
+    data: { email, password: READER_PASSWORD },
+    headers: { origin: "https://example.invalid" },
+  });
+
+  expect(response.status()).toBe(200);
+
+  const setCookie = response.headers()["set-cookie"] ?? "";
+
+  return setCookie.split(";")[0] ?? "";
+}
 
 /**
  * The context id a page's own server bundle rendered into the document. The
@@ -84,6 +115,23 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       insertPlaceholderRecord(second.context, { label: "second-stack-only" }),
     ]);
 
+    // One reader per stack, holding `placeholder:read` through a real role assignment in that
+    // stack's own database, so each read below is authorized by the real evaluator (S2-04).
+    await Promise.all([
+      insertCredentialPerson(first.context, {
+        email: "first-reader@example.com",
+        password: READER_PASSWORD,
+        isBreakGlass: false,
+        permissions: ["placeholder:read"],
+      }),
+      insertCredentialPerson(second.context, {
+        email: "second-reader@example.com",
+        password: READER_PASSWORD,
+        isBreakGlass: false,
+        permissions: ["placeholder:read"],
+      }),
+    ]);
+
     firstImage = await startImage(
       {
         DATABASE_URL: first.context.env.databaseUrl,
@@ -123,11 +171,8 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
     );
 
-    // The request is anonymous until sign-in exists (S2-04), so each stack's
-    // procedure refuses the read and no row reaches the browser from either
-    // database. The row-level isolation proof with a real grant in each
-    // database is `testing/isolation.integration.test.ts` (DEC-34); S2-04
-    // brings the signed-in read back to this browser case.
+    // An anonymous request is refused by each stack's own procedure, and no row reaches the
+    // browser from either database. The signed-in read with a real grant in each database follows.
     expect(firstResponse.status()).toBe(403);
     expect(secondResponse.status()).toBe(403);
     expect(firstResponse.headers()[CONTEXT_HEADER]).not.toBe(
@@ -141,6 +186,41 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       expect(body).not.toContain("first-stack-only");
       expect(body).not.toContain("second-stack-only");
     }
+
+    // S2-04: with a signed-in reader holding a real grant in each database, each read returns the
+    // row of its own stack and never the other's. The anonymous refusals above stay as controls.
+    const firstCookie = await signIn(
+      request,
+      firstUrl,
+      "first-reader@example.com"
+    );
+
+    const secondCookie = await signIn(
+      request,
+      secondUrl,
+      "second-reader@example.com"
+    );
+
+    const firstSigned = await request.get(
+      `${firstUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
+      { headers: { cookie: firstCookie } }
+    );
+
+    const secondSigned = await request.get(
+      `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
+      { headers: { cookie: secondCookie } }
+    );
+
+    expect(firstSigned.status()).toBe(200);
+    expect(secondSigned.status()).toBe(200);
+
+    const firstBody = await firstSigned.text();
+    const secondBody = await secondSigned.text();
+
+    expect(firstBody).toContain("first-stack-only");
+    expect(firstBody).not.toContain("second-stack-only");
+    expect(secondBody).toContain("second-stack-only");
+    expect(secondBody).not.toContain("first-stack-only");
   } finally {
     await Promise.all([
       firstImage?.stop(),
