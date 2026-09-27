@@ -88,6 +88,8 @@ The table below defines the values; the tables above define when each is require
 | `KC_PROXY_HEADERS` | `xforwarded` | Keycloak trusts the reverse proxy's `X-Forwarded-*` headers, because the proxy terminates HTTPS (`DEC-19`). |
 | `KC_PROXY_TRUSTED_ADDRESSES` | blank, not set | The proxy's address, from which alone Keycloak accepts forwarded headers. Blank trusts every peer on the `proxy` network (`runbooks/reverse-proxy.md`, step 7). |
 
+The compose file sets `KC_HEALTH_ENABLED=true` itself, not from `.env`. Its Keycloak health check requests `/health/ready` on the management port 9000, which is never published to the host.
+
 The Keycloak server administrator is not in `.env`. The operator creates it once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`runbooks/deployment.md`).
 
 ## Build argument, not a variable

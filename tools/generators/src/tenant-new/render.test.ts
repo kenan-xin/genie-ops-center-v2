@@ -279,6 +279,8 @@ describe("the rendered deployment folder", () => {
     expect(keycloak).toContain("KC_PROXY_HEADERS: ${KC_PROXY_HEADERS");
     // Keycloak has its own public hostname, KEYCLOAK_URL (runbooks/reverse-proxy.md).
     expect(keycloak).toContain("KC_HOSTNAME: ${KEYCLOAK_URL");
+    expect(keycloak).toContain('KC_HEALTH_ENABLED: "true"');
+    expect(keycloak).not.toContain("ports:");
 
     const entries = envExampleEntries(example);
 
@@ -311,6 +313,18 @@ describe("the rendered deployment folder", () => {
     expect(entries.get("KC_DB_URL_DATABASE")).toBe("keycloak");
     expect(entries.get("KC_PROXY_HEADERS")).toBe("xforwarded");
     expect(example).not.toContain("KC_BOOTSTRAP_ADMIN_PASSWORD=");
+  });
+
+  it("checks Keycloak readiness on the unpublished management port", () => {
+    const keycloakHealthcheck =
+      /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
+        service(read("compose.yaml"), "keycloak")
+      )?.[1] ?? "";
+
+    expect(keycloakHealthcheck).toContain(
+      String.raw`test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]`
+    );
+    expect(keycloakHealthcheck).toMatch(/start_period: \d+s/);
   });
 
   it("gives the application an HTTP health check", () => {

@@ -163,11 +163,23 @@ services:
       # headers from every peer on that network (runbooks/reverse-proxy.md).
       KC_PROXY_TRUSTED_ADDRESSES: \${KC_PROXY_TRUSTED_ADDRESSES:-}
       KC_HOSTNAME: \${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
+      # Opens /health/ready on the management port 9000, which is never published.
+      KC_HEALTH_ENABLED: "true"
     networks:
       proxy:
         aliases:
           - ${input.slug}-keycloak
     restart: unless-stopped
+    # The image has no curl, so the check is Keycloak's documented bash /dev/tcp
+    # request (keycloak.org/observability/health). No service depends on it: the
+    # application reaches Keycloak only at sign-in and setup, and a customer who
+    # runs their own Keycloak drops this service (runbooks/deployment.md).
+    healthcheck:
+      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\\\r\\\\n\\\\r\\\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
 
 networks:
   proxy:

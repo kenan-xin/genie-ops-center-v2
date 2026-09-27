@@ -55,7 +55,7 @@ Make sure that the target host has the following. The customer's platform team s
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
 4. Copy `compose.yaml`, `tenant.yaml` and `branding.seed.json` to the host, into one stack folder. They are committed and hold no secret and no host value.
 5. On the host, copy `.env.example` to `.env` and fill every value. Never commit `.env`. Keep it readable by the operator account only.
-6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. Before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role, and set `KC_PROXY_TRUSTED_ADDRESSES` to the proxy's address (`reverse-proxy.md`, step 7). Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`.
+6. Run `docker compose pull`, or `docker load` from the image file, then `docker compose up -d`. Before the first `up`, create the `KC_DB_URL_DATABASE` database (default `keycloak`) on the host Postgres for the `KC_DB_USERNAME` role, and set `KC_PROXY_TRUSTED_ADDRESSES` to the proxy's address (`reverse-proxy.md`, step 7). Keycloak runs in production mode behind the reverse proxy and serves `KEYCLOAK_URL`. `docker compose ps` shows it `healthy` once `/health/ready` answers on its unpublished management port 9000. The first start can take a minute or two.
 
    On the first deploy only, create the Keycloak server administrator. Type the two values into the shell of this one command. Never write them to `.env` or to a file (R-66):
 

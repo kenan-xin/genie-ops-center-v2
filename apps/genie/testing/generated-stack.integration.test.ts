@@ -130,12 +130,23 @@ describe("the generated customer stack smoke", () => {
       240000
     );
 
-    expect((await running().serviceState("keycloak")).running).toBe(true);
     expect(
       [200, 302],
       `Keycloak never served its root at ${keycloakUrl}`
     ).toContain(keycloak?.status);
-  }, 600000);
+
+    // The generated readiness check on the management port passes (KC_HEALTH_ENABLED).
+    const keycloakState = await pollUntil(
+      async () => running().serviceState("keycloak"),
+      ({ health }) => health === "healthy" || health === "unhealthy",
+      180000
+    );
+
+    expect(keycloakState?.running, "Keycloak container is not running").toBe(
+      true
+    );
+    expect(keycloakState?.health).toBe("healthy");
+  }, 780000);
 
   // AC-16: the real `genie-ops setup` in the running stack sets both steps done.
   it("runs genie-ops setup in the running stack, clears the page and answers ok", async () => {
