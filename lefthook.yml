@@ -9,4 +9,6 @@ pre-commit:
       stage_fixed: true
     - name: lint
       glob: "*.{ts,tsx,js,jsx,mjs,cjs}"
-      run: pnpm exec oxlint --config oxlint.config.ts {staged_files}
+      # oxlint.config.ts ignores paths such as .claude/helpers/** and
+      # apps/genie/src/modules.ts, so a commit staging only those leaves no target.
+      run: pnpm exec oxlint --config oxlint.config.ts --no-error-on-unmatched-pattern {staged_files}

@@ -269,6 +269,27 @@ pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 11" >"
 expect "exit status" "0" "$status"
 expect "committed file formatted" "export const a = { b: 1 };" "$(git -C "$fmt" show HEAD:probe.ts)"
 
+say "case 12: a commit staging only oxlint-ignored files passes the real lint job"
+# oxlint.config.ts ignores .claude/helpers/**, so the lint job gets no target.
+mkdir -p "$fmt/.claude/helpers"
+printf 'module.exports = {};\n' >"$fmt/.claude/helpers/probe.cjs"
+git -C "$fmt" add .claude/helpers/probe.cjs
+status=0
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 12" >"$work/case12.out" 2>&1 || status=$?
+[ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case12.out"
+git -C "$fmt" reset -q
+expect "exit status" "0" "$status"
+expect "commit written" "case 12" "$(git -C "$fmt" log -1 --format=%s)"
+
+say "case 13: the real lint job still refuses a staged file with a lint error"
+printf 'export function f() {\n  debugger;\n}\n' >"$fmt/probe-lint.ts"
+git -C "$fmt" add probe-lint.ts
+status=0
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 13" >"$work/case13.out" 2>&1 || status=$?
+git -C "$fmt" reset -q
+expect "exit status" "1" "$status"
+expect "lint error named" "found" "$(found 'no-debugger' "$work/case13.out")"
+
 printf '\n'
 if [ "$failures" -eq 0 ]; then
   echo "all cases passed"
