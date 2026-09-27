@@ -295,14 +295,11 @@ export async function startImage(
 
   args.push("--add-host", `${HOST_ALIAS}:host-gateway`);
 
-  const entries: [string, string][] = Object.entries({
-    ...TEST_AUTH_ENV,
-    ...env,
-  });
+  const effectiveEnv = { ...TEST_AUTH_ENV, ...env };
 
-  if (stub !== undefined) entries.push(["KEYCLOAK_URL", stub.containerUrl]);
+  if (stub !== undefined) effectiveEnv.KEYCLOAK_URL = stub.containerUrl;
 
-  for (const [key, value] of entries) {
+  for (const [key, value] of Object.entries(effectiveEnv)) {
     const reachable =
       key === "DATABASE_URL" ? reachableFromContainer(value) : value;
 
