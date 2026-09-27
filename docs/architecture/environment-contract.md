@@ -39,7 +39,7 @@ The table below defines the values; the tables above define when each is require
 | `DATABASE_URL` | Postgres URL of the deployment's one database. |
 | `PUBLIC_URL` | The one public address, for example `https://genie.example.com`. Cookies, callbacks, and email links derive from it. The application never inspects the request hostname (`DEC-19`). |
 | `BETTER_AUTH_SECRET` | Random string, at least 32 characters. Signs session cookies. |
-| `KEYCLOAK_URL` | Base URL of the Keycloak server that holds this customer's realm. |
+| `KEYCLOAK_URL` | Base URL of the Keycloak server that holds this customer's realm: the bundled Keycloak, Genie's shared server, or the customer's server. It must equal the address setup used (Specification 02 R-54c). |
 | `KEYCLOAK_REALM` | The realm name. |
 | `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET` | The `genie-ops-center` client in the realm, used for sign-in. |
 | `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET` | The `genie-admin` service client in the realm, used by every setup step after the realm exists, by `genie-ops idp set`, and by local-account creation and set-password emails. It holds realm-management roles in this realm only, for user management, reading clients, and identity provider configuration (`../runbooks/keycloak-realm.md`). The three clients with their secrets and redirect URIs, the realm display name, and the SMTP settings are written at realm creation with the bootstrap credential (`DEC-37`, `DEC-40`). Not set in client-only mode (ADR 0010). |
@@ -78,13 +78,14 @@ The table below defines the values; the tables above define when each is require
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `COMPOSE_PROFILES` | `bundled-keycloak` | Compose profiles to start. `bundled-keycloak` starts the stack's own Keycloak. Remove it when the realm lives on another Keycloak server: Genie's shared server, or the customer's server in either realm mode (Specification 02 R-54b). The compose file passes it to every Genie Ops Center service for the start-up guard (R-54c). |
 | `IMAGE_TAG` | none, required | The version of the customer image that the generated compose file pulls, as `${IMAGE_TAG}` in its `image:` line. An upgrade changes this value and restarts the stack (`runbooks/deployment.md`). The application never reads it. |
 | `KEYCLOAK_URL` | none, required | The Keycloak public address, for example `https://id.example.com`. The compose file passes it to the Keycloak service as `KC_HOSTNAME`, so Keycloak builds its issuer and redirects from it and never from a request host (`runbooks/reverse-proxy.md`). Section 2 also reads it in the application. |
-| `KC_DB` | `postgres` | Keycloak's database vendor. Keycloak runs in production mode (`start`) with its own database. |
-| `KC_DB_URL_HOST` | none, required | The host of the host-supplied Postgres that holds the Keycloak database. |
+| `KC_DB` | `postgres` | Used only with the `bundled-keycloak` profile, like every `KC_*` row below. Keycloak's database vendor. Keycloak runs in production mode (`start`) with its own database. |
+| `KC_DB_URL_HOST` | none, required with the profile | The host of the host-supplied Postgres that holds the Keycloak database. |
 | `KC_DB_URL_PORT` | `5432` | The port of that Postgres server. |
 | `KC_DB_URL_DATABASE` | `keycloak` | The Keycloak database, beside the application database on the same server. Create it before the first start. |
-| `KC_DB_USERNAME`, `KC_DB_PASSWORD` | none, required | The Postgres role Keycloak connects as. The password is a secret and stays in `.env`. |
+| `KC_DB_USERNAME`, `KC_DB_PASSWORD` | none, required with the profile | The Postgres role Keycloak connects as. The password is a secret and stays in `.env`. |
 | `KC_PROXY_HEADERS` | `xforwarded` | Keycloak trusts the reverse proxy's `X-Forwarded-*` headers, because the proxy terminates HTTPS (`DEC-19`). |
 | `KC_PROXY_TRUSTED_ADDRESSES` | blank, not set | The proxy's address, from which alone Keycloak accepts forwarded headers. Blank trusts every peer on the `proxy` network (`runbooks/reverse-proxy.md`, step 7). |
 
