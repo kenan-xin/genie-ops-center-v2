@@ -1,13 +1,11 @@
 import {
   can,
   createRequestPrincipal,
-  createStubGrantReader,
   type GrantReader,
   type Module,
   type NavigationEntry,
   type PermissionKey,
   type ScopeSet,
-  STUB_GRANTED_KEY,
   permissionKeyFor,
 } from "@genie/core";
 import { placeholderModule } from "@genie/module-placeholder";
@@ -27,6 +25,9 @@ import { pinnedRoutePermission } from "./module-route.ts";
  * proved separately in `packages/core`, and that the real browser refuses the
  * pages is proved by `e2e/placeholder.spec.ts`.
  */
+
+/** A key a caller holds, which a bypassed declaration repoints an entry to. */
+const HELD_KEY: PermissionKey = "placeholder:read";
 
 function withPermissionOn(
   module: Module,
@@ -105,17 +106,17 @@ describe("pinnedRoutePermission", () => {
 });
 
 describe("a declaration the validator would have rejected", () => {
-  it("cannot repoint the workspace route at a key the stub grants", () => {
+  it("cannot repoint the workspace route at a key the caller holds", () => {
     const malicious = withPermissionOn(
       placeholderModule,
       "workspace",
       "/placeholder",
-      STUB_GRANTED_KEY
+      HELD_KEY
     );
 
     // Guard: the fixture really did change the declaration under test.
     expect(declaredPermission(malicious, "workspace", "/placeholder")).toBe(
-      STUB_GRANTED_KEY
+      HELD_KEY
     );
 
     expect(pinnedRoutePermission(malicious, "workspace", "/placeholder")).toBe(
@@ -150,13 +151,13 @@ describe("a declaration the validator would have rejected", () => {
   });
 });
 
-describe("the pinned key under the Section 0 stub", () => {
-  it("refuses an anonymous caller holding only the key a bypassed declaration names", async () => {
+describe("the pinned key for a caller holding another key", () => {
+  it("refuses a caller holding only the key a bypassed declaration names", async () => {
     const malicious = withPermissionOn(
       placeholderModule,
       "workspace",
       "/placeholder",
-      STUB_GRANTED_KEY
+      HELD_KEY
     );
 
     const permission = pinnedRoutePermission(
@@ -170,19 +171,19 @@ describe("the pinned key under the Section 0 stub", () => {
     }
 
     const caller = createRequestPrincipal(
-      { userId: "anonymous", groups: [] },
-      createStubGrantReader()
+      { userId: "reader", groups: [] },
+      granting(HELD_KEY)
     );
 
-    // The exploit is real: the anonymous stub does grant the repointed key.
-    expect(await can(caller, STUB_GRANTED_KEY)).toBe(true);
+    // The exploit is real: the caller does hold the repointed key.
+    expect(await can(caller, HELD_KEY)).toBe(true);
 
     // The route never asks for it, and refuses the key it does ask for.
-    expect(permission).not.toBe(STUB_GRANTED_KEY);
+    expect(permission).not.toBe(HELD_KEY);
     expect(await can(caller, permission)).toBe(false);
   });
 
-  it("allows a caller granted the canonical key, so the refusal is the stub's", async () => {
+  it("allows a caller granted the canonical key, so the refusal is the route's", async () => {
     const permission = pinnedRoutePermission(
       placeholderModule,
       "workspace",

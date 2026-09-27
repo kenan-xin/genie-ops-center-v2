@@ -108,8 +108,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
 
           // The placeholder route is a rendered document with the standard
           // headers. Its workspace entry requires `placeholder:use`, and the
-          // Section 0 stub grants only `placeholder:read`, so the documented
-          // Section 0 result is the denial body, not the module's own content.
+          // request is anonymous until sign-in exists (S2-04), so the real
+          // evaluator refuses it and the result is the denial body.
           const page = await fetch(
             `http://127.0.0.1:${imageHostPort(3420)}/placeholder`
           );
@@ -123,8 +123,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             'data-testid="permission-denied"'
           );
 
-          // The viewer is the placeholder page whose content does render under the
-          // stub, and it is the R-49 fixture.
+          // The viewer is the placeholder page whose content renders without a
+          // permission, and it is the R-49 fixture.
           const viewer = await fetch(
             `http://127.0.0.1:${imageHostPort(3420)}/viewer/placeholder`
           );

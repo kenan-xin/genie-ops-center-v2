@@ -74,11 +74,12 @@ test("the devtools open and report this deployment truthfully", async ({
   await expect(page.getByRole("heading", { name: "Deployment" })).toBeVisible();
 
   // The database this deployment really runs against, the module compiled into
-  // it, the one key the stub grants, and the sentence that says nobody is
-  // signed in. Every one is read from the running context, not from a fixture.
+  // it, no permission for the anonymous request, and the sentence that says
+  // nobody is signed in. Every one is read from the running context, not from a
+  // fixture.
   await expect(fact(page, "Database")).toHaveText("genie");
   await expect(fact(page, "Modules")).toHaveText("placeholder");
-  await expect(fact(page, "Permissions")).toHaveText("placeholder:read");
+  await expect(fact(page, "Permissions")).toHaveText("No permissions granted.");
   await expect(fact(page, "User")).toHaveText(
     "No user is signed in. Section 0 has no identity yet."
   );

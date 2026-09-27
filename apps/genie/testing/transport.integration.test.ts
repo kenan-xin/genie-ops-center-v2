@@ -25,8 +25,8 @@ const LEDGER_SCHEMA = "drizzle";
 
 const LEDGER_TABLE = CORE_HISTORY.table;
 
-// The module's own table, the one `placeholder.read` reads.
-const MODULE_TABLE = "placeholder_record";
+// The table the module gate reads before any procedure runs (R-8).
+const ENTITLEMENT_TABLE = "tenant_module";
 
 // How long a log line may take to reach this process. The server writes it
 // before it answers, but it arrives over a pipe on the parent's event loop, so
@@ -116,29 +116,16 @@ afterAll(async () => {
 });
 
 describe("both transports", () => {
-  it("the module transport answers a healthy read with its rows", async () => {
-    const admin = await pool().connect();
+  it("the module transport reaches the procedure and answers its refusal", async () => {
+    const failure = await readFailure(placeholderClient());
 
-    try {
-      await admin.query(`insert into ${MODULE_TABLE} (label) values ($1)`, [
-        "the first row",
-      ]);
-    } finally {
-      admin.release();
-    }
-
-    const logBefore = server.logs().length;
-    const rows = await placeholderClient().placeholder.read.query();
-
-    // The positive control for this transport. Without it, the failure case
-    // below would pass against a context that never reached the module's
-    // procedure at all, which is exactly how a missing `tenant` hid.
-    expect(rows.map((row) => row.label)).toContain("the first row");
-
-    // A read that reached the database logs no error line.
-    const served = server.logs().slice(logBefore);
-
-    expect(served).not.toContain("request failed");
+    // The positive control for this transport. Sign-in arrives with S2-04, so
+    // the request is anonymous and the real evaluator refuses it: FORBIDDEN is
+    // the procedure's own `can()` answer, which proves the context reached the
+    // module's procedure rather than an unknown path. The authorized read
+    // through real role assignments is proved in the placeholder's own
+    // integration suite; S2-04 brings the signed-in read back here.
+    expect(failure?.data?.code).toBe("FORBIDDEN");
   });
 
   it("answers normally while the database is reachable", async () => {
@@ -222,29 +209,45 @@ describe("both transports", () => {
   });
 
   it("a standard tRPC client decodes the failure with appCode and requestId", async () => {
-    // The module table, so this transport fails on its own read rather than
-    // depending on the ordinary route's injection still being in place.
+    // The entitlement table, so this transport fails inside the database in
+    // the module gate every procedure passes first, rather than depending on
+    // the ordinary route's injection still being in place. An anonymous caller
+    // is refused before any module read, so the gate's read is the one this
+    // request makes.
     const admin = await pool().connect();
 
     try {
       const present = await admin.query(
         "select 1 from information_schema.tables where table_schema = $1 and table_name = $2",
-        ["public", MODULE_TABLE]
+        ["public", ENTITLEMENT_TABLE]
       );
 
-      // Positive control. `drop table if exists` is a silent no-op when the
-      // table is absent, and the assertions below would then pass against a
-      // procedure that failed for some other reason.
-      expect(present.rowCount, `no public.${MODULE_TABLE} table to break`).toBe(
-        1
-      );
+      // Positive control: a rename of an absent table would fail here rather
+      // than let the assertions below pass for some other reason.
+      expect(
+        present.rowCount,
+        `no public.${ENTITLEMENT_TABLE} table to break`
+      ).toBe(1);
 
-      await admin.query(`drop table ${MODULE_TABLE} cascade`);
+      await admin.query(
+        `alter table ${ENTITLEMENT_TABLE} rename to ${ENTITLEMENT_TABLE}_hidden`
+      );
     } finally {
       admin.release();
     }
 
     const logBefore = server.logs().length;
+
+    // The entitlement reader serves a filled value for 10 seconds (DEC-46), so
+    // the read fails once the value the refusal case filled has expired.
+    await expect
+      .poll(async () => (await readFailure(placeholderClient()))?.data?.code, {
+        timeout: 15000,
+        interval: 1000,
+      })
+      .toBe("INTERNAL_SERVER_ERROR");
+
+    // A failed read fills no cache, so this request fails the same way.
     const failure = await readFailure(placeholderClient());
 
     // The standard client decoded it without a custom transport, and the
@@ -264,7 +267,7 @@ describe("both transports", () => {
       /ECONNREFUSED|ETIMEDOUT|127\.0\.0\.1|postgres:\/\//
     );
     expect(decoded).not.toContain("relation");
-    expect(decoded).not.toContain(MODULE_TABLE);
+    expect(decoded).not.toContain(ENTITLEMENT_TABLE);
     expect(decoded).not.toMatch(/at .*\.js:\d+/);
 
     // AC-15 for the second transport: the id the client received is in the

@@ -1,15 +1,17 @@
-import { enabledNavigation } from "@genie/core";
+import { permittedNavigation } from "@genie/core";
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../context.ts";
 import { modules } from "../registry.ts";
+import { requestPrincipal } from "../request-principal.ts";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The ordinary document. Navigation hides every module whose entitlement is off (R-8); a module
- * that is switched on shows all of its declared entries (R-23).
+ * The ordinary document. Navigation hides every module whose entitlement is off (R-8) and every
+ * entry whose permission the person does not hold (R-34). Hiding is not the enforcement: each
+ * route still refuses in its own `can()` check (R-35).
  *
  * AC-26, across real bundles. This page's own server bundle stamps the id it read onto the
  * document it renders. The proxy never writes this attribute, so a second context in this bundle
@@ -22,9 +24,10 @@ export default async function HomePage() {
   const t = await getTranslations("app");
   const { contextId, tenant } = requireContext();
 
-  const entries = await enabledNavigation({
+  const entries = await permittedNavigation({
     entitlements: tenant.entitlements,
     modules,
+    caller: requestPrincipal(tenant),
   });
 
   const items = entries.map((entry) => ({

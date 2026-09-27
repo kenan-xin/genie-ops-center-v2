@@ -1,7 +1,6 @@
 import {
   createModuleTRPC,
   createRequestPrincipal,
-  createStubGrantReader,
   type TenantContext,
 } from "@genie/core";
 import {
@@ -30,9 +29,8 @@ const app = { tenant } as AppContext;
 const context: RequestContext = {
   app,
   tenant,
-  caller: createRequestPrincipal(
-    { userId: "test-user", groups: [] },
-    createStubGrantReader()
+  caller: createRequestPrincipal({ userId: "test-user", groups: [] }, () =>
+    Promise.resolve({ keys: new Set(), scopes: new Map() })
   ),
   requestId: REQUEST_ID,
 };

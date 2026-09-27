@@ -822,15 +822,17 @@ describe("the built image", () => {
       await pollHealth(imageHostPort(3402));
 
       const responses = await Promise.all(
-        Array.from({ length: 24 }, (_, index) =>
-          fetch(
-            `http://127.0.0.1:${imageHostPort(3402)}${ROUTE_CLASSES[index % ROUTE_CLASSES.length]}`
-          ).then(
+        Array.from({ length: 24 }, (_, index) => {
+          const path = ROUTE_CLASSES[index % ROUTE_CLASSES.length] ?? "";
+
+          return fetch(`http://127.0.0.1:${imageHostPort(3402)}${path}`).then(
             async (response) => ({
+              path,
               status: response.status,
               observed: await contextIdOf(response),
             }),
             (error: Error) => ({
+              path,
               // SAFETY: a rejected `fetch` narrows to `Error`, and the test
               // below only compares this against the number 200, so widening
               // the discriminant to the union the success branch also uses is
@@ -838,17 +840,23 @@ describe("the built image", () => {
               status: error.name as string | number,
               observed: { header: null, document: null },
             })
-          )
-        )
+          );
+        })
       );
 
       // Assert the responses, rather than swallowing them. Nothing else in this
       // repository asserts that the ordinary document renders at all, so a `/`
       // that threw would be invisible to every gate: the next-intl request
-      // configuration could be deleted and the suite would stay green.
+      // configuration could be deleted and the suite would stay green. The tRPC
+      // request is anonymous until sign-in exists (S2-04), so its procedure
+      // answers its own `can()` refusal, 403, which still proves it was served.
       expect(
-        responses.every((response) => response.status === 200),
-        `not every response was 200: ${JSON.stringify(
+        responses.every(
+          (response) =>
+            response.status ===
+            (response.path.startsWith("/api/trpc") ? 403 : 200)
+        ),
+        `not every response had its expected status: ${JSON.stringify(
           responses.map((response) => response.status)
         )}`
       ).toBe(true);

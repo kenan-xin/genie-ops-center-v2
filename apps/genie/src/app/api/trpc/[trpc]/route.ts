@@ -1,8 +1,8 @@
-import { createRequestPrincipal, createStubGrantReader } from "@genie/core";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { CONTEXT_HEADER, requireContext } from "../../../../context.ts";
 import { newRequestId } from "../../../../request-id.ts";
+import { requestPrincipal } from "../../../../request-principal.ts";
 import { appRouter } from "../../../../trpc/root.ts";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +29,8 @@ async function handler(request: Request): Promise<Response> {
         // reaches its data only through this, so omitting it makes every
         // procedure throw before it reads anything (DEC-34).
         tenant: app.tenant,
-        // The Section 0 stub grants placeholder:read and nothing else (R-13).
-        caller: createRequestPrincipal(
-          { userId: "anonymous", groups: [] },
-          createStubGrantReader()
-        ),
+        // One principal per request, never shared (R-27).
+        caller: requestPrincipal(app.tenant),
       };
     },
     // AC-15: the id the client receives must match a redacted server log entry.

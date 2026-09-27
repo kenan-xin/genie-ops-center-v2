@@ -1,13 +1,16 @@
 import {
-  createRequestPrincipal,
-  createStubGrantReader,
+  principalFor,
   createLogger,
   createTenantContext,
   withTransaction,
   type ModuleRequestContext,
   type TenantContext,
 } from "@genie/core";
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+import {
+  enableModules,
+  insertPersonWith,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import {
   placeholderModule,
   placeholderRouter,
@@ -54,6 +57,10 @@ let first: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 let second: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
+let firstReader = "";
+
+let secondReader = "";
+
 // R-20: the case below must never be skipped, and a skipped run must fail the
 // pipeline. A runner flag cannot express that, so the suite asserts its own
 // execution instead: the `afterAll` guard throws when the case never ran.
@@ -71,6 +78,17 @@ beforeAll(async () => {
   await Promise.all([
     enableModules(first.context, ["placeholder"]),
     enableModules(second.context, ["placeholder"]),
+  ]);
+
+  // One reader per deployment, holding `placeholder:read` through a real role assignment in
+  // that deployment's own database (DEC-48).
+  [firstReader, secondReader] = await Promise.all([
+    insertPersonWith(first.context, ["placeholder:read"]).then(
+      (row) => row.userId
+    ),
+    insertPersonWith(second.context, ["placeholder:read"]).then(
+      (row) => row.userId
+    ),
   ]);
 }, 180000);
 
@@ -90,13 +108,13 @@ afterAll(async () => {
  * value captured once, so each read is built against an explicitly named
  * deployment and the two can never quietly share one.
  */
-function callerFor(tenant: TenantContext): ModuleRequestContext {
+function callerFor(
+  tenant: TenantContext,
+  userId: string
+): ModuleRequestContext {
   return {
     tenant,
-    caller: createRequestPrincipal(
-      { userId: "isolation-test", groups: [] },
-      createStubGrantReader()
-    ),
+    caller: principalFor({ tenant, modules: [placeholderModule], userId }),
   };
 }
 
@@ -140,12 +158,20 @@ describe("two tenant contexts in one process", () => {
     });
 
     const fromFirst = await placeholderRouter
-      .createCaller(callerFor(first.context))
+      .createCaller(callerFor(first.context, firstReader))
       .read();
 
     const fromSecond = await placeholderRouter
-      .createCaller(callerFor(second.context))
+      .createCaller(callerFor(second.context, secondReader))
       .read();
+
+    // A person's grants live in their own deployment's database: the other context's loader
+    // finds no such person and refuses.
+    await expect(
+      placeholderRouter
+        .createCaller(callerFor(second.context, firstReader))
+        .read()
+    ).rejects.toThrow("FORBIDDEN");
 
     const [firstSettings, secondSettings] = await Promise.all([
       first.context.settings.get(),

@@ -3,7 +3,6 @@ import {
   CORE_ERROR_MESSAGES,
   CORE_ERRORS,
   createRequestPrincipal,
-  createStubGrantReader,
   defineModuleErrors,
   type TenantContext,
 } from "@genie/core";
@@ -29,9 +28,8 @@ const stubContext: RequestContext = {
   app: stubApp,
   requestId: REQUEST_ID,
   tenant: stubTenant,
-  caller: createRequestPrincipal(
-    { userId: "anonymous", groups: [] },
-    createStubGrantReader()
+  caller: createRequestPrincipal({ userId: "anonymous", groups: [] }, () =>
+    Promise.resolve({ keys: new Set(), scopes: new Map() })
   ),
 };
 

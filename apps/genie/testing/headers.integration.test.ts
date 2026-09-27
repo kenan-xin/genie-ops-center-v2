@@ -300,16 +300,20 @@ describe("header coverage on the built application", () => {
   // Headers alone do not prove the transport worked. Without these two, a
   // `placeholder.read` that returned an ordinary framework 404, or an unknown
   // procedure that never reached the adapter, would still pass the header loop.
-  it("the tRPC success path returns a result, not a framework 404", async () => {
+  // Sign-in arrives with S2-04, so the request is anonymous and the procedure's
+  // own `can()` refuses it; the FORBIDDEN envelope is the proof it was reached.
+  it("the tRPC procedure path answers its refusal envelope, not a framework 404", async () => {
     const response = await raw("/api/trpc/placeholder.read?input=%7B%7D");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
 
     // SAFETY: the body is the tRPC envelope this route wrote, and the
     // assertion below checks the one field this test reads.
-    const body = JSON.parse(response.body) as { result?: { data?: unknown } };
+    const body = JSON.parse(response.body) as {
+      error?: { data?: { code?: string } };
+    };
 
-    expect(body.result).toBeDefined();
+    expect(body.error?.data?.code).toBe("FORBIDDEN");
   });
 
   it("an unknown procedure returns a tRPC error envelope with the additive fields", async () => {

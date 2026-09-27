@@ -1,4 +1,3 @@
-import { STUB_GRANTED_KEY } from "@genie/core";
 import type { DeploymentDiagnosticsProps } from "@genie/ui";
 
 import type { AppContext } from "../context.ts";
@@ -45,9 +44,9 @@ export function databaseName(connectionString: string): string {
 /**
  * What the Genie Ops Center panel shows, read from the one context.
  *
- * Section 0 authenticates nobody, so there is no user, no group and no role to
- * report. The permission list is the key the stub grant reader returns, which
- * is the only grant that exists until Section 2 supplies real roles.
+ * Sign-in does not exist until S2-04, so every request is anonymous and holds
+ * no permission; the list stays empty until the panel reads a signed-in
+ * person's grants.
  */
 export function deploymentDiagnostics(
   context: AppContext
@@ -56,6 +55,6 @@ export function deploymentDiagnostics(
     database: databaseName(context.tenant.env.databaseUrl),
     contextId: context.contextId,
     modules: modules.map((module) => module.identity.id),
-    permissions: [STUB_GRANTED_KEY],
+    permissions: [],
   };
 }

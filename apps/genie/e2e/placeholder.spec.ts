@@ -12,28 +12,23 @@ import { expect, test, type Page } from "@playwright/test";
  */
 const WCAG_21_AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
-// The Section 0 main path, as the stub actually defines it. The stub grants
-// `placeholder:read` and refuses everything else (R-13), and the workspace entry
-// requires `placeholder:use`, so navigating there is a denial. Asserting a
-// rendered workspace page here would be asserting an unauthorized success.
-test("navigation is visible and the module page is refused", async ({
+// Sign-in arrives with S2-04, so the browser is anonymous and the real
+// evaluator grants it nothing. The navigation omits the entry whose permission
+// refuses (R-34), and the route behind it is still mounted and still refuses
+// on the server (R-35): hiding is never the enforcement. The signed-in success
+// path at both viewports belongs to S2-04.
+test("navigation omits the module entry and its route still refuses", async ({
   page,
 }) => {
   await page.goto("/");
 
-  const nav = page.getByRole("navigation", { name: "Modules" });
-
   // `exact` because the accessible name of "Placeholder settings" also contains
-  // "Placeholder", and a substring match would resolve to two links and fail
-  // strict mode rather than exercise the main path.
-  const placeholder = nav.getByRole("link", {
-    name: "Placeholder",
-    exact: true,
-  });
+  // "Placeholder".
+  await expect(
+    page.getByRole("link", { name: "Placeholder", exact: true })
+  ).toHaveCount(0);
 
-  await expect(placeholder).toBeVisible();
-
-  await placeholder.click();
+  await page.goto("/placeholder");
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
   // The refused page reveals nothing it would have rendered.
@@ -66,10 +61,11 @@ test("the admin page is refused as well", async ({ page }) => {
   ).toHaveCount(0);
 });
 
-// The one authorized success path Section 0 has: the read procedure behind the
-// single granted key. Without this, every page assertion above is a denial and
-// nothing proves the stub grants anything at all.
-test("the placeholder read procedure succeeds through the real transport", async ({
+// The read procedure behind `placeholder:read`, through the real transport. An
+// anonymous request holds no grant, so the procedure's own `can()` refuses it.
+// The authorized read through a real role assignment is proved at the
+// integration layer until sign-in exists (S2-04).
+test("the placeholder read procedure refuses an anonymous request through the real transport", async ({
   request,
   baseURL,
 }) => {
@@ -77,13 +73,15 @@ test("the placeholder read procedure succeeds through the real transport", async
     `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
   );
 
-  expect(response.status()).toBe(200);
+  expect(response.status()).toBe(403);
 
   // SAFETY: the body is the tRPC envelope this route wrote, and the assertion
   // below checks the one field this test reads.
-  const body = (await response.json()) as { result?: { data?: unknown } };
+  const body = (await response.json()) as {
+    error?: { data?: { code?: string } };
+  };
 
-  expect(body.result).toBeDefined();
+  expect(body.error?.data?.code).toBe("FORBIDDEN");
 });
 
 // The criterion is "the policy strips nothing" (DEC-31 as amended: no nonce, and

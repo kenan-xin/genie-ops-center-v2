@@ -11,10 +11,13 @@ import { expect, test } from "@playwright/test";
  * `tools/generators/scripts/prove-generated-module.ts`, which builds the image,
  * sets the variable and fails if these cases do not execute.
  *
- * The proof is refusal. The Section 0 stub grants one key and it belongs to
- * another module, so every entry a generated module declares is denied. The
+ * The proof is refusal. Sign-in arrives with S2-04, so the browser is anonymous
+ * and the real evaluator grants it nothing: every entry a generated module
+ * declares is omitted from navigation and its route still refuses. The
  * application's page loader answers `can()` and returns its own denied response;
- * nothing the module would have rendered appears.
+ * nothing the module would have rendered appears. The generated module's
+ * authorized read through a real role assignment is proved by its own
+ * integration suite.
  *
  * A compiled module with no `tenant_module` row reads as disabled (R-5), so
  * before its own permission check ever runs, R-8 would refuse it at the proxy
@@ -62,17 +65,16 @@ test("the generated module's admin page is refused", async ({ page }) => {
   await expect(page.getByText(/records\./)).toHaveCount(0);
 });
 
-test("its navigation entry leads to the refusal, not to a missing page", async ({
+test("its navigation entry is omitted and its route still refuses", async ({
   page,
 }) => {
   await page.goto("/");
 
-  const nav = page.getByRole("navigation", { name: "Modules" });
-  const link = nav.getByRole("link", { name: displayName, exact: true });
+  await expect(
+    page.getByRole("link", { name: displayName, exact: true })
+  ).toHaveCount(0);
 
-  await expect(link).toBeVisible();
-
-  await link.click();
+  await page.goto(`/m/${id}`);
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
   await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);

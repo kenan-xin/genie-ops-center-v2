@@ -46,7 +46,9 @@ test("one process context serves the page, tRPC and viewer bundles", async ({
     `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
   );
 
-  expect(response.status()).toBe(200);
+  // Anonymous until sign-in exists (S2-04), so the procedure's own `can()`
+  // refuses; the refusal is still written by the tRPC route handler bundle.
+  expect(response.status()).toBe(403);
 
   const trpc = response.headers()[CONTEXT_HEADER];
 
@@ -121,12 +123,24 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
     );
 
-    expect(firstResponse.status()).toBe(200);
-    expect(secondResponse.status()).toBe(200);
-    expect(await firstResponse.text()).toContain("first-stack-only");
-    expect(await firstResponse.text()).not.toContain("second-stack-only");
-    expect(await secondResponse.text()).toContain("second-stack-only");
-    expect(await secondResponse.text()).not.toContain("first-stack-only");
+    // The request is anonymous until sign-in exists (S2-04), so each stack's
+    // procedure refuses the read and no row reaches the browser from either
+    // database. The row-level isolation proof with a real grant in each
+    // database is `testing/isolation.integration.test.ts` (DEC-34); S2-04
+    // brings the signed-in read back to this browser case.
+    expect(firstResponse.status()).toBe(403);
+    expect(secondResponse.status()).toBe(403);
+    expect(firstResponse.headers()[CONTEXT_HEADER]).not.toBe(
+      secondResponse.headers()[CONTEXT_HEADER]
+    );
+
+    for (const body of [
+      await firstResponse.text(),
+      await secondResponse.text(),
+    ]) {
+      expect(body).not.toContain("first-stack-only");
+      expect(body).not.toContain("second-stack-only");
+    }
   } finally {
     await Promise.all([
       firstImage?.stop(),
