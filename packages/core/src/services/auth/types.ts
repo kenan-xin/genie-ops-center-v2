@@ -1,7 +1,10 @@
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
 import type {
   AuthEnvironment,
   RuntimeMode,
 } from "../../lib/tenant-context/index.ts";
+import type { RedactingLogger } from "../logging/index.ts";
 
 /** Why the discovery document is not usable yet (Spec 2 R-54d). */
 export type AuthDiscoveryCause = "discovery_unreachable" | "issuer_mismatch";
@@ -88,13 +91,13 @@ export type AuthMember = {
   readonly discovery: () => AuthDiscoveryState;
   /** Probes discovery at most once every ten seconds while it has no good answer (R-54d). */
   readonly ensureDiscovery: () => Promise<AuthDiscoveryState>;
-  /** The realm's `end_session_endpoint` from the last good discovery answer, if any. */
-  readonly endSessionEndpoint: () => string | undefined;
 };
 
 export type AuthMemberInput = {
   /** The context's Drizzle client; the instance opens no connection of its own (R-4). */
-  readonly db: unknown;
+  readonly db: NodePgDatabase<Record<string, never>>;
+  /** The context's redacting logger; Better Auth writes every line through it (R-44, R-45). */
+  readonly logger: Pick<RedactingLogger, "error" | "info">;
   readonly publicUrl: string;
   readonly auth: AuthEnvironment;
   readonly trustedProxies: readonly string[];

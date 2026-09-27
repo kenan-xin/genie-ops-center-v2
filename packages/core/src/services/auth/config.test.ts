@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   APPLICATION_USER_FIELDS,
   discoveryDocumentUrl,
+  isPlainJwt,
   keycloakIssuer,
   keycloakProviderConfig,
   normalizeKeycloakUrl,
@@ -61,6 +62,15 @@ describe("the Keycloak provider configuration", () => {
     expect(provider.requireIdTokenVerification).toBe(true);
     expect(provider.scopes).toEqual(["openid", "profile", "email"]);
     expect(provider.postLogoutRedirectURI).toBe("https://genie.example.com");
+    expect(provider.disableProviderLogout).toBe(true);
+  });
+});
+
+describe("the JWT shape check", () => {
+  it("reads a three-part token as a JWT and ciphertext hex as not one (R-7)", () => {
+    expect(isPlainJwt("eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl")).toBe(true);
+    expect(isPlainJwt("0a1b2c3d4e5f")).toBe(false);
+    expect(isPlainJwt("$ba$1$0a1b2c")).toBe(false);
   });
 });
 

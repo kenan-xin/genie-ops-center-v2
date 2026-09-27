@@ -1,12 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
+import { createServer as createTcpServer, type Socket } from "node:net";
 import type { AddressInfo } from "node:net";
 
+import { symmetricDecrypt } from "better-auth/crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { user } from "../src/schema.ts";
 import type { AuthMember } from "../src/services/auth/index.ts";
-import { createAuthMember } from "../src/services/auth/index.ts";
+import {
+  accountHooks,
+  BREAK_GLASS_NOT_LINKABLE,
+  createAuthMember,
+  isPlainJwt,
+} from "../src/services/auth/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import { insertCredentialPerson, startDisposableDeployment } from "./index.ts";
 
@@ -322,6 +331,7 @@ describe("the discovery retry and swap", () => {
       const member = createAuthMember({
         db: deployment.context.db,
         publicUrl: PUBLIC_URL,
+        logger: silentLogger(),
         auth: { ...AUTH_MEMBER, keycloakUrl: url },
         trustedProxies: [],
         runtimeMode: "production",
@@ -366,4 +376,151 @@ describe("the discovery retry and swap", () => {
       await deployment.stop();
     }
   }, 120_000);
+
+  it("answers break-glass sign-in and get-session while Keycloak accepts and never answers (DEC-24, R-54d)", async () => {
+    const deployment = await startDisposableDeployment([], {
+      env: AUTH_ENV,
+      profile: "application",
+    });
+
+    // A realm that accepts the connection and then says nothing, which a refused port never shows.
+    const sockets = new Set<Socket>();
+
+    const hanging = createTcpServer((socket) => {
+      sockets.add(socket);
+    });
+
+    await new Promise<void>((resolve) =>
+      hanging.listen(0, "127.0.0.1", resolve)
+    );
+
+    try {
+      // SAFETY: a TCP listen answers an AddressInfo; only a Unix-socket bind answers a string.
+      const { port } = hanging.address() as AddressInfo;
+
+      const member = createAuthMember({
+        db: deployment.context.db,
+        logger: silentLogger(),
+        publicUrl: PUBLIC_URL,
+        auth: { ...AUTH_MEMBER, keycloakUrl: `http://127.0.0.1:${port}` },
+        trustedProxies: [],
+        runtimeMode: "production",
+      });
+
+      await insertCredentialPerson(deployment.context, {
+        email: "hang@example.com",
+        password: PASSWORD,
+      });
+
+      const startedAt = Date.now();
+      const response = await signInWithPassword(member, "hang@example.com");
+
+      expect(response.status).toBe(200);
+
+      const session = await member.getSession({
+        headers: new Headers({ cookie: cookieOf(response) }),
+      });
+
+      expect(session?.user.email).toBe("hang@example.com");
+      // Neither call waited on the hanging realm: the start instance has no provider plugin.
+      expect(Date.now() - startedAt).toBeLessThan(3_000);
+
+      // The start-up probe is bounded, so health (which reads this state) answers `degraded`.
+      await new Promise((settle) => setTimeout(settle, 5_500));
+
+      expect(member.discovery()).toEqual({
+        ready: false,
+        cause: "discovery_unreachable",
+      });
+    } finally {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve) =>
+        hanging.close(() => resolve(undefined))
+      );
+      await deployment.stop();
+    }
+  }, 120_000);
+});
+
+describe("the account hooks", () => {
+  let deployment: DisposableDeployment;
+
+  beforeAll(async () => {
+    deployment = await startDisposableDeployment([], {
+      env: AUTH_ENV,
+      profile: "application",
+    });
+  }, 240_000);
+
+  afterAll(async () => {
+    await deployment?.stop();
+  });
+
+  const ID_TOKEN = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJwZXJzb24ifQ.c2lnbmF0dXJl";
+
+  function hooks() {
+    return accountHooks({ db: deployment.context.db, auth: AUTH_MEMBER });
+  }
+
+  it("refuses a realm account for the break-glass user with a named cause (R-62)", async () => {
+    const breakGlassId = await insertCredentialPerson(deployment.context, {
+      email: "glass@example.com",
+      password: PASSWORD,
+    });
+
+    await expect(
+      hooks().create.before({
+        providerId: "keycloak",
+        userId: breakGlassId,
+        idToken: ID_TOKEN,
+      })
+    ).rejects.toMatchObject({ body: { code: BREAK_GLASS_NOT_LINKABLE } });
+
+    // Its own credential account is not a link, so it is still written.
+    await expect(
+      hooks().create.before({ providerId: "credential", userId: breakGlassId })
+    ).resolves.toBeUndefined();
+  });
+
+  it("seals the id token on create and update with the application secret (R-7)", async () => {
+    const personId = randomUUID();
+
+    await deployment.context.db.insert(user).values({
+      id: personId,
+      name: "Realm Person",
+      email: "realm.person@example.com",
+      emailVerified: true,
+    });
+
+    const created = await hooks().create.before({
+      providerId: "keycloak",
+      userId: personId,
+      idToken: ID_TOKEN,
+    });
+
+    const updated = await hooks().update.before({ idToken: ID_TOKEN });
+
+    const sealed = [created, updated].map(
+      (result) => result?.data.idToken ?? ""
+    );
+
+    for (const value of sealed) {
+      expect(isPlainJwt(value)).toBe(false);
+      expect(value).not.toContain(ID_TOKEN);
+    }
+
+    const unsealed = await Promise.all(
+      sealed.map((value) =>
+        symmetricDecrypt({ key: AUTH_MEMBER.betterAuthSecret, data: value })
+      )
+    );
+
+    expect(unsealed).toEqual([ID_TOKEN, ID_TOKEN]);
+
+    // A sealed value is not sealed twice, and an absent token leaves the write alone.
+    await expect(
+      hooks().update.before({ idToken: created?.data.idToken })
+    ).resolves.toBeUndefined();
+    await expect(hooks().update.before({})).resolves.toBeUndefined();
+  });
 });

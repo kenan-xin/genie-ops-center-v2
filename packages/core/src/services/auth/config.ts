@@ -80,7 +80,15 @@ export function keycloakProviderConfig(input: KeycloakProviderInput) {
     pkce: true,
     requireIdTokenVerification: true,
     postLogoutRedirectURI: input.publicUrl,
+    // The member builds the end-session URL itself, because the stored id token is encrypted and
+    // Better Auth would put the ciphertext into `id_token_hint` (R-7, R-17).
+    disableProviderLogout: true,
   };
+}
+
+/** An `xxx.yyy.zzz` value: a JWT, which an encrypted column never holds (R-7). */
+export function isPlainJwt(value: string): boolean {
+  return /^[\w-]+\.[\w-]+\.[\w-]*$/.test(value);
 }
 
 /**
@@ -95,4 +103,10 @@ export const APPLICATION_USER_FIELDS = {
   firstSignInAt: { type: "date", required: false, input: false },
   lastSignInAt: { type: "date", required: false, input: false },
   erasedAt: { type: "date", required: false, input: false },
+  // Written only by the admin and two-factor plugins, which are not installed yet. Declared here so
+  // that installing one later cannot make them writable by accident (D2-5).
+  banned: { type: "boolean", required: false, input: false },
+  banReason: { type: "string", required: false, input: false },
+  banExpires: { type: "date", required: false, input: false },
+  twoFactorEnabled: { type: "boolean", required: false, input: false },
 } as const;

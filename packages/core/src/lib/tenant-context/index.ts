@@ -259,13 +259,15 @@ export function createTenantContext(
   const publicUrl = createPublicUrl(env.publicUrl);
 
   // The one Better Auth instance (R-4), built here from values this context already holds and
-  // over this context's own pool. It opens no connection. A profile without the auth values
+  // over this context's own pool. It opens no database connection, but it starts one bounded
+  // discovery read of the realm in the background (R-54d). A profile without the auth values
   // builds no member (environment contract, worker and command rows).
   const auth =
     env.auth === undefined
       ? undefined
       : createAuthMember({
           db,
+          logger,
           publicUrl: env.publicUrl,
           auth: env.auth,
           trustedProxies: env.authTrustedProxies,

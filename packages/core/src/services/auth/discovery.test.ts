@@ -97,6 +97,13 @@ describe("the discovery probe", () => {
     expect(result).toEqual({ ready: false, cause: "discovery_unreachable" });
   });
 
+  it("treats a document without jwks_uri as not answering, because id tokens must be verified", async () => {
+    const { jwks_uri: _omitted, ...withoutKeys } = DOCUMENT;
+    const result = await probe(jsonFetch(withoutKeys)).probe();
+
+    expect(result).toEqual({ ready: false, cause: "discovery_unreachable" });
+  });
+
   it("bounds a fetch that never answers, so sign-in never waits forever", async () => {
     const result = await probe(
       (_input, init) =>

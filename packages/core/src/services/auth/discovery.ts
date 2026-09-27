@@ -14,6 +14,9 @@ const discoveryDocument = z.object({
   issuer: z.string(),
   authorization_endpoint: z.string(),
   token_endpoint: z.string(),
+  // The provider plugin skips a realm without `jwks_uri`, because id tokens must be verified, so a
+  // document without it would read as ready while every sign-in fails (R-54d).
+  jwks_uri: z.string(),
   end_session_endpoint: z.string().optional(),
 });
 
