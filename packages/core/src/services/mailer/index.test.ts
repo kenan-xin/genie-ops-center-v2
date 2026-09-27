@@ -153,6 +153,28 @@ const REFUSED_LINKS: readonly RefusedLink[] = [
   },
   { name: "a javascript link", value: "javascript:alert(document.domain)" },
   { name: "a mailto link", value: "mailto:person@example.com" },
+  {
+    name: "a base-relative absolute link",
+    value: "https:evil.example/x?token=foreign-10",
+    token: "foreign-10",
+  },
+  {
+    name: "a single-slash absolute link",
+    value: "https:/evil.example/?token=foreign-11",
+    token: "foreign-11",
+  },
+  {
+    name: "a userinfo link on the public host",
+    value: "https://evil.example@genie.example.com/x?token=foreign-12",
+    token: "foreign-12",
+  },
+  {
+    name: "a password userinfo link on the public host",
+    value: "https://u:p@genie.example.com/x?token=foreign-13",
+    token: "foreign-13",
+  },
+  { name: "a data link", value: "data:text/html,x" },
+  { name: "a backslash-pair host", value: "\\\\evil.example" },
 ];
 
 /** No refused value and no token from its query may reach the error or a line a log holds. */
@@ -367,5 +389,88 @@ describe("the mailer's link variables (R-70)", () => {
     for (const line of lines) {
       expectNoEcho(JSON.stringify(line), link);
     }
+  });
+
+  it("normalises an absolute link before the adapter sends it", async () => {
+    const fetchMock = wireAccepting();
+
+    const mailer = createMailer(resendEnv(), deps(silentLogger()));
+
+    await mailer.send({
+      templateId: "new-device-sign-in",
+      to: "person@example.com",
+      variables: {
+        link: "https://genie.example.com\\@evil.example/?token=own-3",
+      },
+    });
+
+    const body = wireBody(fetchMock);
+
+    expect(body).toContain(
+      "https://genie.example.com/@evil.example/?token=own-3"
+    );
+    expect(body).not.toContain("genie.example.com\\@evil.example");
+  });
+
+  it("normalises a path link that carries leading whitespace", async () => {
+    const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+
+    const mailer = createMailer(developmentEnv(), deps(silentLogger()));
+
+    await mailer.send({
+      templateId: "new-device-sign-in",
+      to: "person@example.com",
+      variables: { link: "  /invite?token=own-4" },
+    });
+
+    // SAFETY: the development path writes one JSON line through process.stdout.write.
+    const line = JSON.parse(String(write.mock.calls[0]?.[0])) as {
+      variables: Record<string, string>;
+    };
+
+    expect(line.variables.link).toBe(
+      "https://genie.example.com/invite?token=own-4"
+    );
+  });
+
+  it("keeps the PUBLIC_URL path prefix when it rebuilds a path link", async () => {
+    const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+
+    const mailer = createMailer(developmentEnv(), {
+      branding: {
+        get: () =>
+          Promise.resolve({ companyName: "Co", emailSenderName: null }),
+      },
+      logger: silentLogger(),
+      publicUrl: createPublicUrl("https://genie.example.com/ops"),
+    });
+
+    await mailer.send({
+      templateId: "module-notification",
+      to: "person@example.com",
+      variables: { link: "/../x?token=1#h" },
+    });
+
+    // SAFETY: the development path writes one JSON line through process.stdout.write.
+    const line = JSON.parse(String(write.mock.calls[0]?.[0])) as {
+      variables: Record<string, string>;
+    };
+
+    expect(line.variables.link).toBe(
+      "https://genie.example.com/ops/x?token=1#h"
+    );
+  });
+
+  it("cannot build a mailer dependency set without a public URL", () => {
+    // @ts-expect-error publicUrl is required, so no action link can be sent unverified.
+    const incomplete: MailerDependencies = {
+      branding: {
+        get: () =>
+          Promise.resolve({ companyName: "Co", emailSenderName: null }),
+      },
+      logger: silentLogger(),
+    };
+
+    expect(incomplete.branding).toBeDefined();
   });
 });

@@ -56,83 +56,122 @@ export type MailBranding = {
   readonly emailSenderName: string | null;
 };
 
+/** Builds an absolute link from `PUBLIC_URL`; `createPublicUrl` supplies it (R-70). */
+export type PublicLinkBuilder = (path: string) => string;
+
 export type MailerDependencies = {
   readonly branding: { readonly get: () => Promise<MailBranding> };
   readonly logger: Pick<RedactingLogger, "info" | "error">;
-  /** Resolves a link variable given as a path against `PUBLIC_URL` (R-70). */
-  readonly publicUrl?: (path: string) => string;
+  /**
+   * Builds an absolute link from `PUBLIC_URL` (R-70). Required, so no send can skip the check
+   * that an action link sits on the public address; the environment always supplies one.
+   */
+  readonly publicUrl: PublicLinkBuilder;
 };
 
 /** The template variables that hold the email's one link (templates.tsx). */
 const LINK_VARIABLES = ["link", "invitationUrl"] as const;
 
-/** The safe catalogue error a link on another origin is refused with (R-70). */
+/** The safe catalogue error a link this deployment may not send is refused with (R-70). */
 const MAIL_LINK_ORIGIN = CORE_ERRORS["mail-link-origin"];
 
+/** The ASCII tab and newline the URL parser removes from anywhere in a value (R-70). */
+const INNER_CONTROLS = /[\t\n\r]/g;
+
 /**
- * One link value parsed against a base address, or `undefined` when the URL parser refuses it.
- * `new URL` also resolves a protocol-relative `//host` and a backslash reference `/\host` to the
- * host they name, so both are compared like any other link rather than treated as a path (R-70).
+ * One value reduced to what the URL parser will read for a path: the tab and newline it removes
+ * everywhere, then the whitespace it strips from the ends. A shape check against the raw value
+ * would let `"/\t/evil"` pass the rooted test and then parse as `//evil` (R-70).
  */
-function parseLink(value: string, base: string): URL | undefined {
+function trimmedLink(value: string): string {
+  return value.replace(INNER_CONTROLS, "").trim();
+}
+
+/**
+ * One absolute URL parsed from the value alone, or `undefined` when the value is not absolute.
+ * Parsing with no base is what separates a real absolute link from `https:evil.example/x`: a
+ * base-relative parse would read that as a path on the public host, while a mail client reads it
+ * as `https://evil.example/x` (R-70).
+ */
+function parseAbsoluteLink(value: string): URL | undefined {
   try {
-    return new URL(value, base);
+    return new URL(value);
   } catch {
     return undefined;
   }
 }
 
+/** True when an absolute link has the public origin and carries no userinfo (R-70). */
+function isSendableAbsoluteLink(url: URL, origin: string): boolean {
+  if (url.origin !== origin) return false;
+
+  return url.username === "" && url.password === "";
+}
+
+/** True when a value is a rooted path on a single `/`, never `//host` or `/\host` (R-70). */
+function isRootedPath(value: string): boolean {
+  if (!value.startsWith("/")) return false;
+
+  return value[1] !== "/" && value[1] !== "\\";
+}
+
 /**
- * One action link resolved against `PUBLIC_URL` (R-70). A rooted path (`/invite?token=...`)
- * becomes an absolute link from `PUBLIC_URL`, so a caller never needs, and never reads, a request
- * host to build one. An absolute link is kept only when its origin is `PUBLIC_URL`'s. Every other
- * value is refused before a template renders or an adapter runs: another host, scheme or port, a
- * protocol-relative or backslash reference, a `javascript:` or `mailto:` link, and a relative
- * value that is not rooted (`records/42`), which has no meaning in an email. A link carries a
- * token, so the refusal is the fixed catalogue message and never echoes the value (R-49).
+ * One action link resolved against `PUBLIC_URL` (R-70). An absolute link is kept only when its
+ * origin is `PUBLIC_URL`'s and it carries no userinfo; it goes out as the parser's normalized
+ * `href`, never the raw value, so whitespace, tabs, C0 controls, bidi characters and a default
+ * port cannot change what a mail client opens. Anything else must be a rooted path on a single
+ * `/`, which is rebuilt from `PUBLIC_URL`. Every other value — another host, scheme or port, a
+ * protocol-relative or backslash reference, a `javascript:`, `mailto:` or `data:` link, a
+ * userinfo link, or an unrooted relative value — is refused before a template renders or an
+ * adapter runs. A link carries a token, so the refusal is the fixed catalogue message and never
+ * echoes the value (R-49).
  */
 function resolveActionLink(
   value: string,
-  publicUrl: NonNullable<MailerDependencies["publicUrl"]>,
+  publicUrl: PublicLinkBuilder,
   origin: string
 ): string {
-  const parsed = parseLink(value, origin);
+  const absolute = parseAbsoluteLink(value);
 
-  if (parsed?.origin !== origin) {
+  if (absolute !== undefined) {
+    if (!isSendableAbsoluteLink(absolute, origin)) {
+      throw new AppError(MAIL_LINK_ORIGIN);
+    }
+
+    return absolute.href;
+  }
+
+  const path = trimmedLink(value);
+
+  if (!isRootedPath(path)) {
     throw new AppError(MAIL_LINK_ORIGIN);
   }
 
-  // An absolute link the caller wrote on the public origin is kept as written.
-  if (URL.canParse(value)) return value;
+  // A rooted path is parsed on its own so `/..` collapses, then rebuilt from PUBLIC_URL, which
+  // keeps a configured path prefix.
+  const { pathname, search, hash } = new URL(path, "http://path.invalid");
 
-  // A relative value that is not rooted has no meaning as a link in an email.
-  if (!value.startsWith("/")) {
-    throw new AppError(MAIL_LINK_ORIGIN);
-  }
-
-  // A rooted path is rebuilt from PUBLIC_URL, so a configured path prefix is kept.
-  return `${publicUrl(parsed.pathname)}${parsed.search}${parsed.hash}`;
+  return `${publicUrl(pathname)}${search}${hash}`;
 }
 
 /**
  * The links of R-70. Every action link variable is checked against `PUBLIC_URL` before the send
- * continues: a path is resolved, an absolute same-origin link passes unchanged, and any other
- * value is refused here, before a template renders or an adapter runs (R-70). A variable that is
- * not an action link, and an action link left empty, is left as the caller wrote it.
+ * continues: an absolute link on the public origin is normalized and kept, a rooted path is
+ * resolved, and any other value is refused here, before a template renders or an adapter runs
+ * (R-70). A variable that is not an action link, and an action link left empty, is left as the
+ * caller wrote it.
  */
 function withPublicLinks(
   input: MailSendInput,
-  publicUrl: MailerDependencies["publicUrl"]
+  publicUrl: PublicLinkBuilder
 ): MailSendInput {
-  if (publicUrl === undefined) return input;
-
   const variables = { ...input.variables };
   const origin = new URL(publicUrl("/")).origin;
 
   for (const name of LINK_VARIABLES) {
     const value = variables[name];
 
-    if (value === undefined || value.trim() === "") continue;
+    if (value === undefined || trimmedLink(value) === "") continue;
 
     variables[name] = resolveActionLink(value, publicUrl, origin);
   }
