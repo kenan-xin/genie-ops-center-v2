@@ -83,11 +83,12 @@ function parseLink(value: string, base: string): URL | undefined {
 }
 
 /**
- * One action link resolved against `PUBLIC_URL` (R-70). A path (`/invite?token=...`) becomes an
- * absolute link from `PUBLIC_URL`, so a caller never needs, and never reads, a request host to
- * build one. An absolute link is kept only when its origin is `PUBLIC_URL`'s; every other value
- * — another host, scheme or port, a protocol-relative or backslash reference, a `javascript:` or
- * `mailto:` link — is refused before a template renders or an adapter runs. A link carries a
+ * One action link resolved against `PUBLIC_URL` (R-70). A rooted path (`/invite?token=...`)
+ * becomes an absolute link from `PUBLIC_URL`, so a caller never needs, and never reads, a request
+ * host to build one. An absolute link is kept only when its origin is `PUBLIC_URL`'s. Every other
+ * value is refused before a template renders or an adapter runs: another host, scheme or port, a
+ * protocol-relative or backslash reference, a `javascript:` or `mailto:` link, and a relative
+ * value that is not rooted (`records/42`), which has no meaning in an email. A link carries a
  * token, so the refusal is the fixed catalogue message and never echoes the value (R-49).
  */
 function resolveActionLink(
@@ -97,14 +98,19 @@ function resolveActionLink(
 ): string {
   const parsed = parseLink(value, origin);
 
-  if (parsed === undefined || parsed.origin !== origin) {
+  if (parsed?.origin !== origin) {
     throw new AppError(MAIL_LINK_ORIGIN);
   }
 
   // An absolute link the caller wrote on the public origin is kept as written.
   if (URL.canParse(value)) return value;
 
-  // A path is rebuilt from PUBLIC_URL, so a configured path prefix is kept.
+  // A relative value that is not rooted has no meaning as a link in an email.
+  if (!value.startsWith("/")) {
+    throw new AppError(MAIL_LINK_ORIGIN);
+  }
+
+  // A rooted path is rebuilt from PUBLIC_URL, so a configured path prefix is kept.
   return `${publicUrl(parsed.pathname)}${parsed.search}${parsed.hash}`;
 }
 

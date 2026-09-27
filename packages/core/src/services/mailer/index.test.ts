@@ -337,4 +337,35 @@ describe("the mailer's link variables (R-70)", () => {
       expectNoEcho(JSON.stringify(line), link);
     }
   });
+
+  it("refuses an unrooted relative link and sends nothing", async () => {
+    const link: RefusedLink = {
+      name: "unrooted",
+      value: "records/42?token=foreign-9",
+      token: "foreign-9",
+    };
+
+    const fetchMock = wireOff();
+
+    const { logger, lines } = capturingLogger();
+
+    const mailer = createMailer(resendEnv(), deps(logger));
+
+    const error = await refused(() =>
+      mailer.send({
+        templateId: "module-notification",
+        to: "person@example.com",
+        variables: { link: link.value },
+      })
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(error.code).toBe("mail-link-origin");
+    expect(error.message).toContain("link");
+    expectNoEcho(error.message, link);
+
+    for (const line of lines) {
+      expectNoEcho(JSON.stringify(line), link);
+    }
+  });
 });
