@@ -143,6 +143,23 @@ export {
   writeAuditEvent,
 } from "./services/audit/index.ts";
 
+export {
+  AUDIT_ACTIONS,
+  type AuditAction,
+  auditActionGroup,
+  type AuditActorView,
+  type AuditDateRange,
+  type AuditEventCursor,
+  type AuditEventFilters,
+  type AuditEventView,
+  type AuditFilterOptions,
+  type AuditMetadata,
+  type AuditPage,
+  createAuditRouter,
+  isOperatorAction,
+  readAuditPage,
+} from "./services/audit/index.ts";
+
 export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
 
 export type { JobQueue } from "./services/job-queue/index.ts";

@@ -6,9 +6,14 @@ import type {
   PermissionTransformation,
 } from "../../lib/module-contract/module.ts";
 import { auditEvent, role } from "../../schema.ts";
+import type { AuditAction } from "../audit/actions.ts";
 
-/** The audit action of one applied transformation; the row is also its ledger entry. */
-export const PERMISSION_TRANSFORMATION_ACTION =
+/**
+ * The audit action of one applied transformation; the row is also its ledger entry. Typed against
+ * the R-45 catalogue, so a rename of the catalogue entry fails `tsc` here rather than silently
+ * writing an action the reader's fixed filter cannot offer.
+ */
+export const PERMISSION_TRANSFORMATION_ACTION: AuditAction =
   "core:permission_transformation";
 
 /** Core's own transformations of its `core:` keys. None has shipped yet. */

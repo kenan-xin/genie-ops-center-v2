@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./errors": "./src/lib/errors/index.ts",
+    "./features/audit": "./src/features/audit/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./testing/stage-workspace": "./testing/stage-workspace.ts",

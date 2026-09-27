@@ -1,6 +1,28 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { auditEvent } from "../../schema.ts";
 
+export {
+  AUDIT_ACTIONS,
+  type AuditAction,
+  auditActionGroup,
+  isOperatorAction,
+} from "./actions.ts";
+
+export {
+  type AuditActorView,
+  type AuditDateRange,
+  type AuditEventCursor,
+  type AuditEventFilters,
+  type AuditEventView,
+  type AuditFilterOptions,
+  type AuditMetadata,
+  type AuditPage,
+  type AuditReadInput,
+  readAuditPage,
+} from "./reader.ts";
+
+export { createAuditRouter, type AuditRouter } from "./router.ts";
+
 /** One json value an audit row's metadata may carry. It is a closed shape, never `unknown`. */
 export type AuditMetadataValue =
   | string

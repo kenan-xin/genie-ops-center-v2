@@ -366,4 +366,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "retained access across removal and reintroduction restores only the remaining valid grants on explicit enable",
     ],
   },
+  {
+    file: "testing/audit-reader.integration.test.ts",
+    reason:
+      "Spec 2 AC-16 and R-67 to R-69 require the audit reader's authorization, keyset paging, operator filter and resolver-gated target link against real Postgres",
+    cases: [
+      "the audit reader against a real database refuses a caller without core:audit:read and reads nothing",
+      "the audit reader against a real database pages newest first across equal timestamps with no gap and no repeat",
+      "the audit reader against a real database selects operator rows by a null actor and an ops: action only",
+      "the audit reader against a real database links a target only when the resolver returns a path the viewer may open",
+    ],
+  },
 ];

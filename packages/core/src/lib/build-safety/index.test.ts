@@ -86,13 +86,22 @@ describe("the detectors", () => {
  */
 const RUNTIME_SUBPATHS = new Set([".", "./testing"]);
 
+/**
+ * Browser-only UI entrypoints. They ship `.tsx`, which Node's type stripper cannot load at all
+ * (ERR_UNKNOWN_FILE_EXTENSION), so this Node probe cannot evaluate them. Their browser safety — no
+ * driver, no deployment variable, no connection — is proven where they run: the app build and the
+ * Storybook host. Excluded from the Node runtime probe, never from the browser-safety requirement.
+ */
+const BROWSER_SUBPATHS = new Set(["./features/audit"]);
+
 function buildSafeSubpaths(): readonly string[] {
   const manifest: Manifest = JSON.parse(
     readFileSync(join(WORKSPACE_ROOT, "packages/core/package.json"), "utf8")
   );
 
   return Object.keys(manifest.exports).filter(
-    (subpath) => !RUNTIME_SUBPATHS.has(subpath)
+    (subpath) =>
+      !RUNTIME_SUBPATHS.has(subpath) && !BROWSER_SUBPATHS.has(subpath)
   );
 }
 
