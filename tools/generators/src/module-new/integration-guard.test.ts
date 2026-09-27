@@ -34,6 +34,7 @@ const ROUTER_CASES = [
   "the demo schema against a real database applies its own migration and holds a real row",
   "the demo schema against a real database records its history in its own ledger, apart from core's",
   "the demo read procedure answers the rows to a person holding demo:read through a role",
+  "the demo read procedure answers only the named record to a person with a record-scoped read grant",
   "the demo read procedure refuses a person holding another key of this module, and returns no row",
   "the demo read procedure refuses an anonymous caller",
 ];

@@ -282,26 +282,41 @@ export const MIGRATIONS = () => migrationsFromJournal(journal, MIGRATION_FILES);
 `;
 
 const router: Template = (names) =>
-  `import { can, createModuleTRPC, TRPCError } from "@genie/core";
+  `import { createModuleTRPC, scopesFor, TRPCError } from "@genie/core";
+import { inArray, sql } from "drizzle-orm";
 
 import { ${names.camel}Record } from "./schema.ts";
 
 const t = createModuleTRPC("${names.id}");
 
 /**
- * The module's router, mounted under the module id when the module is enabled. Every procedure
- * checks \`can()\` first and reads only through \`ctx.tenant.db\` (DEC-34, DEC-39), and the
+ * The module's router, mounted under the module id when the module is enabled. The list read asks
+ * \`scopesFor()\` first and reads only the records the person's grants cover, only through
+ * \`ctx.tenant.db\` (DEC-34, DEC-39): a tenant-wide grant reads every row, a record-scoped grant
+ * reads the records it names, and no grant is refused before any read. A procedure on one record
+ * passes that record to \`can()\`. The
  * \`createModuleTRPC\` base refuses the call with \`module-disabled\` when the entitlement is
  * off, before any resolver runs. The dot in the path \`${names.id}.read\` is a tRPC path, not
  * the permission key.
  */
 export const ${names.camel}Router = t.router({
   read: t.procedure.query(async ({ ctx }) => {
-    if (!(await can(ctx.caller, "${names.id}:read"))) {
+    const scopes = await scopesFor(ctx.caller, "${names.id}:read");
+
+    if (scopes.kind === "none") {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
 
-    return ctx.tenant.db.select().from(${names.camel}Record);
+    const rows = ctx.tenant.db.select().from(${names.camel}Record);
+
+    if (scopes.kind === "all") return rows;
+
+    const ids = scopes.scopes
+      .filter((scope) => scope.type === "${names.id}-record")
+      .map((scope) => scope.id);
+
+    // Compared as text, so a scope id that is not a uuid matches nothing instead of failing.
+    return rows.where(inArray(sql\`\${${names.camel}Record.id}::text\`, ids));
   }),
 });
 
@@ -309,8 +324,8 @@ export type ${names.pascal}Router = typeof ${names.camel}Router;
 `;
 
 const declaration: Template = (names) =>
-  `import { can, type Module } from "@genie/core";
-import { eq } from "drizzle-orm";
+  `import { can, type Module, scopesFor } from "@genie/core";
+import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -379,7 +394,7 @@ export const ${names.camel}Module = {
   recordTypes: [
     {
       type: "${names.id}-record",
-      resolve: async (id: string) => ({
+      resolve: async (_ctx, id: string) => ({
         label: \`${names.displayName} record \${id}\`,
         path: \`/m/${names.id}/\${id}\`,
       }),
@@ -407,13 +422,24 @@ export const ${names.camel}Module = {
    */
   categoryAssignment: {
     listAssignable: async (ctx) => {
-      if (!(await can(ctx.caller, "${names.id}:admin"))) {
-        return [];
-      }
+      const scopes = await scopesFor(ctx.caller, "${names.id}:admin");
 
-      const rows = await ctx.tenant.db
-        .select()
-        .from(${names.camel}Record);
+      if (scopes.kind === "none") return [];
+
+      const query = ctx.tenant.db.select().from(${names.camel}Record);
+
+      // Only the records the admin grant covers, so a record-scoped grant lists its own records.
+      const rows =
+        scopes.kind === "all"
+          ? await query
+          : await query.where(
+              inArray(
+                sql\`\${${names.camel}Record.id}::text\`,
+                scopes.scopes.flatMap((scope) =>
+                  scope.type === "${names.id}-record" ? [scope.id] : []
+                )
+              )
+            );
 
       // An unplaced record omits the key rather than carrying an explicit
       // undefined, which the contract's optional property does not accept.
@@ -425,7 +451,12 @@ export const ${names.camel}Module = {
     },
 
     assign: async (ctx, recordId: string, categoryId: string) => {
-      if (!(await can(ctx.caller, "${names.id}:admin"))) {
+      if (
+        !(await can(ctx.caller, "${names.id}:admin", {
+          type: "${names.id}-record",
+          id: recordId,
+        }))
+      ) {
         throw new Error("forbidden");
       }
 
@@ -436,7 +467,12 @@ export const ${names.camel}Module = {
     },
 
     clear: async (ctx, recordId: string) => {
-      if (!(await can(ctx.caller, "${names.id}:admin"))) {
+      if (
+        !(await can(ctx.caller, "${names.id}:admin", {
+          type: "${names.id}-record",
+          id: recordId,
+        }))
+      ) {
         throw new Error("forbidden");
       }
 
@@ -947,6 +983,27 @@ describe("the ${names.id} read procedure", () => {
     expect(rows.map((entry) => entry.id)).toContain(row.id);
   });
 
+  it("answers only the named record to a person with a record-scoped read grant", async () => {
+    const named = await insert${names.pascal}Record(deployment.context, {
+      label: "The named row",
+    });
+
+    const other = await insert${names.pascal}Record(deployment.context, {
+      label: "Another row",
+    });
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["${names.id}:read"],
+      { type: "${names.id}-record", id: named.id }
+    );
+
+    const rows = await ${names.camel}Router.createCaller(contextFor(userId)).read();
+
+    expect(rows.map((entry) => entry.id)).toEqual([named.id]);
+    expect(rows.map((entry) => entry.id)).not.toContain(other.id);
+  });
+
   it("refuses a person holding another key of this module, and returns no row", async () => {
     await insert${names.pascal}Record(deployment.context, {
       label: "A protected row",
@@ -993,6 +1050,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the ${names.id} schema against a real database applies its own migration and holds a real row",
       "the ${names.id} schema against a real database records its history in its own ledger, apart from core's",
       "the ${names.id} read procedure answers the rows to a person holding ${names.id}:read through a role",
+      "the ${names.id} read procedure answers only the named record to a person with a record-scoped read grant",
       "the ${names.id} read procedure refuses a person holding another key of this module, and returns no row",
       "the ${names.id} read procedure refuses an anonymous caller",
     ],

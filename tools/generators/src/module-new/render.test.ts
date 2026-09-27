@@ -198,7 +198,9 @@ describe("the rendered declaration", () => {
 
     expect(router).toContain("async ({ ctx })");
     expect(router).toContain("ctx.tenant.db");
-    expect(router).toContain('can(ctx.caller, "demo:read")');
+    // A list read goes through scopesFor, so a record-scoped grant never reads every row (DEC-39).
+    expect(router).toContain('scopesFor(ctx.caller, "demo:read")');
+    expect(router).not.toContain("can(ctx.caller");
     expect(router).not.toContain("drizzle-orm/node-postgres");
   });
 
