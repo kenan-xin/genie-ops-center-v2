@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { signInThroughKeycloak } from "./support/sign-in.ts";
+
 /**
  * A module the generator wrote, proved in a browser at both viewports (R-30,
  * AC-7).
@@ -78,4 +80,30 @@ test("its navigation entry is omitted and its route still refuses", async ({
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
   await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
+});
+
+// S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak
+// login form and holds the generated module's `use` and `read` keys through a real role assignment
+// sees the entry, renders the module page, and reads it. The refusal cases above stay as controls.
+test("a signed-in person with a real grant sees the generated module and reads it", async ({
+  page,
+}) => {
+  await signInThroughKeycloak(page);
+
+  await expect(
+    page.getByRole("link", { name: displayName, exact: true })
+  ).toBeVisible();
+
+  await page.goto(`/m/${id}`);
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: displayName })
+  ).toBeVisible();
+  await expect(page.getByTestId("permission-denied")).toHaveCount(0);
+
+  const response = await page.request.get(
+    `/api/trpc/${id}.read?input=${encodeURIComponent("{}")}`
+  );
+
+  expect(response.status()).toBe(200);
 });
