@@ -267,13 +267,23 @@ describe("the rendered authorization proof", () => {
     expect(access).not.toContain("vi.mock");
   });
 
-  it("expects every one of its own keys to be refused in Section 0", () => {
+  it("expects every one of its own keys to be refused to a caller without a grant", () => {
     for (const key of ["demo:use", "demo:read", "demo:admin"]) {
       expect(access).toContain(`can(caller, "${key}")`);
     }
 
-    expect(access).toContain("createStubGrantReader()");
+    // A granted answer here would be a stand-in; the grant is proved with real rows.
     expect(access).not.toContain("toBe(true)");
+  });
+
+  it("proves the granted read with a real role assignment", () => {
+    const integration = read(
+      "packages/modules/demo/testing/router.integration.test.ts"
+    );
+
+    expect(integration).toContain("insertPersonWith(");
+    expect(integration).toContain("principalFor(");
+    expect(integration).not.toContain("createRequestPrincipal");
   });
 });
 

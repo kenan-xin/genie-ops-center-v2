@@ -33,8 +33,9 @@ function read(path: string): string {
 const ROUTER_CASES = [
   "the demo schema against a real database applies its own migration and holds a real row",
   "the demo schema against a real database records its history in its own ledger, apart from core's",
-  "the demo read procedure refuses a caller the stub grants nothing, and returns no row",
-  "the demo read procedure refuses the Section 0 stub principal, which holds another module's key",
+  "the demo read procedure answers the rows to a person holding demo:read through a role",
+  "the demo read procedure refuses a person holding another key of this module, and returns no row",
+  "the demo read procedure refuses an anonymous caller",
 ];
 
 describe("the rendered integration guard", () => {

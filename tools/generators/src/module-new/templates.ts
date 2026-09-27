@@ -546,23 +546,16 @@ describe("the ${names.id} module declaration", () => {
 `;
 
 const accessTest: Template = (names) =>
-  `import {
-  can,
-  createRequestPrincipal,
-  createStubGrantReader,
-} from "@genie/core";
+  `import { can, createRequestPrincipal } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 /**
  * The authorization half of this module's denial proof, against the real seam.
  *
- * \`can()\` is the only permission check there is (DEC-39), and the Section 0 stub grants one
- * key that belongs to another module, so every caller is refused here. The application's page
- * loader asks the same question before it mounts a page of this module, and answers a refused
- * person with its own denied response.
- *
- * A caller who is granted \`${names.id}:use\` arrives with real roles in Section 2. Until then a
- * failing expectation here is a real change in the seam, and widening the stub is never the fix.
+ * \`can()\` is the only permission check there is (DEC-39). A caller who holds no key is refused
+ * every key of this module, and the application's page loader asks the same question before it
+ * mounts a page of this module. The granted path is proved with real role assignments against a
+ * real database in \`testing/router.integration.test.ts\`, never with a stand-in answer here.
  */
 const identity = { userId: "u1", groups: [] };
 
@@ -575,12 +568,6 @@ describe("the ${names.id} access decision", () => {
     expect(await can(caller, "${names.id}:use")).toBe(false);
     expect(await can(caller, "${names.id}:read")).toBe(false);
     expect(await can(caller, "${names.id}:admin")).toBe(false);
-  });
-
-  it("refuses the Section 0 stub principal, which holds another module's key", async () => {
-    const caller = createRequestPrincipal(identity, createStubGrantReader());
-
-    expect(await can(caller, "${names.id}:use")).toBe(false);
   });
 });
 `;
@@ -702,9 +689,7 @@ import { WorkspacePage } from "./workspace-page.tsx";
  *
  * Neither entry asks whether the person may be here. The app's page loader already asked, with
  * the entry's \`requiredPermission\`, and renders its own denied response instead of this
- * component when the answer is no. In Section 0 that answer is always no, because the stub
- * grants one key and it belongs to another module, which \`src/access.test.ts\` proves against
- * the real seam.
+ * component when the answer is no, which \`src/access.test.ts\` proves against the real seam.
  */
 export function ${names.pascal}WorkspacePage() {
   return <WorkspacePage records={[]} />;
@@ -875,12 +860,12 @@ export {
 `;
 
 const integrationTest: Template = (names) =>
-  `import {
-  createRequestPrincipal,
-  createStubGrantReader,
-  type ModuleRequestContext,
-} from "@genie/core";
-import { enableModules, startDisposableDeployment } from "@genie/core/testing";
+  `import { principalFor, type ModuleRequestContext } from "@genie/core";
+import {
+  enableModules,
+  insertPersonWith,
+  startDisposableDeployment,
+} from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ${names.camel}Module } from "../src/module.ts";
@@ -893,10 +878,9 @@ import { insert${names.pascal}Record } from "./factories.ts";
  *
  * The deployment starts with the module disabled, so the setup enables it: the read procedure's
  * \`createModuleTRPC\` gate refuses a disabled module with \`module-disabled\` before \`can()\`
- * runs, and the cases below prove the authorization refusal, not the entitlement one. The Section
- * 0 authorization stub grants one key, and it is not this module's, so every caller is refused.
- * A test that needs a granted key is not fixed by widening the stub; it waits for real roles in
- * Section 2.
+ * runs, and the cases below prove the authorization, not the entitlement refusal. Every caller is
+ * a real person whose keys come from a real role assignment, read by the real evaluator; nothing
+ * fakes a permission answer and no principal bypasses the loader.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -910,10 +894,15 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-function contextFor(read: Parameters<typeof createRequestPrincipal>[1]) {
+/** One request for a real person, or an anonymous one, through the real loader. */
+function contextFor(userId: string | undefined) {
   return {
     tenant: deployment.context,
-    caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
+    caller: principalFor({
+      tenant: deployment.context,
+      modules: [${names.camel}Module],
+      userId,
+    }),
   } satisfies ModuleRequestContext;
 }
 
@@ -944,22 +933,36 @@ describe("the ${names.id} schema against a real database", () => {
 });
 
 describe("the ${names.id} read procedure", () => {
-  it("refuses a caller the stub grants nothing, and returns no row", async () => {
+  it("answers the rows to a person holding ${names.id}:read through a role", async () => {
+    const row = await insert${names.pascal}Record(deployment.context, {
+      label: "A readable row",
+    });
+
+    const { userId } = await insertPersonWith(deployment.context, [
+      "${names.id}:read",
+    ]);
+
+    const rows = await ${names.camel}Router.createCaller(contextFor(userId)).read();
+
+    expect(rows.map((entry) => entry.id)).toContain(row.id);
+  });
+
+  it("refuses a person holding another key of this module, and returns no row", async () => {
     await insert${names.pascal}Record(deployment.context, {
       label: "A protected row",
     });
 
-    const caller = ${names.camel}Router.createCaller(
-      contextFor(() => Promise.resolve({ keys: new Set(), scopes: new Map() }))
-    );
+    const { userId } = await insertPersonWith(deployment.context, [
+      "${names.id}:use",
+    ]);
+
+    const caller = ${names.camel}Router.createCaller(contextFor(userId));
 
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
   });
 
-  it("refuses the Section 0 stub principal, which holds another module's key", async () => {
-    const caller = ${names.camel}Router.createCaller(
-      contextFor(createStubGrantReader())
-    );
+  it("refuses an anonymous caller", async () => {
+    const caller = ${names.camel}Router.createCaller(contextFor(undefined));
 
     await expect(caller.read()).rejects.toThrow("FORBIDDEN");
   });
@@ -989,8 +992,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "the ${names.id} schema against a real database applies its own migration and holds a real row",
       "the ${names.id} schema against a real database records its history in its own ledger, apart from core's",
-      "the ${names.id} read procedure refuses a caller the stub grants nothing, and returns no row",
-      "the ${names.id} read procedure refuses the Section 0 stub principal, which holds another module's key",
+      "the ${names.id} read procedure answers the rows to a person holding ${names.id}:read through a role",
+      "the ${names.id} read procedure refuses a person holding another key of this module, and returns no row",
+      "the ${names.id} read procedure refuses an anonymous caller",
     ],
   },
 ];
@@ -1156,8 +1160,8 @@ its schema. A module owns the factories for its own tables; core holds none of t
 
 A unit test, which lives beside its source under \`src/\`. A core table factory. A database
 mock: every test here takes a disposable Postgres with the real migration histories applied. A
-widened authorization stub: this module's procedures are refused in Section 0, and that refusal
-is the proof.
+faked permission answer or a test-only principal: a granted caller holds a real role assignment
+and is read by the real evaluator.
 
 ## What it imports
 

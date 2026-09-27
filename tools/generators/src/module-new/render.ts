@@ -85,8 +85,8 @@ function namesFor(input: ModuleRenderInput): ModuleNames {
  *
  * The rendered package wires every point of the module contract, owns its own
  * migration history and ledger table, keeps `ctx.tenant` in every procedure
- * signature, and carries only its own permission keys, so the unchanged Section 0
- * stub refuses it.
+ * signature, and carries only its own permission keys, which a person reaches only
+ * through a real role assignment.
  */
 export function renderModule(
   input: ModuleRenderInput
