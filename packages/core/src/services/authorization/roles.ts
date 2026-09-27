@@ -1,6 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import type { Module } from "../../lib/module-contract/module.ts";
+import {
+  AUDITOR_ROLE,
+  TENANT_ADMINISTRATOR_ROLE,
+} from "../../lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { role } from "../../schema.ts";
@@ -15,9 +19,10 @@ export const CORE_PERMISSION_KEYS = [
   "core:audit:read",
 ] as const;
 
-export const TENANT_ADMINISTRATOR_ROLE = "Tenant administrator";
-
-export const AUDITOR_ROLE = "Auditor";
+export {
+  AUDITOR_ROLE,
+  TENANT_ADMINISTRATOR_ROLE,
+} from "../../lib/module-contract/system-roles.ts";
 
 const CORE_ROLES = [
   {

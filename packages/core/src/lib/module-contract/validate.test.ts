@@ -44,6 +44,53 @@ describe("validateModule", () => {
     expect(validateModule(renamed)).toEqual([]);
   });
 
+  it("accepts a chain of renames whose final key is declared", () => {
+    const chained = {
+      ...validModule,
+      permissionTransformations: [
+        {
+          id: "0001",
+          release: "1.0.0",
+          description: "Rename look to view",
+          change: { kind: "rename", from: "fixture:look", to: "fixture:view" },
+        },
+        {
+          id: "0002",
+          release: "5.0.0",
+          description: "Rename view to read",
+          change: { kind: "rename", from: "fixture:view", to: "fixture:read" },
+        },
+      ],
+    } as const;
+
+    expect(validateModule(chained)).toEqual([]);
+  });
+
+  it("refuses a chain whose intermediate key is still declared", () => {
+    const merged = {
+      ...validModule,
+      permissionTransformations: [
+        {
+          id: "0001",
+          release: "1.0.0",
+          description: "Rename look to use",
+          change: { kind: "rename", from: "fixture:look", to: "fixture:use" },
+        },
+        {
+          id: "0002",
+          release: "5.0.0",
+          description: "Rename use to read",
+          change: { kind: "rename", from: "fixture:use", to: "fixture:read" },
+        },
+      ],
+    } as const;
+
+    expect(validateModule(merged)).toEqual([
+      'Permission transformation "0001" renames "fixture:use", which the module still declares; a rename must not merge two keys.',
+      'Permission transformation "0002" renames "fixture:use", which the module still declares; a rename must not merge two keys.',
+    ]);
+  });
+
   it("refuses a rename that merges two declared keys, a foreign key and a core role rename", () => {
     const broken = {
       ...validModule,

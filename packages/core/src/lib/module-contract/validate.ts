@@ -1,9 +1,5 @@
 import type { ZodType } from "zod";
 
-import {
-  AUDITOR_ROLE,
-  TENANT_ADMINISTRATOR_ROLE,
-} from "../../services/authorization/roles.ts";
 import { moduleIdOfRouter } from "../entitlement/module-trpc.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
@@ -12,6 +8,7 @@ import type {
   NavigationEntry,
   PermissionTransformation,
 } from "./module.ts";
+import { AUDITOR_ROLE, TENANT_ADMINISTRATOR_ROLE } from "./system-roles.ts";
 
 /** Core's own system roles, which no module transformation may rename to or from. */
 const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
@@ -370,8 +367,9 @@ export function validateModule(module: Module): readonly string[] {
 
   // R-33c: a module transforms only its own keys, and each transformation id is its ledger entry.
   const transformationIds = new Set<string>();
+  const transformations = module.permissionTransformations ?? [];
 
-  for (const transformation of module.permissionTransformations ?? []) {
+  for (const [index, transformation] of transformations.entries()) {
     if (transformationIds.has(transformation.id)) {
       problems.push(
         `Permission transformation "${transformation.id}" is declared twice.`
@@ -380,7 +378,13 @@ export function validateModule(module: Module): readonly string[] {
 
     transformationIds.add(transformation.id);
 
-    problems.push(...transformationProblems(module, transformation));
+    problems.push(
+      ...transformationProblems(
+        module,
+        transformation,
+        transformations.slice(index + 1)
+      )
+    );
   }
 
   return problems;
@@ -388,13 +392,15 @@ export function validateModule(module: Module): readonly string[] {
 
 /**
  * One transformation's ownership rules (R-33a, R-33c). Every key is one of the module's own
- * `<id>:<action>` keys. A rename is equivalent, never a merge: the old key is no longer declared
- * and the new one is, so no holder of one key gains another key the module still declares. A role
- * rename never names a core system role.
+ * `<id>:<action>` keys. A rename is equivalent, never a merge. The list is permanent, so a rename
+ * is judged as the start of its chain through the later renames in declaration order: the chain's
+ * final key is declared, and no earlier key of the chain still is, so no holder of one key gains
+ * another key the module still declares. A role rename never names a core system role.
  */
 function transformationProblems(
   module: Module,
-  transformation: PermissionTransformation
+  transformation: PermissionTransformation,
+  later: readonly PermissionTransformation[]
 ): string[] {
   const id = module.identity.id;
   const { change } = transformation;
@@ -418,17 +424,31 @@ function transformationProblems(
   );
 
   if (change.kind === "rename") {
-    const declared = new Set(module.permissions.map((entry) => entry.key));
+    const declared = new Set<string>(
+      module.permissions.map((entry) => entry.key)
+    );
 
-    if (declared.has(change.from)) {
-      problems.push(
-        `${label} renames "${change.from}", which the module still declares; a rename must not merge two keys.`
-      );
+    const chain: string[] = [change.from, change.to];
+
+    for (const next of later) {
+      if (next.change.kind === "rename" && next.change.from === chain.at(-1)) {
+        chain.push(next.change.to);
+      }
     }
 
-    if (!declared.has(change.to)) {
+    const final = chain.at(-1) ?? change.to;
+
+    for (const key of chain.slice(0, -1)) {
+      if (declared.has(key)) {
+        problems.push(
+          `${label} renames "${key}", which the module still declares; a rename must not merge two keys.`
+        );
+      }
+    }
+
+    if (!declared.has(final)) {
       problems.push(
-        `${label} renames to "${change.to}", which the module does not declare.`
+        `${label} renames to "${final}", which the module does not declare.`
       );
     }
   }
