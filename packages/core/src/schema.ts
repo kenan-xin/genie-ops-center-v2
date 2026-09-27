@@ -3,6 +3,7 @@ import type { PgTable } from "drizzle-orm/pg-core";
 import {
   bigint,
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -11,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -243,30 +245,39 @@ export const tenantIntegration = pgTable("tenant_integration", {
  * rest compare against `now()` like every other core timestamp. No Better Auth runtime code
  * lives here yet (that is S2-04); this is the schema and nothing else.
  */
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  role: text("role"),
-  banned: boolean("banned").default(false),
-  banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires", withTimeZone),
-  twoFactorEnabled: boolean("two_factor_enabled").default(false),
-  status: text("status"),
-  mustChangePassword: boolean("must_change_password").default(false),
-  isBreakGlass: boolean("is_break_glass").notNull().default(false),
-  onboarding: text("onboarding"),
-  firstSignInAt: timestamp("first_sign_in_at", withTimeZone),
-  lastSignInAt: timestamp("last_sign_in_at", withTimeZone),
-  erasedAt: timestamp("erased_at", withTimeZone),
-  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", withTimeZone)
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    role: text("role"),
+    banned: boolean("banned").default(false),
+    banReason: text("ban_reason"),
+    banExpires: timestamp("ban_expires", withTimeZone),
+    twoFactorEnabled: boolean("two_factor_enabled").default(false),
+    status: text("status"),
+    mustChangePassword: boolean("must_change_password").default(false),
+    isBreakGlass: boolean("is_break_glass").notNull().default(false),
+    onboarding: text("onboarding"),
+    firstSignInAt: timestamp("first_sign_in_at", withTimeZone),
+    lastSignInAt: timestamp("last_sign_in_at", withTimeZone),
+    erasedAt: timestamp("erased_at", withTimeZone),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone)
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  // Better Auth lower-cases every email lookup and write, and `admin_seed` and Add person write
+  // with Drizzle, so the column itself enforces the lower-case invariant a writer could miss
+  // (D2-1, data-shape.md, "Identity").
+  (table) => [
+    check("user_email_lowercase", sql`${table.email} = lower(${table.email})`),
+  ]
+);
 
 /** A database-backed session; `expires_at` is the fixed 24 hour cap (R-13). */
 export const session = pgTable(
@@ -283,6 +294,9 @@ export const session = pgTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     impersonatedBy: text("impersonated_by"),
+    // The idle check's one writer (R-15); `updated_at` cannot hold it because Better Auth's
+    // `$onUpdate` moves it on every session write.
+    lastActiveAt: timestamp("last_active_at", withTimeZone),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -431,13 +445,18 @@ export const roleAssignment = pgTable(
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("role_assignment_unique_idx").on(
-      table.roleId,
-      table.principalType,
-      table.principalId,
-      table.scopeType,
-      table.scopeId
-    ),
+    // `NULLS NOT DISTINCT` is what stops two identical tenant-wide grants: a null scope means the
+    // whole tenant, and a plain unique would treat the two nulls as distinct (data-shape.md,
+    // "Roles and permissions").
+    unique("role_assignment_unique")
+      .on(
+        table.roleId,
+        table.principalType,
+        table.principalId,
+        table.scopeType,
+        table.scopeId
+      )
+      .nullsNotDistinct(),
     index("role_assignment_principal_idx").on(
       table.principalType,
       table.principalId
@@ -464,7 +483,7 @@ export const notification = pgTable(
     index("notification_user_read_created_idx").on(
       table.userId,
       table.readAt,
-      table.createdAt
+      sql`${table.createdAt} desc`
     ),
   ]
 );

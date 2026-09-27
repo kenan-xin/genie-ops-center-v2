@@ -40,8 +40,8 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0000_tearful_luminals.sql",
     import.meta.url
   ),
-  "0001_chubby_joshua_kane": new URL(
-    "../../../drizzle/0001_chubby_joshua_kane.sql",
+  "0001_nappy_rattler": new URL(
+    "../../../drizzle/0001_nappy_rattler.sql",
     import.meta.url
   ),
 };

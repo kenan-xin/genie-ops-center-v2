@@ -66,7 +66,8 @@ CREATE TABLE "role_assignment" (
 	"scope_type" text,
 	"scope_id" text,
 	"created_by_user_id" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "role_assignment_unique" UNIQUE NULLS NOT DISTINCT("role_id","principal_type","principal_id","scope_type","scope_id")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -78,6 +79,7 @@ CREATE TABLE "session" (
 	"ip_address" text,
 	"user_agent" text,
 	"impersonated_by" text,
+	"last_active_at" timestamp with time zone,
 	"user_id" text NOT NULL,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
@@ -112,7 +114,8 @@ CREATE TABLE "user" (
 	"erased_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "user_email_unique" UNIQUE("email")
+	CONSTRAINT "user_email_unique" UNIQUE("email"),
+	CONSTRAINT "user_email_lowercase" CHECK ("user"."email" = lower("user"."email"))
 );
 --> statement-breakpoint
 CREATE TABLE "verification" (
@@ -137,16 +140,17 @@ ALTER TABLE "two_factor" ADD CONSTRAINT "two_factor_user_id_user_id_fk" FOREIGN 
 CREATE INDEX "account_user_id_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "group_source_external_id_idx" ON "group" USING btree ("source","external_id") WHERE "group"."external_id" is not null;--> statement-breakpoint
 CREATE INDEX "group_member_user_group_idx" ON "group_member" USING btree ("user_id","group_id");--> statement-breakpoint
-CREATE INDEX "notification_user_read_created_idx" ON "notification" USING btree ("user_id","read_at","created_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "role_assignment_unique_idx" ON "role_assignment" USING btree ("role_id","principal_type","principal_id","scope_type","scope_id");--> statement-breakpoint
+CREATE INDEX "notification_user_read_created_idx" ON "notification" USING btree ("user_id","read_at","created_at" desc);--> statement-breakpoint
 CREATE INDEX "role_assignment_principal_idx" ON "role_assignment" USING btree ("principal_type","principal_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "two_factor_secret_idx" ON "two_factor" USING btree ("secret");--> statement-breakpoint
 CREATE INDEX "two_factor_user_id_idx" ON "two_factor" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");--> statement-breakpoint
--- The six foreign keys to `user.id` land on nullable columns that are NULL in every existing row
--- (Section 1 wrote no user id, because no user table existed), so the constraint scan touches
--- nothing, and the migration runs under the advisory lock before the app serves requests (R-25a).
+-- The six foreign keys to `user.id` validate by scanning the Section 1 tables under a
+-- SHARE ROW EXCLUSIVE lock. Every row's value is null (Section 1 wrote no user id), so the scan
+-- finds no violation, and the tables are small at migration time. The history runs in one
+-- transaction under the advisory lock before the app serves requests, so `NOT VALID` would give
+-- no lock benefit here.
 -- squawk-ignore adding-foreign-key-constraint,constraint-missing-not-valid
 ALTER TABLE "audit_event" ADD CONSTRAINT "audit_event_actor_user_id_user_id_fk" FOREIGN KEY ("actor_user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 -- squawk-ignore adding-foreign-key-constraint,constraint-missing-not-valid

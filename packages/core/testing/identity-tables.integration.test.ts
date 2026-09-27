@@ -67,6 +67,7 @@ const IDENTITY_TABLES = {
       ip_address: { type: "text", nullable: true },
       user_agent: { type: "text", nullable: true },
       impersonated_by: { type: "text", nullable: true },
+      last_active_at: { nullable: true },
       user_id: { type: "text", nullable: false },
     },
     primaryKey: ["id"],
@@ -628,14 +629,24 @@ describe("the Section 2 identity tables", () => {
       }
     }
 
-    const fks = await foreignKeyFacts(context.db.$client, "tenant_settings");
+    // The migration adds every one of the six R-2 foreign keys to the pre-existing tables.
+    const fkChecks = await Promise.all(
+      PERSON_FOREIGN_KEYS.map(async ([table, column]) => ({
+        table,
+        column,
+        facts: await foreignKeyFacts(context.db.$client, table),
+      }))
+    );
 
-    expect(
-      fks.some(
-        (fk) =>
-          fk.column === "updated_by_user_id" && fk.referencedTable === "user"
-      )
-    ).toBe(true);
+    for (const { table, column, facts } of fkChecks) {
+      if (
+        !facts.some(
+          (fk) => fk.column === column && fk.referencedTable === "user"
+        )
+      ) {
+        throw new Error(`${table}.${column}: no foreign key to user.id`);
+      }
+    }
 
     // The existing Section 1 row gained the new column with the managed default, and survived.
     const settings = await context.db.$client.query<{ realm_mode: string }>(
@@ -643,5 +654,141 @@ describe("the Section 2 identity tables", () => {
     );
 
     expect(settings.rows).toEqual([{ realm_mode: "managed" }]);
+  });
+
+  it("keeps one row for two identical tenant-wide grants (nulls not distinct)", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    await client.query(
+      "insert into role (name, permissions) values ('fixture', '{}')"
+    );
+
+    const roleId = (
+      await client.query<{ id: string }>("select id from role limit 1")
+    ).rows[0]?.id;
+
+    const insert = `
+      insert into role_assignment (role_id, principal_type, principal_id)
+      values ($1, 'user', 'u1')
+      on conflict do nothing
+    `;
+
+    await client.query(insert, [roleId]);
+    await client.query(insert, [roleId]);
+
+    const counted = await client.query<{ count: number }>(
+      "select count(*)::int as count from role_assignment"
+    );
+
+    expect(counted.rows[0]?.count).toBe(1);
+  });
+
+  it("refuses a user email that is not lower case, and accepts a lower-case one", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    await expect(
+      client.query(
+        "insert into \"user\" (id, name, email) values ('u1', 'Alice', 'Alice@Example.com')"
+      )
+    ).rejects.toMatchObject({ code: "23514" });
+
+    await client.query(
+      "insert into \"user\" (id, name, email) values ('u1', 'Alice', 'alice@example.com')"
+    );
+  });
+
+  it("enforces the uniques Better Auth's lookups depend on", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    await client.query(
+      "insert into \"user\" (id, name, email) values ('u1', 'A', 'a@example.com')"
+    );
+
+    await expect(
+      client.query(
+        "insert into \"user\" (id, name, email) values ('u2', 'B', 'a@example.com')"
+      )
+    ).rejects.toMatchObject({ code: "23505" });
+
+    await client.query(
+      "insert into session (id, user_id, token, expires_at) values ('s1', 'u1', 'tok1', now() + interval '1 day')"
+    );
+
+    await expect(
+      client.query(
+        "insert into session (id, user_id, token, expires_at) values ('s2', 'u1', 'tok1', now() + interval '1 day')"
+      )
+    ).rejects.toMatchObject({ code: "23505" });
+
+    await client.query(
+      "insert into role (name, permissions) values ('Admin', '{}')"
+    );
+
+    await expect(
+      client.query(
+        "insert into role (name, permissions) values ('Admin', '{}')"
+      )
+    ).rejects.toMatchObject({ code: "23505" });
+  });
+
+  it("cascades the Better Auth foreign keys and holds the history keys on delete", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    await client.query(
+      "insert into \"user\" (id, name, email) values ('u1', 'A', 'a@example.com')"
+    );
+    await client.query(
+      "insert into session (id, user_id, token, expires_at) values ('s1', 'u1', 'tok', now() + interval '1 day')"
+    );
+    await client.query(
+      "insert into account (id, user_id, provider_id, account_id) values ('a1', 'u1', 'credential', 'acct1')"
+    );
+    await client.query(
+      "insert into two_factor (id, user_id, secret, backup_codes) values ('t1', 'u1', 'secret', 'backup')"
+    );
+
+    // A notification names the user with `NO ACTION`, so the delete is refused while it exists.
+    await client.query(
+      "insert into notification (user_id, kind, title, body) values ('u1', 'core:event', 't', 'b')"
+    );
+
+    await expect(
+      client.query("delete from \"user\" where id = 'u1'")
+    ).rejects.toMatchObject({ code: "23503" });
+
+    await client.query("delete from notification where user_id = 'u1'");
+
+    await client.query("delete from \"user\" where id = 'u1'");
+
+    const counts = await Promise.all(
+      ["session", "account", "two_factor"].map(async (table) => ({
+        table,
+        count: (
+          await client.query<{ count: number }>(
+            `select count(*)::int as count from "${table}" where user_id = 'u1'`
+          )
+        ).rows[0]?.count,
+      }))
+    );
+
+    for (const { count } of counts) {
+      expect(count).toBe(0);
+    }
   });
 });

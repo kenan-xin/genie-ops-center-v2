@@ -1,5 +1,5 @@
 {
-  "id": "5fb38fe7-6155-4f50-b1ef-016bd830f1c6",
+  "id": "3895c0d0-2a2b-4b93-a543-33f523bdc6bf",
   "prevId": "84fb5280-e9fb-47a6-84d4-5e27ef07214d",
   "version": "7",
   "dialect": "postgresql",
@@ -616,9 +616,9 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
-              "isExpression": false,
+              "expression": "\"created_at\" desc",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
@@ -857,45 +857,6 @@
         }
       },
       "indexes": {
-        "role_assignment_unique_idx": {
-          "name": "role_assignment_unique_idx",
-          "columns": [
-            {
-              "expression": "role_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "principal_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "principal_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scope_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scope_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "role_assignment_principal_idx": {
           "name": "role_assignment_principal_idx",
           "columns": [
@@ -939,7 +900,19 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "role_assignment_unique": {
+          "name": "role_assignment_unique",
+          "nullsNotDistinct": true,
+          "columns": [
+            "role_id",
+            "principal_type",
+            "principal_id",
+            "scope_type",
+            "scope_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -995,6 +968,12 @@
         "impersonated_by": {
           "name": "impersonated_by",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_active_at": {
+          "name": "last_active_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -1869,7 +1848,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "user_email_lowercase": {
+          "name": "user_email_lowercase",
+          "value": "\"user\".\"email\" = lower(\"user\".\"email\")"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.verification": {

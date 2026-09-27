@@ -382,10 +382,11 @@ async function runStep(
 /**
  * The realm-mode reconciliation (R-54a): every setup run compares `tenant.yaml`'s `realm` with the
  * `realm_mode` the seed step wrote, and refuses with a named cause when they differ, so the mode
- * is never changed by editing `tenant.yaml`. The seed step writes the value once on its insert
- * (`ON CONFLICT DO NOTHING` leaves a later value alone). The "write once for a stack seeded
- * before the column existed" recovery belongs to the `realm` step, whose row is S2-03 and out of
- * scope here.
+ * is never changed by editing `tenant.yaml`. It runs after the seed step and before any later
+ * step, so the `realm` and `clients` steps never act on a mode the file would change. The seed
+ * step writes the value once on its insert (`ON CONFLICT DO NOTHING` leaves a later value alone).
+ * The "write once for a stack seeded before the column existed" recovery belongs to the `realm`
+ * step, whose row is S2-03 and out of scope here.
  */
 async function reconcileRealmMode(
   context: TenantContext,
@@ -420,15 +421,18 @@ export async function runSetup(
     // The steps run in their recorded order, each starting only once the one before it is done,
     // so the reads and the step work are sequential on purpose (R-18).
     // oxlint-disable-next-line no-await-in-loop
-    if ((await stepState(context, step)) === "done") continue;
+    if ((await stepState(context, step)) !== "done") {
+      // oxlint-disable-next-line no-await-in-loop
+      await runStep(context, step, () =>
+        stepWork(step, context, files, options, log)
+      );
+    }
 
-    // oxlint-disable-next-line no-await-in-loop
-    await runStep(context, step, () =>
-      stepWork(step, context, files, options, log)
-    );
+    // After the seed step, on every run, reconcile realm_mode before any later step acts on it,
+    // so a rerun whose steps are all done still refuses a realm change in `tenant.yaml` (R-54a).
+    if (step === "seed") {
+      // oxlint-disable-next-line no-await-in-loop
+      await reconcileRealmMode(context, files);
+    }
   }
-
-  // The reconciliation runs after the steps, on every run, so a rerun whose steps are all done
-  // still refuses a realm change in `tenant.yaml` (R-54a).
-  await reconcileRealmMode(context, files);
 }
