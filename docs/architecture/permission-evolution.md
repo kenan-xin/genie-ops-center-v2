@@ -33,6 +33,8 @@ Core's migrator run applies the transformations after every migration history. I
 
 That audit row is also the ledger entry. A later run finds it and skips the transformation, so a retry or a second process applies nothing twice, and the advisory lock keeps two processes apart. If a transformation fails, the whole transaction rolls back, the migrator run fails, and the process does not become ready. The next run after the repair applies the same list and reaches the same state as a clean run.
 
+Guard: `audit_event` rows with action `core:permission_transformation` are never pruned, erased or rewritten. A future retention job, `genie-ops erase`, or any other deletion of audit rows must keep them, because the next start would apply those transformations again, and a second `revoke` would remove a key an administrator granted again on purpose. `packages/core/src/services/audit/append-only.test.ts` fails when source code outside the migrations deletes, truncates or updates `audit_event` rows. The ledger lookup filters on `metadata->>'transformation'` without an index; revisit with an expression index if the per-start lookup shows in a profile.
+
 Seeding is separate. `seedRoles` inserts a missing system role by name and never rewrites an existing permission array. A display rename therefore ships as a `rename-role` transformation first, and the seeding then finds the role under its new name.
 
 ## Scope and the administrator exception
