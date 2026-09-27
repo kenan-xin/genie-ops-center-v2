@@ -78,7 +78,7 @@ These choices are settled. Do not substitute one without approval.
 - Never mock the database. An integration test gets a disposable Postgres with the real migration history.
 - Every module ships unit tests, integration tests for its router and schema, factories for its tables, and at least one end-to-end test for its main path.
 - Every roadmap section's definition of done includes an end-to-end test that proves it, run at a phone viewport and a desktop viewport. A screen that only works on desktop is a defect (`DEC-25`).
-- Tenant isolation has a standing integration test: two tenant contexts against two databases in one process, the placeholder module's router run through each, and any read that crosses fails the test (`DEC-34`). The Section 0 stub `can()` grants only `placeholder:read`, so the placeholder's read procedure is the one path the test proves. It never gets skipped.
+- Tenant isolation has a standing integration test: two tenant contexts against two databases in one process, the placeholder module's router run through each, and any read that crosses fails the test (`DEC-34`). Each database holds its own person with `placeholder:read` through a real role assignment, and a person of one database is refused by the other. It never gets skipped.
 
 ## Conventions (carried forward, apply once code exists)
 

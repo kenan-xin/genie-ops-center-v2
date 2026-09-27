@@ -1,6 +1,6 @@
 # Permission and system-role evolution
 
-Status: policy accepted 2026-09-18; implementation and upgrade tests are required, not completed. Applies to core and every module. Sections 1 and 2 own upgrade integration and authorization; later modules use the same policy.
+Status: policy accepted 2026-09-18. Implemented 2026-09-27 (S2-06): the evaluator, the transformation mechanism below, and the upgrade matrix in `packages/core/testing/permission-evolution.integration.test.ts`. The role-editor browser proof belongs to S2-11. Applies to core and every module. Sections 1 and 2 own upgrade integration and authorization; later modules use the same policy.
 
 ## Upgrade policy
 
@@ -19,11 +19,21 @@ Permission identifiers are stable public identifiers for an action. Prefer chang
 | Removal of unsafe authority | Explicit security migration | Audit the revocation, document impact in release notes, preserve unrelated access |
 | Retired or unknown key | No effective grant | Show it as unavailable in affected roles; allow removal from custom roles, retain unrelated permissions and assignments, and never reuse the key for another capability |
 
-System roles are product-managed and read-only to administrators; this does not permit silent privilege changes. Seeding missing roles is not permission to overwrite an existing role's permission array. Permission-affecting transformations must be explicit, versioned, reviewed release migrations, repeat-safe and audit-visible. Preserve existing role IDs, group memberships, principals, and scope values except for the specifically documented permission transformation. Audit evidence identifies the migration/release, affected roles, before/after permission changes, and execution provenance; it must not fabricate a human administrator as actor for an automated upgrade. The transformations themselves stay versioned migration files (DEC-50, Registration reconciliation owner, 2026-09-23). Exact storage and transaction ownership of their audit and provenance evidence is part of the still-open reconciliation design.
+System roles are product-managed and read-only to administrators; this does not permit silent privilege changes. Seeding missing roles is not permission to overwrite an existing role's permission array. Permission-affecting transformations must be explicit, versioned, reviewed release migrations, repeat-safe and audit-visible. Preserve existing role IDs, group memberships, principals, and scope values except for the specifically documented permission transformation. Audit evidence identifies the migration/release, affected roles, before/after permission changes, and execution provenance; it must not fabricate a human administrator as actor for an automated upgrade. The transformations are versioned and applied by the migrator run (DEC-50, Registration reconciliation owner, 2026-09-23); the mechanism below resolved their storage and transaction ownership on 2026-09-27.
 
 Custom roles, including copies of system roles, are administrator-owned independent bundles. They do not subscribe to future changes of the role they were copied from. Only explicit equivalent-key migrations and documented security revocations above may change their permissions as part of an upgrade; ordinary new privileges require an administrator's edit.
 
 Retired or unknown keys must be ineffective in both `can()` and `scopesFor()` for ordinary role-based evaluation, including broad and inherited assignments. The existing restricted-session and break-glass rules remain separate; no new bypass is introduced. An unavailable key must not prevent the other valid permissions in a mixed role from working. Do not delete whole roles, assignments, groups, or memberships because one key is retired. Do not silently strip unrelated unavailable entries when editing another field. Exact validation behavior for editing/assigning a role that already contains unavailable entries must be specified before implementing those write paths; unavailability itself never creates authority.
+
+## The transformation mechanism (R-33c, resolved 2026-09-27)
+
+A permission transformation is versioned data, not SQL. Core declares its own list beside its migration history, and a module declares its list as the `permissionTransformations` point of the module contract. Each entry has a permanent id, the release that ships it, a description, and one change: rename a key, revoke a key, or rename the display name of one of the owner's own system roles. A module transforms only its own keys, and `validateModule` enforces that.
+
+Core's migrator run applies the transformations after every migration history. It uses the same reserved session and the same advisory lock, and it applies every pending transformation in one transaction. A rename rewrites the key in every role that holds it, system and custom alike, and keeps role ids, assignments, scopes and memberships. A revocation removes the key and keeps the other keys. Each applied transformation writes one `audit_event` row in the same transaction, with action `core:permission_transformation`, no human actor, the release, the change, and the before and after arrays of each role it touched.
+
+That audit row is also the ledger entry. A later run finds it and skips the transformation, so a retry or a second process applies nothing twice, and the advisory lock keeps two processes apart. If a transformation fails, the whole transaction rolls back, the migrator run fails, and the process does not become ready. The next run after the repair applies the same list and reaches the same state as a clean run.
+
+Seeding is separate. `seedRoles` inserts a missing system role by name and never rewrites an existing permission array. A display rename therefore ships as a `rename-role` transformation first, and the seeding then finds the role under its new name.
 
 ## Scope and the administrator exception
 
