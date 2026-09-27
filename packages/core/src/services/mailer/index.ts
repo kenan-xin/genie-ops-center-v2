@@ -66,9 +66,53 @@ export type MailerDependencies = {
 /** The template variables that hold the email's one link (templates.tsx). */
 const LINK_VARIABLES = ["link", "invitationUrl"] as const;
 
+/** The safe catalogue error a link on another origin is refused with (R-70). */
+const MAIL_LINK_ORIGIN = CORE_ERRORS["mail-link-origin"];
+
 /**
- * A link variable given as a path (`/invite?token=...`) becomes an absolute link from
- * `PUBLIC_URL`, so a caller never needs, and never reads, a request host to build one (R-70).
+ * One link value parsed against a base address, or `undefined` when the URL parser refuses it.
+ * `new URL` also resolves a protocol-relative `//host` and a backslash reference `/\host` to the
+ * host they name, so both are compared like any other link rather than treated as a path (R-70).
+ */
+function parseLink(value: string, base: string): URL | undefined {
+  try {
+    return new URL(value, base);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * One action link resolved against `PUBLIC_URL` (R-70). A path (`/invite?token=...`) becomes an
+ * absolute link from `PUBLIC_URL`, so a caller never needs, and never reads, a request host to
+ * build one. An absolute link is kept only when its origin is `PUBLIC_URL`'s; every other value
+ * — another host, scheme or port, a protocol-relative or backslash reference, a `javascript:` or
+ * `mailto:` link — is refused before a template renders or an adapter runs. A link carries a
+ * token, so the refusal is the fixed catalogue message and never echoes the value (R-49).
+ */
+function resolveActionLink(
+  value: string,
+  publicUrl: NonNullable<MailerDependencies["publicUrl"]>,
+  origin: string
+): string {
+  const parsed = parseLink(value, origin);
+
+  if (parsed === undefined || parsed.origin !== origin) {
+    throw new AppError(MAIL_LINK_ORIGIN);
+  }
+
+  // An absolute link the caller wrote on the public origin is kept as written.
+  if (URL.canParse(value)) return value;
+
+  // A path is rebuilt from PUBLIC_URL, so a configured path prefix is kept.
+  return `${publicUrl(parsed.pathname)}${parsed.search}${parsed.hash}`;
+}
+
+/**
+ * The links of R-70. Every action link variable is checked against `PUBLIC_URL` before the send
+ * continues: a path is resolved, an absolute same-origin link passes unchanged, and any other
+ * value is refused here, before a template renders or an adapter runs (R-70). A variable that is
+ * not an action link, and an action link left empty, is left as the caller wrote it.
  */
 function withPublicLinks(
   input: MailSendInput,
@@ -77,15 +121,14 @@ function withPublicLinks(
   if (publicUrl === undefined) return input;
 
   const variables = { ...input.variables };
+  const origin = new URL(publicUrl("/")).origin;
 
   for (const name of LINK_VARIABLES) {
     const value = variables[name];
 
-    if (value?.startsWith("/") === true) {
-      const { pathname, search, hash } = new URL(value, "http://path.invalid");
+    if (value === undefined || value.trim() === "") continue;
 
-      variables[name] = `${publicUrl(pathname)}${search}${hash}`;
-    }
+    variables[name] = resolveActionLink(value, publicUrl, origin);
   }
 
   return { ...input, variables };
