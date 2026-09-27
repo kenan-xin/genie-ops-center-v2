@@ -296,6 +296,30 @@ describe("validateEnvironment", () => {
       else process.env.NODE_ENV = previous;
     }
   });
+
+  it("refuses a plain-HTTP PUBLIC_URL in production, but not on loopback or in development (R-4a)", () => {
+    const previous = process.env.NODE_ENV;
+    const plain = { ...MINIMAL, PUBLIC_URL: "http://genie.example.com" };
+
+    try {
+      process.env.NODE_ENV = "production";
+
+      expect(() => validateEnvironment(plain)).toThrow("PUBLIC_URL");
+      expect(
+        validateEnvironment({ ...MINIMAL, PUBLIC_URL: "http://127.0.0.1:3400" })
+          .publicUrl
+      ).toBe("http://127.0.0.1:3400");
+
+      process.env.NODE_ENV = "development";
+
+      expect(validateEnvironment(plain).publicUrl).toBe(
+        "http://genie.example.com"
+      );
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
 });
 
 /** The message of the failure a broken environment raises. */

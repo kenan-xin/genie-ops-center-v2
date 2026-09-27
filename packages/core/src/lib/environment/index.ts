@@ -111,6 +111,16 @@ function runtimeModeOf(): RuntimeMode {
   return process.env.NODE_ENV === "development" ? "development" : "production";
 }
 
+/** True for an https:// URL, or for plain HTTP on a loopback host (R-4a). */
+function isSecureOrLoopback(value: string): boolean {
+  const url = new URL(value);
+
+  return (
+    url.protocol === "https:" ||
+    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+  );
+}
+
 /** The two schemes a `SMTP_URL` may use; the contract shows the `smtps://` form of the two. */
 function isSmtpUrl(value: string): boolean {
   if (!URL.canParse(value)) return false;
@@ -339,6 +349,18 @@ export function validateEnvironment(
   ) {
     throw new Error(
       `The environment is not valid. FILE_MAX_BYTES: above ${DEFAULT_FILE_MAX_BYTES} needs FILE_STORAGE_ADAPTER=s3 (DEC-44).`
+    );
+  }
+
+  // R-4a: the Secure flag and the `__Host-` name follow PUBLIC_URL, so a production deployment on
+  // plain HTTP would get unprefixed, non-Secure cookies. A loopback address stays allowed, because
+  // no other machine can reach it; the local e2e stacks run the production image there.
+  if (
+    runtimeModeOf() === "production" &&
+    !isSecureOrLoopback(value.PUBLIC_URL)
+  ) {
+    throw new Error(
+      "The environment is not valid. PUBLIC_URL: a production deployment needs an https:// address (R-4a)."
     );
   }
 
