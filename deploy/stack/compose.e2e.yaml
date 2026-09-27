@@ -22,18 +22,22 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    # The identity stand-ins run as their own compose stack and publish a fixed host port. The app
+    # reaches Keycloak at the one browser-visible address, `host.docker.internal`, through this
+    # alias (Spec 2 R-54c/d); the Playwright projects map the same name to 127.0.0.1.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DATABASE_URL: postgres://genie:genie@database:5432/genie
-      PUBLIC_URL: http://127.0.0.1:3400
+      PUBLIC_URL: ${PUBLIC_URL:-http://127.0.0.1:3400}
       PORT: "3400"
       # The Section 2 application profile requires the authentication values. These are test
-      # throwaways like the database credential above; the realm address is unreachable unless an
-      # overriding KEYCLOAK_URL points the stack at the identity stand-ins, so health is
-      # `degraded` and sign-in refuses by default.
+      # throwaways like the database credential above; `KEYCLOAK_URL` is the stand-in Keycloak's
+      # one browser-visible address, overridable by the test harness.
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-test-better-auth-secret-at-least-32-characters}
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://127.0.0.1:1}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://host.docker.internal:15080}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-genie}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-genie-ops-center}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-test-client-secret}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-e2e-ops-center-secret}
     ports:
       - "${GENIE_HOST_PORT:-3400}:3400"

@@ -10,6 +10,15 @@ const PORT = Number(
 
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
+/**
+ * The one Keycloak address rule (Spec 2 R-54c/d): the app and the browser use
+ * `host.docker.internal`, which the app container resolves through `extra_hosts`. The browser
+ * does not resolve that name by default, so every project maps it to loopback here.
+ */
+const RESOLVER_ARGS = [
+  "--host-resolver-rules=MAP host.docker.internal 127.0.0.1",
+];
+
 export default defineConfig({
   testDir: "./e2e",
   // The failed/invalid-provider browser proof needs the fixture image
@@ -40,8 +49,20 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: BASE_URL },
   projects: [
-    { name: "phone", use: { ...devices["Pixel 7"] } },
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "phone",
+      use: {
+        ...devices["Pixel 7"],
+        launchOptions: { args: RESOLVER_ARGS },
+      },
+    },
+    {
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: { args: RESOLVER_ARGS },
+      },
+    },
   ],
   // The database and the application are both started in globalSetup.
   //

@@ -56,6 +56,24 @@ export type IdentityStandins = {
   }>;
 };
 
+/**
+ * Stops the stand-in stack this worktree owns, for a teardown that did not keep the handle.
+ */
+export async function stopIdentityStandins(): Promise<void> {
+  const projectName = scopedProject("genie-identity-standins");
+
+  await run("docker", [
+    "compose",
+    "-p",
+    projectName,
+    "-f",
+    COMPOSE_FILE,
+    "down",
+    "--volumes",
+    "--remove-orphans",
+  ]).catch(() => undefined);
+}
+
 export async function startIdentityStandins(): Promise<IdentityStandins> {
   const projectName = scopedProject("genie-identity-standins");
   // The shared network carries the worktree scope, so two worktrees never share a

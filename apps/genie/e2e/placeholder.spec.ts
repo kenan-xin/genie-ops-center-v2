@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { signInThroughKeycloak } from "./support/sign-in.ts";
+
 /**
  * The criterion is WCAG 2.1 AA (DEC-21, `docs/core/tech-stack.md`), which is a
  * tag set, not "every rule axe ships". Scoping to it is deliberate: an unscoped
@@ -82,6 +84,26 @@ test("the placeholder read procedure refuses an anonymous request through the re
   };
 
   expect(body.error?.data?.code).toBe("FORBIDDEN");
+});
+
+// S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak
+// login form and holds `placeholder:read` through a real role assignment sees the module entry
+// and the read returns the row. Anonymous refusal above stays as the R-35 control.
+test("a signed-in person with a real grant sees the module entry and reads the placeholder row", async ({
+  page,
+}) => {
+  await signInThroughKeycloak(page);
+
+  await expect(
+    page.getByRole("link", { name: "Placeholder", exact: true })
+  ).toBeVisible();
+
+  const response = await page.request.get(
+    `/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+  );
+
+  expect(response.status()).toBe(200);
+  expect(await response.text()).toContain("e2e-visible");
 });
 
 // The criterion is "the policy strips nothing" (DEC-31 as amended: no nonce, and
