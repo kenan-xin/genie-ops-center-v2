@@ -38,7 +38,7 @@ The table below defines the values; the tables above define when each is require
 | Variable | Meaning |
 | --- | --- |
 | `DATABASE_URL` | Postgres URL of the deployment's one database. |
-| `PUBLIC_URL` | The one public address, for example `https://genie.example.com`. Cookies, callbacks, and email links derive from it. The application never inspects the request hostname (`DEC-19`). |
+| `PUBLIC_URL` | The one public address, for example `https://genie.example.com`. Cookies, callbacks, and email links derive from it. The application never inspects the request hostname (`DEC-19`). A production image refuses an `http://` address unless its host is loopback (`localhost`, `127.0.0.1`, `[::1]`), because the Secure flag and the `__Host-` cookie name follow the scheme (Spec 2 R-4a). |
 | `BETTER_AUTH_SECRET` | Random string, at least 32 characters. Signs session cookies. |
 | `KEYCLOAK_URL` | Base URL of the Keycloak server that holds this customer's realm: the bundled Keycloak, Genie's shared server, or the customer's server. Written without a trailing slash. It must equal the address setup used (Specification 02 R-54c). |
 | `STACK_PROFILES` | The Compose profiles the stack was started with, which the compose file passes from `COMPOSE_PROFILES`. Read by the start-up guard of Specification 02 R-54c, which refuses client-only mode while `bundled-keycloak` is active. Never set by hand. |
