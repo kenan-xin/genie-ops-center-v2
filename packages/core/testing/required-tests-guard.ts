@@ -78,7 +78,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the Section 1 deployment tables creates the eleven deployment tables with exactly the documented columns",
       "the Section 1 deployment tables gives every table its documented primary key and index shape",
       "the Section 1 deployment tables does not create the Section 3 tables category and user_preference",
-      "the Section 1 deployment tables leaves every person-naming column and tenant_module.category_id nullable with no foreign key",
+      "the Section 1 deployment tables keeps every person-naming column nullable and leaves tenant_module.category_id without a foreign key",
       "the Section 1 deployment tables keeps the file_blob bytes column in external storage",
       "the Section 1 deployment tables refuses a second row in each single-row table",
     ],
@@ -297,6 +297,50 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "R-55 and D-5 require durable delivery after a hard emitter process death",
     cases: [
       "durable event recovery after a process kill delivers a committed event after its emitting process exits hard",
+    ],
+  },
+  {
+    file: "testing/access.integration.test.ts",
+    reason:
+      "Spec 2 AC-8 and the named tests of DEC-48 and R-30/R-34 must run: single query, revoke on the next request, limited break-glass refused, navigation omitted with the route still refused",
+    cases: [
+      "the access seam against a real database reads one assignment query for many calls in one request",
+      "the access seam against a real database applies a revoked role on the next request",
+      "the access seam against a real database grants a record scope and a declared parent scope, resolving the record once per request",
+      "the access seam against a real database answers scopesFor with all for a tenant-wide assignment and the list otherwise",
+      "the access seam against a real database grants through a group, and not through an archived group until it is restored",
+      "the access seam against a real database lets only an unlimited break-glass account bypass",
+      "the access seam against a real database refuses a limited break-glass session in can() and in a module router",
+      "the access seam against a real database seeds the six core keys and the two system roles without overwriting a changed array",
+      "the access seam against a real database appends the module admin key to Tenant administrator on enable and removes it on disable",
+      "the access seam against a real database omits a navigation entry whose permission refuses, and the route behind it still refuses",
+    ],
+  },
+  {
+    file: "testing/permission-evolution.integration.test.ts",
+    reason:
+      "Spec 2 AC-25 requires the permission-evolution upgrade matrix against an existing database",
+    cases: [
+      "permission evolution against an existing database adds a permission and a new system role without granting either to anyone",
+      "permission evolution against an existing database renames a system role's display name, keeping its id and assignments",
+      "permission evolution against an existing database applies an equivalent permission rename to system and custom roles with the same scopes",
+      "permission evolution against an existing database does not broaden an assigned default role when a release declares it wider",
+      "permission evolution against an existing database refuses a retired or unknown key while the same role's valid keys keep working",
+      "permission evolution against an existing database revokes unsafe authority with an audited transformation and keeps other authority",
+      "permission evolution against an existing database applies a transformation once under concurrent starts and retries",
+      "permission evolution against an existing database exposes no partial transformation after a failure, fails the start, and a repaired retry completes",
+      "permission evolution against an existing database changes only the declared admin key on Tenant administrator when the module is re-enabled",
+      "permission evolution against an existing database covers a new record with a broad grant and not with a narrow one",
+    ],
+  },
+  {
+    file: "testing/retained-access.integration.test.ts",
+    reason: "Spec 2 AC-26 requires the retained-access lifecycle fixture",
+    cases: [
+      "retained access across removal and reintroduction grants nothing for the absent module while unrelated keys in a mixed role keep working",
+      "retained access across removal and reintroduction lets an unavailable grant be removed while the module is absent",
+      "retained access across removal and reintroduction stays ineffective after reinstall until the module is enabled",
+      "retained access across removal and reintroduction restores only the remaining valid grants on explicit enable",
     ],
   },
 ];

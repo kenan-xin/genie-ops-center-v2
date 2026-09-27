@@ -349,6 +349,36 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
+  // R-33c: a module transforms only its own keys, and each transformation id is its ledger entry.
+  const transformationIds = new Set<string>();
+
+  for (const transformation of module.permissionTransformations ?? []) {
+    if (transformationIds.has(transformation.id)) {
+      problems.push(
+        `Permission transformation "${transformation.id}" is declared twice.`
+      );
+    }
+
+    transformationIds.add(transformation.id);
+
+    const { change } = transformation;
+
+    const keys =
+      change.kind === "rename"
+        ? [change.from, change.to]
+        : change.kind === "revoke"
+          ? [change.key]
+          : [];
+
+    for (const key of keys) {
+      if (!key.startsWith(`${id}:`)) {
+        problems.push(
+          `Permission transformation "${transformation.id}" changes "${key}", which is not a key of "${id}".`
+        );
+      }
+    }
+  }
+
   return problems;
 }
 

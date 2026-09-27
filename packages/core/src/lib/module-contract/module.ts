@@ -231,6 +231,35 @@ export type ModuleFrameOriginProvider = FrameOriginProvider<{
   readonly tenant: TenantContext;
 }>;
 
+/**
+ * 18. Permission transformations, optional (R-33c). An explicit, versioned change to the module's
+ * own keys inside stored roles: a semantics-preserving rename, or an audited security revocation.
+ * Core's migrator run applies each one once, in one transaction under its lock, and records it
+ * as an `audit_event` row. A module never writes core tables itself.
+ */
+export type PermissionChange =
+  | {
+      readonly kind: "rename";
+      readonly from: PermissionKey;
+      readonly to: PermissionKey;
+    }
+  | { readonly kind: "revoke"; readonly key: PermissionKey }
+  /** A display rename of one of the owner's own system roles, keeping its id and assignments. */
+  | {
+      readonly kind: "rename-role";
+      readonly from: string;
+      readonly to: string;
+    };
+
+export type PermissionTransformation = {
+  /** Stable within the module, never reused, for example `0001-rename-view`. */
+  readonly id: string;
+  /** The release that ships it, named in the audit row and the release note. */
+  readonly release: string;
+  readonly description: string;
+  readonly change: PermissionChange;
+};
+
 /** 17. Tests: the shared presets a module must use. */
 export type ModuleTests = { readonly presets: readonly string[] };
 
@@ -253,5 +282,6 @@ export type Module = {
   readonly inboundEndpoints: readonly InboundEndpoint[];
   readonly integrationKinds: readonly string[];
   readonly contentSecurityPolicy?: ModuleFrameOriginProvider;
+  readonly permissionTransformations?: readonly PermissionTransformation[];
   readonly tests: ModuleTests;
 };

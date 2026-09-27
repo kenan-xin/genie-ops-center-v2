@@ -73,6 +73,7 @@ describe("the migration plan", () => {
       name: "alpha",
       migrations,
       table: "__drizzle_migrations_alpha",
+      permissionTransformations: [],
     });
   });
 });

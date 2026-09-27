@@ -46,18 +46,30 @@ export {
 } from "./lib/errors/index.ts";
 
 export {
+  AUDITOR_ROLE,
+  CORE_PERMISSION_KEYS,
   can,
+  createGrantReader,
+  createParentResolver,
   createRequestPrincipal,
-  createStubGrantReader,
   type GrantReader,
+  type ParentResolver,
+  PERMISSION_TRANSFORMATION_ACTION,
   type PermissionGrants,
+  permissionCatalogue,
   type PrincipalIdentity,
+  principalFor,
   type RequestPrincipal,
-  STUB_GRANTED_KEY,
   scopesFor,
+  seedRoles,
+  TENANT_ADMINISTRATOR_ROLE,
 } from "./services/authorization/index.ts";
 
-export { enabledNavigation } from "./lib/entitlement/index.ts";
+export {
+  enabledNavigation,
+  landingRoute,
+  permittedNavigation,
+} from "./lib/entitlement/index.ts";
 
 export {
   createModuleTRPC,
@@ -93,7 +105,9 @@ export type {
   ModuleRequestContext,
   ModuleSchema,
   NavigationEntry,
+  PermissionChange,
   PermissionDeclaration,
+  PermissionTransformation,
   Subscription,
 } from "./lib/module-contract/module.ts";
 

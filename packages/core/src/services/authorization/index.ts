@@ -1,12 +1,14 @@
 import type {
   PermissionKey,
   ResourceRef,
+  Scope,
   ScopeSet,
 } from "../../lib/module-contract/keys.ts";
 import type { RequestPrincipal } from "./principal.ts";
 
 export type {
   GrantReader,
+  ParentResolver,
   PermissionGrants,
   PrincipalIdentity,
   RequestPrincipal,
@@ -14,11 +16,32 @@ export type {
 
 export { createRequestPrincipal } from "./principal.ts";
 
-export { STUB_GRANTED_KEY, createStubGrantReader } from "./stub.ts";
+export {
+  createGrantReader,
+  createParentResolver,
+  principalFor,
+} from "./grant-reader.ts";
+
+export {
+  AUDITOR_ROLE,
+  CORE_PERMISSION_KEYS,
+  TENANT_ADMINISTRATOR_ROLE,
+  permissionCatalogue,
+  seedRoles,
+  syncModuleAdminKey,
+} from "./roles.ts";
+
+export { PERMISSION_TRANSFORMATION_ACTION } from "./transformations.ts";
+
+function sameScope(left: Scope, right: Scope): boolean {
+  return left.type === right.type && left.id === right.id;
+}
 
 /**
- * The one permission check in the platform (DEC-39). `resource` narrows the check to one record.
- * The Section 0 stub has no record-scoped grant, so a held key answers true for any resource.
+ * The one permission check in the platform (DEC-39). Without `resource` it answers whether the
+ * person holds the key anywhere. With one, a tenant-wide grant, a grant on the resource itself,
+ * or a grant on one of the parents its module's resolver returns answers true (R-28). The
+ * resolver runs only when no direct scope matched, and at most once per resource per request.
  */
 export async function can(
   user: RequestPrincipal,
@@ -26,6 +49,8 @@ export async function can(
   resource?: ResourceRef
 ): Promise<boolean> {
   const grants = await user.grants();
+
+  if (grants.bypass === true) return true;
 
   if (!grants.keys.has(permission)) return false;
 
@@ -37,17 +62,26 @@ export async function can(
 
   if (scopes.kind === "none") return false;
 
-  return scopes.scopes.some(
-    (scope) => scope.type === resource.type && scope.id === resource.id
+  if (scopes.scopes.some((scope) => sameScope(scope, resource))) return true;
+
+  const parents = await user.parentsOf(resource);
+
+  return parents.some((parent) =>
+    scopes.scopes.some((scope) => sameScope(scope, parent))
   );
 }
 
-/** The one scope filter for a list query (DEC-39). */
+/**
+ * The one scope filter for a list query (DEC-39). Parent scopes come back unchanged, for the
+ * module to map onto its parent columns (R-29).
+ */
 export async function scopesFor(
   user: RequestPrincipal,
   permission: PermissionKey
 ): Promise<ScopeSet> {
   const grants = await user.grants();
+
+  if (grants.bypass === true) return { kind: "all" };
 
   if (!grants.keys.has(permission)) return { kind: "none" };
 

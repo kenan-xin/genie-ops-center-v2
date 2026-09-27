@@ -9,10 +9,16 @@ import coreJournal from "../../../drizzle/meta/_journal.json" with { type: "json
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { moduleIdFromLedgerTable } from "../../lib/module-contract/ledger.ts";
 import type {
+  Module,
   ModuleIdentity,
   ModuleSchema,
+  PermissionTransformation,
 } from "../../lib/module-contract/module.ts";
 import type { DeploymentEnvironment } from "../../lib/tenant-context/index.ts";
+import {
+  CORE_PERMISSION_TRANSFORMATIONS,
+  applyPermissionTransformations,
+} from "../authorization/transformations.ts";
 import { type MigrationFiles, migrationsFromJournal } from "./history.ts";
 
 /** One migration history: the SQL it applies and the table that records what was applied. */
@@ -27,6 +33,8 @@ export type MigrationHistory = {
    */
   readonly migrations: readonly MigrationMeta[];
   readonly table: string;
+  /** The history owner's permission transformations, applied after every history (R-33c). */
+  readonly permissionTransformations?: readonly PermissionTransformation[];
 };
 
 /**
@@ -50,6 +58,7 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
 export const CORE_HISTORY: MigrationHistory = {
   name: "core",
   table: "__drizzle_migrations",
+  permissionTransformations: CORE_PERMISSION_TRANSFORMATIONS,
   // A getter, not an eager value: core's SQL is read when the run asks for it, never at import
   // time. An eager read would run during a Next.js page-data collection, where the bundler has
   // rewritten the `new URL` above to a public asset path `readFileSync` cannot open, and the
@@ -169,6 +178,7 @@ const applyWithDrizzle: ApplyHistory = (db, history) => {
 export type ModuleHistorySource = {
   readonly identity: Pick<ModuleIdentity, "id">;
   readonly schema: Pick<ModuleSchema, "migrations" | "migrationsTable">;
+  readonly permissionTransformations?: Module["permissionTransformations"];
 };
 
 /**
@@ -185,6 +195,7 @@ export function moduleHistory(module: ModuleHistorySource): MigrationHistory {
     // hot path and never memoised (a cache would read at module scope on first bundle touch).
     migrations: module.schema.migrations(),
     table: module.schema.migrationsTable,
+    permissionTransformations: module.permissionTransformations ?? [],
   };
 }
 
@@ -520,6 +531,14 @@ export async function runMigrations(run: MigrationRun): Promise<void> {
       }
 
       log({ event: "migration-history-done", history: history.name });
+    }
+
+    // Permission transformations run once every table exists, in one transaction under the same
+    // lock, so no partial transformation is ever visible and a failure stops the start (R-33c).
+    try {
+      await applyPermissionTransformations(db, run.histories);
+    } catch (error) {
+      throw new AppError(CORE_ERRORS["migration-failed"], { cause: error });
     }
 
     // Registration runs after the histories commit and only once `seed` is done (R-27). A
