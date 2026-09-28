@@ -7,8 +7,13 @@ export type AuthRequestFacts = {
   oauth: boolean;
   refusal:
     | {
-        readonly reason: "not_registered" | "access_disabled";
+        readonly reason:
+          | "not_registered"
+          | "no_mapped_group"
+          | "groups_claim_absent"
+          | "disabled";
         readonly email: string;
+        readonly groups?: readonly string[];
       }
     | undefined;
 };
@@ -33,9 +38,9 @@ export class AuthRequestScope {
       : undefined;
   }
 
-  refuse(reason: "not_registered" | "access_disabled", email: string): void {
+  refuse(refusal: NonNullable<AuthRequestFacts["refusal"]>): void {
     const facts = this.#storage.getStore();
-    if (facts !== undefined) facts.refusal = { reason, email };
+    if (facts !== undefined) facts.refusal = refusal;
   }
 
   current(): AuthRequestFacts | undefined {

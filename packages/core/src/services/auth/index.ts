@@ -8,7 +8,6 @@ import { and, desc, eq, ne } from "drizzle-orm";
 
 import {
   account,
-  auditEvent,
   session,
   twoFactor,
   user,
@@ -31,6 +30,7 @@ import {
 import { createDiscoveryProbe } from "./discovery.ts";
 import { idleExpiry, isIdleExpired } from "./idle.ts";
 import { syncGroupMemberships, validateOAuthUser } from "./onboarding.ts";
+import { recordOAuthSignIn } from "./session-events.ts";
 import type {
   AuthDiscoveryState,
   AuthMember,
@@ -225,30 +225,16 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
             },
             session: {
               create: {
-                async after(data: { readonly userId: string }) {
+                async after(data: {
+                  readonly userId: string;
+                  readonly userAgent?: string | null | undefined;
+                }) {
                   const facts = input.requestScope?.current();
                   if (facts?.oauth !== true) return;
                   const tenant = input.tenant?.();
                   if (tenant === undefined) return;
-                  await tenant.db
-                    .update(user)
-                    .set({
-                      status: "active",
-                      firstSignInAt: new Date(),
-                      lastSignInAt: new Date(),
-                    })
-                    .where(
-                      and(eq(user.id, data.userId), eq(user.status, "pending"))
-                    );
                   await syncGroupMemberships(tenant, data.userId, facts.groups);
-                  await tenant.db.insert(auditEvent).values({
-                    actorUserId: data.userId,
-                    action: "auth:sign_in",
-                    targetType: "user",
-                    targetId: data.userId,
-                    summary: "Signed in",
-                    metadata: {},
-                  });
+                  await recordOAuthSignIn(tenant, data);
                 },
               },
             },

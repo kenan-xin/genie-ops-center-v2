@@ -1,14 +1,9 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 /* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-readable-spacing -- Better Auth owns this callback shape; sequential writes preserve membership consistency. */
 
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import {
-  auditEvent,
-  group,
-  groupMember,
-  roleAssignment,
-  user,
-} from "../../schema.ts";
+import { group, groupMember, roleAssignment, user } from "../../schema.ts";
+import { writeAuthAuditEvent } from "../audit/index.ts";
 import type { AuthRequestScope } from "./request-scope.ts";
 
 type Validation = {
@@ -35,11 +30,17 @@ export async function validateOAuthUser(input: {
 
   if (data.source.action === "create-user") {
     const settings = await tenant.settings.get();
-    if (
-      settings.onboardingMode === "invite" ||
-      !(await hasMappedGroup(tenant, scope.current()?.groups))
-    ) {
-      scope.refuse("not_registered", email);
+    if (settings.onboardingMode === "invite") {
+      scope.refuse({ reason: "not_registered", email });
+      return { error: "not_registered" };
+    }
+    const groups = scope.current()?.groups;
+    if (!(await hasMappedGroup(tenant, groups))) {
+      scope.refuse(
+        groups === undefined
+          ? { reason: "groups_claim_absent", email }
+          : { reason: "no_mapped_group", email, groups: groups.slice(0, 20) }
+      );
       return { error: "not_registered" };
     }
     return undefined;
@@ -56,7 +57,7 @@ export async function validateOAuthUser(input: {
       .where(eq(user.id, data.user.id))
       .limit(1);
     if (rows[0]?.banned === true) {
-      scope.refuse("access_disabled", email);
+      scope.refuse({ reason: "disabled", email });
       return { error: "access_disabled" };
     }
   }
@@ -75,7 +76,7 @@ async function hasMappedGroup(
       roleAssignment,
       and(
         eq(roleAssignment.principalType, "group"),
-        eq(roleAssignment.principalId, group.id)
+        eq(roleAssignment.principalId, sql<string>`${group.id}::text`)
       )
     )
     .where(
@@ -96,11 +97,10 @@ export async function syncGroupMemberships(
   claim: readonly string[] | undefined
 ): Promise<void> {
   if (claim === undefined) {
-    await tenant.db.insert(auditEvent).values({
+    await writeAuthAuditEvent(tenant, {
       actorUserId: userId,
       action: "auth:groups_claim_absent",
-      targetType: "user",
-      targetId: userId,
+      targetUserId: userId,
       summary: "Identity provider groups claim was absent",
       metadata: {},
     });
@@ -113,31 +113,30 @@ export async function syncGroupMemberships(
         and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
       );
     if (claim.length === 0) return;
-    /* oxlint-disable no-await-in-loop -- one transaction serializes the replace and upsert sequence. */
-    for (const externalId of claim) {
-      const found = await tx
-        .select({ id: group.id })
-        .from(group)
-        .where(and(eq(group.source, "idp"), eq(group.externalId, externalId)))
-        .limit(1);
-      const id =
-        found[0]?.id ??
-        (
-          await tx
-            .insert(group)
-            .values({
-              name: externalId,
-              externalId,
-              source: "idp",
-              lastSeenAt: new Date(),
-            })
-            .returning({ id: group.id })
-        )[0]?.id;
-      if (id !== undefined)
-        await tx
-          .insert(groupMember)
-          .values({ groupId: id, userId, source: "idp" });
-    }
+    const names = [...new Set(claim)];
+    const now = new Date();
+    await tx
+      .insert(group)
+      .values(
+        names.map((externalId) => ({
+          name: externalId,
+          externalId,
+          source: "idp",
+          lastSeenAt: now,
+        }))
+      )
+      .onConflictDoNothing();
+    const rows = await tx
+      .select({ id: group.id })
+      .from(group)
+      .where(and(eq(group.source, "idp"), inArray(group.externalId, names)));
+    await tx
+      .update(group)
+      .set({ lastSeenAt: now })
+      .where(and(eq(group.source, "idp"), inArray(group.externalId, names)));
+    await tx
+      .insert(groupMember)
+      .values(rows.map(({ id }) => ({ groupId: id, userId, source: "idp" })));
   });
 }
 
@@ -147,12 +146,18 @@ export async function flushRefusalAudit(
 ): Promise<void> {
   const refusal = scope.current()?.refusal;
   if (refusal === undefined) return;
-  await tenant.db.insert(auditEvent).values({
+  const metadata =
+    refusal.groups === undefined
+      ? { reason: refusal.reason, email: refusal.email }
+      : {
+          reason: refusal.reason,
+          email: refusal.email,
+          groups: refusal.groups,
+        };
+  await writeAuthAuditEvent(tenant, {
     actorUserId: null,
     action: "auth:sign_in_refused",
-    targetType: "user",
-    targetId: null,
     summary: "Sign-in refused",
-    metadata: { reason: refusal.reason, email: refusal.email },
+    metadata,
   });
 }

@@ -47,6 +47,30 @@ export type AuditEventInput = {
   readonly output: (line: string) => void;
 };
 
+/** One application audit write through the tenant context (R-44). */
+export async function writeAuthAuditEvent(
+  context: TenantContext,
+  input: {
+    readonly action:
+      | "auth:sign_in"
+      | "auth:sign_in_refused"
+      | "auth:groups_claim_absent";
+    readonly actorUserId?: string | null;
+    readonly targetUserId?: string | null;
+    readonly summary: string;
+    readonly metadata?: Readonly<Record<string, AuditMetadataValue>>;
+  }
+): Promise<void> {
+  await context.db.insert(auditEvent).values({
+    actorUserId: input.actorUserId ?? null,
+    action: input.action,
+    targetType: "user",
+    targetId: input.targetUserId ?? null,
+    summary: input.summary,
+    metadata: input.metadata ?? {},
+  });
+}
+
 /**
  * The Postgres error code of a failed write, or `undefined` for anything else. drizzle-orm
  * 0.45.2 wraps a failed query in `DrizzleQueryError`, which carries no `code` of its own; the

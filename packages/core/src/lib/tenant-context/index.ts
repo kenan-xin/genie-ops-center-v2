@@ -10,6 +10,7 @@ import {
   type AuthMember,
 } from "../../services/auth/index.ts";
 import { AuthRequestScope } from "../../services/auth/request-scope.ts";
+import { registerSessionNewHandler } from "../../services/auth/session-events.ts";
 import {
   createCapabilityRegistry,
   type CapabilityRegistry,
@@ -311,6 +312,7 @@ export function createTenantContext(
   // consume authentication leaves the key off the object rather than carrying an explicit
   // `undefined` (environment contract, worker and command rows).
   context = auth === undefined ? base : { ...base, auth };
+  registerSessionNewHandler(context);
 
   // The logger the pool's error listener already uses is recorded off the object, where
   // `withTransaction` reads it for its after-commit diagnostics. A context this factory did not
