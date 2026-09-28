@@ -33,6 +33,17 @@ export const E2E_ADMIN_CLIENT_SECRET = "e2e-admin-client-secret";
 
 export const E2E_USER_PASSWORD = "e2e-person-password-14";
 
+type RealmUserRepresentation = {
+  readonly id: string;
+  readonly username: string;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly emailVerified: boolean;
+  readonly enabled: boolean;
+  readonly attributes?: { readonly groups?: readonly string[] };
+};
+
 /**
  * Every browser sign-in uses a realm user no other test signs in at the same moment. The shipped
  * template turns brute-force protection on, and Keycloak then marks a user temporarily disabled
@@ -68,6 +79,13 @@ export function e2eSignOutEmail(project: string): string {
 /** A realm user whose email is also a break-glass account's (R-62). */
 export function e2eBreakGlassEmail(project: string): string {
   return `e2e.break-glass.${project}@example.com`;
+}
+
+export function e2eOnboardingEmail(
+  caseName: "admitted" | "refused" | "offboarded",
+  project: string
+): string {
+  return `e2e.onboarding-${caseName}.${project}@example.com`;
 }
 
 /** The stand-in's master administrator, which `genie-ops setup` uses as its bootstrap credential. */
@@ -198,6 +216,89 @@ export async function createRealmUser(
   if (!response.ok) {
     throw new Error(
       `Creating the realm user ${user.email} failed with ${response.status}: ${await response.text()}`
+    );
+  }
+}
+
+/** The tenant template maps the multivalued `groups` user attribute into the ID token. */
+export async function setRealmUserGroups(
+  realm: string,
+  email: string,
+  groups: readonly string[]
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/users?exact=true&email=${encodeURIComponent(email)}`
+  );
+
+  // SAFETY: the admin user search answers a JSON list of user representations; only id is read.
+  const [person] = (await found.json()) as readonly { readonly id: string }[];
+
+  if (person === undefined)
+    throw new Error(`No realm user ${email} in ${realm}`);
+
+  const current = await admin(`/realms/${realm}/users/${person.id}`);
+
+  if (!current.ok)
+    throw new Error(
+      `Reading realm user ${email} failed with ${current.status}`
+    );
+
+  // SAFETY: the admin endpoint answers a Keycloak user representation; the update preserves all
+  // existing fields and changes only the mapped groups attribute.
+  const representation = (await current.json()) as RealmUserRepresentation;
+
+  const updated = await admin(`/realms/${realm}/users/${person.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      ...representation,
+      attributes: { ...representation.attributes, groups },
+    }),
+  });
+
+  if (!updated.ok) {
+    throw new Error(
+      `Updating realm groups for ${email} failed with ${updated.status}: ${await updated.text()}`
+    );
+  }
+
+  const readBack = await admin(`/realms/${realm}/users/${person.id}`);
+
+  // SAFETY: only this synthetic test user's multivalued groups attribute is inspected.
+  const actual = (await readBack.json()) as RealmUserRepresentation;
+
+  if (
+    JSON.stringify(actual.attributes?.groups ?? []) !== JSON.stringify(groups)
+  ) {
+    throw new Error(`Realm groups attribute was not stored for ${email}`);
+  }
+}
+
+/** Allow the test administrator to set the brokered mapper's multivalued groups attribute. */
+export async function allowE2eRealmGroupsAttribute(
+  realm: string
+): Promise<void> {
+  const current = await admin(`/realms/${realm}/users/profile`);
+
+  if (!current.ok)
+    throw new Error(`Reading realm user profile failed with ${current.status}`);
+
+  // SAFETY: the admin endpoint returns the full user-profile configuration; every existing field
+  // is preserved, and only the unmanaged attribute policy changes for this disposable test realm.
+  const profile = (await current.json()) as {
+    readonly attributes?: readonly { readonly name: string }[];
+  };
+
+  const updated = await admin(`/realms/${realm}/users/profile`, {
+    method: "PUT",
+    body: JSON.stringify({
+      ...profile,
+      unmanagedAttributePolicy: "ADMIN_EDIT",
+    }),
+  });
+
+  if (!updated.ok) {
+    throw new Error(
+      `Updating realm user profile failed with ${updated.status}: ${await updated.text()}`
     );
   }
 }

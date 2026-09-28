@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import {
+  allowE2eRealmGroupsAttribute,
   createRealmUser,
   E2E_ADMIN_CLIENT_SECRET,
   E2E_BOOTSTRAP_PASSWORD,
@@ -15,9 +16,11 @@ import {
   E2E_READER_SPECS,
   E2E_SIGN_IN_REALM,
   e2eBreakGlassEmail,
+  e2eOnboardingEmail,
   e2eReaderEmail,
   e2eSignOutEmail,
   E2E_USER_PASSWORD,
+  setRealmUserGroups,
   startE2eKeycloak,
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
@@ -58,11 +61,24 @@ const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>
 /** The break-glass accounts whose email a realm user also holds, one per project (R-62). */
 const BREAK_GLASS_EMAILS = E2E_PROJECTS.map(e2eBreakGlassEmail);
 
+const OFFBOARD_EMAILS = E2E_PROJECTS.map((project) =>
+  e2eOnboardingEmail("offboarded", project)
+);
+
+const ONBOARDING_EMAILS = E2E_PROJECTS.flatMap((project) => [
+  e2eOnboardingEmail("admitted", project),
+  e2eOnboardingEmail("refused", project),
+  e2eOnboardingEmail("offboarded", project),
+]);
+
+const MAPPED_GROUP = "E2E mapped";
+
 /** Every realm user the proofs sign in as; a sign-out user is created by its first sign-in. */
 const REALM_EMAILS = [
   ...READER_EMAILS,
   ...BREAK_GLASS_EMAILS,
   ...E2E_PROJECTS.map(e2eSignOutEmail),
+  ...ONBOARDING_EMAILS,
 ];
 
 /** One pre-added `user` row per email, as SQL values. */
@@ -179,8 +195,13 @@ async function seedTestSetup(): Promise<void> {
       `insert into tenant_module (module_id, enabled) values ${moduleRows} on conflict (module_id) do update set enabled = true`,
       "insert into placeholder_record (label) select 'e2e-visible' where not exists (select 1 from placeholder_record where label = 'e2e-visible')",
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(READER_EMAILS, false)}, ${userRows(BREAK_GLASS_EMAILS, true)} on conflict (email) do nothing`,
+      `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(OFFBOARD_EMAILS, false)} on conflict (email) do nothing`,
       `insert into role (name, permissions, is_system) values ('E2E reader', array[${permissions}], false) on conflict (name) do nothing`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E reader' and u.email in (${READER_EMAILS.map((email) => `'${email}'`).join(", ")}) on conflict do nothing`,
+      `insert into "group" (name, external_id, source) values ('${MAPPED_GROUP}', '${MAPPED_GROUP}', 'idp') on conflict do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'group', g.id::text from role r, "group" g where r.name = 'E2E reader' and g.external_id = '${MAPPED_GROUP}' on conflict do nothing`,
+      `insert into group_member (group_id, user_id, source) select g.id, u.id, 'idp' from "group" g, "user" u where g.external_id = '${MAPPED_GROUP}' and u.email in (${OFFBOARD_EMAILS.map((email) => `'${email}'`).join(", ")}) on conflict do nothing`,
+      "update tenant_settings set onboarding_mode = 'jit'",
     ].join("; "),
   ]);
 }
@@ -264,6 +285,7 @@ export default async function globalSetup(): Promise<void> {
 
     if (!setupGate) {
       await runGenieOpsSetup();
+      await allowE2eRealmGroupsAttribute(E2E_SIGN_IN_REALM);
 
       await Promise.all(
         REALM_EMAILS.map((email) =>
@@ -272,6 +294,29 @@ export default async function globalSetup(): Promise<void> {
             password: E2E_USER_PASSWORD,
           })
         )
+      );
+
+      await Promise.all(
+        E2E_PROJECTS.flatMap((project) => [
+          setRealmUserGroups(
+            E2E_SIGN_IN_REALM,
+            e2eOnboardingEmail("admitted", project),
+            [MAPPED_GROUP]
+          ),
+          setRealmUserGroups(
+            E2E_SIGN_IN_REALM,
+            e2eOnboardingEmail("refused", project),
+            ["Unmapped"]
+          ),
+          setRealmUserGroups(
+            E2E_SIGN_IN_REALM,
+            e2eOnboardingEmail("offboarded", project),
+            [MAPPED_GROUP]
+          ),
+          setRealmUserGroups(E2E_SIGN_IN_REALM, e2eSignOutEmail(project), [
+            MAPPED_GROUP,
+          ]),
+        ])
       );
 
       await seedTestSetup();
