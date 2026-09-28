@@ -34,10 +34,14 @@ async function postActivity(): Promise<SessionActivityResult> {
   return { kind: "active", idleExpiresAt: parsed.data.idleExpiresAt };
 }
 
-export function SessionActivityMount(props: { readonly idleMinutes: number }) {
+export function SessionActivityMount(props: {
+  readonly idleMinutes: number;
+  readonly initialIdleExpiresAt: string;
+}) {
   return (
     <SessionActivity
       idleMinutes={props.idleMinutes}
+      initialIdleExpiresAt={props.initialIdleExpiresAt}
       call={postActivity}
       onUnauthenticated={() => {
         window.location.assign("/sign-in?error=session_expired");

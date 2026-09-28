@@ -132,6 +132,7 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   expect(await sessionRows(token)).toBe(1);
 
   const signOut = await page.request.post("/api/auth/sign-out", {
+    headers: { origin: new URL(page.url()).origin },
     maxRedirects: 0,
   });
 

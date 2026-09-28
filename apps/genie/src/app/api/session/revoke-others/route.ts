@@ -1,5 +1,9 @@
 import { requireAuth } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
+import {
+  crossOriginRefusal,
+  stateChangeOriginAllowed,
+} from "../../request-origin.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +14,9 @@ export const dynamic = "force-dynamic";
 async function handler(request: Request): Promise<Response> {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
+
+  if (!stateChangeOriginAllowed(request, app.tenant.env.publicUrl))
+    return crossOriginRefusal();
 
   const revoked = await auth.revokeOtherOwnSessions({
     headers: request.headers,

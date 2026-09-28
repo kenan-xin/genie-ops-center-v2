@@ -15,5 +15,6 @@ import type { Config } from "tailwindcss";
  * That is exactly the false-confidence failure the bead was filed against.
  */
 export default {
+  content: ["../../packages/core/src/features/**/*.{ts,tsx}"],
   presets: [tailwindPreset],
 } satisfies Config;

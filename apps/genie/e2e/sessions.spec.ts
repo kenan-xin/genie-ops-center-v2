@@ -87,19 +87,27 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
   // Profile: the person the directory synced.
   await expect(page.getByText(email)).toBeVisible();
 
-  // Sessions: the current card carries the chip; the other card names its device and address.
-  // The application stylesheet does not carry the design tokens yet (Section 3), so the card
-  // list is the layout the running app shows; the desktop table is proven in Storybook.
+  // Sessions: phone uses cards while desktop exposes the responsive table in the built app.
   const sessionsList = page.getByRole("list", { name: "Sessions" });
+  const sessionsTable = page.getByRole("table");
 
-  await expect(sessionsList.getByText("THIS DEVICE")).toBeVisible();
+  if (testInfo.project.name === "desktop") {
+    await expect(sessionsList).toBeHidden();
+    await expect(sessionsTable).toBeVisible();
+    await expect(sessionsTable.getByText("THIS DEVICE")).toBeVisible();
+    await expect(sessionsTable.getByText("Windows")).toBeVisible();
+  } else {
+    await expect(sessionsTable).toBeHidden();
+    await expect(sessionsList.getByText("THIS DEVICE")).toBeVisible();
+    await expect(sessionsList.getByText("Windows")).toBeVisible();
+  }
 
-  // The other card names the device line the inserted row's user agent carries.
-  const otherCard = sessionsList
-    .getByRole("listitem")
+  const sessionContainer =
+    testInfo.project.name === "desktop" ? sessionsTable : sessionsList;
+
+  const otherCard = sessionContainer
+    .getByRole(testInfo.project.name === "desktop" ? "row" : "listitem")
     .filter({ hasText: "192.0.2.50" });
-
-  await expect(otherCard.getByText("Windows")).toBeVisible();
 
   // Roles and access: the seeded reader role, tenant-wide and direct (R-27 loader).
   await expect(page.getByText("E2E reader")).toBeVisible();
@@ -153,7 +161,20 @@ test("the activity call slides a live session and answers the absolute idle expi
 
   const current = await currentSessionId(page, email);
 
+  const [before] = await queryDatabase(
+    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+  );
+
   await page.goto("/");
+
+  // Loading and restoring a document use the server's read-only expiry, never the activity writer.
+  await page.reload();
+
+  const [afterNavigation] = await queryDatabase(
+    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+  );
+
+  expect(afterNavigation).toBe(before);
 
   // The mount read answers the expiry the client exposes (R-15a).
   const attribute = page.locator("[data-session-idle-expiry]");
@@ -185,6 +206,43 @@ test("the activity call slides a live session and answers the absolute idle expi
   );
 
   expect(lastActive).toBe("t");
+});
+
+test("foreign-origin state changes are refused without sliding or revoking a session", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+
+  const other = await insertOtherSession(email, {
+    userAgent: WINDOWS_CHROME_UA,
+    address: "192.0.2.52",
+  });
+
+  const [before] = await queryDatabase(
+    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+  );
+
+  const activity = await page.request.post("/api/session/activity", {
+    headers: { origin: "https://evil.example.test" },
+  });
+
+  const revoke = await page.request.post("/api/session/revoke-others", {
+    headers: { origin: "https://evil.example.test" },
+  });
+
+  expect(activity.status()).toBe(403);
+  expect(revoke.status()).toBe(403);
+  expect(await sessionRowCount(other)).toBe("1");
+
+  const [after] = await queryDatabase(
+    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+  );
+
+  expect(after).toBe(before);
 });
 
 test("an idle session is refused and the browser lands on the expired banner (R-14, R-17a)", async ({
@@ -222,4 +280,31 @@ test("an idle session is refused and the browser lands on the expired banner (R-
   await expect
     .poll(() => sessionRowCount(current), { timeout: 10_000 })
     .toBe("0");
+});
+
+test("sign-out refuses an idle-dead session before it can redirect to Keycloak", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+  await queryDatabase(
+    `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
+  );
+
+  const response = await page.request.post("/api/auth/sign-out", {
+    headers: { origin: new URL(page.url()).origin },
+    maxRedirects: 0,
+  });
+
+  expect(response.status()).toBe(303);
+  expect(new URL(response.headers()["location"] ?? "").pathname).toBe(
+    "/sign-in"
+  );
+  expect(
+    new URL(response.headers()["location"] ?? "").searchParams.get("error")
+  ).toBe("session_expired");
+  expect(await sessionRowCount(current)).toBe("0");
 });

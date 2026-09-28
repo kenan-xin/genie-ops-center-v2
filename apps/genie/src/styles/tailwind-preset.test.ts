@@ -88,7 +88,9 @@ describe("the application stylesheet", () => {
     // Guard on this test's own validity. If the consumer declared the same glob
     // the preset declares, the compiler would list it from both sides, and
     // removing the preset would no longer change the result.
-    expect(appConfig.content).toBeUndefined();
+    expect(appConfig.content).toEqual([
+      "../../packages/core/src/features/**/*.{ts,tsx}",
+    ]);
     expect(appConfig.presets).toHaveLength(1);
   });
 

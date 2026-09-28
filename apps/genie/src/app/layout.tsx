@@ -1,9 +1,10 @@
-import { sessionCookieName } from "@genie/core";
+import { idleExpiry, sessionCookieName } from "@genie/core";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
 import type { ReactNode } from "react";
 
+import { requireAuth } from "../auth.ts";
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
@@ -43,9 +44,8 @@ export default async function RootLayout({
   const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
   const messages = setupRequired ? {} : await getMessages();
 
-  // The activity client mounts for a browser that carries a session cookie, on any page (R-15).
-  // The layout reads no session row here: the mount's own first call answers whether the session
-  // is live, and the settings read it needs for the throttle is cached behind the reader.
+  // The activity client mounts for a live browser session. Its first expiry is supplied by this
+  // enforced read (R-15a), so loading, restoring or navigating never writes last_active_at.
   const context = readContext();
 
   const cookieName =
@@ -57,10 +57,28 @@ export default async function RootLayout({
     cookieName !== undefined &&
     ((await headers()).get("cookie") ?? "").includes(`${cookieName}=`);
 
-  const idleMinutes =
+  const activity =
     context === undefined || !carriesSessionCookie
       ? undefined
-      : (await context.tenant.settings.get()).sessionIdleMinutes;
+      : await (async () => {
+          const [settings, current] = await Promise.all([
+            context.tenant.settings.get(),
+            requireAuth(context.tenant).getSession({
+              headers: await headers(),
+            }),
+          ]);
+
+          if (current === null) return undefined;
+
+          return {
+            idleMinutes: settings.sessionIdleMinutes,
+            initialIdleExpiresAt: idleExpiry({
+              lastActivityAt:
+                current.session.lastActiveAt ?? current.session.createdAt,
+              idleMinutes: settings.sessionIdleMinutes,
+            }).toISOString(),
+          };
+        })();
 
   // Read, not required. A page that renders before the bootstrap published has
   // nothing true to report, and this layout is not the place to decide that a
@@ -81,8 +99,8 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
-            {idleMinutes === undefined ? null : (
-              <SessionActivityMount idleMinutes={idleMinutes} />
+            {activity === undefined ? null : (
+              <SessionActivityMount {...activity} />
             )}
             {children}
           </QueryProvider>

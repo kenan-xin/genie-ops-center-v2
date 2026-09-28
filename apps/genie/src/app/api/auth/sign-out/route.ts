@@ -1,7 +1,12 @@
+import { sessionCookieName } from "@genie/core";
 import { NextResponse } from "next/server.js";
 
 import { requireAuth, signOutDestination } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
+import {
+  crossOriginRefusal,
+  stateChangeOriginAllowed,
+} from "../../request-origin.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +28,30 @@ async function handler(request: Request): Promise<Response> {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
   const publicUrl = app.tenant.env.publicUrl;
+
+  if (!stateChangeOriginAllowed(request, publicUrl))
+    return crossOriginRefusal();
+
+  const state = await auth.sessionState({ headers: request.headers });
+
+  if (state.status === "idle-expired") {
+    const expired = NextResponse.redirect(
+      new URL("/sign-in?error=session_expired", publicUrl),
+      303
+    );
+
+    expired.cookies.set(sessionCookieName(publicUrl), "", {
+      expires: new Date(0),
+      httpOnly: true,
+      sameSite: "lax",
+      secure: publicUrl.startsWith("https://"),
+      path: "/",
+    });
+
+    expired.headers.set("cache-control", "no-store");
+
+    return expired;
+  }
 
   const result = await auth.signOut({
     headers: request.headers,

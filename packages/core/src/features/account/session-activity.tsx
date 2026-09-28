@@ -15,6 +15,8 @@ export type SessionActivityResult =
 export type SessionActivityProps = {
   /** The tenant's idle window; the throttle wait is half of it (R-15). */
   readonly idleMinutes: number;
+  /** The server's read-only initial expiry (R-15a); mounting never records activity. */
+  readonly initialIdleExpiresAt: string;
   /**
    * The transport, injected so the Storybook host asserts the call pattern without a network:
    * the application posts `/api/session/activity` and classifies the answer.
@@ -35,7 +37,9 @@ export type SessionActivityProps = {
  * later event would only repeat the same answer.
  */
 export function SessionActivity(props: SessionActivityProps): JSX.Element {
-  const [idleExpiresAt, setIdleExpiresAt] = useState<string | null>(null);
+  const [idleExpiresAt, setIdleExpiresAt] = useState(
+    props.initialIdleExpiresAt
+  );
 
   // The latest transport and navigation, read through refs so the mount effect runs once.
   const transport = useRef(props.call);
@@ -66,11 +70,6 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
     navigate.current();
   }, []);
 
-  // The one read on mount exposes the absolute expiry to the client (R-15a).
-  useEffect(() => {
-    void call();
-  }, [call]);
-
   const onActivity = useThrottledCallback(call, {
     wait: activityThrottleWaitMs(props.idleMinutes),
   });
@@ -91,5 +90,5 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
 
   // R-15a: the expiry the client holds, as an absolute time, on a hidden element Section 3's
   // warning and the tests read. Nothing visible renders.
-  return <span data-session-idle-expiry={idleExpiresAt ?? undefined} hidden />;
+  return <span data-session-idle-expiry={idleExpiresAt} hidden />;
 }
