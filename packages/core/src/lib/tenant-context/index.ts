@@ -268,6 +268,9 @@ export function createTenantContext(
       : createAuthMember({
           db,
           logger,
+          // The idle rule reads `session_idle_minutes` through this reader on every enforced
+          // session read (R-14, DEC-46).
+          settings: readers.settings,
           publicUrl: env.publicUrl,
           auth: env.auth,
           trustedProxies: env.authTrustedProxies,

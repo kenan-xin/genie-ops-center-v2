@@ -48,6 +48,19 @@ const AUTH_MEMBER = {
 
 const PASSWORD = "break-glass-password-14";
 
+/**
+ * The enforced session read reads `session_idle_minutes` through the settings reader (R-14),
+ * which fails closed while the row the `seed` step owns is absent. A deployment here carries the
+ * default row, so the idle rule answers with the tenant's default 15 minutes.
+ */
+async function seedSettingsRow(
+  deployment: DisposableDeployment
+): Promise<void> {
+  await deployment.context.db.$client.query(
+    "insert into tenant_settings default values"
+  );
+}
+
 function authOf(deployment: DisposableDeployment): AuthMember {
   const auth = deployment.context.auth;
 
@@ -89,6 +102,8 @@ describe("the Better Auth instance", () => {
       startDisposableDeployment([], { env: AUTH_ENV, profile: "application" }),
       startDisposableDeployment([], { env: AUTH_ENV, profile: "application" }),
     ]);
+
+    await Promise.all([seedSettingsRow(first), seedSettingsRow(second)]);
   }, 240_000);
 
   afterAll(async () => {
@@ -332,6 +347,7 @@ describe("the discovery retry and swap", () => {
         db: deployment.context.db,
         publicUrl: PUBLIC_URL,
         logger: silentLogger(),
+        settings: deployment.context.settings,
         auth: { ...AUTH_MEMBER, keycloakUrl: url },
         trustedProxies: [],
         runtimeMode: "production",
@@ -402,10 +418,15 @@ describe("the discovery retry and swap", () => {
         db: deployment.context.db,
         logger: silentLogger(),
         publicUrl: PUBLIC_URL,
+        settings: deployment.context.settings,
         auth: { ...AUTH_MEMBER, keycloakUrl: `http://127.0.0.1:${port}` },
         trustedProxies: [],
         runtimeMode: "production",
       });
+
+      await deployment.context.db.$client.query(
+        "insert into tenant_settings default values"
+      );
 
       await insertCredentialPerson(deployment.context, {
         email: "hang@example.com",

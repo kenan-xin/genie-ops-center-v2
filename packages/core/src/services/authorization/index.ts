@@ -22,6 +22,8 @@ export {
   principalFor,
 } from "./grant-reader.ts";
 
+export { readRoleSummaries, type RoleSummaryRow } from "./role-summaries.ts";
+
 export {
   AUDITOR_ROLE,
   CORE_PERMISSION_KEYS,

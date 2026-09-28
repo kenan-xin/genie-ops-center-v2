@@ -110,3 +110,13 @@ export const APPLICATION_USER_FIELDS = {
   banExpires: { type: "date", required: false, input: false },
   twoFactorEnabled: { type: "boolean", required: false, input: false },
 } as const;
+
+/**
+ * The application columns on `session` no Better Auth endpoint may write (`input: false`).
+ * `lastActiveAt` is the idle check's one column (R-15): only the activity call writes it, and
+ * declaring it here lets the enforced session read see it in the row Better Auth already
+ * selected, without a second query.
+ */
+export const APPLICATION_SESSION_FIELDS = {
+  lastActiveAt: { type: "date", required: false, input: false },
+} as const;

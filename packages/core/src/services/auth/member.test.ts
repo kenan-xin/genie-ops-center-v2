@@ -19,6 +19,10 @@ describe("the auth member's discovery state", () => {
     const member = createAuthMember({
       db: drizzle.mock(),
       logger: silentLogger(),
+      // This test never reads a session, so the idle rule's reader is never called.
+      settings: {
+        get: () => Promise.reject(new Error("no settings in this test")),
+      },
       publicUrl: "https://genie.example.com",
       auth: {
         betterAuthSecret: "x".repeat(32),

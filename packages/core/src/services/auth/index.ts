@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 
 import {
   account,
@@ -14,6 +14,7 @@ import {
 } from "../../schema.ts";
 import type { LogValue } from "../logging/index.ts";
 import {
+  APPLICATION_SESSION_FIELDS,
   APPLICATION_USER_FIELDS,
   DISCOVERY_RETRY_MS,
   DISCOVERY_TIMEOUT_MS,
@@ -26,27 +27,40 @@ import {
   sessionCookieName,
 } from "./config.ts";
 import { createDiscoveryProbe } from "./discovery.ts";
+import { idleExpiry, isIdleExpired } from "./idle.ts";
 import type {
   AuthDiscoveryState,
   AuthMember,
   AuthMemberInput,
+  AuthOwnSession,
   AuthSession,
+  AuthSessionState,
   DiscoveryResult,
 } from "./types.ts";
+import { describeUserAgent } from "./user-agent.ts";
 
 export type {
+  AuthActivityResult,
   AuthDiscoveryCause,
   AuthDiscoveryState,
   AuthMember,
   AuthMemberInput,
+  AuthOwnSession,
+  AuthRevokeSessionResult,
   AuthSession,
   AuthSessionInput,
+  AuthSessionState,
   AuthSessionUser,
   AuthSignOutInput,
   AuthSignOutResult,
 } from "./types.ts";
 
+export { activityThrottleWaitMs, idleExpiry, isIdleExpired } from "./idle.ts";
+
+export { describeUserAgent } from "./user-agent.ts";
+
 export {
+  APPLICATION_SESSION_FIELDS,
   APPLICATION_USER_FIELDS,
   DISCOVERY_RETRY_MS,
   discoveryDocumentUrl,
@@ -201,6 +215,9 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
       disableSessionRefresh: true,
       freshAge: 0,
       cookieCache: { enabled: false },
+      // `lastActiveAt` reaches the enforced session read in the row Better Auth already selected;
+      // no endpoint writes it (R-15, D2-5).
+      additionalFields: APPLICATION_SESSION_FIELDS,
     },
     account: {
       encryptOAuthTokens: true,
@@ -261,6 +278,12 @@ function toSession(
       id: value.session.id,
       userId: value.session.userId,
       expiresAt: value.session.expiresAt,
+      createdAt: new Date(value.session.createdAt),
+      lastActiveAt:
+        value.session.lastActiveAt === null ||
+        value.session.lastActiveAt === undefined
+          ? null
+          : new Date(value.session.lastActiveAt),
     },
   };
 }
@@ -422,13 +445,162 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
     // A failed read is a `degraded` state, not a thrown start; the retry is the sign-in path.
   });
 
+  /**
+   * The enforced session read (R-14). Better Auth's own read has already refused the 24 hour cap
+   * (`expiresAt`, never extended because refresh is off); this adds the tenant's idle window,
+   * read through the settings reader behind its cache, and deletes the row a request finds past
+   * the window so the next request - and every parallel one - is unauthenticated too. The last
+   * activity baseline is the activity call's column, or the session's creation until the first
+   * call writes it.
+   */
+  async function enforcedSession(headers: Headers): Promise<AuthSessionState> {
+    const value = await instance.api.getSession({ headers });
+
+    if (value === null) return { status: "anonymous" };
+
+    const current = toSession(value);
+
+    if (current === null) return { status: "anonymous" };
+
+    const { sessionIdleMinutes } = await input.settings.get();
+
+    const lastActivity =
+      current.session.lastActiveAt ?? current.session.createdAt;
+
+    if (
+      isIdleExpired({
+        lastActivityAt: lastActivity,
+        idleMinutes: sessionIdleMinutes,
+        now: new Date(now()),
+      })
+    ) {
+      await input.db.delete(session).where(eq(session.id, current.session.id));
+
+      return { status: "idle-expired" };
+    }
+
+    return { status: "authenticated", session: current };
+  }
+
   return {
     handler: (request) => instance.handler(request),
 
     async getSession({ headers }) {
-      const value = await instance.api.getSession({ headers });
+      const state = await enforcedSession(headers);
 
-      return toSession(value);
+      return state.status === "authenticated" ? state.session : null;
+    },
+
+    sessionState: ({ headers }) => enforcedSession(headers),
+
+    async recordActivity({ headers }) {
+      const state = await enforcedSession(headers);
+
+      if (state.status !== "authenticated") return null;
+
+      const at = new Date(now());
+      const { sessionIdleMinutes } = await input.settings.get();
+
+      // R-15: this update is the one writer of `last_active_at`.
+      await input.db
+        .update(session)
+        .set({ lastActiveAt: at })
+        .where(eq(session.id, state.session.session.id));
+
+      // R-15a: the absolute expiry computed from the activity just recorded.
+      return {
+        idleExpiresAt: idleExpiry({
+          lastActivityAt: at,
+          idleMinutes: sessionIdleMinutes,
+        }),
+      };
+    },
+
+    async listOwnSessions({ headers }) {
+      const state = await enforcedSession(headers);
+
+      if (state.status !== "authenticated") return null;
+
+      const rows = await input.db
+        .select()
+        .from(session)
+        .where(eq(session.userId, state.session.user.id))
+        .orderBy(desc(session.createdAt));
+
+      const { sessionIdleMinutes } = await input.settings.get();
+      const at = new Date(now());
+
+      const live = rows.filter(
+        (row) =>
+          row.expiresAt.getTime() > at.getTime() &&
+          !isIdleExpired({
+            lastActivityAt: row.lastActiveAt ?? row.createdAt,
+            idleMinutes: sessionIdleMinutes,
+            now: at,
+          })
+      );
+
+      const described = live.map((row) => {
+        const agent = describeUserAgent(row.userAgent);
+
+        return {
+          id: row.id,
+          device: agent.device,
+          browser: agent.browser,
+          ipAddress: row.ipAddress ?? "—",
+          signedInAt: row.createdAt,
+          lastActiveAt: row.lastActiveAt ?? row.createdAt,
+          isCurrent: row.id === state.session.session.id,
+        } satisfies AuthOwnSession;
+      });
+
+      // The current session is first; the rest newest signed-in first (R-18).
+      return described.toSorted((a, b) =>
+        a.isCurrent === b.isCurrent
+          ? b.signedInAt.getTime() - a.signedInAt.getTime()
+          : a.isCurrent
+            ? -1
+            : 1
+      );
+    },
+
+    async revokeOwnSession({ headers, sessionId }) {
+      const state = await enforcedSession(headers);
+
+      if (state.status !== "authenticated") return "unauthenticated";
+
+      // The current session is refused: the block marks it and offers no revoke (R-18).
+      if (sessionId === state.session.session.id) return "current";
+
+      const deleted = await input.db
+        .delete(session)
+        .where(
+          and(
+            eq(session.id, sessionId),
+            eq(session.userId, state.session.user.id)
+          )
+        )
+        .returning({ id: session.id });
+
+      return deleted.length > 0 ? "revoked" : "not-found";
+    },
+
+    async revokeOtherOwnSessions({ headers }) {
+      const state = await enforcedSession(headers);
+
+      if (state.status !== "authenticated") return null;
+
+      const deleted = await input.db
+        .delete(session)
+        .where(
+          and(
+            eq(session.userId, state.session.user.id),
+            ne(session.id, state.session.session.id)
+          )
+        )
+        .returning({ id: session.id });
+
+      return deleted.length;
     },
 
     async beginKeycloakSignIn({ headers, callbackURL, errorCallbackURL }) {
