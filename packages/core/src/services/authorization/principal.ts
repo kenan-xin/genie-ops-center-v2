@@ -15,6 +15,17 @@ export type PermissionGrants = {
    * the one bypass, and it is never a wildcard key in a role.
    */
   readonly bypass?: boolean;
+  /** Display metadata derived from the same R-27 assignment read as the grants. */
+  readonly roleSummaries?: readonly RoleSummary[];
+};
+
+export type RoleSummary = {
+  readonly roleName: string;
+  readonly moduleName: string | null;
+  readonly permissionCount: number;
+  readonly scopeType: string | null;
+  readonly scopeId: string | null;
+  readonly via: string | null;
 };
 
 /** Reads the current person's assignments, once per request or job run (DEC-48). */

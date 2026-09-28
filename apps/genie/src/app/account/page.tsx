@@ -45,7 +45,7 @@ export default async function AccountPage() {
 
   const [groups, summaries, sessions, branding] = await Promise.all([
     readOwnGroups(tenant, userId),
-    readRoleSummaries(tenant, userId),
+    readRoleSummaries(principal),
     auth.listOwnSessions({ headers: requestHeaders }),
     tenant.branding.get(),
   ]);

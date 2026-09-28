@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { readRoleSummaries } from "../src/services/authorization/role-summaries.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
@@ -76,7 +77,9 @@ describe("readRoleSummaries", () => {
       principal: { type: "group", id: archivedGroup },
     });
 
-    const rows = await readRoleSummaries(context, userId);
+    const rows = await readRoleSummaries(
+      principalFor({ tenant: context, modules: [], userId })
+    );
 
     expect(rows).toEqual([
       {
@@ -101,6 +104,35 @@ describe("readRoleSummaries", () => {
   it("answers an empty list for a person without assignments", async () => {
     const alone = await insertUser(deployment.context);
 
-    expect(await readRoleSummaries(deployment.context, alone)).toEqual([]);
+    expect(
+      await readRoleSummaries(
+        principalFor({ tenant: deployment.context, modules: [], userId: alone })
+      )
+    ).toEqual([]);
+  });
+
+  it("does not expose assignment metadata for an inactive person", async () => {
+    const context = deployment.context;
+    const userId = await insertUser(context);
+
+    const roleId = await insertRole(context, {
+      name: "Inactive reader",
+      permissions: ["core:audit:read"],
+    });
+
+    await assignRole(context, {
+      roleId,
+      principal: { type: "user", id: userId },
+    });
+
+    await context.db.execute(
+      `update "user" set banned = true where id = '${userId}'`
+    );
+
+    expect(
+      await readRoleSummaries(
+        principalFor({ tenant: context, modules: [], userId })
+      )
+    ).toEqual([]);
   });
 });

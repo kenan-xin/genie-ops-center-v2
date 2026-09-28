@@ -11,6 +11,7 @@ import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import {
   type GrantReader,
   type PermissionGrants,
+  type RoleSummary,
   type RecordResolver,
   type RequestPrincipal,
   createRequestPrincipal,
@@ -33,7 +34,10 @@ const ASSIGNMENTS_SQL = `
          (u.erased_at is not null
            or (u.banned is true and (u.ban_expires is null or u.ban_expires > now())))
            as inactive,
-         r.permissions, a.scope_type, a.scope_id
+         r.permissions, a.scope_type, a.scope_id,
+         r.name as role_name, r.module_id as module_name,
+         cardinality(r.permissions) as permission_count,
+         case when a.principal_type = 'group' then g.name end as via
     from "user" u
     left join role_assignment a
       on (a.principal_type = 'user' and a.principal_id = u.id)
@@ -43,6 +47,7 @@ const ASSIGNMENTS_SQL = `
               join "group" g on g.id = m.group_id
              where m.user_id = u.id and g.archived_at is null))
     left join role r on r.id = a.role_id
+    left join "group" g on a.principal_type = 'group' and g.id = a.principal_id::uuid
    where u.id = $1`;
 
 /** The one statement the loader sends; the context pool's `query` is one, bound. */
@@ -59,6 +64,10 @@ type AssignmentRow = {
   readonly permissions: readonly string[] | null;
   readonly scope_type: string | null;
   readonly scope_id: string | null;
+  readonly role_name: string | null;
+  readonly module_name: string | null;
+  readonly permission_count: number | null;
+  readonly via: string | null;
 };
 
 /**
@@ -116,7 +125,25 @@ function grantsFrom(
     scopes.set(permission, { kind: "all" });
   }
 
-  return { keys: new Set(scopes.keys()), scopes };
+  const roleSummaries: RoleSummary[] = [];
+
+  for (const row of rows) {
+    if (
+      row.role_name === null ||
+      (row.scope_type === null) !== (row.scope_id === null)
+    )
+      continue;
+    roleSummaries.push({
+      roleName: row.role_name,
+      moduleName: row.module_name,
+      permissionCount: row.permission_count ?? 0,
+      scopeType: row.scope_type,
+      scopeId: row.scope_id,
+      via: row.via,
+    });
+  }
+
+  return { keys: new Set(scopes.keys()), scopes, roleSummaries };
 }
 
 /**
