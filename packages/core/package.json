@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./errors": "./src/lib/errors/index.ts",
+    "./features/account": "./src/features/account/index.ts",
     "./features/audit": "./src/features/audit/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
@@ -25,6 +26,7 @@
   "dependencies": {
     "@genie/ui": "workspace:*",
     "@react-email/components": "1.0.12",
+    "@tanstack/react-pacer": "0.23.0",
     "@trpc/server": "11.19.0",
     "better-auth": "1.7.6",
     "dompurify": "3.4.16",

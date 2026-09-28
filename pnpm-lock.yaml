@@ -426,6 +426,9 @@ importers:
       '@react-email/components':
         specifier: 1.0.12
         version: 1.0.12(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-pacer':
+        specifier: 0.23.0
+        version: 0.23.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@trpc/server':
         specifier: 11.19.0
         version: 11.19.0(@typescript/typescript6@6.0.2)
