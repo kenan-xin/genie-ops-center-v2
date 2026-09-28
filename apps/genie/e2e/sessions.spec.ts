@@ -87,23 +87,27 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
   // Profile: the person the directory synced.
   await expect(page.getByText(email)).toBeVisible();
 
-  // Sessions: the current row carries the chip; the other row names its device and address.
-  const table = page.getByRole("table");
+  // Sessions: the current card carries the chip; the other card names its device and address.
+  // The application stylesheet does not carry the design tokens yet (Section 3), so the card
+  // list is the layout the running app shows; the desktop table is proven in Storybook.
+  const sessionsList = page.getByRole("list", { name: "Sessions" });
 
-  await expect(table.getByText("THIS DEVICE")).toBeVisible();
-  await expect(table.getByText("Windows")).toBeVisible();
-  await expect(table.getByText("192.0.2.50")).toBeVisible();
+  await expect(sessionsList.getByText("THIS DEVICE")).toBeVisible();
+
+  // The other card names the device line the inserted row's user agent carries.
+  const otherCard = sessionsList
+    .getByRole("listitem")
+    .filter({ hasText: "192.0.2.50" });
+
+  await expect(otherCard.getByText("Windows")).toBeVisible();
 
   // Roles and access: the seeded reader role, tenant-wide and direct (R-27 loader).
   await expect(page.getByText("E2E reader")).toBeVisible();
   await expect(page.getByText("Whole tenant")).toBeVisible();
-  await expect(page.getByText("Direct")).toBeVisible();
+  await expect(page.getByText("Direct", { exact: true })).toBeVisible();
 
   // Per-session sign-out: the dialog names the device, and the confirm deletes the row.
-  await table
-    .getByRole("row", { name: /Windows/ })
-    .getByRole("button", { name: "Sign out" })
-    .click();
+  await otherCard.getByRole("button", { name: "Sign out" }).click();
 
   const dialog = page.getByRole("dialog");
 
@@ -115,11 +119,14 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
     .poll(() => sessionRowCount(other), { timeout: 10_000 })
     .toBe("0");
 
-  // Sign out everywhere: a third row goes, the caller's own stays.
+  // Sign out everywhere: a third row goes, the caller's own stays. The block re-reads the
+  // server data, which now sees the row this test just inserted.
   const third = await insertOtherSession(email, {
     userAgent: WINDOWS_CHROME_UA,
     address: "192.0.2.51",
   });
+
+  await page.reload();
 
   await page
     .getByRole("button", { name: "Sign out all other sessions" })
