@@ -47,6 +47,11 @@ export {
 } from "./services/auth/index.ts";
 
 export {
+  flushRefusalAudit,
+  syncGroupMemberships,
+} from "./services/auth/onboarding.ts";
+
+export {
   type AfterCommit,
   type AfterCommitEntry,
   type TenantTransaction,

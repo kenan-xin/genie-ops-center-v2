@@ -1,4 +1,4 @@
-import { sessionCookieName } from "@genie/core";
+import { flushRefusalAudit, sessionCookieName } from "@genie/core";
 
 import {
   authPath,
@@ -74,7 +74,13 @@ async function handler(request: Request): Promise<Response> {
     if (!discovery.ready) return realmUnavailable();
   }
 
-  return auth.handler(request);
+  return app.tenant.authRequestScope.run(async () => {
+    try {
+      return await auth.handler(request);
+    } finally {
+      await flushRefusalAudit(app.tenant, app.tenant.authRequestScope);
+    }
+  });
 }
 
 export { handler as GET, handler as POST };

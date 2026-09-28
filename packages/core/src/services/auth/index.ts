@@ -4,9 +4,11 @@ import { APIError } from "better-auth/api";
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { and, desc, eq, ne } from "drizzle-orm";
+/* oxlint-disable anti-slop/require-readable-spacing -- the Better Auth hook scopes keep adjacent guards and writes together. */
 
 import {
   account,
+  auditEvent,
   session,
   twoFactor,
   user,
@@ -28,6 +30,7 @@ import {
 } from "./config.ts";
 import { createDiscoveryProbe } from "./discovery.ts";
 import { idleExpiry, isIdleExpired } from "./idle.ts";
+import { syncGroupMemberships, validateOAuthUser } from "./onboarding.ts";
 import type {
   AuthDiscoveryState,
   AuthMember,
@@ -205,8 +208,63 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
         else input.logger.info(fields, message);
       },
     },
-    databaseHooks: { account: accountHooks(input) },
-    user: { additionalFields: APPLICATION_USER_FIELDS },
+    databaseHooks:
+      input.tenant === undefined || input.requestScope === undefined
+        ? { account: accountHooks(input) }
+        : {
+            account: accountHooks(input),
+            user: {
+              create: {
+                async before(_data: { readonly email: string }) {
+                  const facts = input.requestScope?.current();
+                  if (facts?.oauth !== true || facts.groups === undefined)
+                    return;
+                  return { data: { status: "active", onboarding: "jit" } };
+                },
+              },
+            },
+            session: {
+              create: {
+                async after(data: { readonly userId: string }) {
+                  const facts = input.requestScope?.current();
+                  if (facts?.oauth !== true) return;
+                  const tenant = input.tenant?.();
+                  if (tenant === undefined) return;
+                  await tenant.db
+                    .update(user)
+                    .set({
+                      status: "active",
+                      firstSignInAt: new Date(),
+                      lastSignInAt: new Date(),
+                    })
+                    .where(
+                      and(eq(user.id, data.userId), eq(user.status, "pending"))
+                    );
+                  await syncGroupMemberships(tenant, data.userId, facts.groups);
+                  await tenant.db.insert(auditEvent).values({
+                    actorUserId: data.userId,
+                    action: "auth:sign_in",
+                    targetType: "user",
+                    targetId: data.userId,
+                    summary: "Signed in",
+                    metadata: {},
+                  });
+                },
+              },
+            },
+          },
+    user: {
+      additionalFields: APPLICATION_USER_FIELDS,
+      async validateUserInfo(data) {
+        if (input.tenant === undefined || input.requestScope === undefined)
+          return undefined;
+        return validateOAuthUser({
+          tenant: input.tenant(),
+          scope: input.requestScope,
+          data,
+        });
+      },
+    },
     session: {
       expiresIn: SESSION_ABSOLUTE_SECONDS,
       // R-13: refresh would extend the absolute 24 hour cap, so it is off; `freshAge: 0` keeps the

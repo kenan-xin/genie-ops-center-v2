@@ -67,6 +67,8 @@ function contextWith(
 ): ModuleRequestContext {
   return {
     tenant: {
+      // SAFETY: this router never reads or enters an authentication callback scope.
+      authRequestScope: {} as TenantContext["authRequestScope"],
       db: databaseTripwire(),
       env: {
         databaseUrl: "postgres://genie:secret@db.invalid:5432/genie",

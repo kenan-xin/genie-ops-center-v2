@@ -26,6 +26,7 @@ describe("TenantContext", () => {
       | "mailer"
       | "publicUrl"
       | "auth"
+      | "authRequestScope"
     >();
   });
 });

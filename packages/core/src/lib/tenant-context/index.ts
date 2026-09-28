@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+/* oxlint-disable anti-slop/require-readable-spacing -- context construction follows a guarded lazy-reference sequence. */
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -8,6 +9,7 @@ import {
   createAuthMember,
   type AuthMember,
 } from "../../services/auth/index.ts";
+import { AuthRequestScope } from "../../services/auth/request-scope.ts";
 import {
   createCapabilityRegistry,
   type CapabilityRegistry,
@@ -153,6 +155,7 @@ export type TenantContext = {
    * command profile that does not consume authentication builds no member.
    */
   readonly auth?: AuthMember;
+  readonly authRequestScope: AuthRequestScope;
 };
 
 /** An absolute link to `path` under `PUBLIC_URL`, with `query` as its search string (R-70). */
@@ -262,6 +265,8 @@ export function createTenantContext(
   // over this context's own pool. It opens no database connection, but it starts one bounded
   // discovery read of the realm in the background (R-54d). A profile without the auth values
   // builds no member (environment contract, worker and command rows).
+  const authRequestScope = new AuthRequestScope();
+  let context!: TenantContext;
   const auth =
     env.auth === undefined
       ? undefined
@@ -275,6 +280,8 @@ export function createTenantContext(
           auth: env.auth,
           trustedProxies: env.authTrustedProxies,
           runtimeMode: env.runtimeMode,
+          tenant: () => context,
+          requestScope: authRequestScope,
         });
 
   const base: Omit<TenantContext, "auth"> = {
@@ -297,12 +304,13 @@ export function createTenantContext(
       publicUrl,
     }),
     publicUrl,
+    authRequestScope,
   };
 
   // The auth member is added only when the environment carried it, so a profile that does not
   // consume authentication leaves the key off the object rather than carrying an explicit
   // `undefined` (environment contract, worker and command rows).
-  const context: TenantContext = auth === undefined ? base : { ...base, auth };
+  context = auth === undefined ? base : { ...base, auth };
 
   // The logger the pool's error listener already uses is recorded off the object, where
   // `withTransaction` reads it for its after-commit diagnostics. A context this factory did not

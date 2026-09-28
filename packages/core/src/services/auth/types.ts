@@ -5,7 +5,9 @@ import type {
   RuntimeMode,
   SettingsReader,
 } from "../../lib/tenant-context/index.ts";
+import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { RedactingLogger } from "../logging/index.ts";
+import type { AuthRequestScope } from "./request-scope.ts";
 
 /** Why the discovery document is not usable yet (Spec 2 R-54d). */
 export type AuthDiscoveryCause = "discovery_unreachable" | "issuer_mismatch";
@@ -190,6 +192,9 @@ export type AuthMemberInput = {
   readonly auth: AuthEnvironment;
   readonly trustedProxies: readonly string[];
   readonly runtimeMode: RuntimeMode;
+  /** Lazy because the context is completed after its auth member is constructed. */
+  readonly tenant?: () => TenantContext;
+  readonly requestScope?: AuthRequestScope;
   /** Injected by a test; the process uses the global fetch. */
   readonly fetchImpl?: typeof fetch;
   /** Injected by a test; the process uses `Date.now`. */
