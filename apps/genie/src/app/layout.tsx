@@ -2,6 +2,7 @@ import { idleExpiry, sessionCookieName } from "@genie/core";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
+import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
 import { requireAuth } from "../auth.ts";
@@ -61,20 +62,23 @@ export default async function RootLayout({
     context === undefined || !carriesSessionCookie
       ? undefined
       : await (async () => {
-          const [settings, current] = await Promise.all([
-            context.tenant.settings.get(),
-            requireAuth(context.tenant).getSession({
-              headers: await headers(),
-            }),
-          ]);
+          const current = await requireAuth(context.tenant).sessionState({
+            headers: await headers(),
+          });
 
-          if (current === null) return undefined;
+          if (current.status === "idle-expired")
+            redirect("/api/auth/session-expired");
+
+          if (current.status === "anonymous") return undefined;
+
+          const settings = await context.tenant.settings.get();
 
           return {
             idleMinutes: settings.sessionIdleMinutes,
             initialIdleExpiresAt: idleExpiry({
               lastActivityAt:
-                current.session.lastActiveAt ?? current.session.createdAt,
+                current.session.session.lastActiveAt ??
+                current.session.session.createdAt,
               idleMinutes: settings.sessionIdleMinutes,
             }).toISOString(),
           };

@@ -18,7 +18,7 @@ import type {
  * before the callback fires. The Roles and access block edits nothing: its note says who to ask.
  */
 
-const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-destructive px-3 text-sm font-semibold text-white motion-safe:transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
+const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-destructive px-3 text-sm font-semibold motion-safe:transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);

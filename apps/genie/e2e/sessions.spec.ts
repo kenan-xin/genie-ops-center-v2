@@ -95,7 +95,12 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
     await expect(sessionsList).toBeHidden();
     await expect(sessionsTable).toBeVisible();
     await expect(sessionsTable.getByText("THIS DEVICE")).toBeVisible();
-    await expect(sessionsTable.getByText("Windows")).toBeVisible();
+    await expect(
+      sessionsTable
+        .getByRole("row")
+        .filter({ hasText: "192.0.2.50" })
+        .getByText("Windows")
+    ).toBeVisible();
   } else {
     await expect(sessionsTable).toBeHidden();
     await expect(sessionsList.getByText("THIS DEVICE")).toBeVisible();
@@ -280,6 +285,41 @@ test("an idle session is refused and the browser lands on the expired banner (R-
   await expect
     .poll(() => sessionRowCount(current), { timeout: 10_000 })
     .toBe("0");
+});
+
+test("an idle document reload clears the cookie and lands on the expired banner (R-14, R-17a)", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+
+  await page.goto("/");
+
+  await queryDatabase(
+    `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
+  );
+
+  await page.reload();
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .toBe("/sign-in");
+
+  expect(new URL(page.url()).searchParams.get("error")).toBe("session_expired");
+  await expect(page.getByTestId("sign-in-banner")).toContainText(
+    `${IDLE_MINUTES} minutes`
+  );
+  await expect
+    .poll(() => sessionRowCount(current), { timeout: 10_000 })
+    .toBe("0");
+  expect(
+    (await page.context().cookies()).some(
+      (cookie) => cookie.name === "genie-session"
+    )
+  ).toBe(false);
 });
 
 test("sign-out refuses an idle-dead session before it can redirect to Keycloak", async ({
