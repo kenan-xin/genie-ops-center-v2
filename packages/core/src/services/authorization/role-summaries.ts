@@ -58,7 +58,7 @@ export async function readRoleSummaries(
   tenant: TenantContext,
   userId: string
 ): Promise<readonly RoleSummaryRow[]> {
-  // SAFETY: the statement above sends `SUMMARY_SQL`, whose select list is exactly the row this
+  // SAFETY: the statement below sends `SUMMARY_SQL`, whose select list is exactly the row this
   // cast names; the pool returns unknown and the query is this module's own.
   const result = (await tenant.db.$client.query(SUMMARY_SQL, [
     userId,
@@ -71,5 +71,47 @@ export async function readRoleSummaries(
     scopeType: row.scope_type,
     scopeId: row.scope_id,
     via: row.via,
+  }));
+}
+
+/**
+ * One group chip of the account page's Profile block (R-18): the group's name and whether it
+ * arrived from the directory or was made locally.
+ */
+export type OwnGroup = {
+  readonly id: string;
+  readonly name: string;
+  readonly source: "idp" | "local";
+};
+
+type OwnGroupRow = {
+  readonly id: string;
+  readonly name: string;
+  readonly source: string;
+};
+
+/**
+ * The person's live groups for the Profile block. An archived group keeps its rows for the
+ * loader (R-32) but no longer names the person a member, so it is not listed here.
+ */
+export async function readOwnGroups(
+  tenant: TenantContext,
+  userId: string
+): Promise<readonly OwnGroup[]> {
+  // SAFETY: the statement below selects exactly the three columns this cast names, and the
+  // pool returns unknown.
+  const result = (await tenant.db.$client.query(
+    `select g.id::text as id, g.name, g.source
+       from group_member m
+       join "group" g on g.id = m.group_id
+      where m.user_id = $1 and g.archived_at is null
+      order by g.name`,
+    [userId]
+  )) as { readonly rows: readonly OwnGroupRow[] };
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    source: row.source === "idp" ? "idp" : "local",
   }));
 }

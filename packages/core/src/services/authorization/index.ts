@@ -22,7 +22,12 @@ export {
   principalFor,
 } from "./grant-reader.ts";
 
-export { readRoleSummaries, type RoleSummaryRow } from "./role-summaries.ts";
+export {
+  readOwnGroups,
+  readRoleSummaries,
+  type OwnGroup,
+  type RoleSummaryRow,
+} from "./role-summaries.ts";
 
 export {
   AUDITOR_ROLE,

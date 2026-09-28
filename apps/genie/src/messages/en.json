@@ -11,6 +11,9 @@
   "access": {
     "denied": "You may not view this page."
   },
+  "account": {
+    "wholeTenant": "Whole tenant"
+  },
   "signIn": {
     "title": "Sign in",
     "action": "Sign in with your company account",
@@ -18,7 +21,7 @@
       "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
       "notRegistered": "This account is not registered for this service.",
       "accessDisabled": "Access for this account is disabled.",
-      "sessionExpired": "Your session expired. Sign in again.",
+      "sessionExpired": "You were signed out after {minutes} minutes of inactivity. Sign in again.",
       "sessionMissing": "Sign in to continue."
     }
   }

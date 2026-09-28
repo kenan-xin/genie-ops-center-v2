@@ -90,6 +90,8 @@ export {
   permissionCatalogue,
   type PrincipalIdentity,
   principalFor,
+  readOwnGroups,
+  type OwnGroup,
   readRoleSummaries,
   type RequestPrincipal,
   type RoleSummaryRow,

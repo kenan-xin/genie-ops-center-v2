@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
+import { requireContext } from "../../context.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,8 @@ export const dynamic = "force-dynamic";
  * The five states each have one cause: the default state; signed out after R-17; session expired
  * after R-14; not registered after the R-9 refusal; access disabled after the R-11 refusal. The
  * OAuth refusal codes reach this page through `errorCallbackURL`, and `signInCause` maps each one
- * to the state a person can act on.
+ * to the state a person can act on. The session-expired banner names the tenant's idle minutes,
+ * read through the settings reader (R-14).
  */
 const DEFAULT_STATE = "default";
 
@@ -34,7 +36,10 @@ export default async function SignInPage(props: {
         : cause === "access_disabled"
           ? t("errors.accessDisabled")
           : cause === "session_expired"
-            ? t("errors.sessionExpired")
+            ? t("errors.sessionExpired", {
+                minutes: (await requireContext().tenant.settings.get())
+                  .sessionIdleMinutes,
+              })
             : cause === "session_missing"
               ? t("errors.sessionMissing")
               : undefined;

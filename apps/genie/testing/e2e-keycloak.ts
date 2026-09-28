@@ -42,7 +42,12 @@ export const E2E_USER_PASSWORD = "e2e-person-password-14";
 export const E2E_PROJECTS = ["phone", "desktop"] as const;
 
 /** The specs whose signed-in person holds the reader role (`placeholder:read` and module use). */
-export const E2E_READER_SPECS = ["placeholder", "generated", "auth"] as const;
+export const E2E_READER_SPECS = [
+  "placeholder",
+  "generated",
+  "auth",
+  "sessions",
+] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
 

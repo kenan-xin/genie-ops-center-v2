@@ -1,3 +1,5 @@
+import { sessionCookieName } from "@genie/core";
+
 import {
   authPath,
   authRouteAllowed,
@@ -55,6 +57,15 @@ async function handler(request: Request): Promise<Response> {
     })
   ) {
     return notFound();
+  }
+
+  // R-14: Better Auth's own read answers only the 24 hour cap, so an allowed endpoint that
+  // carries a session cookie runs the enforced read first. An idle-dead row is deleted here,
+  // and Better Auth then answers unauthenticated for the same request.
+  const cookieName = sessionCookieName(app.tenant.env.publicUrl);
+
+  if ((request.headers.get("cookie") ?? "").includes(`${cookieName}=`)) {
+    await auth.sessionState({ headers: request.headers });
   }
 
   if (request.method === "POST" && path === "/sign-in/social") {
