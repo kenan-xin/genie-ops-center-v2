@@ -50,17 +50,36 @@ export type GenieOpsOptions = {
   readonly output: (line: string) => void;
   /** Where a failing run's cause and a parse refusal go. */
   readonly errorOutput: (line: string) => void;
+  /**
+   * Test-only seam for the identity-command list below. The image never passes it, so production
+   * always uses the fixed, empty list until an identity command adds itself.
+   */
+  readonly identityCommands?: readonly GenieOpsCommandName[];
 };
+
+/** Every subcommand the runner can dispatch, by the name the audit row records. */
+export type GenieOpsCommandName =
+  | "migrate"
+  | "setup"
+  | "module-enable"
+  | "module-disable"
+  | "retire";
+
+/**
+ * The commands that run the R-54c address guard before doing their work. The list is explicit and
+ * does not depend on which authentication values the operator's shell happens to carry: a command
+ * that talks to Keycloak adds its name here, and its validation profile must require `KEYCLOAK_URL`
+ * so that a missing value refuses rather than skips the comparison. It is empty today; S2-13's
+ * `idp set` is the first to add itself. `migrate`, `setup`, `module`, `retire`, `admin add` and
+ * `break-glass rotate` are exempt: they either reconcile the recorded values or write only the
+ * application database.
+ */
+export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = [];
 
 /** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
  * command bound to the parsed option values. */
 type ParsedCommand = {
-  readonly name:
-    | "migrate"
-    | "setup"
-    | "module-enable"
-    | "module-disable"
-    | "retire";
+  readonly name: GenieOpsCommandName;
   readonly args: readonly string[];
   readonly run: (
     context: TenantContext,
@@ -351,14 +370,12 @@ export async function runGenieOps(
     // still leaves exactly one row (R-64).
     const metadata = { osUser: osUserName(), args: parsed.args };
 
-    // R-54c: a command whose validation profile carries KEYCLOAK_URL (an identity command) runs
-    // the same address guard the application does, before it does its work. `migrate` and `setup`
-    // are exempt: they are the processes that create or reconcile the recorded values.
-    if (
-      context.env.auth !== undefined &&
-      parsed.name !== "migrate" &&
-      parsed.name !== "setup"
-    ) {
+    // R-54c: only a named identity command runs the address guard, so the decision is the
+    // command's own and never depends on which authentication values the environment happens to
+    // carry. See `IDENTITY_COMMANDS`.
+    const identityCommands = options.identityCommands ?? IDENTITY_COMMANDS;
+
+    if (identityCommands.includes(parsed.name)) {
       await assertKeycloakAddress({ context, source: options.source });
     }
 

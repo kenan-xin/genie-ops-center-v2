@@ -263,6 +263,104 @@ describe("genie-ops migrate", () => {
   }, 120000);
 });
 
+/** The five Section 2 values, so the built context carries an auth member the guard compares. */
+const AUTH_ENV = {
+  BETTER_AUTH_SECRET: "x".repeat(32),
+  KEYCLOAK_URL: "http://127.0.0.1:1",
+  KEYCLOAK_REALM: "genie",
+  KEYCLOAK_CLIENT_ID: "genie-ops-center",
+  KEYCLOAK_CLIENT_SECRET: "test-client-secret",
+};
+
+/** A tenant_settings row whose recorded address is not `AUTH_ENV.KEYCLOAK_URL` (R-54c). */
+async function recordMismatchedAddress(
+  context: Fixture["context"]
+): Promise<void> {
+  await context.db.$client.query(
+    "insert into tenant_settings (realm_mode, keycloak_url_at_setup) values ('managed', 'https://id.example.com')"
+  );
+}
+
+describe("the R-54c identity-command guard", () => {
+  it("refuses a listed identity command on an address mismatch and writes a failing row", async () => {
+    const { source, context } = await fixture();
+
+    await recordMismatchedAddress(context);
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(["module", "enable", "fixture"], {
+        source: { ...source, ...AUTH_ENV },
+        compiledModules: [],
+        histories: [],
+        identityCommands: ["module-enable"],
+        ...captured,
+      })
+    ).resolves.not.toBe(0);
+
+    expect(captured.lines.join("\n")).toContain(
+      "KEYCLOAK_URL is not the Keycloak that setup used"
+    );
+
+    const rows = await auditRows(context);
+
+    expect(rows.at(-1)).toMatchObject({
+      action: "ops:module-enable",
+      metadata: { outcome: "failure" },
+    });
+  }, 120000);
+
+  it("does not guard module or retire, so an address mismatch leaves them alone", async () => {
+    const { source, context } = await fixture();
+
+    await recordMismatchedAddress(context);
+    await context.db.$client.query(
+      "insert into tenant_module (module_id, enabled) values ('fixture', true) on conflict (module_id) do update set enabled = true"
+    );
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(["module", "disable", "fixture"], {
+        source: { ...source, ...AUTH_ENV },
+        compiledModules: [moduleFor("fixture")],
+        histories: [],
+        ...captured,
+      })
+    ).resolves.toBe(0);
+  }, 120000);
+
+  it("does not guard setup", async () => {
+    const { source, context } = await fixture();
+
+    await recordMismatchedAddress(context);
+
+    const captured = outputCapture();
+
+    const code = await runGenieOps(
+      [
+        "setup",
+        "--tenant-config",
+        "/nonexistent-tenant.yaml",
+        "--branding-seed",
+        "/nonexistent-branding.json",
+      ],
+      {
+        source: { ...source, ...AUTH_ENV },
+        compiledModules: [],
+        histories: [],
+        ...captured,
+      }
+    );
+
+    expect(code).not.toBe(0);
+    expect(captured.lines.join("\n")).not.toContain(
+      "KEYCLOAK_URL is not the Keycloak that setup used"
+    );
+  }, 120000);
+});
+
 describe("genie-ops parse guards", () => {
   it("dispatches on the first positional and parses each subcommand independently", async () => {
     const { source } = await fixture();
