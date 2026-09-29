@@ -4,10 +4,10 @@ import { createServer as createTcpServer, type Socket } from "node:net";
 import type { AddressInfo } from "node:net";
 
 import { symmetricDecrypt } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { user } from "../src/schema.ts";
+import { auditEvent, groupMember, notification, user } from "../src/schema.ts";
 import type { AuthMember } from "../src/services/auth/index.ts";
 import {
   accountHooks,
@@ -15,6 +15,7 @@ import {
   createAuthMember,
   isPlainJwt,
 } from "../src/services/auth/index.ts";
+import { syncGroupMemberships } from "../src/services/auth/onboarding.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import { insertCredentialPerson, startDisposableDeployment } from "./index.ts";
@@ -174,6 +175,46 @@ describe("the Better Auth instance", () => {
     });
 
     expect(session?.user.id).toBe(userId);
+  });
+
+  it("break-glass sign-in leaves directory memberships and OAuth events untouched", async () => {
+    const email = `break-glass-${randomUUID()}@example.invalid`;
+
+    const userId = await insertCredentialPerson(second.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    await syncGroupMemberships(second.context, userId, ["Keep"]);
+
+    const response = await signInWithPassword(authOf(second), email);
+
+    expect(response.status).toBe(200);
+    expect(
+      await second.context.db
+        .select()
+        .from(groupMember)
+        .where(
+          and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
+        )
+    ).toHaveLength(1);
+    expect(
+      await second.context.db
+        .select()
+        .from(auditEvent)
+        .where(
+          and(
+            eq(auditEvent.actorUserId, userId),
+            eq(auditEvent.action, "auth:sign_in")
+          )
+        )
+    ).toHaveLength(0);
+    expect(
+      await second.context.db
+        .select()
+        .from(notification)
+        .where(eq(notification.userId, userId))
+    ).toHaveLength(0);
   });
 
   it("names the session cookie __Host-genie-session with the secure flag over HTTPS (R-4a)", async () => {
