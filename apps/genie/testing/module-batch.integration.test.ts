@@ -28,7 +28,6 @@ const app = { tenant } as AppContext;
 
 const context: RequestContext = {
   app,
-  authenticated: true,
   tenant,
   caller: createRequestPrincipal({ userId: "test-user", groups: [] }, () =>
     Promise.resolve({ keys: new Set(), scopes: new Map() })

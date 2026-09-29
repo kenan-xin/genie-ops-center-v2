@@ -1,6 +1,7 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
 
+import { requireAuthenticated } from "../../lib/entitlement/module-trpc.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { RequestPrincipal } from "../authorization/index.ts";
@@ -77,21 +78,33 @@ export function createAuditRouter(
 ) {
   const t = initTRPC.context<AuditRouterContext>().create();
 
-  return t.router({
-    list: t.procedure.input(listInput).query(({ ctx, input }) => {
-      const cursor = input.cursor ?? null;
+  // The session check runs before `.input()` parses, so an anonymous, idle-expired or capped
+  // request answers `unauthenticated` at 401 however malformed its cursor is; only then does the
+  // resolver call `can()` and read (Spec 2 R-14, R-67).
+  const sessionGate = t.middleware(({ ctx, next }) => {
+    requireAuthenticated(ctx.caller);
 
-      return readAuditPage({
-        tenant: ctx.tenant,
-        caller: ctx.caller,
-        modules,
-        filters: normalizeFilters(input.filters),
-        cursor,
-        limit: input.limit ?? DEFAULT_PAGE_SIZE,
-        // The total and the filter lists are full-history aggregates, so only page one asks.
-        includeFacets: cursor === null,
-      });
-    }),
+    return next();
+  });
+
+  return t.router({
+    list: t.procedure
+      .use(sessionGate)
+      .input(listInput)
+      .query(({ ctx, input }) => {
+        const cursor = input.cursor ?? null;
+
+        return readAuditPage({
+          tenant: ctx.tenant,
+          caller: ctx.caller,
+          modules,
+          filters: normalizeFilters(input.filters),
+          cursor,
+          limit: input.limit ?? DEFAULT_PAGE_SIZE,
+          // The total and the filter lists are full-history aggregates, so only page one asks.
+          includeFacets: cursor === null,
+        });
+      }),
   });
 }
 

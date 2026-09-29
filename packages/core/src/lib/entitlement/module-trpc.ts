@@ -12,6 +12,29 @@ export type ModuleTRPCContext = ModuleRequestContext & {
   readonly requestId?: string;
 };
 
+/**
+ * The session check every protected procedure runs before it parses input or reads a resource
+ * (Spec 2 R-14, R-46). A request with no valid session - anonymous, idle-expired, or past its
+ * absolute cap - is answered the catalogue `unauthenticated` at 401. `can()` still refuses an
+ * anonymous caller exactly as before; this only names the condition earlier, so a malformed input
+ * cannot pre-empt it. Without it, `.input()` validation on a protected procedure answers
+ * `BAD_REQUEST` at 400 before any permission or session check runs.
+ *
+ * It is shared by the two protected procedure builders: the module base here and core's audit
+ * router. A procedure built by either cannot skip it.
+ */
+export function requireAuthenticated(
+  caller: { readonly authenticated: boolean },
+  requestId?: string
+): void {
+  if (caller.authenticated) return;
+
+  throw new AppError(
+    CORE_ERRORS.unauthenticated,
+    requestId === undefined ? {} : { requestId }
+  );
+}
+
 const routerOwners = new WeakMap<AnyTRPCRouter, string>();
 
 /**
@@ -38,6 +61,8 @@ export function createModuleTRPC(moduleId: string) {
   const t = initTRPC.context<ModuleTRPCContext>().create();
 
   const gate = t.middleware(async ({ ctx, next }) => {
+    // The module-disabled gate stays first: a disabled module refuses exactly as before, even for
+    // a request with no session. The session check then runs before any input parsing or resolver.
     if (!(await ctx.tenant.entitlements.isEnabled(moduleId))) {
       const { requestId } = ctx;
 
@@ -46,6 +71,8 @@ export function createModuleTRPC(moduleId: string) {
         requestId === undefined ? {} : { requestId }
       );
     }
+
+    requireAuthenticated(ctx.caller, ctx.requestId);
 
     return next();
   });

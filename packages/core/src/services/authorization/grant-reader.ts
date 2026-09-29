@@ -9,6 +9,7 @@ import type {
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import {
+  ANONYMOUS_USER_ID,
   type GrantReader,
   type PermissionGrants,
   type RoleSummary,
@@ -212,7 +213,7 @@ export function principalFor(input: {
   readonly userId: string | undefined;
 }): RequestPrincipal {
   return createRequestPrincipal(
-    { userId: input.userId ?? "anonymous", groups: [] },
+    { userId: input.userId ?? ANONYMOUS_USER_ID, groups: [] },
     createGrantReader(
       (text, values) => input.tenant.db.$client.query(text, [...values]),
       input.userId,

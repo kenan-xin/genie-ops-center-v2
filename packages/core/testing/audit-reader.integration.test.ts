@@ -162,6 +162,8 @@ describe("the audit reader against a real database", () => {
   });
 
   it("refuses an anonymous caller", async () => {
+    // The reader itself still refuses through `can()` (unchanged), while the router refuses the
+    // anonymous caller as unauthenticated before its resolver runs (Spec 2 R-14).
     await expect(read({ caller: request(undefined) })).rejects.toMatchObject({
       code: "forbidden",
     });
@@ -172,7 +174,7 @@ describe("the audit reader against a real database", () => {
     });
 
     await expect(router.list({})).rejects.toMatchObject({
-      cause: { code: "forbidden" },
+      cause: { code: "unauthenticated" },
     });
   });
 

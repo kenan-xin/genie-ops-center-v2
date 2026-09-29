@@ -25,13 +25,6 @@ import { httpStatusForCode } from "../http-errors.ts";
  */
 export type RequestContext = ModuleRequestContext & {
   readonly app: AppContext;
-  /**
-   * Whether this request carries a live session (Spec 2 R-14). The context builder reads the
-   * enforced session once, so the envelope can tell an anonymous or expired refusal from a
-   * signed-in person's missing permission: the first is `unauthenticated` at 401, the second
-   * stays `forbidden` at 403.
-   */
-  readonly authenticated: boolean;
   readonly requestId: string;
 };
 
@@ -128,67 +121,15 @@ function protocolCodeFor(httpStatus: number): ProtocolCode {
   return { key, number: TRPC_ERROR_CODES_BY_KEY[key] };
 }
 
-/** The core catalogue's `unauthenticated` code (Spec 2 R-14, R-46). */
-const UNAUTHENTICATED_CODE = "unauthenticated";
-
-/**
- * Whether the failure is a refusal to grant a permission, in either shape: the
- * real evaluator raises the catalogue `forbidden`, while a module's own check
- * raises a bare tRPC `FORBIDDEN`. They are one condition to a person, so both
- * take the unauthenticated answer when the request holds no session.
- */
-function isPermissionRefusal(error: TRPCError, cause: unknown): boolean {
-  return (
-    error.code === "FORBIDDEN" ||
-    (cause instanceof AppError && cause.code === "forbidden")
-  );
-}
-
-/**
- * Whether an answer must name the unauthenticated condition. A bare tRPC
- * `UNAUTHORIZED` already means "no valid session", whatever the context reports,
- * so it answers unauthenticated at 401 rather than the generic entry the bare
- * branch would otherwise supply. A permission refusal is the same condition to
- * an anonymous or expired request: `can()` holds no grant, and the envelope
- * names what the person can act on (Spec 2 R-14).
- */
-function isUnauthenticated(input: {
-  readonly error: TRPCError;
-  readonly authenticated: boolean;
-}): boolean {
-  if (input.error.code === "UNAUTHORIZED") return true;
-
-  return (
-    !input.authenticated && isPermissionRefusal(input.error, input.error.cause)
-  );
-}
-
-/** The 401 envelope for a request with no valid session: the protocol code, status and code agree. */
-function unauthenticatedEnvelope(requestId: string): FormattedErrorEnvelope {
-  const protocol = protocolCodeFor(401);
-
-  return {
-    message: safeMessageFor(UNAUTHENTICATED_CODE),
-    code: protocol.number,
-    data: {
-      code: protocol.key,
-      httpStatus: 401,
-      appCode: UNAUTHENTICATED_CODE,
-      requestId,
-    },
-  };
-}
-
 /**
  * R-46: the standard envelope is preserved, and `appCode` and `requestId` are
  * added under `data`, so a standard client decodes the result without a custom
  * transport. No cause, stack, database text or upstream text reaches it.
  *
- * A request with no valid session is answered `unauthenticated` at 401 before
- * its permission is weighed, whichever shape the refusal took: `can()` still
- * denies an anonymous caller exactly what it always did (nothing, because it
- * holds no grants), and the envelope names the condition the person can act on
- * (Spec 2 R-14). A signed-in person without the grant keeps `forbidden` at 403.
+ * A protected procedure raises the catalogue `unauthenticated` itself, before it
+ * parses input or weighs a permission (core's `requireAuthenticated`), and that
+ * error reaches the `AppError` branch below; the envelope does not decide the
+ * condition here.
  *
  * One source answers each branch. An `AppError` cause — core or module — takes
  * its code and its fixed safe message from the error, and its status from the
@@ -207,14 +148,9 @@ function unauthenticatedEnvelope(requestId: string): FormattedErrorEnvelope {
 export function formatTrpcError(input: {
   envelope: ErrorEnvelope;
   error: TRPCError;
-  authenticated: boolean;
   requestId: string;
 }): FormattedErrorEnvelope {
   const cause = input.error.cause;
-
-  if (isUnauthenticated(input)) {
-    return unauthenticatedEnvelope(input.requestId);
-  }
 
   if (cause instanceof AppError) {
     const httpStatus = httpStatusForCode(cause.code);
@@ -271,9 +207,6 @@ export const t = initTRPC.context<RequestContext>().create({
     formatTrpcError({
       envelope: input.shape,
       error: input.error,
-      // A context factory that failed has no session to read, so the envelope
-      // treats it as a signed-in caller and never invents the unauthenticated answer.
-      authenticated: input.ctx?.authenticated ?? true,
       requestId: requestIdFor({
         contextRequestId: input.ctx?.requestId,
         cause: input.error.cause,

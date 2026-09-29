@@ -10,7 +10,10 @@ import {
 
 const REQUEST_ID = "req-module-trpc-test";
 
-function contextWithEntitlement(enabled: boolean) {
+function contextWithEntitlement(
+  enabled: boolean,
+  options: { readonly anonymous?: boolean } = {}
+) {
   const calls: string[] = [];
 
   const isEnabled = (moduleId: string) => {
@@ -27,8 +30,13 @@ function contextWithEntitlement(enabled: boolean) {
   return {
     context: {
       tenant,
-      caller: createRequestPrincipal({ userId: "test-user", groups: [] }, () =>
-        Promise.resolve({ keys: new Set(), scopes: new Map() })
+      // The sentinel user id is what makes the principal unauthenticated.
+      caller: createRequestPrincipal(
+        {
+          userId: options.anonymous === true ? "anonymous" : "test-user",
+          groups: [],
+        },
+        () => Promise.resolve({ keys: new Set(), scopes: new Map() })
       ),
       requestId: REQUEST_ID,
     } satisfies ModuleRequestContext & { readonly requestId: string },
@@ -74,5 +82,50 @@ describe("the module tRPC builder", () => {
 
     expect(calls).toEqual(["reports"]);
     expect(resolve).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an anonymous caller with unauthenticated before input parsing and the resolver", async () => {
+    const resolve = vi.fn(() => "should not run");
+    let parserRan = false;
+
+    const parse = (cause: unknown) => {
+      parserRan = true;
+
+      return cause;
+    };
+
+    const t = createModuleTRPC("reports");
+
+    // `.input()` installs a parser that runs before the resolver: this proves the session check
+    // is not pre-empted by it, the gap an envelope-only conversion could not close.
+    const router = t.router({
+      value: t.procedure.input(parse).query(resolve),
+    });
+
+    const { context, calls } = contextWithEntitlement(true, {
+      anonymous: true,
+    });
+
+    await expect(
+      router.createCaller(context).value("not-valid")
+    ).rejects.toMatchObject({ cause: { code: "unauthenticated" } });
+
+    expect(parserRan).toBe(false);
+    expect(calls).toEqual(["reports"]);
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("keeps module-disabled first for an anonymous caller to a disabled module", async () => {
+    const t = createModuleTRPC("reports");
+
+    const router = t.router({
+      value: t.procedure.query(() => "should not run"),
+    });
+
+    const { context } = contextWithEntitlement(false, { anonymous: true });
+
+    await expect(router.createCaller(context).value()).rejects.toMatchObject({
+      cause: { code: "module-disabled" },
+    });
   });
 });

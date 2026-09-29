@@ -153,7 +153,10 @@ describe("the placeholder read procedure against a real database", () => {
       }),
     });
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    // No valid session is refused as unauthenticated before any permission or read (Spec 2 R-14).
+    await expect(caller.read()).rejects.toMatchObject({
+      cause: { code: "unauthenticated" },
+    });
   });
 
   it("appends placeholder:admin to Tenant administrator on enable and removes it on disable", async () => {

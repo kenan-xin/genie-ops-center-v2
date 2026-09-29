@@ -47,11 +47,24 @@ export type PrincipalIdentity = {
 };
 
 /**
+ * The user id a request without a valid session carries. A real id is a uuid, so this sentinel
+ * cannot collide with one; `principalFor` is its only writer, and `createRequestPrincipal` reads
+ * it to set `authenticated`.
+ */
+export const ANONYMOUS_USER_ID = "anonymous";
+
+/**
  * The server-only wrapper `can()` and `scopesFor()` take. It is not the persisted user row, not a
  * value sent to a browser, and not the shared session. One is created per request and per job run,
  * and its lazy read is shared inside that one execution only (DEC-48, R-27).
  */
 export type RequestPrincipal = PrincipalIdentity & {
+  /**
+   * Whether the request carries a valid session (Spec 2 R-14). A protected procedure reads this
+   * before it parses input or calls `can()`, so an anonymous, idle-expired or capped request is
+   * answered `unauthenticated` rather than a permission, input or resource error.
+   */
+  readonly authenticated: boolean;
   readonly grants: () => Promise<PermissionGrants>;
   /**
    * The resource's descriptor, resolved at most once per resource per principal (R-28). A reader
@@ -87,6 +100,7 @@ export function createRequestPrincipal(
   };
 
   return {
+    authenticated: identity.userId !== ANONYMOUS_USER_ID,
     userId: identity.userId,
     groups: identity.groups,
     grants: () => {

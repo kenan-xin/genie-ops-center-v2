@@ -1021,7 +1021,10 @@ describe("the ${names.id} read procedure", () => {
   it("refuses an anonymous caller", async () => {
     const caller = ${names.camel}Router.createCaller(contextFor(undefined));
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    // No valid session is refused as unauthenticated before any permission or read (Spec 2 R-14).
+    await expect(caller.read()).rejects.toMatchObject({
+      cause: { code: "unauthenticated" },
+    });
   });
 });
 `;
