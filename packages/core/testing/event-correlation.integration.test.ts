@@ -81,6 +81,11 @@ const failingContract: EventContract<Payload> = {
   version: 1,
   payload: z.object({ id: z.string() }),
 };
+const durableFailingContract: EventContract<Payload> = {
+  name: `${moduleId}.durable-failing`,
+  version: 1,
+  payload: z.object({ id: z.string() }),
+};
 
 /** What each handler observed: the scope's current id and the envelope it was handed. */
 type Observed = {
@@ -117,6 +122,7 @@ const correlationModule = {
     durableFirstContract,
     durableSecondContract,
     failingContract,
+    durableFailingContract,
   ],
   capabilities: [],
   jobs: [],
@@ -148,6 +154,14 @@ const correlationModule = {
         });
       },
     },
+    {
+      event: durableFailingContract,
+      name: "failing",
+      durable: true,
+      handler: async () => {
+        throw new Error("event-correlation durable handler failed");
+      },
+    },
   ],
 } as RuntimeModule;
 
@@ -162,6 +176,7 @@ let context: RuntimeContext;
 let observer: Client;
 let logger: RedactingLogger;
 const logLines: CapturedLine[] = [];
+const workerErrors: string[] = [];
 let workerAbort: AbortController;
 let workerRun: Promise<number> | undefined;
 let stopDatabase: (() => Promise<void>) | undefined;
@@ -243,7 +258,7 @@ beforeAll(async () => {
     modules: [correlationModule],
     histories: [],
     output: () => {},
-    errorOutput: () => {},
+    errorOutput: (line) => workerErrors.push(line),
     signal: workerAbort.signal,
     shutdownTimeoutMs: 1000,
   });
@@ -314,6 +329,23 @@ describe("event correlation across a request, its handlers and a durable job", (
     const observed = durableObserved.at(-1);
     expect(observed?.current).toBe(requestId);
     expect(observed?.envelope).toBe(requestId);
+  });
+
+  it("writes the request's correlation id on the line a durable handler's failure logs", async () => {
+    const requestId = crypto.randomUUID();
+
+    await context.correlationScope.run(requestId, () =>
+      withTransaction(context, async (tx) => {
+        await context.events.emit(tx, durableFailingContract, {
+          id: crypto.randomUUID(),
+        });
+      })
+    );
+
+    await waitUntil(
+      async () => workerErrors.some((line) => line.includes(requestId)),
+      "the durable handler's failure line did not carry the request's correlation id"
+    );
   });
 
   it("writes the chain's correlation id on the line a handler logs", async () => {

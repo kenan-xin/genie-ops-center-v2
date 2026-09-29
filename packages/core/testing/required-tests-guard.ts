@@ -318,6 +318,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "event correlation across a request, its handlers and a durable job carries the request's correlation id through a fast handler chain",
       "event correlation across a request, its handlers and a durable job carries the id through a durable job so a worker-side emit keeps it",
+      "event correlation across a request, its handlers and a durable job writes the request's correlation id on the line a durable handler's failure logs",
       "event correlation across a request, its handlers and a durable job writes the chain's correlation id on the line a handler logs",
     ],
   },

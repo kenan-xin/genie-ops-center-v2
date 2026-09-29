@@ -323,8 +323,16 @@ export function createEventBus(input: {
                 continue;
               }
 
-              // The handler's own id is the envelope's, so a follow-up emit it makes inherits this
-              // chain's id, and a line it writes names the chain it belongs to.
+              // SAFETY: the erased registry hands every handler the envelope it was given, whose
+              // payload this emit just parsed with the event's own schema.
+              // oxlint-disable-next-line no-await-in-loop -- siblings observe each other's effects
+              await tenant.correlationScope.run(envelope.correlationId, () =>
+                handler(envelope as EventEnvelope<never>, tenant)
+              );
+
+              // Logged only once the handler returned, so a failure is never reported as handled
+              // (the catch below writes that line instead). The handler's own id is the envelope's,
+              // so a follow-up emit it makes inherits this chain's id, and the line names it.
               input.logger.debug(
                 {
                   event: event.name,
@@ -332,13 +340,6 @@ export function createEventBus(input: {
                   correlationId: envelope.correlationId,
                 },
                 "event handled"
-              );
-
-              // SAFETY: the erased registry hands every handler the envelope it was given, whose
-              // payload this emit just parsed with the event's own schema.
-              // oxlint-disable-next-line no-await-in-loop -- siblings observe each other's effects
-              await tenant.correlationScope.run(envelope.correlationId, () =>
-                handler(envelope as EventEnvelope<never>, tenant)
               );
             } catch (error) {
               input.logger.error(

@@ -268,7 +268,8 @@ async function drainEvents(
   loop: EventLoop,
   claims: Claims,
   logger: Pick<RedactingLogger, "warn">,
-  options: WorkerOptions
+  options: WorkerOptions,
+  eventLog: Pick<RedactingLogger, "debug" | "error">
 ): Promise<void> {
   const inFlight = new Map<string, Promise<void>>();
 
@@ -293,6 +294,8 @@ async function drainEvents(
             retryLimit: job.retryLimit,
             singletonKey: job.singletonKey,
           });
+          const correlationId = envelopeCorrelationId(job.data);
+
           inFlight.set(
             job.id,
             (async () => {
@@ -302,6 +305,11 @@ async function drainEvents(
                 if (claims.abandoned) return dropLate();
 
                 await boss.complete(loop.name, job.id);
+
+                eventLog.debug(
+                  { queue: loop.name, correlationId },
+                  "durable event handled"
+                );
               } catch (caught) {
                 // Past the shutdown timeout the job is already failed, so a late result is dropped.
                 if (claims.abandoned) return dropLate();
@@ -310,7 +318,16 @@ async function drainEvents(
                   caught instanceof Error ? caught : undefined
                 );
 
-                options.errorOutput(`worker: ${loop.name}: ${message}`);
+                // The chain's id rides the line as a field, so a failed durable handler is
+                // findable by the same id the request and its fast handlers logged.
+                eventLog.error(
+                  {
+                    queue: loop.name,
+                    correlationId,
+                    err: caught instanceof Error ? caught : undefined,
+                  },
+                  "durable event handler failed"
+                );
 
                 const failed = await boss
                   .fail(loop.name, job.id, { message })
@@ -413,6 +430,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
   const compiledModuleIds = options.modules.map(({ identity }) => identity.id);
   let context: TenantContext;
   let logger: ReturnType<typeof createLogger>;
+  let eventLog: ReturnType<typeof createLogger>;
 
   // Plain text until the environment is valid: before that there is no tenant id to carry.
   let io: LineSinks = options;
@@ -423,6 +441,12 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
     // From here every line is a tenant-bound JSON line, like the application's (R-75).
     io = jsonLineSinks(env, options);
     logger = createLogger(env);
+    // The structured lines for a durable event the worker handles. They go through the worker's
+    // own error sink, so a failure line carries the envelope's correlationId as a field beside the
+    // tenant id, and an operator can grep one request's chain across the app and the worker.
+    eventLog = createLogger(env, {
+      write: (line: string) => options.errorOutput(line.replace(/\n$/, "")),
+    });
     context = createTenantContext(
       options.source,
       logger,
@@ -462,7 +486,8 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
         ),
     });
 
-    if (!options.signal.aborted) await serve(boss, context, logger, run);
+    if (!options.signal.aborted)
+      await serve(boss, context, logger, run, eventLog);
 
     return 0;
   } catch (caught) {
@@ -487,7 +512,8 @@ async function serve(
   boss: PgBoss,
   context: TenantContext,
   logger: ReturnType<typeof createLogger>,
-  options: WorkerOptions
+  options: WorkerOptions,
+  eventLog: Pick<RedactingLogger, "debug" | "error">
 ): Promise<void> {
   const jobs = options.modules.flatMap((module) =>
     module.jobs.map((job) => ({ moduleId: module.identity.id, job }))
@@ -566,7 +592,7 @@ async function serve(
         drain(boss, loop, claims, logger, options)
       ),
       ...eventLoops.map(async (loop) =>
-        drainEvents(boss, loop, claims, logger, options)
+        drainEvents(boss, loop, claims, logger, options, eventLog)
       ),
     ]).then(() => true),
     elapsedAfterAbort(options.signal, limit, drained.signal),
