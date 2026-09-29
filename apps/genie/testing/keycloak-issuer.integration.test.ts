@@ -103,9 +103,34 @@ describe("the R-54c address guard refuses to start the application", () => {
         { KEYCLOAK_URL: "https://other.example.com" }
       );
 
-      expect(result.code).not.toBe(0);
+      expect(result.code).toBe(1);
       expect(result.output).toContain(
         "KEYCLOAK_URL is not the Keycloak that setup used"
+      );
+      expect(result.output).not.toContain("bootstrap complete");
+    } finally {
+      await database.stop();
+    }
+  }, 180000);
+
+  it("exits when client-only mode runs alongside the bundled Keycloak (AC-12a)", async () => {
+    // The recorded address equals `KEYCLOAK_URL`, so only the realm-mode cause can refuse.
+    const database = await preparedDatabase({
+      realmMode: "customer",
+      keycloakUrlAtSetup: "http://127.0.0.1:1",
+      setupSatisfied: true,
+    });
+
+    try {
+      const result = await runBuiltAppUntilExit(
+        database.url,
+        scopedPort(3463),
+        { STACK_PROFILES: "bundled-keycloak" }
+      );
+
+      expect(result.code).toBe(1);
+      expect(result.output).toContain(
+        "client-only mode, but the stack runs its own Keycloak"
       );
       expect(result.output).not.toContain("bootstrap complete");
     } finally {
@@ -132,7 +157,7 @@ describe("the R-54d issuer mismatch against a real Keycloak", () => {
         }
       );
 
-      expect(result.code).not.toBe(0);
+      expect(result.code).toBe(1);
       expect(result.output).toContain("keycloak_issuer_mismatch");
       expect(result.output).not.toContain("bootstrap complete");
     } finally {

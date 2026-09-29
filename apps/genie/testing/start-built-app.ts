@@ -139,8 +139,9 @@ export async function startBuiltApp(
  * that the process refuses before it serves.
  *
  * `env` overrides the authentication values, so a test supplies its own realm or a recorded
- * address. A process that has not exited by `timeoutMs` is killed and reported as `null`, which
- * fails a test that expected a refusal.
+ * address. A process that has not exited by `timeoutMs` is killed and reported as `null`; a
+ * refusal test asserts the exact code `runBootstrap` exits with (`1`), so a killed or hung process
+ * fails it rather than passing on a nonzero check.
  */
 export async function runBuiltAppUntilExit(
   databaseUrl: string,
