@@ -83,6 +83,7 @@ describe("createTenantContext", () => {
 
     try {
       expect(Object.keys(context).toSorted()).toEqual([
+        "authRequestScope",
         "branding",
         "capabilities",
         "db",

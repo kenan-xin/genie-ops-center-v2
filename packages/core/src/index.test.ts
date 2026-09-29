@@ -28,6 +28,7 @@ describe("the core package root", () => {
 
     try {
       expect(Object.keys(context).toSorted()).toEqual([
+        "authRequestScope",
         "branding",
         "capabilities",
         "db",
