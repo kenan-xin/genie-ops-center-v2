@@ -62,7 +62,7 @@ export const FIXTURE_CUSTOM_ROLE: Role = {
   permissions: ["fixture:use", "retired:key"],
   assignmentCount: 1,
   entitlementAdded: [],
-  unavailableKeys: ["retired:key"],
+  unavailableKeys: [{ key: "retired:key", reason: "retired" }],
 };
 
 export const FIXTURE_ROLES: readonly Role[] = [
@@ -163,7 +163,10 @@ export const FIXTURE_TWO_UNAVAILABLE_DETAIL: RoleDetail = {
   permissions: ["fixture:use", "retired:one", "retired:two"],
   assignmentCount: 0,
   entitlementAdded: [],
-  unavailableKeys: ["retired:one", "retired:two"],
+  unavailableKeys: [
+    { key: "retired:one", reason: "retired" },
+    { key: "retired:two", reason: "retired" },
+  ],
   permissionGroups: [
     {
       moduleId: "fixture",
@@ -178,8 +181,58 @@ export const FIXTURE_TWO_UNAVAILABLE_DETAIL: RoleDetail = {
       moduleName: "retired",
       entitled: false,
       keys: [
-        { key: "retired:one", label: "retired:one", unavailable: true },
-        { key: "retired:two", label: "retired:two", unavailable: true },
+        {
+          key: "retired:one",
+          label: "retired:one",
+          unavailable: true,
+          unavailableReason: "retired",
+        },
+        {
+          key: "retired:two",
+          label: "retired:two",
+          unavailable: true,
+          unavailableReason: "retired",
+        },
+      ],
+    },
+  ],
+  assignments: [],
+};
+
+/**
+ * A custom role holding a key of a module that is now switched off: the key is unavailable with
+ * the "module disabled" reason, kept until an administrator removes it (R-33b).
+ */
+export const FIXTURE_DISABLED_MODULE_DETAIL: RoleDetail = {
+  id: "r-dormant",
+  name: "Dormant module role",
+  description: "",
+  kind: "custom",
+  moduleId: null,
+  permissions: ["fixture:use", "dormant:use"],
+  assignmentCount: 1,
+  entitlementAdded: [],
+  unavailableKeys: [{ key: "dormant:use", reason: "module-disabled" }],
+  permissionGroups: [
+    {
+      moduleId: "fixture",
+      moduleName: "Fixture",
+      entitled: true,
+      keys: [
+        { key: "fixture:use", label: "Use the fixture", unavailable: false },
+      ],
+    },
+    {
+      moduleId: "dormant",
+      moduleName: "Dormant",
+      entitled: false,
+      keys: [
+        {
+          key: "dormant:use",
+          label: "Use the dormant module",
+          unavailable: true,
+          unavailableReason: "module-disabled",
+        },
       ],
     },
   ],

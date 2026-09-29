@@ -4,6 +4,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import {
   FIXTURE_CATALOGUE,
   FIXTURE_CUSTOM_DETAIL,
+  FIXTURE_DISABLED_MODULE_DETAIL,
   FIXTURE_ROLES,
   FIXTURE_SYSTEM_DETAIL,
   FIXTURE_TWO_UNAVAILABLE_DETAIL,
@@ -141,7 +142,7 @@ export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
     onUpdateRole.mockClear();
 
     await expect(
-      canvas.getByText("Unavailable, this key grants nothing")
+      canvas.getByText("Unavailable, the key is retired")
     ).toBeInTheDocument();
     await expect(canvas.getByText("retired:key")).toBeInTheDocument();
 
@@ -226,6 +227,27 @@ export const EditRoleDispatchesUpdate: Story = {
       expect.objectContaining({ name: "Invoice approver v2" })
     );
     expect(onCreateRole).not.toHaveBeenCalled();
+  },
+};
+
+export const DisabledModuleKeyShowsTheReasonAndRemoves: Story = {
+  args: {
+    selectedRoleId: FIXTURE_DISABLED_MODULE_DETAIL.id,
+    detail: FIXTURE_DISABLED_MODULE_DETAIL,
+  },
+  play: async ({ canvas }) => {
+    onUpdateRole.mockClear();
+
+    await expect(
+      canvas.getByText("Unavailable, the module is switched off")
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Remove" }));
+
+    expect(onUpdateRole).toHaveBeenCalledWith(
+      FIXTURE_DISABLED_MODULE_DETAIL.id,
+      expect.objectContaining({ permissions: ["fixture:use"] })
+    );
   },
 };
 

@@ -28,7 +28,15 @@ import type {
   RoleInput,
   RolePermissionGroup,
   RolesScreenProps,
+  UnavailableKey,
 } from "./types.ts";
+
+/** The human reason a stored key no longer grants, shown beside it in the form and the detail. */
+function unavailableReasonLabel(reason: UnavailableKey["reason"]): string {
+  return reason === "module-disabled"
+    ? "the module is switched off"
+    : "the key is retired";
+}
 
 type FormState = {
   readonly mode: "create" | "edit" | "copy";
@@ -47,8 +55,8 @@ function RoleFormDialog(props: {
   readonly state: FormState;
   /** The declared catalogue the picker offers, grouped by module (R-33). */
   readonly catalogue: readonly RolePermissionGroup[];
-  /** Stored keys the catalogue no longer holds, shown as a removable set (R-33b). */
-  readonly unavailableKeys: readonly string[];
+  /** Stored keys outside the catalogue, shown as a removable set (R-33b). */
+  readonly unavailableKeys: readonly UnavailableKey[];
   readonly onCancel: () => void;
   readonly onSubmit: (input: RoleInput) => void;
 }) {
@@ -59,7 +67,7 @@ function RoleFormDialog(props: {
     props.state.permissions
   );
 
-  const [unavailable, setUnavailable] = useState<readonly string[]>(
+  const [unavailable, setUnavailable] = useState<readonly UnavailableKey[]>(
     props.unavailableKeys
   );
 
@@ -71,7 +79,7 @@ function RoleFormDialog(props: {
     );
 
   const removeUnavailable = (key: string) => {
-    setUnavailable((current) => current.filter((entry) => entry !== key));
+    setUnavailable((current) => current.filter((entry) => entry.key !== key));
     setPicked((current) => current.filter((entry) => entry !== key));
   };
 
@@ -122,14 +130,17 @@ function RoleFormDialog(props: {
               <legend className="text-sm font-semibold text-foreground">
                 Unavailable keys
               </legend>
-              {unavailable.map((key) => (
-                <div key={key} className="flex items-center gap-2">
+              {unavailable.map((entry) => (
+                <div key={entry.key} className="flex items-center gap-2">
                   <WarningIcon className="size-4 text-destructive" />
-                  <code className="text-xs text-foreground">{key}</code>
+                  <code className="text-xs text-foreground">{entry.key}</code>
+                  <span className="text-xs text-muted-foreground">
+                    {unavailableReasonLabel(entry.reason)}
+                  </span>
                   <button
                     type="button"
                     className={btnGhost}
-                    onClick={() => removeUnavailable(key)}
+                    onClick={() => removeUnavailable(entry.key)}
                   >
                     Remove
                   </button>
@@ -284,7 +295,10 @@ function RoleDetailView(props: {
                   <>
                     <WarningIcon className="size-4 text-destructive" />
                     <span className="text-xs text-destructive">
-                      Unavailable, this key grants nothing
+                      Unavailable,{" "}
+                      {unavailableReasonLabel(
+                        entry.unavailableReason ?? "retired"
+                      )}
                     </span>
                     {detail.kind === "custom" ? (
                       <button

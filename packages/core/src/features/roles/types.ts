@@ -6,6 +6,15 @@
 
 export type RoleKind = "system" | "custom";
 
+/** Why a stored key no longer grants: its module is switched off, or the key is retired/unknown. */
+export type UnavailableReason = "module-disabled" | "retired";
+
+/** One stored key outside the selectable catalogue, with why it is unavailable. */
+export type UnavailableKey = {
+  readonly key: string;
+  readonly reason: UnavailableReason;
+};
+
 export type Role = {
   readonly id: string;
   readonly name: string;
@@ -16,15 +25,17 @@ export type Role = {
   readonly assignmentCount: number;
   /** R-31: keys appended automatically when a module was entitled. */
   readonly entitlementAdded: readonly string[];
-  /** R-33b: stored keys the catalogue no longer holds. */
-  readonly unavailableKeys: readonly string[];
+  /** R-33b: stored keys the entitled catalogue does not offer, each with why. */
+  readonly unavailableKeys: readonly UnavailableKey[];
 };
 
 export type RolePermissionKey = {
   readonly key: string;
   readonly label: string;
-  /** R-33b: the key is retired or belongs to an absent module; it never grants. */
+  /** R-33b: the key is retired, or its module is switched off; it never grants. */
   readonly unavailable: boolean;
+  /** Present exactly when `unavailable` is true. */
+  readonly unavailableReason?: UnavailableReason | undefined;
 };
 
 export type RolePermissionGroup = {
