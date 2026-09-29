@@ -94,7 +94,9 @@ export { createDiscoveryProbe, type DiscoveryProbe } from "./discovery.ts";
 
 export {
   type BreakGlassFacts,
+  type BreakGlassStep,
   breakGlassNextStep,
+  breakGlassSteps,
   isLimitedBreakGlass,
   LIMITED_SESSION_CLEARING_ENDPOINTS,
 } from "./limited.ts";

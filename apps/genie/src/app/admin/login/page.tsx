@@ -1,5 +1,4 @@
-import type { BreakGlassStep } from "@genie/core/features/break-glass";
-import { breakGlassSteps } from "@genie/core/features/break-glass";
+import { breakGlassSteps, type BreakGlassStep } from "@genie/core";
 import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 

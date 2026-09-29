@@ -5,6 +5,11 @@ import {
   PASSWORD_MIN_LENGTH,
   passwordRuleRows,
 } from "../../lib/password/rule.ts";
+import type { BreakGlassStep } from "../../services/auth/limited.ts";
+
+export { breakGlassSteps } from "../../services/auth/limited.ts";
+
+export type { BreakGlassStep } from "../../services/auth/limited.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- dense presentational markup keeps related lines together. */
 
@@ -15,13 +20,6 @@ import {
  * manual key and one confirming code. The host owns every request and decides the step; this
  * component owns only the form state and the copy.
  */
-
-/** The four cards the door can show (design `BreakGlassStep`). */
-export type BreakGlassStep =
-  | "credentials"
-  | "authenticator-code"
-  | "change-password"
-  | "authenticator-enroll";
 
 /** What the enrollment card renders once the host has started enrollment (R-63). */
 export type BreakGlassEnrollment = {
@@ -72,23 +70,6 @@ const inputClass = `h-11 w-full rounded-lg border border-input bg-background px-
 const labelClass = "text-sm font-semibold text-foreground";
 const primaryClass = `flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 const linkClass = `inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-primary hover:underline ${focusRing}`;
-
-/** The door order (design B9): credentials, then the code or the two forced steps. */
-export function breakGlassSteps(input: {
-  readonly mustChangePassword: boolean;
-  readonly mustEnrollAuthenticator: boolean;
-}): BreakGlassStep[] {
-  return [
-    "credentials",
-    ...(input.mustEnrollAuthenticator
-      ? ([] as const)
-      : (["authenticator-code"] as const)),
-    ...(input.mustChangePassword ? (["change-password"] as const) : []),
-    ...(input.mustEnrollAuthenticator
-      ? (["authenticator-enroll"] as const)
-      : []),
-  ];
-}
 
 /** The three finder squares of the placeholder pattern, at the fixed 21x21 positions. */
 function isFinderCell(row: number, column: number): boolean {

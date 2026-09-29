@@ -23,6 +23,34 @@ export function isLimitedBreakGlass(input: BreakGlassFacts): boolean {
 }
 
 /**
+ * The four cards the break-glass door can show, and the door's order (design B9). They live here,
+ * apart from the browser components, so a server component can read the order without importing a
+ * client module.
+ */
+export type BreakGlassStep =
+  | "credentials"
+  | "authenticator-code"
+  | "change-password"
+  | "authenticator-enroll";
+
+/** The door order: credentials, then the code or the two forced steps. */
+export function breakGlassSteps(input: {
+  readonly mustChangePassword: boolean;
+  readonly mustEnrollAuthenticator: boolean;
+}): BreakGlassStep[] {
+  return [
+    "credentials",
+    ...(input.mustEnrollAuthenticator
+      ? ([] as const)
+      : (["authenticator-code"] as const)),
+    ...(input.mustChangePassword ? (["change-password"] as const) : []),
+    ...(input.mustEnrollAuthenticator
+      ? (["authenticator-enroll"] as const)
+      : []),
+  ];
+}
+
+/**
  * The two endpoints that clear a limited break-glass session (R-30, DEC-24): the password change
  * and the authenticator confirmation. Every other route refuses while the session is limited, and
  * the member's hooks allow only these two plus the enrollment start they depend on.
