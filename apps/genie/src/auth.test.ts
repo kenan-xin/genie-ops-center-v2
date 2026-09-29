@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   authPath,
   authRouteAllowed,
+  discoverySignInCause,
   readAuthRequestBody,
   signInCause,
   signOutDestination,
@@ -107,6 +108,9 @@ describe("the auth path", () => {
 describe("the sign-in page cause", () => {
   it("maps each Better Auth refusal to a state a person can act on (R-17a)", () => {
     expect(signInCause("keycloak_unavailable")).toBe("keycloak_unavailable");
+    expect(signInCause("keycloak_issuer_mismatch")).toBe(
+      "keycloak_issuer_mismatch"
+    );
     expect(signInCause("signup_disabled")).toBe("not_registered");
     expect(signInCause("account_not_linked")).toBe("not_registered");
     expect(signInCause("unable_to_link_account")).toBe("not_registered");
@@ -114,6 +118,15 @@ describe("the sign-in page cause", () => {
     expect(signInCause("state_mismatch")).toBe("session_missing");
     expect(signInCause("<script>")).toBeUndefined();
     expect(signInCause(undefined)).toBeUndefined();
+  });
+
+  it("names an issuer mismatch apart from an unreachable realm (R-54d)", () => {
+    expect(discoverySignInCause("issuer_mismatch")).toBe(
+      "keycloak_issuer_mismatch"
+    );
+    expect(discoverySignInCause("discovery_unreachable")).toBe(
+      "keycloak_unavailable"
+    );
   });
 });
 

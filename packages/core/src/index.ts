@@ -37,6 +37,7 @@ export {
   discoveryDocumentUrl,
   idleExpiry,
   isIdleExpired,
+  KEYCLOAK_ISSUER_MISMATCH,
   KEYCLOAK_PROVIDER_ID,
   keycloakIssuer,
   keycloakProviderConfig,
@@ -50,6 +51,28 @@ export {
   flushRefusalAudit,
   syncGroupMemberships,
 } from "./services/auth/onboarding.ts";
+
+export {
+  assertKeycloakAddress,
+  BUNDLED_KEYCLOAK_PROFILE,
+  checkKeycloakAddress,
+  KEYCLOAK_ADDRESS_MESSAGES,
+  type KeycloakAddressCause,
+  type KeycloakAddressEnvironment,
+  type KeycloakAddressFacts,
+  type KeycloakAddressInput,
+  type KeycloakAddressResult,
+  KeycloakAddressError,
+  keycloakAddressResult,
+  stackProfiles,
+} from "./services/keycloak/address-guard.ts";
+
+export {
+  assertKeycloakIssuerAtStart,
+  KEYCLOAK_ISSUER_MISMATCH_MESSAGE,
+  KeycloakIssuerError,
+  type KeycloakIssuerInput,
+} from "./services/keycloak/startup.ts";
 
 export {
   type AfterCommit,

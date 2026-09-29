@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server.js";
 
-import { KEYCLOAK_UNAVAILABLE, requireAuth } from "../../../../../auth.ts";
+import {
+  discoverySignInCause,
+  KEYCLOAK_UNAVAILABLE,
+  requireAuth,
+} from "../../../../../auth.ts";
 import { requireContext } from "../../../../../context.ts";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +25,16 @@ export async function GET(request: Request): Promise<Response> {
 
   const signInPage = new URL("/sign-in", publicUrl);
 
-  const unavailable = () => {
-    signInPage.searchParams.set("error", KEYCLOAK_UNAVAILABLE);
+  const unavailable = (cause: string = KEYCLOAK_UNAVAILABLE) => {
+    signInPage.searchParams.set("error", cause);
 
     return NextResponse.redirect(signInPage);
   };
 
   const discovery = await auth.ensureDiscovery();
 
-  if (!discovery.ready) return unavailable();
+  if (!discovery.ready)
+    return unavailable(discoverySignInCause(discovery.cause));
 
   // The origin check reads the Origin header, which a top-level navigation does not carry, so the
   // configured public origin is supplied and a request header can never steer it (R-70).

@@ -1,4 +1,9 @@
-import type { AuthMember, TenantContext } from "@genie/core";
+import {
+  KEYCLOAK_ISSUER_MISMATCH,
+  type AuthDiscoveryCause,
+  type AuthMember,
+  type TenantContext,
+} from "@genie/core";
 
 /**
  * The context's auth member, or a failure. The application profile requires the authentication
@@ -26,6 +31,19 @@ export const AUTH_COMPLETE_PATH = "/auth/complete";
  * answer (R-54d). It is stable so the sign-in page maps it to a banner and a test can assert it.
  */
 export const KEYCLOAK_UNAVAILABLE = "keycloak_unavailable";
+
+export { KEYCLOAK_ISSUER_MISMATCH };
+
+/**
+ * The `?error=` value for a discovery state that is not ready (R-54d). An unreachable document and
+ * an issuer the document names but that is not `KEYCLOAK_URL` are different causes: the first is
+ * "try again shortly", the second is a misconfigured stack, and sign-in names both.
+ */
+export function discoverySignInCause(cause: AuthDiscoveryCause): SignInCause {
+  return cause === "issuer_mismatch"
+    ? KEYCLOAK_ISSUER_MISMATCH
+    : KEYCLOAK_UNAVAILABLE;
+}
 
 /**
  * The Better Auth endpoints the `/api/auth/` catch-all serves, by path and method. Every other
@@ -110,9 +128,10 @@ export function authRouteAllowed(input: {
   return input.body.kind === "object" && !input.body.carriesIdToken;
 }
 
-/** The five causes of the sign-in page states (R-17a), plus the realm-unavailable one (R-54d). */
+/** The five causes of the sign-in page states (R-17a), plus the realm-unavailable ones (R-54d). */
 export type SignInCause =
   | "keycloak_unavailable"
+  | typeof KEYCLOAK_ISSUER_MISMATCH
   | "not_registered"
   | "access_disabled"
   | "session_expired"
@@ -129,6 +148,7 @@ export function signInCause(
 ): SignInCause | undefined {
   switch (error) {
     case "keycloak_unavailable":
+    case "keycloak_issuer_mismatch":
     case "not_registered":
     case "access_disabled":
     case "session_expired":

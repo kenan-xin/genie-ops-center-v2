@@ -1,10 +1,17 @@
 import { z } from "zod";
 
+import { normalizeKeycloakUrl } from "../keycloak/normalize-url.ts";
+
 /**
  * The pure builders behind the Better Auth instance: the cookie name, the discovery URL, the
  * Keycloak provider record, and the application user columns. Keeping them apart makes each
  * value (R-4a, R-5, R-13) unit-testable without opening a connection or a network call.
  */
+
+/** The stable named cause an issuer mismatch carries at sign-in and at start (R-54d). */
+export const KEYCLOAK_ISSUER_MISMATCH = "keycloak_issuer_mismatch";
+
+export { normalizeKeycloakUrl };
 
 /** The repository's session cookie name, without a prefix (R-4a). */
 export const SESSION_COOKIE_NAME = "genie-session";
@@ -39,11 +46,6 @@ export function sessionCookieName(publicUrl: string): string {
   return isSecurePublicUrl(publicUrl)
     ? `${HOST_COOKIE_PREFIX}${SESSION_COOKIE_NAME}`
     : SESSION_COOKIE_NAME;
-}
-
-/** KEYCLOAK_URL without a trailing slash, so it joins the realm path exactly (R-54c). */
-export function normalizeKeycloakUrl(keycloakUrl: string): string {
-  return keycloakUrl.replace(/\/+$/, "");
 }
 
 /** The realm's issuer, the value a discovery document must name (R-54d). */

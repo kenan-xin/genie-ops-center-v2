@@ -5,6 +5,8 @@ import {
   type MigrationLog,
   type RedactingLogger,
   type TenantContext,
+  assertKeycloakAddress,
+  assertKeycloakIssuerAtStart,
   createLogger,
   createTenantContext,
   forExecution,
@@ -65,6 +67,12 @@ export type BootstrapOptions = {
   readonly logger?: RedactingLogger;
   readonly connect?: (source: EnvironmentSource) => AppContext;
   readonly migrate?: (context: AppContext) => Promise<void>;
+  /**
+   * Injected only by a test that builds the real context but must not read the database the
+   * environment names for the Keycloak guards (R-54c, R-54d). The image never passes this, so the
+   * guards always run in production.
+   */
+  readonly keycloakGuards?: (context: AppContext) => Promise<void>;
   readonly publish?: (context: AppContext) => void;
   readonly exit?: (code: number) => void;
   /** One total budget for diagnostics, cleanup and log flushing (R-19b amendment). */
@@ -283,6 +291,23 @@ export async function runBootstrap(
         }));
 
     await migrate(ready);
+
+    // R-54c: after migrations and before the app serves, refuse a stack that points at a different
+    // Keycloak than setup recorded, or that runs client-only mode with its own Keycloak. R-54d:
+    // once setup is satisfied, an issuer other than normalized `KEYCLOAK_URL` exits the process.
+    const guards =
+      options.keycloakGuards ??
+      (async (started: AppContext) => {
+        await assertKeycloakAddress({ context: started.tenant, source });
+        await assertKeycloakIssuerAtStart({
+          auth: started.tenant.auth,
+          setupSatisfied: async () =>
+            setupSatisfied(await readSetupProgress(started.tenant)),
+          logger: activeLogger,
+        });
+      });
+
+    await guards(ready);
 
     (options.publish ?? publishContext)(ready);
 

@@ -70,6 +70,7 @@ export {
   HOST_COOKIE_PREFIX,
   isPlainJwt,
   isSecurePublicUrl,
+  KEYCLOAK_ISSUER_MISMATCH,
   KEYCLOAK_PROVIDER_ID,
   keycloakIssuer,
   keycloakProviderConfig,
@@ -414,6 +415,17 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
 
   async function apply(result: DiscoveryResult): Promise<AuthDiscoveryState> {
     if (!result.ready) {
+      // R-54d: an issuer mismatch is logged at error level, beside the cause sign-in refuses with.
+      if (result.cause === "issuer_mismatch") {
+        input.logger.error(
+          {
+            keycloakUrl: input.auth.keycloakUrl,
+            realm: input.auth.keycloakRealm,
+          },
+          "keycloak discovery issuer mismatch"
+        );
+      }
+
       discovery = result;
 
       return discovery;

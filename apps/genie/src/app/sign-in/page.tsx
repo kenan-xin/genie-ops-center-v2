@@ -31,18 +31,20 @@ export default async function SignInPage(props: {
   const banner =
     cause === "keycloak_unavailable"
       ? t("errors.keycloakUnavailable")
-      : cause === "not_registered"
-        ? t("errors.notRegistered")
-        : cause === "access_disabled"
-          ? t("errors.accessDisabled")
-          : cause === "session_expired"
-            ? t("errors.sessionExpired", {
-                minutes: (await requireContext().tenant.settings.get())
-                  .sessionIdleMinutes,
-              })
-            : cause === "session_missing"
-              ? t("errors.sessionMissing")
-              : undefined;
+      : cause === "keycloak_issuer_mismatch"
+        ? t("errors.keycloakIssuerMismatch")
+        : cause === "not_registered"
+          ? t("errors.notRegistered")
+          : cause === "access_disabled"
+            ? t("errors.accessDisabled")
+            : cause === "session_expired"
+              ? t("errors.sessionExpired", {
+                  minutes: (await requireContext().tenant.settings.get())
+                    .sessionIdleMinutes,
+                })
+              : cause === "session_missing"
+                ? t("errors.sessionMissing")
+                : undefined;
 
   return (
     <main data-sign-in-state={cause ?? DEFAULT_STATE}>

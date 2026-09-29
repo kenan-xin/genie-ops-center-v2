@@ -19,6 +19,7 @@
     "action": "Sign in with your company account",
     "errors": {
       "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
+      "keycloakIssuerMismatch": "The identity provider is not the one this deployment was set up with. Contact your administrator.",
       "notRegistered": "This account is not registered for this service.",
       "accessDisabled": "Access for this account is disabled.",
       "sessionExpired": "You were signed out after {minutes} minutes of inactivity. Sign in again.",

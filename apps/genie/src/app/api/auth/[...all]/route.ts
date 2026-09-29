@@ -3,7 +3,8 @@ import { flushRefusalAudit, sessionCookieName } from "@genie/core";
 import {
   authPath,
   authRouteAllowed,
-  KEYCLOAK_UNAVAILABLE,
+  discoverySignInCause,
+  KEYCLOAK_ISSUER_MISMATCH,
   readAuthRequestBody,
   requireAuth,
 } from "../../../../auth.ts";
@@ -12,14 +13,17 @@ import { newRequestId } from "../../../../request-id.ts";
 
 export const dynamic = "force-dynamic";
 
-/** The one refusal the sign-in endpoint answers while the realm's discovery does not (R-54d). */
-function realmUnavailable(): Response {
+/** The message each realm-unavailable cause answers with (R-54d). */
+function realmUnavailableMessage(cause: string): string {
+  return cause === KEYCLOAK_ISSUER_MISMATCH
+    ? "The identity provider is not the one this deployment was set up with. Contact your administrator."
+    : "The identity provider is unavailable. Try again shortly, or use the break-glass sign-in.";
+}
+
+/** The one refusal the sign-in endpoints answer while the realm's discovery is unusable (R-54d). */
+function realmUnavailable(cause: string): Response {
   return Response.json(
-    {
-      code: KEYCLOAK_UNAVAILABLE,
-      message:
-        "The identity provider is unavailable. Try again shortly, or use the break-glass sign-in.",
-    },
+    { code: cause, message: realmUnavailableMessage(cause) },
     { status: 503, headers: { "cache-control": "no-store" } }
   );
 }
@@ -72,7 +76,8 @@ async function handler(request: Request): Promise<Response> {
   if (request.method === "POST" && path === "/sign-in/social") {
     const discovery = await auth.ensureDiscovery();
 
-    if (!discovery.ready) return realmUnavailable();
+    if (!discovery.ready)
+      return realmUnavailable(discoverySignInCause(discovery.cause));
   }
 
   // The proxy forwards one x-request-id on every request, so the sign-in path reuses that id

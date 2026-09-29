@@ -13,6 +13,7 @@ import {
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
 import { writeAuditEvent } from "../audit/index.ts";
+import { assertKeycloakAddress } from "../keycloak/address-guard.ts";
 import {
   type LineSinks,
   createLogger,
@@ -349,6 +350,17 @@ export async function runGenieOps(
     // The operating-system user is read inside the audited path, so a UID with no passwd entry
     // still leaves exactly one row (R-64).
     const metadata = { osUser: osUserName(), args: parsed.args };
+
+    // R-54c: a command whose validation profile carries KEYCLOAK_URL (an identity command) runs
+    // the same address guard the application does, before it does its work. `migrate` and `setup`
+    // are exempt: they are the processes that create or reconcile the recorded values.
+    if (
+      context.env.auth !== undefined &&
+      parsed.name !== "migrate" &&
+      parsed.name !== "setup"
+    ) {
+      await assertKeycloakAddress({ context, source: options.source });
+    }
 
     await parsed.run(context, { ...options, ...io });
 

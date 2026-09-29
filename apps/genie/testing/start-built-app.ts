@@ -58,7 +58,8 @@ async function waitForReady(
  */
 export async function startBuiltApp(
   databaseUrl: string,
-  port: number
+  port: number,
+  env: Readonly<Record<string, string>> = {}
 ): Promise<BuiltApp> {
   // The entry point's depth depends on the build's file tracing root, so it is
   // discovered rather than hard-coded. The same launcher backs the `start`
@@ -68,7 +69,8 @@ export async function startBuiltApp(
     "../tools/start-standalone.mjs"
   );
 
-  const realmOverride = process.env.KEYCLOAK_URL ?? TEST_AUTH_ENV.KEYCLOAK_URL;
+  const realmOverride =
+    env.KEYCLOAK_URL ?? process.env.KEYCLOAK_URL ?? TEST_AUTH_ENV.KEYCLOAK_URL;
 
   const stub = await (realmOverride === TEST_AUTH_ENV.KEYCLOAK_URL
     ? startDiscoveryStub()
@@ -78,6 +80,7 @@ export async function startBuiltApp(
     env: {
       ...process.env,
       ...TEST_AUTH_ENV,
+      ...env,
       // The stub's address when the caller named no realm, else the caller's own value.
       KEYCLOAK_URL: stub?.hostUrl ?? realmOverride,
       DATABASE_URL: databaseUrl,
@@ -128,4 +131,52 @@ export async function startBuiltApp(
       await stub?.stop();
     },
   };
+}
+
+/**
+ * Starts the built application and waits for it to exit, so a test can prove a start-time refusal
+ * (R-54c, R-54d) rather than a healthy server. It never waits for readiness: the whole point is
+ * that the process refuses before it serves.
+ *
+ * `env` overrides the authentication values, so a test supplies its own realm or a recorded
+ * address. A process that has not exited by `timeoutMs` is killed and reported as `null`, which
+ * fails a test that expected a refusal.
+ */
+export async function runBuiltAppUntilExit(
+  databaseUrl: string,
+  port: number,
+  env: Readonly<Record<string, string>> = {},
+  timeoutMs = 60000
+): Promise<{ readonly code: number | null; readonly output: string }> {
+  const launcher = resolve(
+    import.meta.dirname,
+    "../tools/start-standalone.mjs"
+  );
+
+  const child = spawn("node", [launcher], {
+    env: {
+      ...process.env,
+      ...TEST_AUTH_ENV,
+      ...env,
+      DATABASE_URL: databaseUrl,
+      PUBLIC_URL: "https://example.invalid",
+      PORT: String(port),
+      NODE_ENV: "production",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let output = "";
+
+  child.stdout.on("data", (chunk) => (output += String(chunk)));
+  child.stderr.on("data", (chunk) => (output += String(chunk)));
+
+  const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+
+  const code = await new Promise<number | null>((settle) => {
+    child.once("exit", (exitCode) => settle(exitCode));
+    child.once("error", () => settle(null));
+  }).finally(() => clearTimeout(timer));
+
+  return { code, output };
 }

@@ -263,6 +263,9 @@ describe("runBootstrap production wiring", () => {
       // The source names a database this test never opens, so migration is stubbed;
       // the pool itself stays lazy, and nothing here connects.
       migrate: async () => {},
+      // The Keycloak guards read the same database, so they are stubbed too; their own
+      // integration tests drive them against a real one.
+      keycloakGuards: async () => {},
       publish: (context) => {
         published = context;
       },
@@ -388,6 +391,9 @@ describe("runBootstrap migration diagnostics", () => {
           onMigrationSql: "resolve",
           onUnlock: "confirm",
         }),
+      // The Keycloak guards read the database the environment names; this run stubs migration, so
+      // it stubs the guards too and asserts only the migration diagnostics.
+      keycloakGuards: async () => {},
       publish: () => {},
       exit: () => {
         throw new Error("a successful bootstrap must not exit");
