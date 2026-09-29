@@ -103,6 +103,7 @@ export function GroupInspector(props: GroupInspectorProps) {
   const [nameDraft, setNameDraft] = useState(group.name);
   const [descriptionDraft, setDescriptionDraft] = useState(group.description);
   const [selectedMembers, setSelectedMembers] = useState<readonly string[]>([]);
+  const [roleToAssign, setRoleToAssign] = useState("");
 
   const blocked = props.lastAdministrator;
 
@@ -151,13 +152,15 @@ export function GroupInspector(props: GroupInspectorProps) {
           {group.assignmentCount} grant{group.assignmentCount === 1 ? "" : "s"}{" "}
           reach this group today.
         </p>
-        <button
-          type="button"
-          className={`${btnSecondary} mt-2`}
-          onClick={props.onOpenInAccess}
-        >
-          <ShieldIcon /> Open in Access
-        </button>
+        {props.onOpenInAccess === undefined ? null : (
+          <button
+            type="button"
+            className={`${btnSecondary} mt-2`}
+            onClick={props.onOpenInAccess}
+          >
+            <ShieldIcon /> Open in Access
+          </button>
+        )}
       </div>
 
       <div className="mt-3" role="tablist" aria-label="Group detail">
@@ -274,19 +277,68 @@ export function GroupInspector(props: GroupInspectorProps) {
           )}
         </div>
       ) : (
-        <ul className="mt-2 divide-y divide-input">
-          {props.assignments.map((assignment) => (
-            <li key={assignment.id} className="py-2 text-sm text-foreground">
-              {assignment.roleName}
-              {assignment.scopeType === null ? null : (
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {assignment.scopeType} {assignment.scopeId}
+        <div className="mt-2">
+          <ul className="divide-y divide-input">
+            {props.assignments.map((assignment) => (
+              <li
+                key={assignment.id}
+                className="flex items-center justify-between py-2 text-sm text-foreground"
+              >
+                <span>
+                  {assignment.roleName}
+                  {assignment.scopeType === null ? null : (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {assignment.scopeType} {assignment.scopeId}
+                    </span>
+                  )}
                 </span>
-              )}
-            </li>
-          ))}
-        </ul>
+                <button
+                  type="button"
+                  className={btnGhost}
+                  onClick={() => props.onUnassignRole(assignment.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* R-24b: a pre-added directory group can be given a role before any sign-in. */}
+          {props.roles.length === 0 ? null : (
+            <div className="mt-3 flex items-end gap-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-foreground">
+                  Give this group a role
+                </span>
+                <select
+                  className={inputClass}
+                  aria-label="Role to assign"
+                  value={roleToAssign}
+                  onChange={(event) => setRoleToAssign(event.target.value)}
+                >
+                  <option value="">Choose a role</option>
+                  {props.roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={btnPrimary}
+                disabled={roleToAssign === ""}
+                onClick={() => {
+                  props.onAssignRole(roleToAssign);
+                  setRoleToAssign("");
+                }}
+              >
+                Assign role
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       <HelpDisclosure label="How group access works">
@@ -714,6 +766,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
           assignments={props.details?.[selected.id]?.assignments ?? []}
           viewer={props.viewer}
           people={props.people}
+          roles={props.roles ?? []}
           lastAdministrator={props.lastAdministratorGroupIds.includes(
             selected.id
           )}
@@ -736,7 +789,15 @@ export function GroupsScreen(props: GroupsScreenProps) {
           onEditLocal={(nextName, nextDescription) =>
             props.onUpdateLocalGroup?.(selected.id, nextName, nextDescription)
           }
-          onOpenInAccess={() => props.onOpenInAccess?.(selected.id)}
+          onOpenInAccess={
+            props.onOpenInAccess === undefined
+              ? undefined
+              : () => props.onOpenInAccess?.(selected.id)
+          }
+          onAssignRole={(roleId) => props.onAssignRole?.(selected.id, roleId)}
+          onUnassignRole={(assignmentId) =>
+            props.onUnassignRole?.(selected.id, assignmentId)
+          }
           onAddMembers={(userIds) => props.onAddMembers?.(selected.id, userIds)}
           onRemoveMembers={(userIds) =>
             props.onRemoveMembers?.(selected.id, userIds)

@@ -57,6 +57,56 @@ export type GroupDetail = GroupRow & {
   readonly lastAdministrator: boolean;
 };
 
+/** One person the local-group member picker may offer. */
+export type AssignablePerson = {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+};
+
+/** One role the group inspector may assign. */
+export type AssignableRole = {
+  readonly id: string;
+  readonly name: string;
+  readonly moduleId: string | null;
+};
+
+/**
+ * The people a local group may take: active, not banned, not erased, and never the break-glass
+ * account (R-39). This is a narrow read behind `core:groups:manage`, not the People router, which
+ * S2-10 owns; it exists so the member picker works before that screen lands.
+ */
+export async function listActivePeople(
+  tenant: TenantContext
+): Promise<readonly AssignablePerson[]> {
+  const result = await tenant.db.$client.query(
+    `select u.id, u.name, u.email
+       from "user" u
+      where u.status = 'active'
+        and u.banned is not true
+        and u.erased_at is null
+        and u.is_break_glass = false
+      order by lower(u.name), lower(u.email)`
+  );
+
+  // SAFETY: the statement selects exactly these three columns.
+  return result.rows as readonly AssignablePerson[];
+}
+
+/** Every role a group may be given, system first then by name. */
+export async function listAssignableRoles(
+  tenant: TenantContext
+): Promise<readonly AssignableRole[]> {
+  const result = await tenant.db.$client.query(
+    `select r.id::text as id, r.name, r.module_id as "moduleId"
+       from role r
+      order by r.is_system desc, lower(r.name)`
+  );
+
+  // SAFETY: the statement selects exactly these three columns.
+  return result.rows as readonly AssignableRole[];
+}
+
 /**
  * The one read shape of the Groups screen. `stale` compares the group's `last_seen_at` with the
  * newest directory sync anywhere in the tenant: the sync stamps every group it sees, so a group
@@ -267,10 +317,16 @@ export async function addDirectoryGroup(
     readonly displayLabel?: string | null;
   }
 ): Promise<string> {
-  const externalId = input.externalId.trim();
+  const externalId = input.externalId;
 
   if (externalId === "") {
     throw new AppError(CORE_ERRORS["invalid-input"]);
+  }
+
+  // The provider's claim value is matched exactly, so a leading or trailing space is part of the
+  // value and must not be silently normalized: refuse it with a named cause (R-24b, DEC-52).
+  if (externalId !== externalId.trim()) {
+    throw new AppError(CORE_ERRORS["claim-value-whitespace"]);
   }
 
   return withTransaction(tenant, async (tx) => {

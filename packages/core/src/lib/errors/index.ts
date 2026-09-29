@@ -36,6 +36,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "role-name-taken": "A role with that name already exists.",
   "directory-group-exists":
     "A directory group with that exact claim value already exists.",
+  "claim-value-whitespace":
+    "A directory group claim value cannot have leading or trailing whitespace; it must match the provider's value exactly.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

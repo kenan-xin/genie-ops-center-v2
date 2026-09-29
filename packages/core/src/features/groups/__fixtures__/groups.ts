@@ -1,4 +1,5 @@
 import type {
+  AssignableRole,
   Group,
   GroupAssignment,
   GroupMember,
@@ -10,6 +11,12 @@ export const FIXTURE_VIEWER: GroupsViewer = {
   id: "u-admin",
   timeZone: "UTC",
 };
+
+export const FIXTURE_ROLES: readonly AssignableRole[] = [
+  { id: "r-1", name: "Tenant administrator", moduleId: "core" },
+  { id: "r-2", name: "Auditor", moduleId: "core" },
+  { id: "r-3", name: "Invoice approver", moduleId: null },
+];
 
 export const FIXTURE_PEOPLE: readonly PersonOption[] = [
   { id: "p-1", name: "Ada Lovelace", email: "ada@example.invalid" },

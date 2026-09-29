@@ -5,12 +5,18 @@ import { requireAuthenticated } from "../../lib/entitlement/module-trpc.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { can, type RequestPrincipal } from "../authorization/index.ts";
 import {
+  assignRole,
+  removeAssignment,
+} from "../authorization/role-assignment.ts";
+import {
   addDirectoryGroup,
   addLocalGroupMembers,
   archiveDirectoryGroup,
   createLocalGroup,
   deleteDirectoryGroup,
   deleteLocalGroup,
+  listActivePeople,
+  listAssignableRoles,
   listGroups,
   readGroup,
   removeAllLocalGroupMembers,
@@ -77,6 +83,41 @@ export function createGroupsRouter() {
 
       return found;
     }),
+
+    // The local-group member picker's people: a narrow read behind `core:groups:manage` (R-39),
+    // not the People router S2-10 owns.
+    people: procedure.query(({ ctx }) => listActivePeople(ctx.tenant)),
+
+    // The roles a group can be given, for the inspector's assign step (R-24b).
+    assignableRoles: procedure.query(({ ctx }) =>
+      listAssignableRoles(ctx.tenant)
+    ),
+
+    // Assignment goes through the one role-assignment service, so the R-38 guard and the
+    // core:role:granted event have one writer (DEC-39, R-47).
+    assignRole: procedure
+      .input(z.object({ groupId: z.uuid(), roleId: z.uuid() }))
+      .mutation(async ({ ctx, input }) => ({
+        id: (
+          await assignRole({
+            tenant: ctx.tenant,
+            actorUserId: ctx.caller.userId,
+            roleId: input.roleId,
+            principal: { type: "group", id: input.groupId },
+            scope: null,
+          })
+        ).id,
+      })),
+
+    unassign: procedure
+      .input(z.object({ assignmentId: z.uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        await removeAssignment({
+          tenant: ctx.tenant,
+          actorUserId: ctx.caller.userId,
+          assignmentId: input.assignmentId,
+        });
+      }),
 
     addDirectoryGroup: procedure
       .input(

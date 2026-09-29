@@ -2,7 +2,6 @@
 
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
 import { trpc } from "../../../trpc/client.ts";
@@ -18,7 +17,6 @@ type WriteResult = void | { readonly id: string };
  */
 export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -31,6 +29,18 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     queryKey: ["group", selectedId],
     queryFn: () => trpc.groups.get.query({ groupId: selectedId ?? "" }),
     enabled: selectedId !== null,
+  });
+
+  // The local-group member picker and the inspector's assign step read narrow core procedures
+  // behind core:groups:manage; S2-10 builds the full People router later.
+  const people = useQuery({
+    queryKey: ["groups", "people"],
+    queryFn: () => trpc.groups.people.query(),
+  });
+
+  const assignableRoles = useQuery({
+    queryKey: ["groups", "assignable-roles"],
+    queryFn: () => trpc.groups.assignableRoles.query(),
   });
 
   // One mutation runs any write and reloads the list and the open detail; the server is the
@@ -55,8 +65,8 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       viewer={props.viewer}
       includeArchived={includeArchived}
       onChangeIncludeArchived={setIncludeArchived}
-      // The member picker needs the People router (S2-10), which this ticket does not own.
-      people={[]}
+      people={people.data ?? []}
+      roles={assignableRoles.data ?? []}
       lastAdministratorGroupIds={
         detail.data?.lastAdministrator === true ? [selected] : []
       }
@@ -114,9 +124,12 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       onRemoveAllMembers={(groupId) =>
         run(() => trpc.groups.removeAllMembers.mutate({ groupId }))
       }
-      onOpenInAccess={(groupId) => {
-        router.push(`/admin/access?recipient=${encodeURIComponent(groupId)}`);
-      }}
+      onAssignRole={(groupId, roleId) =>
+        run(() => trpc.groups.assignRole.mutate({ groupId, roleId }))
+      }
+      onUnassignRole={(groupId, assignmentId) =>
+        run(() => trpc.groups.unassign.mutate({ assignmentId }))
+      }
     />
   );
 }

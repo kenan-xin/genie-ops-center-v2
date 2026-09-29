@@ -9,6 +9,7 @@ import {
   FIXTURE_MEMBERS,
   FIXTURE_NOT_SEEN,
   FIXTURE_PEOPLE,
+  FIXTURE_ROLES,
   FIXTURE_VIEWER,
 } from "./__fixtures__/groups.ts";
 import { GroupsScreen } from "./groups-screen.tsx";
@@ -23,6 +24,8 @@ const onDeleteGroup = fn();
 const onDeleteLocalGroup = fn();
 
 const onCreateLocalGroup = fn();
+
+const onAssignRole = fn();
 
 /**
  * The Groups directory (R-24 to R-25). The host owns the data and the writes, so each destructive
@@ -48,6 +51,7 @@ const meta = {
     includeArchived: false,
     onChangeIncludeArchived: fn(),
     people: FIXTURE_PEOPLE,
+    roles: FIXTURE_ROLES,
     lastAdministratorGroupIds: [],
     details: {
       [FIXTURE_DIRECTORY.id]: {
@@ -64,6 +68,7 @@ const meta = {
     onDeleteGroup,
     onDeleteLocalGroup,
     onCreateLocalGroup,
+    onAssignRole,
   } satisfies GroupsScreenProps,
 } satisfies Meta<typeof GroupsScreen>;
 
@@ -252,6 +257,27 @@ export const Empty: Story = {
   args: { groups: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByText(/No groups match/)).toBeInTheDocument();
+  },
+};
+
+export const AssignsARoleToAPreAddedGroup: Story = {
+  play: async ({ canvas }) => {
+    onAssignRole.mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Sales/ }));
+
+    const inspector = within(canvas.getByRole("dialog", { name: "Sales" }));
+
+    await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
+    await userEvent.selectOptions(
+      inspector.getByLabelText("Role to assign"),
+      "r-2"
+    );
+    await userEvent.click(
+      inspector.getByRole("button", { name: "Assign role" })
+    );
+
+    expect(onAssignRole).toHaveBeenCalledWith("g-not-seen", "r-2");
   },
 };
 

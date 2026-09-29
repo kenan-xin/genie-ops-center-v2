@@ -48,6 +48,13 @@ export type PersonOption = {
   readonly email: string;
 };
 
+/** One role the inspector can assign to a group. */
+export type AssignableRole = {
+  readonly id: string;
+  readonly name: string;
+  readonly moduleId: string | null;
+};
+
 export type GroupsViewer = {
   readonly id: string;
   readonly timeZone: string;
@@ -71,6 +78,8 @@ export type GroupsScreenProps = {
   /** Fires when a row opens or the inspector closes, so the host can load that group's detail. */
   readonly onSelectGroup?: (groupId: string | null) => void;
   readonly people: readonly PersonOption[];
+  /** The roles the inspector can assign to a group (R-24b). */
+  readonly roles?: readonly AssignableRole[] | undefined;
   /** Per-group members and assignments for the inspector, loaded by the host on selection. */
   readonly details?: Readonly<
     Record<
@@ -107,6 +116,10 @@ export type GroupsScreenProps = {
     userIds: readonly string[]
   ) => void;
   readonly onRemoveAllMembers?: (groupId: string) => void;
+  /** Assign a role to the group through the one role-assignment service (R-24b). */
+  readonly onAssignRole?: (groupId: string, roleId: string) => void;
+  /** Remove one of the group's role assignments. */
+  readonly onUnassignRole?: (groupId: string, assignmentId: string) => void;
   /** Opens the Access screen with this group chosen (the one assignment writer, DEC-39). */
   readonly onOpenInAccess?: (groupId: string) => void;
 };
@@ -118,6 +131,7 @@ export type GroupInspectorProps = {
   readonly assignments: readonly GroupAssignment[];
   readonly viewer: GroupsViewer;
   readonly people: readonly PersonOption[];
+  readonly roles: readonly AssignableRole[];
   readonly lastAdministrator: boolean;
   readonly onClose: () => void;
   readonly onArchive: () => void;
@@ -125,7 +139,9 @@ export type GroupInspectorProps = {
   readonly onDelete: () => void;
   readonly onEditLabel: (displayLabel: string | null) => void;
   readonly onEditLocal: (name: string, description: string) => void;
-  readonly onOpenInAccess: () => void;
+  readonly onOpenInAccess?: (() => void) | undefined;
+  readonly onAssignRole: (roleId: string) => void;
+  readonly onUnassignRole: (assignmentId: string) => void;
   readonly onAddMembers: (userIds: readonly string[]) => void;
   readonly onRemoveMembers: (userIds: readonly string[]) => void;
   readonly onRemoveAllMembers: () => void;
