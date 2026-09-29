@@ -507,6 +507,7 @@ describe("the core pg-boss worker", () => {
     cleanups.push(() => context.db.$client.end());
 
     expect(Object.keys(context).toSorted()).toEqual([
+      "authRequestScope",
       "branding",
       "capabilities",
       "db",
