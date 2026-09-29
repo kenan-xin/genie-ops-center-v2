@@ -62,6 +62,11 @@ export type RoleInput = {
 export type RolesScreenProps = {
   readonly roles: readonly Role[];
   readonly viewer: RolesViewer;
+  /**
+   * The declared permission catalogue the role form picks from, grouped by module with each
+   * module's entitlement state (R-33). A new role is built from this, never from a stored role.
+   */
+  readonly catalogue: readonly RolePermissionGroup[];
   readonly selectedRoleId: string | null;
   readonly onSelectRole: (roleId: string | null) => void;
   /** The selected role's grouped permissions and holders, loaded by the host on selection. */

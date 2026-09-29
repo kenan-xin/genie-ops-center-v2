@@ -10,7 +10,10 @@ import {
 } from "../../lib/tenant-context/with-transaction.ts";
 import { role, roleAssignment } from "../../schema.ts";
 import { writeAdminAuditEvent } from "../audit/index.ts";
-import { permissionCatalogue } from "../authorization/roles.ts";
+import {
+  CORE_PERMISSION_KEYS,
+  permissionCatalogue,
+} from "../authorization/roles.ts";
 
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<Module, "identity" | "permissions">;
@@ -235,15 +238,75 @@ export async function readRole(
 
 function assertPermissionsDeclared(
   permissions: readonly string[],
-  catalogue: ReadonlySet<string>
+  catalogue: ReadonlySet<string>,
+  existing: ReadonlySet<string>
 ): void {
-  const unknown = permissions.filter((key) => !catalogue.has(key));
+  // Only a *newly introduced* undeclared key is refused. A key already stored on the role is a
+  // retired or absent-module key (R-33b): it grants nothing, and an edit that keeps or removes it
+  // must not fail on it, so a custom role can drop one unavailable key while keeping another.
+  const unknown = permissions.filter(
+    (key) => !catalogue.has(key) && !existing.has(key)
+  );
 
   if (unknown.length > 0) {
     throw new AppError(CORE_ERRORS["invalid-input"], {
       cause: new Error(`Undeclared permission keys: ${unknown.join(", ")}`),
     });
   }
+}
+
+/**
+ * The declared permission catalogue the role form offers, grouped by module with each module's
+ * entitlement state (R-33): core's own keys and every included module's declared keys. This is
+ * what a new or edited role picks from, never the selected role's stored keys.
+ */
+export async function declaredCatalogue(
+  tenant: TenantContext,
+  modules: readonly RolesModule[]
+): Promise<readonly RolePermissionGroup[]> {
+  const groups = new Map<string, RolePermissionKey[]>();
+
+  const push = (moduleId: string, key: string, label: string) => {
+    const list = groups.get(moduleId) ?? [];
+
+    list.push({ key, label, unavailable: false });
+    groups.set(moduleId, list);
+  };
+
+  for (const key of CORE_PERMISSION_KEYS) push("core", key, key);
+
+  for (const module of modules) {
+    for (const entry of module.permissions) {
+      push(module.identity.id, entry.key, entry.label);
+    }
+  }
+
+  const names = new Map<string, string>([
+    ["core", "Core"],
+    ...modules.map(
+      (module) => [module.identity.id, module.identity.displayName] as const
+    ),
+  ]);
+
+  const entitled = new Map(
+    await Promise.all(
+      [...groups.keys()].map(async (moduleId) => {
+        const enabled =
+          moduleId === "core"
+            ? true
+            : await tenant.entitlements.isEnabled(moduleId);
+
+        return [moduleId, enabled] as const;
+      })
+    )
+  );
+
+  return [...groups.entries()].map(([moduleId, keys]) => ({
+    moduleId,
+    moduleName: names.get(moduleId) ?? moduleId,
+    entitled: entitled.get(moduleId) ?? false,
+    keys,
+  }));
 }
 
 async function assertNameFree(
@@ -274,13 +337,19 @@ export async function createRole(
     readonly description?: string | undefined;
     readonly permissions: readonly string[];
     readonly copiedFrom?: string;
+    /** Keys the source role already held, so a copy of a role with unavailable keys is allowed. */
+    readonly allowedExisting?: readonly string[];
   }
 ): Promise<string> {
   const name = input.name.trim();
 
   if (name === "") throw new AppError(CORE_ERRORS["invalid-input"]);
 
-  assertPermissionsDeclared(input.permissions, permissionCatalogue(modules));
+  assertPermissionsDeclared(
+    input.permissions,
+    permissionCatalogue(modules),
+    new Set(input.allowedExisting ?? [])
+  );
 
   return withTransaction(tenant, async (tx) => {
     await assertNameFree(tx, name);
@@ -330,11 +399,13 @@ export async function updateRole(
 
   if (name === "") throw new AppError(CORE_ERRORS["invalid-input"]);
 
-  assertPermissionsDeclared(input.permissions, permissionCatalogue(modules));
-
   await withTransaction(tenant, async (tx) => {
     const rows = await tx
-      .select({ id: role.id, isSystem: role.isSystem })
+      .select({
+        id: role.id,
+        isSystem: role.isSystem,
+        permissions: role.permissions,
+      })
       .from(role)
       .where(eq(role.id, input.roleId))
       .limit(1);
@@ -348,6 +419,12 @@ export async function updateRole(
     if (existing.isSystem) {
       throw new AppError(CORE_ERRORS["system-role"]);
     }
+
+    assertPermissionsDeclared(
+      input.permissions,
+      permissionCatalogue(modules),
+      new Set(existing.permissions)
+    );
 
     await assertNameFree(tx, name, input.roleId);
 
@@ -442,5 +519,6 @@ export async function copyRole(
     description: source.description ?? undefined,
     permissions: source.permissions,
     copiedFrom: input.roleId,
+    allowedExisting: source.permissions,
   });
 }

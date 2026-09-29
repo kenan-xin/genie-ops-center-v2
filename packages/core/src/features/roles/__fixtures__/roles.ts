@@ -1,6 +1,45 @@
-import type { Role, RoleDetail, RolesViewer } from "../types.ts";
+import type {
+  Role,
+  RoleDetail,
+  RolePermissionGroup,
+  RolesViewer,
+} from "../types.ts";
 
 export const FIXTURE_VIEWER: RolesViewer = { id: "u-admin", timeZone: "UTC" };
+
+/** The declared catalogue the role form picks from: core keys plus one module's keys (R-33). */
+export const FIXTURE_CATALOGUE: readonly RolePermissionGroup[] = [
+  {
+    moduleId: "core",
+    moduleName: "Core",
+    entitled: true,
+    keys: [
+      {
+        key: "core:groups:manage",
+        label: "core:groups:manage",
+        unavailable: false,
+      },
+      {
+        key: "core:roles:manage",
+        label: "core:roles:manage",
+        unavailable: false,
+      },
+    ],
+  },
+  {
+    moduleId: "fixture",
+    moduleName: "Fixture",
+    entitled: true,
+    keys: [
+      { key: "fixture:use", label: "Use the fixture", unavailable: false },
+      {
+        key: "fixture:admin",
+        label: "Administer the fixture",
+        unavailable: false,
+      },
+    ],
+  },
+];
 
 export const FIXTURE_SYSTEM_ROLE: Role = {
   id: "r-tenant-admin",
@@ -112,4 +151,37 @@ export const FIXTURE_CUSTOM_DETAIL: RoleDetail = {
       scopeId: null,
     },
   ],
+};
+
+/** A custom role carrying two unavailable keys, to prove one can be removed while the other stays. */
+export const FIXTURE_TWO_UNAVAILABLE_DETAIL: RoleDetail = {
+  id: "r-two-retired",
+  name: "Two retired keys",
+  description: "",
+  kind: "custom",
+  moduleId: null,
+  permissions: ["fixture:use", "retired:one", "retired:two"],
+  assignmentCount: 0,
+  entitlementAdded: [],
+  unavailableKeys: ["retired:one", "retired:two"],
+  permissionGroups: [
+    {
+      moduleId: "fixture",
+      moduleName: "Fixture",
+      entitled: true,
+      keys: [
+        { key: "fixture:use", label: "Use the fixture", unavailable: false },
+      ],
+    },
+    {
+      moduleId: "retired",
+      moduleName: "retired",
+      entitled: false,
+      keys: [
+        { key: "retired:one", label: "retired:one", unavailable: true },
+        { key: "retired:two", label: "retired:two", unavailable: true },
+      ],
+    },
+  ],
+  assignments: [],
 };

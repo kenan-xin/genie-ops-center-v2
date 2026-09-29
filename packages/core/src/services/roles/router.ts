@@ -11,6 +11,7 @@ import {
 import {
   copyRole,
   createRole,
+  declaredCatalogue,
   deleteRole,
   listRoles,
   readRole,
@@ -73,6 +74,12 @@ const scope = z
 export function createRolesRouter(modules: readonly RolesModule[]) {
   return t.router({
     list: procedure.query(({ ctx }) => listRoles(ctx.tenant, modules)),
+
+    // The declared permission catalogue the role form picks from, grouped by module with each
+    // module's entitlement state (R-33). A new role is built from this, never from a stored role.
+    catalogue: procedure.query(({ ctx }) =>
+      declaredCatalogue(ctx.tenant, modules)
+    ),
 
     get: procedure
       .input(z.object({ roleId: z.uuid() }))

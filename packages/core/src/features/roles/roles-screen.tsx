@@ -22,7 +22,13 @@ import {
   inputClass,
   Pill,
 } from "../admin/ui.tsx";
-import type { Role, RoleDetail, RoleInput, RolesScreenProps } from "./types.ts";
+import type {
+  Role,
+  RoleDetail,
+  RoleInput,
+  RolePermissionGroup,
+  RolesScreenProps,
+} from "./types.ts";
 
 type FormState = {
   readonly mode: "create" | "edit" | "copy";
@@ -39,7 +45,10 @@ type FormState = {
  */
 function RoleFormDialog(props: {
   readonly state: FormState;
-  readonly detail?: RoleDetail | undefined;
+  /** The declared catalogue the picker offers, grouped by module (R-33). */
+  readonly catalogue: readonly RolePermissionGroup[];
+  /** Stored keys the catalogue no longer holds, shown as a removable set (R-33b). */
+  readonly unavailableKeys: readonly string[];
   readonly onCancel: () => void;
   readonly onSubmit: (input: RoleInput) => void;
 }) {
@@ -50,11 +59,8 @@ function RoleFormDialog(props: {
     props.state.permissions
   );
 
-  const groups = props.detail?.permissionGroups ?? [];
-
-  const unavailable = props.state.permissions.filter(
-    (key) =>
-      !groups.some((group) => group.keys.some((entry) => entry.key === key))
+  const [unavailable, setUnavailable] = useState<readonly string[]>(
+    props.unavailableKeys
   );
 
   const toggle = (key: string) =>
@@ -64,8 +70,10 @@ function RoleFormDialog(props: {
         : [...current, key]
     );
 
-  const removeUnavailable = (key: string) =>
+  const removeUnavailable = (key: string) => {
+    setUnavailable((current) => current.filter((entry) => entry !== key));
     setPicked((current) => current.filter((entry) => entry !== key));
+  };
 
   const canSubmit = name.trim() !== "";
 
@@ -130,7 +138,7 @@ function RoleFormDialog(props: {
             </fieldset>
           ) : null}
 
-          {groups.map((group) => (
+          {props.catalogue.map((group) => (
             <fieldset
               key={group.moduleId}
               className="rounded-lg border border-input p-3"
@@ -152,9 +160,6 @@ function RoleFormDialog(props: {
                     onChange={() => toggle(entry.key)}
                   />
                   {entry.label}
-                  {entry.unavailable ? (
-                    <WarningIcon className="size-4 text-destructive" />
-                  ) : null}
                 </label>
               ))}
             </fieldset>
@@ -425,11 +430,18 @@ export function RolesScreen(props: RolesScreenProps) {
         {form === null ? null : (
           <RoleFormDialog
             state={form}
-            detail={props.detail}
+            catalogue={props.catalogue}
+            unavailableKeys={props.detail?.unavailableKeys ?? []}
             onCancel={() => setForm(null)}
             onSubmit={(input) => {
               setForm(null);
-              props.onCreateRole?.(input);
+
+              // An edit updates the selected role by id; a create or a copy makes a new row.
+              if (form.mode === "edit" && form.roleId !== undefined) {
+                props.onUpdateRole?.(form.roleId, input);
+              } else {
+                props.onCreateRole?.(input);
+              }
             }}
           />
         )}
@@ -524,7 +536,8 @@ export function RolesScreen(props: RolesScreenProps) {
       {form === null ? null : (
         <RoleFormDialog
           state={form}
-          detail={undefined}
+          catalogue={props.catalogue}
+          unavailableKeys={[]}
           onCancel={() => setForm(null)}
           onSubmit={(input) => {
             setForm(null);

@@ -31,6 +31,12 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     enabled: selectedRoleId !== null,
   });
 
+  // The declared permission catalogue the role form picks from (R-33).
+  const catalogue = useQuery({
+    queryKey: ["roles", "catalogue"],
+    queryFn: () => trpc.roles.catalogue.query(),
+  });
+
   const action = useMutation({
     mutationFn: (work: () => Promise<WriteResult>) => work(),
     onSuccess: async () => {
@@ -48,6 +54,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   return (
     <RolesScreen
       roles={list.data ?? []}
+      catalogue={catalogue.data ?? []}
       viewer={props.viewer}
       selectedRoleId={selectedRoleId}
       onSelectRole={setSelectedRoleId}
