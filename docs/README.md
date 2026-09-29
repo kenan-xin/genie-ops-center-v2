@@ -16,6 +16,7 @@ The core product and the modules are documented apart. Read `core/` first, then 
 | `tech-plans/` | Bounded technical approaches, verification gates and complexity stop conditions; decisions link back to ADRs and the core decision log. | Spec 0 integrated and accepted 2026-09-23, G5 registry push open |
 | `tickets/` | Ticket breakdowns per specification, with dependencies. | Twelve Spec 0 tickets; scope in these documents, live claims/status in Beads |
 | `runbooks/` | Operator procedures: the deployment guide (`deployment.md`), the Keycloak realm and identity provider runbook (`keycloak-realm.md`), the reverse proxy setup (`reverse-proxy.md`), upgrades, backup verification. | Deployment guide, realm runbook, and reverse proxy runbook written; the last two are planned procedures not yet run |
+| `guides/` | Per-scenario setup guides for a person doing the setup, one per sign-in scenario under `sign-in/`, plus the chooser. A guide ships in the same change as its end-to-end test and links to the runbooks for detail. | Scenario S-A guide written; the rest are marked coming in `sign-in/choose-your-setup.md` |
 
 For initial branding requirements and defaults, read [Branding seed requirements](architecture/branding-seed.md), governed by DEC-35 in the [decision log](core/decision-log.md). Architectural decisions remain in `adr/`; unresolved product questions remain in `core/vision.md`.
 
