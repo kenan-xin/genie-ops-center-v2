@@ -13,6 +13,7 @@ import {
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
 import { writeAuditEvent } from "../audit/index.ts";
+import { rotateBreakGlass } from "../break-glass/index.ts";
 import { assertKeycloakAddress } from "../keycloak/address-guard.ts";
 import {
   type LineSinks,
@@ -63,7 +64,8 @@ export type GenieOpsCommandName =
   | "setup"
   | "module-enable"
   | "module-disable"
-  | "retire";
+  | "retire"
+  | "break-glass-rotate";
 
 /**
  * The commands that run the R-54c address guard before doing their work. The list is explicit and
@@ -93,7 +95,7 @@ type ParsedCommand = {
  * value can be a secret an operator pasted by mistake (D-4, R-66).
  */
 const PARSE_REFUSAL =
-  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm]";
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate";
 
 /** `redact` answers the same string for a string, which is what every sink here writes. */
 function safe(text: string): string {
@@ -249,6 +251,30 @@ function parseCommand(
         name: "retire",
         args: confirm ? ["--confirm"] : [],
         run: (context, options) => runRetire(context, confirm, options.output),
+      };
+    }
+
+    case "break-glass": {
+      // `break-glass rotate` takes exactly one positional and no options. Any other shape is the
+      // one generic refusal above, so a rejected value never reaches the output.
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, ...extra] = positionals;
+
+      if (subcommand !== "rotate" || extra.length > 0) {
+        throw new Error("unknown break-glass subcommand");
+      }
+
+      return {
+        name: "break-glass-rotate",
+        args: [],
+        run: (context, options) =>
+          rotateBreakGlass(context, { output: options.output }),
       };
     }
 

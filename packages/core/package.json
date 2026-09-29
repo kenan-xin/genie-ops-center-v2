@@ -8,6 +8,7 @@
     "./errors": "./src/lib/errors/index.ts",
     "./features/account": "./src/features/account/index.ts",
     "./features/audit": "./src/features/audit/index.ts",
+    "./features/break-glass": "./src/features/break-glass/index.ts",
     "./features/groups": "./src/features/groups/index.ts",
     "./features/roles": "./src/features/roles/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",

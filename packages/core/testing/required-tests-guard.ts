@@ -185,7 +185,33 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "genie-ops parse guards dispatches on the first positional and parses each subcommand independently",
       "genie-ops parse guards does not echo an unexpected positional value or write an audit row",
       "genie-ops parse guards fails before creating a context when parsing rejects",
+      "genie-ops break-glass rotate rotates the password, clears the authenticator, sets the forced change and deletes sessions in one transaction, with one audit row (R-60, R-61, AC-13)",
+      "genie-ops break-glass rotate refuses a rotation when the deployment has no break-glass account",
       "audit helper fallback writes the outcome to command output when audit_event does not exist",
+    ],
+  },
+  {
+    file: "testing/rate-limit.integration.test.ts",
+    reason:
+      "Spec 2 AC-6 and DEC-31 require the fixed-window counter and its overwrite to run against a real database",
+    cases: [
+      "the fixed-window rate limit against a real database counts within one window and refuses past the limit",
+      "the fixed-window rate limit against a real database overwrites the counter row when the next window begins",
+      "the fixed-window rate limit against a real database holds the documented window and count for all four endpoints (R-19, R-20)",
+    ],
+  },
+  {
+    file: "testing/break-glass.integration.test.ts",
+    reason:
+      "Spec 2 AC-3, AC-15, R-30, R-62, R-64, R-65 and R1 require the break-glass lifecycle, the R1 session guard and the limited-session refusal to run against a real database and the real instance",
+    cases: [
+      "the break-glass lifecycle against a real database refuses a non-break-glass credential with a neutral message and no session (R-62)",
+      "the break-glass lifecycle against a real database refuses the eleventh break-glass attempt and writes one auth:rate_limited row (R-19 to R-21)",
+      "the break-glass lifecycle against a real database lets a break-glass credential sign in and writes one auth:break_glass_sign_in row (R-44, R-45)",
+      "the break-glass lifecycle against a real database guards every session: break-glass only from the credential path, an ordinary person only from the realm (R1, R-62)",
+      "the break-glass lifecycle against a real database refuses a limited break-glass session in can() and by every router except the two endpoints that clear it (R-30)",
+      "the break-glass lifecycle against a real database clears must_change_password when the provisioning password is replaced (R-65)",
+      "the break-glass lifecycle against a real database refuses a new password that misses the shared rule (R-64)",
     ],
   },
   {

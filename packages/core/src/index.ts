@@ -30,21 +30,32 @@ export {
   type AuthSession,
   type AuthSessionState,
   type AuthSessionUser,
+  type BreakGlassFacts,
+  BREAK_GLASS_ONLY_CODE,
+  BREAK_GLASS_OAUTH_REFUSED,
+  breakGlassNextStep,
   createAuthMember,
   createDiscoveryProbe,
   describeUserAgent,
   DISCOVERY_RETRY_MS,
   discoveryDocumentUrl,
   idleExpiry,
+  INVALID_CREDENTIALS_MESSAGE,
   isIdleExpired,
+  isLimitedBreakGlass,
   KEYCLOAK_ISSUER_MISMATCH,
   KEYCLOAK_PROVIDER_ID,
   keycloakIssuer,
   keycloakProviderConfig,
+  LIMITED_SESSION_CLEARING_ENDPOINTS,
   normalizeKeycloakUrl,
+  PASSWORD_POLICY_CODE,
+  RATE_LIMITED_CODE,
+  readCookie,
   SESSION_ABSOLUTE_SECONDS,
   SESSION_COOKIE_NAME,
   sessionCookieName,
+  TOTP_ISSUER_DEFAULT,
 } from "./services/auth/index.ts";
 
 export {
@@ -270,6 +281,7 @@ export {
   type AuditMetadataValue,
   writeAdminAuditEvent,
   writeAuditEvent,
+  writeAuthAuditEvent,
 } from "./services/audit/index.ts";
 
 export {
@@ -290,6 +302,31 @@ export {
 } from "./services/audit/index.ts";
 
 export { type GenieOpsOptions, runGenieOps } from "./services/ops/index.ts";
+
+export {
+  rotateBreakGlass,
+  type RotateBreakGlassOptions,
+} from "./services/break-glass/index.ts";
+
+export {
+  consumeRateLimit,
+  DEPLOYMENT_RATE_LIMIT_SUBJECT,
+  type RateLimitDecision,
+  type RateLimitEndpoint,
+  RATE_LIMIT_RULES,
+  type RateLimitRule,
+  type RateLimitSubjectKind,
+  windowStartFor,
+} from "./services/rate-limit/index.ts";
+
+export {
+  characterClassCount,
+  meetsPasswordRule,
+  PASSWORD_CHARACTER_CLASSES,
+  PASSWORD_MIN_LENGTH,
+  type PasswordRuleRow,
+  passwordRuleRows,
+} from "./lib/password/rule.ts";
 
 export type { JobQueue } from "./services/job-queue/index.ts";
 

@@ -1,11 +1,14 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { twoFactor as twoFactorPlugin } from "better-auth/plugins/two-factor";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { z } from "zod";
 /* oxlint-disable anti-slop/require-readable-spacing -- the Better Auth hook scopes keep adjacent guards and writes together. */
 
+import { meetsPasswordRule } from "../../lib/password/index.ts";
 import {
   account,
   session,
@@ -13,7 +16,12 @@ import {
   user,
   verification,
 } from "../../schema.ts";
+import { writeAuthAuditEvent } from "../audit/index.ts";
 import type { LogValue } from "../logging/index.ts";
+import {
+  consumeRateLimit,
+  DEPLOYMENT_RATE_LIMIT_SUBJECT,
+} from "../rate-limit/index.ts";
 import {
   APPLICATION_SESSION_FIELDS,
   APPLICATION_USER_FIELDS,
@@ -26,6 +34,7 @@ import {
   keycloakProviderConfig,
   SESSION_ABSOLUTE_SECONDS,
   sessionCookieName,
+  TOTP_ISSUER_DEFAULT,
 } from "./config.ts";
 import { createDiscoveryProbe } from "./discovery.ts";
 import { idleExpiry, isIdleExpired } from "./idle.ts";
@@ -78,9 +87,17 @@ export {
   SESSION_ABSOLUTE_SECONDS,
   SESSION_COOKIE_NAME,
   sessionCookieName,
+  TOTP_ISSUER_DEFAULT,
 } from "./config.ts";
 
 export { createDiscoveryProbe, type DiscoveryProbe } from "./discovery.ts";
+
+export {
+  type BreakGlassFacts,
+  breakGlassNextStep,
+  isLimitedBreakGlass,
+  LIMITED_SESSION_CLEARING_ENDPOINTS,
+} from "./limited.ts";
 
 /**
  * The schema map the Drizzle adapter is handed explicitly (D2-5): core's `coreTables` keys
@@ -158,6 +175,83 @@ export function accountHooks(input: Pick<AuthMemberInput, "auth" | "db">) {
   };
 }
 
+/**
+ * The neutral message a credential sign-in for a non-break-glass account answers with. It never
+ * says whether the email exists (R-62).
+ */
+export const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password.";
+
+/** The named cause a non-break-glass credential refusal carries (R-62). */
+export const BREAK_GLASS_ONLY_CODE = "break_glass_only";
+
+/** The named cause the R1 guard refuses an OAuth session for the break-glass account with (R1). */
+export const BREAK_GLASS_OAUTH_REFUSED = "break_glass_oauth_refused";
+
+/** The response code the break-glass sign-in card maps to its neutral notice (R-21). */
+export const RATE_LIMITED_CODE = "rate_limited";
+
+/** The named cause a password that misses the R-64 rule is refused with. */
+export const PASSWORD_POLICY_CODE = "password_policy";
+
+/** The one value of `name` in a `Cookie` header, or undefined (no decoding: tokens are opaque). */
+export function readCookie(header: string, name: string): string | undefined {
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    const separator = trimmed.indexOf("=");
+
+    if (separator === -1) continue;
+
+    if (trimmed.slice(0, separator) === name)
+      return trimmed.slice(separator + 1) || undefined;
+  }
+
+  return undefined;
+}
+
+/** The change-password body the R-64 server check reads; unknown fields are ignored. */
+const changePasswordBody = z.object({
+  newPassword: z.string(),
+  currentPassword: z.string(),
+});
+
+/**
+ * R1 and R-62, the session guard. Every session creation passes here:
+ *
+ * - a break-glass session is allowed only from the credential path, never from a realm callback,
+ *   so an old provider account row for that email cannot carry the bypass (R1);
+ * - an ordinary person's only sign-in path is the realm, so a credential session for one is
+ *   refused with a neutral message and no session (R-62).
+ *
+ * It is exported so an integration test can drive both directions with a real database and a
+ * fake request scope, without a full OAuth callback.
+ */
+export function sessionCreateBefore(
+  input: Pick<AuthMemberInput, "db" | "requestScope">
+) {
+  return async (data: { readonly userId: string }): Promise<void> => {
+    const [owner] = await input.db
+      .select({ isBreakGlass: user.isBreakGlass })
+      .from(user)
+      .where(eq(user.id, data.userId));
+    const isBreakGlass = owner?.isBreakGlass === true;
+    const fromOAuth = input.requestScope?.current()?.oauth === true;
+
+    if (isBreakGlass && fromOAuth) {
+      throw new APIError("FORBIDDEN", {
+        code: BREAK_GLASS_OAUTH_REFUSED,
+        message: "The break-glass account signs in only at /admin/login.",
+      });
+    }
+
+    if (!isBreakGlass && !fromOAuth) {
+      throw new APIError("UNAUTHORIZED", {
+        code: BREAK_GLASS_ONLY_CODE,
+        message: INVALID_CREDENTIALS_MESSAGE,
+      });
+    }
+  };
+}
+
 /** Rejects when `work` does not settle within `timeoutMs`. */
 function withTimeout<T>(work: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -213,7 +307,59 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
       input.tenant === undefined || input.requestScope === undefined
         ? { account: accountHooks(input) }
         : {
-            account: accountHooks(input),
+            account: {
+              ...accountHooks(input),
+              update: {
+                ...accountHooks(input).update,
+                async after(data, context) {
+                  if (
+                    data.providerId !== CREDENTIAL_PROVIDER_ID ||
+                    data.password === null ||
+                    data.password === undefined
+                  )
+                    return;
+                  const [owner] = await input.db
+                    .select({
+                      mustChangePassword: user.mustChangePassword,
+                      twoFactorEnabled: user.twoFactorEnabled,
+                    })
+                    .from(user)
+                    .where(eq(user.id, data.userId));
+                  // R-65: the first successful change of the provisioning password clears the
+                  // forced-change condition. When the authenticator is already enrolled both
+                  // conditions are done, so the account's other sessions go.
+                  if (owner?.mustChangePassword !== true) return;
+                  await input.db
+                    .update(user)
+                    .set({ mustChangePassword: false, updatedAt: sql`now()` })
+                    .where(eq(user.id, data.userId));
+                  if (owner.twoFactorEnabled !== true) return;
+                  // SAFETY: `GenericEndpointContext.context` is the endpoint's own context, whose
+                  // `session` is the signed-in session on the change-password path; the cast only
+                  // names the one field read here and no value crosses a boundary.
+                  const currentSessionId = (
+                    context as {
+                      readonly context?: {
+                        readonly session?: {
+                          readonly session?: {
+                            readonly id?: string | undefined;
+                          };
+                        } | null;
+                      };
+                    } | null
+                  )?.context?.session?.session?.id;
+                  if (currentSessionId === undefined) return;
+                  await input.db
+                    .delete(session)
+                    .where(
+                      and(
+                        eq(session.userId, data.userId),
+                        ne(session.id, currentSessionId)
+                      )
+                    );
+                },
+              },
+            },
             user: {
               create: {
                 async before(_data: { readonly email: string }) {
@@ -226,6 +372,7 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
             },
             session: {
               create: {
+                before: sessionCreateBefore(input),
                 async after(data: {
                   readonly userId: string;
                   readonly userAgent?: string | null | undefined;
@@ -275,6 +422,128 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
     },
     // Break-glass only: email and password is enabled, and sign-up is refused (R-62, D2-5).
     emailAndPassword: { enabled: true, disableSignUp: true },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        const tenant = input.tenant?.();
+        if (tenant === undefined) return;
+        if (ctx.path === "/sign-in/email") {
+          // R-19 to R-21: every credential attempt counts against the per-deployment window,
+          // and a refusal is one `auth:rate_limited` row with the neutral minutes the card shows.
+          const decision = await consumeRateLimit(tenant, {
+            endpoint: "break_glass_sign_in",
+            subject: DEPLOYMENT_RATE_LIMIT_SUBJECT,
+          });
+          if (!decision.allowed) {
+            await writeAuthAuditEvent(tenant, {
+              action: "auth:rate_limited",
+              summary:
+                "Break-glass sign-in refused by the fixed-window rate limit",
+              metadata: {
+                endpoint: decision.endpoint,
+                subjectKind: decision.subjectKind,
+                windowMinutes: decision.windowMinutes,
+                retryAfterMinutes: decision.retryAfterMinutes,
+              },
+            });
+            return new Response(
+              JSON.stringify({
+                code: RATE_LIMITED_CODE,
+                retryAfterMinutes: decision.retryAfterMinutes,
+              }),
+              { status: 429, headers: { "content-type": "application/json" } }
+            );
+          }
+          return;
+        }
+        if (
+          ctx.path !== "/change-password" &&
+          ctx.path !== "/two-factor/enable"
+        )
+          return;
+        const cookieName = ctx.context.authCookies.sessionToken.name;
+        const token = await ctx.getSignedCookie(cookieName, ctx.context.secret);
+        const found =
+          token === false || token === null
+            ? null
+            : await ctx.context.internalAdapter.findSession(token);
+        const person = found?.user;
+        // R-63: the two-factor endpoints and the password change are the break-glass account's.
+        if (person !== undefined && person.isBreakGlass !== true) {
+          throw new APIError("FORBIDDEN", {
+            code: BREAK_GLASS_ONLY_CODE,
+            message: "This endpoint is for the break-glass account only.",
+          });
+        }
+        // R-64: the server check is the same rule the client meter reads, plus the save-time
+        // clause that the new password is not the provisioning password it replaces.
+        if (ctx.path === "/change-password" && person !== undefined) {
+          const body = changePasswordBody.safeParse(ctx.body);
+          if (
+            body.success &&
+            !(
+              meetsPasswordRule(body.data.newPassword, person.email) &&
+              body.data.newPassword !== body.data.currentPassword
+            )
+          ) {
+            throw new APIError("BAD_REQUEST", {
+              code: PASSWORD_POLICY_CODE,
+              message: "The new password does not meet the password policy.",
+            });
+          }
+        }
+        return;
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        const tenant = input.tenant?.();
+        if (tenant === undefined) return;
+        if (
+          ctx.path !== "/sign-in/email" &&
+          ctx.path !== "/two-factor/verify-totp"
+        )
+          return;
+        const created = ctx.context.newSession;
+        const person = created?.user;
+        if (person === undefined || person.isBreakGlass !== true) return;
+        // The temporary session `/sign-in/email` creates for an enrolled account is not a
+        // completed sign-in; the code step completes it, so only that step records the row.
+        if (ctx.path === "/sign-in/email" && person.twoFactorEnabled === true)
+          return;
+        const activeCookie =
+          ctx.path === "/two-factor/verify-totp"
+            ? await ctx.getSignedCookie(
+                ctx.context.authCookies.sessionToken.name,
+                ctx.context.secret
+              )
+            : undefined;
+        const enrollment = activeCookie !== false && activeCookie !== undefined;
+        if (enrollment) {
+          // R-65: enrollment is complete. Keep the session it just created and drop the rest.
+          if (created?.session.id !== undefined) {
+            await input.db
+              .delete(session)
+              .where(
+                and(
+                  eq(session.userId, person.id),
+                  ne(session.id, created.session.id)
+                )
+              );
+          }
+          await writeAuthAuditEvent(tenant, {
+            action: "auth:break_glass_authenticator_enrolled",
+            actorUserId: person.id,
+            targetUserId: person.id,
+            summary: "Break-glass authenticator enrolled",
+          });
+          return;
+        }
+        await writeAuthAuditEvent(tenant, {
+          action: "auth:break_glass_sign_in",
+          actorUserId: person.id,
+          targetUserId: person.id,
+          summary: "Break-glass sign-in",
+        });
+      }),
+    },
     advanced: {
       useSecureCookies: false,
       crossSubDomainCookies: { enabled: false },
@@ -285,13 +554,18 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
       // R-4a, R-16: the client address comes from X-Forwarded-For only behind a trusted proxy.
       ipAddress: { trustedProxies: [...input.trustedProxies] },
     },
-    plugins: withKeycloak
-      ? [
-          genericOAuth({
-            config: [keycloakProviderConfig(providerInput(input))],
-          }),
-        ]
-      : [],
+    plugins: [
+      // R-63: the two-factor plugin backs the break-glass account's authenticator. The issuer is
+      // the product name the enrollment caller supplies; this is the fallback.
+      twoFactorPlugin({ issuer: TOTP_ISSUER_DEFAULT }),
+      ...(withKeycloak
+        ? [
+            genericOAuth({
+              config: [keycloakProviderConfig(providerInput(input))],
+            }),
+          ]
+        : []),
+    ],
   });
 }
 
@@ -318,6 +592,9 @@ function toSession(
       email: value.user.email,
       name: value.user.name,
       emailVerified: value.user.emailVerified,
+      isBreakGlass: value.user.isBreakGlass === true,
+      mustChangePassword: value.user.mustChangePassword === true,
+      twoFactorEnabled: value.user.twoFactorEnabled === true,
     },
     session: {
       id: value.session.id,

@@ -31,6 +31,12 @@ export type AuthSessionUser = {
   readonly email: string;
   readonly name: string;
   readonly emailVerified: boolean;
+  /** The break-glass account's flag; decides the limited-session rule (R-30, R-65). */
+  readonly isBreakGlass: boolean;
+  /** True until the forced password change completes (R-65). */
+  readonly mustChangePassword: boolean;
+  /** True once an authenticator is enrolled (R-63). */
+  readonly twoFactorEnabled: boolean;
 };
 
 export type AuthSession = {

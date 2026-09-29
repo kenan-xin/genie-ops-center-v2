@@ -20,6 +20,8 @@ export const AUDIT_ACTIONS = [
   "auth:groups_claim_absent",
   "auth:rate_limited",
   "auth:break_glass_sign_in",
+  "auth:break_glass_password_changed",
+  "auth:break_glass_authenticator_enrolled",
   // Administration (Section 2).
   "core:person_added",
   "core:role_assignment_added",

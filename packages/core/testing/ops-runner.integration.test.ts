@@ -2,8 +2,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { verifyPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
@@ -12,6 +15,7 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { account, session, twoFactor, user } from "../src/schema.ts";
 import { writeAuditEvent } from "../src/services/audit/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
@@ -20,7 +24,7 @@ import {
   runMigrations,
 } from "../src/services/migrator/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
-import { startDisposablePostgres } from "./index.ts";
+import { insertCredentialPerson, startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -417,6 +421,137 @@ describe("genie-ops parse guards", () => {
     ).resolves.not.toBe(0);
 
     expect(captured.lines.join("\n")).not.toContain(fakeSecret);
+  }, 120000);
+});
+
+describe("genie-ops break-glass rotate", () => {
+  it("rotates the password, clears the authenticator, sets the forced change and deletes sessions in one transaction, with one audit row (R-60, R-61, AC-13)", async () => {
+    const { source, context } = await fixture();
+
+    const oldPassword = "temporary-pass-1!";
+
+    const userId = await insertCredentialPerson(context, {
+      email: "rotate@example.invalid",
+      password: oldPassword,
+    });
+
+    // A verified authenticator and a live session, both of which the rotation must clear.
+    await context.db.insert(twoFactor).values({
+      id: "tf-rotate",
+      userId,
+      secret: "sealed-secret",
+      backupCodes: "sealed-codes",
+      verified: true,
+    });
+    await context.db.insert(session).values({
+      id: "s-rotate",
+      token: "token-rotate",
+      userId,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(["break-glass", "rotate"], {
+        source,
+        compiledModules: [],
+        histories: [],
+        ...captured,
+      })
+    ).resolves.toBe(0);
+
+    // One operator row, and the summary prints the password exactly once (R-61, R-60).
+    const rows = await auditRows(context);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actor_user_id: null,
+      action: "ops:break-glass-rotate",
+      metadata: { args: [], outcome: "success" },
+    });
+    expect(JSON.stringify(rows[0]?.metadata)).not.toContain("password");
+
+    const printed = captured.lines.filter((line) =>
+      line.includes("break-glass rotate:")
+    );
+
+    expect(printed).toHaveLength(1);
+
+    // The old password no longer verifies and the printed one does.
+    const [credential] = await context.db
+      .select({ password: account.password })
+      .from(account)
+      .where(eq(account.userId, userId));
+
+    expect(
+      await verifyPassword({
+        hash: credential?.password ?? "",
+        password: oldPassword,
+      })
+    ).toBe(false);
+
+    // The command's output is the tenant-bound JSON log line; the one-time password is its `msg`.
+    const line = z
+      .object({ msg: z.string() })
+      .safeParse(JSON.parse(printed[0] ?? "{}"));
+
+    const newPassword = line.success
+      ? (line.data.msg.match(/password: (\S+)$/)?.[1] ?? "")
+      : "";
+
+    expect(newPassword).toHaveLength(20);
+    expect(
+      await verifyPassword({
+        hash: credential?.password ?? "",
+        password: newPassword,
+      })
+    ).toBe(true);
+
+    // The forced change is set, the authenticator is gone, and every session is deleted.
+    const [owner] = await context.db
+      .select({
+        mustChangePassword: user.mustChangePassword,
+        twoFactorEnabled: user.twoFactorEnabled,
+      })
+      .from(user)
+      .where(eq(user.id, userId));
+
+    expect(owner).toMatchObject({
+      mustChangePassword: true,
+      twoFactorEnabled: false,
+    });
+    expect(
+      await context.db
+        .select()
+        .from(twoFactor)
+        .where(eq(twoFactor.userId, userId))
+    ).toHaveLength(0);
+    expect(
+      await context.db.select().from(session).where(eq(session.userId, userId))
+    ).toHaveLength(0);
+  }, 120000);
+
+  it("refuses a rotation when the deployment has no break-glass account", async () => {
+    const { source, context } = await fixture();
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(["break-glass", "rotate"], {
+        source,
+        compiledModules: [],
+        histories: [],
+        ...captured,
+      })
+    ).resolves.not.toBe(0);
+
+    expect(captured.lines.join("\n")).toMatch(/no break-glass account/);
+
+    const rows = await auditRows(context);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      action: "ops:break-glass-rotate",
+      metadata: { outcome: "failure" },
+    });
   }, 120000);
 });
 

@@ -153,13 +153,19 @@ export const APPLICATION_USER_FIELDS = {
   firstSignInAt: { type: "date", required: false, input: false },
   lastSignInAt: { type: "date", required: false, input: false },
   erasedAt: { type: "date", required: false, input: false },
-  // Written only by the admin and two-factor plugins, which are not installed yet. Declared here so
-  // that installing one later cannot make them writable by accident (D2-5).
+  // Written only by the admin plugin, which is not installed yet. Declared here so that
+  // installing it later cannot make them writable by accident (D2-5). The two-factor plugin is
+  // installed and declares `twoFactorEnabled` itself, also `input: false`.
   banned: { type: "boolean", required: false, input: false },
   banReason: { type: "string", required: false, input: false },
   banExpires: { type: "date", required: false, input: false },
-  twoFactorEnabled: { type: "boolean", required: false, input: false },
 } as const;
+
+/**
+ * The TOTP issuer the two-factor plugin falls back to (R-63). The enrollment caller passes the
+ * tenant product name in the request body, so this is only the default when it does not.
+ */
+export const TOTP_ISSUER_DEFAULT = "Genie Ops Center";
 
 /**
  * The application columns on `session` no Better Auth endpoint may write (`input: false`).

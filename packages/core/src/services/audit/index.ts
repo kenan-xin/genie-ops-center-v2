@@ -56,7 +56,11 @@ export async function writeAuthAuditEvent(
     readonly action:
       | "auth:sign_in"
       | "auth:sign_in_refused"
-      | "auth:groups_claim_absent";
+      | "auth:groups_claim_absent"
+      | "auth:rate_limited"
+      | "auth:break_glass_sign_in"
+      | "auth:break_glass_password_changed"
+      | "auth:break_glass_authenticator_enrolled";
     readonly actorUserId?: string | null;
     readonly targetUserId?: string | null;
     readonly summary: string;
