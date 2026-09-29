@@ -92,6 +92,7 @@ function request(person: string, modules: readonly Module[]) {
     tenant: deployment.context,
     modules,
     userId: people[person],
+    authenticated: true,
   });
 }
 

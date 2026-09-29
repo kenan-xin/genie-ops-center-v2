@@ -41,7 +41,13 @@ export default async function AccountPage() {
 
   const tenant = app.tenant;
 
-  const principal = principalFor({ tenant, modules, userId });
+  const principal = principalFor({
+    tenant,
+    modules,
+    userId,
+    // The enforced read above returned an authenticated state, or this page redirected away.
+    authenticated: true,
+  });
 
   const [groups, summaries, sessions, branding] = await Promise.all([
     readOwnGroups(tenant, userId),

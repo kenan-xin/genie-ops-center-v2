@@ -29,11 +29,12 @@ export async function GET(request: Request): Promise<Response> {
   const permitted = await permittedNavigation({
     entitlements: app.tenant.entitlements,
     modules,
-    // The session was read once above; its user id is the principal (R-27).
+    // The session was read once above and was not null; its user id is the principal (R-27).
     caller: principalFor({
       tenant: app.tenant,
       modules,
       userId: session.user.id,
+      authenticated: true,
     }),
   });
 

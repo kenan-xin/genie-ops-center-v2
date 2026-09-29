@@ -103,7 +103,12 @@ afterAll(async () => {
 
 /** One request: a fresh principal with its own loader, never shared (R-27). */
 function request(userId: string | undefined) {
-  return principalFor({ tenant: deployment.context, modules, userId });
+  return principalFor({
+    tenant: deployment.context,
+    modules,
+    userId,
+    authenticated: userId !== undefined,
+  });
 }
 
 /** A pool that counts the statements the loader sends, and sends them to the real database. */
@@ -140,7 +145,7 @@ describe("the access seam against a real database", () => {
     const pool = countingPool();
 
     const caller = createRequestPrincipal(
-      { userId, groups: [] },
+      { userId, groups: [], authenticated: true },
       createGrantReader(pool.counting, userId, permissionCatalogue(modules))
     );
 
@@ -385,7 +390,7 @@ describe("the access seam against a real database", () => {
     const pool = countingPool();
 
     const anonymous = createRequestPrincipal(
-      { userId: "anonymous", groups: [] },
+      { userId: "anonymous", groups: [], authenticated: false },
       createGrantReader(pool.counting, undefined, permissionCatalogue(modules)),
       createRecordResolver(modules, deployment.context)
     );

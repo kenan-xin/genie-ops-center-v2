@@ -9,7 +9,6 @@ import type {
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import {
-  ANONYMOUS_USER_ID,
   type GrantReader,
   type PermissionGrants,
   type RoleSummary,
@@ -203,17 +202,24 @@ export function createRecordResolver(
 
 /**
  * The one lazy loader for a request (R-27): the tRPC context and the page loader call this once
- * per request and never share the result. `userId` is the signed-in person, or undefined for an
- * anonymous request. The worker does not build one per job run yet; a job that acts for a person
- * calls this once per run when that wiring lands.
+ * per request and never share the result. `userId` is the signed-in person's row id, and
+ * `authenticated` says whether this request's enforced session read (R-14) found a valid session.
+ * They are supplied separately on purpose: `userId` is unrestricted text, so no value of it - and
+ * no sentinel - can stand for "no session". The worker does not build one per job run yet; a job
+ * that acts for a person calls this once per run when that wiring lands.
  */
 export function principalFor(input: {
   readonly tenant: TenantContext;
   readonly modules: readonly Pick<Module, "permissions" | "recordTypes">[];
   readonly userId: string | undefined;
+  readonly authenticated: boolean;
 }): RequestPrincipal {
   return createRequestPrincipal(
-    { userId: input.userId ?? ANONYMOUS_USER_ID, groups: [] },
+    {
+      userId: input.userId ?? "",
+      groups: [],
+      authenticated: input.authenticated,
+    },
     createGrantReader(
       (text, values) => input.tenant.db.$client.query(text, [...values]),
       input.userId,

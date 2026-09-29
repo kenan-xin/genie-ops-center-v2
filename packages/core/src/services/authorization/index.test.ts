@@ -38,7 +38,7 @@ function grants(
 
 function principal(held: PermissionGrants, resolve?: RecordResolver) {
   return createRequestPrincipal(
-    { userId: "u1", groups: [] },
+    { userId: "u1", groups: [], authenticated: true },
     () => Promise.resolve(held),
     resolve
   );
@@ -160,7 +160,7 @@ describe("the lazy loader", () => {
     const reader = counting();
 
     const user = createRequestPrincipal(
-      { userId: "u1", groups: [] },
+      { userId: "u1", groups: [], authenticated: true },
       reader.read
     );
 
@@ -179,7 +179,7 @@ describe("the lazy loader", () => {
     let reads = 0;
 
     const user = createRequestPrincipal(
-      { userId: "u1", groups: [] },
+      { userId: "u1", groups: [], authenticated: true },
       async () => {
         reads += 1;
 
@@ -191,6 +191,34 @@ describe("the lazy loader", () => {
     await expect(can(user, "placeholder:read")).rejects.toThrow("loader down");
 
     expect(reads).toBe(1);
+  });
+
+  it("refuses an unauthenticated principal with no read, even when the loader would grant", async () => {
+    const reader = counting();
+
+    const user = createRequestPrincipal(
+      { userId: "anonymous", groups: [], authenticated: false },
+      reader.read
+    );
+
+    expect(await can(user, "placeholder:read")).toBe(false);
+    expect(await scopesFor(user, "placeholder:read")).toEqual({ kind: "none" });
+    expect(reader.reads()).toBe(0);
+  });
+
+  it("follows the real grants of a signed-in person whose id is the string anonymous", async () => {
+    // `userId` is the person's own row id and may be any text; authentication is the explicit
+    // flag, so an id that reads like a sentinel does not make a signed-in person anonymous.
+    const reader = counting();
+
+    const user = createRequestPrincipal(
+      { userId: "anonymous", groups: [], authenticated: true },
+      reader.read
+    );
+
+    expect(await can(user, "placeholder:read")).toBe(true);
+    expect(await scopesFor(user, "placeholder:read")).toEqual({ kind: "all" });
+    expect(reader.reads()).toBe(1);
   });
 });
 

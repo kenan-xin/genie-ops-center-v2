@@ -90,7 +90,12 @@ function filters(patch: Partial<AuditEventFilters> = {}): AuditEventFilters {
 }
 
 function request(userId: string | undefined): RequestPrincipal {
-  return principalFor({ tenant: deployment.context, modules, userId });
+  return principalFor({
+    tenant: deployment.context,
+    modules,
+    userId,
+    authenticated: userId !== undefined,
+  });
 }
 
 function read(options: {

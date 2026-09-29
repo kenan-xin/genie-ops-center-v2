@@ -221,6 +221,7 @@ function request(person: string) {
     tenant: deployment.context,
     modules: current,
     userId: people[person],
+    authenticated: true,
   });
 }
 

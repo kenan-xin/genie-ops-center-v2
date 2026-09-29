@@ -78,7 +78,12 @@ describe("readRoleSummaries", () => {
     });
 
     const rows = await readRoleSummaries(
-      principalFor({ tenant: context, modules: [], userId })
+      principalFor({
+        tenant: context,
+        modules: [],
+        userId,
+        authenticated: true,
+      })
     );
 
     expect(rows).toEqual([
@@ -106,7 +111,12 @@ describe("readRoleSummaries", () => {
 
     expect(
       await readRoleSummaries(
-        principalFor({ tenant: deployment.context, modules: [], userId: alone })
+        principalFor({
+          tenant: deployment.context,
+          modules: [],
+          userId: alone,
+          authenticated: true,
+        })
       )
     ).toEqual([]);
   });
@@ -131,7 +141,12 @@ describe("readRoleSummaries", () => {
 
     expect(
       await readRoleSummaries(
-        principalFor({ tenant: context, modules: [], userId })
+        principalFor({
+          tenant: context,
+          modules: [],
+          userId,
+          authenticated: true,
+        })
       )
     ).toEqual([]);
   });

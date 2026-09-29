@@ -49,12 +49,17 @@ function sameScope(left: Scope, right: Scope): boolean {
  * person holds the key anywhere. With one, a tenant-wide grant, a grant on the resource itself,
  * or a grant on one of the parents its module's resolver returns answers true (R-28). The
  * resolver runs only when no direct scope matched, and at most once per resource per request.
+ *
+ * A principal with no valid session is refused before anything is read: a request that is not
+ * authenticated is never granted, whatever assignments exist, and no assignment query runs.
  */
 export async function can(
   user: RequestPrincipal,
   permission: PermissionKey,
   resource?: ResourceRef
 ): Promise<boolean> {
+  if (!user.authenticated) return false;
+
   const grants = await user.grants();
 
   if (grants.bypass === true) return true;
@@ -81,11 +86,15 @@ export async function can(
 /**
  * The one scope filter for a list query (DEC-39). Parent scopes come back unchanged, for the
  * module to map onto its parent columns (R-29).
+ *
+ * Like `can()`, a principal with no valid session is refused with no scope and no read.
  */
 export async function scopesFor(
   user: RequestPrincipal,
   permission: PermissionKey
 ): Promise<ScopeSet> {
+  if (!user.authenticated) return { kind: "none" };
+
   const grants = await user.grants();
 
   if (grants.bypass === true) return { kind: "all" };

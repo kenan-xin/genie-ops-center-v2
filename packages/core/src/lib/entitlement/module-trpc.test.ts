@@ -30,11 +30,12 @@ function contextWithEntitlement(
   return {
     context: {
       tenant,
-      // The sentinel user id is what makes the principal unauthenticated.
+      // The explicit flag, not the user id, is what makes the principal unauthenticated.
       caller: createRequestPrincipal(
         {
           userId: options.anonymous === true ? "anonymous" : "test-user",
           groups: [],
+          authenticated: options.anonymous !== true,
         },
         () => Promise.resolve({ keys: new Set(), scopes: new Map() })
       ),

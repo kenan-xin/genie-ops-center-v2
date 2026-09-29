@@ -28,8 +28,9 @@ const stubContext: RequestContext = {
   app: stubApp,
   requestId: REQUEST_ID,
   tenant: stubTenant,
-  caller: createRequestPrincipal({ userId: "anonymous", groups: [] }, () =>
-    Promise.resolve({ keys: new Set(), scopes: new Map() })
+  caller: createRequestPrincipal(
+    { userId: "anonymous", groups: [], authenticated: false },
+    () => Promise.resolve({ keys: new Set(), scopes: new Map() })
   ),
 };
 

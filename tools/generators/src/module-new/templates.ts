@@ -938,6 +938,7 @@ function contextFor(userId: string | undefined) {
       tenant: deployment.context,
       modules: [${names.camel}Module],
       userId,
+      authenticated: userId !== undefined,
     }),
   } satisfies ModuleRequestContext;
 }

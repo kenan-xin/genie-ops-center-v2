@@ -44,14 +44,14 @@ export type PrincipalIdentity = {
   readonly userId: string;
   /** Carried for display only; the loader reads memberships itself on each request (R-27). */
   readonly groups: readonly string[];
+  /**
+   * Whether this request carries a valid session (Spec 2 R-14). It is set from the enforced
+   * session read and from nothing else - never from `userId`, which is the person's own row id and
+   * may be any text (a real row whose id happens to be `anonymous` is still signed in). `can()`
+   * and `scopesFor()` refuse a principal whose value is false before reading one assignment.
+   */
+  readonly authenticated: boolean;
 };
-
-/**
- * The user id a request without a valid session carries. A real id is a uuid, so this sentinel
- * cannot collide with one; `principalFor` is its only writer, and `createRequestPrincipal` reads
- * it to set `authenticated`.
- */
-export const ANONYMOUS_USER_ID = "anonymous";
 
 /**
  * The server-only wrapper `can()` and `scopesFor()` take. It is not the persisted user row, not a
@@ -100,7 +100,7 @@ export function createRequestPrincipal(
   };
 
   return {
-    authenticated: identity.userId !== ANONYMOUS_USER_ID,
+    authenticated: identity.authenticated,
     userId: identity.userId,
     groups: identity.groups,
     grants: () => {

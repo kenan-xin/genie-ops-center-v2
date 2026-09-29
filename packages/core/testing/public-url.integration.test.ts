@@ -103,11 +103,13 @@ describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
     try {
       const link = await context.fileStorage.createLink({
         fileId: "file-1",
-        principal: createRequestPrincipal({ userId: "u1", groups: [] }, () =>
-          Promise.resolve({
-            keys: new Set([GRANTED_KEY] as const),
-            scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
-          })
+        principal: createRequestPrincipal(
+          { userId: "u1", groups: [], authenticated: true },
+          () =>
+            Promise.resolve({
+              keys: new Set([GRANTED_KEY] as const),
+              scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
+            })
         ),
         permission: GRANTED_KEY,
         resource: { type: "document", id: "document-1" },

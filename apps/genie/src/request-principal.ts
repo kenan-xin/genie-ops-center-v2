@@ -14,9 +14,9 @@ import { modules } from "./registry.ts";
  *
  * The signed-in person's id comes from this request's Better Auth session (S2-04), which enforces
  * the idle rule (R-14): an idle-expired or capped session returns null, so the principal is
- * anonymous and `authenticated` is false - that is what a protected procedure refuses at 401. A
- * request with no session is anonymous, and the real evaluator refuses it everything without
- * reading a row.
+ * anonymous and `authenticated` is false - that is what a protected procedure refuses at 401, and
+ * what makes `can()` and `scopesFor()` refuse without reading a row. Both fields come from this
+ * one read, so no user id can imply a session.
  */
 export async function requestPrincipal(
   tenant: TenantContext,
@@ -28,5 +28,6 @@ export async function requestPrincipal(
     tenant,
     modules,
     userId: session?.user.id,
+    authenticated: session !== null,
   });
 }

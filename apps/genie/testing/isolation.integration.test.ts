@@ -132,7 +132,12 @@ function callerFor(
 ): ModuleRequestContext {
   return {
     tenant,
-    caller: principalFor({ tenant, modules: [placeholderModule], userId }),
+    caller: principalFor({
+      tenant,
+      modules: [placeholderModule],
+      userId,
+      authenticated: true,
+    }),
   };
 }
 

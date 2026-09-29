@@ -48,6 +48,7 @@ function contextFor(userId: string) {
       tenant: deployment.context,
       modules: [placeholderModule],
       userId,
+      authenticated: true,
     }),
   } satisfies ModuleRequestContext;
 }
@@ -107,6 +108,7 @@ describe("the placeholder read procedure against a real database", () => {
           tenant,
           modules: [placeholderModule],
           userId: await reader(),
+          authenticated: true,
         }),
       } satisfies ModuleRequestContext);
 
@@ -150,6 +152,7 @@ describe("the placeholder read procedure against a real database", () => {
         tenant: deployment.context,
         modules: [placeholderModule],
         userId: undefined,
+        authenticated: false,
       }),
     });
 

@@ -126,7 +126,10 @@ function contextWith(
         throw new Error("the router built a public link");
       },
     },
-    caller: createRequestPrincipal({ userId: "u1", groups: [] }, read),
+    caller: createRequestPrincipal(
+      { userId: "u1", groups: [], authenticated: true },
+      read
+    ),
   };
 }
 

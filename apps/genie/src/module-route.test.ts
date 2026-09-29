@@ -171,7 +171,7 @@ describe("the pinned key for a caller holding another key", () => {
     }
 
     const caller = createRequestPrincipal(
-      { userId: "reader", groups: [] },
+      { userId: "reader", groups: [], authenticated: true },
       granting(HELD_KEY)
     );
 
@@ -195,7 +195,7 @@ describe("the pinned key for a caller holding another key", () => {
     }
 
     const caller = createRequestPrincipal(
-      { userId: "member", groups: [] },
+      { userId: "member", groups: [], authenticated: true },
       granting(permission)
     );
 

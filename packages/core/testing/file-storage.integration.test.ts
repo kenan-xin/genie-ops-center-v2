@@ -72,11 +72,13 @@ type FileTenantContext = TenantContext & {
 const resource: ResourceRef = { type: "document", id: "document-1" };
 
 function principal(): RequestPrincipal {
-  return createRequestPrincipal({ userId: "u1", groups: [] }, () =>
-    Promise.resolve({
-      keys: new Set([GRANTED_KEY]),
-      scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
-    })
+  return createRequestPrincipal(
+    { userId: "u1", groups: [], authenticated: true },
+    () =>
+      Promise.resolve({
+        keys: new Set([GRANTED_KEY]),
+        scopes: new Map([[GRANTED_KEY, { kind: "all" } as const]]),
+      })
   );
 }
 
@@ -89,8 +91,9 @@ function principalWithGrant(
     scopes: new Map([[permission, { kind: "some", scopes: [scope] }]]),
   };
 
-  return createRequestPrincipal({ userId: "u1", groups: [] }, () =>
-    Promise.resolve(grants)
+  return createRequestPrincipal(
+    { userId: "u1", groups: [], authenticated: true },
+    () => Promise.resolve(grants)
   );
 }
 
@@ -560,7 +563,7 @@ describe("FileStorage against a real Postgres deployment", () => {
     let grantReads = 0;
 
     const fetchPrincipal = createRequestPrincipal(
-      { userId: "u1", groups: [] },
+      { userId: "u1", groups: [], authenticated: true },
       () => {
         grantReads += 1;
 
