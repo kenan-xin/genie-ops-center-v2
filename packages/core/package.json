@@ -8,6 +8,8 @@
     "./errors": "./src/lib/errors/index.ts",
     "./features/account": "./src/features/account/index.ts",
     "./features/audit": "./src/features/audit/index.ts",
+    "./features/groups": "./src/features/groups/index.ts",
+    "./features/roles": "./src/features/roles/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./testing/stage-workspace": "./testing/stage-workspace.ts",
