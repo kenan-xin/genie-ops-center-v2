@@ -293,6 +293,11 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
     }),
     trustedOrigins: [input.publicUrl],
     telemetry: { enabled: false },
+    // R-19 to R-21: the application's own fixed window (`rate_limit_window`) is the one limit on
+    // the four sensitive endpoints, so Better Auth's built-in in-memory limiter is off and cannot
+    // refuse a request the tenant's own window would have allowed. The two-factor plugin keeps its
+    // own per-code limit and account lockout (R-63).
+    rateLimit: { enabled: false },
     // R-44, R-45: every Better Auth line goes through the context's redacting logger.
     logger: {
       log: (level, message, ...args: unknown[]) => {
