@@ -63,6 +63,7 @@ export const E2E_READER_SPECS = [
   "sessions",
   "audit",
   "s-a",
+  "groups",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -100,6 +101,27 @@ export function e2eOnboardingEmail(
   project: string
 ): string {
   return `e2e.onboarding-${caseName}.${project}@example.com`;
+}
+
+/**
+ * The Groups and Roles proof's own realm users (S2-11). Both carry the same directory claim
+ * value: the group a directory group is pre-added for, mapped to a role, so a `jit` sign-in is
+ * admitted, and refused once that group is archived.
+ */
+export function e2eGroupsRolesEmail(
+  caseName: "admitted" | "refused",
+  project: string
+): string {
+  return `e2e.groups-roles-${caseName}.${project}@example.com`;
+}
+
+/**
+ * The directory claim value the S2-11 proof pre-adds and maps. It is scoped to the project,
+ * because the phone and desktop projects share one database: a group the phone run archived must
+ * not collide with the desktop run's own group.
+ */
+export function e2eGroupsRolesGroup(project: string): string {
+  return `E2E s2-11 mapped ${project}`;
 }
 
 /** The stand-in's master administrator, which `genie-ops setup` uses as its bootstrap credential. */
