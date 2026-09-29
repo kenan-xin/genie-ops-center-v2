@@ -8,11 +8,14 @@ import type { TenantContext } from "./index.ts";
  * the only writer and `withTransaction` the only reader, so the context keeps its two fixed
  * members (R-18) and no logger member reaches a caller. A context the factory did not build has
  * no entry, which is a programming error rather than a condition to swallow silently.
+ *
+ * Both this map and the transaction scope below live on the process global (like the application
+ * context slot in `apps/genie/src/context.ts`), because the framework compiles one source file
+ * into several server bundles: a module-local map would give the bootstrap bundle one registry
+ * and a route-handler bundle another, so a write from a procedure would not find the context the
+ * bootstrap built. The symbol is process-global, so every bundle instance reaches one map.
  */
-const contextLoggers = new WeakMap<
-  TenantContext,
-  Pick<RedactingLogger, "error">
->();
+const SLOT = Symbol.for("genie.with-transaction.slot");
 
 /**
  * The transaction, or savepoint, that the running code holds, with its after-commit register.
@@ -26,13 +29,34 @@ type Scope = {
 };
 
 /**
- * Marks the async context of a running `withTransaction` with its transaction and after-commit
- * registration, so any call made inside `fn` is refused instead of opening a second, independent
- * top-level transaction, and a service that emits into the transaction can find the list. A
- * savepoint opened with `tx.transaction(...)` marks its own callback the same way. The store
- * follows the async tree, so two concurrent calls in separate chains never see each other's mark.
+ * The per-process state `withTransaction` needs, kept on the process global (like the application
+ * context slot in `apps/genie/src/context.ts`). The framework compiles one source file into
+ * several server bundles, so a module-local map or `AsyncLocalStorage` would give the bootstrap
+ * bundle one instance and a route-handler bundle another: `loggers` is the logger each context was
+ * built with, and `scope` is the running transaction, which the event bus in another bundle reads.
  */
-const transactionScope = new AsyncLocalStorage<Scope>();
+type TransactionSlot = {
+  readonly loggers: WeakMap<TenantContext, Pick<RedactingLogger, "error">>;
+  readonly scope: AsyncLocalStorage<Scope>;
+};
+
+function slot(): TransactionSlot {
+  // SAFETY: this module is the only writer of the slot under this symbol, and it writes a
+  // TransactionSlot; a bundle that reads before any writer seeds one below.
+  const store = globalThis as Record<symbol, TransactionSlot | undefined>;
+  const existing = store[SLOT];
+
+  if (existing !== undefined) return existing;
+
+  const created: TransactionSlot = {
+    loggers: new WeakMap(),
+    scope: new AsyncLocalStorage(),
+  };
+
+  store[SLOT] = created;
+
+  return created;
+}
 
 /**
  * The after-commit registration of `tx`, which must be the transaction or savepoint that the
@@ -42,7 +66,7 @@ const transactionScope = new AsyncLocalStorage<Scope>();
  * `db.transaction` included, because its commit is not one a fast handler can follow.
  */
 export function currentAfterCommit(tx: TenantTransaction): AfterCommit {
-  const scope = transactionScope.getStore();
+  const scope = slot().scope.getStore();
 
   if (scope === undefined) {
     throw new Error(
@@ -76,7 +100,7 @@ function scopeSavepoints(
     const list = openAfterCommitList();
 
     const result = await open(async (savepoint) =>
-      transactionScope.run(
+      slot().scope.run(
         { tx: savepoint, register: list.register, root },
         async () => {
           scopeSavepoints(savepoint, list.register, root);
@@ -104,7 +128,7 @@ export function registerContextLogger(
   context: TenantContext,
   logger: Pick<RedactingLogger, "error">
 ): void {
-  contextLoggers.set(context, logger);
+  slot().loggers.set(context, logger);
 }
 
 /**
@@ -190,13 +214,13 @@ export async function withTransaction<T>(
   context: TenantContext,
   fn: (tx: TenantTransaction, afterCommit: AfterCommit) => Promise<T>
 ): Promise<T> {
-  if (transactionScope.getStore() !== undefined) {
+  if (slot().scope.getStore() !== undefined) {
     throw new Error(
       "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
     );
   }
 
-  const logger = contextLoggers.get(context);
+  const logger = slot().loggers.get(context);
 
   if (logger === undefined) {
     throw new Error(
@@ -215,7 +239,7 @@ export async function withTransaction<T>(
    * running, whose commit this entry must not follow.
    */
   const registerAfterCommit: AfterCommit = (entry) => {
-    const scope = transactionScope.getStore();
+    const scope = slot().scope.getStore();
 
     if (scope === undefined) {
       throw new Error("afterCommit can only be called while fn runs.");
@@ -233,7 +257,7 @@ export async function withTransaction<T>(
   const result = await context.db.transaction(async (tx) => {
     scopeSavepoints(tx, afterCommit.register, afterCommit.register);
 
-    return transactionScope.run(
+    return slot().scope.run(
       { tx, register: afterCommit.register, root: afterCommit.register },
       async () => {
         try {
