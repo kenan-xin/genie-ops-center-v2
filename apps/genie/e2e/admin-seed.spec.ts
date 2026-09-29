@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-import { e2eAdministratorEmail } from "../testing/e2e-keycloak.ts";
+import {
+  e2eAdministratorEmail,
+  e2eReaderEmail,
+} from "../testing/e2e-keycloak.ts";
 import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -13,7 +16,7 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
  * One administrator per Playwright project, listed in `tenant.yaml`, keeps the activation proof
  * independent at phone and desktop sizes (R-56).
  */
-test("AC-19: the first administrator signs in, is activated and sees the admin switch", async ({
+test("AC-19: the first administrator is activated and sees the admin switch", async ({
   page,
 }, testInfo) => {
   test.setTimeout(120000);
@@ -26,6 +29,14 @@ test("AC-19: the first administrator signs in, is activated and sees the admin s
   );
 
   expect(Number(done[0])).toBe(7);
+
+  // The roles step appended the enabled module's admin key to Tenant administrator (R-31, R-55),
+  // which is what makes the admin switch visible.
+  const administratorPermissions = await queryDatabase(
+    "select permissions::text from role where name = 'Tenant administrator'"
+  );
+
+  expect(administratorPermissions[0]).toContain("placeholder:admin");
 
   // The pre-added administrator is pending and invited (R-56), a local member of the seeded
   // Genie Administrators group, and holds Tenant administrator through it.
@@ -57,9 +68,23 @@ test("AC-19: the first administrator signs in, is activated and sees the admin s
 
   expect(after).toEqual(["active invited"]);
 
-  // The admin switch: the placeholder module's admin entry, which only a holder of its admin key
-  // reaches. Tenant administrator holds it because the roles step appended it (R-31, R-55).
-  await expect(
-    page.getByRole("link", { name: "Placeholder settings" })
-  ).toBeVisible();
+  // The admin switch: the workspace lands the administrator on an admin-surface entry, which only
+  // a holder of a module admin key (through Tenant administrator) is offered (R-31, R-34).
+  await expect(page.locator('a[href^="/admin"]').first()).toBeVisible();
+});
+
+test("AC-19: a member without an admin key sees no admin switch", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120000);
+
+  // The pre-added placeholder reader holds `placeholder:read` and `placeholder:use`, not the
+  // module's admin key, so the admin switch must be absent for them.
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("placeholder", testInfo.project.name),
+  });
+
+  await expect(page.locator('nav[aria-label] a[href^="/admin"]')).toHaveCount(
+    0
+  );
 });

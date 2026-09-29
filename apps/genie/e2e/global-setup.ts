@@ -164,18 +164,19 @@ async function runGenieOpsSetup(): Promise<void> {
 }
 
 /**
- * Seeds what setup does not write: the enabled modules, the one signed-in person the browser
- * proofs need (a pre-added `user` row, because S2-05 owns onboarding), a role holding
- * `placeholder:read` and the module-use keys, its assignment, one visible placeholder record, and
- * the break-glass account whose email a realm user also holds (R-62). No groups sync exists yet
- * (S2-05), so the assignment is direct.
+ * Seeds what setup does not write: the one signed-in person the browser proofs need (a pre-added
+ * `user` row, because S2-05 owns onboarding), a role holding `placeholder:read` and the module-use
+ * keys, its assignment, one visible placeholder record, and the break-glass account whose email a
+ * realm user also holds (R-62). No groups sync exists yet (S2-05), so the assignment is direct.
+ *
+ * It does not write `tenant_module` rows: setup's `seed` step enables every compiled module before
+ * the `roles` step runs, so `roles` appends each module's admin key to `Tenant administrator` the
+ * normal way (R-31, R-55) rather than through a raw-SQL enable that bypasses that append.
  */
 async function seedTestSetup(): Promise<void> {
   const moduleIds = ["placeholder", process.env.GENIE_MODULE_UNDER_TEST].filter(
     (id) => id !== undefined
   );
-
-  const moduleRows = moduleIds.map((id) => `('${id}', true)`).join(", ");
 
   const permissions = [
     "placeholder:read",
@@ -203,7 +204,6 @@ async function seedTestSetup(): Promise<void> {
     "ON_ERROR_STOP=1",
     "-c",
     [
-      `insert into tenant_module (module_id, enabled) values ${moduleRows} on conflict (module_id) do update set enabled = true`,
       "insert into placeholder_record (label) select 'e2e-visible' where not exists (select 1 from placeholder_record where label = 'e2e-visible')",
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(READER_EMAILS, false)}, ${userRows(BREAK_GLASS_EMAILS, true)} on conflict (email) do nothing`,
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(OFFBOARD_EMAILS, false)} on conflict (email) do nothing`,
