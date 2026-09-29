@@ -2,7 +2,9 @@ import { CORE_ERROR_MESSAGES, CORE_HISTORY } from "@genie/core";
 import {
   enableModules,
   insertCredentialPerson,
+  insertSession,
   markSetupDone,
+  signedSessionCookie,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import {
@@ -19,6 +21,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { t } from "../src/trpc/init.ts";
+import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
@@ -132,7 +135,7 @@ describe("both transports", () => {
     const email = "transport-reader@example.com";
     const password = "transport-reader-password-14";
 
-    await insertCredentialPerson(deployment.context, {
+    const userId = await insertCredentialPerson(deployment.context, {
       email,
       password,
       isBreakGlass: false,
@@ -143,25 +146,15 @@ describe("both transports", () => {
       label: "transport-visible",
     });
 
-    // Break-glass sign-in through the app's own auth, the one non-OAuth path (R-62, D2-5). The
-    // public origin is the trusted origin, so the CSRF check passes.
-    const signIn = await fetch(`${baseUrl()}/api/auth/sign-in/email`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "origin": "https://example.invalid",
-      },
-      body: JSON.stringify({ email, password }),
+    // A real session, minted directly: R-62 lets only the break-glass account sign in with a
+    // password, so the reader's session row is written and its cookie signed the same way.
+    const token = await insertSession(deployment.context, { userId });
+
+    const cookie = await signedSessionCookie({
+      token,
+      secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
+      name: "__Host-genie-session",
     });
-
-    expect(signIn.status, await signIn.clone().text()).toBe(200);
-
-    const cookie = signIn.headers
-      .getSetCookie()
-      .map((value) => value.split(";")[0] ?? "")
-      .join("; ");
-
-    expect(cookie.length).toBeGreaterThan(0);
 
     const read = await fetch(
       `${baseUrl()}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,

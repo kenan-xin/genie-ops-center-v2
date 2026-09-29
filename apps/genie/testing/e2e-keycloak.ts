@@ -33,6 +33,13 @@ export const E2E_ADMIN_CLIENT_SECRET = "e2e-admin-client-secret";
 
 export const E2E_USER_PASSWORD = "e2e-person-password-14";
 
+/**
+ * The provisioning password the global setup writes onto every break-glass account, so the browser
+ * proof can sign in and then replace it (R-57, R-62 to R-65). The real `break_glass` step prints
+ * its own generated value; this test-only value is hashed with the app's hasher and written by SQL.
+ */
+export const E2E_BREAK_GLASS_PASSWORD = "e2e-break-glass-password-14";
+
 type RealmUserRepresentation = {
   readonly id: string;
   readonly username: string;

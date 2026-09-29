@@ -21,6 +21,8 @@ export async function insertCredentialPerson(
     readonly name?: string;
     readonly isBreakGlass?: boolean;
     readonly status?: string;
+    readonly mustChangePassword?: boolean;
+    readonly twoFactorEnabled?: boolean;
     readonly permissions?: readonly string[];
   }
 ): Promise<string> {
@@ -33,6 +35,8 @@ export async function insertCredentialPerson(
     emailVerified: true,
     isBreakGlass: input.isBreakGlass ?? true,
     status: input.status ?? "active",
+    mustChangePassword: input.mustChangePassword ?? false,
+    twoFactorEnabled: input.twoFactorEnabled ?? false,
   });
 
   await context.db.insert(account).values({

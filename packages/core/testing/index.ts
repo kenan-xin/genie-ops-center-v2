@@ -24,6 +24,12 @@ export {
 
 export { insertCredentialPerson } from "./auth-fixtures.ts";
 
+export { insertSession, signedSessionCookie } from "./session-fixtures.ts";
+
+// The Better Auth password hasher, for a test harness that must write a credential account by SQL
+// (the e2e global setup) rather than through a context.
+export { hashPassword } from "better-auth/crypto";
+
 export { markSetupDone } from "./mark-setup-done.ts";
 
 export { startDisposablePostgres } from "./postgres.ts";

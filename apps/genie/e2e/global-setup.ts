@@ -7,10 +7,13 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { GENIE_ADMINISTRATORS_GROUP } from "@genie/core";
+import { hashPassword } from "@genie/core/testing";
 
+import {
 import {
   allowE2eRealmGroupsAttribute,
   createRealmUser,
+  E2E_BREAK_GLASS_PASSWORD,
   E2E_ADMIN_CLIENT_SECRET,
   E2E_BOOTSTRAP_PASSWORD,
   E2E_BOOTSTRAP_USER,
@@ -235,6 +238,38 @@ async function seedTestSetup(): Promise<void> {
 }
 
 /**
+ * Gives every break-glass account a credential with the known provisioning password and the R-65
+ * initial flags (`must_change_password` true, no authenticator), so the browser proof can run the
+ * forced first sign-in. The real `break_glass` step prints its own generated value; this test-only
+ * hash is written with SQL, through the app's own hasher so `verifyPassword` accepts it.
+ */
+async function seedBreakGlassAccounts(): Promise<void> {
+  const hash = await hashPassword(E2E_BREAK_GLASS_PASSWORD);
+
+  await run("docker", [
+    ...COMPOSE,
+    "exec",
+    "-T",
+    "database",
+    "psql",
+    "-U",
+    "genie",
+    "-d",
+    "genie",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    [
+      `update "user" set must_change_password = true, two_factor_enabled = false, email_verified = true, status = 'active' where is_break_glass`,
+      `delete from session where user_id in (select id from "user" where is_break_glass)`,
+      `delete from two_factor where user_id in (select id from "user" where is_break_glass)`,
+      `delete from account where provider_id = 'credential' and user_id in (select id from "user" where is_break_glass)`,
+      `insert into account (id, account_id, provider_id, user_id, password) select gen_random_uuid(), u.id, 'credential', u.id, '${hash}' from "user" u where u.is_break_glass`,
+    ].join("; "),
+  ]);
+}
+
+/**
  * Polls readiness sequentially; each attempt exists only because the previous one did not answer.
  * `body` names the health answer to wait for; without it any 200 is ready.
  */
@@ -313,6 +348,7 @@ export default async function globalSetup(): Promise<void> {
 
     if (!setupGate) {
       await runGenieOpsSetup();
+      await seedBreakGlassAccounts();
       await allowE2eRealmGroupsAttribute(E2E_SIGN_IN_REALM);
 
       await Promise.all(

@@ -2,12 +2,15 @@ import { CORE_ERROR_MESSAGES } from "@genie/core";
 import {
   enableModules,
   insertCredentialPerson,
+  insertSession,
   markSetupDone,
+  signedSessionCookie,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
@@ -62,52 +65,25 @@ afterAll(async () => {
   await deployment?.stop().catch(() => undefined);
 });
 
-const SIGN_IN_ATTEMPTS = 4;
+/** The application's cookie name over its HTTPS public URL (R-4a, `sessionCookieName`). */
+const SESSION_COOKIE = "__Host-genie-session";
 
 /**
- * Signs one credential person in through the app's own auth and answers the session cookie.
- *
- * Break-glass sign-in is rate limited (R-19): Better Auth answers three `POST /sign-in/email`
- * calls per ten seconds from one address, and this file signs in several people from the one test
- * address. A 429 names its delay in `X-Retry-After`, so the helper waits the window out rather
- * than failing the case.
+ * A real session for one person, written directly and signed the way Better Auth does. R-62 lets
+ * only the break-glass account sign in with a password, so an ordinary person's session is minted
+ * here; the session row, the enforced reads and the evaluator stay real.
  */
-async function signIn(email: string, password: string): Promise<string> {
-  /* eslint-disable no-await-in-loop -- a rate-limited sign-in is retried after the window it names. */
-  for (let attempt = 0; attempt < SIGN_IN_ATTEMPTS; attempt += 1) {
-    const response = await fetch(`${baseUrl()}/api/auth/sign-in/email`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "origin": "https://example.invalid",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+async function cookieFor(userId: string, expiresAt?: Date): Promise<string> {
+  const token = await insertSession(
+    deployment.context,
+    expiresAt === undefined ? { userId } : { userId, expiresAt }
+  );
 
-    if (response.status === 429) {
-      const retryAfter = Number(response.headers.get("x-retry-after") ?? "10");
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, (retryAfter + 1) * 1000)
-      );
-
-      continue;
-    }
-
-    expect(response.status, await response.clone().text()).toBe(200);
-
-    const cookie = response.headers
-      .getSetCookie()
-      .map((value) => value.split(";")[0] ?? "")
-      .join("; ");
-
-    expect(cookie.length).toBeGreaterThan(0);
-
-    return cookie;
-  }
-  /* eslint-enable no-await-in-loop */
-
-  throw new Error("the sign-in stayed rate limited past every attempt");
+  return signedSessionCookie({
+    token,
+    secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
+    name: SESSION_COOKIE,
+  });
 }
 
 async function readAnswer(cookie?: string): Promise<{
@@ -146,13 +122,13 @@ describe("the tRPC answer for an unauthenticated request", () => {
 
     // A real person holding no key of the module: the refusal is their missing permission, not
     // their session, so it stays forbidden.
-    await insertCredentialPerson(deployment.context, {
+    const userId = await insertCredentialPerson(deployment.context, {
       email,
       password: "trpc-no-grant-password-14",
       isBreakGlass: false,
     });
 
-    const cookie = await signIn(email, "trpc-no-grant-password-14");
+    const cookie = await cookieFor(userId);
 
     const answer = await readAnswer(cookie);
 
@@ -165,14 +141,14 @@ describe("the tRPC answer for an unauthenticated request", () => {
   it("answers an idle-expired session unauthenticated at 401", async () => {
     const email = "trpc-idle@example.com";
 
-    await insertCredentialPerson(deployment.context, {
+    const userId = await insertCredentialPerson(deployment.context, {
       email,
       password: "trpc-idle-password-14",
       isBreakGlass: false,
       permissions: ["placeholder:read"],
     });
 
-    const cookie = await signIn(email, "trpc-idle-password-14");
+    const cookie = await cookieFor(userId);
 
     // Positive control: inside the window the same cookie reads the module.
     const before = await readAnswer(cookie);
@@ -221,14 +197,14 @@ describe("the tRPC answer for an unauthenticated request", () => {
   it("answers an expired session with an invalid audit cursor unauthenticated, not invalid-input", async () => {
     const email = "trpc-audit-cursor@example.com";
 
-    await insertCredentialPerson(deployment.context, {
+    const userId = await insertCredentialPerson(deployment.context, {
       email,
       password: "trpc-audit-cursor-password-14",
       isBreakGlass: false,
       permissions: ["core:audit:read"],
     });
 
-    const cookie = await signIn(email, "trpc-audit-cursor-password-14");
+    const cookie = await cookieFor(userId);
 
     // Positive control: a live session reaches the parser, so the bad cursor is invalid input.
     const invalidBefore = await fetch(invalidAuditCursorUrl(), {
@@ -258,20 +234,15 @@ describe("the tRPC answer for an unauthenticated request", () => {
   it("answers a session past its absolute cap unauthenticated at 401", async () => {
     const email = "trpc-capped@example.com";
 
-    await insertCredentialPerson(deployment.context, {
+    const userId = await insertCredentialPerson(deployment.context, {
       email,
       password: "trpc-capped-password-14",
       isBreakGlass: false,
       permissions: ["placeholder:read"],
     });
 
-    const cookie = await signIn(email, "trpc-capped-password-14");
-
     // Better Auth refuses an expired row before the idle rule, so the request is anonymous.
-    await deployment.context.db.$client.query(
-      "update session set expires_at = now() - interval '1 minute' where user_id = (select id from \"user\" where email = $1)",
-      [email]
-    );
+    const cookie = await cookieFor(userId, new Date(Date.now() - 60_000));
 
     const answer = await readAnswer(cookie);
 

@@ -22,9 +22,10 @@ const CONTEXT_HEADER = "x-genie-context-id";
 const READER_PASSWORD = "two-stack-reader-password-14";
 
 /**
- * Signs one stack's reader in through the app's own break-glass email-password path (R-62) and
- * returns the session cookie. The two stacks use the same public origin, so the CSRF check passes
- * with that origin; each read below carries its own stack's cookie.
+ * Signs one stack's reader in through the app's own email-password door (R-62). Since R-62 refuses
+ * a credential session for anyone but the break-glass account, each reader is that account, set
+ * unlimited so it bypasses `can()`. The cookie is a real session row in that stack's database; the
+ * two stacks use the same public origin, so the same-origin check passes for both.
  */
 async function signIn(
   request: APIRequestContext,
@@ -115,20 +116,21 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       insertPlaceholderRecord(second.context, { label: "second-stack-only" }),
     ]);
 
-    // One reader per stack, holding `placeholder:read` through a real role assignment in that
-    // stack's own database, so each read below is authorized by the real evaluator (S2-04).
+    // One unlimited break-glass reader per stack, so each stack has a real session row in its own
+    // database. R-62 refuses a credential session for anyone else, so this is the account a
+    // browser path can use here; the proof below is that each stack serves only its own row.
     await Promise.all([
       insertCredentialPerson(first.context, {
         email: "first-reader@example.com",
         password: READER_PASSWORD,
-        isBreakGlass: false,
-        permissions: ["placeholder:read"],
+        mustChangePassword: false,
+        twoFactorEnabled: true,
       }),
       insertCredentialPerson(second.context, {
         email: "second-reader@example.com",
         password: READER_PASSWORD,
-        isBreakGlass: false,
-        permissions: ["placeholder:read"],
+        mustChangePassword: false,
+        twoFactorEnabled: true,
       }),
     ]);
 
