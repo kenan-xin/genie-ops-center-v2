@@ -17,6 +17,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "A database migration did not finish. The server did not start.",
   "not-found": "That item does not exist, or you may not see it.",
   "forbidden": "You may not do that.",
+  "unauthenticated": "You need to sign in to do that.",
   "invalid-input": "The request was not valid.",
   "module-disabled": "That module is switched off for this deployment.",
   "mail-not-configured":

@@ -52,12 +52,16 @@ type RealmUserRepresentation = {
  */
 export const E2E_PROJECTS = ["phone", "desktop"] as const;
 
-/** The specs whose signed-in person holds the reader role (`placeholder:read` and module use). */
+/**
+ * The specs whose signed-in person holds the reader role (`placeholder:read`, module use, and
+ * `core:audit:read` for the audit log's browser proof).
+ */
 export const E2E_READER_SPECS = [
   "placeholder",
   "generated",
   "auth",
   "sessions",
+  "audit",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];

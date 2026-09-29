@@ -65,9 +65,10 @@ test("the admin page is refused as well", async ({ page }) => {
 });
 
 // The read procedure behind `placeholder:read`, through the real transport. An
-// anonymous request holds no grant, so the procedure's own `can()` refuses it.
-// The authorized read through a real role assignment is proved at the
-// integration layer until sign-in exists (S2-04).
+// anonymous request holds no session, so the envelope answers `unauthenticated`
+// at 401 rather than a bare permission refusal; the procedure's own `can()` is
+// unchanged and still holds no grant. The authorized read through a real role
+// assignment is proved at the integration layer.
 test("the placeholder read procedure refuses an anonymous request through the real transport", async ({
   request,
   baseURL,
@@ -76,15 +77,16 @@ test("the placeholder read procedure refuses an anonymous request through the re
     `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
   );
 
-  expect(response.status()).toBe(403);
+  expect(response.status()).toBe(401);
 
-  // SAFETY: the body is the tRPC envelope this route wrote, and the assertion
-  // below checks the one field this test reads.
+  // SAFETY: the body is the tRPC envelope this route wrote, and the assertions
+  // below check the fields this test reads.
   const body = (await response.json()) as {
-    error?: { data?: { code?: string } };
+    error?: { data?: { code?: string; appCode?: string } };
   };
 
-  expect(body.error?.data?.code).toBe("FORBIDDEN");
+  expect(body.error?.data?.code).toBe("UNAUTHORIZED");
+  expect(body.error?.data?.appCode).toBe("unauthenticated");
 });
 
 // S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak

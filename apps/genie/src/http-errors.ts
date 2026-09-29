@@ -7,6 +7,7 @@ import { AppError, safeBodyFor } from "@genie/core";
 const STATUS_BY_CODE = new Map<string, number>([
   ["not-found", 404],
   ["forbidden", 403],
+  ["unauthenticated", 401],
   ["module-disabled", 403],
   ["invalid-input", 400],
 ]);

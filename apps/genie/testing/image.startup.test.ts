@@ -848,13 +848,13 @@ describe("the built image", () => {
       // repository asserts that the ordinary document renders at all, so a `/`
       // that threw would be invisible to every gate: the next-intl request
       // configuration could be deleted and the suite would stay green. The tRPC
-      // request is anonymous until sign-in exists (S2-04), so its procedure
-      // answers its own `can()` refusal, 403, which still proves it was served.
+      // request is anonymous, so its envelope answers `unauthenticated` at 401
+      // (Spec 2 R-14), which still proves it was served.
       expect(
         responses.every(
           (response) =>
             response.status ===
-            (response.path.startsWith("/api/trpc") ? 403 : 200)
+            (response.path.startsWith("/api/trpc") ? 401 : 200)
         ),
         `not every response had its expected status: ${JSON.stringify(
           responses.map((response) => response.status)

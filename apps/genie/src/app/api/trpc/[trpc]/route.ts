@@ -34,7 +34,9 @@ async function handler(request: Request): Promise<Response> {
           // procedure throw before it reads anything (DEC-34).
           tenant: app.tenant,
           // One principal per request, never shared (R-27). The signed-in person comes from this
-          // request's Better Auth session, read once here.
+          // request's Better Auth session, read once here; a request with no valid session yields
+          // an anonymous, unauthenticated principal that a protected procedure refuses at 401
+          // (Spec 2 R-14).
           caller: await requestPrincipal(app.tenant, request.headers),
         };
       },

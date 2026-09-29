@@ -121,10 +121,11 @@ describe("both transports", () => {
   it("the module transport reaches the procedure and answers its refusal", async () => {
     const failure = await readFailure(placeholderClient());
 
-    // The positive control for this transport. An anonymous request is refused by the real
-    // evaluator: FORBIDDEN is the procedure's own `can()` answer, which proves the context reached
-    // the module's procedure rather than an unknown path. The signed-in read is the next case.
-    expect(failure?.data?.code).toBe("FORBIDDEN");
+    // The positive control for this transport. The anonymous request holds no session, so the
+    // envelope answers `unauthenticated` at 401 (Spec 2 R-14); that app code proves the context
+    // reached the module's procedure rather than an unknown path, and a signed-in read follows.
+    expect(failure?.data?.code).toBe("UNAUTHORIZED");
+    expect(failure?.data?.appCode).toBe("unauthenticated");
   });
 
   it("the module transport reads the placeholder row for a signed-in person with a real grant", async () => {

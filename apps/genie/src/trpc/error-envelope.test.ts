@@ -26,6 +26,7 @@ const stubApp = { tenant: stubTenant } as AppContext;
 
 const stubContext: RequestContext = {
   app: stubApp,
+  authenticated: true,
   requestId: REQUEST_ID,
   tenant: stubTenant,
   caller: createRequestPrincipal({ userId: "anonymous", groups: [] }, () =>

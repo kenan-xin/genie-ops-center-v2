@@ -77,9 +77,9 @@ test("one process context serves the page, tRPC and viewer bundles", async ({
     `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
   );
 
-  // Anonymous until sign-in exists (S2-04), so the procedure's own `can()`
-  // refuses; the refusal is still written by the tRPC route handler bundle.
-  expect(response.status()).toBe(403);
+  // The anonymous request holds no session, so the envelope answers `unauthenticated` at 401
+  // (Spec 2 R-14); the refusal is still written by the tRPC route handler bundle.
+  expect(response.status()).toBe(401);
 
   const trpc = response.headers()[CONTEXT_HEADER];
 
@@ -171,10 +171,11 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
     );
 
-    // An anonymous request is refused by each stack's own procedure, and no row reaches the
-    // browser from either database. The signed-in read with a real grant in each database follows.
-    expect(firstResponse.status()).toBe(403);
-    expect(secondResponse.status()).toBe(403);
+    // An anonymous request is refused by each stack's own handler as unauthenticated at 401, and
+    // no row reaches the browser from either database. The signed-in read with a real grant in
+    // each database follows.
+    expect(firstResponse.status()).toBe(401);
+    expect(secondResponse.status()).toBe(401);
     expect(firstResponse.headers()[CONTEXT_HEADER]).not.toBe(
       secondResponse.headers()[CONTEXT_HEADER]
     );

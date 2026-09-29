@@ -171,6 +171,8 @@ async function seedTestSetup(): Promise<void> {
   const permissions = [
     "placeholder:read",
     "placeholder:use",
+    // The audit log's own browser proof signs in and reads the audit route (R-67).
+    "core:audit:read",
     ...moduleIds.flatMap((id) =>
       id === "placeholder" ? [] : [`${id}:use`, `${id}:read`]
     ),

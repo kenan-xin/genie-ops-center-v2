@@ -11,6 +11,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
+import {
+  isUnauthenticatedAnswer,
+  SESSION_EXPIRED_PATH,
+} from "../../../unauthenticated.ts";
+
 type Cursor = {
   readonly occurredAt: string;
   readonly id: string;
@@ -41,6 +46,14 @@ async function fetchAuditPage(input: {
   });
 
   if (!response.ok) {
+    // The session rendered under is gone (idle-expired, capped or revoked): land the browser on
+    // the sign-in page's expired state instead of leaving a bare error in the log (R-14, R-17a).
+    if (await isUnauthenticatedAnswer(response)) {
+      window.location.assign(SESSION_EXPIRED_PATH);
+
+      throw new Error("The audit read was refused: the session expired.");
+    }
+
     throw new Error(`The audit read was refused (${response.status}).`);
   }
 
