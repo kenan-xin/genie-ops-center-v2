@@ -1,22 +1,22 @@
 # Which sign-in setup guide is mine?
 
-Three questions lead to one guide. Answer them in order; each answer names the guide to follow.
+For the Genie operator who sets up the deployment. Answer three questions about where the realm
+lives and which company login people use. Each answer names the guide to follow.
 
-1. **Where does the realm live?**
-   - On a Keycloak server Genie runs for you: this is scenario S-A, [Ops Center hosts the
-     customer](s-a-ops-center-hosts.md).
-   - On your own existing Keycloak: coming (see the table below).
-   - On a Keycloak server in this stack that brokers to your identity provider: coming.
+1. Who hosts the realm?
+   - Genie hosts it on a shared Keycloak server: scenario S-A,
+     [Ops Center hosts the customer](s-a-ops-center-hosts.md).
+   - The customer's own Keycloak holds the realm, brokered into ours: coming.
+   - Ops Center is only a client in the customer's realm: coming.
 
-2. **Do you already run a Keycloak?**
-   - No, we host it for you: S-A.
-   - Yes, and Ops Center becomes a client in your realm only: coming.
-   - Yes, and we broker your realm into ours: coming.
+2. Does the customer already run a Keycloak?
+   - No, Genie runs the realm for them: S-A.
+   - Yes: coming, either brokered or client-only.
 
-3. **Which company login do people use?**
+3. Which company login do people use?
    - A local account in the realm for this deployment: coming.
-   - A company identity provider (Entra, Okta, Google, ADFS, Ping, LDAP or Active Directory):
-     coming, and it sits behind S-A or the brokered guide once those land.
+   - A company identity provider, for example Entra, Okta, Google, ADFS, Ping, LDAP or Active
+     Directory: coming, once that provider's guide lands behind S-A or the brokered guide.
 
 ## Guides
 
