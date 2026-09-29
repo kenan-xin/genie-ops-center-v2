@@ -62,7 +62,22 @@ const dormantModule: Pick<
   defaultRoles: [],
 };
 
-const modules = [fixtureModule, dormantModule];
+/** A second compiled module, enabled mid-suite to prove a copy is allowed once it is on. */
+const enableLaterModule: Pick<
+  Module,
+  "identity" | "permissions" | "recordTypes" | "defaultRoles"
+> = {
+  identity: {
+    id: "enablelater",
+    displayName: "Enable later",
+    version: "0.0.0",
+  },
+  permissions: [{ key: "enablelater:use", label: "Use the later module" }],
+  recordTypes: [],
+  defaultRoles: [],
+};
+
+const modules = [fixtureModule, dormantModule, enableLaterModule];
 
 /** A history source per compiled module, so the deployment's entitlement reader knows both ids. */
 const historySources: ModuleHistorySource[] = modules.map((module) => ({
@@ -684,7 +699,10 @@ describe("the roles router against a real database", () => {
 
     const detail = await rolesCaller(actor).get({ roleId: budget });
 
-    expect(detail.unavailableKeys).toContain("retired:key");
+    expect(detail.unavailableKeys).toContainEqual({
+      key: "retired:key",
+      reason: "retired",
+    });
 
     const retiredGroup = detail.permissionGroups.find((entry) =>
       entry.keys.some((key) => key.key === "retired:key")
@@ -1059,5 +1077,83 @@ describe("the review fixes", () => {
         .from(roleAssignment)
         .where(eq(roleAssignment.id, assignmentId))
     ).toEqual([]);
+  });
+});
+
+describe("the entitlement filter on roles", () => {
+  it("refuses copying a role that holds a disabled module's key, and allows it after enable", async () => {
+    const actor = await insertManager();
+
+    const source = await insertRole(deployment.context, {
+      name: `Later source ${Date.now()}`,
+      permissions: ["enablelater:use"],
+    });
+
+    // A copy is a new role: its keys must be in the entitled catalogue, so a dormant key is refused.
+    await expect(
+      rolesCaller(actor).copy({ roleId: source, name: `Copy ${Date.now()}` })
+    ).rejects.toMatchObject({ cause: { code: "invalid-input" } });
+
+    // Enabling the module makes the same copy allowed (the entitlement reader caches for 10 s).
+    await enableModules(deployment.context, ["enablelater"]);
+    await new Promise((settle) => setTimeout(settle, 10_500));
+
+    const { id } = await rolesCaller(actor).copy({
+      roleId: source,
+      name: `Copy after enable ${Date.now()}`,
+    });
+
+    const [row] = await deployment.context.db
+      .select()
+      .from(roleTable)
+      .where(eq(roleTable.id, id));
+
+    expect([...row!.permissions]).toEqual(["enablelater:use"]);
+  }, 30000);
+
+  it("marks a disabled module's saved key unavailable with the reason and removes it", async () => {
+    const actor = await insertManager();
+
+    const roleId = await insertRole(deployment.context, {
+      name: `Retained dormant ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    await deployment.context.db
+      .update(roleTable)
+      .set({ permissions: ["fixture:use", "dormant:use"] })
+      .where(eq(roleTable.id, roleId));
+
+    const detail = await rolesCaller(actor).get({ roleId });
+
+    expect(detail.unavailableKeys).toContainEqual({
+      key: "dormant:use",
+      reason: "module-disabled",
+    });
+
+    const dormantGroup = detail.permissionGroups.find((entry) =>
+      entry.keys.some((key) => key.key === "dormant:use")
+    );
+
+    expect(
+      dormantGroup?.keys.find((key) => key.key === "dormant:use")
+        ?.unavailableReason
+    ).toBe("module-disabled");
+
+    // The retained key can be removed; the valid key stays.
+    const [row] = await deployment.context.db
+      .select({ name: roleTable.name })
+      .from(roleTable)
+      .where(eq(roleTable.id, roleId));
+
+    await rolesCaller(actor).update({
+      roleId,
+      name: row!.name,
+      permissions: ["fixture:use"],
+    });
+
+    const after = await rolesCaller(actor).get({ roleId });
+
+    expect(after.unavailableKeys).toEqual([]);
   });
 });

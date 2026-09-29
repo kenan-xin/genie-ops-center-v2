@@ -167,9 +167,7 @@ test("the role editor warns on an unavailable key and offers its removal", async
     .first()
     .click();
 
-  await expect(
-    page.getByText("Unavailable, this key grants nothing")
-  ).toBeVisible();
+  await expect(page.getByText("Unavailable, the key is retired")).toBeVisible();
   await expect(page.getByText("retired:key")).toBeVisible();
 
   // A custom role may remove the unavailable key without deleting the role.
