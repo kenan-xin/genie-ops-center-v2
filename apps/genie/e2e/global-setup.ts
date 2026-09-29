@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { GENIE_ADMINISTRATORS_GROUP } from "@genie/core";
+
 import {
   allowE2eRealmGroupsAttribute,
   createRealmUser,
@@ -218,13 +220,12 @@ async function seedTestSetup(): Promise<void> {
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(OFFBOARD_EMAILS, false)} on conflict (email) do nothing`,
       `insert into role (name, permissions, is_system) values ('E2E reader', array[${permissions}], false) on conflict (name) do nothing`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E reader' and u.email in (${READER_EMAILS.map((email) => `'${email}'`).join(", ")}) on conflict do nothing`,
-      // A test stand-in for the S2-08 `roles` step seed, which this branch does not carry yet: an
-      // active Tenant administrator, so the R-38 last-administrator rule has a holder and does not
-      // block every Groups write (the archive proof). It is its own row, not a reader, so the
-      // account page's role summary is unchanged for the other proofs.
-      `insert into role (name, permissions, is_system) values ('Tenant administrator', array['core:people:manage','core:groups:manage','core:roles:manage','core:audit:read'], true) on conflict (name) do nothing`,
+      // The active administrator the R-38 rule counts, made a member of the `Genie Administrators`
+      // group the S2-08 `roles` step seeds and assigned `Tenant administrator` (one source for the
+      // admin path). It is its own row, not a reader, so the account page's role summary is
+      // unchanged for the other proofs.
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ('${randomUUID()}', 'E2E Baseline Admin', 'e2e.baseline-admin@example.invalid', true, 'active', false) on conflict (email) do nothing`,
-      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'Tenant administrator' and u.email = 'e2e.baseline-admin@example.invalid' on conflict do nothing`,
+      `insert into group_member (group_id, user_id, source) select g.id, u.id, 'local' from "group" g, "user" u where g.name = '${GENIE_ADMINISTRATORS_GROUP}' and u.email = 'e2e.baseline-admin@example.invalid' on conflict do nothing`,
       `insert into "group" (name, external_id, source) values ('${MAPPED_GROUP}', '${MAPPED_GROUP}', 'idp') on conflict do nothing`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'group', g.id::text from role r, "group" g where r.name = 'E2E reader' and g.external_id = '${MAPPED_GROUP}' on conflict do nothing`,
       `insert into group_member (group_id, user_id, source) select g.id, u.id, 'idp' from "group" g, "user" u where g.external_id = '${MAPPED_GROUP}' and u.email in (${OFFBOARD_EMAILS.map((email) => `'${email}'`).join(", ")}) on conflict do nothing`,

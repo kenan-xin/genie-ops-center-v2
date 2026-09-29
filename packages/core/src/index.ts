@@ -113,6 +113,7 @@ export {
   createGrantReader,
   createRecordResolver,
   createRequestPrincipal,
+  GENIE_ADMINISTRATORS_GROUP,
   type GrantReader,
   type RecordResolver,
   PERMISSION_TRANSFORMATION_ACTION,
