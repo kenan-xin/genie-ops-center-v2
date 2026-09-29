@@ -108,8 +108,12 @@ export function osUserName(
 function parseCommand(
   command: string | undefined,
   rest: readonly string[],
-  compiledModuleIds: readonly string[]
+  compiledModules: readonly Module[]
 ): ParsedCommand {
+  // D-12: the ids derive once here from the one list, and reach the migrator run and the module
+  // commands unchanged; setup receives the modules themselves so its `roles` step can seed them.
+  const compiledModuleIds = compiledModules.map((module) => module.identity.id);
+
   switch (command) {
     case "migrate": {
       // `migrate` takes no arguments in this section. Strict mode with positionals disallowed
@@ -163,7 +167,7 @@ function parseCommand(
               ),
             },
             {
-              compiledModuleIds,
+              compiledModules,
               histories: options.histories,
               source: options.source,
               output: options.output,
@@ -302,7 +306,7 @@ export async function runGenieOps(
   let parsed: ParsedCommand;
 
   try {
-    parsed = parseCommand(command, rest, compiledModuleIds);
+    parsed = parseCommand(command, rest, options.compiledModules);
   } catch {
     // D-4: no context, no audit row, and never the rejected value.
     options.errorOutput(PARSE_REFUSAL);

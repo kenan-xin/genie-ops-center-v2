@@ -2,6 +2,7 @@ import { ne, sql } from "drizzle-orm";
 
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import type { EnvironmentSource } from "../../lib/environment/index.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
 import type {
   BrandingSeed,
   TenantYaml,
@@ -22,19 +23,27 @@ import {
   migrationPlan,
   runMigrations,
 } from "../migrator/index.ts";
+import { adminSeedStep } from "./admin-seed-step.ts";
+import { breakGlassStep } from "./break-glass-step.ts";
 import {
   type SetupConfigFiles,
   loadBrandingSeed,
   loadTenantYaml,
 } from "./config.ts";
+import { rolesStep } from "./roles-step.ts";
 
 /**
  * What the `setup` command reads. It is the runner's own options minus the environment, which the
  * runner has already turned into the context this command receives.
  */
 export type SetupOptions = {
-  /** The module ids the image compiled, written as the initial `tenant_module` rows (R-20). */
-  readonly compiledModuleIds: readonly string[];
+  /**
+   * The modules the image compiled. The seed step derives the initial `tenant_module` rows from
+   * them (R-20), the migrator run derives the compiled ids it checks and registers (R-79), and the
+   * `roles` step seeds each module's default roles (R-55). One list reaches every reader, so
+   * nothing holds a second copy and the readers cannot disagree (D-12).
+   */
+  readonly compiledModules: readonly Module[];
   /** The module histories only; the migrator run prepends core's own (R-25). */
   readonly histories: readonly MigrationHistory[];
   /** The raw environment, for the Section 2 values the realm and clients steps read at step time. */
@@ -43,8 +52,16 @@ export type SetupOptions = {
   readonly errorOutput: (line: string) => void;
 };
 
-/** The steps this section knows, in the run order the `setup_step` table records (R-14, R-18, R-52). */
-export const SETUP_STEPS = ["migrations", "seed", "realm", "clients"] as const;
+/** The steps this section knows, in the run order the `setup_step` table records (R-14, R-18, R-17b). */
+export const SETUP_STEPS = [
+  "migrations",
+  "seed",
+  "realm",
+  "clients",
+  "roles",
+  "admin_seed",
+  "break_glass",
+] as const;
 
 type SetupStep = (typeof SETUP_STEPS)[number];
 
@@ -164,6 +181,11 @@ async function markPending(
     });
 }
 
+/** The ids of the modules the image compiled, derived once from the one list (D-12). */
+function compiledModuleIds(options: SetupOptions): readonly string[] {
+  return options.compiledModules.map((module) => module.identity.id);
+}
+
 /** The `migrations` step: the migrator run of R-9/R-19 and nothing else. */
 async function migrationsStep(
   context: TenantContext,
@@ -174,7 +196,7 @@ async function migrationsStep(
     env: context.env,
     pool: context.db.$client,
     histories: migrationPlan(options.histories),
-    compiledModuleIds: options.compiledModuleIds,
+    compiledModuleIds: compiledModuleIds(options),
     log,
   });
 }
@@ -280,13 +302,14 @@ async function seedStep(
 ): Promise<void> {
   const tenant = await loadTenantYaml(files.tenantConfig);
   const branding = await loadBrandingSeed(files.brandingSeed);
+  const moduleIds = compiledModuleIds(options);
 
   await context.db.transaction(async (tx) => {
-    if (options.compiledModuleIds.length > 0) {
+    if (moduleIds.length > 0) {
       await tx
         .insert(tenantModule)
         .values(
-          options.compiledModuleIds.map((moduleId) => ({
+          moduleIds.map((moduleId) => ({
             moduleId,
             enabled: true,
           }))
@@ -339,6 +362,15 @@ async function stepWork(
         source: options.source,
         output: options.output,
       });
+
+    case "roles":
+      return rolesStep(context, options.compiledModules);
+
+    case "admin_seed":
+      return adminSeedStep(context, files);
+
+    case "break_glass":
+      return breakGlassStep(context, files, { output: options.output });
   }
 }
 

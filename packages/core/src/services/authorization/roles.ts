@@ -7,7 +7,7 @@ import {
 } from "../../lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { role } from "../../schema.ts";
+import { group, role, roleAssignment } from "../../schema.ts";
 
 /** Core's own permission keys, declared exactly as a module declares its own (R-33). */
 export const CORE_PERMISSION_KEYS = [
@@ -139,5 +139,75 @@ export async function seedRoles(
         await syncModuleAdminKey(tx, module, true);
       }
     }
+  });
+}
+
+/** The local group setup seeds to hold `Tenant administrator` tenant-wide (R-55, DEC-23). */
+export const GENIE_ADMINISTRATORS_GROUP = "Genie Administrators";
+
+/**
+ * R-55, DEC-23: the local group the first administrators belong to. It is found by its local
+ * source and name, created once, and given `Tenant administrator` at the tenant-wide scope (a
+ * null scope on both columns). The membership an administrator later adds carries source `local`,
+ * which the identity-provider sync never touches (R-22, `access-model.md`, "The first
+ * administrator"). Every write is a create-if-missing, so a rerun changes nothing and a rerun
+ * after a crash completes the missing half.
+ */
+export async function seedGenieAdministrators(
+  context: Pick<TenantContext, "db">
+): Promise<void> {
+  await context.db.transaction(async (tx) => {
+    const [administratorRole] = await tx
+      .select({ id: role.id })
+      .from(role)
+      .where(
+        and(eq(role.name, TENANT_ADMINISTRATOR_ROLE), eq(role.isSystem, true))
+      )
+      .limit(1);
+
+    if (administratorRole === undefined) {
+      throw new Error(
+        `the roles step cannot seed the ${GENIE_ADMINISTRATORS_GROUP} group before the ${TENANT_ADMINISTRATOR_ROLE} role exists`
+      );
+    }
+
+    const [existing] = await tx
+      .select({ id: group.id })
+      .from(group)
+      .where(
+        and(
+          eq(group.source, "local"),
+          eq(group.name, GENIE_ADMINISTRATORS_GROUP)
+        )
+      )
+      .limit(1);
+
+    let groupId = existing?.id;
+
+    if (groupId === undefined) {
+      const [created] = await tx
+        .insert(group)
+        .values({ name: GENIE_ADMINISTRATORS_GROUP, source: "local" })
+        .returning({ id: group.id });
+
+      groupId = created?.id;
+    }
+
+    if (groupId === undefined) {
+      throw new Error(
+        `the roles step could not create the ${GENIE_ADMINISTRATORS_GROUP} group`
+      );
+    }
+
+    await tx
+      .insert(roleAssignment)
+      .values({
+        roleId: administratorRole.id,
+        principalType: "group",
+        principalId: groupId,
+        scopeType: null,
+        scopeId: null,
+      })
+      .onConflictDoNothing();
   });
 }

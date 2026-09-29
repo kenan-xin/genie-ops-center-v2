@@ -32,8 +32,10 @@ export {
 export {
   AUDITOR_ROLE,
   CORE_PERMISSION_KEYS,
+  GENIE_ADMINISTRATORS_GROUP,
   TENANT_ADMINISTRATOR_ROLE,
   permissionCatalogue,
+  seedGenieAdministrators,
   seedRoles,
   syncModuleAdminKey,
 } from "./roles.ts";

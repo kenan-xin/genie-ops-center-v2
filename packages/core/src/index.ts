@@ -280,6 +280,7 @@ export {
 } from "./lib/content-security-policy/index.ts";
 
 export {
+  SETUP_STEPS,
   type SetupStepState,
   type SetupStepView,
   readSetupProgress,
