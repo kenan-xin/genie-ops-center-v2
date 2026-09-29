@@ -21,15 +21,16 @@ const SLOT = Symbol.for("genie.with-transaction.slot");
  * The transaction, or savepoint, that the running code holds, with its after-commit register.
  * `root` is the outer transaction's register, shared by every savepoint inside it, so an
  * `afterCommit` can tell its own transaction from another one running at call time. `context` is
- * the tenant context the transaction belongs to, so the nested check is per context: two tenant
- * contexts may each hold a transaction in one process (DEC-34) without one reading as the other's
- * nested transaction.
+ * the tenant context the transaction belongs to, and `parent` is the scope it was opened inside,
+ * so the nested check can reject a context present anywhere in the active chain (A->B->A), not
+ * only the nearest scope.
  */
 type Scope = {
   readonly tx: TenantTransaction;
   readonly register: AfterCommit;
   readonly root: AfterCommit;
   readonly context: TenantContext;
+  readonly parent: Scope | undefined;
 };
 
 /**
@@ -103,10 +104,11 @@ function scopeSavepoints(
 
   tx.transaction = async (fn) => {
     const list = openAfterCommitList();
+    const parent = slot().scope.getStore();
 
     const result = await open(async (savepoint) =>
       slot().scope.run(
-        { tx: savepoint, register: list.register, root, context },
+        { tx: savepoint, register: list.register, root, context, parent },
         async () => {
           scopeSavepoints(savepoint, list.register, root, context);
 
@@ -209,24 +211,27 @@ async function runAfterCommit(
  * propagates, so no entry runs (R-54). Registration closes when `fn` settles, so an `afterCommit`
  * call after that throws instead of adding an entry that silently never runs.
  *
- * A nested `withTransaction` on the *same* context is refused: it opens an independent top-level
- * transaction that cannot commit or roll back with the outer one, takes a second pool client, and
- * can deadlock on a row the outer transaction holds. Use `tx.transaction(...)` inside `fn` for a
- * savepoint instead. A `withTransaction` on a *different* context is allowed, because it opens on
- * that context's own pool and shares no row: two tenant contexts each hold their own transaction in
- * one process (DEC-34). A context not built by `createTenantContext` has no logger entry, so the
- * call throws rather than swallow the failure.
+ * A nested `withTransaction` on a context already active in the chain is refused: it opens an
+ * independent top-level transaction that cannot commit or roll back with the outer one, takes a
+ * second pool client, and can deadlock on a row the outer transaction holds. The check walks the
+ * whole chain, so A -> B -> A is refused, not only a same-context re-entry in the nearest scope.
+ * Use `tx.transaction(...)` inside `fn` for a savepoint instead. A `withTransaction` on a context
+ * not already active is allowed, because it opens on that context's own pool and shares no row:
+ * two tenant contexts each hold their own transaction in one process (DEC-34). A context not built
+ * by `createTenantContext` has no logger entry, so the call throws rather than swallow the failure.
  */
 export async function withTransaction<T>(
   context: TenantContext,
   fn: (tx: TenantTransaction, afterCommit: AfterCommit) => Promise<T>
 ): Promise<T> {
-  const running = slot().scope.getStore();
+  const parent = slot().scope.getStore();
 
-  if (running !== undefined && running.context === context) {
-    throw new Error(
-      "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
-    );
+  for (let scope = parent; scope !== undefined; scope = scope.parent) {
+    if (scope.context === context) {
+      throw new Error(
+        "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
+      );
+    }
   }
 
   const logger = slot().loggers.get(context);
@@ -272,6 +277,7 @@ export async function withTransaction<T>(
         register: afterCommit.register,
         root: afterCommit.register,
         context,
+        parent,
       },
       async () => {
         try {

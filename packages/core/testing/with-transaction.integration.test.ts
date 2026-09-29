@@ -374,6 +374,31 @@ describe("withTransaction against a real database", () => {
     expect(b?.count).toBe(1);
   });
 
+  it("refuses re-entering the first context through a second one (A to B to A)", async () => {
+    const first = await startTransactionFixture();
+    const second = await startTransactionFixture();
+
+    await expect(
+      withTransaction(first.context, async (txA) => {
+        await txA.execute(sql`select 1`);
+
+        await withTransaction(second.context, async (txB) => {
+          await txB.execute(sql`select 1`);
+
+          // The chain is A -> B, so a second A is a nested transaction on a context already
+          // active: the guard walks every ancestor, not only the nearest scope.
+          await expect(
+            withTransaction(first.context, async () => "inner")
+          ).rejects.toThrow(/cannot be nested/);
+
+          return "second";
+        });
+
+        return "first";
+      })
+    ).resolves.toBe("first");
+  });
+
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
     const { context, observer } = await startTransactionFixture();
 
