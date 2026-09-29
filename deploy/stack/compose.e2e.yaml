@@ -39,5 +39,9 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-genie}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-genie-ops-center}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-e2e-ops-center-secret}
+      # The compose file passes the active profiles to the app as STACK_PROFILES, the same as the
+      # generated template, so the R-54c guard reads a real value. This stack runs no Keycloak of
+      # its own, so the value is empty until an operator sets COMPOSE_PROFILES.
+      STACK_PROFILES: ${COMPOSE_PROFILES:-}
     ports:
       - "${GENIE_HOST_PORT:-3400}:3400"
