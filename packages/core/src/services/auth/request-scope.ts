@@ -29,13 +29,15 @@ export class AuthRequestScope {
     );
   }
 
-  capture(groups: unknown): void {
+  capture(groups: unknown, marker: unknown): void {
     const facts = this.#storage.getStore();
     if (facts === undefined) return;
     facts.oauth = true;
     facts.groups = Array.isArray(groups)
       ? groups.filter((value): value is string => typeof value === "string")
-      : undefined;
+      : groups === undefined && marker === true
+        ? []
+        : undefined;
   }
 
   refuse(refusal: NonNullable<AuthRequestFacts["refusal"]>): void {

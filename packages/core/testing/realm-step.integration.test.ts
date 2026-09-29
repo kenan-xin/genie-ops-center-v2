@@ -2,17 +2,28 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentSource } from "../src/lib/environment/index.ts";
+import { auditEvent, groupMember } from "../src/schema.ts";
+import {
+  syncGroupMemberships,
+  validateOAuthUser,
+} from "../src/services/auth/onboarding.ts";
 import { masterAdminToken } from "../src/services/keycloak/client.ts";
 import {
   isJsonObject,
   type JsonObject,
+  type JsonValue,
 } from "../src/services/keycloak/representation.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
-import { startDisposablePostgres } from "./index.ts";
+import {
+  insertUser,
+  startDisposableDeployment,
+  startDisposablePostgres,
+} from "./index.ts";
 import {
   KEYCLOAK_BOOTSTRAP_PASSWORD,
   KEYCLOAK_BOOTSTRAP_USER,
@@ -206,6 +217,17 @@ function groupsMapper(client: JsonObject | undefined): string | undefined {
   return undefined;
 }
 
+function markerMapper(client: JsonObject | undefined): JsonObject | undefined {
+  const mappers = client?.protocolMappers;
+
+  if (!Array.isArray(mappers)) return undefined;
+
+  return mappers.find(
+    (mapper): mapper is JsonObject =>
+      isJsonObject(mapper) && mapper.name === "genie_groups"
+  );
+}
+
 /** A `master`-realm admin token, for the test's own setup and teardown calls. */
 async function masterToken(): Promise<string> {
   return masterAdminToken(
@@ -350,6 +372,20 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     ]);
     expect(groupsMapper(signIn)).toBe("oidc-usermodel-attribute-mapper");
 
+    for (const clientId of ["genie-ops-center", "genie-studio"]) {
+      expect(markerMapper(clientBy(clients, clientId))).toMatchObject({
+        protocolMapper: "oidc-hardcoded-claim-mapper",
+        config: {
+          "claim.name": "genie_groups",
+          "claim.value": "true",
+          "jsonType.label": "boolean",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "userinfo.token.claim": "true",
+        },
+      });
+    }
+
     await expect(
       observer.query(
         `select realm_supports_local_accounts, keycloak_url_at_setup from tenant_settings`
@@ -415,6 +451,172 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     const signIn = clientBy(clients, "genie-ops-center");
 
     expect(groupsMapper(signIn)).toBe("oidc-group-membership-mapper");
+
+    for (const clientId of ["genie-ops-center", "genie-studio"]) {
+      expect(markerMapper(clientBy(clients, clientId))).toMatchObject({
+        protocolMapper: "oidc-hardcoded-claim-mapper",
+        config: {
+          "claim.name": "genie_groups",
+          "claim.value": "true",
+          "jsonType.label": "boolean",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "userinfo.token.claim": "true",
+        },
+      });
+    }
+  }, 180000);
+
+  it("keeps memberships and audits when the test realm has no marker mapper or groups claim", async () => {
+    const postgres = await startDisposablePostgres();
+    const deployment = await startDisposableDeployment();
+    const files = await configFiles();
+    const realm = `missing-marker-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await deployment.stop();
+      await postgres.stop();
+    });
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    const client = clientBy(await adminClients(realm), "genie-ops-center");
+    const mapper = markerMapper(client);
+
+    if (client === undefined || mapper?.id === undefined) {
+      throw new Error("test realm is missing the marker mapper");
+    }
+
+    const token = await masterToken();
+    const clientUrl = `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`;
+
+    // Direct grants are enabled only in this disposable realm so the test can inspect an ID token.
+    const updated = await globalThis.fetch(clientUrl, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...client, directAccessGrantsEnabled: true }),
+    });
+
+    expect(updated.status).toBe(204);
+
+    const removed = await globalThis.fetch(
+      `${clientUrl}/protocol-mappers/models/${String(mapper.id)}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${token}` } }
+    );
+
+    expect(removed.status).toBe(204);
+    expect(
+      markerMapper(clientBy(await adminClients(realm), "genie-ops-center"))
+    ).toBeUndefined();
+
+    const email = `no-marker-${process.pid}@example.invalid`;
+
+    const created = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/users`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: email,
+          email,
+          emailVerified: true,
+          firstName: "Test",
+          lastName: "Person",
+          enabled: true,
+          credentials: [
+            { type: "password", value: "test-only-password", temporary: false },
+          ],
+        }),
+      }
+    );
+
+    expect(created.status).toBe(201);
+
+    const signIn = await globalThis.fetch(
+      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/token`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "password",
+          client_id: "genie-ops-center",
+          client_secret: "client-secret-value",
+          username: email,
+          password: "test-only-password",
+          scope: "openid",
+        }),
+      }
+    );
+
+    expect(signIn.status, JSON.stringify(await signIn.clone().json())).toBe(
+      200
+    );
+
+    // SAFETY: the token endpoint returned a JWT with a JSON claim set.
+    const tokenBody = (await signIn.json()) as { id_token: string };
+
+    // SAFETY: JSON.parse returns a JSON value from the JWT claim set.
+    const claims = JSON.parse(
+      Buffer.from(tokenBody.id_token.split(".")[1]!, "base64url").toString(
+        "utf8"
+      )
+    ) as JsonValue;
+
+    if (!isJsonObject(claims))
+      throw new Error("ID token has no JSON claim set");
+
+    expect(claims.groups).toBeUndefined();
+    expect(claims.genie_groups).toBeUndefined();
+
+    const userId = await insertUser(deployment.context);
+    await syncGroupMemberships(deployment.context, userId, ["Retained"]);
+    const scope = deployment.context.authRequestScope;
+
+    await scope.run(async () => {
+      expect(
+        await validateOAuthUser({
+          tenant: deployment.context,
+          scope,
+          data: {
+            user: { id: userId, email },
+            source: { action: "sign-in", oauth: { profile: claims } },
+          },
+        })
+      ).toBeUndefined();
+      await syncGroupMemberships(
+        deployment.context,
+        userId,
+        scope.current()?.groups
+      );
+    });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(groupMember)
+        .where(
+          and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
+        )
+    ).toHaveLength(1);
+    expect(
+      await deployment.context.db
+        .select()
+        .from(auditEvent)
+        .where(
+          and(
+            eq(auditEvent.actorUserId, userId),
+            eq(auditEvent.action, "auth:groups_claim_absent")
+          )
+        )
+    ).toHaveLength(1);
   }, 180000);
 
   it("leaves an existing realm unchanged and records the step done on a rerun", async () => {

@@ -26,7 +26,10 @@ export async function validateOAuthUser(input: {
 > {
   const { data, scope, tenant } = input;
   const email = data.user.email ?? "";
-  scope.capture(data.source.oauth?.profile?.groups);
+  scope.capture(
+    data.source.oauth?.profile?.groups,
+    data.source.oauth?.profile?.genie_groups
+  );
 
   if (data.source.action === "create-user") {
     const settings = await tenant.settings.get();

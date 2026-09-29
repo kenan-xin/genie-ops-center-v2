@@ -31,11 +31,21 @@ async function check(
   deployment: DisposableDeployment,
   action: "create-user" | "link-account" | "sign-in",
   groups: readonly string[] | undefined,
-  id?: string
+  id?: string,
+  marker?: boolean
 ) {
   const scope = deployment.context.authRequestScope;
   const email = `${randomUUID()}@example.invalid`;
-  const profile = groups === undefined ? {} : { groups };
+
+  const profile =
+    marker === undefined
+      ? groups === undefined
+        ? {}
+        : { groups }
+      : groups === undefined
+        ? { genie_groups: marker }
+        : { groups, genie_groups: marker };
+
   const person = id === undefined ? { email } : { id, email };
 
   return scope.run(async () => {
@@ -102,6 +112,10 @@ describe("OAuth onboarding and group sync against Postgres", () => {
     expect(
       (await check(jit, "create-user", undefined)).facts?.refusal?.reason
     ).toBe("groups_claim_absent");
+    expect(
+      (await check(jit, "create-user", undefined, undefined, true)).facts
+        ?.refusal?.reason
+    ).toBe("no_mapped_group");
 
     await jit.context.db
       .update(group)
@@ -218,10 +232,39 @@ describe("OAuth onboarding and group sync against Postgres", () => {
     ).toHaveLength(1);
   });
 
+  it("marker with no groups removes idp memberships and leaves local memberships", async () => {
+    const userId = await insertUser(jit.context);
+    const localId = await insertGroup(jit.context, [userId]);
+    await syncGroupMemberships(jit.context, userId, ["Removed"]);
+
+    const result = await check(jit, "sign-in", undefined, userId, true);
+    expect(result.facts?.groups).toEqual([]);
+    await syncGroupMemberships(jit.context, userId, result.facts?.groups);
+
+    expect(
+      await jit.context.db
+        .select()
+        .from(groupMember)
+        .where(
+          and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
+        )
+    ).toHaveLength(0);
+    expect(
+      await jit.context.db
+        .select()
+        .from(groupMember)
+        .where(
+          and(eq(groupMember.userId, userId), eq(groupMember.groupId, localId))
+        )
+    ).toHaveLength(1);
+  });
+
   it("absent claim preserves idp memberships and writes its audit row", async () => {
     const userId = await insertUser(jit.context);
     await syncGroupMemberships(jit.context, userId, ["Retained"]);
-    await syncGroupMemberships(jit.context, userId, undefined);
+    const result = await check(jit, "sign-in", undefined, userId);
+    expect(result.facts?.groups).toBeUndefined();
+    await syncGroupMemberships(jit.context, userId, result.facts?.groups);
     expect(
       await jit.context.db
         .select()
