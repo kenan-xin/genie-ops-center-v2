@@ -593,7 +593,7 @@ import { describe, expect, it } from "vitest";
  * mounts a page of this module. The granted path is proved with real role assignments against a
  * real database in \`testing/router.integration.test.ts\`, never with a stand-in answer here.
  */
-const identity = { userId: "u1", groups: [] };
+const identity = { userId: "u1", groups: [], authenticated: true };
 
 describe("the ${names.id} access decision", () => {
   it("refuses a caller who holds no key at all", async () => {
