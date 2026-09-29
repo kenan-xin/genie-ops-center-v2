@@ -26,6 +26,16 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "The email could not be sent, so this action did not complete.",
   "mail-link-origin":
     "An action link in this email must point at this deployment's public address. The link and invitationUrl variables may carry a path or an absolute link on that address; no other address is sent.",
+  "last-administrator":
+    "That change would leave no active tenant administrator. Give the role to another active person first.",
+  "self-protection": "You cannot remove your own tenant administrator access.",
+  "group-seen":
+    "A directory group that has been seen can only be archived, not deleted.",
+  "system-role":
+    "A system role cannot be edited or deleted. Copy it to change its permissions.",
+  "role-name-taken": "A role with that name already exists.",
+  "directory-group-exists":
+    "A directory group with that exact claim value already exists.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

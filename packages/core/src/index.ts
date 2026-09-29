@@ -131,6 +131,67 @@ export {
 } from "./services/authorization/index.ts";
 
 export {
+  assignRole,
+  type AssignmentPrincipal,
+  type AssignmentWrite,
+  removeAssignment,
+  removeGroupAssignments,
+} from "./services/authorization/role-assignment.ts";
+
+export {
+  assertAdministratorRemains,
+  assertNotSelf,
+  countActiveAdministrators,
+  lockAdministratorGuard,
+} from "./services/authorization/administrators.ts";
+
+export {
+  createGroupsRouter,
+  type GroupsRouter,
+  type GroupsRouterContext,
+} from "./services/groups/router.ts";
+
+export {
+  addDirectoryGroup,
+  addLocalGroupMembers,
+  archiveDirectoryGroup,
+  createLocalGroup,
+  deleteDirectoryGroup,
+  deleteLocalGroup,
+  type GroupAssignmentRow,
+  type GroupDetail,
+  type GroupMemberRow,
+  type GroupRow,
+  listGroups,
+  readGroup,
+  removeAllLocalGroupMembers,
+  removeLocalGroupMembers,
+  setGroupLabel,
+  updateLocalGroup,
+} from "./services/groups/index.ts";
+
+export {
+  createRolesRouter,
+  type RolesRouter,
+  type RolesRouterContext,
+} from "./services/roles/router.ts";
+
+export {
+  copyRole,
+  createRole,
+  deleteRole,
+  listRoles,
+  readRole,
+  type RoleAssignmentRow as AdminRoleAssignmentRow,
+  type RoleDetail,
+  type RolePermissionGroup,
+  type RolePermissionKey,
+  type RoleRow,
+  type RolesModule,
+  updateRole,
+} from "./services/roles/index.ts";
+
+export {
   enabledNavigation,
   landingRoute,
   permittedNavigation,
@@ -203,8 +264,10 @@ export {
 } from "./services/migrator/history.ts";
 
 export {
+  type AdminAuditInput,
   type AuditEventInput,
   type AuditMetadataValue,
+  writeAdminAuditEvent,
   writeAuditEvent,
 } from "./services/audit/index.ts";
 

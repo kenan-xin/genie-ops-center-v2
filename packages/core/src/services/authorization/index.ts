@@ -40,6 +40,23 @@ export {
   syncModuleAdminKey,
 } from "./roles.ts";
 
+export {
+  assertAdministratorRemains,
+  assertNotSelf,
+  countActiveAdministrators,
+  lockAdministratorGuard,
+} from "./administrators.ts";
+
+export {
+  assignRole,
+  removeAssignment,
+  removeGroupAssignments,
+  type AssignmentPrincipal,
+  type AssignmentWrite,
+} from "./role-assignment.ts";
+
+export { registerRoleEventHandlers } from "./role-events.ts";
+
 export { PERMISSION_TRANSFORMATION_ACTION } from "./transformations.ts";
 
 function sameScope(left: Scope, right: Scope): boolean {

@@ -1,5 +1,7 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { auditEvent } from "../../schema.ts";
+import type { AuditAction } from "./actions.ts";
 
 export {
   AUDIT_ACTIONS,
@@ -66,6 +68,36 @@ export async function writeAuthAuditEvent(
     action: input.action,
     targetType: "user",
     targetId: input.targetUserId ?? null,
+    summary: input.summary,
+    metadata: input.metadata ?? {},
+  });
+}
+
+/**
+ * One administration audit write through the tenant context (R-44, R-45). It takes the caller's
+ * own transaction, so the row commits or rolls back with the write it records, and its `action`
+ * is typed against the R-45 catalogue: a write can never record an action the reader's fixed
+ * filter cannot offer (AC-10).
+ */
+export type AdminAuditInput = {
+  readonly action: AuditAction;
+  /** The acting administrator, or null for a system write. */
+  readonly actorUserId: string | null;
+  readonly targetType?: string;
+  readonly targetId?: string | null;
+  readonly summary: string;
+  readonly metadata?: Readonly<Record<string, AuditMetadataValue>>;
+};
+
+export async function writeAdminAuditEvent(
+  tx: TenantTransaction,
+  input: AdminAuditInput
+): Promise<void> {
+  await tx.insert(auditEvent).values({
+    actorUserId: input.actorUserId,
+    action: input.action,
+    targetType: input.targetType ?? null,
+    targetId: input.targetId ?? null,
     summary: input.summary,
     metadata: input.metadata ?? {},
   });

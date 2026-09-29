@@ -22,12 +22,23 @@ export const AUDIT_ACTIONS = [
   "auth:break_glass_sign_in",
   // Administration (Section 2).
   "core:person_added",
+  "core:role_assignment_added",
   "core:role_assignment_removed",
+  "core:role_created",
+  "core:role_updated",
+  "core:role_deleted",
   "core:invitation_sent",
   "core:set_password_sent",
   "core:directory_group_added",
   "core:directory_group_deleted",
   "core:group_label_changed",
+  "core:group_archived",
+  "core:local_group_added",
+  "core:local_group_updated",
+  "core:local_group_deleted",
+  "core:group_member_added",
+  "core:group_member_removed",
+  "core:group_members_removed",
   // Permission evolution writes this one from the migrator (R-33c).
   "core:permission_transformation",
 ] as const;
