@@ -88,7 +88,14 @@ afterAll(async () => {
 });
 
 function request(userId: string | undefined): RequestPrincipal {
-  return principalFor({ tenant: deployment.context, modules, userId });
+  return principalFor({
+    tenant: deployment.context,
+    modules,
+    userId,
+    // The explicit session flag (R-14): a caller with a user id is signed in, an anonymous one is
+    // not. The two are supplied separately, so no sentinel user id can stand for "no session".
+    authenticated: userId !== undefined,
+  });
 }
 
 const groupsRouter = () =>
@@ -135,9 +142,10 @@ describe("the groups router against a real database", () => {
   it("refuses an anonymous caller and a member without core:groups:manage", async () => {
     const anonymous = groupsRouter();
 
+    // No session: the catalogue `unauthenticated` (R-14) is raised before the permission gate.
     await expect(
       anonymous.list({ includeArchived: false })
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    ).rejects.toMatchObject({ cause: { code: "unauthenticated" } });
 
     const { userId } = await insertPersonWith(deployment.context, [
       "fixture:use",
