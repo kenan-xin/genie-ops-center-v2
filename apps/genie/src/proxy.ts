@@ -19,6 +19,7 @@ import { type NextRequest, NextResponse } from "next/server.js";
 
 import { readContext } from "./context.ts";
 import { moduleRouteOwner } from "./module-paths.ts";
+import { PATHNAME_HEADER } from "./pathname-header.ts";
 import { newRequestId } from "./request-id.ts";
 import { SETUP_REQUIRED_HEADER } from "./setup-required-header.ts";
 import { viewerRouteFor } from "./viewer-routes.ts";
@@ -288,11 +289,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // separately. Without this a handler sees no id and mints a second one.
   const requestHeaders = new Headers(request.headers);
 
-  // The proxy is the only writer of this header. A client that sends it cannot make the layout
-  // withhold the catalogue on a set-up deployment; the rewrite branch sets it when (and only
-  // when) it serves the not-set-up page (finding 4).
+  // The proxy is the only writer of these two headers. A client that sends them cannot make the
+  // layout withhold the catalogue on a set-up deployment, nor route a limited break-glass session
+  // past the limited-session page (finding 4, R-30).
   requestHeaders.delete(SETUP_REQUIRED_HEADER);
   requestHeaders.set("x-request-id", requestId);
+  requestHeaders.set(PATHNAME_HEADER, pathname);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },

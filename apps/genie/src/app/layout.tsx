@@ -1,4 +1,8 @@
-import { idleExpiry, sessionCookieName } from "@genie/core";
+import {
+  idleExpiry,
+  isLimitedBreakGlass,
+  sessionCookieName,
+} from "@genie/core";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
@@ -9,11 +13,25 @@ import { requireAuth } from "../auth.ts";
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
+import { LimitedSessionMount } from "../limited-session-mount.tsx";
+import { PATHNAME_HEADER } from "../pathname-header.ts";
 import { QueryProvider } from "../providers.tsx";
 import { SessionActivityMount } from "../session-activity-mount.tsx";
 import { SETUP_REQUIRED_HEADER } from "../setup-required-header.ts";
 
 import "../styles/globals.css";
+
+/**
+ * The routes a limited break-glass session may render. Every other route answers the
+ * limited-session page (R-30, R-65): the door itself, where the first unmet step is shown.
+ */
+const LIMITED_SESSION_EXEMPT = ["/admin/login"];
+
+function limitedSessionExempt(pathname: string): boolean {
+  return LIMITED_SESSION_EXEMPT.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
@@ -46,7 +64,8 @@ export default async function RootLayout({
   const messages = setupRequired ? {} : await getMessages();
 
   // The activity client mounts for a live browser session. Its first expiry is supplied by this
-  // enforced read (R-15a), so loading, restoring or navigating never writes last_active_at.
+  // enforced read (R-15a), so loading, restoring or navigating never writes last_active_at. The
+  // one read also decides the limited-session page below, so a document pays for one session read.
   const context = readContext();
 
   const cookieName =
@@ -58,29 +77,50 @@ export default async function RootLayout({
     cookieName !== undefined &&
     ((await headers()).get("cookie") ?? "").includes(`${cookieName}=`);
 
-  const activity =
+  const requestHeaders = await headers();
+
+  const session =
     context === undefined || !carriesSessionCookie
       ? undefined
+      : await requireAuth(context.tenant).sessionState({
+          headers: requestHeaders,
+        });
+
+  if (session?.status === "idle-expired") redirect("/api/auth/session-expired");
+
+  const activity =
+    context === undefined || session?.status !== "authenticated"
+      ? undefined
       : await (async () => {
-          const current = await requireAuth(context.tenant).sessionState({
-            headers: await headers(),
-          });
-
-          if (current.status === "idle-expired")
-            redirect("/api/auth/session-expired");
-
-          if (current.status === "anonymous") return undefined;
-
           const settings = await context.tenant.settings.get();
 
           return {
             idleMinutes: settings.sessionIdleMinutes,
             initialIdleExpiresAt: idleExpiry({
               lastActivityAt:
-                current.session.session.lastActiveAt ??
-                current.session.session.createdAt,
+                session.session.session.lastActiveAt ??
+                session.session.session.createdAt,
               idleMinutes: settings.sessionIdleMinutes,
             }).toISOString(),
+          };
+        })();
+
+  // R-30, R-65: a limited break-glass session renders the limited-session page on every route
+  // except the door itself, whatever the route asked for. The activity client stays mounted, so
+  // the session can still expire normally.
+  const limited =
+    context === undefined ||
+    session?.status !== "authenticated" ||
+    !isLimitedBreakGlass(session.session.user) ||
+    limitedSessionExempt(requestHeaders.get(PATHNAME_HEADER) ?? "")
+      ? undefined
+      : await (async () => {
+          const branding = await context.tenant.branding.get();
+
+          return {
+            productName: branding.productName,
+            passwordChanged: !session.session.user.mustChangePassword,
+            authenticatorEnrolled: session.session.user.twoFactorEnabled,
           };
         })();
 
@@ -106,7 +146,11 @@ export default async function RootLayout({
             {activity === undefined ? null : (
               <SessionActivityMount {...activity} />
             )}
-            {children}
+            {limited === undefined ? (
+              children
+            ) : (
+              <LimitedSessionMount {...limited} />
+            )}
           </QueryProvider>
         </NextIntlClientProvider>
         {diagnostics === undefined ? null : (

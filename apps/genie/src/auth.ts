@@ -60,6 +60,14 @@ const AUTH_ROUTES = new Map([
   ["/sign-in/social", ["POST"]],
   ["/sign-in/email", ["POST"]],
   ["/get-session", ["GET"]],
+  // S2-09, R-62 to R-66: the break-glass door's forced password change and its authenticator
+  // enrollment and code step. The member's hooks refuse a non-break-glass session on
+  // `/change-password` and `/two-factor/enable` (R-63), and the R1 session guard refuses a
+  // break-glass session from a realm callback, so opening these three adds no second employee
+  // sign-in path (R-6).
+  ["/change-password", ["POST"]],
+  ["/two-factor/enable", ["POST"]],
+  ["/two-factor/verify-totp", ["POST"]],
 ]);
 
 /** The path Better Auth is mounted under (D2-5). */

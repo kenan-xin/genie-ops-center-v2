@@ -39,6 +39,36 @@ describe("the auth route allowlist", () => {
     }
   });
 
+  it("serves the break-glass password change and two-factor endpoints (R-62 to R-66)", () => {
+    for (const path of [
+      "/change-password",
+      "/two-factor/enable",
+      "/two-factor/verify-totp",
+    ]) {
+      expect(
+        authRouteAllowed({ method: "POST", path, body: PLAIN }),
+        path
+      ).toBe(true);
+      expect(authRouteAllowed({ method: "GET", path, body: NONE }), path).toBe(
+        false
+      );
+    }
+  });
+
+  it("still refuses the two-factor endpoints a break-glass account never uses", () => {
+    for (const path of [
+      "/two-factor/disable",
+      "/two-factor/generate-backup-codes",
+      "/two-factor/verify-backup-code",
+      "/two-factor/verify-otp",
+    ]) {
+      expect(
+        authRouteAllowed({ method: "POST", path, body: PLAIN }),
+        path
+      ).toBe(false);
+    }
+  });
+
   it("serves a social sign-in only without an idToken field (R-6)", async () => {
     const path = "/sign-in/social";
 
