@@ -43,6 +43,7 @@ describe("the auth route allowlist", () => {
     for (const path of [
       "/change-password",
       "/two-factor/enable",
+      "/two-factor/disable",
       "/two-factor/verify-totp",
     ]) {
       expect(
@@ -57,7 +58,6 @@ describe("the auth route allowlist", () => {
 
   it("still refuses the two-factor endpoints a break-glass account never uses", () => {
     for (const path of [
-      "/two-factor/disable",
       "/two-factor/generate-backup-codes",
       "/two-factor/verify-backup-code",
       "/two-factor/verify-otp",

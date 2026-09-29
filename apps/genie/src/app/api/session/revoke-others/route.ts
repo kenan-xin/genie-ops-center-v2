@@ -1,5 +1,6 @@
 import { requireAuth } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
+import { refuseLimitedSession } from "../../../../limited-session.ts";
 import {
   crossOriginRefusal,
   stateChangeOriginAllowed,
@@ -17,6 +18,11 @@ async function handler(request: Request): Promise<Response> {
 
   if (!stateChangeOriginAllowed(request, app.tenant.env.publicUrl))
     return crossOriginRefusal();
+
+  // R-30: a limited break-glass session may not act on its own sessions.
+  const limited = await refuseLimitedSession(auth, request.headers);
+
+  if (limited !== null) return limited;
 
   const revoked = await auth.revokeOtherOwnSessions({
     headers: request.headers,

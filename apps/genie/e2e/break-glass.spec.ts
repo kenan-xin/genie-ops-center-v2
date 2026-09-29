@@ -65,6 +65,35 @@ async function startStandaloneBreakGlass(port: number): Promise<{
   return { deployment, image, url };
 }
 
+test("a limited break-glass session stays limited across navigation (S1, R-30)", async ({
+  page,
+}, testInfo) => {
+  const email = e2eBreakGlassEmail(testInfo.project.name);
+
+  await page.goto("/admin/login");
+  await page.getByLabel("Email").fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_BREAK_GLASS_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  // The door itself is exempt and shows the first unmet step.
+  await expect(page.getByLabel("Current password")).toBeVisible();
+
+  // Every other route answers the limited-session page.
+  await page.goto("/");
+  await expect(page.getByTestId("limited-session-page")).toBeVisible();
+
+  // "Continue setup" is a full navigation back to the door.
+  await page.getByRole("button", { name: "Continue setup" }).click();
+  await expect(page.getByLabel("Current password")).toBeVisible();
+  await expect(page.getByTestId("limited-session-page")).toHaveCount(0);
+
+  // The door's member-sign-in transition is a full navigation too, so the limited page returns.
+  await page.getByRole("button", { name: "Member sign-in" }).click();
+  await expect(page.getByTestId("limited-session-page")).toBeVisible();
+});
+
 test("a first break-glass sign-in changes the password and enrolls an authenticator (AC-15)", async ({
   page,
 }, testInfo) => {
@@ -195,6 +224,76 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
     await page
       .getByRole("button", { name: "Confirm and open the console" })
       .click();
+
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
+      .toBe("/admin/account");
+  } finally {
+    await stack.image.stop();
+    await stack.deployment.stop();
+  }
+});
+
+test("re-enroll replaces the authenticator and the new code signs in (R-66, B3)", async ({
+  page,
+}, testInfo) => {
+  const port = imageHostPort(3620 + testInfo.workerIndex * 2);
+  const stack = await startStandaloneBreakGlass(port);
+
+  try {
+    await page.goto(`${stack.url}/admin/login`);
+
+    // First sign-in: change the password, enroll with the first authenticator.
+    await page.getByLabel("Email").fill("standalone@example.invalid");
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(E2E_BREAK_GLASS_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+    await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
+    await page
+      .getByRole("button", { name: "Set password and continue" })
+      .click();
+
+    const firstKey = await page
+      .getByTestId("enrollment-manual-key")
+      .textContent();
+
+    await fillAuthenticatorCode(page, totpCode(firstKey ?? ""));
+    await page
+      .getByRole("button", { name: "Confirm and open the console" })
+      .click();
+
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
+      .toBe("/admin/account");
+
+    // Re-enroll: disable the current authenticator with the current password, then enroll anew.
+    await page.getByRole("button", { name: "Re-enroll" }).click();
+    await page.getByLabel("Confirm your password").fill(NEW_PASSWORD);
+    await page.getByRole("button", { name: "Start re-enroll" }).click();
+
+    const secondKey = await page
+      .getByTestId("enrollment-manual-key")
+      .textContent();
+
+    expect(secondKey).toBeTruthy();
+
+    await page.getByLabel("Code from the app").fill(totpCode(secondKey ?? ""));
+    await page.getByRole("button", { name: "Confirm" }).click();
+
+    await expect(page.getByTestId("enrollment-manual-key")).toHaveCount(0);
+
+    // Sign in afterwards with the new authenticator's code.
+    await page.context().clearCookies();
+    await page.goto(`${stack.url}/admin/login`);
+    await page.getByLabel("Email").fill("standalone@example.invalid");
+    await page.getByLabel("Password", { exact: true }).fill(NEW_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await fillAuthenticatorCode(page, totpCode(secondKey ?? ""));
+    await page.getByRole("button", { name: "Verify" }).click();
 
     await expect
       .poll(() => new URL(page.url()).pathname, { timeout: 30000 })

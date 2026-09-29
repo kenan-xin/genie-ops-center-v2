@@ -67,6 +67,7 @@ const AUTH_ROUTES = new Map([
   // sign-in path (R-6).
   ["/change-password", ["POST"]],
   ["/two-factor/enable", ["POST"]],
+  ["/two-factor/disable", ["POST"]],
   ["/two-factor/verify-totp", ["POST"]],
 ]);
 

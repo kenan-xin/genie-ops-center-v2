@@ -269,7 +269,7 @@ export function AdminLoginRoute(props: {
         setSteps(["credentials", "authenticator-code"]);
         setError(null);
       }}
-      onGoToMemberSignIn={() => router.push("/sign-in")}
+      onGoToMemberSignIn={() => window.location.assign("/sign-in")}
     />
   );
 }

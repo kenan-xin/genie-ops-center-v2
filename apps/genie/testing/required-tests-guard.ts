@@ -32,6 +32,14 @@ export * from "@genie/core/testing/required-tests-validator";
 
 export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
+    file: "testing/trpc-unauthenticated.integration.test.ts",
+    reason:
+      "S2-09 review S2 requires the app-owned routes to refuse a limited break-glass session, with only the two clearing endpoints answering",
+    cases: [
+      "the tRPC answer for an unauthenticated request refuses a limited break-glass session on every app-owned route except the two clearing endpoints (R-30, S2)",
+    ],
+  },
+  {
     file: "testing/isolation.integration.test.ts",
     cases: [
       "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",

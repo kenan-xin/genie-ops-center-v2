@@ -66,7 +66,27 @@ export function AdminAccountRoute(props: {
     null
   );
 
+  /**
+   * B3: re-enroll starts by disabling the current authenticator, which Better Auth requires the
+   * current password for and which removes the TOTP row. The account is then "not enrolled" and
+   * the forced enrollment starts on the same page; an abandoned re-enroll is therefore never
+   * stuck, because the next sign-in forces enrollment too.
+   */
   async function startReenroll(password: string): Promise<void> {
+    const disabled = await postJson("/api/auth/two-factor/disable", {
+      password,
+    });
+
+    if (!disabled.ok) {
+      setError(
+        await refusalMessage(
+          disabled,
+          "The authenticator could not be removed. Check the current password."
+        )
+      );
+      return;
+    }
+
     const response = await postJson("/api/auth/two-factor/enable", {
       password,
       method: "totp",

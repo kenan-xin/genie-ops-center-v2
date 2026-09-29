@@ -250,4 +250,71 @@ describe("the tRPC answer for an unauthenticated request", () => {
     expect(answer.body.error?.data?.code).toBe("UNAUTHORIZED");
     expect(answer.body.error?.data?.appCode).toBe("unauthenticated");
   });
+
+  it("refuses a limited break-glass session on every app-owned route except the two clearing endpoints (R-30, S2)", async () => {
+    const email = "trpc-limited@example.com";
+
+    // A limited break-glass account: the forced password change is outstanding.
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: "trpc-limited-password-14",
+      mustChangePassword: true,
+      twoFactorEnabled: false,
+    });
+
+    const cookie = await cookieFor(userId);
+
+    // The two clearance checks this file exercises below need the module enabled; every route
+    // refuses the limited session, so the tRPC answers are `forbidden`, not a success.
+    await enableModules(deployment.context, ["placeholder"]);
+
+    const moduleRead = await fetch(readUrl(), { headers: { cookie } });
+
+    expect(moduleRead.status).toBe(403);
+
+    // A well-formed audit read reaches the resolver and `can()` refuses the limited session; a
+    // malformed cursor would be a 400 before the permission check.
+    const auditRead = await fetch(
+      `${baseUrl()}/api/trpc/audit.list?input=${encodeURIComponent("{}")}`,
+      { headers: { cookie } }
+    );
+
+    expect(auditRead.status).toBe(403);
+
+    for (const [path, body] of [
+      ["/api/session/revoke", { sessionId: "whatever" }],
+      ["/api/session/revoke-others", { allOthers: true }],
+    ] as const) {
+      // oxlint-disable-next-line no-await-in-loop -- each route is one request
+      const response = await fetch(`${baseUrl()}${path}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie,
+          "origin": "https://example.invalid",
+        },
+        body: JSON.stringify(body),
+      });
+
+      expect(response.status, path).toBe(403);
+      // oxlint-disable-next-line no-await-in-loop
+      expect(await response.json(), path).toMatchObject({
+        code: "limited-session",
+      });
+    }
+
+    // The two clearing endpoints answer: `/change-password` runs its rule and then Better Auth
+    // rejects the wrong current password (400), rather than the limited-session refusal.
+    const change = await fetch(`${baseUrl()}/api/auth/change-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({
+        currentPassword: "wrong-password-1!",
+        newPassword: "BreakGlass1!xy",
+      }),
+    });
+
+    expect(change.status).not.toBe(403);
+    expect(change.status).toBe(400);
+  });
 });
