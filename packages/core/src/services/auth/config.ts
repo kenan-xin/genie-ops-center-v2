@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * The pure builders behind the Better Auth instance: the cookie name, the discovery URL, the
  * Keycloak provider record, and the application user columns. Keeping them apart makes each
@@ -65,6 +67,48 @@ export type KeycloakProviderInput = {
   readonly publicUrl: string;
 };
 
+const idTokenClaims = z.looseObject({
+  sub: z.string(),
+  email: z.string(),
+  email_verified: z.boolean().optional(),
+  name: z.string().optional(),
+  picture: z.string().optional(),
+});
+
+/** Generic OAuth calls this only after verifying a present ID token against Keycloak's JWKS. */
+function verifiedIdTokenProfile(idToken: string | undefined) {
+  if (idToken === undefined) return null;
+
+  const payload = idToken.split(".")[1];
+
+  if (payload === undefined) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8")
+    );
+
+    const result = idTokenClaims.safeParse(parsed);
+
+    if (!result.success) return null;
+
+    const claims = result.data;
+    const { sub, email } = claims;
+
+    return {
+      ...claims,
+      id: sub,
+      sub,
+      email,
+      emailVerified: claims.email_verified === true,
+      image: claims.picture,
+      name: claims.name,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The `genericOAuth` provider for Keycloak (R-5): the discovery URL, PKCE on, verified id tokens
  * required so an incomplete discovery answer cannot downgrade the signature and `aud` checks
@@ -79,6 +123,10 @@ export function keycloakProviderConfig(input: KeycloakProviderInput) {
     scopes: ["openid", "profile", "email"],
     pkce: true,
     requireIdTokenVerification: true,
+    // A missing ID token must not fall back to userinfo. The plugin verifies a present token
+    // before calling this function, so these are the only claims onboarding may consume.
+    getUserInfo: async (tokens: { readonly idToken?: string | undefined }) =>
+      verifiedIdTokenProfile(tokens.idToken),
     postLogoutRedirectURI: input.publicUrl,
     // The member builds the end-session URL itself, because the stored id token is encrypted and
     // Better Auth would put the ciphertext into `id_token_hint` (R-7, R-17).
