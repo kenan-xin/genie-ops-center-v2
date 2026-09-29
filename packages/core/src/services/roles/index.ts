@@ -236,6 +236,30 @@ export async function readRole(
   };
 }
 
+/**
+ * The keys a role may newly grant: core's own keys plus the declared keys of every included module
+ * whose entitlement is enabled. A disabled module's keys are excluded, so a role can never acquire
+ * a dormant key that starts granting when the module is later switched on (R-33a, R-33b).
+ */
+async function entitledCatalogue(
+  tenant: TenantContext,
+  modules: readonly RolesModule[]
+): Promise<ReadonlySet<string>> {
+  const enabled = await Promise.all(
+    modules.map((module) => tenant.entitlements.isEnabled(module.identity.id))
+  );
+
+  const keys = new Set<string>(CORE_PERMISSION_KEYS);
+
+  for (const [index, module] of modules.entries()) {
+    if (enabled[index] !== true) continue;
+
+    for (const entry of module.permissions) keys.add(entry.key);
+  }
+
+  return keys;
+}
+
 function assertPermissionsDeclared(
   permissions: readonly string[],
   catalogue: ReadonlySet<string>,
@@ -275,7 +299,15 @@ export async function declaredCatalogue(
 
   for (const key of CORE_PERMISSION_KEYS) push("core", key, key);
 
-  for (const module of modules) {
+  // Only an included, entitled module's keys are selectable: a disabled module's keys are not
+  // offered, so a role cannot be given a key that does not grant today (R-33a).
+  const enabled = await Promise.all(
+    modules.map((module) => tenant.entitlements.isEnabled(module.identity.id))
+  );
+
+  for (const [index, module] of modules.entries()) {
+    if (enabled[index] !== true) continue;
+
     for (const entry of module.permissions) {
       push(module.identity.id, entry.key, entry.label);
     }
@@ -288,23 +320,10 @@ export async function declaredCatalogue(
     ),
   ]);
 
-  const entitled = new Map(
-    await Promise.all(
-      [...groups.keys()].map(async (moduleId) => {
-        const enabled =
-          moduleId === "core"
-            ? true
-            : await tenant.entitlements.isEnabled(moduleId);
-
-        return [moduleId, enabled] as const;
-      })
-    )
-  );
-
   return [...groups.entries()].map(([moduleId, keys]) => ({
     moduleId,
     moduleName: names.get(moduleId) ?? moduleId,
-    entitled: entitled.get(moduleId) ?? false,
+    entitled: true,
     keys,
   }));
 }
@@ -347,7 +366,7 @@ export async function createRole(
 
   assertPermissionsDeclared(
     input.permissions,
-    permissionCatalogue(modules),
+    await entitledCatalogue(tenant, modules),
     new Set(input.allowedExisting ?? [])
   );
 
@@ -399,6 +418,8 @@ export async function updateRole(
 
   if (name === "") throw new AppError(CORE_ERRORS["invalid-input"]);
 
+  const catalogue = await entitledCatalogue(tenant, modules);
+
   await withTransaction(tenant, async (tx) => {
     const rows = await tx
       .select({
@@ -422,7 +443,7 @@ export async function updateRole(
 
     assertPermissionsDeclared(
       input.permissions,
-      permissionCatalogue(modules),
+      catalogue,
       new Set(existing.permissions)
     );
 
