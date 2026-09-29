@@ -790,3 +790,165 @@ describe("the role-assignment service", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("the review fixes", () => {
+  it("stores the pre-added claim value exactly and refuses surrounding whitespace", async () => {
+    const actor = await insertManager();
+
+    await expect(
+      groupsCaller(actor).addDirectoryGroup({ externalId: " Padded " })
+    ).rejects.toMatchObject({ cause: { code: "claim-value-whitespace" } });
+
+    const { id } = await groupsCaller(actor).addDirectoryGroup({
+      externalId: "Exact-Value_42",
+    });
+
+    const [row] = await deployment.context.db
+      .select()
+      .from(group)
+      .where(eq(group.id, id));
+
+    expect(row?.externalId).toBe("Exact-Value_42");
+  });
+
+  it("keeps an unavailable key through an unrelated edit and removes one of two", async () => {
+    const actor = await insertManager();
+
+    const budget = await insertRole(deployment.context, {
+      name: `Two retired ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    await deployment.context.db
+      .update(roleTable)
+      .set({ permissions: ["fixture:use", "retired:one", "retired:two"] })
+      .where(eq(roleTable.id, budget));
+
+    const [row] = await deployment.context.db
+      .select({ name: roleTable.name })
+      .from(roleTable)
+      .where(eq(roleTable.id, budget));
+
+    // An edit that keeps both unavailable keys is allowed.
+    await rolesCaller(actor).update({
+      roleId: budget,
+      name: row!.name,
+      permissions: ["fixture:use", "retired:one", "retired:two"],
+    });
+
+    // Removing one leaves the other, without deleting the role.
+    await rolesCaller(actor).update({
+      roleId: budget,
+      name: row!.name,
+      permissions: ["fixture:use", "retired:two"],
+    });
+
+    const [after] = await deployment.context.db
+      .select({ permissions: roleTable.permissions })
+      .from(roleTable)
+      .where(eq(roleTable.id, budget));
+
+    expect([...after!.permissions].toSorted()).toEqual([
+      "fixture:use",
+      "retired:two",
+    ]);
+  });
+
+  it("updates one row on a same-name edit and on a rename", async () => {
+    const actor = await insertManager();
+
+    const { id } = await rolesCaller(actor).create({
+      name: `Stable name ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    const [created] = await deployment.context.db
+      .select({ name: roleTable.name })
+      .from(roleTable)
+      .where(eq(roleTable.id, id));
+
+    await rolesCaller(actor).update({
+      roleId: id,
+      name: created!.name,
+      permissions: ["fixture:use", "fixture:admin"],
+    });
+
+    await rolesCaller(actor).update({
+      roleId: id,
+      name: `${created!.name} renamed`,
+      permissions: ["fixture:use"],
+    });
+
+    const rows = await deployment.context.db
+      .select({ id: roleTable.id, name: roleTable.name })
+      .from(roleTable)
+      .where(eq(roleTable.id, id));
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.name).toBe(`${created!.name} renamed`);
+  });
+
+  it("offers the declared catalogue to the role form", async () => {
+    const actor = await insertManager();
+
+    const catalogue = await rolesCaller(actor).catalogue();
+    const keys = catalogue.flatMap((entry) => entry.keys.map((key) => key.key));
+
+    expect(keys).toContain("core:groups:manage");
+    expect(keys).toContain("core:roles:manage");
+    expect(keys).toContain("fixture:use");
+  });
+
+  it("lists active non-break-glass people for the member picker", async () => {
+    const actor = await insertManager();
+    const active = await insertUser(deployment.context);
+    const banned = await insertUser(deployment.context, { banned: true });
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    const people = await groupsCaller(actor).people();
+    const ids = people.map((person) => person.id);
+
+    expect(ids).toContain(active);
+    expect(ids).not.toContain(banned);
+    expect(ids).not.toContain(breakGlass);
+  });
+
+  it("assigns and removes a role from the group inspector through the shared service", async () => {
+    const actor = await insertManager();
+
+    const roleId = await insertRole(deployment.context, {
+      name: `Inspector role ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    const groupId = await insertGroup(deployment.context, [], {
+      source: "idp",
+      externalId: `inspector-${Date.now()}`,
+      name: "inspector",
+    });
+
+    const { id: assignmentId } = await groupsCaller(actor).assignRole({
+      groupId,
+      roleId,
+    });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(roleAssignment)
+        .where(eq(roleAssignment.id, assignmentId))
+    ).toHaveLength(1);
+
+    await groupsCaller(actor).unassign({ assignmentId });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(roleAssignment)
+        .where(eq(roleAssignment.id, assignmentId))
+    ).toEqual([]);
+  });
+});

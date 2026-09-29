@@ -53,14 +53,30 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await expect(page.getByText("S2-11 group")).toBeVisible();
   await expect(page.getByText("Not seen yet").first()).toBeVisible();
 
-  // Map the group to the reader role, so a jit sign-in carrying the claim is admitted.
-  await queryDatabase(
-    `insert into role_assignment (role_id, principal_type, principal_id)
-       select r.id, 'group', g.id::text
-         from role r, "group" g
-        where r.name = 'E2E reader' and g.external_id = '${GROUP_VALUE}'
-       on conflict do nothing`
+  // Map the group to a role through the screen's own assign step (R-24b), not SQL.
+  await page
+    .getByRole("button", { name: /S2-11 group/ })
+    .first()
+    .click();
+
+  const inspector = page.getByRole("dialog", { name: "S2-11 group" });
+
+  await inspector.getByRole("tab", { name: /^Roles/ }).click();
+  await inspector
+    .getByLabel("Role to assign")
+    .selectOption({ label: "E2E reader" });
+  await inspector.getByRole("button", { name: "Assign role" }).click();
+
+  const [assigned] = await queryDatabase(
+    `select count(*) from role_assignment a
+       join role r on r.id = a.role_id
+       join "group" g on g.id = a.principal_id::uuid
+      where r.name = 'E2E reader' and g.external_id = '${GROUP_VALUE}'`
   );
+
+  expect(assigned).toBe("1");
+
+  await inspector.getByRole("button", { name: "Close" }).click();
 
   // A jit person whose token carries the group is admitted and holds the role through it.
   const admittedEmail = e2eGroupsRolesEmail("admitted", project);
