@@ -10,20 +10,28 @@ import {
 } from "../../lib/tenant-context/with-transaction.ts";
 import { role, roleAssignment } from "../../schema.ts";
 import { writeAdminAuditEvent } from "../audit/index.ts";
-import {
-  CORE_PERMISSION_KEYS,
-  permissionCatalogue,
-} from "../authorization/roles.ts";
+import { CORE_PERMISSION_KEYS } from "../authorization/roles.ts";
 
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<Module, "identity" | "permissions">;
+
+/** Why a stored key no longer grants: its module is switched off, or the key is retired/unknown. */
+export type UnavailableReason = "module-disabled" | "retired";
+
+/** One stored key outside the selectable catalogue, with why it is unavailable. */
+export type UnavailableKey = {
+  readonly key: string;
+  readonly reason: UnavailableReason;
+};
 
 /** One permission key as the role editor groups it. */
 export type RolePermissionKey = {
   readonly key: string;
   readonly label: string;
-  /** R-33b: a stored key the catalogue no longer holds. It never grants; a custom role may remove it. */
+  /** R-33b: a stored key the catalogue no longer offers. It never grants; a custom role may remove it. */
   readonly unavailable: boolean;
+  /** Present exactly when `unavailable` is true. */
+  readonly unavailableReason?: UnavailableReason | undefined;
 };
 
 export type RolePermissionGroup = {
@@ -43,8 +51,8 @@ export type RoleRow = {
   readonly assignmentCount: number;
   /** R-31: keys appended automatically when a module was entitled (Tenant administrator only). */
   readonly entitlementAdded: readonly string[];
-  /** R-33b: stored keys that are retired or belong to an absent module. */
-  readonly unavailableKeys: readonly string[];
+  /** R-33b: stored keys the entitled catalogue does not offer, each with why. */
+  readonly unavailableKeys: readonly UnavailableKey[];
 };
 
 export type RoleAssignmentRow = {
@@ -82,10 +90,72 @@ function moduleAdminKeys(modules: readonly RolesModule[]): ReadonlySet<string> {
   );
 }
 
+/** Each included module's entitlement state, read once (DEC-46 caches the reads). */
+async function entitlementByModule(
+  tenant: TenantContext,
+  modules: readonly RolesModule[]
+): Promise<ReadonlyMap<string, boolean>> {
+  const enabled = await Promise.all(
+    modules.map((module) => tenant.entitlements.isEnabled(module.identity.id))
+  );
+
+  return new Map(
+    modules.map((module, index) => [
+      module.identity.id,
+      enabled[index] === true,
+    ])
+  );
+}
+
+/** Core keys plus the declared keys of every entitled module: what a role may newly grant. */
+function availableKeySet(
+  modules: readonly RolesModule[],
+  entitled: ReadonlyMap<string, boolean>
+): ReadonlySet<string> {
+  const keys = new Set<string>(CORE_PERMISSION_KEYS);
+
+  for (const module of modules) {
+    if (entitled.get(module.identity.id) !== true) continue;
+
+    for (const entry of module.permissions) keys.add(entry.key);
+  }
+
+  return keys;
+}
+
+/** Why a stored key is outside the available set: its module is compiled but off, or it is unknown. */
+function unavailableReasonFor(
+  key: string,
+  modules: readonly RolesModule[],
+  entitled: ReadonlyMap<string, boolean>
+): UnavailableReason {
+  const moduleId = key.split(":")[0] ?? "core";
+  const compiled = modules.some((module) => module.identity.id === moduleId);
+
+  return compiled && entitled.get(moduleId) !== true
+    ? "module-disabled"
+    : "retired";
+}
+
+/** The stored keys outside the available set, each with its reason (R-33b). */
+function unavailableKeysOf(
+  permissions: readonly string[],
+  modules: readonly RolesModule[],
+  entitled: ReadonlyMap<string, boolean>
+): readonly UnavailableKey[] {
+  const available = availableKeySet(modules, entitled);
+
+  return permissions.flatMap((key) =>
+    available.has(key)
+      ? []
+      : [{ key, reason: unavailableReasonFor(key, modules, entitled) }]
+  );
+}
+
 function toRoleRow(
   raw: RawRole,
-  catalogue: ReadonlySet<string>,
-  adminKeys: ReadonlySet<string>
+  adminKeys: ReadonlySet<string>,
+  unavailableKeys: readonly UnavailableKey[]
 ): RoleRow {
   const permissions = [...raw.permissions];
 
@@ -101,7 +171,7 @@ function toRoleRow(
       raw.name === TENANT_ADMINISTRATOR_ROLE
         ? permissions.filter((key) => adminKeys.has(key))
         : [],
-    unavailableKeys: permissions.filter((key) => !catalogue.has(key)),
+    unavailableKeys,
   };
 }
 
@@ -119,8 +189,8 @@ export async function listRoles(
   tenant: TenantContext,
   modules: readonly RolesModule[]
 ): Promise<readonly RoleRow[]> {
-  const catalogue = permissionCatalogue(modules);
   const adminKeys = moduleAdminKeys(modules);
+  const entitled = await entitlementByModule(tenant, modules);
 
   const result = await tenant.db.$client.query(
     `select ${ROLE_COLUMNS} from role r order by r.is_system desc, lower(r.name)`
@@ -128,14 +198,18 @@ export async function listRoles(
 
   // SAFETY: the statement selects exactly the role columns.
   return (result.rows as readonly RawRole[]).map((row) =>
-    toRoleRow(row, catalogue, adminKeys)
+    toRoleRow(
+      row,
+      adminKeys,
+      unavailableKeysOf(row.permissions, modules, entitled)
+    )
   );
 }
 
 function permissionGroups(
   permissions: readonly string[],
   modules: readonly RolesModule[],
-  catalogue: ReadonlySet<string>,
+  available: ReadonlySet<string>,
   entitled: ReadonlyMap<string, boolean>
 ): readonly RolePermissionGroup[] {
   const labels = new Map<string, string>();
@@ -149,11 +223,15 @@ function permissionGroups(
   for (const key of permissions) {
     const moduleId = key.split(":")[0] ?? "core";
     const list = groups.get(moduleId) ?? [];
+    const unavailable = !available.has(key);
 
     list.push({
       key,
       label: labels.get(key) ?? key,
-      unavailable: !catalogue.has(key),
+      unavailable,
+      unavailableReason: unavailable
+        ? unavailableReasonFor(key, modules, entitled)
+        : undefined,
     });
     groups.set(moduleId, list);
   }
@@ -179,8 +257,9 @@ export async function readRole(
   roleId: string,
   modules: readonly RolesModule[]
 ): Promise<RoleDetail | undefined> {
-  const catalogue = permissionCatalogue(modules);
   const adminKeys = moduleAdminKeys(modules);
+  const entitled = await entitlementByModule(tenant, modules);
+  const available = availableKeySet(modules, entitled);
 
   const found = await tenant.db.$client.query(
     `select ${ROLE_COLUMNS} from role r where r.id = $1::uuid`,
@@ -205,30 +284,16 @@ export async function readRole(
     [roleId]
   );
 
-  const moduleIds = [
-    ...new Set(raw.permissions.map((key) => key.split(":")[0] ?? "core")),
-  ];
-
-  // Core is never a module and is always on; the rest read their entitlement once.
-  const entitled = new Map(
-    await Promise.all(
-      moduleIds.map(async (moduleId) => {
-        const enabled =
-          moduleId === "core"
-            ? true
-            : await tenant.entitlements.isEnabled(moduleId);
-
-        return [moduleId, enabled] as const;
-      })
-    )
-  );
-
   return {
-    ...toRoleRow(raw, catalogue, adminKeys),
+    ...toRoleRow(
+      raw,
+      adminKeys,
+      unavailableKeysOf(raw.permissions, modules, entitled)
+    ),
     permissionGroups: permissionGroups(
       raw.permissions,
       modules,
-      catalogue,
+      available,
       entitled
     ),
     // SAFETY: the statement selects exactly the assignment columns.
@@ -245,19 +310,7 @@ async function entitledCatalogue(
   tenant: TenantContext,
   modules: readonly RolesModule[]
 ): Promise<ReadonlySet<string>> {
-  const enabled = await Promise.all(
-    modules.map((module) => tenant.entitlements.isEnabled(module.identity.id))
-  );
-
-  const keys = new Set<string>(CORE_PERMISSION_KEYS);
-
-  for (const [index, module] of modules.entries()) {
-    if (enabled[index] !== true) continue;
-
-    for (const entry of module.permissions) keys.add(entry.key);
-  }
-
-  return keys;
+  return availableKeySet(modules, await entitlementByModule(tenant, modules));
 }
 
 function assertPermissionsDeclared(
@@ -356,18 +409,19 @@ export async function createRole(
     readonly description?: string | undefined;
     readonly permissions: readonly string[];
     readonly copiedFrom?: string;
-    /** Keys the source role already held, so a copy of a role with unavailable keys is allowed. */
-    readonly allowedExisting?: readonly string[];
   }
 ): Promise<string> {
   const name = input.name.trim();
 
   if (name === "") throw new AppError(CORE_ERRORS["invalid-input"]);
 
+  // A new role, a copy included, may carry only keys the entitled catalogue offers. A copy of a
+  // role holding a disabled module's key is refused rather than silently created with dormant
+  // grants (R-33a).
   assertPermissionsDeclared(
     input.permissions,
     await entitledCatalogue(tenant, modules),
-    new Set(input.allowedExisting ?? [])
+    new Set()
   );
 
   return withTransaction(tenant, async (tx) => {
@@ -540,6 +594,5 @@ export async function copyRole(
     description: source.description ?? undefined,
     permissions: source.permissions,
     copiedFrom: input.roleId,
-    allowedExisting: source.permissions,
   });
 }
