@@ -178,22 +178,36 @@ export function accountHooks(input: Pick<AuthMemberInput, "auth" | "db">) {
 }
 
 /**
- * The neutral message a credential sign-in for a non-break-glass account answers with. It never
- * says whether the email exists (R-62).
+ * The neutral message a credential sign-in for a non-break-glass account answers with. It is
+ * Better Auth's own `BASE_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD` message exactly, so a caller
+ * cannot tell "correct password, wrong account" from "wrong password" (R-62, review L1).
  */
-export const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password.";
+export const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
 
-/** The named cause a non-break-glass credential refusal carries (R-62). */
+/** Better Auth's `BASE_ERROR_CODES.INVALID_EMAIL_OR_PASSWORD` code (UNAUTHORIZED). */
+export const INVALID_EMAIL_OR_PASSWORD_CODE = "INVALID_EMAIL_OR_PASSWORD";
+
+/** The named cause a non-break-glass session is refused on a break-glass-only endpoint (R-62). */
 export const BREAK_GLASS_ONLY_CODE = "break_glass_only";
 
 /** The named cause the R1 guard refuses an OAuth session for the break-glass account with (R1). */
 export const BREAK_GLASS_OAUTH_REFUSED = "break_glass_oauth_refused";
+
+/** The named cause a `trustDevice`-carrying code verification is refused with (B1, R-63). */
+export const TRUST_DEVICE_REFUSED = "trust_device_refused";
 
 /** The response code the break-glass sign-in card maps to its neutral notice (R-21). */
 export const RATE_LIMITED_CODE = "rate_limited";
 
 /** The named cause a password that misses the R-64 rule is refused with. */
 export const PASSWORD_POLICY_CODE = "password_policy";
+
+/**
+ * The two-factor plugin's challenge cookie name, under this instance's cookie prefix (better-auth
+ * 1.7.6 `createCookieGetter`). A code step carries it; the enrollment confirmation, which runs on
+ * a real session, does not (B2).
+ */
+const TWO_FACTOR_CHALLENGE_COOKIE = "two_factor";
 
 /** The one value of `name` in a `Cookie` header, or undefined (no decoding: tokens are opaque). */
 export function readCookie(header: string, name: string): string | undefined {
@@ -214,6 +228,11 @@ export function readCookie(header: string, name: string): string | undefined {
 const changePasswordBody = z.object({
   newPassword: z.string(),
   currentPassword: z.string(),
+});
+
+/** The one field the trust-device refusal reads; every other field is stripped (B1). */
+const trustDeviceBody = z.object({
+  trustDevice: z.boolean().optional(),
 });
 
 /**
@@ -247,7 +266,7 @@ export function sessionCreateBefore(
 
     if (!isBreakGlass && !fromOAuth) {
       throw new APIError("UNAUTHORIZED", {
-        code: BREAK_GLASS_ONLY_CODE,
+        code: INVALID_EMAIL_OR_PASSWORD_CODE,
         message: INVALID_CREDENTIALS_MESSAGE,
       });
     }
@@ -294,9 +313,11 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
     trustedOrigins: [input.publicUrl],
     telemetry: { enabled: false },
     // R-19 to R-21: the application's own fixed window (`rate_limit_window`) is the one limit on
-    // the four sensitive endpoints, so Better Auth's built-in in-memory limiter is off and cannot
-    // refuse a request the tenant's own window would have allowed. The two-factor plugin keeps its
-    // own per-code limit and account lockout (R-63).
+    // the sensitive endpoints, so Better Auth's built-in in-memory limiter is off. That also turns
+    // off the plugin's global `/two-factor/*` rule (3 per 10 s); what remains is the plugin's
+    // per-challenge budget (5 tries) and the account lockout (10 failures, 15 minutes), both on
+    // the sign-in code step, plus the member's own `break_glass_password` window on the password
+    // checks (S3).
     rateLimit: { enabled: false },
     // R-44, R-45: every Better Auth line goes through the context's redacting logger.
     logger: {
@@ -327,6 +348,7 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
                     return;
                   const [owner] = await input.db
                     .select({
+                      isBreakGlass: user.isBreakGlass,
                       mustChangePassword: user.mustChangePassword,
                       twoFactorEnabled: user.twoFactorEnabled,
                     })
@@ -340,6 +362,16 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
                     .update(user)
                     .set({ mustChangePassword: false, updatedAt: sql`now()` })
                     .where(eq(user.id, data.userId));
+                  // L3: the forced break-glass password change is audited once (R-44, R-45).
+                  const tenant = input.tenant?.();
+                  if (owner.isBreakGlass === true && tenant !== undefined) {
+                    await writeAuthAuditEvent(tenant, {
+                      action: "auth:break_glass_password_changed",
+                      actorUserId: data.userId,
+                      targetUserId: data.userId,
+                      summary: "Break-glass password changed",
+                    });
+                  }
                   if (owner.twoFactorEnabled !== true) return;
                   // SAFETY: `GenericEndpointContext.context` is the endpoint's own context, whose
                   // `session` is the signed-in session on the change-password path; the cast only
@@ -433,6 +465,7 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
       before: createAuthMiddleware(async (ctx) => {
         const tenant = input.tenant?.();
         if (tenant === undefined) return;
+
         if (ctx.path === "/sign-in/email") {
           // R-19 to R-21: every credential attempt counts against the per-deployment window,
           // and a refusal is one `auth:rate_limited` row with the neutral minutes the card shows.
@@ -462,11 +495,27 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
           }
           return;
         }
-        if (
-          ctx.path !== "/change-password" &&
-          ctx.path !== "/two-factor/enable"
-        )
+
+        // B1: device trust is never available to the break-glass account (R-63), so one code
+        // cannot stand in for the code step on every later sign-in.
+        if (ctx.path === "/two-factor/verify-totp") {
+          const body = trustDeviceBody.safeParse(ctx.body);
+          if (body.success && body.data.trustDevice === true) {
+            throw new APIError("BAD_REQUEST", {
+              code: TRUST_DEVICE_REFUSED,
+              message:
+                "Device trust is not available for the break-glass account.",
+            });
+          }
           return;
+        }
+
+        const guarded =
+          ctx.path === "/change-password" ||
+          ctx.path === "/two-factor/enable" ||
+          ctx.path === "/two-factor/disable";
+        if (!guarded) return;
+
         const cookieName = ctx.context.authCookies.sessionToken.name;
         const token = await ctx.getSignedCookie(cookieName, ctx.context.secret);
         const found =
@@ -474,6 +523,7 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
             ? null
             : await ctx.context.internalAdapter.findSession(token);
         const person = found?.user;
+
         // R-63: the two-factor endpoints and the password change are the break-glass account's.
         if (person !== undefined && person.isBreakGlass !== true) {
           throw new APIError("FORBIDDEN", {
@@ -481,6 +531,36 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
             message: "This endpoint is for the break-glass account only.",
           });
         }
+
+        // S3: the password checks are limited per account (the R-19 service), so a held
+        // break-glass session cannot brute-force the current password at Better Auth.
+        if (person !== undefined && person.isBreakGlass === true) {
+          const decision = await consumeRateLimit(tenant, {
+            endpoint: "break_glass_password",
+            subject: person.id,
+          });
+          if (!decision.allowed) {
+            await writeAuthAuditEvent(tenant, {
+              action: "auth:rate_limited",
+              summary:
+                "Break-glass password check refused by the fixed-window rate limit",
+              metadata: {
+                endpoint: decision.endpoint,
+                subjectKind: decision.subjectKind,
+                windowMinutes: decision.windowMinutes,
+                retryAfterMinutes: decision.retryAfterMinutes,
+              },
+            });
+            return new Response(
+              JSON.stringify({
+                code: RATE_LIMITED_CODE,
+                retryAfterMinutes: decision.retryAfterMinutes,
+              }),
+              { status: 429, headers: { "content-type": "application/json" } }
+            );
+          }
+        }
+
         // R-64: the server check is the same rule the client meter reads, plus the save-time
         // clause that the new password is not the provisioning password it replaces.
         if (ctx.path === "/change-password" && person !== undefined) {
@@ -503,6 +583,20 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
       after: createAuthMiddleware(async (ctx) => {
         const tenant = input.tenant?.();
         if (tenant === undefined) return;
+
+        // B3: the re-enroll start removes the authenticator; one row records it (R-66).
+        if (ctx.path === "/two-factor/disable") {
+          const person = ctx.context.session?.user;
+          if (person === undefined || person.isBreakGlass !== true) return;
+          await writeAuthAuditEvent(tenant, {
+            action: "auth:break_glass_authenticator_cleared",
+            actorUserId: person.id,
+            targetUserId: person.id,
+            summary: "Break-glass authenticator cleared for re-enrollment",
+          });
+          return;
+        }
+
         if (
           ctx.path !== "/sign-in/email" &&
           ctx.path !== "/two-factor/verify-totp"
@@ -515,39 +609,52 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
         // completed sign-in; the code step completes it, so only that step records the row.
         if (ctx.path === "/sign-in/email" && person.twoFactorEnabled === true)
           return;
-        const activeCookie =
+
+        // B2: a code-step sign-in carries the two-factor challenge cookie; the enrollment
+        // confirmation runs on a real session and carries none. The cookie name carries this
+        // instance's prefix (`better-auth.two_factor` by default).
+        const challenge =
           ctx.path === "/two-factor/verify-totp"
             ? await ctx.getSignedCookie(
-                ctx.context.authCookies.sessionToken.name,
+                ctx.context.createAuthCookie(TWO_FACTOR_CHALLENGE_COOKIE).name,
                 ctx.context.secret
               )
-            : undefined;
-        const enrollment = activeCookie !== false && activeCookie !== undefined;
-        if (enrollment) {
-          // R-65: enrollment is complete. Keep the session it just created and drop the rest.
-          if (created?.session.id !== undefined) {
-            await input.db
-              .delete(session)
-              .where(
-                and(
-                  eq(session.userId, person.id),
-                  ne(session.id, created.session.id)
-                )
-              );
-          }
+            : false;
+        const isEnrollment =
+          ctx.path === "/two-factor/verify-totp" &&
+          !(
+            challenge !== false &&
+            challenge !== null &&
+            challenge !== undefined
+          );
+
+        if (!isEnrollment) {
           await writeAuthAuditEvent(tenant, {
-            action: "auth:break_glass_authenticator_enrolled",
+            action: "auth:break_glass_sign_in",
             actorUserId: person.id,
             targetUserId: person.id,
-            summary: "Break-glass authenticator enrolled",
+            summary: "Break-glass sign-in",
           });
           return;
         }
+
+        // R-65: enrollment completes the forced steps. Keep the session it just created and
+        // drop the account's other sessions.
+        if (created?.session.id !== undefined) {
+          await input.db
+            .delete(session)
+            .where(
+              and(
+                eq(session.userId, person.id),
+                ne(session.id, created.session.id)
+              )
+            );
+        }
         await writeAuthAuditEvent(tenant, {
-          action: "auth:break_glass_sign_in",
+          action: "auth:break_glass_authenticator_enrolled",
           actorUserId: person.id,
           targetUserId: person.id,
-          summary: "Break-glass sign-in",
+          summary: "Break-glass authenticator enrolled",
         });
       }),
     },

@@ -22,6 +22,7 @@ export const AUDIT_ACTIONS = [
   "auth:break_glass_sign_in",
   "auth:break_glass_password_changed",
   "auth:break_glass_authenticator_enrolled",
+  "auth:break_glass_authenticator_cleared",
   // Administration (Section 2).
   "core:person_added",
   "core:role_assignment_added",

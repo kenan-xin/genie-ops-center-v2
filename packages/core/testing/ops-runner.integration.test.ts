@@ -15,7 +15,13 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
-import { account, session, twoFactor, user } from "../src/schema.ts";
+import {
+  account,
+  session,
+  twoFactor,
+  user,
+  verification,
+} from "../src/schema.ts";
 import { writeAuditEvent } from "../src/services/audit/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
@@ -449,6 +455,14 @@ describe("genie-ops break-glass rotate", () => {
       userId,
       expiresAt: new Date(Date.now() + 86_400_000),
     });
+    // A stored trust-device row (B1): its `value` is the account id, as the two-factor plugin
+    // writes it, so the rotation must delete it too.
+    await context.db.insert(verification).values({
+      id: "verify-rotate",
+      identifier: "trust-device-fixture",
+      value: userId,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
 
     const captured = outputCapture();
 
@@ -528,6 +542,12 @@ describe("genie-ops break-glass rotate", () => {
     ).toHaveLength(0);
     expect(
       await context.db.select().from(session).where(eq(session.userId, userId))
+    ).toHaveLength(0);
+    expect(
+      await context.db
+        .select()
+        .from(verification)
+        .where(eq(verification.value, userId))
     ).toHaveLength(0);
   }, 120000);
 

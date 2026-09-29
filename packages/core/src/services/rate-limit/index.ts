@@ -17,7 +17,8 @@ export type RateLimitEndpoint =
   | "add_person"
   | "resend_set_password"
   | "resend_invitation"
-  | "break_glass_sign_in";
+  | "break_glass_sign_in"
+  | "break_glass_password";
 
 /** What a subject names, recorded in the `auth:rate_limited` audit row (R-21). */
 export type RateLimitSubjectKind = "actor" | "target" | "deployment";
@@ -64,6 +65,15 @@ export const RATE_LIMIT_RULES: Readonly<
     limit: 10,
     windowMs: 15 * MINUTE_MS,
     subjectKind: "deployment",
+  },
+  // S2-09 review S3: the break-glass password checks (change password, enable and disable the
+  // authenticator) are refused past their own per-account window, so a held break-glass session
+  // cannot brute-force the current password at Better Auth's endpoints.
+  break_glass_password: {
+    endpoint: "break_glass_password",
+    limit: 5,
+    windowMs: 15 * MINUTE_MS,
+    subjectKind: "target",
   },
 };
 

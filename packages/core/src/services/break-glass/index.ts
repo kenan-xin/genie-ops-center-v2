@@ -6,7 +6,13 @@ import {
   meetsPasswordRule,
 } from "../../lib/password/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { account, session, twoFactor, user } from "../../schema.ts";
+import {
+  account,
+  session,
+  twoFactor,
+  user,
+  verification,
+} from "../../schema.ts";
 
 /** Better Auth's own provider id for an email and password account (D2-5). */
 const CREDENTIAL_PROVIDER_ID = "credential";
@@ -81,6 +87,11 @@ export async function rotateBreakGlass(
 
     // ...and every session the account holds is deleted.
     await tx.delete(session).where(eq(session.userId, owner.id));
+
+    // B1: any stored two-factor material tied to this account goes too. The plugin's challenge
+    // and trust-device rows live in `verification` with `value` equal to the user id, so an old
+    // trust-device cookie cannot skip the code step after the rotation.
+    await tx.delete(verification).where(eq(verification.value, owner.id));
 
     return { email: owner.email, password: generated };
   });

@@ -215,6 +215,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/break-glass-door.integration.test.ts",
+    reason:
+      "S2-09 review blockers B1/B2 and L2 require the door's full HTTP flow: the code step is a sign-in, trustDevice is refused, enrollment revokes other sessions, an ordinary session is refused on the break-glass-only endpoints, and the save-time password clause holds",
+    cases: [
+      "the break-glass door flow against a real database enrollment revokes other sessions, the code step is a sign-in, and trustDevice is refused (B1, B2, R-45)",
+      "the break-glass door flow against a real database refuses an ordinary session on the break-glass-only endpoints (L2)",
+      "the break-glass door flow against a real database refuses a new password equal to the provisioning one (R-64, L2)",
+    ],
+  },
+  {
     file: "testing/setup.integration.test.ts",
     reason:
       "Spec 1 AC-5, AC-6, AC-10, AC-13, AC-17 and R-18-R-26, R-65, R-77, R-78 require the resumable setup and schema contracts to run",

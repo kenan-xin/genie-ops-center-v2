@@ -7,9 +7,9 @@ import { createModuleTRPC } from "../src/lib/entitlement/module-trpc.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { account, auditEvent, session, user } from "../src/schema.ts";
 import {
-  BREAK_GLASS_ONLY_CODE,
   BREAK_GLASS_OAUTH_REFUSED,
   INVALID_CREDENTIALS_MESSAGE,
+  INVALID_EMAIL_OR_PASSWORD_CODE,
   sessionCreateBefore,
 } from "../src/services/auth/index.ts";
 import {
@@ -142,7 +142,7 @@ describe("the break-glass lifecycle against a real database", () => {
     expect(response.status).toBe(401);
 
     const body: unknown = await response.json();
-    expect(body).toMatchObject({ code: BREAK_GLASS_ONLY_CODE });
+    expect(body).toMatchObject({ code: INVALID_EMAIL_OR_PASSWORD_CODE });
     expect(JSON.stringify(body)).toContain(INVALID_CREDENTIALS_MESSAGE);
 
     const sessions = await deployment.context.db
@@ -249,7 +249,7 @@ describe("the break-glass lifecycle against a real database", () => {
     // An ordinary person's credential session is refused (R-62)...
     await scope.run(async () => {
       await expect(guard({ userId: ordinary })).rejects.toMatchObject({
-        body: { code: BREAK_GLASS_ONLY_CODE },
+        body: { code: INVALID_EMAIL_OR_PASSWORD_CODE },
       });
     });
 

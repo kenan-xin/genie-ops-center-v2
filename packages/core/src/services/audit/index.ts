@@ -60,7 +60,8 @@ export async function writeAuthAuditEvent(
       | "auth:rate_limited"
       | "auth:break_glass_sign_in"
       | "auth:break_glass_password_changed"
-      | "auth:break_glass_authenticator_enrolled";
+      | "auth:break_glass_authenticator_enrolled"
+      | "auth:break_glass_authenticator_cleared";
     readonly actorUserId?: string | null;
     readonly targetUserId?: string | null;
     readonly summary: string;

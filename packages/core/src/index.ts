@@ -43,6 +43,7 @@ export {
   discoveryDocumentUrl,
   idleExpiry,
   INVALID_CREDENTIALS_MESSAGE,
+  INVALID_EMAIL_OR_PASSWORD_CODE,
   isIdleExpired,
   isLimitedBreakGlass,
   KEYCLOAK_ISSUER_MISMATCH,
@@ -58,6 +59,7 @@ export {
   SESSION_COOKIE_NAME,
   sessionCookieName,
   TOTP_ISSUER_DEFAULT,
+  TRUST_DEVICE_REFUSED,
 } from "./services/auth/index.ts";
 
 export {

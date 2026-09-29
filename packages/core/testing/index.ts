@@ -26,6 +26,8 @@ export { insertCredentialPerson } from "./auth-fixtures.ts";
 
 export { insertSession, signedSessionCookie } from "./session-fixtures.ts";
 
+export { totpCodeForUri, totpSecretOf } from "./totp-fixture.ts";
+
 // The Better Auth password hasher, for a test harness that must write a credential account by SQL
 // (the e2e global setup) rather than through a context.
 export { hashPassword } from "better-auth/crypto";
