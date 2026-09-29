@@ -36,6 +36,8 @@ export type GroupsRouterContext = {
 
 const MANAGE_PERMISSION = "core:groups:manage";
 
+const ASSIGN_PERMISSION = "core:roles:manage";
+
 const t = initTRPC.context<GroupsRouterContext>().create();
 
 // The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
@@ -55,7 +57,25 @@ const manage = t.middleware(async ({ ctx, next }) => {
   return next();
 });
 
+/**
+ * A role-assignment write is a grant edit, which the design puts behind `core:roles:manage`
+ * (DEC-39, the Access screen). The Groups screen may edit its own group's grants only for a caller
+ * that also holds that key; a holder of only `core:groups:manage` cannot change any assignment.
+ */
+const manageAssignments = t.middleware(async ({ ctx, next }) => {
+  if (!(await can(ctx.caller, ASSIGN_PERMISSION))) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+
+  return next();
+});
+
 const procedure = t.procedure.use(sessionGate).use(manage);
+
+const assignmentProcedure = t.procedure
+  .use(sessionGate)
+  .use(manage)
+  .use(manageAssignments);
 
 const groupId = z.object({ groupId: z.uuid() });
 
@@ -94,8 +114,9 @@ export function createGroupsRouter() {
     ),
 
     // Assignment goes through the one role-assignment service, so the R-38 guard and the
-    // core:role:granted event have one writer (DEC-39, R-47).
-    assignRole: procedure
+    // core:role:granted event have one writer (DEC-39, R-47). It needs core:roles:manage, and the
+    // removal checks the assignment belongs to this group in the same transaction.
+    assignRole: assignmentProcedure
       .input(z.object({ groupId: z.uuid(), roleId: z.uuid() }))
       .mutation(async ({ ctx, input }) => ({
         id: (
@@ -109,13 +130,14 @@ export function createGroupsRouter() {
         ).id,
       })),
 
-    unassign: procedure
-      .input(z.object({ assignmentId: z.uuid() }))
+    unassign: assignmentProcedure
+      .input(z.object({ groupId: z.uuid(), assignmentId: z.uuid() }))
       .mutation(async ({ ctx, input }) => {
         await removeAssignment({
           tenant: ctx.tenant,
           actorUserId: ctx.caller.userId,
           assignmentId: input.assignmentId,
+          expect: { type: "group", id: input.groupId },
         });
       }),
 

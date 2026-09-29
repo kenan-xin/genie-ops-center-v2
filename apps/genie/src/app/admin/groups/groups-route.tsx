@@ -128,7 +128,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
         run(() => trpc.groups.assignRole.mutate({ groupId, roleId }))
       }
       onUnassignRole={(groupId, assignmentId) =>
-        run(() => trpc.groups.unassign.mutate({ assignmentId }))
+        run(() => trpc.groups.unassign.mutate({ groupId, assignmentId }))
       }
     />
   );

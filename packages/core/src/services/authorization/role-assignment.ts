@@ -172,6 +172,12 @@ export async function removeAssignment(input: {
   readonly tenant: TenantContext;
   readonly actorUserId: string;
   readonly assignmentId: string;
+  /**
+   * When set, the assignment must belong to this principal, checked in the same transaction as the
+   * deletion. A caller that edits one group's grants (the Groups screen) passes the group here, so
+   * an id belonging to a person or another group is refused rather than removed.
+   */
+  readonly expect?: AssignmentPrincipal;
 }): Promise<void> {
   await withTransaction(input.tenant, async (tx) => {
     await lockAdministratorGuard(tx);
@@ -192,6 +198,20 @@ export async function removeAssignment(input: {
     if (assignment === undefined) {
       throw new AppError(CORE_ERRORS["not-found"], {
         cause: new Error(`No assignment ${input.assignmentId}`),
+      });
+    }
+
+    if (
+      input.expect !== undefined &&
+      (assignment.principalType !== input.expect.type ||
+        assignment.principalId !== input.expect.id)
+    ) {
+      // A foreign assignment id is answered as not found: it reveals nothing about another
+      // principal's grants, and this Groups action may only change its own group's rows.
+      throw new AppError(CORE_ERRORS["not-found"], {
+        cause: new Error(
+          `Assignment ${input.assignmentId} is not the expected principal`
+        ),
       });
     }
 
