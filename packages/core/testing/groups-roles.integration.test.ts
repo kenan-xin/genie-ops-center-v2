@@ -6,6 +6,7 @@ import {
   createRolesRouter,
   principalFor,
   removeAssignment,
+  type ModuleHistorySource,
   type RequestPrincipal,
   syncGroupMemberships,
   can,
@@ -21,6 +22,7 @@ import {
   roleAssignment,
 } from "../src/schema.ts";
 import {
+  enableModules,
   insertGroup,
   insertPersonWith,
   insertRole,
@@ -49,7 +51,27 @@ const fixtureModule: Pick<
   defaultRoles: [],
 };
 
-const modules = [fixtureModule];
+/** A compiled module whose entitlement stays off, so its keys are not selectable (R-33a). */
+const dormantModule: Pick<
+  Module,
+  "identity" | "permissions" | "recordTypes" | "defaultRoles"
+> = {
+  identity: { id: "dormant", displayName: "Dormant", version: "0.0.0" },
+  permissions: [{ key: "dormant:use", label: "Use the dormant module" }],
+  recordTypes: [],
+  defaultRoles: [],
+};
+
+const modules = [fixtureModule, dormantModule];
+
+/** A history source per compiled module, so the deployment's entitlement reader knows both ids. */
+const historySources: ModuleHistorySource[] = modules.map((module) => ({
+  identity: module.identity,
+  schema: {
+    migrations: () => [],
+    migrationsTable: `__drizzle_migrations_${module.identity.id}`,
+  },
+}));
 
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -60,7 +82,10 @@ let adminRoleId: string;
 let baselineAdminId: string;
 
 beforeAll(async () => {
-  deployment = await startDisposableDeployment([]);
+  deployment = await startDisposableDeployment(historySources);
+
+  // The fixture module is entitled; the dormant one is not (R-33a).
+  await enableModules(deployment.context, ["fixture"]);
 
   const [roleRow] = await deployment.context.db
     .insert(roleTable)
@@ -792,15 +817,11 @@ describe("the role-assignment service", () => {
 });
 
 describe("the review fixes", () => {
-  it("stores the pre-added claim value exactly and refuses surrounding whitespace", async () => {
+  it("stores the pre-added claim value exactly, including surrounding whitespace", async () => {
     const actor = await insertManager();
 
-    await expect(
-      groupsCaller(actor).addDirectoryGroup({ externalId: " Padded " })
-    ).rejects.toMatchObject({ cause: { code: "claim-value-whitespace" } });
-
     const { id } = await groupsCaller(actor).addDirectoryGroup({
-      externalId: "Exact-Value_42",
+      externalId: " Padded ",
     });
 
     const [row] = await deployment.context.db
@@ -808,7 +829,13 @@ describe("the review fixes", () => {
       .from(group)
       .where(eq(group.id, id));
 
-    expect(row?.externalId).toBe("Exact-Value_42");
+    // The provider's claim is matched exactly, so the pre-added row keeps the exact bytes.
+    expect(row?.externalId).toBe(" Padded ");
+
+    // An empty value is refused; the router's schema rejects it as invalid input.
+    await expect(
+      groupsCaller(actor).addDirectoryGroup({ externalId: "" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("keeps an unavailable key through an unrelated edit and removes one of two", async () => {
@@ -897,6 +924,88 @@ describe("the review fixes", () => {
     expect(keys).toContain("core:groups:manage");
     expect(keys).toContain("core:roles:manage");
     expect(keys).toContain("fixture:use");
+    // A disabled module's keys are not offered (R-33a).
+    expect(keys).not.toContain("dormant:use");
+  });
+
+  it("refuses a new key of a disabled module", async () => {
+    const actor = await insertManager();
+
+    await expect(
+      rolesCaller(actor).create({
+        name: `Dormant grant ${Date.now()}`,
+        permissions: ["dormant:use"],
+      })
+    ).rejects.toMatchObject({ cause: { code: "invalid-input" } });
+  });
+
+  it("refuses grant writes for a caller holding only core:groups:manage", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "core:groups:manage",
+    ]);
+
+    const caller = groupsCaller(userId);
+    const groupId = await insertGroup(deployment.context, []);
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    await expect(caller.assignRole({ groupId, roleId })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+
+    const assignmentId = (
+      await deployment.context.db
+        .insert(roleAssignment)
+        .values({ roleId, principalType: "group", principalId: groupId })
+        .returning({ id: roleAssignment.id })
+    )[0]!.id;
+
+    await expect(
+      caller.unassign({ groupId, assignmentId })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("refuses removing an assignment that is not the edited group's", async () => {
+    const actor = await insertManager();
+    const groupA = await insertGroup(deployment.context, []);
+    const groupB = await insertGroup(deployment.context, []);
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    const { id: assignmentId } = await groupsCaller(actor).assignRole({
+      groupId: groupA,
+      roleId,
+    });
+
+    // Another group's id for this assignment is refused, and the row stays.
+    await expect(
+      groupsCaller(actor).unassign({ groupId: groupB, assignmentId })
+    ).rejects.toMatchObject({ cause: { code: "not-found" } });
+
+    // A person's direct assignment id is refused the same way.
+    const person = await insertUser(deployment.context);
+
+    const directId = (
+      await deployment.context.db
+        .insert(roleAssignment)
+        .values({ roleId, principalType: "user", principalId: person })
+        .returning({ id: roleAssignment.id })
+    )[0]!.id;
+
+    await expect(
+      groupsCaller(actor).unassign({ groupId: groupA, assignmentId: directId })
+    ).rejects.toMatchObject({ cause: { code: "not-found" } });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(roleAssignment)
+        .where(eq(roleAssignment.id, assignmentId))
+    ).toHaveLength(1);
   });
 
   it("lists active non-break-glass people for the member picker", async () => {
@@ -942,7 +1051,7 @@ describe("the review fixes", () => {
         .where(eq(roleAssignment.id, assignmentId))
     ).toHaveLength(1);
 
-    await groupsCaller(actor).unassign({ assignmentId });
+    await groupsCaller(actor).unassign({ groupId, assignmentId });
 
     expect(
       await deployment.context.db
