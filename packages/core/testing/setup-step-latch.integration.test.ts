@@ -88,7 +88,15 @@ describe("the setup gate latch", () => {
       .filter(({ state }) => state === "done")
       .map(({ step }) => step);
 
-    expect(completedSteps).toEqual(["clients", "migrations", "realm", "seed"]);
+    expect(completedSteps).toEqual([
+      "admin_seed",
+      "break_glass",
+      "clients",
+      "migrations",
+      "realm",
+      "roles",
+      "seed",
+    ]);
 
     await expect(runGenieOps(args, options)).resolves.toBe(0);
 

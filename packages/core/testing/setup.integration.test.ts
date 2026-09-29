@@ -255,9 +255,12 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "admin_seed", state: "done" },
+        { step: "break_glass", state: "done" },
         { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
         { step: "realm", state: "done" },
+        { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
@@ -464,9 +467,12 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "admin_seed", state: "done" },
+        { step: "break_glass", state: "done" },
         { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
         { step: "realm", state: "done" },
+        { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
@@ -607,9 +613,12 @@ describe("genie-ops setup", () => {
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
+        { step: "admin_seed", state: "done" },
+        { step: "break_glass", state: "done" },
         { step: "clients", state: "done" },
         { step: "migrations", state: "done" },
         { step: "realm", state: "done" },
+        { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],
     });
