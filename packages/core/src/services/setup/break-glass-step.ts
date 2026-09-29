@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { hashPassword } from "better-auth/crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import {
   generatePassword,
@@ -32,8 +32,12 @@ export type BreakGlassStepOptions = {
  * R-62 and R-57 govern what may be reused. A person that already exists but is not already the
  * break-glass principal is refused by name, whatever accounts they hold: turning an ordinary
  * credential into the emergency principal would hand out the bypass without ever delivering a new
- * secret. An account already flagged `is_break_glass` keeps its flags untouched; only its
- * credential is managed.
+ * secret. A row already flagged `is_break_glass` must be exactly the R-57 shape before it is
+ * reused: it is refused when any account it holds is not the `credential` one, because the account
+ * hook refuses only *new* provider links and could not repair an existing keycloak link that would
+ * inherit the bypass, and it is refused when it holds no `credential` account at all, because the
+ * step must not record done for an account that cannot sign in. Its flags are otherwise left
+ * untouched.
  *
  * The delivery protocol is explicit, because a one-time secret that is committed but never printed
  * is a lost credential. A run reaches this step only while its `setup_step` row is not `done`, and
@@ -68,25 +72,61 @@ export async function breakGlassStep(
       );
     }
 
-    // The account already completed its forced password change, so the secret it holds was
-    // delivered and used. Its flags and credential stay as they are and nothing is printed.
-    if (existing !== undefined && existing.mustChangePassword !== true) {
-      return undefined;
+    if (existing !== undefined) {
+      const accounts = await tx
+        .select({ id: account.id, providerId: account.providerId })
+        .from(account)
+        .where(eq(account.userId, existing.id));
+
+      if (
+        accounts.some(({ providerId }) => providerId !== CREDENTIAL_PROVIDER_ID)
+      ) {
+        throw new Error(
+          `the break_glass step refuses ${email}: the break-glass account already has an identity-provider login, which would otherwise inherit the bypass (R-62)`
+        );
+      }
+
+      const credential = accounts.find(
+        ({ providerId }) => providerId === CREDENTIAL_PROVIDER_ID
+      );
+
+      if (credential === undefined) {
+        throw new Error(
+          `the break_glass step refuses ${email}: the break-glass account has no credential login (R-57)`
+        );
+      }
+
+      // The account already completed its forced password change, so the secret it holds was
+      // delivered and used. Its flags and credential stay as they are and nothing is printed.
+      if (existing.mustChangePassword !== true) return undefined;
+
+      const generated = generatePassword();
+
+      if (!meetsPasswordRule(generated, email)) {
+        throw new Error(
+          "the generated break-glass password did not meet the R-64 rule"
+        );
+      }
+
+      await tx
+        .update(account)
+        .set({ password: await hashPassword(generated), updatedAt: sql`now()` })
+        .where(eq(account.id, credential.id));
+
+      return generated;
     }
 
-    const id = existing?.id ?? randomUUID();
+    const id = randomUUID();
 
-    if (existing === undefined) {
-      await tx.insert(user).values({
-        id,
-        name: nameForEmail(email),
-        email,
-        emailVerified: true,
-        status: "active",
-        isBreakGlass: true,
-        mustChangePassword: true,
-      });
-    }
+    await tx.insert(user).values({
+      id,
+      name: nameForEmail(email),
+      email,
+      emailVerified: true,
+      status: "active",
+      isBreakGlass: true,
+      mustChangePassword: true,
+    });
 
     const generated = generatePassword();
 
@@ -96,33 +136,13 @@ export async function breakGlassStep(
       );
     }
 
-    const passwordHash = await hashPassword(generated);
-
-    const [credential] = await tx
-      .select({ id: account.id })
-      .from(account)
-      .where(
-        and(
-          eq(account.userId, id),
-          eq(account.providerId, CREDENTIAL_PROVIDER_ID)
-        )
-      )
-      .limit(1);
-
-    if (credential === undefined) {
-      await tx.insert(account).values({
-        id: randomUUID(),
-        accountId: id,
-        providerId: CREDENTIAL_PROVIDER_ID,
-        userId: id,
-        password: passwordHash,
-      });
-    } else {
-      await tx
-        .update(account)
-        .set({ password: passwordHash, updatedAt: sql`now()` })
-        .where(eq(account.id, credential.id));
-    }
+    await tx.insert(account).values({
+      id: randomUUID(),
+      accountId: id,
+      providerId: CREDENTIAL_PROVIDER_ID,
+      userId: id,
+      password: await hashPassword(generated),
+    });
 
     return generated;
   });

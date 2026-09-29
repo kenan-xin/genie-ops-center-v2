@@ -635,6 +635,81 @@ describe("the break_glass setup step (R-57, R-64)", () => {
     ).toBe(true);
   }, 120000);
 
+  it("refuses a break-glass account that also has an identity-provider login (R-62)", async () => {
+    const fixture = await setupFixture();
+
+    await migrateFirst(fixture);
+
+    const existingHash = await hashPassword("Delivered#Password14");
+
+    await fixture.observer.query(`
+      insert into "user" (id, name, email, email_verified, status, is_break_glass, must_change_password)
+      values ('flagged', 'Flagged', '${BREAK_GLASS_EMAIL}', true, 'active', true, true);
+      insert into account (id, account_id, provider_id, user_id, password)
+      values ('flagged-credential', 'flagged', 'credential', 'flagged', '${existingHash}');
+      insert into account (id, account_id, provider_id, user_id)
+      values ('flagged-keycloak', 'flagged', 'keycloak', 'flagged');
+    `);
+
+    const captured = outputCapture();
+
+    await expect(setup(fixture, captured)).resolves.not.toBe(0);
+
+    expect(captured.errorLines.join("\n")).toContain("refuses");
+
+    const [step] = (
+      await fixture.observer.query<{ state: string }>(
+        "select state from setup_step where step = 'break_glass'"
+      )
+    ).rows;
+
+    expect(step?.state).toBe("failed");
+
+    // The credential was not rotated: the refusal happens before any write.
+    const [credential] = (
+      await fixture.observer.query<{ password: string }>(
+        "select password from account where id = 'flagged-credential'"
+      )
+    ).rows;
+
+    expect(credential?.password).toBe(existingHash);
+  }, 120000);
+
+  it("refuses a break-glass account with no credential login (R-57)", async () => {
+    const fixture = await setupFixture();
+
+    await migrateFirst(fixture);
+
+    await fixture.observer.query(`
+      insert into "user" (id, name, email, email_verified, status, is_break_glass, must_change_password)
+      values ('flagged', 'Flagged', '${BREAK_GLASS_EMAIL}', true, 'active', true, false);
+    `);
+
+    const captured = outputCapture();
+
+    await expect(setup(fixture, captured)).resolves.not.toBe(0);
+
+    expect(captured.errorLines.join("\n")).toContain("refuses");
+
+    const [accounts] = (
+      await fixture.observer.query<{ count: number }>(
+        `select count(*)::int as count
+           from account a join "user" u on u.id = a.user_id
+          where u.email = '${BREAK_GLASS_EMAIL}'`
+      )
+    ).rows;
+
+    expect(accounts?.count).toBe(0);
+
+    const [step] = (
+      await fixture.observer.query<{ state: string }>(
+        "select state from setup_step where step = 'break_glass'"
+      )
+    ).rows;
+
+    expect(step?.state).toBe("failed");
+  }, 120000);
+
   it("is idempotent on a rerun and never reprints the password", async () => {
     const fixture = await setupFixture();
     const first = outputCapture();
