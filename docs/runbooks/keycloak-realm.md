@@ -68,7 +68,7 @@ The role set is settled (`docs/specs/README.md`, "Cross-section calls made in th
 
 ### The `groups` claim
 
-Genie Ops Center reads one claim and nothing else: `groups` (`../architecture/access-model.md`). The template puts the protocol mapper that produces it on the client scope that the `genie-ops-center` client uses.
+Genie Ops Center reads the `groups` list and the boolean `genie_groups` marker (`../architecture/access-model.md`). Both realm templates put the list mapper on `genie-ops-center` and a Hardcoded Claim mapper on both `genie-ops-center` and `genie-studio`. The marker mapper has claim name `genie_groups`, claim value `true`, JSON type `boolean`, and emits into the id token, access token, and userinfo. Keycloak omits an empty multivalued list, so a sign-in with the marker but no `groups` claim means zero groups. If both claims are absent, Genie keeps existing directory memberships and writes `auth:groups_claim_absent` instead of assuming the person left every group.
 
 Keycloak. Two different mappers can produce that claim, and they read different sources.
 

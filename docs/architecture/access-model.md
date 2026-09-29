@@ -12,24 +12,24 @@ The customer's identity provider owns people and groups. Genie Ops Center owns r
 2. Genie Ops Center sends the browser to Keycloak, to the customer's own realm.
 3. Keycloak sends the browser to the customer's identity provider, for example Microsoft Entra ID, Google, or Okta. A tenant that federates an on-premises LDAP or Active Directory signs in on the realm's own form instead, and Keycloak checks the password against the directory.
 4. The provider checks the password and any second factor, then returns a signed token to Keycloak. A token is a small signed document with facts about the person. Each fact is a claim: name, email, and the groups the person belongs to.
-5. Keycloak puts the group list into its own token under the fixed claim name `groups`, whatever the provider called it. An identity provider mapper in the realm imports the list, and a protocol mapper on the client emits the claim.
+5. Keycloak puts the group list into its own token under the fixed claim name `groups`, whatever the provider called it. An identity provider mapper in the realm imports the list, and a protocol mapper on the client emits the claim. A second mapper emits `genie_groups: true` so an omitted empty list still means zero groups.
 6. Keycloak returns its token to Genie Ops Center. Better Auth creates the application session, and the sync described below records the groups.
 
 A customer without an identity provider uses local accounts. Keycloak then holds the password itself, and step 3 and step 4 happen inside Keycloak. Everything from step 5 on is the same.
 
 ## Where the group list comes from
 
-Every provider sends groups in its own way: an OIDC claim, a SAML attribute, or LDAP `memberOf`. The command `genie-ops idp set` writes the provider into the realm (for LDAP or Active Directory, a user federation with its group mapper) and creates the mappers that carry that list into the `groups` claim (`../runbooks/keycloak-realm.md`). Genie Ops Center reads only the `groups` claim. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
+Every provider sends groups in its own way: an OIDC claim, a SAML attribute, or LDAP `memberOf`. The command `genie-ops idp set` writes the provider into the realm (for LDAP or Active Directory, a user federation with its group mapper) and creates the mappers that carry that list into the `groups` claim (`../runbooks/keycloak-realm.md`). Genie Ops Center reads that claim and the `genie_groups` marker; it reads no provider-specific group format. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
 
 One provider per customer is the current design. A second provider in the same realm is a Keycloak addition with a chooser on the sign-in page. It is not described in the runbook until a customer needs it.
 
 ## What happens at each sign-in
 
-The sync function in core receives the `groups` claim and applies three cases (`DEC-41`):
+The sync function in core receives the `groups` claim after the request holder checks the `genie_groups` marker. It applies three cases (`DEC-41`):
 
 - The claim is present with names: create a `group` row with source `idp` for any name not seen before, set `last_seen_at`, and replace the person's `group_member` rows with source `idp`.
-- The claim is present and empty: the person is in no directory group. Their `idp` memberships are removed.
-- The claim is absent: the provider sent no list. This happens when Microsoft Entra ID omits the claim for a person in more than 200 groups, and when a mapper is broken. For a person who already has a `user` row, the memberships stay as they were, the sign-in completes, and the audit event `auth:groups_claim_absent` is written. A new person whose claim is absent is refused before the sync runs ("Who may sign in the first time").
+- The claim is present and empty, or the claim is missing while `genie_groups` is true: the person is in no directory group. Their `idp` memberships are removed. Keycloak omits an empty multivalued claim, which is why its clients emit the marker.
+- Both claims are absent: the provider sent no reliable list. This happens when a mapper is broken or when a provider omits the list for group overage without the marker. For a person who already has a `user` row, the memberships stay as they were, the sign-in completes, and the audit event `auth:groups_claim_absent` is written. A new person with both claims absent is refused before sync ("Who may sign in the first time").
 
 The absent case exists because the earlier rule, replace on every sign-in, deleted every role of the person when the list was missing. When `Tenant administrator` is held through a directory group, that locks the tenant out of its own administration. The runbook asks the customer to emit only the groups assigned to the application, which keeps the claim under the provider's limit.
 

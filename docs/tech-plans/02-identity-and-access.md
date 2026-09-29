@@ -22,7 +22,7 @@ Deliver Section 2 on the Section 1 foundation as built. Today, `genie-ops setup`
 
 **D2-1, how the `groups` claim reaches admission and the sync.** Owner answer: option A. In Better Auth 1.7.6, the OAuth callback calls `user.validateUserInfo` on three paths. The paths are a new user, a link to an existing user, and the sign-in of a returning person. Each call receives `source.action` and `source.oauth.profile`, the verified token claims (`oauth2/link-account.mjs` in the published package). One hook therefore does all the work:
 
-1. On every path, it copies the `groups` value into a holder for the request. The holder keeps an absent claim apart from an empty list.
+1. On every path, it copies the `groups` value and the boolean `genie_groups` marker into a holder for the request. A present `groups` list stays a list. If `groups` is absent and the marker is true, the holder records an empty list. If both are absent, it records `undefined`.
 2. On a new user, it applies R-9 in the current onboarding mode.
 3. On a link or a returning sign-in, it applies the ban check of R-11.
 
@@ -35,6 +35,8 @@ A pre-added person has a `user` row and no account, so the first sign-in links b
 **D2-2, the identity provider stand-ins in CI.** Owner answer: option A. The end-to-end stack runs one test Keycloak with two realms. The tenant realm is the one under test. A second realm, `company`, plays the customer's company login as an OIDC provider and as a SAML provider, with its own users and groups. An OpenLDAP container covers LDAP federation. A Mailpit container receives the set-password and invitation emails.
 
 The same `company` realm plays the customer's Keycloak for S-B and S-C, and plays Entra for the S-D and S-G flows. One test removes all groups of a person and expects zero `idp` memberships after the next sign-in. Keycloak can omit an empty multivalued claim. Then "empty" turns into "absent", and the old memberships stay. If the test fails, stop and take it to the owner.
+
+Resolved 2026-09-29 (owner decision): the test proved Keycloak omits an empty multivalued `groups` claim. Both realm templates now give each application client a Hardcoded Claim mapper that emits boolean `genie_groups: true`. The holder treats a missing `groups` claim with that marker as an empty list and removes the person's `idp` memberships. Only when both claims are missing does the `DEC-41` absent case keep memberships and write `auth:groups_claim_absent`. The stop condition above is resolved by this marker rule; the phone and desktop tests still remove every realm group and require zero `idp` memberships.
 
 Behavior only Entra shows (group object IDs, the 200-group overage, nested groups, app assignment) runs against the test tenant "Default Directory" behind sso.001.gs. It runs as a scheduled workflow on `develop` with a manual trigger. It is never a required pull request check. Its credentials go in a repository secret that the owner creates.
 
