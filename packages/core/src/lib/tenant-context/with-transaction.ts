@@ -20,12 +20,16 @@ const SLOT = Symbol.for("genie.with-transaction.slot");
 /**
  * The transaction, or savepoint, that the running code holds, with its after-commit register.
  * `root` is the outer transaction's register, shared by every savepoint inside it, so an
- * `afterCommit` can tell its own transaction from another one running at call time.
+ * `afterCommit` can tell its own transaction from another one running at call time. `context` is
+ * the tenant context the transaction belongs to, so the nested check is per context: two tenant
+ * contexts may each hold a transaction in one process (DEC-34) without one reading as the other's
+ * nested transaction.
  */
 type Scope = {
   readonly tx: TenantTransaction;
   readonly register: AfterCommit;
   readonly root: AfterCommit;
+  readonly context: TenantContext;
 };
 
 /**
@@ -92,7 +96,8 @@ export function currentAfterCommit(tx: TenantTransaction): AfterCommit {
 function scopeSavepoints(
   tx: TenantTransaction,
   register: AfterCommit,
-  root: AfterCommit
+  root: AfterCommit,
+  context: TenantContext
 ): void {
   const open = tx.transaction.bind(tx);
 
@@ -101,9 +106,9 @@ function scopeSavepoints(
 
     const result = await open(async (savepoint) =>
       slot().scope.run(
-        { tx: savepoint, register: list.register, root },
+        { tx: savepoint, register: list.register, root, context },
         async () => {
-          scopeSavepoints(savepoint, list.register, root);
+          scopeSavepoints(savepoint, list.register, root, context);
 
           try {
             return await fn(savepoint);
@@ -204,17 +209,21 @@ async function runAfterCommit(
  * propagates, so no entry runs (R-54). Registration closes when `fn` settles, so an `afterCommit`
  * call after that throws instead of adding an entry that silently never runs.
  *
- * Any nested `withTransaction` is refused, whatever the context: it opens an independent top-level
- * transaction that cannot commit or roll back with the outer one. On the same context it also
- * takes a second pool client and can deadlock on a row the outer transaction holds. Use
- * `tx.transaction(...)` inside `fn` for a savepoint instead. A context not built by
- * `createTenantContext` has no logger entry, so the call throws rather than swallow the failure.
+ * A nested `withTransaction` on the *same* context is refused: it opens an independent top-level
+ * transaction that cannot commit or roll back with the outer one, takes a second pool client, and
+ * can deadlock on a row the outer transaction holds. Use `tx.transaction(...)` inside `fn` for a
+ * savepoint instead. A `withTransaction` on a *different* context is allowed, because it opens on
+ * that context's own pool and shares no row: two tenant contexts each hold their own transaction in
+ * one process (DEC-34). A context not built by `createTenantContext` has no logger entry, so the
+ * call throws rather than swallow the failure.
  */
 export async function withTransaction<T>(
   context: TenantContext,
   fn: (tx: TenantTransaction, afterCommit: AfterCommit) => Promise<T>
 ): Promise<T> {
-  if (slot().scope.getStore() !== undefined) {
+  const running = slot().scope.getStore();
+
+  if (running !== undefined && running.context === context) {
     throw new Error(
       "withTransaction cannot be nested. Use tx.transaction(...) inside fn for a savepoint."
     );
@@ -255,10 +264,15 @@ export async function withTransaction<T>(
   };
 
   const result = await context.db.transaction(async (tx) => {
-    scopeSavepoints(tx, afterCommit.register, afterCommit.register);
+    scopeSavepoints(tx, afterCommit.register, afterCommit.register, context);
 
     return slot().scope.run(
-      { tx, register: afterCommit.register, root: afterCommit.register },
+      {
+        tx,
+        register: afterCommit.register,
+        root: afterCommit.register,
+        context,
+      },
       async () => {
         try {
           return await fn(tx, registerAfterCommit);

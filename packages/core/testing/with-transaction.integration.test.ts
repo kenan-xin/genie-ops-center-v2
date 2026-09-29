@@ -329,6 +329,51 @@ describe("withTransaction against a real database", () => {
     expect(ran).toBe(false);
   });
 
+  it("keeps a second context's transaction independent inside the first (DEC-34)", async () => {
+    const first = await startTransactionFixture();
+    const second = await startTransactionFixture();
+
+    await first.context.db.$client.query(
+      "create table wt_a (id integer primary key, label text)"
+    );
+    await second.context.db.$client.query(
+      "create table wt_b (id integer primary key, label text)"
+    );
+
+    await expect(
+      withTransaction(first.context, async (txA) => {
+        await txA.execute(sql`insert into wt_a (id, label) values (1, 'a')`);
+
+        // A transaction on another context is not this context's nested transaction: it opens on
+        // its own pool and commits on its own, while the outer one may still roll back (DEC-34).
+        const inner = await withTransaction(second.context, async (txB) => {
+          await txB.execute(sql`insert into wt_b (id, label) values (1, 'b')`);
+
+          return "second-context";
+        });
+
+        expect(inner).toBe("second-context");
+
+        throw new Error("roll a back");
+      })
+    ).rejects.toThrow("roll a back");
+
+    const [a] = (
+      await first.observer.query<{ count: number }>(
+        "select count(*)::int as count from wt_a"
+      )
+    ).rows;
+
+    const [b] = (
+      await second.observer.query<{ count: number }>(
+        "select count(*)::int as count from wt_b"
+      )
+    ).rows;
+
+    expect(a?.count).toBe(0);
+    expect(b?.count).toBe(1);
+  });
+
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
     const { context, observer } = await startTransactionFixture();
 
