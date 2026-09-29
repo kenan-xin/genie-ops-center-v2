@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { requireAuthenticated } from "../../lib/entitlement/module-trpc.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { can, type RequestPrincipal } from "../authorization/index.ts";
 import {
@@ -30,6 +31,15 @@ const MANAGE_PERMISSION = "core:roles:manage";
 
 const t = initTRPC.context<RolesRouterContext>().create();
 
+// The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
+// answers the catalogue `unauthenticated` at 401 however malformed its input is; only then does the
+// permission gate call `can()` and the resolver read (Spec 2 R-14, R-37).
+const sessionGate = t.middleware(({ ctx, next }) => {
+  requireAuthenticated(ctx.caller);
+
+  return next();
+});
+
 const manage = t.middleware(async ({ ctx, next }) => {
   if (!(await can(ctx.caller, MANAGE_PERMISSION))) {
     throw new TRPCError({ code: "FORBIDDEN" });
@@ -38,7 +48,7 @@ const manage = t.middleware(async ({ ctx, next }) => {
   return next();
 });
 
-const procedure = t.procedure.use(manage);
+const procedure = t.procedure.use(sessionGate).use(manage);
 
 const permissions = z.array(z.string().min(1).max(200));
 
