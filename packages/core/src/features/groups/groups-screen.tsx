@@ -129,7 +129,7 @@ export function GroupInspector(props: GroupInspectorProps) {
       )}
       <p className="mt-1 text-xs text-muted-foreground">
         {group.source === "idp"
-          ? `Value: ${group.externalId ?? ""} · last sync ${fmtDateTime(
+          ? `Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
               group.lastSeenAt,
               viewer.timeZone,
               "never"
@@ -249,17 +249,21 @@ export function GroupInspector(props: GroupInspectorProps) {
                   >
                     Add {selectedMembers.length || ""}
                   </button>
-                  <button
-                    type="button"
-                    className={`${btnGhost} ml-2`}
-                    disabled={blocked || props.members.length === 0}
-                    title={blocked ? LAST_ADMIN_REASON : undefined}
-                    onClick={() => setConfirm("remove")}
-                  >
-                    Remove all
-                  </button>
                 </div>
               ) : null}
+              {/* Remove all stays visible while the group has members, even when every eligible
+                  person is already a member and the picker is hidden. */}
+              {props.members.length === 0 ? null : (
+                <button
+                  type="button"
+                  className={`${btnGhost} mt-3`}
+                  disabled={blocked}
+                  title={blocked ? LAST_ADMIN_REASON : undefined}
+                  onClick={() => setConfirm("remove")}
+                >
+                  Remove all
+                </button>
+              )}
             </>
           ) : (
             <ul className="divide-y divide-input">

@@ -156,7 +156,7 @@ export const LabelShowsAndValueStaysInTheInspector: Story = {
 
     // The label names the header; the raw value stays visible (R-24c).
     await expect(
-      inspector.getByText(/Value: 0a1b2c3d-ob-id/)
+      inspector.getByText(/Value: "0a1b2c3d-ob-id"/)
     ).toBeInTheDocument();
   },
 };
@@ -278,6 +278,31 @@ export const AssignsARoleToAPreAddedGroup: Story = {
     );
 
     expect(onAssignRole).toHaveBeenCalledWith("g-not-seen", "r-2");
+  },
+};
+
+export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
+  args: {
+    groups: [FIXTURE_LOCAL],
+    people: FIXTURE_PEOPLE,
+    details: {
+      [FIXTURE_LOCAL.id]: { members: FIXTURE_MEMBERS, assignments: [] },
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      canvas.getByRole("dialog", { name: "Operations" })
+    );
+
+    // Every eligible person is already a member, so the picker is hidden, but Remove all stays.
+    await expect(
+      inspector.getByRole("button", { name: "Remove all" })
+    ).toBeInTheDocument();
+    await expect(
+      inspector.queryByLabelText("Add to group")
+    ).not.toBeInTheDocument();
   },
 };
 

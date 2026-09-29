@@ -317,16 +317,13 @@ export async function addDirectoryGroup(
     readonly displayLabel?: string | null;
   }
 ): Promise<string> {
+  // The provider's claim value is matched exactly, so it is stored exactly: surrounding
+  // whitespace is part of the value, not something to normalize away (R-24b, DEC-52). Only an
+  // empty value is refused.
   const externalId = input.externalId;
 
   if (externalId === "") {
     throw new AppError(CORE_ERRORS["invalid-input"]);
-  }
-
-  // The provider's claim value is matched exactly, so a leading or trailing space is part of the
-  // value and must not be silently normalized: refuse it with a named cause (R-24b, DEC-52).
-  if (externalId !== externalId.trim()) {
-    throw new AppError(CORE_ERRORS["claim-value-whitespace"]);
   }
 
   return withTransaction(tenant, async (tx) => {

@@ -10,7 +10,6 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["unauthenticated", 401],
   ["module-disabled", 403],
   ["invalid-input", 400],
-  ["claim-value-whitespace", 400],
 ]);
 
 /**
