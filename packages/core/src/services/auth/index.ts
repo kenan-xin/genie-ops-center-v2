@@ -390,56 +390,87 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
   let inFlight: Promise<AuthDiscoveryState> | undefined;
 
   /**
-   * The full instance, or undefined when its provider did not come up. The plugin reads discovery
-   * again with no timeout of its own, so its context is awaited under the same bound as the probe;
-   * a read that hangs past it leaves the member degraded and the half-built instance is dropped.
+   * What building the full instance answered. `issuer_mismatch` is the second discovery read the
+   * `genericOAuth` plugin performs when the instance is built: it verifies id tokens against that
+   * read's issuer, so an issuer that differs from `keycloakIssuer` must drop the instance and keep
+   * the member not ready, exactly as the probe's own mismatch does (R-54d).
    */
-  async function fullInstance(): Promise<BetterAuthInstance | undefined> {
+  type FullInstance =
+    | { readonly kind: "ready"; readonly instance: BetterAuthInstance }
+    | { readonly kind: "issuer_mismatch" }
+    | { readonly kind: "unavailable" };
+
+  function logIssuerMismatch(): void {
+    input.logger.error(
+      {
+        keycloakUrl: input.auth.keycloakUrl,
+        realm: input.auth.keycloakRealm,
+      },
+      "keycloak discovery issuer mismatch"
+    );
+  }
+
+  /**
+   * The full instance, or why it was dropped. The plugin reads discovery again with no timeout of
+   * its own, so its context is awaited under the same bound as the probe; a read that hangs past it
+   * leaves the member degraded and the half-built instance is dropped. The plugin takes `issuer`,
+   * `jwks_uri` and the endpoints from that second read, so its `issuer` is compared with the
+   * expected one here: the probe's check alone would leave the token verifier unchecked (R-54d).
+   */
+  async function fullInstance(): Promise<FullInstance> {
     const next = buildInstance(input, true);
 
     try {
       const context = await withTimeout(next.$context, DISCOVERY_TIMEOUT_MS);
 
-      return context.socialProviders.some(
-        (provider) => provider.id === KEYCLOAK_PROVIDER_ID
-      )
-        ? next
-        : undefined;
+      const provider = context.socialProviders.find(
+        (candidate) => candidate.id === KEYCLOAK_PROVIDER_ID
+      );
+
+      if (provider === undefined) return { kind: "unavailable" };
+
+      // SAFETY: the genericOAuth plugin writes the issuer from its own discovery read onto the
+      // provider record it builds (better-auth generic-oauth sets `issuer` beside `id`).
+      const issuer = (provider as { readonly issuer?: string }).issuer;
+
+      return issuer ===
+        keycloakIssuer(input.auth.keycloakUrl, input.auth.keycloakRealm)
+        ? { kind: "ready", instance: next }
+        : { kind: "issuer_mismatch" };
     } catch {
       // ponytail: the dropped instance keeps its untimed plugin discovery fetch open until undici's
       // own timeouts end it (connect 10 s, headers 300 s), one per 10 s retry at most. If that
       // shows in practice, pass the plugin a fetch with an AbortSignal once genericOAuth accepts one.
-      return undefined;
+      return { kind: "unavailable" };
     }
   }
 
   async function apply(result: DiscoveryResult): Promise<AuthDiscoveryState> {
     if (!result.ready) {
       // R-54d: an issuer mismatch is logged at error level, beside the cause sign-in refuses with.
-      if (result.cause === "issuer_mismatch") {
-        input.logger.error(
-          {
-            keycloakUrl: input.auth.keycloakUrl,
-            realm: input.auth.keycloakRealm,
-          },
-          "keycloak discovery issuer mismatch"
-        );
-      }
+      if (result.cause === "issuer_mismatch") logIssuerMismatch();
 
       discovery = result;
 
       return discovery;
     }
 
-    const next = await fullInstance();
+    const built = await fullInstance();
 
-    if (next === undefined) {
-      discovery = { ready: false, cause: "discovery_unreachable" };
+    if (built.kind !== "ready") {
+      const cause =
+        built.kind === "issuer_mismatch"
+          ? "issuer_mismatch"
+          : "discovery_unreachable";
+
+      if (cause === "issuer_mismatch") logIssuerMismatch();
+
+      discovery = { ready: false, cause };
 
       return discovery;
     }
 
-    instance = next;
+    instance = built.instance;
     endSessionEndpoint = result.endSessionEndpoint;
     discovery = { ready: true };
 
