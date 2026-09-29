@@ -4,6 +4,8 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { SETUP_STEPS } from "@genie/core";
+
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
@@ -53,6 +55,8 @@ export const PID_FILE = resolve(import.meta.dirname, ".dev-server.pid");
 
 /** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
 async function seedTestSetup(): Promise<void> {
+  const steps = SETUP_STEPS.map((step) => `('${step}', 'done')`).join(", ");
+
   await run("docker", [
     ...COMPOSE,
     "exec",
@@ -64,7 +68,7 @@ async function seedTestSetup(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    "insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done'), ('realm', 'done'), ('clients', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
+    `insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
   ]);
 }
 

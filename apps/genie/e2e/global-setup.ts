@@ -15,6 +15,7 @@ import {
   E2E_PROJECTS,
   E2E_READER_SPECS,
   E2E_SIGN_IN_REALM,
+  e2eAdministratorEmail,
   e2eBreakGlassEmail,
   e2eOnboardingEmail,
   e2eReaderEmail,
@@ -58,6 +59,13 @@ const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>
   E2E_PROJECTS.map((project) => e2eReaderEmail(spec, project))
 );
 
+/**
+ * The first administrators `tenant.yaml` names, one per Playwright project (Spec 2 R-56, AC-19).
+ * `admin_seed` pre-adds each pending, and `Genie Administrators` gives them `Tenant
+ * administrator`, so the realm user created here links to that row on first sign-in.
+ */
+const ADMINISTRATOR_EMAILS = E2E_PROJECTS.map(e2eAdministratorEmail);
+
 /** The break-glass accounts whose email a realm user also holds, one per project (R-62). */
 const BREAK_GLASS_EMAILS = E2E_PROJECTS.map(e2eBreakGlassEmail);
 
@@ -79,6 +87,7 @@ const REALM_EMAILS = [
   ...BREAK_GLASS_EMAILS,
   ...E2E_PROJECTS.map(e2eSignOutEmail),
   ...ONBOARDING_EMAILS,
+  ...ADMINISTRATOR_EMAILS,
 ];
 
 /** One pre-added `user` row per email, as SQL values. */
@@ -106,7 +115,7 @@ async function runGenieOpsSetup(): Promise<void> {
         "modules: []",
         "local_accounts: false",
         "first_administrators:",
-        "  - admin@example.invalid",
+        ...ADMINISTRATOR_EMAILS.map((email) => `  - ${email}`),
         `break_glass_email: ${e2eBreakGlassEmail("phone")}`,
         "",
       ].join("\n"),

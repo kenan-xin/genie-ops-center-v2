@@ -85,6 +85,15 @@ export function e2eBreakGlassEmail(project: string): string {
   return `e2e.break-glass.${project}@example.com`;
 }
 
+/**
+ * The first administrator one Playwright project signs in as (Spec 2 R-56, AC-19). The address is
+ * listed in `tenant.yaml`'s `first_administrators`, so `admin_seed` pre-adds the pending person
+ * before that project's first realm sign-in activates them.
+ */
+export function e2eAdministratorEmail(project: string): string {
+  return `e2e.admin.${project}@example.com`;
+}
+
 export function e2eOnboardingEmail(
   caseName: "admitted" | "refused" | "offboarded",
   project: string

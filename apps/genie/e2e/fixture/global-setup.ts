@@ -1,3 +1,5 @@
+import { SETUP_STEPS } from "@genie/core";
+
 import { IMAGE, HOST_PORT, composeWithEnv } from "./stack.ts";
 
 const READY_URL = `http://127.0.0.1:${HOST_PORT}/api/health`;
@@ -13,6 +15,10 @@ const FIXTURE_MODULES = [
 async function seedTestSetup(): Promise<void> {
   const rows = FIXTURE_MODULES.map((id) => `('${id}', true)`).join(", ");
 
+  // The known steps come from the image's own list, so a step this section adds is covered here
+  // without a second literal to keep in step (R-17b).
+  const steps = SETUP_STEPS.map((step) => `('${step}', 'done')`).join(", ");
+
   await composeWithEnv(
     [
       "exec",
@@ -24,7 +30,7 @@ async function seedTestSetup(): Promise<void> {
       "-d",
       "genie",
       "-c",
-      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done'), ('realm', 'done'), ('clients', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
+      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
     ],
     {}
   );

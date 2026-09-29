@@ -1,3 +1,4 @@
+import { SETUP_STEPS } from "@genie/core";
 import {
   enableModules,
   markSetupDone,
@@ -18,6 +19,14 @@ import { imageHostPort } from "./image-ports.ts";
 import { pollHealth, startImage, type RunningImage } from "./image-process.ts";
 
 const PORT = imageHostPort(3441);
+
+/**
+ * Every known step set pending, built from the image's own list so a step this section adds is
+ * covered without a second literal (R-17b).
+ */
+function pendingSteps(): string {
+  return SETUP_STEPS.map((step) => `('${step}', 'pending')`).join(", ");
+}
 
 const SLOW_READ_PORT = imageHostPort(3442);
 
@@ -73,7 +82,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await deployment.context.db.$client.query(`
     insert into setup_step (step, state)
-    values ('migrations', 'pending'), ('seed', 'pending')
+    values ${pendingSteps()}
     on conflict (step) do update
       set state = 'pending', detail = null, updated_at = now()
   `);
@@ -364,7 +373,7 @@ describe("the setup gate", () => {
       await enableModules(raceDeployment.context, ["placeholder"]);
       await raceDeployment.context.db.$client.query(`
         insert into setup_step (step, state)
-        values ('migrations', 'pending'), ('seed', 'pending'), ('realm', 'pending'), ('clients', 'pending')
+        values ${pendingSteps()}
         on conflict (step) do update
           set state = 'pending', detail = null, updated_at = now()
       `);

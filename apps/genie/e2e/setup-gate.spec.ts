@@ -1,4 +1,5 @@
 import { AxeBuilder } from "@axe-core/playwright";
+import { SETUP_STEPS } from "@genie/core";
 import { expect, test } from "@playwright/test";
 
 import { compose, HOST_PORT } from "./setup-gate/stack.ts";
@@ -13,6 +14,8 @@ const VIEWPORTS = [
 ] as const;
 
 async function completeKnownSteps(): Promise<void> {
+  const steps = SETUP_STEPS.map((step) => `('${step}', 'done')`).join(", ");
+
   await compose([
     "exec",
     "-T",
@@ -23,7 +26,7 @@ async function completeKnownSteps(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    "insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ('migrations', 'done'), ('seed', 'done'), ('realm', 'done'), ('clients', 'done') on conflict (step) do update set state = 'done', detail = null, updated_at = now()",
+    `insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
   ]);
 }
 
@@ -51,10 +54,15 @@ test("AC-2: three routes switch from not-set-up to normal at phone and desktop s
       await expect(
         page.getByRole("heading", { name: "This deployment is not set up yet" })
       ).toBeVisible();
-      await expect(page.getByText("migrations", { exact: true })).toBeVisible();
-      await expect(page.getByText("seed", { exact: true })).toBeVisible();
-      await expect(page.getByText("realm", { exact: true })).toBeVisible();
-      await expect(page.getByText("clients", { exact: true })).toBeVisible();
+
+      // Every step the running image knows is listed (R-17b): all seven after Section 2.
+      for (const step of SETUP_STEPS) {
+        await expect(
+          page.getByText(step, { exact: true }),
+          `${viewport.name} ${path} lists ${step}`
+        ).toBeVisible();
+      }
+
       await expect(page.getByRole("navigation")).toHaveCount(0);
       await expect(page.getByRole("button")).toHaveCount(0);
       await expect(page.getByRole("link")).toHaveCount(0);
