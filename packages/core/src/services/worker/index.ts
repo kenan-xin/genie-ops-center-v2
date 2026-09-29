@@ -18,7 +18,10 @@ import {
   type TenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
-import { durableEventQueues } from "../event-bus/index.ts";
+import {
+  durableEventQueues,
+  envelopeCorrelationId,
+} from "../event-bus/index.ts";
 import {
   createBoss,
   DECLARATION_SCHEDULE_KEY_PREFIX,
@@ -525,14 +528,28 @@ async function serve(
     })),
   ];
 
-  // A durable event handler runs under its owning module's entitlement, like a declared job.
-  // SAFETY: an event queue carries only the envelopes its own subscription enqueued.
+  // A durable event handler runs under its owning module's entitlement, like a declared job, and
+  // inside the correlation scope of the envelope it delivers, so an emit it makes keeps the id of
+  // the request or event that caused the chain.
   const eventLoops = subscriptions.map((subscription): EventLoop => ({
     name: subscription.queue,
     deadLetter: subscription.deadLetter,
     mayRun: async () =>
       context.entitlements.isEnabled(subscription.ownerModuleId),
-    run: async (data) => subscription.handler(data as never, context),
+    run: async (data) => {
+      const correlationId = envelopeCorrelationId(data);
+
+      // SAFETY: an event queue carries only the envelopes its own subscription enqueued.
+      const handled = () => subscription.handler(data as never, context);
+
+      if (correlationId === undefined) {
+        await handled();
+
+        return;
+      }
+
+      await context.correlationScope.run(correlationId, handled);
+    },
   }));
 
   options.output("worker started");

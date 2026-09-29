@@ -69,6 +69,8 @@ function contextWith(
     tenant: {
       // SAFETY: this router never reads or enters an authentication callback scope.
       authRequestScope: {} as TenantContext["authRequestScope"],
+      // SAFETY: this router never emits an event, so it never reads the correlation scope.
+      correlationScope: {} as TenantContext["correlationScope"],
       db: databaseTripwire(),
       env: {
         databaseUrl: "postgres://genie:secret@db.invalid:5432/genie",

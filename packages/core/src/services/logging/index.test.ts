@@ -101,6 +101,7 @@ describe("the logger", () => {
 
     const logger = forExecution(createLogger(ENV, destination), {
       requestId: "r1",
+      correlationId: "r1",
       tenantId: "t1",
       userId: "u1",
     });
@@ -124,6 +125,7 @@ describe("the logger", () => {
       createLogger(ENV, { write: (line: string) => raw.push(line) }),
       {
         requestId: "r1",
+        correlationId: "r1",
         tenantId: ENV.publicUrl,
         userId: "u1",
       }
@@ -141,6 +143,7 @@ describe("the logger", () => {
 
     forExecution(createLogger(ENV, destination), {
       requestId: "r1",
+      correlationId: "r1",
       tenantId: "t1",
       userId: "anonymous",
     }).info("sign-in page");
@@ -751,7 +754,13 @@ describe("the logger", () => {
   it("refuses a raw pino logger, which has no message redactor", () => {
     const { destination } = capture();
     const raw = pino({ level: "info" }, destination);
-    const ids: LogBindings = { requestId: "r1", tenantId: "t1", userId: "u1" };
+
+    const ids: LogBindings = {
+      requestId: "r1",
+      correlationId: "r1",
+      tenantId: "t1",
+      userId: "u1",
+    };
 
     // @ts-expect-error a raw pino logger is not a RedactingLogger; the brand is the contract.
     const call = () => forExecution(raw, ids);
@@ -904,6 +913,7 @@ describe("the logger", () => {
 
     const execution = forExecution(child, {
       requestId: "r1",
+      correlationId: "r1",
       tenantId: "t1",
       userId: "u1",
     });

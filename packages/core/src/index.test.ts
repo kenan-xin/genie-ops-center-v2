@@ -31,6 +31,7 @@ describe("the core package root", () => {
         "authRequestScope",
         "branding",
         "capabilities",
+        "correlationScope",
         "db",
         "entitlements",
         "env",
@@ -76,6 +77,7 @@ describe("the core package root", () => {
 
     const bindings: core.LogBindings = {
       requestId: "r1",
+      correlationId: "r1",
       tenantId: "t1",
       userId: "u1",
     };

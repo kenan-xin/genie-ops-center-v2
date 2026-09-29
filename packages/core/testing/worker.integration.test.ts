@@ -510,6 +510,7 @@ describe("the core pg-boss worker", () => {
       "authRequestScope",
       "branding",
       "capabilities",
+      "correlationScope",
       "db",
       "entitlements",
       "env",

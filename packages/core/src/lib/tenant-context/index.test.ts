@@ -27,6 +27,7 @@ describe("TenantContext", () => {
       | "publicUrl"
       | "auth"
       | "authRequestScope"
+      | "correlationScope"
     >();
   });
 });

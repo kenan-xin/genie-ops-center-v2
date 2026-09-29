@@ -86,6 +86,7 @@ describe("createTenantContext", () => {
         "authRequestScope",
         "branding",
         "capabilities",
+        "correlationScope",
         "db",
         "entitlements",
         "env",

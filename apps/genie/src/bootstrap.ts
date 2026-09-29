@@ -195,15 +195,19 @@ function buildContext(
         { err: cause, moduleId: meta.moduleId, requestId: meta.requestId },
         "frame origin provider failed"
       ),
+    // A request's correlation id is its request id: the tRPC route sets the correlation scope to
+    // the same value, so an event the request emits and every follow-up handler line share it.
     logRequest: (meta) =>
       forExecution(logger, {
         requestId: meta.requestId,
+        correlationId: meta.requestId,
         tenantId: env.publicUrl,
         userId: "anonymous",
       }).info({ contextId, path: meta.path }, "request"),
     logError: (cause, meta) =>
       forExecution(logger, {
         requestId: meta.requestId,
+        correlationId: meta.requestId,
         tenantId: env.publicUrl,
         userId: "anonymous",
       }).error({ err: cause, contextId }, "request failed"),

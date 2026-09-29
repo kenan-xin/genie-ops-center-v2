@@ -58,6 +58,8 @@ export {
   withTransaction,
 } from "./lib/tenant-context/with-transaction.ts";
 
+export { CorrelationScope } from "./lib/correlation/index.ts";
+
 export { registerModuleRuntime } from "./lib/module-contract/runtime.ts";
 
 export {

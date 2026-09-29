@@ -74,7 +74,7 @@ describe("health database probe against a database that never answers", () => {
         PUBLIC_URL: "https://test.example.invalid",
         LOCK_TIMEOUT_MS: String(LOCK_TIMEOUT_MS),
       },
-      { error: () => undefined, info: () => undefined },
+      { error: () => undefined, info: () => undefined, debug: () => undefined },
       []
     );
 

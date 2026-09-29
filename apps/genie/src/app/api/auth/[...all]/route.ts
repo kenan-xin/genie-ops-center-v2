@@ -8,6 +8,7 @@ import {
   requireAuth,
 } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
+import { newRequestId } from "../../../../request-id.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -74,13 +75,20 @@ async function handler(request: Request): Promise<Response> {
     if (!discovery.ready) return realmUnavailable();
   }
 
-  return app.tenant.authRequestScope.run(async () => {
-    try {
-      return await auth.handler(request);
-    } finally {
-      await flushRefusalAudit(app.tenant, app.tenant.authRequestScope);
-    }
-  });
+  // The proxy forwards one x-request-id on every request, so the sign-in path reuses that id
+  // instead of minting a second one; the session-new event an OAuth sign-in emits then inherits
+  // it, and its follow-up handler and lines carry the same id.
+  const requestId = request.headers.get("x-request-id") ?? newRequestId();
+
+  return app.tenant.correlationScope.run(requestId, () =>
+    app.tenant.authRequestScope.run(async () => {
+      try {
+        return await auth.handler(request);
+      } finally {
+        await flushRefusalAudit(app.tenant, app.tenant.authRequestScope);
+      }
+    })
+  );
 }
 
 export { handler as GET, handler as POST };

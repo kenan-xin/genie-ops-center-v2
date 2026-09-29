@@ -17,6 +17,12 @@ export type LogBindings = {
   readonly tenantId: string;
   /** The signed-in person, or `anonymous` when nobody is signed in. Never invented. */
   readonly userId: string;
+  /**
+   * The id the whole chain of a request and its follow-up events shares, so every line of that
+   * chain is greppable by one value. It is the request id for a request; an event handler and the
+   * durable job it runs from carry the id of the request or event that caused them.
+   */
+  readonly correlationId: string;
 };
 
 import {

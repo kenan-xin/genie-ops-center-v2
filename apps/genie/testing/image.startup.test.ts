@@ -339,7 +339,7 @@ describe("the built image", () => {
 
       const verifier = createTenantContext(
         { DATABASE_URL: fresh.url, PUBLIC_URL: "https://example.invalid" },
-        { error: () => {}, info: () => {} },
+        { error: () => {}, info: () => {}, debug: () => {} },
         []
       );
 

@@ -92,7 +92,7 @@ describe("the placeholder read procedure against a real database", () => {
         DATABASE_URL: deployment.context.env.databaseUrl,
         PUBLIC_URL: deployment.context.env.publicUrl,
       },
-      { error: () => {}, info: () => {} },
+      { error: () => {}, info: () => {}, debug: () => {} },
       ["placeholder"]
     );
 

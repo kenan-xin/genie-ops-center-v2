@@ -33,6 +33,7 @@ import {
   type Mailer,
   type MailProvider,
 } from "../../services/mailer/index.ts";
+import { CorrelationScope } from "../correlation/index.ts";
 import {
   type EnvironmentProfile,
   type EnvironmentSource,
@@ -157,6 +158,13 @@ export type TenantContext = {
    */
   readonly auth?: AuthMember;
   readonly authRequestScope: AuthRequestScope;
+  /**
+   * The correlation id of the running request, event handler or job. A request boundary sets it to
+   * the request id; the event bus reads it at an emit and sets it to the delivered envelope's id
+   * while a handler runs, so a chain of a request and its follow-up events shares one id for
+   * tracing (`docs/architecture/module-contract.md`).
+   */
+  readonly correlationScope: CorrelationScope;
 };
 
 /** An absolute link to `path` under `PUBLIC_URL`, with `query` as its search string (R-70). */
@@ -219,7 +227,7 @@ export function createPublicUrl(base: string): PublicUrlBuilder {
  */
 export function createTenantContext(
   source: EnvironmentSource,
-  logger: Pick<RedactingLogger, "error" | "info">,
+  logger: Pick<RedactingLogger, "error" | "info" | "debug">,
   compiledModuleIds: readonly string[],
   applicationName?: string,
   /**
@@ -267,6 +275,7 @@ export function createTenantContext(
   // discovery read of the realm in the background (R-54d). A profile without the auth values
   // builds no member (environment contract, worker and command rows).
   const authRequestScope = new AuthRequestScope();
+  const correlationScope = new CorrelationScope();
   let context!: TenantContext;
   const auth =
     env.auth === undefined
@@ -306,6 +315,7 @@ export function createTenantContext(
     }),
     publicUrl,
     authRequestScope,
+    correlationScope,
   };
 
   // The auth member is added only when the environment carried it, so a profile that does not

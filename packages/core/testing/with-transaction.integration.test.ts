@@ -29,7 +29,7 @@ type TransactionFixture = {
 };
 
 async function startTransactionFixture(
-  logger: Pick<RedactingLogger, "error" | "info"> = silentLogger()
+  logger: Pick<RedactingLogger, "error" | "info" | "debug"> = silentLogger()
 ): Promise<TransactionFixture> {
   const postgres = await startDisposablePostgres();
 

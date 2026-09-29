@@ -312,6 +312,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/event-correlation.integration.test.ts",
+    reason:
+      "R-53, R-54 and D-5 require an event to carry the correlation id of the request or event that caused it, across fast handlers, a durable job and a log line",
+    cases: [
+      "event correlation across a request, its handlers and a durable job carries the request's correlation id through a fast handler chain",
+      "event correlation across a request, its handlers and a durable job carries the id through a durable job so a worker-side emit keeps it",
+      "event correlation across a request, its handlers and a durable job writes the chain's correlation id on the line a handler logs",
+    ],
+  },
+  {
     file: "testing/events-kill.integration.test.ts",
     reason:
       "R-55 and D-5 require durable delivery after a hard emitter process death",

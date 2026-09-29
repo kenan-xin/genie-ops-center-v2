@@ -10,7 +10,7 @@ import {
   currentAfterCommit,
   type TenantTransaction,
 } from "../../lib/tenant-context/with-transaction.ts";
-import { bossOf, type JobQueue } from "../job-queue/index.ts";
+import { bossOf, type JobData, type JobQueue } from "../job-queue/index.ts";
 import type { RedactingLogger } from "../logging/index.ts";
 
 /** One event handler: the envelope and the one tenant context, like every job (DEC-34). */
@@ -221,7 +221,7 @@ function register(
  */
 export function createEventBus(input: {
   readonly jobQueue: JobQueue;
-  readonly logger: Pick<RedactingLogger, "error">;
+  readonly logger: Pick<RedactingLogger, "error" | "debug">;
   readonly tenant: () => TenantContext;
 }): EventBus {
   const internals: Internals = {
@@ -291,12 +291,15 @@ export function createEventBus(input: {
       const parsed = event.payload.parse(payload);
       const key = contractKey(event);
 
+      // The correlation id this emit belongs to: the running handler's or request's id when there
+      // is one, so a chain request -> event -> handler -> event shares it, otherwise a fresh id.
       const envelope: EventEnvelope<unknown> = {
         id: randomUUID(),
         name: event.name,
         version: event.version,
         payload: parsed,
-        correlationId: randomUUID(),
+        correlationId:
+          input.tenant().correlationScope.current() ?? randomUUID(),
         emittedAt: new Date().toISOString(),
       };
 
@@ -320,13 +323,30 @@ export function createEventBus(input: {
                 continue;
               }
 
+              // The handler's own id is the envelope's, so a follow-up emit it makes inherits this
+              // chain's id, and a line it writes names the chain it belongs to.
+              input.logger.debug(
+                {
+                  event: event.name,
+                  eventId: envelope.id,
+                  correlationId: envelope.correlationId,
+                },
+                "event handled"
+              );
+
               // SAFETY: the erased registry hands every handler the envelope it was given, whose
               // payload this emit just parsed with the event's own schema.
               // oxlint-disable-next-line no-await-in-loop -- siblings observe each other's effects
-              await handler(envelope as EventEnvelope<never>, tenant);
+              await tenant.correlationScope.run(envelope.correlationId, () =>
+                handler(envelope as EventEnvelope<never>, tenant)
+              );
             } catch (error) {
               input.logger.error(
-                { err: error, event: event.name },
+                {
+                  err: error,
+                  event: event.name,
+                  correlationId: envelope.correlationId,
+                },
                 "fast event handler failed"
               );
             }
@@ -393,4 +413,18 @@ export function durableEventQueues(
   bus: EventBus
 ): readonly DurableEventQueue[] {
   return [...intern(bus).durableByEvent.values()].flat();
+}
+
+/**
+ * The correlation id a fetched durable job carries, read from the envelope pg-boss stored as the
+ * job data. The worker runs a handler inside this id's scope, so a follow-up emit a durable
+ * handler makes keeps the id of the request or event that caused the chain. A job whose data has
+ * no string id (only reachable if something other than `emit` enqueued on an event queue) answers
+ * `undefined`, and the handler runs outside the scope, so its own emit mints a fresh id.
+ */
+export function envelopeCorrelationId(data: JobData): string | undefined {
+  const value = data.correlationId;
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the job data is a json boundary.
+  return typeof value === "string" ? value : undefined;
 }
