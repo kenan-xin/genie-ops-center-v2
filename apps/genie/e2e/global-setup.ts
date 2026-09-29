@@ -348,7 +348,6 @@ export default async function globalSetup(): Promise<void> {
 
     if (!setupGate) {
       await runGenieOpsSetup();
-      await seedBreakGlassAccounts();
       await allowE2eRealmGroupsAttribute(E2E_SIGN_IN_REALM);
 
       await Promise.all(
@@ -394,6 +393,10 @@ export default async function globalSetup(): Promise<void> {
       );
 
       await seedTestSetup();
+
+      // After seedTestSetup: the seed inserts the break-glass rows for every project, and this
+      // gives each of them the known credential and the R-65 first-sign-in flags.
+      await seedBreakGlassAccounts();
 
       // Discovery was refused while the realm did not exist; the member retries at most every ten
       // seconds, so the proofs start once health reads `ok` (R-54d).

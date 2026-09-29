@@ -1,18 +1,16 @@
 import {
   enableModules,
   insertCredentialPerson,
+  insertSession,
   markSetupDone,
+  signedSessionCookie,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
-import {
-  type APIRequestContext,
-  type Page,
-  expect,
-  test,
-} from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
+import { TEST_AUTH_ENV } from "../testing/auth-env.ts";
 import { imageHostPort } from "../testing/image-ports.ts";
 import { startImage } from "../testing/image-process.ts";
 
@@ -22,26 +20,21 @@ const CONTEXT_HEADER = "x-genie-context-id";
 const READER_PASSWORD = "two-stack-reader-password-14";
 
 /**
- * Signs one stack's reader in through the app's own email-password door (R-62). Since R-62 refuses
- * a credential session for anyone but the break-glass account, each reader is that account, set
- * unlimited so it bypasses `can()`. The cookie is a real session row in that stack's database; the
- * two stacks use the same public origin, so the same-origin check passes for both.
+ * A real session for one stack's reader. R-62 refuses a credential session for anyone but the
+ * break-glass account, so the row is written into that stack's own database and its cookie signed
+ * the way Better Auth does. The public origin is HTTPS, so the cookie is the `__Host-` name (R-4a).
  */
-async function signIn(
-  request: APIRequestContext,
-  url: string,
-  email: string
+async function sessionFor(
+  context: Parameters<typeof insertSession>[0],
+  userId: string
 ): Promise<string> {
-  const response = await request.post(`${url}/api/auth/sign-in/email`, {
-    data: { email, password: READER_PASSWORD },
-    headers: { origin: "https://example.invalid" },
+  const token = await insertSession(context, { userId });
+
+  return signedSessionCookie({
+    token,
+    secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
+    name: "__Host-genie-session",
   });
-
-  expect(response.status()).toBe(200);
-
-  const setCookie = response.headers()["set-cookie"] ?? "";
-
-  return setCookie.split(";")[0] ?? "";
 }
 
 /**
@@ -116,21 +109,22 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
       insertPlaceholderRecord(second.context, { label: "second-stack-only" }),
     ]);
 
-    // One unlimited break-glass reader per stack, so each stack has a real session row in its own
-    // database. R-62 refuses a credential session for anyone else, so this is the account a
-    // browser path can use here; the proof below is that each stack serves only its own row.
-    await Promise.all([
+    // One reader per stack, holding `placeholder:read` through a real role assignment in that
+    // stack's own database, so each read below is authorized by the real evaluator. Their session
+    // is written directly (R-62 leaves the credential path to the break-glass account): the
+    // session row and the evaluator are real, only the sign-in transport is stood up.
+    const [firstReader, secondReader] = await Promise.all([
       insertCredentialPerson(first.context, {
         email: "first-reader@example.com",
         password: READER_PASSWORD,
-        mustChangePassword: false,
-        twoFactorEnabled: true,
+        isBreakGlass: false,
+        permissions: ["placeholder:read"],
       }),
       insertCredentialPerson(second.context, {
         email: "second-reader@example.com",
         password: READER_PASSWORD,
-        mustChangePassword: false,
-        twoFactorEnabled: true,
+        isBreakGlass: false,
+        permissions: ["placeholder:read"],
       }),
     ]);
 
@@ -192,17 +186,9 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
 
     // S2-04: with a signed-in reader holding a real grant in each database, each read returns the
     // row of its own stack and never the other's. The anonymous refusals above stay as controls.
-    const firstCookie = await signIn(
-      request,
-      firstUrl,
-      "first-reader@example.com"
-    );
+    const firstCookie = await sessionFor(first.context, firstReader);
 
-    const secondCookie = await signIn(
-      request,
-      secondUrl,
-      "second-reader@example.com"
-    );
+    const secondCookie = await sessionFor(second.context, secondReader);
 
     const firstSigned = await request.get(
       `${firstUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,

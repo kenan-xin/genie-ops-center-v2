@@ -50,6 +50,18 @@ async function startStandaloneBreakGlass(port: number): Promise<{
     port
   );
 
+  // The published port answers before the first navigation, exactly as the compose stack's
+  // readiness is checked. Health is `degraded` with the realm closed, so only the status matters.
+  await expect
+    .poll(
+      async () =>
+        fetch(`${url}/api/health`)
+          .then((response) => response.status)
+          .catch(() => 0),
+      { timeout: 60000 }
+    )
+    .toBe(200);
+
   return { deployment, image, url };
 }
 
@@ -61,12 +73,14 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
   await page.goto("/admin/login");
 
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(E2E_BREAK_GLASS_PASSWORD);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_BREAK_GLASS_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
 
   // Forced password change.
   await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
-  await page.getByLabel("New password").fill(NEW_PASSWORD);
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
   await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
   await page.getByRole("button", { name: "Set password and continue" }).click();
 
@@ -98,15 +112,27 @@ test("a rate-limited break-glass sign-in shows the neutral notice and disables i
   try {
     await page.goto(`${stack.url}/admin/login`);
 
+    const form = page.getByTestId("break-glass-sign-in");
+
     for (let attempt = 0; attempt < 10; attempt += 1) {
       // oxlint-disable-next-line no-await-in-loop -- each attempt is one credential request
+      const refused = page.waitForResponse(
+        (response) => response.url().endsWith("/api/auth/sign-in/email"),
+        { timeout: 15000 }
+      );
+
+      // oxlint-disable-next-line no-await-in-loop
       await page.getByLabel("Email").fill("standalone@example.invalid");
       // oxlint-disable-next-line no-await-in-loop
-      await page.getByLabel("Password").fill("wrong-password-1!");
+      await page
+        .getByLabel("Password", { exact: true })
+        .fill("wrong-password-1!");
       // oxlint-disable-next-line no-await-in-loop
       await page.getByRole("button", { name: "Sign in" }).click();
       // oxlint-disable-next-line no-await-in-loop
-      await expect(page.getByRole("alert")).toBeVisible();
+      expect((await refused).status()).toBe(401);
+      // oxlint-disable-next-line no-await-in-loop
+      await expect(form.getByRole("alert")).toBeVisible();
     }
 
     // The eleventh attempt is refused by the fixed window: the neutral notice, inputs disabled.
@@ -136,14 +162,26 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
     await page.goto(`${stack.url}/admin/login`);
 
     await page.getByLabel("Email").fill("standalone@example.invalid");
-    await page.getByLabel("Password").fill(E2E_BREAK_GLASS_PASSWORD);
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(E2E_BREAK_GLASS_PASSWORD);
+
+    const signedIn = page.waitForResponse(
+      (response) => response.url().endsWith("/api/auth/sign-in/email"),
+      { timeout: 15000 }
+    );
+
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // The credential step completed with no realm: the forced change card is shown.
-    await expect(page.getByLabel("Current password")).toBeVisible();
+    // The credential step completes with no realm: Better Auth answers, then the forced card.
+    expect((await signedIn).status(), await stack.image.logs()).toBe(200);
+
+    await expect(page.getByLabel("Current password")).toBeVisible({
+      timeout: 15000,
+    });
 
     await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
-    await page.getByLabel("New password").fill(NEW_PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
     await page
       .getByRole("button", { name: "Set password and continue" })

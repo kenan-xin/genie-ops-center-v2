@@ -76,6 +76,18 @@ export function AdminLoginRoute(props: {
     null
   );
 
+  // A `router.refresh()` re-runs the server card while this component keeps its state, so the
+  // step and the counter follow the props the server just sent. Comparing against the last prop
+  // is the guarded derived-state update, not a loop.
+  const [seenStep, setSeenStep] = useState(props.initialStep);
+
+  if (props.initialStep !== seenStep) {
+    setSeenStep(props.initialStep);
+    setStep(props.initialStep);
+    setSteps(props.initialSteps);
+    setEmail(props.email);
+  }
+
   /** Starts enrollment; the account's current password is required by Better Auth (R-63). */
   async function startEnrollment(password: string): Promise<void> {
     const response = await postAuth("/two-factor/enable", {
@@ -149,7 +161,8 @@ export function AdminLoginRoute(props: {
         return;
       }
 
-      // The session now exists; the server decides the limited card from its flags (R-65).
+      // The session now exists; the server's own read of the account flags picks the limited
+      // card, and the prop sync above moves this component to it.
       router.refresh();
     } finally {
       setPending(false);
