@@ -463,10 +463,52 @@ async function reconcileRealmMode(
 }
 
 /**
+ * The advisory lock that serializes whole `genie-ops setup` runs (R-18). It is a fixed key, like
+ * the migrator's, and distinct from it, because one run holds this across its steps while the
+ * migrator run inside it takes the migrator key. A later run that cannot take it waits on the
+ * database, so two concurrent setups never interleave their steps: the seed of one cannot race the
+ * roles of another, `admin_seed` and `break_glass` cannot hit the `user.email` unique against each
+ * other, and a competing run cannot move a `done` step back.
+ */
+export const SETUP_LOCK_KEY = 7562301498120385n;
+
+/**
+ * Runs `work` while this session holds the setup advisory lock, waiting until any concurrent run
+ * releases it. The lock lives on a dedicated pooled client, because a session-level advisory lock
+ * belongs to the connection that took it; the client returns to the pool only after the unlock.
+ */
+async function withSetupLock<T>(
+  context: TenantContext,
+  work: () => Promise<T>
+): Promise<T> {
+  const lock = await context.db.$client.connect();
+
+  try {
+    await lock.query("select pg_advisory_lock($1)", [
+      SETUP_LOCK_KEY.toString(),
+    ]);
+
+    return await work();
+  } finally {
+    try {
+      await lock.query("select pg_advisory_unlock($1)", [
+        SETUP_LOCK_KEY.toString(),
+      ]);
+      lock.release();
+    } catch {
+      // An unlock that fails leaves the lock on this session, so the client is destroyed rather
+      // than returned to the pool with the lock still held.
+      lock.release(true);
+    }
+  }
+}
+
+/**
  * The resumable `genie-ops setup` (R-18): each step this section knows runs in order, a step
  * already `done` is skipped so a rerun never moves it back and never overwrites seeded rows, and
  * a `failed` step runs again. The runner owns the context and closes its pool; this function
- * writes nothing outside the context.
+ * writes nothing outside the context. The whole run holds {@link SETUP_LOCK_KEY}, so two runs
+ * serialize and cannot split the administrator group or regress a `done` step.
  */
 export async function runSetup(
   context: TenantContext,
@@ -474,22 +516,24 @@ export async function runSetup(
   options: SetupOptions,
   log: MigrationLog
 ): Promise<void> {
-  for (const step of SETUP_STEPS) {
-    // The steps run in their recorded order, each starting only once the one before it is done,
-    // so the reads and the step work are sequential on purpose (R-18).
-    // oxlint-disable-next-line no-await-in-loop
-    if ((await stepState(context, step)) !== "done") {
+  await withSetupLock(context, async () => {
+    for (const step of SETUP_STEPS) {
+      // The steps run in their recorded order, each starting only once the one before it is done,
+      // so the reads and the step work are sequential on purpose (R-18).
       // oxlint-disable-next-line no-await-in-loop
-      await runStep(context, step, () =>
-        stepWork(step, context, files, options, log)
-      );
-    }
+      if ((await stepState(context, step)) !== "done") {
+        // oxlint-disable-next-line no-await-in-loop
+        await runStep(context, step, () =>
+          stepWork(step, context, files, options, log)
+        );
+      }
 
-    // After the seed step, on every run, reconcile realm_mode before any later step acts on it,
-    // so a rerun whose steps are all done still refuses a realm change in `tenant.yaml` (R-54a).
-    if (step === "seed") {
-      // oxlint-disable-next-line no-await-in-loop
-      await reconcileRealmMode(context, files);
+      // After the seed step, on every run, reconcile realm_mode before any later step acts on it,
+      // so a rerun whose steps are all done still refuses a realm change in `tenant.yaml` (R-54a).
+      if (step === "seed") {
+        // oxlint-disable-next-line no-await-in-loop
+        await reconcileRealmMode(context, files);
+      }
     }
-  }
+  });
 }

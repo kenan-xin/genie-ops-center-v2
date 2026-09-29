@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { hashPassword } from "better-auth/crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import {
   generatePassword,
@@ -24,15 +24,24 @@ export type BreakGlassStepOptions = {
  * R-57, DEC-24: the operator-provisioned account that signs in at `/admin/login` with a generated
  * password. The step creates the `user` row with `is_break_glass` and `must_change_password`, and
  * its `credential` account row with the password hashed by the Better Auth password hasher (D2-5),
- * in one transaction. The password is printed once, after the transaction commits, to the command
- * output for the operator's secret store; it is never written to a file, a log field, an audit row
- * or the `setup_step` detail.
+ * in one transaction. The hash is committed first, then the plaintext is printed once to the
+ * command output for the operator's secret store; it is never written to a file, a log field, an
+ * audit row or the `setup_step` detail. `runSetup` records the step `done` only after this function
+ * returns, so a crash in the gap between the commit and the recorded step leaves the step not done.
  *
- * The step is resumable and idempotent. An account that already holds a credential is left alone,
- * so a rerun never rotates the password, and a person that already exists is updated in place
- * rather than duplicated. R-62 governs the refusal: flagging a person `is_break_glass` who already
- * has a non-credential (identity-provider) account would let that account bypass authorization, so
- * the step refuses by name.
+ * R-62 and R-57 govern what may be reused. A person that already exists but is not already the
+ * break-glass principal is refused by name, whatever accounts they hold: turning an ordinary
+ * credential into the emergency principal would hand out the bypass without ever delivering a new
+ * secret. An account already flagged `is_break_glass` keeps its flags untouched; only its
+ * credential is managed.
+ *
+ * The delivery protocol is explicit, because a one-time secret that is committed but never printed
+ * is a lost credential. A run reaches this step only while its `setup_step` row is not `done`, and
+ * the setup gate serves no route before every step is done, so nobody can have signed in through
+ * this account yet. A `must_change_password` of true therefore means the plaintext was never
+ * delivered: the step generates a fresh password, replaces the stored hash and prints it. Once the
+ * forced change has happened (`must_change_password` false) the stored password is left alone and
+ * nothing is printed, and once the step is `done` the runner never calls this function again.
  */
 export async function breakGlassStep(
   context: TenantContext,
@@ -44,68 +53,40 @@ export async function breakGlassStep(
 
   const password = await context.db.transaction(async (tx) => {
     const [existing] = await tx
-      .select({ id: user.id })
+      .select({
+        id: user.id,
+        isBreakGlass: user.isBreakGlass,
+        mustChangePassword: user.mustChangePassword,
+      })
       .from(user)
       .where(eq(user.email, email))
       .limit(1);
 
-    if (existing !== undefined) {
-      const accounts = await tx
-        .select({ providerId: account.providerId })
-        .from(account)
-        .where(eq(account.userId, existing.id));
-
-      if (
-        accounts.some(({ providerId }) => providerId !== CREDENTIAL_PROVIDER_ID)
-      ) {
-        throw new Error(
-          `the break_glass step refuses to mark ${email} break-glass: the person already has an identity-provider account, which would otherwise inherit the break-glass bypass (R-62)`
-        );
-      }
-
-      await tx
-        .update(user)
-        .set({
-          isBreakGlass: true,
-          mustChangePassword: true,
-          updatedAt: sql`now()`,
-        })
-        .where(eq(user.id, existing.id));
-
-      // A credential the person already holds is never replaced: a rerun keeps the printed
-      // password valid and prints nothing.
-      if (accounts.length > 0) return undefined;
-
-      const generated = generatePassword();
-
-      if (!meetsPasswordRule(generated, email)) {
-        throw new Error(
-          "the generated break-glass password did not meet the R-64 rule"
-        );
-      }
-
-      await tx.insert(account).values({
-        id: randomUUID(),
-        accountId: existing.id,
-        providerId: CREDENTIAL_PROVIDER_ID,
-        userId: existing.id,
-        password: await hashPassword(generated),
-      });
-
-      return generated;
+    if (existing !== undefined && existing.isBreakGlass !== true) {
+      throw new Error(
+        `the break_glass step refuses to mark ${email} break-glass: the address already belongs to an ordinary person (R-57, R-62)`
+      );
     }
 
-    const id = randomUUID();
+    // The account already completed its forced password change, so the secret it holds was
+    // delivered and used. Its flags and credential stay as they are and nothing is printed.
+    if (existing !== undefined && existing.mustChangePassword !== true) {
+      return undefined;
+    }
 
-    await tx.insert(user).values({
-      id,
-      name: nameForEmail(email),
-      email,
-      emailVerified: true,
-      status: "active",
-      isBreakGlass: true,
-      mustChangePassword: true,
-    });
+    const id = existing?.id ?? randomUUID();
+
+    if (existing === undefined) {
+      await tx.insert(user).values({
+        id,
+        name: nameForEmail(email),
+        email,
+        emailVerified: true,
+        status: "active",
+        isBreakGlass: true,
+        mustChangePassword: true,
+      });
+    }
 
     const generated = generatePassword();
 
@@ -115,26 +96,46 @@ export async function breakGlassStep(
       );
     }
 
-    await tx.insert(account).values({
-      id: randomUUID(),
-      accountId: id,
-      providerId: CREDENTIAL_PROVIDER_ID,
-      userId: id,
-      password: await hashPassword(generated),
-    });
+    const passwordHash = await hashPassword(generated);
+
+    const [credential] = await tx
+      .select({ id: account.id })
+      .from(account)
+      .where(
+        and(
+          eq(account.userId, id),
+          eq(account.providerId, CREDENTIAL_PROVIDER_ID)
+        )
+      )
+      .limit(1);
+
+    if (credential === undefined) {
+      await tx.insert(account).values({
+        id: randomUUID(),
+        accountId: id,
+        providerId: CREDENTIAL_PROVIDER_ID,
+        userId: id,
+        password: passwordHash,
+      });
+    } else {
+      await tx
+        .update(account)
+        .set({ password: passwordHash, updatedAt: sql`now()` })
+        .where(eq(account.id, credential.id));
+    }
 
     return generated;
   });
 
   if (password === undefined) {
     options.output(
-      `break_glass step: account ${email} already has a credential; password left unchanged`
+      `break_glass step: account ${email} already provisioned; nothing to deliver`
     );
 
     return;
   }
 
   options.output(
-    `break_glass step: account ${email} created; password: ${password}`
+    `break_glass step: account ${email} provisioned; password: ${password}`
   );
 }
