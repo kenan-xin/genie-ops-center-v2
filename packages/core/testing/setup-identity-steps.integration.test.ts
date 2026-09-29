@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { verifyPassword } from "better-auth/crypto";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
@@ -540,6 +540,101 @@ describe("the break_glass setup step (R-57, R-64)", () => {
     expect(step?.detail).toContain("refuses to mark");
   }, 120000);
 
+  it("refuses an existing ordinary credential user instead of handing them the bypass (R-57)", async () => {
+    const fixture = await setupFixture();
+
+    await migrateFirst(fixture);
+
+    await fixture.observer.query(`
+      insert into "user" (id, name, email, email_verified, status)
+      values ('ordinary-person', 'Ordinary', '${BREAK_GLASS_EMAIL}', true, 'active');
+      insert into account (id, account_id, provider_id, user_id, password)
+      values ('ordinary-credential', 'ordinary-person', 'credential', 'ordinary-person', 'stored-hash');
+    `);
+
+    const captured = outputCapture();
+
+    await expect(setup(fixture, captured)).resolves.not.toBe(0);
+
+    expect(captured.errorLines.join("\n")).toContain("refuses to mark");
+
+    const [person] = (
+      await fixture.observer.query<{
+        is_break_glass: boolean;
+        must_change_password: boolean;
+      }>(
+        `select is_break_glass, must_change_password from "user" where email = '${BREAK_GLASS_EMAIL}'`
+      )
+    ).rows;
+
+    expect(person).toEqual({
+      is_break_glass: false,
+      must_change_password: false,
+    });
+
+    // The stored credential is untouched: no new secret was generated or delivered.
+    const [credential] = (
+      await fixture.observer.query<{ password: string }>(
+        "select password from account where id = 'ordinary-credential'"
+      )
+    ).rows;
+
+    expect(credential?.password).toBe("stored-hash");
+  }, 120000);
+
+  it("reuses an already-provisioned break-glass account without touching its flags", async () => {
+    const fixture = await setupFixture();
+
+    await migrateFirst(fixture);
+
+    const existingHash = await hashPassword("Delivered#Password14");
+
+    await fixture.observer.query(`
+      insert into "user" (id, name, email, email_verified, status, is_break_glass, must_change_password)
+      values ('provisioned', 'Provisioned', '${BREAK_GLASS_EMAIL}', true, 'active', true, false);
+      insert into account (id, account_id, provider_id, user_id, password)
+      values ('provisioned-credential', 'provisioned', 'credential', 'provisioned', '${existingHash}');
+    `);
+
+    const captured = outputCapture();
+
+    await expect(setup(fixture, captured)).resolves.toBe(0);
+
+    // The account already completed its forced change, so its flags and credential stay.
+    const [person] = (
+      await fixture.observer.query<{
+        is_break_glass: boolean;
+        must_change_password: boolean;
+      }>(
+        `select is_break_glass, must_change_password from "user" where email = '${BREAK_GLASS_EMAIL}'`
+      )
+    ).rows;
+
+    expect(person).toEqual({
+      is_break_glass: true,
+      must_change_password: false,
+    });
+
+    expect(
+      captured.outputLines.some((line) => line.includes("password: "))
+    ).toBe(false);
+
+    const [credential] = (
+      await fixture.observer.query<{ password: string }>(
+        "select password from account where id = 'provisioned-credential'"
+      )
+    ).rows;
+
+    expect(credential?.password).toBe(existingHash);
+    // The stored secret still matches the password the operator already holds.
+    expect(
+      await verifyPassword({
+        hash: credential?.password ?? "",
+        password: "Delivered#Password14",
+      })
+    ).toBe(true);
+  }, 120000);
+
   it("is idempotent on a rerun and never reprints the password", async () => {
     const fixture = await setupFixture();
     const first = outputCapture();
@@ -656,5 +751,146 @@ describe("the break_glass setup step (R-57, R-64)", () => {
         )
       ).rows[0]?.count
     ).toBe(1);
+  }, 120000);
+
+  it("prints a fresh password when a run dies between the commit and the done record (R-57)", async () => {
+    const fixture = await setupFixture();
+
+    await migrateFirst(fixture);
+
+    // Reject only the `done` write for break_glass, so the credential transaction commits and
+    // prints, then the step record fails: the exact gap the delivery protocol must recover from.
+    await fixture.observer.query(`
+      create function reject_break_glass_done() returns trigger
+      language plpgsql as $$
+      begin
+        if new.step = 'break_glass' and new.state = 'done' then
+          raise exception 'injected break_glass done failure';
+        end if;
+        return new;
+      end;
+      $$;
+      create trigger reject_break_glass_done
+      before insert or update on setup_step
+      for each row execute function reject_break_glass_done();
+    `);
+
+    const first = outputCapture();
+
+    await expect(setup(fixture, first)).resolves.not.toBe(0);
+
+    const firstPassword = printedPassword(first.outputLines);
+
+    const [committed] = (
+      await fixture.observer.query<{
+        password: string;
+        must_change_password: boolean;
+      }>(
+        `select a.password, u.must_change_password
+           from account a join "user" u on u.id = a.user_id
+          where u.email = '${BREAK_GLASS_EMAIL}'`
+      )
+    ).rows;
+
+    // The first secret was committed and printed, but never recorded as delivered.
+    expect(
+      await verifyPassword({
+        hash: committed?.password ?? "",
+        password: firstPassword,
+      })
+    ).toBe(true);
+    expect(committed?.must_change_password).toBe(true);
+
+    await fixture.observer.query(`
+      drop trigger reject_break_glass_done on setup_step;
+      drop function reject_break_glass_done();
+    `);
+
+    const second = outputCapture();
+
+    await expect(setup(fixture, second)).resolves.toBe(0);
+
+    const secondPassword = printedPassword(second.outputLines);
+
+    // The recovery rotates the credential and prints the new secret, which is the one that works.
+    expect(secondPassword).not.toBe(firstPassword);
+    expect(passwordOccurrences(second.outputLines, secondPassword)).toBe(1);
+
+    const [rotated] = (
+      await fixture.observer.query<{ password: string }>(
+        `select a.password from account a join "user" u on u.id = a.user_id where u.email = '${BREAK_GLASS_EMAIL}'`
+      )
+    ).rows;
+
+    expect(
+      await verifyPassword({
+        hash: rotated?.password ?? "",
+        password: secondPassword,
+      })
+    ).toBe(true);
+    expect(
+      await verifyPassword({
+        hash: rotated?.password ?? "",
+        password: firstPassword,
+      })
+    ).toBe(false);
+
+    // Once the step is done, a further run never prints or rotates again.
+    const third = outputCapture();
+
+    await expect(setup(fixture, third)).resolves.toBe(0);
+    expect(third.outputLines.some((line) => line.includes("password: "))).toBe(
+      false
+    );
+  }, 120000);
+});
+
+describe("concurrent setup runs (R-18)", () => {
+  it("serializes two runs into one administrator group and every step done", async () => {
+    const fixture = await setupFixture();
+
+    const first = outputCapture();
+    const second = outputCapture();
+
+    const [firstExit, secondExit] = await Promise.all([
+      setup(fixture, first),
+      setup(fixture, second),
+    ]);
+
+    expect([firstExit, secondExit]).toEqual([0, 0]);
+
+    const counts = await fixture.observer.query<{
+      groups: number;
+      assignments: number;
+      people: number;
+      memberships: number;
+      steps_done: number;
+      steps_total: number;
+    }>(`
+      select
+        (select count(*)::int from "group" where source = 'local') as groups,
+        (select count(*)::int from role_assignment) as assignments,
+        (select count(*)::int from "user") as people,
+        (select count(*)::int from group_member where source = 'local') as memberships,
+        (select count(*)::int from setup_step where state = 'done') as steps_done,
+        (select count(*)::int from setup_step) as steps_total
+    `);
+
+    // The setup lock serializes the two runs: one administrator group, one group assignment, two
+    // administrators, the break-glass person, its local memberships and all seven steps done.
+    expect(counts.rows[0]).toEqual({
+      groups: 1,
+      assignments: 1,
+      people: 3,
+      memberships: 2,
+      steps_done: 7,
+      steps_total: 7,
+    });
+
+    const statuses = await fixture.observer.query<{ state: string }>(
+      "select state from setup_step order by step"
+    );
+
+    expect(statuses.rows.every(({ state }) => state === "done")).toBe(true);
   }, 120000);
 });
