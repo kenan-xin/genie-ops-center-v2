@@ -36,6 +36,9 @@ export async function startDisposableKeycloak(): Promise<DisposableKeycloak> {
     .withWaitStrategy(
       Wait.forHttp("/realms/master/.well-known/openid-configuration", 8080)
     )
+    // Keycloak start-dev takes over a minute on a 2-core CI runner, past the 60 s default.
+    // It stays under the 180 s beforeAll limit of the realm-step suite.
+    .withStartupTimeout(170000)
     .start();
 
   return {

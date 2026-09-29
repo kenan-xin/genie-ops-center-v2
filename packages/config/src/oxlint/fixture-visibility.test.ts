@@ -511,7 +511,10 @@ describe("lint fixtures and the end-to-end collection that runs beside them", ()
           expect(listing).toContain("security-headers.spec.ts");
         }
       );
-    }
+    },
+    // `playwright test --list` loads the whole app configuration, which takes
+    // longer than the 5 s default on a 2-core CI runner.
+    60000
   );
 });
 
