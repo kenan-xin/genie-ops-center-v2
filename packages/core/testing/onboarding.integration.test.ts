@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Client } from "pg";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import {
   account,
   auditEvent,
@@ -18,6 +20,7 @@ import {
   validateOAuthUser,
 } from "../src/services/auth/onboarding.ts";
 import { recordOAuthSignIn } from "../src/services/auth/session-events.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
   assignRole,
@@ -207,6 +210,73 @@ describe("OAuth onboarding and group sync against Postgres", () => {
       .where(eq(group.id, preaddedId));
 
     expect(preadded?.seen).toBeInstanceOf(Date);
+  });
+
+  it("concurrent disjoint claims leave exactly one complete replacement", async () => {
+    const userId = await insertUser(jit.context);
+
+    const secondContext = createTenantContext(
+      {
+        DATABASE_URL: jit.context.env.databaseUrl,
+        PUBLIC_URL: "https://test.example.invalid",
+      },
+      silentLogger(),
+      []
+    );
+
+    const blocker = new Client({
+      connectionString: jit.context.env.databaseUrl,
+    });
+
+    const observer = new Client({
+      connectionString: jit.context.env.databaseUrl,
+    });
+
+    await blocker.connect();
+    await observer.connect();
+    await blocker.query("BEGIN");
+    await blocker.query('LOCK TABLE "group" IN SHARE MODE');
+
+    const replacements = Promise.all([
+      syncGroupMemberships(jit.context, userId, ["Concurrent A"]),
+      syncGroupMemberships(secondContext, userId, ["Concurrent B"]),
+    ]);
+
+    try {
+      await vi.waitFor(
+        async () => {
+          const result = await observer.query<{ waiting: number }>(
+            "SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+          );
+
+          expect(result.rows[0]?.waiting).toBeGreaterThanOrEqual(2);
+        },
+        { timeout: 10_000, interval: 25 }
+      );
+    } finally {
+      await blocker.query("ROLLBACK");
+      await blocker.end();
+      await observer.end();
+
+      try {
+        await replacements;
+      } finally {
+        await secondContext.db.$client.end();
+      }
+    }
+
+    const memberships = await jit.context.db
+      .select({ externalId: group.externalId })
+      .from(groupMember)
+      .innerJoin(group, eq(group.id, groupMember.groupId))
+      .where(
+        and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
+      );
+
+    expect(memberships).toHaveLength(1);
+    expect(["Concurrent A", "Concurrent B"]).toContain(
+      memberships[0]?.externalId
+    );
   });
 
   it("present empty claim removes all idp memberships", async () => {

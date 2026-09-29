@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-readable-spacing -- Better Auth owns this callback shape; sequential writes preserve membership consistency. */
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-readable-spacing -- Better Auth owns this callback shape; per-user row locks serialize membership replacements. */
 
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { group, groupMember, roleAssignment, user } from "../../schema.ts";
@@ -110,6 +110,15 @@ export async function syncGroupMemberships(
     return;
   }
   await tenant.db.transaction(async (tx) => {
+    const locked = await tx
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, userId))
+      .for("update");
+
+    if (locked.length === 0)
+      throw new Error("cannot sync groups for a missing person");
+
     await tx
       .delete(groupMember)
       .where(
@@ -139,7 +148,8 @@ export async function syncGroupMemberships(
       .where(and(eq(group.source, "idp"), inArray(group.externalId, names)));
     await tx
       .insert(groupMember)
-      .values(rows.map(({ id }) => ({ groupId: id, userId, source: "idp" })));
+      .values(rows.map(({ id }) => ({ groupId: id, userId, source: "idp" })))
+      .onConflictDoNothing();
   });
 }
 
