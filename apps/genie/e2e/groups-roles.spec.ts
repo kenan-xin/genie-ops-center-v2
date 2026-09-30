@@ -29,6 +29,17 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const project = testInfo.project.name;
   const adminEmail = e2eReaderEmail("groups", project);
   const GROUP_VALUE = e2eGroupsRolesGroup(project);
+  // Phone and desktop run in parallel against one database, so the label is project-scoped too.
+  const GROUP_LABEL = `S2-11 group ${project}`;
+
+  // The e2e database keeps rows between runs, so remove this project's group from an earlier run
+  // (its grants and memberships first) before pre-adding it again.
+  await queryDatabase(
+    `with old as (select id from "group" where external_id = '${GROUP_VALUE}'),
+          members as (delete from group_member where group_id in (select id from old)),
+          grants as (delete from role_assignment where principal_id in (select id::text from old))
+     delete from "group" where id in (select id from old)`
+  );
 
   // The administrator pre-adds the directory group by its exact claim value (DEC-52).
   await signInThroughKeycloak(page, { email: adminEmail });
@@ -39,7 +50,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const addDialog = page.getByRole("dialog", { name: "Add directory group" });
 
   await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
-  await addDialog.getByLabel("Display label").fill("S2-11 group");
+  await addDialog.getByLabel("Display label").fill(GROUP_LABEL);
 
   const [addResponse] = await Promise.all([
     page.waitForResponse((response) =>
@@ -50,22 +61,30 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   expect(addResponse.status()).toBe(200);
 
-  await expect(page.getByText("S2-11 group")).toBeVisible();
+  await expect(page.getByText(GROUP_LABEL, { exact: true })).toBeVisible();
   await expect(page.getByText("Not seen yet").first()).toBeVisible();
 
   // Map the group to a role through the screen's own assign step (R-24b), not SQL.
   await page
-    .getByRole("button", { name: /S2-11 group/ })
+    .getByRole("button", { name: new RegExp(GROUP_LABEL) })
     .first()
     .click();
 
-  const inspector = page.getByRole("dialog", { name: "S2-11 group" });
+  const inspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
   await inspector
     .getByLabel("Role to assign")
     .selectOption({ label: "E2E reader" });
-  await inspector.getByRole("button", { name: "Assign role" }).click();
+
+  const [assignResponse] = await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes("groups.assignRole")
+    ),
+    inspector.getByRole("button", { name: "Assign role" }).click(),
+  ]);
+
+  expect(assignResponse.status()).toBe(200);
 
   const [assigned] = await queryDatabase(
     `select count(*) from role_assignment a
@@ -105,19 +124,27 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   // Archiving the group stops its grants (R-25, R-32).
   await page.goto("/admin/groups");
   await page
-    .getByRole("button", { name: /S2-11 group/ })
+    .getByRole("button", { name: new RegExp(GROUP_LABEL) })
     .first()
     .click();
   await page.getByRole("button", { name: "Archive group" }).click();
 
   const archiveDialog = page.getByRole("dialog", {
-    name: /Archive S2-11 group/,
+    name: new RegExp(`Archive ${GROUP_LABEL}`),
   });
 
   await expect(
     archiveDialog.getByText(/assignment.* stop granting/)
   ).toBeVisible();
-  await archiveDialog.getByRole("button", { name: "Archive group" }).click();
+
+  const [archiveResponse] = await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes("groups.archiveDirectoryGroup")
+    ),
+    archiveDialog.getByRole("button", { name: "Archive group" }).click(),
+  ]);
+
+  expect(archiveResponse.status()).toBe(200);
 
   const [archived] = await queryDatabase(
     `select (archived_at is not null) from "group" where external_id = '${GROUP_VALUE}'`
@@ -154,7 +181,7 @@ test("the role editor warns on an unavailable key and offers its removal", async
   await queryDatabase(
     `insert into role (name, permissions, is_system)
        values ('${roleName}', array['retired:key'], false)
-       on conflict (name) do nothing`
+       on conflict (name) do update set permissions = array['retired:key']`
   );
 
   await signInThroughKeycloak(page, {
@@ -171,7 +198,12 @@ test("the role editor warns on an unavailable key and offers its removal", async
   await expect(page.getByText("retired:key")).toBeVisible();
 
   // A custom role may remove the unavailable key without deleting the role.
-  await page.getByRole("button", { name: "Remove" }).click();
+  const [removeResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes("roles.update")),
+    page.getByRole("button", { name: "Remove" }).click(),
+  ]);
+
+  expect(removeResponse.status()).toBe(200);
 
   const [stillThere] = await queryDatabase(
     `select count(*) from role where name = '${roleName}'`
