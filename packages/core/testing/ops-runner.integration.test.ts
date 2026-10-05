@@ -29,7 +29,10 @@ import {
   type MigrationHistory,
   runMigrations,
 } from "../src/services/migrator/index.ts";
-import { runGenieOps } from "../src/services/ops/index.ts";
+import {
+  IDENTITY_COMMANDS,
+  runGenieOps,
+} from "../src/services/ops/index.ts";
 import { insertCredentialPerson, startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -319,6 +322,59 @@ describe("the R-54c identity-command guard", () => {
       action: "ops:module-enable",
       metadata: { outcome: "failure" },
     });
+  }, 120000);
+
+  it("lists idp set, and only idp set, as an identity command", () => {
+    expect(IDENTITY_COMMANDS).toEqual(["idp-set"]);
+  });
+
+  it("refuses idp set on an address mismatch before any realm call", async () => {
+    const { source, context } = await fixture();
+
+    await recordMismatchedAddress(context);
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(
+        [
+          "idp",
+          "set",
+          "--protocol",
+          "oidc",
+          "--issuer-url",
+          "https://idp.example.com/realms/company",
+          "--client-id",
+          "genie-oidc",
+          "--client-secret",
+          "a-provider-secret",
+        ],
+        {
+          source: { ...source, ...AUTH_ENV },
+          compiledModules: [],
+          histories: [],
+          ...captured,
+        }
+      )
+    ).resolves.not.toBe(0);
+
+    const joined = captured.lines.join("\n");
+
+    expect(joined).toContain(
+      "KEYCLOAK_URL is not the Keycloak that setup used"
+    );
+    // The provider secret never reaches the output, and the row carries the non-secret args only.
+    expect(joined).not.toContain("a-provider-secret");
+
+    const rows = await auditRows(context);
+
+    expect(rows.at(-1)).toMatchObject({
+      action: "ops:idp-set",
+      metadata: { outcome: "failure" },
+    });
+    expect(JSON.stringify(rows.at(-1)?.metadata)).not.toContain(
+      "a-provider-secret"
+    );
   }, 120000);
 
   it("does not guard module or retire, so an address mismatch leaves them alone", async () => {
