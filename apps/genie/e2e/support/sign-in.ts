@@ -28,3 +28,27 @@ export async function signInThroughKeycloak(
     .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
     .toBe(input.landing ?? "/");
 }
+
+/**
+ * Signs the browser in through a brokered deployment (S2-13). The realm's default redirector sends
+ * the authorization request to the company stand-in realm, so the form is the company realm's own
+ * login page; after it the broker returns through the tenant realm to the app callback.
+ */
+export async function signInThroughBroker(
+  page: Page,
+  input: {
+    readonly baseUrl: string;
+    readonly email: string;
+    readonly landing?: string;
+  }
+): Promise<void> {
+  await page.goto(`${input.baseUrl}/api/auth/sign-in/keycloak`);
+
+  await page.locator("#username").fill(input.email);
+  await page.locator("#password").fill(E2E_USER_PASSWORD);
+  await page.locator("#kc-login").click();
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 45000 })
+    .toBe(input.landing ?? "/");
+}

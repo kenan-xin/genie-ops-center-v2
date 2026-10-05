@@ -32,17 +32,13 @@ import {
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
 import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
-import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
+import { scopedPort } from "../testing/worktree-scope.ts";
+import { provisionScenarioDeployments } from "./scenarios.ts";
+import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
+
+export { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 
 const run = promisify(execFile);
-
-/**
- * The compose file, relative to the workspace root. Playwright is invoked from
- * the workspace root (the documented command), and the guard below fails loudly
- * rather than starting nothing if it is not, because a missing `-f` target is
- * otherwise a silent `up` of an empty stack.
- */
-const COMPOSE_FILE = "deploy/stack/compose.e2e.yaml";
 
 const READY_PORT = Number(
   process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? scopedPort(3400)
@@ -51,14 +47,6 @@ const READY_PORT = Number(
 const PUBLIC_URL = `http://127.0.0.1:${READY_PORT}`;
 
 const READY_URL = `${PUBLIC_URL}/api/health`;
-
-export const COMPOSE = [
-  "compose",
-  "-p",
-  scopedProject("genie-s005-e2e"),
-  "-f",
-  COMPOSE_FILE,
-];
 
 /** The pre-added readers, one per spec and project, which the seed assigns the reader role. */
 const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>
@@ -396,6 +384,10 @@ export default async function globalSetup(): Promise<void> {
       // After seedTestSetup: the seed inserts the break-glass rows for every project, and this
       // gives each of them the known credential and the R-65 first-sign-in flags.
       await seedBreakGlassAccounts();
+
+      // The S2-13 brokered scenarios need their own realms (brokering sends every sign-in to the
+      // provider), so they run as extra app containers with their own databases.
+      await provisionScenarioDeployments(COMPOSE, keycloak);
 
       // Discovery was refused while the realm did not exist; the member retries at most every ten
       // seconds, so the proofs start once health reads `ok` (R-54d).

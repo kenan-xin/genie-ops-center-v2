@@ -131,6 +131,23 @@ export function e2eGroupsRolesGroup(project: string): string {
   return `E2E s2-11 mapped ${project}`;
 }
 
+/** The stand-in realm that plays the customer's company login (tech plan D2-2). */
+export const COMPANY_REALM = "company";
+
+/** The company realm's OIDC client and its secret, the provider `idp set` brokers to. */
+export const COMPANY_OIDC_CLIENT_ID = "genie-oidc";
+
+export const COMPANY_OIDC_CLIENT_SECRET = "company-oidc-secret";
+
+/** A company-realm person's email and password, from the imported realm. */
+export function companyEmail(name: "alice" | "bob" | "carol"): string {
+  return `${name}@company.example`;
+}
+
+export function companyPassword(): string {
+  return "password";
+}
+
 /** The stand-in's master administrator, which `genie-ops setup` uses as its bootstrap credential. */
 export const E2E_BOOTSTRAP_USER = "admin";
 
@@ -236,6 +253,129 @@ export async function deleteRealm(realm: string): Promise<void> {
   }
 }
 
+/**
+ * Merges attributes and replaces the redirect URIs of one realm client. Keycloak validates a SAML
+ * AuthnRequest's assertion-consumer URL against the client's redirect URIs as well as its ACS
+ * attributes, so registering the broker's exact ACS URL needs both.
+ */
+export async function updateRealmClient(
+  realm: string,
+  clientId: string,
+  update: {
+    readonly attributes: Readonly<Record<string, string>>;
+    readonly redirectUris: readonly string[];
+  }
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/clients?clientId=${encodeURIComponent(clientId)}`
+  );
+
+  // SAFETY: the admin client search answers a JSON list of client representations.
+  const [client] = (await found.json()) as readonly {
+    readonly id: string;
+    readonly attributes?: Record<string, string>;
+  }[];
+
+  if (client === undefined) {
+    throw new Error(`No realm client ${clientId} in ${realm}`);
+  }
+
+  const updated = await admin(`/realms/${realm}/clients/${client.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      ...client,
+      attributes: { ...client.attributes, ...update.attributes },
+      redirectUris: update.redirectUris,
+    }),
+  });
+
+  if (!updated.ok) {
+    throw new Error(
+      `Updating client ${clientId} in ${realm} failed with ${updated.status}`
+    );
+  }
+}
+
+/** The fields of an identity provider mapper the tests write. */
+export type IdentityProviderMapperInput = {
+  readonly name: string;
+  readonly identityProviderAlias: string;
+  readonly identityProviderMapper: string;
+  readonly config: Readonly<Record<string, string>>;
+};
+
+/** The fields of a protocol mapper the tests write. */
+export type ProtocolMapperInput = {
+  readonly name: string;
+  readonly protocol: string;
+  readonly protocolMapper: string;
+  readonly config: Readonly<Record<string, string>>;
+};
+
+/** Adds an identity provider mapper when it is absent (a 409 means it is already there). */
+export async function addIdentityProviderMapper(
+  realm: string,
+  alias: string,
+  mapper: IdentityProviderMapperInput
+): Promise<void> {
+  const response = await admin(
+    `/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}/mappers`,
+    { method: "POST", body: JSON.stringify(mapper) }
+  );
+
+  if (!response.ok && response.status !== 409) {
+    throw new Error(
+      `Adding a mapper to ${alias} in ${realm} failed with ${response.status}`
+    );
+  }
+}
+
+/** Adds a protocol mapper to one realm client when it is absent. */
+export async function addClientProtocolMapper(
+  realm: string,
+  clientId: string,
+  mapper: ProtocolMapperInput
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/clients?clientId=${encodeURIComponent(clientId)}`
+  );
+
+  // SAFETY: the admin client search answers a JSON list of client representations.
+  const [client] = (await found.json()) as readonly { readonly id: string }[];
+
+  if (client === undefined) {
+    throw new Error(`No realm client ${clientId} in ${realm}`);
+  }
+
+  const response = await admin(
+    `/realms/${realm}/clients/${client.id}/protocol-mappers/models`,
+    { method: "POST", body: JSON.stringify(mapper) }
+  );
+
+  if (!response.ok && response.status !== 409) {
+    throw new Error(
+      `Adding a protocol mapper to ${clientId} in ${realm} failed with ${response.status}`
+    );
+  }
+}
+
+/** Removes a realm user by email when present, so a rerun starts from a clean person. */
+export async function deleteRealmUser(
+  realm: string,
+  email: string
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/users?exact=true&email=${encodeURIComponent(email)}`
+  );
+
+  // SAFETY: the admin user search answers a JSON list of user representations.
+  const [person] = (await found.json()) as readonly { readonly id: string }[];
+
+  if (person === undefined) return;
+
+  await admin(`/realms/${realm}/users/${person.id}`, { method: "DELETE" });
+}
+
 /** Creates a realm user with a password and a verified email. */
 export async function createRealmUser(
   realm: string,
@@ -313,6 +453,109 @@ export async function setRealmUserGroups(
     JSON.stringify(actual.attributes?.groups ?? []) !== JSON.stringify(groups)
   ) {
     throw new Error(`Realm groups attribute was not stored for ${email}`);
+  }
+}
+
+/** The id of one realm group by exact name, or nothing when it does not exist. */
+async function realmGroupId(
+  realm: string,
+  name: string
+): Promise<string | undefined> {
+  const response = await admin(
+    `/realms/${realm}/groups?search=${encodeURIComponent(name)}&exact=true`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Listing groups of ${realm} failed with ${response.status}`
+    );
+  }
+
+  // SAFETY: the admin groups search answers a JSON list of group representations.
+  const body = (await response.json()) as readonly {
+    readonly id?: string;
+    readonly name?: string;
+  }[];
+
+  return body.find((entry) => entry.name === name)?.id;
+}
+
+/** Creates a realm group when it is absent and returns its id. */
+export async function ensureRealmGroup(
+  realm: string,
+  name: string
+): Promise<string> {
+  const existing = await realmGroupId(realm, name);
+
+  if (existing !== undefined) return existing;
+
+  const created = await admin(`/realms/${realm}/groups`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+
+  if (!created.ok && created.status !== 409) {
+    throw new Error(
+      `Creating group ${name} in ${realm} failed with ${created.status}`
+    );
+  }
+
+  const id = await realmGroupId(realm, name);
+
+  if (id === undefined) throw new Error(`Group ${name} was not created`);
+
+  return id;
+}
+
+/**
+ * Replaces a realm user's realm-group memberships with exactly `names`. This is the real claim the
+ * company realm's group-membership mapper emits, unlike the user-attribute path the tenant realm
+ * uses, so the S2-13 brokering proofs change a company person's groups here.
+ */
+export async function setRealmUserGroupMemberships(
+  realm: string,
+  email: string,
+  names: readonly string[]
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/users?exact=true&email=${encodeURIComponent(email)}`
+  );
+
+  // SAFETY: the admin user search answers a JSON list of user representations.
+  const [person] = (await found.json()) as readonly { readonly id: string }[];
+
+  if (person === undefined)
+    throw new Error(`No realm user ${email} in ${realm}`);
+
+  const current = await admin(`/realms/${realm}/users/${person.id}/groups`);
+
+  // SAFETY: the memberships endpoint answers a JSON list of group representations.
+  const memberships = (await current.json()) as readonly {
+    readonly id: string;
+  }[];
+
+  for (const membership of memberships) {
+    // oxlint-disable-next-line no-await-in-loop -- each removal is its own admin call.
+    await admin(`/realms/${realm}/users/${person.id}/groups/${membership.id}`, {
+      method: "DELETE",
+    });
+  }
+
+  for (const name of names) {
+    // oxlint-disable-next-line no-await-in-loop -- each join is its own admin call.
+    const groupId = await ensureRealmGroup(realm, name);
+
+    // oxlint-disable-next-line no-await-in-loop -- each join is its own admin call.
+    const joined = await admin(
+      `/realms/${realm}/users/${person.id}/groups/${groupId}`,
+      { method: "PUT" }
+    );
+
+    if (!joined.ok) {
+      throw new Error(
+        `Adding ${email} to ${name} in ${realm} failed with ${joined.status}`
+      );
+    }
   }
 }
 
