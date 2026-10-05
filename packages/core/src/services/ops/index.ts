@@ -144,7 +144,8 @@ export function osUserName(
 function parseCommand(
   command: string | undefined,
   rest: readonly string[],
-  compiledModules: readonly Module[]
+  compiledModules: readonly Module[],
+  source: EnvironmentSource
 ): ParsedCommand {
   // D-12: the ids derive once here from the one list, and reach the migrator run and the module
   // commands unchanged; setup receives the modules themselves so its `roles` step can seed them.
@@ -327,7 +328,7 @@ function parseCommand(
           );
         }
 
-        url = assertIdpUrl(values["issuer-url"]);
+        url = assertIdpUrl(values["issuer-url"], source);
       } else {
         if (
           values["metadata-url"] === undefined ||
@@ -338,7 +339,7 @@ function parseCommand(
           );
         }
 
-        url = assertIdpUrl(values["metadata-url"]);
+        url = assertIdpUrl(values["metadata-url"], source);
       }
 
       const audited = ["set", identity, alias, url, groupsClaim];
@@ -495,7 +496,12 @@ export async function runGenieOps(
   let parsed: ParsedCommand;
 
   try {
-    parsed = parseCommand(command, rest, options.compiledModules);
+    parsed = parseCommand(
+      command,
+      rest,
+      options.compiledModules,
+      options.source
+    );
   } catch {
     // D-4: no context, no audit row, and never the rejected value.
     options.errorOutput(PARSE_REFUSAL);

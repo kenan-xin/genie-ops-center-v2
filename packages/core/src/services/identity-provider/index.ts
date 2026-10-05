@@ -116,7 +116,7 @@ export const CLIENT_ONLY_REFUSAL =
  * development, so a network attacker between Keycloak and the provider cannot swap the metadata
  * that decides which tokens are trusted; loopback stays allowed for a local test server.
  */
-export function assertIdpUrl(value: string): string {
+export function assertIdpUrl(value: string, source: EnvironmentSource): string {
   if (!URL.canParse(value)) {
     throw new Error("the issuer or metadata URL must be a URL");
   }
@@ -129,7 +129,14 @@ export function assertIdpUrl(value: string): string {
     );
   }
 
-  if (runtimeModeOf() !== "development" && !isSecureOrLoopback(value)) {
+  // `runtimeModeOf` reads `process.env.NODE_ENV`, which the production build constant-folds to
+  // `"production"`, so it can never see a runtime override in the shipped image. The command's own
+  // environment source still carries `NODE_ENV`, so the development exception reads both: a test
+  // deployment passes `-e NODE_ENV=development` and keeps its plain-HTTP stand-in issuer.
+  const development =
+    runtimeModeOf() === "development" || source.NODE_ENV === "development";
+
+  if (!development && !isSecureOrLoopback(value)) {
     throw new Error(
       "the issuer or metadata URL must be https outside development"
     );

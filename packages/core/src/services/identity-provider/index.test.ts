@@ -21,24 +21,26 @@ describe("the idp URL check", () => {
 
   it("refuses a URL that carries a username or password", () => {
     expect(() =>
-      assertIdpUrl("https://user:pass@idp.example/metadata")
+      assertIdpUrl("https://user:pass@idp.example/metadata", {})
     ).toThrow(/username or password/);
   });
 
   it("refuses a value that is not a URL", () => {
-    expect(() => assertIdpUrl("not-a-url")).toThrow();
+    expect(() => assertIdpUrl("not-a-url", {})).toThrow();
   });
 
   it("refuses plain http outside development", () => {
     vi.stubEnv("NODE_ENV", "production");
 
-    expect(() => assertIdpUrl("http://idp.example/metadata")).toThrow(/https/);
+    expect(() => assertIdpUrl("http://idp.example/metadata", {})).toThrow(
+      /https/
+    );
   });
 
   it("allows plain http on a loopback host outside development", () => {
     vi.stubEnv("NODE_ENV", "production");
 
-    expect(assertIdpUrl("http://127.0.0.1:8080/realms/company")).toBe(
+    expect(assertIdpUrl("http://127.0.0.1:8080/realms/company", {})).toBe(
       "http://127.0.0.1:8080/realms/company"
     );
   });
@@ -46,9 +48,19 @@ describe("the idp URL check", () => {
   it("allows plain http in development", () => {
     vi.stubEnv("NODE_ENV", "development");
 
-    expect(assertIdpUrl("http://idp.example/metadata")).toBe(
+    expect(assertIdpUrl("http://idp.example/metadata", {})).toBe(
       "http://idp.example/metadata"
     );
+  });
+
+  it("reads the development mode from the command's own source", () => {
+    // The shipped image constant-folds `process.env.NODE_ENV`, so the source is what a test
+    // deployment sets with `-e NODE_ENV=development`.
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(
+      assertIdpUrl("http://idp.example/metadata", { NODE_ENV: "development" })
+    ).toBe("http://idp.example/metadata");
   });
 });
 
