@@ -188,6 +188,30 @@ export async function createRealmUser(
 }
 
 /**
+ * Deletes a realm account (`DELETE /admin/realms/{realm}/users/{id}`, R-40). Add person uses it as
+ * compensation when the Ops Center transaction fails after the realm user was created, so no
+ * enabled realm account is left without a `user` row. A 404 is success: the account is gone.
+ */
+export async function deleteRealmUser(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  userId: string
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/users/${userId}`,
+    {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (response.status === 404) return;
+
+  await parseResponse(response);
+}
+
+/**
  * Triggers the realm's action email (`PUT /admin/realms/{realm}/users/{id}/execute-actions-email`,
  * R-40). The `UPDATE_PASSWORD` action sends Keycloak's set-password email; `lifespanSeconds` is
  * the link's own lifetime. Nothing here logs the link: the response is empty and the request body

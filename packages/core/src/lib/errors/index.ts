@@ -197,9 +197,20 @@ export class AppError extends Error {
    */
   declare readonly requestId: string | undefined;
 
+  /**
+   * The whole minutes until a fixed-window rate limit resets, when the refusal has one. A screen
+   * that mirrors a rate-limit refusal reads it to name the wait (R-21). It is a number, never a
+   * value from a request or an upstream service.
+   */
+  declare readonly retryAfterMinutes: number | undefined;
+
   constructor(
     definition: ErrorDefinition,
-    options: { readonly cause?: unknown; readonly requestId?: string } = {}
+    options: {
+      readonly cause?: unknown;
+      readonly requestId?: string;
+      readonly retryAfterMinutes?: number;
+    } = {}
   ) {
     // Both halves reach a client, so neither may be assembled at the throw site. A core code
     // takes its message from the catalogue, whatever the caller supplied beside it. Any other
@@ -225,6 +236,7 @@ export class AppError extends Error {
       ["code", definition.code],
       ["safeMessage", message],
       ["requestId", options.requestId],
+      ["retryAfterMinutes", options.retryAfterMinutes],
     ] as const) {
       Object.defineProperty(this, name, {
         value,

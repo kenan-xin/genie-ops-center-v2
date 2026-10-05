@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
   addPerson,
+  countActiveAdministrators,
   createPeopleRouter,
   disablePerson,
   enablePerson,
@@ -12,6 +15,7 @@ import {
   removePerson,
   resendInvitation,
   resendSetPassword,
+  withTransaction,
   type RequestPrincipal,
 } from "../src/index.ts";
 import {
@@ -55,6 +59,25 @@ beforeAll(async () => {
   deployment = await startDisposableDeployment();
 
   await markSetupDone(deployment.context);
+
+  // Local accounts on, so the local-account ordering and compensation paths run. Set before the
+  // settings reader fills its ten-second cache.
+  await deployment.context.db.$client.query(
+    "update tenant_settings set local_accounts_enabled = true, realm_supports_local_accounts = true"
+  );
+
+  // The realm target reads `env.auth`; the tests stub `fetch` for the realm calls. The auth member
+  // itself was not built (the context was created without these values).
+  Object.assign(deployment.context.env, {
+    auth: {
+      betterAuthSecret: "people-test-secret-at-least-32-characters",
+      keycloakUrl: "http://127.0.0.1:1",
+      keycloakRealm: "genie",
+      keycloakClientId: "genie-ops-center",
+      keycloakClientSecret: "client-secret",
+      keycloakAdminClientSecret: "admin-secret",
+    },
+  });
 }, 180000);
 
 afterAll(async () => {
@@ -358,7 +381,8 @@ describe("the People writers against a real database", () => {
       .from(user)
       .where(eq(user.id, personId));
 
-    expect(enabled?.status).toBe("active");
+    // The person never signed in, so re-enable restores `pending`, not `active` (R-10).
+    expect(enabled?.status).toBe("pending");
     expect(enabled?.banned).toBe(false);
 
     await removePerson(deployment.context, { actorUserId: actor, personId });
@@ -551,5 +575,386 @@ describe("the People router", () => {
     await expect(unpermitted.list()).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+});
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
+function urlOf(input: Parameters<typeof fetch>[0]): string {
+  if (input instanceof URL) return input.toString();
+
+  if (input instanceof Request) return input.url;
+
+  return input;
+}
+
+/** A fetch stub standing in for the Keycloak admin API, counting user creates and deletes. */
+function installRealmStub(onPost?: () => Promise<void>) {
+  const counters = { posts: 0, deletes: 0 };
+
+  // SAFETY: this stub implements the fetch surface the realm client uses; the cast satisfies the
+  // global `fetch` type while the tests read only the counters.
+  globalThis.fetch = (async (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1]
+  ) => {
+    const url = urlOf(input);
+
+    if (url.includes("/protocol/openid-connect/token")) {
+      return Response.json({ access_token: "realm-token" });
+    }
+
+    if (init?.method === "POST" && url.endsWith("/users")) {
+      counters.posts += 1;
+
+      await onPost?.();
+
+      return new Response(null, {
+        status: 201,
+        headers: { location: `${url}/realm-user-1` },
+      });
+    }
+
+    if (init?.method === "DELETE") {
+      counters.deletes += 1;
+
+      return new Response(null, { status: 204 });
+    }
+
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+
+  return counters;
+}
+
+describe("writes on the break-glass account and an erased row (R-39)", () => {
+  async function breakGlassId(): Promise<string> {
+    return insertCredentialPerson(deployment.context, {
+      email: `bg-write-${Date.now()}@example.invalid`,
+      password: "break-glass-password-14",
+      isBreakGlass: true,
+    });
+  }
+
+  it("refuses disable on the break-glass account and leaves it untouched", async () => {
+    const actor = await manager();
+    const personId = await breakGlassId();
+
+    await expect(
+      disablePerson(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+
+    const [row] = await deployment.context.db
+      .select({ banned: user.banned })
+      .from(user)
+      .where(eq(user.id, personId));
+
+    expect(row?.banned).toBeFalsy();
+  });
+
+  it("refuses enable on the break-glass account", async () => {
+    const actor = await manager();
+    const personId = await breakGlassId();
+
+    await expect(
+      enablePerson(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("refuses remove on the break-glass account", async () => {
+    const actor = await manager();
+    const personId = await breakGlassId();
+
+    await expect(
+      removePerson(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("refuses resend set-password on the break-glass account", async () => {
+    const actor = await manager();
+    const personId = await breakGlassId();
+
+    await expect(
+      resendSetPassword(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("refuses resend invitation on the break-glass account", async () => {
+    const actor = await manager();
+    const personId = await breakGlassId();
+
+    await expect(
+      resendInvitation(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("refuses remove on an erased row", async () => {
+    const actor = await manager();
+
+    const personId = await insertUser(deployment.context, {
+      status: "active",
+      erasedAt: new Date(),
+    });
+
+    await expect(
+      removePerson(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("answers email-taken for the break-glass email as for any taken address", async () => {
+    const actor = await manager();
+    const email = `bg-taken-${Date.now()}@example.invalid`;
+
+    await insertCredentialPerson(deployment.context, {
+      email,
+      password: "break-glass-password-14",
+      isBreakGlass: true,
+    });
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email,
+        roleIds: [],
+        sendInvitation: false,
+      })
+    ).rejects.toMatchObject({ code: "email-taken" });
+  });
+});
+
+describe("disable, re-enable and the R-38 count (R-10, R-38)", () => {
+  it("deletes the person's sessions on disable", async () => {
+    await clearAdministrators();
+    await insertTenantAdministrator();
+
+    const actor = await manager();
+    const personId = await insertUser(deployment.context, { status: "active" });
+
+    await insertSession(deployment.context, { userId: personId });
+
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(sessionTable)
+        .where(eq(sessionTable.userId, personId))
+    ).toHaveLength(0);
+  });
+
+  it("re-enables a never-signed-in person as pending", async () => {
+    await clearAdministrators();
+    await insertTenantAdministrator();
+
+    const actor = await manager();
+
+    const personId = await addPerson(deployment.context, {
+      actorUserId: actor,
+      email: `reenable-${Date.now()}@example.invalid`,
+      roleIds: [],
+      sendInvitation: false,
+    });
+
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+    await enablePerson(deployment.context, { actorUserId: actor, personId });
+
+    const [row] = await deployment.context.db
+      .select({ status: user.status })
+      .from(user)
+      .where(eq(user.id, personId));
+
+    expect(row?.status).toBe("pending");
+  });
+
+  it("re-enables a person who has signed in as active", async () => {
+    await clearAdministrators();
+    await insertTenantAdministrator();
+
+    const actor = await manager();
+
+    const personId = await insertUser(deployment.context, {
+      status: "active",
+      firstSignInAt: new Date(),
+    });
+
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+    await enablePerson(deployment.context, { actorUserId: actor, personId });
+
+    const [row] = await deployment.context.db
+      .select({ status: user.status })
+      .from(user)
+      .where(eq(user.id, personId));
+
+    expect(row?.status).toBe("active");
+  });
+
+  it("keeps the R-38 count unchanged across disable and re-enable of a pending administrator", async () => {
+    await clearAdministrators();
+
+    await insertTenantAdministrator();
+
+    const actor = await manager();
+
+    const [adminRole] = await deployment.context.db
+      .select({ id: roleTable.id })
+      .from(roleTable)
+      .where(eq(roleTable.name, "Tenant administrator"))
+      .limit(1);
+
+    const personId = await addPerson(deployment.context, {
+      actorUserId: actor,
+      email: `count-${Date.now()}@example.invalid`,
+      roleIds: [adminRole!.id],
+      sendInvitation: false,
+    });
+
+    const before = await withTransaction(deployment.context, (tx) =>
+      countActiveAdministrators(tx)
+    );
+
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+    await enablePerson(deployment.context, { actorUserId: actor, personId });
+
+    const after = await withTransaction(deployment.context, (tx) =>
+      countActiveAdministrators(tx)
+    );
+
+    expect(before).toBe(1);
+    expect(after).toBe(before);
+  });
+});
+
+describe("Add person ordering, roles and compensation (R-40)", () => {
+  it("refuses an email taken and creates no realm user", async () => {
+    const actor = await manager();
+    const email = `taken-${Date.now()}@example.invalid`;
+
+    await insertUser(deployment.context, { email });
+
+    const counters = installRealmStub();
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email,
+        roleIds: [],
+        accountType: "local",
+      })
+    ).rejects.toMatchObject({ code: "email-taken" });
+
+    expect(counters.posts).toBe(0);
+  });
+
+  it("refuses an unknown role id and creates no realm user", async () => {
+    const actor = await manager();
+
+    const counters = installRealmStub();
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email: `bad-role-${Date.now()}@example.invalid`,
+        roleIds: [randomUUID()],
+        accountType: "local",
+      })
+    ).rejects.toMatchObject({ code: "not-found" });
+
+    expect(counters.posts).toBe(0);
+  });
+
+  it("deletes the realm user when the transaction fails after it was created", async () => {
+    const actor = await manager();
+    const email = `race-${Date.now()}@example.invalid`;
+
+    const counters = installRealmStub(async () => {
+      // A concurrent add wins the unique email between the pre-check and the transaction.
+      await deployment.context.db.insert(user).values({
+        id: randomUUID(),
+        name: "Race Winner",
+        email,
+        status: "pending",
+        onboarding: "invited",
+      });
+    });
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email,
+        roleIds: [],
+        accountType: "local",
+      })
+    ).rejects.toMatchObject({ code: "email-taken" });
+
+    expect(counters.posts).toBe(1);
+    expect(counters.deletes).toBe(1);
+  });
+
+  it("refuses roles from a caller without core:roles:manage, and hides the picker", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+    ]);
+
+    const caller = createPeopleRouter().createCaller({
+      tenant: deployment.context,
+      caller: request(userId),
+    });
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    expect((await caller.capabilities()).canAssignRoles).toBe(false);
+
+    await expect(
+      caller.add({
+        email: `perm-${Date.now()}@example.invalid`,
+        roleIds: [roleId],
+        sendInvitation: false,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const roleless = await caller.add({
+      email: `perm-ok-${Date.now()}@example.invalid`,
+      roleIds: [],
+      sendInvitation: false,
+    });
+
+    expect(roleless.id).toBeTruthy();
+  });
+
+  it("allows roles for a caller holding both keys", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+      "core:roles:manage",
+    ]);
+
+    const caller = createPeopleRouter().createCaller({
+      tenant: deployment.context,
+      caller: request(userId),
+    });
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    expect((await caller.capabilities()).canAssignRoles).toBe(true);
+
+    const created = await caller.add({
+      email: `both-${Date.now()}@example.invalid`,
+      roleIds: [roleId],
+      sendInvitation: false,
+    });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(roleAssignment)
+        .where(eq(roleAssignment.principalId, created.id))
+    ).toHaveLength(1);
   });
 });

@@ -28,6 +28,13 @@ export type PeopleRouterContext = {
 
 const MANAGE_PERMISSION = "core:people:manage";
 
+/**
+ * Picking roles in Add person is a grant edit, which the design puts behind `core:roles:manage`
+ * (DEC-39, the Access screen). A holder of only `core:people:manage` may add a person but not give
+ * them a role; the screen hides the picker for them and the server refuses roles in the input.
+ */
+const ASSIGN_PERMISSION = "core:roles:manage";
+
 const t = initTRPC.context<PeopleRouterContext>().create();
 
 // The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
@@ -94,26 +101,41 @@ export function createPeopleRouter() {
       listAssignableRoles(ctx.tenant)
     ),
 
+    // What the screen may show this caller. `canAssignRoles` hides the Add person role picker for
+    // a holder of `core:people:manage` alone, matching the server's refusal (DEC-39).
+    capabilities: procedure.query(async ({ ctx }) => ({
+      canAssignRoles: await can(ctx.caller, ASSIGN_PERMISSION),
+    })),
+
     add: procedure
       .input(
         z.object({
-          email: z.string().min(1).max(320),
+          email: z.email().max(320),
           name: z.string().max(200).optional(),
           roleIds: z.array(z.uuid()).default([]),
           accountType: z.enum(["brokered", "local"]).optional(),
           sendInvitation: z.boolean().optional(),
         })
       )
-      .mutation(async ({ ctx, input }) => ({
-        id: await addPerson(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          email: input.email,
-          name: input.name,
-          roleIds: input.roleIds,
-          accountType: input.accountType,
-          sendInvitation: input.sendInvitation,
-        }),
-      })),
+      .mutation(async ({ ctx, input }) => {
+        if (
+          input.roleIds.length > 0 &&
+          !(await can(ctx.caller, ASSIGN_PERMISSION))
+        ) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+
+        return {
+          id: await addPerson(ctx.tenant, {
+            actorUserId: ctx.caller.userId,
+            email: input.email,
+            name: input.name,
+            roleIds: input.roleIds,
+            accountType: input.accountType,
+            sendInvitation: input.sendInvitation,
+          }),
+        };
+      }),
 
     disable: procedure.input(personId).mutation(async ({ ctx, input }) => {
       await disablePerson(ctx.tenant, {

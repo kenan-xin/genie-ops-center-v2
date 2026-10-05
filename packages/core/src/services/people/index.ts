@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { account, groupMember, session, user } from "../../schema.ts";
+import { account, groupMember, role, session, user } from "../../schema.ts";
 import { writeAdminAuditEvent, writeAuthAuditEvent } from "../audit/index.ts";
 import { describeUserAgent } from "../auth/user-agent.ts";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../authorization/role-assignment.ts";
 import {
   createRealmUser,
+  deleteRealmUser,
   executeActionsEmail,
   serviceAccountToken,
   type KeycloakTarget,
@@ -407,6 +409,21 @@ function realmTarget(tenant: TenantContext): RealmAdmin {
   };
 }
 
+/**
+ * Runs one realm call and maps any refusal to the stable `realm-account-failed` code, so a
+ * Keycloak 409 or 500 never reaches a client as a bare internal error (R-40). A catalogue error
+ * raised before the call is passed through unchanged.
+ */
+async function withRealmErrors<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (caught) {
+    if (caught instanceof AppError) throw caught;
+
+    throw new AppError(CORE_ERRORS["realm-account-failed"], { cause: caught });
+  }
+}
+
 /** Consumes one attempt against an endpoint and writes the refusal audit row (R-21). */
 async function rateLimit(
   tenant: TenantContext,
@@ -429,7 +446,9 @@ async function rateLimit(
     },
   });
 
-  throw new AppError(CORE_ERRORS["rate-limited"]);
+  throw new AppError(CORE_ERRORS["rate-limited"], {
+    retryAfterMinutes: decision.retryAfterMinutes,
+  });
 }
 
 /** Records one standalone administration audit row after a committed write (R-41). */
@@ -503,10 +522,17 @@ async function sendSetPassword(
 ): Promise<void> {
   const realm = realmTarget(tenant);
 
+  // The local account's own provider row holds the Keycloak user id; a later `keycloak` row from
+  // the first sign-in must not be picked instead.
   const accountRows = await tenant.db
     .select({ accountId: account.accountId })
     .from(account)
-    .where(eq(account.userId, input.personId))
+    .where(
+      and(
+        eq(account.userId, input.personId),
+        eq(account.providerId, "credential")
+      )
+    )
     .limit(1);
 
   const keycloakUserId = accountRows[0]?.accountId;
@@ -515,16 +541,20 @@ async function sendSetPassword(
     throw new AppError(CORE_ERRORS["realm-account-failed"]);
   }
 
-  const token = await serviceAccountToken(
-    realm.target,
-    realm.realm,
-    GENIE_ADMIN_CLIENT_ID,
-    realm.secret
+  const token = await withRealmErrors(() =>
+    serviceAccountToken(
+      realm.target,
+      realm.realm,
+      GENIE_ADMIN_CLIENT_ID,
+      realm.secret
+    )
   );
 
-  await executeActionsEmail(realm.target, realm.realm, token, keycloakUserId, [
-    "UPDATE_PASSWORD",
-  ]);
+  await withRealmErrors(() =>
+    executeActionsEmail(realm.target, realm.realm, token, keycloakUserId, [
+      "UPDATE_PASSWORD",
+    ])
+  );
 
   await auditAfterCommit(tenant, {
     action: "core:set_password_sent",
@@ -559,7 +589,7 @@ export async function addPerson(
 ): Promise<string> {
   const email = input.email.trim().toLowerCase();
 
-  if (email === "" || !email.includes("@")) {
+  if (!z.email().safeParse(email).success) {
     throw new AppError(CORE_ERRORS["invalid-input"]);
   }
 
@@ -590,19 +620,53 @@ export async function addPerson(
     tenant.mailer.requireConfigured();
   }
 
+  const roleIds = [...new Set(input.roleIds)];
+
+  // The cheap checks run before any realm call: an address already taken, and every picked role
+  // must exist. This is what keeps a failing transaction from leaving an orphan realm account.
+  const existing = await tenant.db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, email))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new AppError(CORE_ERRORS["email-taken"]);
+  }
+
+  if (roleIds.length > 0) {
+    const known = await tenant.db
+      .select({ id: role.id })
+      .from(role)
+      .where(inArray(role.id, roleIds));
+
+    if (known.length !== roleIds.length) {
+      throw new AppError(CORE_ERRORS["not-found"], {
+        cause: new Error("A picked role does not exist"),
+      });
+    }
+  }
+
+  const displayName = input.name?.trim() || email.split("@")[0] || email;
+  const [firstName = displayName, ...rest] = displayName.split(/\s+/);
+
   // A local account's realm account is created first, so its Keycloak id can be stored on the
-  // account row in the same transaction that creates the person (R-40). A failure here writes
-  // nothing.
+  // account row in the same transaction that creates the person (R-40). If the transaction then
+  // fails, the realm account is deleted again so no enabled orphan remains.
+  let realm: RealmAdmin | null = null;
+  let realmToken: string | null = null;
   let keycloakUserId: string | null = null;
 
   if (local) {
-    const realm = realmTarget(tenant);
+    const admin = realmTarget(tenant);
 
-    const token = await serviceAccountToken(
-      realm.target,
-      realm.realm,
-      GENIE_ADMIN_CLIENT_ID,
-      realm.secret
+    const token = await withRealmErrors(() =>
+      serviceAccountToken(
+        admin.target,
+        admin.realm,
+        GENIE_ADMIN_CLIENT_ID,
+        admin.secret
+      )
     );
 
     // The administrator vouched for the address, so it is verified: the local-accounts realm has
@@ -610,71 +674,87 @@ export async function addPerson(
     // instead of the set-password email. Both name parts are set, because Keycloak's user profile
     // requires them and a missing one forces a `VERIFY_PROFILE` required action before the
     // set-password step.
-    const displayName = input.name?.trim() || email.split("@")[0] || email;
-    const [firstName = displayName, ...rest] = displayName.split(/\s+/);
+    keycloakUserId = await withRealmErrors(() =>
+      createRealmUser(admin.target, admin.realm, token, {
+        username: email,
+        email,
+        firstName,
+        lastName: rest.join(" ") || firstName,
+        enabled: true,
+        emailVerified: true,
+      })
+    );
 
-    keycloakUserId = await createRealmUser(realm.target, realm.realm, token, {
-      username: email,
-      email,
-      firstName,
-      lastName: rest.join(" ") || firstName,
-      enabled: true,
-      emailVerified: true,
-    });
+    realm = admin;
+    realmToken = token;
   }
 
   const personId = randomUUID();
 
-  await withTransaction(tenant, async (tx) => {
-    await lockAdministratorGuard(tx);
+  try {
+    await withTransaction(tenant, async (tx) => {
+      await lockAdministratorGuard(tx);
 
-    const existing = await tx
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email))
-      .limit(1);
+      const taken = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, email))
+        .limit(1);
 
-    if (existing.length > 0) {
-      throw new AppError(CORE_ERRORS["email-taken"]);
-    }
+      if (taken.length > 0) {
+        throw new AppError(CORE_ERRORS["email-taken"]);
+      }
 
-    await tx.insert(user).values({
-      id: personId,
-      name: input.name?.trim() || email.split("@")[0] || email,
-      email,
-      status: "pending",
-      onboarding: "invited",
-    });
-
-    if (local && keycloakUserId !== null) {
-      await tx.insert(account).values({
-        id: randomUUID(),
-        accountId: keycloakUserId,
-        providerId: "credential",
-        userId: personId,
+      await tx.insert(user).values({
+        id: personId,
+        name: displayName,
+        email,
+        status: "pending",
+        onboarding: "invited",
       });
-    }
 
-    for (const roleId of new Set(input.roleIds)) {
-      // One assignment at a time on the one transaction (DEC-39, R-40).
-      // oxlint-disable-next-line no-await-in-loop
-      await assignRoleInTransaction(tenant, tx, {
+      if (local && keycloakUserId !== null) {
+        await tx.insert(account).values({
+          id: randomUUID(),
+          accountId: keycloakUserId,
+          providerId: "credential",
+          userId: personId,
+        });
+      }
+
+      for (const roleId of roleIds) {
+        // One assignment at a time on the one transaction (DEC-39, R-40).
+        // oxlint-disable-next-line no-await-in-loop
+        await assignRoleInTransaction(tenant, tx, {
+          actorUserId: input.actorUserId,
+          roleId,
+          principal: { type: "user", id: personId },
+          scope: null,
+        });
+      }
+
+      await writeAdminAuditEvent(tx, {
+        action: "core:person_added",
         actorUserId: input.actorUserId,
-        roleId,
-        principal: { type: "user", id: personId },
-        scope: null,
+        targetType: "user",
+        targetId: personId,
+        summary: `Added ${email}`,
+        metadata: { email, local, roleIds },
       });
+    });
+  } catch (caught) {
+    // Compensation: the realm user exists but the person row did not commit, so it is removed.
+    if (realm !== null && realmToken !== null && keycloakUserId !== null) {
+      await deleteRealmUser(
+        realm.target,
+        realm.realm,
+        realmToken,
+        keycloakUserId
+      ).catch(() => undefined);
     }
 
-    await writeAdminAuditEvent(tx, {
-      action: "core:person_added",
-      actorUserId: input.actorUserId,
-      targetType: "user",
-      targetId: personId,
-      summary: `Added ${email}`,
-      metadata: { email, local, roleIds: [...input.roleIds] },
-    });
-  });
+    throw caught;
+  }
 
   if (local) {
     await sendSetPassword(tenant, {
@@ -688,7 +768,7 @@ export async function addPerson(
       actorUserId: input.actorUserId,
       personId,
       email,
-      name: input.name?.trim() || email.split("@")[0] || email,
+      name: displayName,
       resend: false,
     });
   }
@@ -696,14 +776,33 @@ export async function addPerson(
   return personId;
 }
 
+/**
+ * One person a write may touch, or `not-found`. The break-glass account and an erased row are
+ * excluded exactly as every read excludes them (R-39), so `people.disable` and `people.remove`
+ * cannot reach the recovery path from the screen API even with its id.
+ */
 async function loadPersonForWrite(
   tx: TenantTransaction,
   personId: string
-): Promise<{ readonly email: string; readonly banned: boolean | null }> {
+): Promise<{
+  readonly email: string;
+  readonly banned: boolean | null;
+  readonly firstSignInAt: Date | null;
+}> {
   const rows = await tx
-    .select({ email: user.email, banned: user.banned })
+    .select({
+      email: user.email,
+      banned: user.banned,
+      firstSignInAt: user.firstSignInAt,
+    })
     .from(user)
-    .where(eq(user.id, personId))
+    .where(
+      and(
+        eq(user.id, personId),
+        eq(user.isBreakGlass, false),
+        isNull(user.erasedAt)
+      )
+    )
     .limit(1);
 
   const row = rows[0];
@@ -734,6 +833,11 @@ export async function disablePerson(
       .set({ banned: true, status: "disabled", updatedAt: sql`now()` })
       .where(eq(user.id, input.personId));
 
+    // Disable means "cannot sign in": the sessions go with it, as they do on remove. The grant
+    // reader already refuses a banned person, but a permissionless page would otherwise stay open
+    // until the 24 hour cap.
+    await tx.delete(session).where(eq(session.userId, input.personId));
+
     await assertAdministratorRemains(tx);
 
     await writeAdminAuditEvent(tx, {
@@ -757,9 +861,15 @@ export async function enablePerson(
 
     const person = await loadPersonForWrite(tx, input.personId);
 
+    // A person who never signed in returns to `pending`, not `active`: the R-38 count and the
+    // resend controls both depend on "pending means has not signed in yet" (R-10).
     await tx
       .update(user)
-      .set({ banned: false, status: "active", updatedAt: sql`now()` })
+      .set({
+        banned: false,
+        status: person.firstSignInAt === null ? "pending" : "active",
+        updatedAt: sql`now()`,
+      })
       .where(eq(user.id, input.personId));
 
     await writeAdminAuditEvent(tx, {
@@ -832,11 +942,15 @@ export async function resendSetPassword(
 
   const person = await readPersonRow(tenant, input.personId);
 
-  if (
-    person === undefined ||
-    person.status !== "pending" ||
-    person.accountType !== "local"
-  ) {
+  // An id the reads exclude - the break-glass account, an erased row, or none at all - is
+  // `not-found`, so it cannot be probed from here (R-39).
+  if (person === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No person ${input.personId}`),
+    });
+  }
+
+  if (person.status !== "pending" || person.accountType !== "local") {
     throw new AppError(CORE_ERRORS["invalid-input"]);
   }
 
@@ -865,11 +979,13 @@ export async function resendInvitation(
 
   const person = await readPersonRow(tenant, input.personId);
 
-  if (
-    person === undefined ||
-    person.status !== "pending" ||
-    person.accountType !== "brokered"
-  ) {
+  if (person === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No person ${input.personId}`),
+    });
+  }
+
+  if (person.status !== "pending" || person.accountType !== "brokered") {
     throw new AppError(CORE_ERRORS["invalid-input"]);
   }
 
