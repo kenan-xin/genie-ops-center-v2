@@ -184,6 +184,8 @@ async function seedTestSetup(): Promise<void> {
     // S2-11: the reader opens the Groups and Roles screens (R-37).
     "core:groups:manage",
     "core:roles:manage",
+    // S2-10: the reader opens the People screen (R-37).
+    "core:people:manage",
     ...moduleIds.flatMap((id) =>
       id === "placeholder" ? [] : [`${id}:use`, `${id}:read`]
     ),
