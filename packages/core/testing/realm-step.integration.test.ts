@@ -1275,6 +1275,70 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
     expect(output.join("\n")).not.toContain("KEYCLOAK_BOOTSTRAP");
   }, 180000);
 
+  it("writes the recorded address on a rerun of a settled stack whose column is null (R-54c)", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles({ realm: "customer" });
+    const realm = `repair-${process.pid}-${Date.now()}`;
+    const deploymentUrl = "https://genie.example.invalid";
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await createRealmWithClients(realm, [
+      await renderShipped(OPS_CENTER_CLIENT_FILE, deploymentUrl),
+    ]);
+
+    const env: EnvironmentSource = {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: deploymentUrl,
+      KEYCLOAK_URL: keycloak!.baseUrl,
+      KEYCLOAK_REALM: realm,
+      KEYCLOAK_CLIENT_SECRET: "client-secret-value",
+    };
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(env))
+    ).resolves.toBe(0);
+
+    // A stack whose steps predate the column: settled `skipped`/`done`, address null.
+    await observer.query(
+      "update tenant_settings set keycloak_url_at_setup = null"
+    );
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "skipped" },
+        { step: "realm", state: "skipped" },
+      ],
+    });
+
+    await expect(
+      observer.query("select keycloak_url_at_setup from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ keycloak_url_at_setup: null }] });
+
+    // The rerun re-runs the settled `clients` step once, only to record the address, and needs no
+    // bootstrap credential to do it.
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(env))
+    ).resolves.toBe(0);
+
+    await expect(
+      observer.query(
+        "select state, keycloak_url_at_setup from setup_step, tenant_settings where step = 'clients'"
+      )
+    ).resolves.toMatchObject({
+      rows: [{ state: "skipped", keycloak_url_at_setup: keycloak!.baseUrl }],
+    });
+  }, 180000);
+
   it("refuses realm customer together with local_accounts true (R-54a)", async () => {
     const postgres = await startDisposablePostgres();
     const files = await configFiles({ realm: "customer", localAccounts: true });
