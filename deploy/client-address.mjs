@@ -7,24 +7,32 @@
 // framework reads the request, a request whose socket is not a trusted proxy carries exactly its
 // socket address in that header. A request from a trusted proxy keeps the proxy's header, and
 // Better Auth walks it from the right past the trusted hops.
-import { Server } from "node:http";
+//
+// Node's public `http.server.request.start` diagnostics channel publishes every request with its
+// socket before any `request` or `checkContinue` listener runs, so no prototype is patched.
+import { subscribe } from "node:diagnostics_channel";
 import { BlockList, isIP } from "node:net";
 
 const trusted = new BlockList();
 
-// The application's own environment validation refuses a malformed entry at start, so an entry
-// this cannot parse is skipped here rather than crashing before that clear message.
+/** The highest prefix length per address family. */
+const MAX_PREFIX = { 4: 32, 6: 128 };
+
+// The application's own environment validation refuses a malformed entry at start with a named
+// message, so an entry this cannot use is skipped here rather than crashing before that message.
 for (const entry of (process.env.AUTH_TRUSTED_PROXIES ?? "").split(",")) {
-  const [address = "", prefix] = entry.trim().split("/");
+  const [address = "", prefix, ...rest] = entry.trim().split("/");
   const family = isIP(address);
 
-  if (family === 0) continue;
+  if (family === 0 || rest.length > 0) continue;
 
   const type = family === 6 ? "ipv6" : "ipv4";
 
-  if (prefix === undefined) trusted.addAddress(address, type);
-  else if (/^\d+$/.test(prefix))
+  if (prefix === undefined) {
+    trusted.addAddress(address, type);
+  } else if (/^\d+$/.test(prefix) && Number(prefix) <= MAX_PREFIX[family]) {
     trusted.addSubnet(address, Number(prefix), type);
+  }
 }
 
 /** The socket's peer address, with an IPv4 address mapped into IPv6 written as IPv4. */
@@ -35,23 +43,13 @@ function peerAddress(socket) {
   return isIP(mapped) === 4 ? mapped : address;
 }
 
-const emit = Server.prototype.emit;
+subscribe("http.server.request.start", ({ request, socket }) => {
+  const address = peerAddress(socket);
+  const family = isIP(address);
 
-Server.prototype.emit = function emitWithClientAddress(
-  event,
-  request,
-  ...rest
-) {
-  if (event === "request") {
-    const address = peerAddress(request.socket);
-    const family = isIP(address);
-
-    if (family === 0) {
-      delete request.headers["x-forwarded-for"];
-    } else if (!trusted.check(address, family === 6 ? "ipv6" : "ipv4")) {
-      request.headers["x-forwarded-for"] = address;
-    }
+  if (family === 0) {
+    delete request.headers["x-forwarded-for"];
+  } else if (!trusted.check(address, family === 6 ? "ipv6" : "ipv4")) {
+    request.headers["x-forwarded-for"] = address;
   }
-
-  return emit.call(this, event, request, ...rest);
-};
+});

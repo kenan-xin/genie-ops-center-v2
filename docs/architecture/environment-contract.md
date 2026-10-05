@@ -71,7 +71,7 @@ The table below defines the values; the tables above define when each is require
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `GENIE_CHAT_API_ALLOWED_ORIGINS` | empty | Comma-separated HTTPS origins the chat proxy may call. Empty disables chat streaming for the deployment (`DEC-30`). |
-| `AUTH_TRUSTED_PROXIES` | empty | Comma-separated proxy addresses or CIDR ranges trusted for `X-Forwarded-For`, fed to the Better Auth instance's trusted proxy list so the session's stored address is the client's and not the proxy's. Empty means the header is ignored. Never `0.0.0.0/0`. On a host set up with `../runbooks/reverse-proxy.md` it is the `proxy` network subnet. |
+| `AUTH_TRUSTED_PROXIES` | empty | Comma-separated proxy addresses or CIDR ranges trusted for `X-Forwarded-For`, fed to the Better Auth instance's trusted proxy list so the session's stored address is the client's and not the proxy's. Empty means the header is ignored. Never `0.0.0.0/0`. On a host set up with `../runbooks/reverse-proxy.md` it is the `proxy` network subnet. The image's app preload `deploy/client-address.mjs` reads the same list: it replaces `X-Forwarded-For` with the socket address on every request whose socket is not in the list. |
 | `LOCK_TIMEOUT_MS` | `120000` | Wait limit for the migration advisory lock at start (`DEC-9`). |
 | `LOG_LEVEL` | `info` | pino level. |
 | `WORKER_HEARTBEAT_PATH` | `/tmp/genie-worker-heartbeat` | Worker only. The file the core heartbeat job rewrites every minute after a database round trip. The worker container health check reads its age (D-10). |
