@@ -866,105 +866,110 @@ export function AddPersonDialog(props: {
   const brokered = !localAvailable || accountType === "brokered";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    // On a phone the dialog is a bottom sheet whose body scrolls and whose footer stays put, so
+    // the primary action is reachable on a short viewport (DEC-25). On a wider screen it is a
+    // centered card capped to the viewport.
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Add person"
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-card"
+        className="flex max-h-screen w-full max-w-md flex-col rounded-t-xl bg-white shadow-xl sm:rounded-xl dark:bg-card"
       >
-        <h2 className="text-lg font-semibold text-foreground">Add person</h2>
-        <div className="mt-3 space-y-3">
-          <Field label="Email">
-            <input
-              className={inputClass}
-              aria-label="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-          <Field label="Display name">
-            <input
-              className={inputClass}
-              aria-label="Display name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-          <Field label="Roles">
-            <select
-              multiple
-              className={`${inputClass} h-28`}
-              aria-label="Roles"
-              value={[...roleIds]}
-              onChange={(event) =>
-                setRoleIds(
-                  [...event.target.selectedOptions].map(
-                    (option) => option.value
-                  )
-                )
-              }
-            >
-              {props.roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          {localAvailable ? (
-            <fieldset>
-              <legend className="mb-1 text-xs font-semibold text-foreground">
-                Account type
-              </legend>
-              <label className="mr-4 inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="account-type"
-                  value="brokered"
-                  checked={accountType === "brokered"}
-                  onChange={() => setAccountType("brokered")}
-                />
-                Identity provider
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="account-type"
-                  value="local"
-                  checked={accountType === "local"}
-                  onChange={() => setAccountType("local")}
-                />
-                Local password
-              </label>
-            </fieldset>
-          ) : null}
-
-          {localAvailable && accountType === "local" ? (
-            <p className="text-sm text-muted-foreground">
-              A separate email sets this person&apos;s password.
-            </p>
-          ) : null}
-
-          {brokered ? (
-            <label className="flex items-center gap-2 text-sm text-foreground">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <h2 className="text-lg font-semibold text-foreground">Add person</h2>
+          <div className="mt-3 space-y-3">
+            <Field label="Email">
               <input
-                type="checkbox"
-                checked={sendInvitation}
-                onChange={(event) => setSendInvitation(event.target.checked)}
+                className={inputClass}
+                aria-label="Email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
-              Send invitation email
-            </label>
-          ) : null}
+            </Field>
+            <Field label="Display name">
+              <input
+                className={inputClass}
+                aria-label="Display name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </Field>
+            <Field label="Roles">
+              <select
+                multiple
+                className={`${inputClass} h-28`}
+                aria-label="Roles"
+                value={[...roleIds]}
+                onChange={(event) =>
+                  setRoleIds(
+                    [...event.target.selectedOptions].map(
+                      (option) => option.value
+                    )
+                  )
+                }
+              >
+                {props.roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-          <p className="text-sm text-muted-foreground">
-            {props.settings.onboardingMode === "jit"
-              ? "People in a group mapped to a role can also sign in without being added here."
-              : "Pending until first sign-in."}
-          </p>
+            {localAvailable ? (
+              <fieldset>
+                <legend className="mb-1 text-xs font-semibold text-foreground">
+                  Account type
+                </legend>
+                <label className="mr-4 inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="account-type"
+                    value="brokered"
+                    checked={accountType === "brokered"}
+                    onChange={() => setAccountType("brokered")}
+                  />
+                  Identity provider
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="account-type"
+                    value="local"
+                    checked={accountType === "local"}
+                    onChange={() => setAccountType("local")}
+                  />
+                  Local password
+                </label>
+              </fieldset>
+            ) : null}
+
+            {localAvailable && accountType === "local" ? (
+              <p className="text-sm text-muted-foreground">
+                A separate email sets this person&apos;s password.
+              </p>
+            ) : null}
+
+            {brokered ? (
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={sendInvitation}
+                  onChange={(event) => setSendInvitation(event.target.checked)}
+                />
+                Send invitation email
+              </label>
+            ) : null}
+
+            <p className="text-sm text-muted-foreground">
+              {props.settings.onboardingMode === "jit"
+                ? "People in a group mapped to a role can also sign in without being added here."
+                : "Pending until first sign-in."}
+            </p>
+          </div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-input p-5">
           <button
             type="button"
             className={btnSecondary}
