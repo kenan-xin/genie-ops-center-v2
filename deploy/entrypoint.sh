@@ -25,8 +25,10 @@ find_server() {
 
 case "${1:-app}" in
   app)
-    # The preload makes the framework's own console lines JSON with the tenant id (R-75).
-    exec node --import /usr/local/lib/genie/json-console.mjs "$(find_server)"
+    # The preloads make the framework's own console lines JSON with the tenant id (R-75), and
+    # let X-Forwarded-For through only from a trusted proxy (Spec 2 R-16).
+    exec node --import /usr/local/lib/genie/json-console.mjs \
+      --import /usr/local/lib/genie/client-address.mjs "$(find_server)"
     ;;
   worker)
     # The worker loads from the same bundle as genie-ops (D-10); the launcher picks the worker
