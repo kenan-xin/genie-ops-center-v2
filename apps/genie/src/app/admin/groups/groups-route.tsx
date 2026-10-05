@@ -31,11 +31,11 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     enabled: selectedId !== null,
   });
 
-  // The local-group member picker and the inspector's assign step read narrow core procedures
-  // behind core:groups:manage; S2-10 builds the full People router later.
+  // The local-group member picker reads the narrow active-people read the People router owns,
+  // still behind core:groups:manage (S2-10 moved it from the groups router).
   const people = useQuery({
-    queryKey: ["groups", "people"],
-    queryFn: () => trpc.groups.people.query(),
+    queryKey: ["people", "active"],
+    queryFn: () => trpc.people.active.query(),
   });
 
   const assignableRoles = useQuery({

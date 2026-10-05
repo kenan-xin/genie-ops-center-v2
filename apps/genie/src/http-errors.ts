@@ -10,6 +10,8 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["unauthenticated", 401],
   ["module-disabled", 403],
   ["invalid-input", 400],
+  ["email-taken", 400],
+  ["local-accounts-unavailable", 400],
 ]);
 
 /**

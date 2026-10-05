@@ -1,6 +1,7 @@
 import {
   createAuditRouter,
   createGroupsRouter,
+  createPeopleRouter,
   createRolesRouter,
 } from "@genie/core";
 
@@ -20,6 +21,7 @@ export const appRouter = t.router({
   ),
   audit: createAuditRouter(modules),
   groups: createGroupsRouter(),
+  people: createPeopleRouter(),
   roles: createRolesRouter(modules),
 });
 
