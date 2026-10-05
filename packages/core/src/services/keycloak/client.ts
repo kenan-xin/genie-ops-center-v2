@@ -151,6 +151,275 @@ export async function createRealm(
   await parseResponse(response);
 }
 
+/**
+ * The outcome of creating an identity provider: `exists` is a 409 for an alias already present,
+ * which the caller turns into an update so a repeated `genie-ops idp set` is idempotent (R-58).
+ */
+export type IdentityProviderCreateOutcome = "created" | "exists";
+
+/** Creates an identity provider in the realm (R-58). The representation is never logged. */
+export async function createIdentityProvider(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  representation: JsonObject
+): Promise<IdentityProviderCreateOutcome> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(representation),
+    }
+  );
+
+  if (response.status === 409) return "exists";
+
+  await parseResponse(response);
+
+  return "created";
+}
+
+/** Replaces an existing identity provider, the idempotent half of {@link createIdentityProvider}. */
+export async function updateIdentityProvider(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string,
+  representation: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(representation),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/**
+ * Asks Keycloak itself to fetch and parse the provider's discovery document or SAML descriptor
+ * (R-58). Keycloak, not this process, reaches the provider's metadata URL, which is the side that
+ * talks to the provider anyway. The returned config map holds no secret.
+ */
+export async function importIdentityProviderConfig(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  providerId: string,
+  fromUrl: string
+): Promise<JsonObject> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/import-config`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ providerId, fromUrl }),
+    }
+  );
+
+  const body = await parseResponse(response);
+
+  if (!isObject(body)) {
+    throw new Error("Keycloak returned no identity provider config");
+  }
+
+  return body;
+}
+
+/** One identity provider mapper as the list read exposes it; every field is optional. */
+export type IdentityProviderMapper = {
+  readonly id: string | undefined;
+  readonly name: string | undefined;
+  readonly identityProviderMapper: string | undefined;
+};
+
+/** Lists the identity provider mappers of one provider, so a repeat can update the one it made. */
+export async function listIdentityProviderMappers(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string
+): Promise<readonly IdentityProviderMapper[]> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}/mappers`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  if (!Array.isArray(body)) return [];
+
+  return body.filter(isObject).map((entry) => ({
+    id: errorField(entry, "id"),
+    name: errorField(entry, "name"),
+    identityProviderMapper: errorField(entry, "identityProviderMapper"),
+  }));
+}
+
+/** Adds the Attribute Importer mapper that fills the `groups` user attribute (R-58). */
+export async function createIdentityProviderMapper(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string,
+  mapper: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}/mappers`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(mapper),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/** Replaces one identity provider mapper by its id (idempotent rerun of `idp set`). */
+export async function updateIdentityProviderMapper(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string,
+  id: string,
+  mapper: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}/mappers/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(mapper),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/** One execution of the realm's browser flow, as the redirector lookup reads it. */
+export type BrowserFlowExecution = {
+  readonly id: string;
+  readonly providerId: string | undefined;
+  /** The authentication config id, `undefined` until the execution has one. */
+  readonly authenticationConfig: string | undefined;
+};
+
+/** Lists the browser flow's executions, where the identity-provider-redirector lives (R-58). */
+export async function browserFlowExecutions(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string
+): Promise<readonly BrowserFlowExecution[]> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/flows/browser/executions`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  if (!Array.isArray(body)) {
+    throw new Error("Keycloak returned no browser flow executions");
+  }
+
+  return body.flatMap((entry) => {
+    if (!isObject(entry)) return [];
+    const id = errorField(entry, "id");
+
+    if (id === undefined) return [];
+
+    return [
+      {
+        id,
+        providerId: errorField(entry, "providerId"),
+        authenticationConfig: errorField(entry, "authenticationConfig"),
+      },
+    ];
+  });
+}
+
+/** Reads one authentication config, so the redirector's existing values survive the update. */
+export async function readAuthenticationConfig(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  id: string
+): Promise<JsonObject> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/config/${encodeURIComponent(id)}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  return isObject(body) ? body : {};
+}
+
+/** Writes an existing authentication config. */
+export async function updateAuthenticationConfig(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  id: string,
+  config: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/config/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(config),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/** Creates the config of an execution that has none, which is how a fresh redirector starts. */
+export async function createExecutionConfig(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  executionId: string,
+  config: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/executions/${encodeURIComponent(executionId)}/config`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(config),
+    }
+  );
+
+  await parseResponse(response);
+}
+
 export type AuthorizationProbe = {
   /** The HTTP status. 302 means the client answers; 400 otherwise. */
   readonly status: number;

@@ -11,6 +11,7 @@ import {
   loadTenantYaml,
   type SetupConfigFiles,
 } from "../setup/config.ts";
+import { configureDefaultRedirector } from "./broker.ts";
 import {
   createRealm,
   masterAdminToken,
@@ -189,6 +190,15 @@ export async function realmStep(
   }
 
   await createRealm(target, accessToken, representation);
+
+  // R-58: the brokered variant's browser flow sends a person straight to the customer's identity
+  // provider. The flow write needs `manage-realm`, which `genie-admin` deliberately never holds, and
+  // this step already carries the bootstrap credential, so the default alias is set here once, at
+  // realm creation. `genie-ops idp set` later writes the provider under the same fixed alias. The
+  // local-accounts variant has no identity provider and keeps no redirector.
+  if (!localAccounts) {
+    await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
+  }
 
   await writeRealmSupportsLocalAccounts(context, localAccounts);
 

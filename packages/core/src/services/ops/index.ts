@@ -12,9 +12,16 @@ import {
   createTenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
+import { addAdministrator } from "../administrators/index.ts";
 import { writeAuditEvent } from "../audit/index.ts";
 import { rotateBreakGlass } from "../break-glass/index.ts";
+import {
+  DEFAULT_GROUPS_CLAIM,
+  idpSet,
+  type IdpProtocol,
+} from "../identity-provider/index.ts";
 import { assertKeycloakAddress } from "../keycloak/address-guard.ts";
+import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
 import {
   type LineSinks,
   createLogger,
@@ -65,18 +72,19 @@ export type GenieOpsCommandName =
   | "module-enable"
   | "module-disable"
   | "retire"
-  | "break-glass-rotate";
+  | "break-glass-rotate"
+  | "idp-set"
+  | "admin-add";
 
 /**
  * The commands that run the R-54c address guard before doing their work. The list is explicit and
  * does not depend on which authentication values the operator's shell happens to carry: a command
  * that talks to Keycloak adds its name here, and its validation profile must require `KEYCLOAK_URL`
- * so that a missing value refuses rather than skips the comparison. It is empty today; S2-13's
- * `idp set` is the first to add itself. `migrate`, `setup`, `module`, `retire`, `admin add` and
- * `break-glass rotate` are exempt: they either reconcile the recorded values or write only the
- * application database.
+ * so that a missing value refuses rather than skips the comparison. `idp set` is the command that
+ * talks to Keycloak. `migrate`, `setup`, `module`, `retire`, `admin add` and `break-glass rotate`
+ * are exempt: they either reconcile the recorded values or write only the application database.
  */
-export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = [];
+export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = ["idp-set"];
 
 /** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
  * command bound to the parsed option values. */
@@ -95,7 +103,7 @@ type ParsedCommand = {
  * value can be a secret an operator pasted by mistake (D-4, R-66).
  */
 const PARSE_REFUSAL =
-  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate";
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate, genie-ops idp set --protocol oidc|saml --alias <alias> ..., genie-ops admin add <email>";
 
 /** `redact` answers the same string for a string, which is what every sink here writes. */
 function safe(text: string): string {
@@ -251,6 +259,124 @@ function parseCommand(
         name: "retire",
         args: confirm ? ["--confirm"] : [],
         run: (context, options) => runRetire(context, confirm, options.output),
+      };
+    }
+
+    case "idp": {
+      const { values, positionals } = parseArgs({
+        args: [...rest],
+        options: {
+          "protocol": { type: "string" },
+          "alias": { type: "string" },
+          "issuer-url": { type: "string" },
+          "metadata-url": { type: "string" },
+          "client-id": { type: "string" },
+          "client-secret": { type: "string" },
+          "entity-id": { type: "string" },
+          "groups-claim": { type: "string" },
+        },
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, ...extra] = positionals;
+
+      if (subcommand !== "set" || extra.length > 0) {
+        throw new Error("unknown idp subcommand");
+      }
+
+      const protocol = values.protocol;
+
+      if (protocol !== "oidc" && protocol !== "saml") {
+        throw new Error("idp set needs --protocol oidc or saml");
+      }
+
+      // The realm template fixes the brokered provider's alias, so the command accepts no other.
+      const alias = values.alias ?? BROKER_IDP_ALIAS;
+      const groupsClaim = values["groups-claim"] ?? DEFAULT_GROUPS_CLAIM;
+
+      if (alias !== BROKER_IDP_ALIAS) {
+        throw new Error(
+          `idp set writes the provider under the fixed alias "${BROKER_IDP_ALIAS}"`
+        );
+      }
+
+      const identity: IdpProtocol = protocol;
+
+      if (identity === "oidc") {
+        if (
+          values["issuer-url"] === undefined ||
+          values["client-id"] === undefined ||
+          values["client-secret"] === undefined
+        ) {
+          throw new Error(
+            "idp set --protocol oidc needs --issuer-url, --client-id and --client-secret"
+          );
+        }
+      } else if (
+        values["metadata-url"] === undefined ||
+        values["entity-id"] === undefined
+      ) {
+        throw new Error(
+          "idp set --protocol saml needs --metadata-url and --entity-id"
+        );
+      }
+
+      // D-4/R-66: the audit row carries the non-secret arguments only. The provider's client
+      // secret is deliberately absent from `args`, so no audit row, log line or error message can
+      // ever hold it.
+      const audited = [
+        "set",
+        identity,
+        alias,
+        values["issuer-url"] ?? values["metadata-url"] ?? "",
+        groupsClaim,
+      ];
+
+      const issuerUrl = values["issuer-url"];
+      const metadataUrl = values["metadata-url"];
+      const clientId = values["client-id"];
+      const clientSecret = values["client-secret"];
+      const entityId = values["entity-id"];
+
+      return {
+        name: "idp-set",
+        args: audited,
+        run: (context, options) =>
+          idpSet(context, {
+            source: options.source,
+            protocol: identity,
+            alias,
+            issuerUrl,
+            metadataUrl,
+            clientId,
+            clientSecret,
+            entityId,
+            groupsClaim,
+            output: options.output,
+          }),
+      };
+    }
+
+    case "admin": {
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, email, ...extra] = positionals;
+
+      if (subcommand !== "add" || email === undefined || extra.length > 0) {
+        throw new Error("unknown admin subcommand");
+      }
+
+      return {
+        name: "admin-add",
+        args: [email],
+        run: (context, options) =>
+          addAdministrator(context, email, { output: options.output }),
       };
     }
 
