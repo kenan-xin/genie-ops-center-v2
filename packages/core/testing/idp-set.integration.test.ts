@@ -422,7 +422,10 @@ describe("genie-ops idp set", () => {
     // The command alone produces a working SAML login: it writes the groups mapper and the
     // profile mappers a real provider needs, so no test-only mapper is required.
     expect(mappers).toHaveLength(4);
-    expect(mappers[0]).toMatchObject({
+    // Keycloak returns the mappers in no fixed order, so each is found by the attribute it fills.
+    expect(
+      mappers.find((mapper) => mapper.config?.["user.attribute"] === "groups")
+    ).toMatchObject({
       identityProviderMapper: "saml-user-attribute-idp-mapper",
       config: {
         "syncMode": "FORCE",
