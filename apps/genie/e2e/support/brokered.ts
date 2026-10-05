@@ -12,6 +12,7 @@ import {
 } from "../../testing/e2e-keycloak.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
+import { ensureDatabase } from "./ensure-database.ts";
 
 const run = promisify(execFile);
 
@@ -157,26 +158,6 @@ async function copySetupFiles(container: string): Promise<{
     tenantConfig: "/tmp/tenant.yaml",
     brandingSeed: "/tmp/branding.seed.json",
   };
-}
-
-async function ensureDatabase(
-  compose: readonly string[],
-  dbName: string
-): Promise<void> {
-  // ON_ERROR_STOP is off on purpose: a rerun's duplicate-database error is not a failure.
-  await run("docker", [
-    ...compose,
-    "exec",
-    "-T",
-    "database",
-    "psql",
-    "-U",
-    "genie",
-    "-d",
-    "genie",
-    "-c",
-    `create database ${dbName}`,
-  ]).catch(() => undefined);
 }
 
 /**

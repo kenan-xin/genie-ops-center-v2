@@ -26,6 +26,7 @@ import {
 } from "../../testing/e2e-keycloak.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
+import { ensureDatabase } from "./ensure-database.ts";
 
 const run = promisify(execFile);
 
@@ -68,23 +69,6 @@ const CLIENT_ONLY_SEED = [
   `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'group', g.id::text from role r, "group" g where r.name = 'S2-15 reader' and g.external_id = '${CLIENT_ONLY_GROUP}' on conflict do nothing`,
   "update tenant_settings set onboarding_mode = 'jit'",
 ].join("; ");
-
-async function ensureDatabase(dbName: string): Promise<void> {
-  // ON_ERROR_STOP is off: a rerun's duplicate-database error is not a failure.
-  await run("docker", [
-    ...COMPOSE,
-    "exec",
-    "-T",
-    "database",
-    "psql",
-    "-U",
-    "genie",
-    "-d",
-    "genie",
-    "-c",
-    `create database ${dbName}`,
-  ]).catch(() => undefined);
-}
 
 async function waitForHealth(baseUrl: string): Promise<void> {
   const deadline = Date.now() + 120000;
@@ -173,6 +157,20 @@ async function renderedClientFiles(baseUrl: string): Promise<{
 }
 
 /**
+ * Stops the client-only deployment's container.
+ *
+ * It is a `docker compose run` instance, so `docker compose down` does not
+ * remove it; left behind, `docker compose exec app` falls back to it once the
+ * shared stack's own `app` container is gone, running commands against the
+ * client-only database instead of the shared one.
+ */
+export async function stopClientOnly(): Promise<void> {
+  await run("docker", ["rm", "-f", scopedProject("genie-client-only")]).catch(
+    () => undefined
+  );
+}
+
+/**
  * Provisions the S-C deployment: the customer's IT imports the two client files into the company
  * realm, the container starts with the returned secret and the renamed client id, setup runs in
  * client-only mode, and the database and company people are seeded.
@@ -183,7 +181,7 @@ export async function provisionClientOnly(
   const container = scopedProject("genie-client-only");
   const baseUrl = clientOnlyBaseUrl();
 
-  await ensureDatabase(CLIENT_ONLY_DB);
+  await ensureDatabase(COMPOSE, CLIENT_ONLY_DB);
   await run("docker", ["rm", "-f", container]).catch(() => undefined);
 
   const { opsCenter, studio } = await renderedClientFiles(baseUrl);

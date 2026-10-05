@@ -11,8 +11,14 @@ services:
       POSTGRES_USER: genie
       POSTGRES_PASSWORD: genie
       POSTGRES_DB: genie
+    # Probe TCP on loopback: the official image's temporary init server answers a
+    # socket `pg_isready` while the real server has not started, so a socket probe
+    # reports healthy too early and the app can start against a database that is
+    # not yet accepting connections. Only the real server binds TCP (Spec 2 R-54,
+    # the same probe the generated stack uses).
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U genie"]
+      test:
+        ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "genie"]
       interval: 2s
       timeout: 3s
       retries: 30

@@ -41,7 +41,7 @@ import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
 import { IMAGE } from "../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
 import { provisionScenarioDeployments } from "./scenarios.ts";
-import { provisionClientOnly } from "./support/client-only.ts";
+import { provisionClientOnly, stopClientOnly } from "./support/client-only.ts";
 import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 
 export { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
@@ -385,6 +385,11 @@ export default async function globalSetup(): Promise<void> {
   let keycloak: E2eKeycloak | undefined;
 
   try {
+    // A crashed run can leave the client-only `docker compose run` container behind, and
+    // `docker compose exec app` falls back to it when the shared stack's own app container is
+    // not running, running commands against the client-only database. Clear it before `up`.
+    await stopClientOnly();
+
     const setupGate = process.env.GENIE_E2E_SETUP_GATE === "1";
 
     // The tenant realm lives in the identity stand-in Keycloak, which runs as its own compose
