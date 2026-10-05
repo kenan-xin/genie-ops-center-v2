@@ -86,6 +86,11 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
   page,
   request,
 }, testInfo) => {
+  // Two disposable databases and two app images start inside this test. Beside the full suite's
+  // stacks that took past Playwright's 30 second default (S2-16 gate run, 2026-10-06), so the
+  // bound covers the container starts, not the assertions.
+  test.setTimeout(180_000);
+
   const first = await startDisposableDeployment([placeholderModule]);
   const second = await startDisposableDeployment([placeholderModule]);
   // The phone and desktop runs can share a moment, so each worker gets its own

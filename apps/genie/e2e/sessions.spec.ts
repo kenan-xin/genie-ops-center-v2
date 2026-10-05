@@ -298,6 +298,10 @@ test("an idle document reload clears the cookie and lands on the expired banner 
 
   await page.goto("/");
 
+  // Let any activity call the landing started finish first, so it cannot slide the session after
+  // the idle time is staged (one phone run reloaded into a live session, S2-16 gate run).
+  await page.waitForLoadState("networkidle");
+
   await queryDatabase(
     `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
   );
