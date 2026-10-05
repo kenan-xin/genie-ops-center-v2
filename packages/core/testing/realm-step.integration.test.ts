@@ -1468,8 +1468,9 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
 
     expect(created.status).toBe(201);
 
-    // The token the realm mints for the renamed client carries that id in `aud`, which is what
-    // the application's aud check compares against KEYCLOAK_CLIENT_ID (R-54d).
+    // The token the realm mints for the renamed client carries that id in `aud`, the value the
+    // app compares against the configured KEYCLOAK_CLIENT_ID (R-54d). This is the positive half;
+    // `auth-audience.integration.test.ts` proves a foreign `aud` is refused.
     expect(
       await idTokenAudiences({
         realm,

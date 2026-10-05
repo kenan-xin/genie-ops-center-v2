@@ -32,8 +32,9 @@ test("S-C: client-only setup, sign-in, and sign-out that keeps the company sessi
   const baseUrl = clientOnlyBaseUrl();
   const email = clientOnlyEmail(testInfo.project.name);
 
-  // The client id was renamed by the customer, so a successful sign-in proves the `aud` check uses
-  // KEYCLOAK_CLIENT_ID (R-54a, R-54d).
+  // The client id was renamed by the customer, so a successful sign-in shows the app signs in with
+  // KEYCLOAK_CLIENT_ID (R-54a, R-54d). The refusal of a foreign `aud` is proved in the core
+  // `auth-audience.integration.test.ts`, not by this positive path.
   expect(CLIENT_ONLY_CLIENT_ID).not.toBe("genie-ops-center");
 
   // AC-12a: setup recorded realm and clients as skipped and recorded the address it used.
