@@ -1,0 +1,49 @@
+{
+  "clientId": "genie-studio",
+  "name": "Genie Studio",
+  "description": "Genie Studio sign-in client in the same customer realm (DEC-8, ADR 0010). Import, set the redirect URI to that product's URL, and give the secret to the genie-studio deployment.",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://replace-with-your-genie-studio-url.invalid/api/auth/callback/keycloak"
+  ],
+  "webOrigins": ["https://replace-with-your-genie-studio-url.invalid"],
+  "attributes": {
+    "post.logout.redirect.uris": "https://replace-with-your-genie-studio-url.invalid",
+    "pkce.code.challenge.method": "S256"
+  },
+  "protocolMappers": [
+    {
+      "name": "groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-group-membership-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "groups",
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    },
+    {
+      "name": "genie_groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-hardcoded-claim-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "genie_groups",
+        "claim.value": "true",
+        "jsonType.label": "boolean",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    }
+  ]
+}

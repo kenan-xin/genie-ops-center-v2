@@ -1,0 +1,49 @@
+{
+  "clientId": "genie-ops-center",
+  "name": "Genie Ops Center",
+  "description": "Genie Ops Center sign-in client for a customer's existing realm (client-only mode, ADR 0010). Import, set the redirect URI to PUBLIC_URL, and return the secret as KEYCLOAK_CLIENT_SECRET.",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://replace-with-your-public-url.invalid/api/auth/callback/keycloak"
+  ],
+  "webOrigins": ["https://replace-with-your-public-url.invalid"],
+  "attributes": {
+    "post.logout.redirect.uris": "https://replace-with-your-public-url.invalid",
+    "pkce.code.challenge.method": "S256"
+  },
+  "protocolMappers": [
+    {
+      "name": "groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-group-membership-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "groups",
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    },
+    {
+      "name": "genie_groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-hardcoded-claim-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "genie_groups",
+        "claim.value": "true",
+        "jsonType.label": "boolean",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    }
+  ]
+}

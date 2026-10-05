@@ -38,6 +38,14 @@ export { startDisposablePostgres } from "./postgres.ts";
 
 export type { DisposablePostgres } from "./postgres.ts";
 
+export {
+  CLIENT_FILE_DIRECTORY,
+  CLIENT_FILE_PLACEHOLDER_HOSTS,
+  OPS_CENTER_CLIENT_FILE,
+  STUDIO_CLIENT_FILE,
+  renderClientFile,
+} from "./client-files.ts";
+
 export type DisposableDeployment = {
   readonly context: TenantContext;
   /** Closes the pool and removes the container. Always call it, in a `finally` or an `afterAll`. */

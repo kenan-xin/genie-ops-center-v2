@@ -82,6 +82,14 @@ export {
   stackProfiles,
 } from "./services/keycloak/address-guard.ts";
 
+// The JSON value shape the realm and client representations are built from; the client-only e2e
+// imports a shipped client file as one of these (R-54a).
+export {
+  isJsonObject,
+  type JsonObject,
+  type JsonValue,
+} from "./services/keycloak/representation.ts";
+
 export {
   assertKeycloakIssuerAtStart,
   KEYCLOAK_ISSUER_MISMATCH_MESSAGE,
