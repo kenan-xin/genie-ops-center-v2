@@ -115,10 +115,11 @@ Keep the access token lifespan short, because nothing in Genie Ops Center reads 
 - The identity provider redirector is the default authenticator of the browser flow, so a person never sees a Keycloak password form.
 - No local registration, no forgot-password link, and no realm password policy, because the realm holds no employee password.
 - The User Attribute protocol mapper for `groups`.
+- The browser flow's Identity Provider Redirector has its "Default Identity Provider" set to the fixed alias `company-login`.
 
 Keycloak. The redirector is the `identity-provider-redirector` execution in the browser flow. Set its "Default Identity Provider" configuration to the provider alias. If Keycloak does not find that alias, it shows the login form instead. The same authenticator processes the `kc_idp_hint` query parameter, and a client can override the default with it.
 
-The template ships the redirector execution with no alias, because the provider does not exist until `genie-ops idp set` runs. The command writes the alias.
+The `realm` step sets the default alias to `company-login` when it creates the realm, with the bootstrap credential. `genie-ops idp set` then writes the provider under that same fixed alias (Spec 2 R-58). Before `idp set` has run, the alias names no provider and the realm shows its own form; after it, sign-in is sent to the provider. The command never writes the flow itself, because writing the flow needs `manage-realm` and `genie-admin` deliberately does not hold it. A realm created by an older version lacks this one flow value; "Set the redirector on a realm created before it" below adds it once by hand.
 
 ### The local-accounts variant
 
@@ -182,7 +183,7 @@ Warning. Sign-out in client-only mode ends the Genie Ops Center session only. Th
 
 ## Add the customer's identity provider
 
-Planned. `genie-ops idp set` writes the provider into the realm, sets it as the default of the identity provider redirector, and creates the mapper that fills the `groups` claim. The protocol and the credentials are arguments. Nothing about the provider is stored in `customers/<slug>/` (`DEC-36`).
+`genie-ops idp set` writes the provider into the realm under the fixed alias `company-login` and creates the mapper that fills the `groups` claim. The realm template already names that alias as the browser flow's default redirector (see "The brokered variant"), so the provider the command writes is the one sign-in is sent to; the command never writes the flow, because that needs `manage-realm` and `genie-admin` does not hold it. The protocol and the credentials are arguments. Nothing about the provider is stored in `customers/<slug>/` (`DEC-36`).
 
 Run the command on the host.
 
@@ -192,29 +193,35 @@ docker compose exec app genie-ops idp set --protocol oidc ...
 
 ### OpenID Connect
 
-Arguments: the issuer or the discovery URL, the client id, the client secret, and the name of the claim that carries groups.
+Arguments: `--protocol oidc`, `--issuer-url` (the issuer or the discovery URL), `--client-id`, `--client-secret`, and optionally `--groups-claim` (default `groups`).
 
-Planned. The command creates an identity provider of kind `oidc` and one identity provider mapper of kind Attribute Importer, which copies the named claim into the user attribute that the `groups` protocol mapper reads.
+The command lets Keycloak fetch the provider's discovery document, creates an identity provider of kind `oidc`, and creates one identity provider mapper of kind Attribute Importer, which copies the named claim into the user attribute that the `groups` protocol mapper reads.
 
-Keycloak. An identity provider mapper has a sync mode. `force` updates the user at every sign-in. `import` writes only at the first sign-in. Use `force`, because group membership changes and must follow the provider at every sign-in.
+Keycloak. An identity provider mapper has a sync mode. `force` updates the user at every sign-in. `import` writes only at the first sign-in. The command sets `force`, because group membership changes must follow the provider at every sign-in and a sign-in whose claim is empty must clear the attribute, so the offboarding rule of `DEC-41` fires.
 
 Keycloak. A JSON claim may be addressed with dots for nesting and brackets for an array index, for example `contact.address[0].country`.
 
 ### SAML 2.0
 
-Arguments: the metadata URL or the metadata file, and the name of the attribute that carries groups.
+Arguments: `--protocol saml`, `--metadata-url`, `--entity-id` (the service-provider entity ID the customer's provider expects), and optionally `--groups-claim` (default `groups`).
 
-Planned. The command creates an identity provider of kind `saml` and one Attribute Importer mapper for the named attribute, with the same sync mode rule as above.
+The command lets Keycloak fetch the provider's metadata, creates an identity provider of kind `saml`, and creates one Attribute Importer mapper for the named attribute, with the same `force` sync mode as above.
 
 ### LDAP or Active Directory
 
-Arguments: the connection URL, the bind credential, the users distinguished name, and the groups distinguished name.
+Deferred. `genie-ops idp set` accepts only `oidc` and `saml`, and refuses any other protocol. LDAP federation lands when a customer asks (Spec 2, Deferred, "LDAP federation in `idp set`"). The pieces it needs, for the record, are a user-federation component with its own group mapper and the right to write it; writing a user federation is refused without `manage-realm`, so that work must choose between the bootstrap credential for that one command and granting `genie-admin` `manage-realm`. The `group-ldap-mapper` component imports directory groups as realm groups, and because a federated person then holds real realm groups, the `groups` claim would come from the Group Membership protocol mapper, not the User Attribute mapper this command configures for OIDC and SAML.
 
-Keycloak. LDAP is user federation, not identity brokering. It is a component on the realm, not an entry under the identity provider endpoints. A federated person signs in on the realm's own login form with their directory password, so the identity provider redirector plays no part.
+### Set the redirector on a realm created before it
 
-Keycloak. The `group-ldap-mapper` component imports directory groups as realm groups. Its mode decides where membership lives. `LDAP_ONLY` keeps membership in the directory. `IMPORT` copies it into the Keycloak database at import. `READ_ONLY` merges both and refuses a write.
+The `realm` step sets the redirector's default alias when it creates a realm. It leaves an existing realm unchanged, so a realm created before the `realm` step set this value has no default alias, and sign-in shows the realm's own form even after `idp set`. No production realm exists yet, so there is no automatic migration; add the one value by hand once, before or after `idp set`.
 
-Because a federated person holds real realm groups, the `groups` claim comes from the Group Membership protocol mapper, the same one the local-accounts variant uses. A realm that federates LDAP therefore needs that mapper even though it is not a local-accounts realm (to confirm at first provisioning).
+1. Open the Keycloak admin console of the realm.
+2. Open Authentication, then the Browser flow.
+3. Open the config (the gear icon) on the Identity Provider Redirector row.
+4. Set Default Identity Provider to `company-login` and save.
+5. Run `genie-ops idp set` for the provider if it is not written yet, then sign in and make sure the browser leaves for the customer's provider without showing the Keycloak form.
+
+The same change can be made with `kcadm.sh` against the `authentication/config/{id}` of that execution, setting `config.defaultProvider=company-login`. It needs realm-management rights, so the operator uses their own Keycloak administrator, not `genie-admin`.
 
 ### What the customer configures on their side
 
