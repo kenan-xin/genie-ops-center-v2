@@ -48,7 +48,8 @@ export const CLIENT_ONLY_GROUP = "genie-admins";
 
 /** The base host port, moved aside for this worktree so two runs never collide. */
 export function clientOnlyPort(): number {
-  return scopedPort(3700);
+  // A distinct band from the other scenario stacks: brokered 3500, SAML 3600, S-F local 3700.
+  return scopedPort(3800);
 }
 
 export function clientOnlyBaseUrl(): string {
