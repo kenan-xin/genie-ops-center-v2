@@ -12,10 +12,13 @@ import { hashPassword } from "@genie/core/testing";
 import {
   allowE2eRealmGroupsAttribute,
   createRealmUser,
+  deleteRealm,
   E2E_BREAK_GLASS_PASSWORD,
   E2E_ADMIN_CLIENT_SECRET,
   E2E_BOOTSTRAP_PASSWORD,
   E2E_BOOTSTRAP_USER,
+  E2E_LOCAL_ADMIN_PASSWORD,
+  E2E_LOCAL_REALM,
   E2E_PROJECTS,
   E2E_READER_SPECS,
   E2E_SIGN_IN_REALM,
@@ -23,6 +26,9 @@ import {
   e2eBreakGlassEmail,
   e2eGroupsRolesEmail,
   e2eGroupsRolesGroup,
+  e2eLocalAdminEmail,
+  e2eLocalBaseUrl,
+  e2eLocalHostPort,
   e2eOnboardingEmail,
   e2eReaderEmail,
   e2eSignOutEmail,
@@ -32,7 +38,7 @@ import {
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
 import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
-import { scopedPort } from "../testing/worktree-scope.ts";
+import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
 import { provisionScenarioDeployments } from "./scenarios.ts";
 import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 
@@ -47,6 +53,34 @@ const READY_PORT = Number(
 const PUBLIC_URL = `http://127.0.0.1:${READY_PORT}`;
 
 const READY_URL = `${PUBLIC_URL}/api/health`;
+
+/**
+ * The S-F local-accounts stack, beside the shared brokered one: its own compose project, database
+ * and realm, on the same Keycloak and Mailpit stand-ins. Its app and browser address is its own
+ * scoped port, so the two stacks run in parallel without colliding (todo 3).
+ */
+export const LOCAL_COMPOSE = [
+  "compose",
+  "-p",
+  scopedProject("genie-s005-e2e-sf"),
+  "-f",
+  COMPOSE_FILE,
+];
+
+const LOCAL_READY_URL = `${e2eLocalBaseUrl()}/api/health`;
+
+const LOCAL_ADMINISTRATOR_EMAILS = E2E_PROJECTS.map(e2eLocalAdminEmail);
+
+/** The mail sink values both stacks pass to their app service (and the local realm step). */
+function mailEnv(keycloak: E2eKeycloak) {
+  return {
+    MAIL_PROVIDER: "smtp",
+    MAIL_FROM: "e2e@example.invalid",
+    // A container reaches Mailpit through the same host mapping it uses for Keycloak.
+    SMTP_URL: `smtp://host.docker.internal:${keycloak.smtpPort}`,
+    KEYCLOAK_ADMIN_CLIENT_SECRET: E2E_ADMIN_CLIENT_SECRET,
+  };
+}
 
 /** The pre-added readers, one per spec and project, which the seed assigns the reader role. */
 const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>
@@ -104,33 +138,18 @@ function userRows(emails: readonly string[], isBreakGlass: boolean): string {
  * clients. It uses the app's own `KEYCLOAK_URL`, the one browser-visible address (R-54c). The
  * bootstrap credential and the admin client secret reach this one command only (DEC-37).
  */
-async function runGenieOpsSetup(): Promise<void> {
+async function runGenieOpsSetup(
+  compose: readonly string[],
+  files: Readonly<Record<string, string>>
+): Promise<void> {
   const folder = await mkdtemp(join(tmpdir(), "genie-e2e-setup-"));
 
   try {
-    const files = {
-      "tenant.yaml": [
-        "modules: []",
-        "local_accounts: false",
-        "first_administrators:",
-        ...ADMINISTRATOR_EMAILS.map((email) => `  - ${email}`),
-        `break_glass_email: ${e2eBreakGlassEmail("phone")}`,
-        "",
-      ].join("\n"),
-      "branding.seed.json": JSON.stringify({
-        company_name: "E2E Group",
-        product_name: "E2E Ops",
-        default_locale: "en",
-        default_time_zone: "UTC",
-      }),
-      "realm.overrides.json": "{}",
-    };
-
     await Promise.all(
       Object.entries(files).map(async ([name, text]) => {
         await writeFile(join(folder, name), text, "utf8");
         await run("docker", [
-          ...COMPOSE,
+          ...compose,
           "cp",
           join(folder, name),
           `app:/tmp/${name}`,
@@ -139,7 +158,7 @@ async function runGenieOpsSetup(): Promise<void> {
     );
 
     await run("docker", [
-      ...COMPOSE,
+      ...compose,
       "exec",
       "-T",
       "-e",
@@ -159,6 +178,48 @@ async function runGenieOpsSetup(): Promise<void> {
   } finally {
     await rm(folder, { recursive: true, force: true });
   }
+}
+
+/** The shared brokered stack's setup files: `local_accounts: false`, one admin per project. */
+function mainSetupFiles() {
+  return {
+    "tenant.yaml": [
+      "modules: []",
+      "local_accounts: false",
+      "first_administrators:",
+      ...ADMINISTRATOR_EMAILS.map((email) => `  - ${email}`),
+      `break_glass_email: ${e2eBreakGlassEmail("phone")}`,
+      "",
+    ].join("\n"),
+    "branding.seed.json": JSON.stringify({
+      company_name: "E2E Group",
+      product_name: "E2E Ops",
+      default_locale: "en",
+      default_time_zone: "UTC",
+    }),
+    "realm.overrides.json": "{}",
+  };
+}
+
+/** The S-F stack's setup files: `local_accounts: true`, so the realm step applies the local variant. */
+function localSetupFiles() {
+  return {
+    "tenant.yaml": [
+      "modules: []",
+      "local_accounts: true",
+      "first_administrators:",
+      ...LOCAL_ADMINISTRATOR_EMAILS.map((email) => `  - ${email}`),
+      "break_glass_email: e2e.local-break-glass@example.invalid",
+      "",
+    ].join("\n"),
+    "branding.seed.json": JSON.stringify({
+      company_name: "E2E Local Group",
+      product_name: "E2E Local Ops",
+      default_locale: "en",
+      default_time_zone: "UTC",
+    }),
+    "realm.overrides.json": "{}",
+  };
 }
 
 /**
@@ -259,15 +320,38 @@ async function seedBreakGlassAccounts(): Promise<void> {
 }
 
 /**
+ * Turns local-account creation on in the S-F stack's settings, the way the Tenant Settings page
+ * would. The realm step has written `realm_supports_local_accounts` from the local variant; this
+ * sets the operator's own switch, so Add person offers the local account type (R-40).
+ */
+async function seedLocalSetup(): Promise<void> {
+  await run("docker", [
+    ...LOCAL_COMPOSE,
+    "exec",
+    "-T",
+    "database",
+    "psql",
+    "-U",
+    "genie",
+    "-d",
+    "genie",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "update tenant_settings set local_accounts_enabled = true, onboarding_mode = 'invite'",
+  ]);
+}
+
+/**
  * Polls readiness sequentially; each attempt exists only because the previous one did not answer.
  * `body` names the health answer to wait for; without it any 200 is ready.
  */
-async function waitForReady(body?: "ok"): Promise<boolean> {
+async function waitForReady(url: string, body?: "ok"): Promise<boolean> {
   const deadline = Date.now() + 120000;
 
   /* eslint-disable no-await-in-loop */
   while (Date.now() < deadline) {
-    const ready = await fetch(READY_URL)
+    const ready = await fetch(url)
       .then(
         async (response) =>
           response.status === 200 &&
@@ -321,10 +405,11 @@ export default async function globalSetup(): Promise<void> {
         KEYCLOAK_REALM: keycloak.realm,
         KEYCLOAK_CLIENT_ID: keycloak.clientId,
         KEYCLOAK_CLIENT_SECRET: keycloak.clientSecret,
+        ...mailEnv(keycloak),
       },
     });
 
-    if (!(await waitForReady())) {
+    if (!(await waitForReady(READY_URL))) {
       const logs = await run("docker", [...COMPOSE, "logs"]).catch(() => ({
         stdout: "",
         stderr: "",
@@ -336,7 +421,7 @@ export default async function globalSetup(): Promise<void> {
     }
 
     if (!setupGate) {
-      await runGenieOpsSetup();
+      await runGenieOpsSetup(COMPOSE, mainSetupFiles());
       await allowE2eRealmGroupsAttribute(E2E_SIGN_IN_REALM);
 
       await Promise.all(
@@ -391,11 +476,60 @@ export default async function globalSetup(): Promise<void> {
       // provider), so they run as extra app containers with their own databases.
       await provisionScenarioDeployments(COMPOSE, keycloak);
 
+      // The S-F local-accounts stack: its own realm (the local variant) on the same Keycloak and
+      // its own database, so the brokered proofs above and the S-F proofs run side by side (todo 2).
+      await deleteRealm(E2E_LOCAL_REALM).catch(() => undefined);
+
+      await run("docker", [...LOCAL_COMPOSE, "up", "-d", "--wait"], {
+        env: {
+          ...process.env,
+          GENIE_HOST_PORT: String(e2eLocalHostPort()),
+          PUBLIC_URL: e2eLocalBaseUrl(),
+          KEYCLOAK_URL: keycloak.keycloakUrl,
+          KEYCLOAK_REALM: E2E_LOCAL_REALM,
+          KEYCLOAK_CLIENT_ID: keycloak.clientId,
+          KEYCLOAK_CLIENT_SECRET: keycloak.clientSecret,
+          ...mailEnv(keycloak),
+        },
+      });
+
+      if (!(await waitForReady(LOCAL_READY_URL))) {
+        const logs = await run("docker", [...LOCAL_COMPOSE, "logs"]).catch(
+          () => ({ stdout: "", stderr: "" })
+        );
+
+        throw new Error(
+          `The local-accounts stack never became ready.\n${logs.stdout}${logs.stderr}`
+        );
+      }
+
+      // The local realm step needs MAIL_PROVIDER=smtp with MAIL_FROM and SMTP_URL, which the
+      // container already carries, so it fills the realm's SMTP from the same Mailpit sink.
+      await runGenieOpsSetup(LOCAL_COMPOSE, localSetupFiles());
+
+      await Promise.all(
+        LOCAL_ADMINISTRATOR_EMAILS.map((email) =>
+          createRealmUser(E2E_LOCAL_REALM, {
+            email,
+            // The local realm's policy needs an upper case and a special character.
+            password: E2E_LOCAL_ADMIN_PASSWORD,
+          })
+        )
+      );
+
+      await seedLocalSetup();
+
       // Discovery was refused while the realm did not exist; the member retries at most every ten
       // seconds, so the proofs start once health reads `ok` (R-54d).
-      if (!(await waitForReady("ok"))) {
+      if (!(await waitForReady(READY_URL, "ok"))) {
         throw new Error(
           "The e2e deployment never answered health ok after setup."
+        );
+      }
+
+      if (!(await waitForReady(LOCAL_READY_URL, "ok"))) {
+        throw new Error(
+          "The local-accounts deployment never answered health ok after setup."
         );
       }
     }

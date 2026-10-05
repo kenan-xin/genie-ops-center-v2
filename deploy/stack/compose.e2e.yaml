@@ -39,6 +39,15 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-genie}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-genie-ops-center}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-e2e-ops-center-secret}
+      # The genie-admin service client secret, so Add person creates a local-account realm user
+      # and triggers the realm's set-password email (R-40). A blank value stays unset.
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+      # The mail sink. The app sends invitations and role emails to the Mailpit stand-in over
+      # host.docker.internal, the same mapping it uses for Keycloak. A blank value stays unset, so
+      # a stack with no mailer still starts (R-45).
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SMTP_URL: ${SMTP_URL:-}
       # The compose file passes the active profiles to the app as STACK_PROFILES, the same as the
       # generated template, so the R-54c guard reads a real value. This stack runs no Keycloak of
       # its own, so the value is empty until an operator sets COMPOSE_PROFILES.

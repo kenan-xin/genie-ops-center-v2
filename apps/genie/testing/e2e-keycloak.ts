@@ -164,6 +164,49 @@ export function standinKeycloakUrl(port = standinKeycloakPort()): string {
   return `http://host.docker.internal:${port}`;
 }
 
+/** The Mailpit stand-in's HTTP API on loopback, for a spec that reads a sent message. */
+export function standinMailpitUrl(): string {
+  return `http://127.0.0.1:${scopedPort(18025)}`;
+}
+
+/** The published SMTP port Mailpit listens on, reachable by a container through the host. */
+export function standinSmtpPort(): number {
+  return scopedPort(15025);
+}
+
+/**
+ * The local-accounts scenario S-F. A second e2e stack runs beside the shared brokered one, with
+ * `local_accounts: true`, its own realm on the same Keycloak stand-in, and its own database. Its
+ * app and browser address is its own scoped port.
+ */
+export const E2E_LOCAL_REALM = "genie-e2e-local";
+
+/** The S-F app's own host port, in a band apart from the shared stack's 3400 band. */
+export function e2eLocalHostPort(): number {
+  return scopedPort(3500);
+}
+
+/** The S-F app's browser address. */
+export function e2eLocalBaseUrl(): string {
+  return `http://127.0.0.1:${e2eLocalHostPort()}`;
+}
+
+/** The S-F administrator one Playwright project signs in as, pre-added by `admin_seed`. */
+export function e2eLocalAdminEmail(project: string): string {
+  return `e2e.local-admin.${project}@example.com`;
+}
+
+/** The local-account person the S-F spec adds, project-scoped because both projects share one DB. */
+export function e2eLocalPersonEmail(project: string): string {
+  return `e2e.local-person.${project}@example.com`;
+}
+
+/** A password that meets the local realm's policy (length 14, three classes, not the username). */
+export const E2E_LOCAL_PERSON_PASSWORD = "Local-person-Passw0rd!";
+
+/** The S-F administrator's password, which the local realm's stricter policy accepts. */
+export const E2E_LOCAL_ADMIN_PASSWORD = "Local-admin-Passw0rd!";
+
 /** The loopback address the test process uses for admin calls. */
 function standinAdminUrl(): string {
   return `http://127.0.0.1:${standinKeycloakPort()}`;
@@ -177,6 +220,10 @@ export type E2eKeycloak = {
   readonly realm: string;
   readonly clientId: string;
   readonly clientSecret: string;
+  /** The loopback address of the Mailpit stand-in's HTTP API. */
+  readonly mailpitUrl: string;
+  /** The published SMTP port a container reaches Mailpit on through `host.docker.internal`. */
+  readonly smtpPort: number;
   readonly stop: () => Promise<void>;
 };
 
@@ -641,6 +688,8 @@ export async function startE2eKeycloak(
     realm,
     clientId: E2E_CLIENT_ID,
     clientSecret: E2E_CLIENT_SECRET,
+    mailpitUrl: standins.mailpitUrl,
+    smtpPort: standins.smtpPort,
     stop: async () => {
       if (ownsStandins) await standins.stop();
     },

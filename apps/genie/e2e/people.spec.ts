@@ -2,22 +2,22 @@ import { expect, test } from "@playwright/test";
 
 import { e2eBreakGlassEmail, e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { queryDatabase } from "./support/database.ts";
+import { clearMailpit, linksIn, waitForMessageTo } from "./support/mailpit.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
- * S2-10 through the real realm, the real database and the real People screen: an administrator
- * adds a brokered person (the invitation checkbox is checked by default, R-40a), the person is
- * pending, and Remove bans them and keeps the row (R-43). Self-protection disables the viewer's own
- * Disable control with the server's reason (R-38), and the break-glass account never appears
- * (R-39). The invitation email and the local-account set-password flow need the local realm variant
- * and a configured mailer, so they are proved by the router's database-backed tests and the
- * Storybook behaviour tests, not here.
+ * S2-10 through the real realm, the real database, the real People screen and the real mail sink:
+ * an administrator adds a brokered person, the invitation checkbox is checked by default (R-40a),
+ * the `invitation-brokered` email reaches Mailpit with a sign-in link built from PUBLIC_URL, and
+ * the audit row holds no link (R-44). Remove bans the row and keeps it (R-43), self-protection
+ * disables the viewer's own Disable control with the server's reason (R-38), and the break-glass
+ * account never appears (R-39). The local-account set-password flow is the S-F spec's subject.
  *
  * The phone and desktop projects share one database, so the added person's email is project-scoped.
  */
 test.describe.configure({ timeout: 180_000 });
 
-test("add a brokered person, remove them, and hold self-protection and the break-glass rule", async ({
+test("add a brokered person, send the invitation to Mailpit, remove them, and hold self-protection", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -36,6 +36,8 @@ test("add a brokered person, remove them, and hold self-protection and the break
   await signInThroughKeycloak(page, { email: adminEmail });
   await page.goto("/admin/people");
 
+  const publicUrl = new URL(page.url()).origin;
+
   // Add person: the invitation checkbox is checked by default (R-40a).
   await page.getByRole("button", { name: "Add person" }).click();
 
@@ -52,16 +54,12 @@ test("add a brokered person, remove them, and hold self-protection and the break
 
   await expect(invitation).toBeChecked();
 
-  // No mailer is configured in this stack, so the invitation is unchecked here; the default is
-  // proved above and the send itself by the database-backed test. Space toggles the focused
-  // checkbox, which stays reliable on the phone's short dialog viewport.
-  await invitation.press("Space");
-  await expect(invitation).not.toBeChecked();
+  // Read only this spec's messages.
+  await clearMailpit();
 
   await addDialog.getByRole("button", { name: "Add person" }).press("Enter");
 
-  // The write reaches the database; the dialog closes and the row appears. Polling the outcome
-  // is steadier than racing the transport on a loaded machine.
+  // The write reaches the database; polling the outcome is steadier than racing the transport.
   await expect
     .poll(
       async () => {
@@ -76,6 +74,23 @@ test("add a brokered person, remove them, and hold self-protection and the break
     .toBe("pending");
 
   await expect(page.getByText(`E2E Added ${project}`)).toBeVisible();
+
+  // R-40a: one `invitation-brokered` email, with a sign-in link built from PUBLIC_URL.
+  const mail = await waitForMessageTo(personEmail);
+
+  expect(mail.Subject).toContain("invited");
+  expect(linksIn(mail)).toContain(`${publicUrl}/sign-in`);
+
+  // R-44: the audit row records the send and never the link.
+  const [metadata] = await queryDatabase(
+    `select metadata::text from audit_event
+      where action = 'core:invitation_sent'
+        and target_id = (select id from "user" where email = '${personEmail}')
+      order by occurred_at desc limit 1`
+  );
+
+  expect(metadata).toBeDefined();
+  expect(metadata).not.toContain("http");
 
   // Open the added person and remove them. Remove confirms first, bans the row, and keeps it.
   await page
