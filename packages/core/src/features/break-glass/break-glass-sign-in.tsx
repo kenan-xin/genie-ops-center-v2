@@ -61,6 +61,8 @@ export type BreakGlassSignInProps = {
   readonly onUseDifferentAccount?: () => void;
   /** "Member sign-in" link under the card. */
   readonly onGoToMemberSignIn?: () => void;
+  /** The member sign-in route the link points at (S1). Defaults to `/sign-in`. */
+  readonly memberSignInHref?: string;
 };
 
 const focusRing =
@@ -172,11 +174,33 @@ function ErrorBlock({ message }: { readonly message: string }): JSX.Element {
   );
 }
 
+/**
+ * The neutral notice a rate-limited card shows, with the whole minutes left (R-19, R-21). It is
+ * shared by the sign-in card and every password card (change, enroll, re-enroll).
+ */
+export function RateLimitNotice(props: {
+  readonly retryAfterMinutes: number;
+}): JSX.Element {
+  return (
+    <div
+      role="status"
+      data-testid="rate-limit-notice"
+      className="flex items-start gap-2.5 rounded-lg bg-muted px-3.5 py-3 text-sm"
+    >
+      <Icon path={TIMER_PATH} />
+      <span>
+        Too many attempts. Try again in {props.retryAfterMinutes} minutes.
+      </span>
+    </div>
+  );
+}
+
 function PasswordField(props: {
   readonly id: string;
   readonly label: string;
   readonly value: string;
   readonly autoComplete: string;
+  readonly disabled?: boolean;
   readonly onChange: (value: string) => void;
 }): JSX.Element {
   const [show, setShow] = useState(false);
@@ -191,8 +215,9 @@ function PasswordField(props: {
           type={show ? "text" : "password"}
           autoComplete={props.autoComplete}
           value={props.value}
+          disabled={props.disabled === true}
           onChange={(event) => props.onChange(event.target.value)}
-          className={`${inputClass} pr-11`}
+          className={`${inputClass} pr-11 disabled:cursor-not-allowed disabled:opacity-50`}
         />
         <button
           type="button"
@@ -324,6 +349,9 @@ function Frame(props: {
 export function BreakGlassPasswordForm(props: {
   readonly email: string;
   readonly pending: boolean;
+  /** The per-account password window refused the last attempt (R-19, R-21). */
+  readonly rateLimited?: boolean;
+  readonly retryAfterMinutes?: number;
   readonly onChangePassword: (
     currentPassword: string,
     newPassword: string
@@ -341,6 +369,7 @@ export function BreakGlassPasswordForm(props: {
   const strengthLabel = rulesMet
     ? "Meets the rule"
     : `${score} of ${live.length} rules`;
+  const disabled = props.rateLimited === true;
 
   return (
     <form
@@ -348,14 +377,18 @@ export function BreakGlassPasswordForm(props: {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        props.onChangePassword(current, next);
+        if (!disabled) props.onChangePassword(current, next);
       }}
     >
+      {disabled ? (
+        <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes ?? 15} />
+      ) : null}
       <PasswordField
         id="bg-current"
         label="Current password"
         value={current}
         autoComplete="current-password"
+        disabled={disabled}
         onChange={setCurrent}
       />
       <div className="flex flex-col gap-2">
@@ -364,6 +397,7 @@ export function BreakGlassPasswordForm(props: {
           label="New password"
           value={next}
           autoComplete="new-password"
+          disabled={disabled}
           onChange={setNext}
         />
         <div className="flex items-center gap-2">
@@ -431,6 +465,7 @@ export function BreakGlassPasswordForm(props: {
         label="Confirm new password"
         value={confirm}
         autoComplete="new-password"
+        disabled={disabled}
         onChange={setConfirm}
       />
       {confirm !== "" && !confirmOk ? (
@@ -441,7 +476,9 @@ export function BreakGlassPasswordForm(props: {
       <button
         type="submit"
         className={primaryClass}
-        disabled={!current || !rulesMet || !confirmOk || props.pending}
+        disabled={
+          disabled || !current || !rulesMet || !confirmOk || props.pending
+        }
       >
         Set password and continue
       </button>
@@ -621,6 +658,8 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
           <BreakGlassPasswordForm
             email={props.email ?? email}
             pending={props.pending === true}
+            rateLimited={props.tooManyAttempts === true}
+            retryAfterMinutes={props.retryAfterMinutes ?? 15}
             onChangePassword={(current, next) =>
               props.onChangePassword?.(current, next)
             }
@@ -633,11 +672,17 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
+              if (props.tooManyAttempts === true) return;
               if (props.enrollment === null || props.enrollment === undefined)
                 props.onStartEnrollment?.(enrollPassword);
               else props.onConfirmEnrollment?.(enrollCode);
             }}
           >
+            {props.tooManyAttempts === true ? (
+              <RateLimitNotice
+                retryAfterMinutes={props.retryAfterMinutes ?? 15}
+              />
+            ) : null}
             {props.enrollment === null || props.enrollment === undefined ? (
               <>
                 <PasswordField
@@ -645,12 +690,17 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   label="Confirm your password to add an authenticator"
                   value={enrollPassword}
                   autoComplete="current-password"
+                  disabled={props.tooManyAttempts === true}
                   onChange={setEnrollPassword}
                 />
                 <button
                   type="submit"
                   className={primaryClass}
-                  disabled={enrollPassword === "" || props.pending === true}
+                  disabled={
+                    enrollPassword === "" ||
+                    props.pending === true ||
+                    props.tooManyAttempts === true
+                  }
                 >
                   Start enrollment
                 </button>
@@ -718,13 +768,20 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
           </form>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => props.onGoToMemberSignIn?.()}
+        {/* An anchor, so the member sign-in transition is a native hard navigation: the root
+            layout decides the limited page and is not re-rendered on a soft navigation (S1). A
+            host that passes `onGoToMemberSignIn` (a story) observes the click instead. */}
+        <a
+          href={props.memberSignInHref ?? "/sign-in"}
+          onClick={(event) => {
+            if (props.onGoToMemberSignIn === undefined) return;
+            event.preventDefault();
+            props.onGoToMemberSignIn();
+          }}
           className={`self-center rounded-lg text-sm text-muted-foreground hover:text-foreground hover:underline ${focusRing}`}
         >
           Member sign-in
-        </button>
+        </a>
       </div>
     </Frame>
   );

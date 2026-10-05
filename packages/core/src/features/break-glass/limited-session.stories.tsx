@@ -72,7 +72,7 @@ export const Continue: Story = {
     onContinueSetup.mockClear();
 
     await userEvent.click(
-      within(canvasElement).getByRole("button", { name: "Continue setup" })
+      within(canvasElement).getByRole("link", { name: "Continue setup" })
     );
 
     await expect(onContinueSetup).toHaveBeenCalledTimes(1);

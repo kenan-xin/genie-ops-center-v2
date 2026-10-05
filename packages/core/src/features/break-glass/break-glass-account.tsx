@@ -2,7 +2,10 @@ import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
 import type { AccountSession } from "../account/types.ts";
-import { BreakGlassPasswordForm } from "./break-glass-sign-in.tsx";
+import {
+  BreakGlassPasswordForm,
+  RateLimitNotice,
+} from "./break-glass-sign-in.tsx";
 import type { BreakGlassEnrollment } from "./break-glass-sign-in.tsx";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- dense presentational markup keeps related lines together. */
@@ -22,6 +25,9 @@ export type BreakGlassAccountProps = {
   readonly enrollment?: BreakGlassEnrollment | null;
   readonly pending?: boolean;
   readonly error?: string | null;
+  /** The per-account password window refused the last attempt (R-19, R-21). */
+  readonly rateLimited?: boolean;
+  readonly retryAfterMinutes?: number;
   readonly onChangePassword?: (
     currentPassword: string,
     newPassword: string
@@ -183,6 +189,8 @@ function AuthenticatorBlock(props: {
   readonly enrollment: BreakGlassEnrollment | null;
   readonly pending: boolean;
   readonly error: string | null;
+  readonly rateLimited: boolean;
+  readonly retryAfterMinutes: number;
   readonly onStartReenroll?: ((password: string) => void) | undefined;
   readonly onConfirmReenroll?: ((code: string) => void) | undefined;
 }): JSX.Element {
@@ -202,31 +210,37 @@ function AuthenticatorBlock(props: {
           onConfirm={(code) => props.onConfirmReenroll?.(code)}
         />
       ) : reenrolling ? (
-        <div className="flex items-end gap-2">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="reenroll-password"
-              className="text-sm font-semibold"
+        <div className="flex flex-col gap-3">
+          {props.rateLimited ? (
+            <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes} />
+          ) : null}
+          <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="reenroll-password"
+                className="text-sm font-semibold"
+              >
+                Confirm your password
+              </label>
+              <input
+                id="reenroll-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                disabled={props.rateLimited}
+                onChange={(event) => setPassword(event.target.value)}
+                className={`h-11 w-64 rounded-lg border border-input bg-background px-3 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => props.onStartReenroll?.(password)}
+              disabled={password === "" || props.pending || props.rateLimited}
+              className={`h-11 rounded-lg border border-input px-4 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
             >
-              Confirm your password
-            </label>
-            <input
-              id="reenroll-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className={`h-11 w-64 rounded-lg border border-input bg-background px-3 ${focusRing}`}
-            />
+              Start re-enroll
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => props.onStartReenroll?.(password)}
-            disabled={password === "" || props.pending}
-            className={`h-11 rounded-lg border border-input px-4 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
-          >
-            Start re-enroll
-          </button>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
@@ -285,6 +299,8 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
         <BreakGlassPasswordForm
           email={props.email}
           pending={props.pending === true}
+          rateLimited={props.rateLimited === true}
+          retryAfterMinutes={props.retryAfterMinutes ?? 15}
           onChangePassword={(current, next) =>
             props.onChangePassword?.(current, next)
           }
@@ -297,6 +313,8 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
         enrollment={props.enrollment ?? null}
         pending={props.pending === true}
         error={props.error ?? null}
+        rateLimited={props.rateLimited === true}
+        retryAfterMinutes={props.retryAfterMinutes ?? 15}
         onStartReenroll={props.onStartReenroll}
         onConfirmReenroll={props.onConfirmReenroll}
       />

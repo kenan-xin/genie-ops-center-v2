@@ -222,6 +222,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the break-glass door flow against a real database enrollment revokes other sessions, the code step is a sign-in, and trustDevice is refused (B1, B2, R-45)",
       "the break-glass door flow against a real database refuses an ordinary session on the break-glass-only endpoints (L2)",
       "the break-glass door flow against a real database refuses a new password equal to the provisioning one (R-64, L2)",
+      "the break-glass door flow against a real database a failed disable writes no audit row and keeps the authenticator (N1)",
+      "the break-glass door flow against a real database labels a request with a live session and a fresh challenge as enrollment (N2)",
     ],
   },
   {

@@ -10,7 +10,6 @@ import { GENIE_ADMINISTRATORS_GROUP } from "@genie/core";
 import { hashPassword } from "@genie/core/testing";
 
 import {
-import {
   allowE2eRealmGroupsAttribute,
   createRealmUser,
   E2E_BREAK_GLASS_PASSWORD,

@@ -584,10 +584,17 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
         const tenant = input.tenant?.();
         if (tenant === undefined) return;
 
-        // B3: the re-enroll start removes the authenticator; one row records it (R-66).
+        // B3: the re-enroll start removes the authenticator; one row records it (R-66). Better
+        // Auth runs after-hooks even on an APIError, so a wrong-password disable would otherwise
+        // be recorded; the row is written only once the flag is actually false (review N1).
         if (ctx.path === "/two-factor/disable") {
           const person = ctx.context.session?.user;
           if (person === undefined || person.isBreakGlass !== true) return;
+          const [owner] = await input.db
+            .select({ twoFactorEnabled: user.twoFactorEnabled })
+            .from(user)
+            .where(eq(user.id, person.id));
+          if (owner?.twoFactorEnabled !== false) return;
           await writeAuthAuditEvent(tenant, {
             action: "auth:break_glass_authenticator_cleared",
             actorUserId: person.id,
@@ -603,30 +610,47 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
         )
           return;
         const created = ctx.context.newSession;
-        const person = created?.user;
-        if (person === undefined || person.isBreakGlass !== true) return;
-        // The temporary session `/sign-in/email` creates for an enrolled account is not a
-        // completed sign-in; the code step completes it, so only that step records the row.
-        if (ctx.path === "/sign-in/email" && person.twoFactorEnabled === true)
-          return;
 
-        // B2: a code-step sign-in carries the two-factor challenge cookie; the enrollment
-        // confirmation runs on a real session and carries none. The cookie name carries this
-        // instance's prefix (`better-auth.two_factor` by default).
-        const challenge =
-          ctx.path === "/two-factor/verify-totp"
-            ? await ctx.getSignedCookie(
-                ctx.context.createAuthCookie(TWO_FACTOR_CHALLENGE_COOKIE).name,
-                ctx.context.secret
-              )
-            : false;
+        // The temporary session `/sign-in/email` creates for an enrolled account is not a
+        // completed sign-in; the code step completes it. A first sign-in (not enrolled) is.
+        if (ctx.path === "/sign-in/email") {
+          const person = created?.user;
+          if (person === undefined || person.isBreakGlass !== true) return;
+          if (person.twoFactorEnabled === true) return;
+          await writeAuthAuditEvent(tenant, {
+            action: "auth:break_glass_sign_in",
+            actorUserId: person.id,
+            targetUserId: person.id,
+            summary: "Break-glass sign-in",
+          });
+          return;
+        }
+
+        // N2: decide as the plugin does - a live session wins. A sessionless request carrying
+        // the two-factor challenge cookie is the code step of a sign-in; a request with a live
+        // session (or no challenge) is the enrollment that completes the forced steps. The
+        // person therefore comes from the new session or, on the live-session path, the live one.
+        const sessionName = ctx.context.authCookies.sessionToken.name;
+        const sessionToken = await ctx.getSignedCookie(
+          sessionName,
+          ctx.context.secret
+        );
+        const liveSession =
+          sessionToken === false || sessionToken === null
+            ? null
+            : await ctx.context.internalAdapter.findSession(sessionToken);
+        const challenge = await ctx.getSignedCookie(
+          ctx.context.createAuthCookie(TWO_FACTOR_CHALLENGE_COOKIE).name,
+          ctx.context.secret
+        );
         const isEnrollment =
-          ctx.path === "/two-factor/verify-totp" &&
-          !(
-            challenge !== false &&
-            challenge !== null &&
-            challenge !== undefined
-          );
+          liveSession !== null ||
+          challenge === false ||
+          challenge === null ||
+          challenge === undefined;
+        const person = created?.user ?? liveSession?.user;
+
+        if (person === undefined || person.isBreakGlass !== true) return;
 
         if (!isEnrollment) {
           await writeAuthAuditEvent(tenant, {
@@ -638,15 +662,17 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
           return;
         }
 
-        // R-65: enrollment completes the forced steps. Keep the session it just created and
-        // drop the account's other sessions.
-        if (created?.session.id !== undefined) {
+        // R-65: enrollment completes the forced steps. Keep the session it created (or the live
+        // one) and drop the account's other sessions.
+        const currentSessionId = created?.session.id ?? liveSession?.session.id;
+
+        if (currentSessionId !== undefined) {
           await input.db
             .delete(session)
             .where(
               and(
                 eq(session.userId, person.id),
-                ne(session.id, created.session.id)
+                ne(session.id, currentSessionId)
               )
             );
         }

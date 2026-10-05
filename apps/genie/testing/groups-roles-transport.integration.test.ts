@@ -3,8 +3,10 @@ import {
   enableModules,
   insertCredentialPerson,
   insertRole,
+  insertSession,
   insertUser,
   markSetupDone,
+  signedSessionCookie,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
@@ -13,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { t } from "../src/trpc/init.ts";
+import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
@@ -39,29 +42,25 @@ let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 let server: Awaited<ReturnType<typeof startBuiltApp>>;
 
+let withoutPermissionId: string;
+
+let withPermissionId: string;
+
 const baseUrl = () => server.baseUrl;
 
-/** Signs in through the app's own credential endpoint and returns the request cookie. */
-async function signIn(email: string): Promise<string> {
-  const response = await fetch(`${baseUrl()}/api/auth/sign-in/email`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "origin": "https://example.invalid",
-    },
-    body: JSON.stringify({ email, password: READ_PASSWORD }),
+/**
+ * A real session for one of the pre-added people, written directly and signed the way Better Auth
+ * does. R-62 leaves the credential endpoint to the break-glass account, so an ordinary person's
+ * session is minted here; the session row, the evaluator and the routers stay real.
+ */
+async function sessionFor(userId: string): Promise<string> {
+  const token = await insertSession(deployment.context, { userId });
+
+  return signedSessionCookie({
+    token,
+    secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
+    name: "__Host-genie-session",
   });
-
-  expect(response.status, await response.clone().text()).toBe(200);
-
-  const cookie = response.headers
-    .getSetCookie()
-    .map((value) => value.split(";")[0] ?? "")
-    .join("; ");
-
-  expect(cookie.length).toBeGreaterThan(0);
-
-  return cookie;
 }
 
 function adminClient(cookie: string) {
@@ -94,14 +93,14 @@ beforeAll(async () => {
   await markSetupDone(deployment.context);
   await enableModules(deployment.context, ["placeholder"]);
 
-  await insertCredentialPerson(deployment.context, {
+  withoutPermissionId = await insertCredentialPerson(deployment.context, {
     email: WITHOUT_PERMISSION_EMAIL,
     password: READ_PASSWORD,
     isBreakGlass: false,
     permissions: ["placeholder:read"],
   });
 
-  await insertCredentialPerson(deployment.context, {
+  withPermissionId = await insertCredentialPerson(deployment.context, {
     email: WITH_PERMISSION_EMAIL,
     password: READ_PASSWORD,
     isBreakGlass: false,
@@ -142,7 +141,7 @@ describe("the groups and roles transport", () => {
   });
 
   it("answers a signed-in caller without the key forbidden at 403", async () => {
-    const cookie = await signIn(WITHOUT_PERMISSION_EMAIL);
+    const cookie = await sessionFor(withoutPermissionId);
 
     const groups = await fetch(
       `${baseUrl()}/api/trpc/groups.list?input=%7B%7D`,
@@ -163,7 +162,7 @@ describe("the groups and roles transport", () => {
   });
 
   it("answers a signed-in caller holding the key", async () => {
-    const cookie = await signIn(WITH_PERMISSION_EMAIL);
+    const cookie = await sessionFor(withPermissionId);
 
     const response = await fetch(
       `${baseUrl()}/api/trpc/groups.list?input=%7B%7D`,
@@ -175,7 +174,7 @@ describe("the groups and roles transport", () => {
   });
 
   it("carries the request's correlation id into the role event handler", async () => {
-    const cookie = await signIn(WITH_PERMISSION_EMAIL);
+    const cookie = await sessionFor(withPermissionId);
     const client = adminClient(cookie);
 
     const roleId = await insertRole(deployment.context, {

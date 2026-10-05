@@ -171,3 +171,22 @@ export const SignOutPhone: Story = {
     await expect(onRevokeOtherSessions).toHaveBeenCalledTimes(1);
   },
 };
+
+export const RateLimitedReenroll: Story = {
+  args: { rateLimited: true, retryAfterMinutes: 7 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Re-enroll" }));
+
+    // The per-account window's neutral notice with the minutes; the start control is disabled.
+    // Both the Change password block and the re-enroll panel show the neutral notice.
+    await expect(
+      canvas.getAllByTestId("rate-limit-notice")[0]
+    ).toHaveTextContent("Try again in 7 minutes.");
+    await expect(canvas.getByLabelText("Confirm your password")).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: "Start re-enroll" })
+    ).toBeDisabled();
+  },
+};

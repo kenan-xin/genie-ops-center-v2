@@ -206,3 +206,45 @@ export const EnrollmentNeedsPassword: Story = {
     await expect(onStartEnrollment).toHaveBeenCalledWith("Abcdefghij1!xy");
   },
 };
+
+export const RateLimitedChangePassword: Story = {
+  args: {
+    step: "change-password",
+    tooManyAttempts: true,
+    retryAfterMinutes: 9,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The neutral notice names the minutes; the fields and the button are disabled (R-21).
+    await expect(canvas.getByTestId("rate-limit-notice")).toHaveTextContent(
+      "Try again in 9 minutes."
+    );
+    await expect(canvas.getByLabelText("Current password")).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: "Set password and continue" })
+    ).toBeDisabled();
+  },
+};
+
+export const RateLimitedEnrollment: Story = {
+  args: {
+    step: "authenticator-enroll",
+    enrollment: null,
+    tooManyAttempts: true,
+    retryAfterMinutes: 4,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("rate-limit-notice")).toHaveTextContent(
+      "Try again in 4 minutes."
+    );
+    await expect(
+      canvas.getByLabelText("Confirm your password to add an authenticator")
+    ).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: "Start enrollment" })
+    ).toBeDisabled();
+  },
+};

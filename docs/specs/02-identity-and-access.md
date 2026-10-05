@@ -91,11 +91,11 @@ R-18. The account page is built here: the Profile block, the Sessions block with
 
 ### Rate limits
 
-R-19. Four endpoints are limited with a fixed window stored in `rate_limit_window`, keyed on endpoint, subject, and window start, which the next window overwrites, so no sweeper job exists (`DEC-31`, `../architecture/data-shape.md`, "Deployment tables"): add person, resend set-password email, resend invitation, and break-glass sign-in. Sign-in brute force for employees is the realm's job (R-49).
+R-19. Five endpoints are limited with a fixed window stored in `rate_limit_window`, keyed on endpoint, subject, and window start, which the next window overwrites, so no sweeper job exists (`DEC-31`, `../architecture/data-shape.md`, "Deployment tables"): add person, resend set-password email, resend invitation, break-glass sign-in, and the break-glass password checks (change password, and enrolling or disabling the authenticator). Sign-in brute force for employees is the realm's job (R-49).
 
-R-20. The subject is the acting person's id for add person, the target person's id for resend set-password and for resend invitation, and the constant `deployment` for break-glass sign-in, which is limited per deployment (`../design/sections/sign-in-and-tenant-pages/spec.md`, "User Flows"). The window length and the count are constants in core, not tenant settings.
+R-20. The subject is the acting person's id for add person, the target person's id for resend set-password and for resend invitation, and the constant `deployment` for break-glass sign-in, which is limited per deployment (`../design/sections/sign-in-and-tenant-pages/spec.md`, "User Flows"). The break-glass password checks are limited per account: the subject is the break-glass user id, and the same window covers change-password, enable and disable. The window length and the count are constants in core, not tenant settings.
 
-R-21. Every refusal writes one `audit_event` row with action `auth:rate_limited` and the endpoint, the subject kind, and the window in `metadata`. The break-glass sign-in card shows the neutral notice with the remaining minutes and disables its inputs, and no endpoint reveals whether an email exists.
+R-21. Every refusal writes one `audit_event` row with action `auth:rate_limited` and the endpoint, the subject kind, and the window in `metadata`. The break-glass sign-in card shows the neutral notice with the remaining minutes and disables its inputs, and every password card (change password, enroll, re-enroll) shows the same neutral notice with the remaining minutes and disables its inputs. No endpoint reveals whether an email exists.
 
 ### Groups
 
@@ -265,7 +265,7 @@ AC-4 (roadmap item 3a). With `local_accounts_enabled` on, add person creates the
 
 AC-5 (roadmap item 4). A session is refused after the tenant's idle minutes with no activity, is refused after 24 hours regardless of activity, survives a browser activity call inside the window, and is not extended by ordinary request traffic. The activity call returns the new idle expiry time. The sessions list answers for a session older than a day. The account page shows the person's sessions and their roles with scope and source, and edits neither. In managed mode, sign-out removes the Genie Ops Center session row and then ends the realm session. The session row records the client address resolved through the trusted proxy list. Proves R-13, R-14, R-15, R-15a, R-16, R-17, R-18.
 
-AC-6 (roadmap item 4a). Add person, resend set-password, resend invitation, and break-glass sign-in each refuse past their window, each refusal writes one `auth:rate_limited` audit row, and the next window overwrites the counter row rather than creating a second one. Proves R-19, R-20, R-21.
+AC-6 (roadmap item 4a). Add person, resend set-password, resend invitation, break-glass sign-in, and the break-glass password checks each refuse past their window, each refusal writes one `auth:rate_limited` audit row, and the next window overwrites the counter row rather than creating a second one. Proves R-19, R-20, R-21.
 
 AC-7 (roadmap item 5). `syncGroupMemberships` is tested for all three claim cases. A present claim replaces `idp` memberships and creates unseen groups, an empty claim or marker-only sign-in removes them, and a sign-in missing both claims keeps them and writes `auth:groups_claim_absent`. Local memberships survive every case, a directory group the sync has filled can be archived but not deleted, a not-yet-seen group added by claim value can be deleted and is filled by the next sign-in that lists it (same row), a stale directory group is computed from `last_seen_at` on read, and a local group delete names both counts. Proves R-22, R-23, R-24, R-24a, R-24b, R-25.
 

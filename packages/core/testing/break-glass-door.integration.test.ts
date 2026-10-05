@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { auditEvent, session } from "../src/schema.ts";
+import { auditEvent, session, user } from "../src/schema.ts";
 import {
   BREAK_GLASS_ONLY_CODE,
   PASSWORD_POLICY_CODE,
@@ -105,6 +105,49 @@ describe("the break-glass door flow against a real database", () => {
     return {
       session: value(SESSION_COOKIE),
       twoFactor: value(TWO_FACTOR_COOKIE),
+    };
+  }
+
+  /** Enrolls a fresh break-glass account and answers its live session cookie. */
+  async function enrollAccount(email: string): Promise<{
+    readonly userId: string;
+    readonly totpURI: string;
+    readonly sessionCookie: string;
+  }> {
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+      mustChangePassword: false,
+      twoFactorEnabled: false,
+    });
+
+    const signedIn = await post("/sign-in/email", {
+      email,
+      password: PASSWORD,
+    });
+
+    const signInCookie = cookiesOf(signedIn).session ?? "";
+
+    const enabled = await post(
+      "/two-factor/enable",
+      { password: PASSWORD, method: "totp" },
+      signInCookie
+    );
+
+    // SAFETY: Better Auth's enable answer carries `totpURI` as a string.
+    const totpURI = ((await enabled.json()) as { readonly totpURI: string })
+      .totpURI;
+
+    const enrolled = await post(
+      "/two-factor/verify-totp",
+      { code: totpCodeForUri(totpURI) },
+      signInCookie
+    );
+
+    return {
+      userId,
+      totpURI,
+      sessionCookie: cookiesOf(enrolled).session ?? signInCookie,
     };
   }
 
@@ -324,5 +367,103 @@ describe("the break-glass door flow against a real database", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: PASSWORD_POLICY_CODE });
+  });
+
+  it("a failed disable writes no audit row and keeps the authenticator (N1)", async () => {
+    const email = `disable-fail-${Date.now()}@example.invalid`;
+
+    const { userId, sessionCookie } = await enrollAccount(email);
+
+    const denied = await post(
+      "/two-factor/disable",
+      { password: "wrong-password-1!" },
+      sessionCookie
+    );
+
+    expect(denied.status).toBe(400);
+
+    const clearedRows = await deployment.context.db
+      .select()
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.actorUserId, userId),
+          eq(auditEvent.action, "auth:break_glass_authenticator_cleared")
+        )
+      );
+
+    expect(clearedRows).toHaveLength(0);
+
+    const [owner] = await deployment.context.db
+      .select({ twoFactorEnabled: user.twoFactorEnabled })
+      .from(user)
+      .where(eq(user.id, userId));
+
+    expect(owner?.twoFactorEnabled).toBe(true);
+  });
+
+  it("labels a request with a live session and a fresh challenge as enrollment (N2)", async () => {
+    const email = `both-cookies-${Date.now()}@example.invalid`;
+
+    const { userId, totpURI } = await enrollAccount(email);
+
+    // A second live session, which the enrollment keeps as the current one.
+    const survivorToken = await insertSession(deployment.context, { userId });
+
+    const survivorCookie = await signedSessionCookie({
+      token: survivorToken,
+      secret: AUTH_ENV.BETTER_AUTH_SECRET,
+      name: SESSION_COOKIE,
+    });
+
+    // A fresh challenge cookie from a new sign-in.
+    const challenged = await post("/sign-in/email", {
+      email,
+      password: PASSWORD,
+    });
+
+    const challengeCookie = cookiesOf(challenged).twoFactor ?? "";
+
+    // Both cookies: the live session wins, so this is an enrollment.
+    const response = await post(
+      "/two-factor/verify-totp",
+      { code: totpCodeForUri(totpURI) },
+      `${survivorCookie}; ${challengeCookie}`
+    );
+
+    expect(response.status).toBe(200);
+
+    // The other session is revoked; the live one and the enrollment row remain.
+    const sessions = await deployment.context.db
+      .select({ id: session.id })
+      .from(session)
+      .where(eq(session.userId, userId));
+
+    expect(sessions).toHaveLength(1);
+
+    const enrolledRows = await deployment.context.db
+      .select()
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.actorUserId, userId),
+          eq(auditEvent.action, "auth:break_glass_authenticator_enrolled")
+        )
+      );
+
+    expect(enrolledRows).toHaveLength(2);
+
+    const signInRows = await deployment.context.db
+      .select()
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.actorUserId, userId),
+          eq(auditEvent.action, "auth:break_glass_sign_in")
+        )
+      );
+
+    // Only the first (not-enrolled) sign-in; this request is an enrollment, not a sign-in.
+    expect(signInRows).toHaveLength(1);
   });
 });

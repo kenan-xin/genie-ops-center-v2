@@ -88,6 +88,24 @@ export function AdminLoginRoute(props: {
     setEmail(props.email);
   }
 
+  /**
+   * Applies the per-account password window's refusal to the card (R-19, R-21): the neutral
+   * notice with the whole minutes left and disabled inputs. Answers true when it was a 429.
+   */
+  async function applyRateLimit(response: Response): Promise<boolean> {
+    if (response.status !== 429) return false;
+
+    const parsed = rateLimited.safeParse(
+      await response.json().catch(() => undefined)
+    );
+
+    setRetryAfterMinutes(parsed.success ? parsed.data.retryAfterMinutes : 15);
+    setTooManyAttempts(true);
+    setError(null);
+
+    return true;
+  }
+
   /** Starts enrollment; the account's current password is required by Better Auth (R-63). */
   async function startEnrollment(password: string): Promise<void> {
     const response = await postAuth("/two-factor/enable", {
@@ -95,6 +113,8 @@ export function AdminLoginRoute(props: {
       method: "totp",
       issuer: props.productName,
     });
+
+    if (await applyRateLimit(response)) return;
 
     if (!response.ok) {
       setError(await refusalMessage(response, "Enrollment could not start."));
@@ -131,18 +151,7 @@ export function AdminLoginRoute(props: {
         password,
       });
 
-      if (response.status === 429) {
-        const parsed = rateLimited.safeParse(
-          await response.json().catch(() => undefined)
-        );
-
-        setRetryAfterMinutes(
-          parsed.success ? parsed.data.retryAfterMinutes : 15
-        );
-        setTooManyAttempts(true);
-        setError(null);
-        return;
-      }
+      if (await applyRateLimit(response)) return;
 
       if (!response.ok) {
         setError(await refusalMessage(response, "Invalid email or password."));
@@ -198,6 +207,8 @@ export function AdminLoginRoute(props: {
         currentPassword,
         newPassword,
       });
+
+      if (await applyRateLimit(response)) return;
 
       if (!response.ok) {
         setError(
@@ -269,7 +280,6 @@ export function AdminLoginRoute(props: {
         setSteps(["credentials", "authenticator-code"]);
         setError(null);
       }}
-      onGoToMemberSignIn={() => window.location.assign("/sign-in")}
     />
   );
 }

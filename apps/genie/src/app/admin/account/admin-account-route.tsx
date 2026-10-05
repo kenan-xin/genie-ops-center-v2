@@ -20,6 +20,8 @@ const refusal = z.object({ message: z.string().min(1) });
 
 const enrollmentBody = z.object({ totpURI: z.string().min(1) });
 
+const rateLimitedBody = z.object({ retryAfterMinutes: z.number() });
+
 const postBody = z.record(z.string(), z.union([z.string(), z.boolean()]));
 
 async function refusalMessage(
@@ -65,6 +67,24 @@ export function AdminAccountRoute(props: {
   const [enrollment, setEnrollment] = useState<BreakGlassEnrollment | null>(
     null
   );
+  // The per-account password window's refusal (R-19, R-21): the neutral notice with the whole
+  // minutes left on the password and re-enroll cards.
+  const [rateLimited, setRateLimited] = useState(false);
+  const [retryAfterMinutes, setRetryAfterMinutes] = useState(15);
+
+  async function applyRateLimit(response: Response): Promise<boolean> {
+    if (response.status !== 429) return false;
+
+    const parsed = rateLimitedBody.safeParse(
+      await response.json().catch(() => undefined)
+    );
+
+    setRetryAfterMinutes(parsed.success ? parsed.data.retryAfterMinutes : 15);
+    setRateLimited(true);
+    setError(null);
+
+    return true;
+  }
 
   /**
    * B3: re-enroll starts by disabling the current authenticator, which Better Auth requires the
@@ -76,6 +96,8 @@ export function AdminAccountRoute(props: {
     const disabled = await postJson("/api/auth/two-factor/disable", {
       password,
     });
+
+    if (await applyRateLimit(disabled)) return;
 
     if (!disabled.ok) {
       setError(
@@ -92,6 +114,8 @@ export function AdminAccountRoute(props: {
       method: "totp",
       issuer: props.productName,
     });
+
+    if (await applyRateLimit(response)) return;
 
     if (!response.ok) {
       setError(await refusalMessage(response, "Enrollment could not start."));
@@ -112,6 +136,7 @@ export function AdminAccountRoute(props: {
       manualKey: manualKeyOf(parsed.data.totpURI),
       issuer: props.productName,
     });
+    setRateLimited(false);
     setError(null);
   }
 
@@ -125,6 +150,8 @@ export function AdminAccountRoute(props: {
       enrollment={enrollment}
       pending={pending}
       error={error ?? props.passwordNotice}
+      rateLimited={rateLimited}
+      retryAfterMinutes={retryAfterMinutes}
       onChangePassword={(currentPassword, newPassword) => {
         setPending(true);
         void postJson("/api/auth/change-password", {
@@ -132,6 +159,8 @@ export function AdminAccountRoute(props: {
           newPassword,
         })
           .then(async (response) => {
+            if (await applyRateLimit(response)) return;
+
             if (!response.ok) {
               setError(
                 await refusalMessage(
@@ -142,6 +171,7 @@ export function AdminAccountRoute(props: {
               return;
             }
 
+            setRateLimited(false);
             setError(null);
             router.refresh();
           })

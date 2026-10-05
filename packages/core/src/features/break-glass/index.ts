@@ -6,6 +6,7 @@
 export {
   BreakGlassSignIn,
   BreakGlassPasswordForm,
+  RateLimitNotice,
   breakGlassSteps,
   type BreakGlassEnrollment,
   type BreakGlassSignInProps,

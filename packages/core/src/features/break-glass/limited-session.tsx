@@ -13,6 +13,8 @@ export type LimitedSessionPageProps = {
   /** True once the authenticator is enrolled. */
   readonly authenticatorEnrolled: boolean;
   readonly onContinueSetup?: () => void;
+  /** The break-glass door route the action points at (S1). Defaults to `/admin/login`. */
+  readonly continueSetupHref?: string;
 };
 
 function CheckIcon(): JSX.Element {
@@ -91,13 +93,20 @@ export function LimitedSessionPage(
                 </li>
               ))}
             </ul>
-            <button
-              type="button"
-              onClick={() => props.onContinueSetup?.()}
+            {/* An anchor, so the transition is a native hard navigation: the root layout decides
+                the limited page and is not re-rendered on a soft navigation (S1). A host that
+                passes `onContinueSetup` (a story) observes the click instead. */}
+            <a
+              href={props.continueSetupHref ?? "/admin/login"}
+              onClick={(event) => {
+                if (props.onContinueSetup === undefined) return;
+                event.preventDefault();
+                props.onContinueSetup();
+              }}
               className="flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Continue setup
-            </button>
+            </a>
           </div>
         </div>
       </div>

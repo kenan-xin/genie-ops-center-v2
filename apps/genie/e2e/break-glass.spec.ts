@@ -85,12 +85,12 @@ test("a limited break-glass session stays limited across navigation (S1, R-30)",
   await expect(page.getByTestId("limited-session-page")).toBeVisible();
 
   // "Continue setup" is a full navigation back to the door.
-  await page.getByRole("button", { name: "Continue setup" }).click();
+  await page.getByRole("link", { name: "Continue setup" }).click();
   await expect(page.getByLabel("Current password")).toBeVisible();
   await expect(page.getByTestId("limited-session-page")).toHaveCount(0);
 
   // The door's member-sign-in transition is a full navigation too, so the limited page returns.
-  await page.getByRole("button", { name: "Member sign-in" }).click();
+  await page.getByRole("link", { name: "Member sign-in" }).click();
   await expect(page.getByTestId("limited-session-page")).toBeVisible();
 });
 
