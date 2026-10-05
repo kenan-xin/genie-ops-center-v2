@@ -15,8 +15,9 @@ realm is the customer's, so Ops Center holds no administrator rights in it.
 - Two client files from the repository, `deploy/keycloak/genie-ops-center.client.json` and
   `deploy/keycloak/genie-studio.client.json`. They carry no secret.
 - This deployment's `PUBLIC_URL` (the address people open, for example `https://ops.company.example`).
-- That product's public URL for the genie-studio deployment.
-- The name of the claim that carries group names (usually `groups`).
+- The redirect URI for the genie-studio deployment, from that product's own configuration.
+- The company name and the first administrators that belong in `tenant.yaml` (the operator supplies
+  these; they are not Keycloak values).
 
 ## The customer's side
 
@@ -28,14 +29,17 @@ applications.
    redirect URI becomes `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect is
    `PUBLIC_URL`.
 2. Import `genie-studio.client.json` the same way, replacing
-   `https://replace-with-your-genie-studio-url.invalid` with the genie-studio deployment's own URL.
+   `https://replace-with-your-genie-studio-url.invalid` with the redirect URI from the genie-studio
+   deployment's own configuration. That product names its callback; take the value from its
+   configuration rather than assuming the Ops Center callback path.
 3. Keep PKCE on. Both files require it (`pkce.code.challenge.method` is `S256`), so an
    authorization code stolen without the verifier is useless.
-4. Keep both protocol mappers on each client. The `groups` mapper emits the person's realm groups as
-   bare names (`full.path` off). The `genie_groups` marker is a Hardcoded Claim mapper that emits
-   boolean `genie_groups: true`; without it, a person with no groups would keep their previous
-   memberships instead of losing them, because Keycloak omits an empty `groups` claim. This mapper
-   is not optional.
+4. Keep both protocol mappers on each client. The claim name must be exactly `groups` (plus the
+   `genie_groups` marker); Genie Ops Center reads only those two and the name is not configurable.
+   The `groups` mapper emits the person's realm groups as bare names (`full.path` off). The
+   `genie_groups` marker is a Hardcoded Claim mapper that emits boolean `genie_groups: true`;
+   without it, a person with no groups would keep their previous memberships instead of losing them,
+   because Keycloak omits an empty `groups` claim. This mapper is not optional.
    - If your realm keeps a person's groups in a user attribute rather than in realm group
      memberships, replace the `groups` mapper with a User Attribute mapper that reads that
      attribute and is multivalued. The marker stays.
@@ -73,10 +77,15 @@ sign-in is silent while the company session lasts.
 
 ## Verify
 
-11. Open `PUBLIC_URL` in a private browser window and sign in as a person the customer assigned to
-    the `genie-ops-center` client. They land in the workspace.
-12. In the Groups screen, the person's directory groups are listed with source `idp`.
-13. Sign out. The browser lands back on `PUBLIC_URL` and stays signed in to the customer's other
+11. Open `PUBLIC_URL` in a private browser window and sign in as one of the `first_administrators`
+    from `tenant.yaml`. `admin_seed` pre-added them as a pending person, so their first sign-in
+    activates them and they land in the workspace.
+12. Admission is Genie Ops Center's decision, not a per-client assignment in the customer's realm:
+    in `invite` mode only a person an administrator pre-added can sign in, and in `jit` mode a
+    person must hold a directory group mapped to an Ops Center role (`DEC-7`, R-9). Add people in
+    the People screen, or map their groups before switching to `jit`.
+13. In the Groups screen, the person's directory groups are listed with source `idp`.
+14. Sign out. The browser lands back on `PUBLIC_URL` and stays signed in to the customer's other
     applications. Signing in again does not ask for the company login form while the company session
     lasts.
 

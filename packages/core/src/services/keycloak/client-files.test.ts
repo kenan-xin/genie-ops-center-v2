@@ -58,6 +58,9 @@ describe.each(Object.entries(FILES))("the %s client file", (clientId, url) => {
     expect(client.protocol).toBe("openid-connect");
     expect(client.publicClient).toBe(false);
     expect(client.standardFlowEnabled).toBe(true);
+    // A shared customer realm: the app needs only its own groups and marker, so the token does not
+    // carry the person's roles for the company's other clients (R-54a).
+    expect(client.fullScopeAllowed).toBe(false);
 
     const attributes = client.attributes;
 
