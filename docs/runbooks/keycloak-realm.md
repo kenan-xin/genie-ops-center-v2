@@ -168,12 +168,12 @@ Setup is resumable through `setup_step` (`../architecture/data-shape.md`). A rer
 
 ## Client files (client-only mode)
 
-Planned. In client-only mode (`realm: customer` in `tenant.yaml`, ADR 0010), Genie Ops Center and genie-studio are clients in the customer's existing realm. Setup creates no realm and no client, and no `genie-admin` client exists. The customer's IT imports two client files from `deploy/keycloak/` (Specification 02 R-54a).
+Planned. In client-only mode (`realm: customer` in `tenant.yaml`, ADR 0010), Genie Ops Center and genie-studio are clients in the customer's existing realm. Setup creates no realm and no client, and no `genie-admin` client exists. The customer's IT imports two client files from `deploy/keycloak/` (Specification 02 R-54a): `genie-ops-center.client.json` and `genie-studio.client.json`. Each file carries a placeholder host (`replace-with-your-public-url.invalid`, and `replace-with-your-genie-studio-url.invalid` for genie-studio) where that deployment's URL goes.
 
-1. Give the customer's IT the two files: one for the client `genie-ops-center` and one for `genie-studio`. The files carry no secret.
-2. Make sure that each client requires PKCE.
-3. Make sure that `genie-ops-center` has the redirect URI `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect URI `PUBLIC_URL`, with this deployment's `PUBLIC_URL`.
-4. Make sure that each client carries its own `groups` protocol mapper, so the mapper changes nothing else in the realm: the Group Membership mapper with `full.path` false, or the User Attribute mapper when the customer's realm keeps the person's groups in a user attribute. The claim name is `groups`, in the id token and the access token.
+1. Give the customer's IT the two files. The files carry no secret.
+2. Make sure that each client requires PKCE (`pkce.code.challenge.method` is `S256` in the file).
+3. Replace the placeholder host in `genie-ops-center.client.json` with this deployment's `PUBLIC_URL`, so the redirect URI becomes `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect and web origin become `PUBLIC_URL`. Replace the genie-studio file's placeholder with that product's own URL.
+4. Make sure that each client carries its own `groups` and `genie_groups` protocol mappers, so the mappers change nothing else in the realm: the Group Membership mapper with `full.path` false, or the User Attribute mapper when the customer's realm keeps the person's groups in a user attribute. The claim name is `groups`, in the id token and the access token. The `genie_groups` Hardcoded Claim mapper emits boolean `genie_groups: true`; it is required, because Keycloak omits an empty `groups` claim and the marker is what makes a missing claim mean zero groups (`DEC-41`).
 5. Ask the customer's IT to restrict the `groups` claim to the groups meant for Genie Ops Center. Otherwise the claim carries every realm group the person holds, and the groups sync creates a group for each (`DEC-41`).
 6. Ask the customer's IT to return the `genie-ops-center` client secret. Put it in `.env` as `KEYCLOAK_CLIENT_SECRET`. If they renamed the client, set `KEYCLOAK_CLIENT_ID` to the new id.
 

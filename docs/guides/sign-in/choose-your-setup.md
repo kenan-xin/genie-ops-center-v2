@@ -8,11 +8,13 @@ lives and which company login people use. Each answer names the guide to follow.
      [Ops Center hosts the customer](s-a-ops-center-hosts.md).
    - The customer's own Keycloak holds the realm, brokered into ours: scenario S-B,
      [Your Keycloak, brokered](s-b-your-keycloak-brokered.md).
-   - Ops Center is only a client in the customer's realm: coming.
+   - Ops Center is only a client in the customer's realm: scenario S-C,
+     [Your Keycloak, client-only](s-c-your-keycloak-client-only.md).
 
 2. Does the customer already run a Keycloak?
    - No, Genie runs the realm for them: S-A.
-   - Yes: S-B, brokered into a realm Genie owns on their server. Client-only mode is coming.
+   - Yes: S-B, brokered into a realm Genie owns on their server, or S-C, where the two clients are
+     imported into the customer's existing realm and Genie creates no realm.
 
 3. Which company login do people use?
    - A local account in the realm for this deployment: scenario S-F,
@@ -30,7 +32,7 @@ Only a guide whose scenario is built and tested is listed as written. The rest a
 | --- | --- | --- |
 | S-A: Genie hosts the realm on a shared Keycloak server | [s-a-ops-center-hosts.md](s-a-ops-center-hosts.md) | Written |
 | S-B: the customer's Keycloak, brokered into ours | [s-b-your-keycloak-brokered.md](s-b-your-keycloak-brokered.md) | Written |
-| S-C: Ops Center as clients in the customer's realm only | s-c-your-keycloak-client-only.md | Coming |
+| S-C: Ops Center as clients in the customer's realm only | [s-c-your-keycloak-client-only.md](s-c-your-keycloak-client-only.md) | Written |
 | S-D: Entra, no customer Keycloak | [s-d-entra.md](s-d-entra.md) | Written |
 | S-E: another SSO system (OIDC or SAML) | [s-e-other-sso.md](s-e-other-sso.md) | Written |
 | S-F: no SSO, local accounts | [s-f-local-accounts.md](s-f-local-accounts.md) | Written |
