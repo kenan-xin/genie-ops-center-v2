@@ -680,6 +680,48 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
+  // Spec 2 S2-16 (tech plan D2-2): the real Entra run is scheduled and manual, never a pull-request
+  // check or a merge gate, and a missing secret skips it with a notice instead of failing.
+  it("runs the Entra suite on a schedule and by hand, and skips without its secret", () => {
+    // SAFETY: the repository's own workflow; `on`, the job steps' `run` and `if` are read.
+    const workflow = parseYaml(read(`${WORKFLOWS}/entra-scheduled.yml`)) as {
+      readonly on: {
+        readonly schedule?: readonly { readonly cron: string }[];
+        readonly workflow_dispatch?: null;
+      };
+      readonly jobs: Readonly<
+        Record<
+          string,
+          {
+            readonly steps: readonly {
+              readonly run?: string;
+              readonly if?: string;
+            }[];
+          }
+        >
+      >;
+    };
+
+    expect(Object.keys(workflow.on).toSorted()).toEqual([
+      "schedule",
+      "workflow_dispatch",
+    ]);
+
+    const [guard, ...rest] = workflow.jobs["entra"]?.steps ?? [];
+
+    expect(guard?.run).toContain('-z "$ENTRA_TEST_TENANT"');
+    expect(guard?.run).toContain("::notice");
+    expect(rest.length).toBeGreaterThan(0);
+
+    for (const step of rest) {
+      expect(step.if).toBe("steps.secret.outputs.configured == 'true'");
+    }
+
+    for (const name of ["pull-request", "develop", "release"]) {
+      expect(read(`${WORKFLOWS}/${name}.yml`), name).not.toContain("e2e:entra");
+    }
+  });
+
   it("runs the pull-request gates on every pull request", () => {
     const workflow = read(`${WORKFLOWS}/pull-request.yml`);
 

@@ -35,6 +35,8 @@ export default defineConfig({
     "**/e2e/fixture/**",
     "**/e2e/dev/**",
     "**/e2e/setup-gate/**",
+    // The scheduled Entra run has its own stack and config (`playwright.entra.config.ts`).
+    "**/e2e/entra/**",
     "**/setup-gate.spec.ts",
     "**/*__boundary__*",
     "**/*__wiring__*",

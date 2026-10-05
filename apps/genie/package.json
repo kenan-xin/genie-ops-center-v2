@@ -9,11 +9,12 @@
     "build-fixture-image": "node tools/build-fixture-image.ts",
     "generate-registry": "node tools/generate-registry.ts",
     "start": "node tools/start-standalone.mjs",
-    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.fixture.config.ts playwright.setup-gate.config.ts postcss.config.mjs tailwind.config.ts vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
+    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.entra.config.ts playwright.fixture.config.ts playwright.setup-gate.config.ts postcss.config.mjs tailwind.config.ts vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
     "test:e2e": "cd ../.. && playwright test --config apps/genie/playwright.config.ts",
     "test:e2e:setup-gate": "cd ../.. && playwright test --config apps/genie/playwright.setup-gate.config.ts",
+    "test:e2e:entra": "cd ../.. && playwright test --config apps/genie/playwright.entra.config.ts",
     "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
     "test:e2e:generated": "node ../../tools/generators/scripts/prove-generated-module.ts",
@@ -152,6 +153,12 @@
       },
       "test:e2e:generated": {
         "cache": false
+      },
+      "test:e2e:entra": {
+        "cache": false,
+        "dependsOn": [
+          "build-image"
+        ]
       }
     }
   }
