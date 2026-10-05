@@ -28,31 +28,30 @@ OIDC identity provider.
 5. Run `genie-ops idp set` on the host.
 
    ```sh
-   docker compose exec -e IDP_CLIENT_SECRET='<the secret>' app \
+   read -rs IDP_CLIENT_SECRET && export IDP_CLIENT_SECRET
+   docker compose exec -e IDP_CLIENT_SECRET app \
      genie-ops idp set \
      --protocol oidc \
      --issuer-url https://login.microsoftonline.com/<tenant-id>/v2.0 \
      --client-id '<application id>'
    ```
 
-   Replace `--issuer-url` with the discovery URL when the customer gives that instead. The client
-   secret is not an argument: it is read from `IDP_CLIENT_SECRET` in the environment of that one
-   command, so it never reaches the process arguments, a shell history file, a log, or the audit
-   row.
-
-6. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
-   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
+   Replace `--issuer-url` with the discovery URL when the customer gives that instead. `read -rs`
+   puts the secret into your shell's environment without typing it on the command line, so it is
+   not in the command's arguments and not in your shell history; `-e IDP_CLIENT_SECRET` passes the
+   name, not the value. The command reads it from the environment, and it never reaches a log or
+   the audit row.
 
 ## Verify
 
-7. Open a private browser window at `PUBLIC_URL`. The browser leaves for Entra without showing the
+6. Open a private browser window at `PUBLIC_URL`. The browser leaves for Entra without showing the
    Genie Ops Center realm's own form.
-8. Sign in as an assigned person. They land in the workspace.
-9. In the Groups screen, their Entra groups are listed with source `idp`.
-10. Remove the test person from the app assignment in Entra, with assignment required, so Entra
-    refuses them. Their next sign-in is refused. Without assignment required, removing them from
-    every group only leaves them signed in with no roles; to block sign-in, disable or remove them
-    in People. Restore the assignment afterwards.
+7. Sign in as an assigned person. They land in the workspace.
+8. In the Groups screen, their Entra groups are listed with source `idp`.
+9. Remove the test person from the app assignment in Entra, with assignment required, so Entra
+   refuses them. Their next sign-in is refused. Without assignment required, removing them from
+   every group only leaves them signed in with no roles; to block sign-in, disable or remove them
+   in People. Restore the assignment afterwards.
 
 ## When the claim goes missing
 

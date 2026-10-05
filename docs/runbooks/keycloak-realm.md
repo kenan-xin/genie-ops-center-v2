@@ -150,8 +150,11 @@ Planned. In managed mode, `genie-ops setup` creates the realm and everything in 
 5. Run setup with that credential in the environment of the command only.
 
    ```sh
-   docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD='...' app genie-ops setup
+   read -rs KEYCLOAK_BOOTSTRAP_PASSWORD && export KEYCLOAK_BOOTSTRAP_PASSWORD
+   docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD app genie-ops setup
    ```
+
+   `read -rs` puts the password into your shell's environment without typing it on the command line, so it is not in the command's arguments and not in your shell history; `-e KEYCLOAK_BOOTSTRAP_PASSWORD` passes the name, not the value.
 
 6. Make sure that the two bootstrap variables are absent from `.env` afterwards (`DEC-37`).
 
@@ -214,7 +217,7 @@ Deferred. `genie-ops idp set` accepts only `oidc` and `saml`, and refuses any ot
 
 ### Repairing the flow values
 
-The `realm` step sets the redirector's default alias and turns off the profile review when it creates a realm, and it sets them again on a realm that already exists. Both writes are idempotent, so a realm that missed them — created before the step set them, or left half-written by a Keycloak restart between the create and the writes — gets them on the next `genie-ops setup` run. Run setup again and it lands them; there is no manual step. If a rerun still leaves sign-in on the realm's own form, check that the realm's `realm` step is `done` and that `KEYCLOAK_BOOTSTRAP_USER` and `KEYCLOAK_BOOTSTRAP_PASSWORD` were passed for that run, because the flow write needs the bootstrap credential.
+The `realm` step sets the redirector's default alias and turns off the profile review when it creates a realm, and it sets them again on a realm that already exists. Both writes are idempotent, so a rerun of a `realm` step that is not `done` — for example after a Keycloak restart between the create and the writes — repairs them. There is no manual step. If a rerun still leaves sign-in on the realm's own form, check that the realm's `realm` step is `done` and that `KEYCLOAK_BOOTSTRAP_USER` and `KEYCLOAK_BOOTSTRAP_PASSWORD` were passed for that run, because the flow write needs the bootstrap credential.
 
 ### What the customer configures on their side
 

@@ -29,15 +29,18 @@ the note at the end.
 5. Run the command.
 
    ```sh
-   docker compose exec -e IDP_CLIENT_SECRET='<the secret>' app \
+   read -rs IDP_CLIENT_SECRET && export IDP_CLIENT_SECRET
+   docker compose exec -e IDP_CLIENT_SECRET app \
      genie-ops idp set \
      --protocol oidc \
      --issuer-url https://id.customer.example \
      --client-id genie-ops-center
    ```
 
-   The client secret is read from `IDP_CLIENT_SECRET` in the environment of that one command, so it
-   never reaches the process arguments, a shell history file, a log, or the audit row.
+   `read -rs` puts the secret into your shell's environment without typing it on the command line,
+   so it is not in the command's arguments and not in your shell history; `-e IDP_CLIENT_SECRET`
+   passes the name, not the value. The command reads it from the environment, and it never reaches
+   a log or the audit row.
 
 ## SAML
 
@@ -73,12 +76,10 @@ the note at the end.
 
 ## Both
 
-7. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
-   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
-8. Open a private browser window at `PUBLIC_URL`, sign in as an assigned person, and make sure the
+7. Open a private browser window at `PUBLIC_URL`, sign in as an assigned person, and make sure the
    browser leaves for the customer's provider. In the Groups screen, their groups are listed with
    source `idp`.
-9. To block sign-in, remove the person's access at the customer's provider with assignment
+8. To block sign-in, remove the person's access at the customer's provider with assignment
    required, or disable or remove them in People. Removing them from every group only leaves them
    signed in with no roles. Restore the assignment afterwards.
 

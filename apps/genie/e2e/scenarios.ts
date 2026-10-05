@@ -106,6 +106,8 @@ export async function provisionScenarioDeployments(
       `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}`,
       "--client-id",
       COMPANY_OIDC_CLIENT_ID,
+      // The stand-in issuer is plain HTTP; the explicit flag keeps it out of a production realm.
+      "--allow-http",
     ],
     // The provider secret travels in the command environment only, never on argv (R-58).
     idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
@@ -124,6 +126,7 @@ export async function provisionScenarioDeployments(
       `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}/protocol/saml/descriptor`,
       "--entity-id",
       "genie-saml",
+      "--allow-http",
     ],
     seedSql: SAML_SEED,
   });

@@ -38,27 +38,27 @@ This guide assumes the realm already exists. If it does not, follow
    the mapper that fills `groups`, and the realm already sends sign-in to it.
 
    ```sh
-   docker compose exec -e IDP_CLIENT_SECRET='<the secret the customer returned>' app \
+   read -rs IDP_CLIENT_SECRET && export IDP_CLIENT_SECRET
+   docker compose exec -e IDP_CLIENT_SECRET app \
      genie-ops idp set \
      --protocol oidc \
      --issuer-url https://id.customer.example/realms/their-realm \
      --client-id genie-ops-center
    ```
 
-   The client secret is not an argument: it is read from `IDP_CLIENT_SECRET` in the environment of
-   that one command, so it never reaches the process arguments, a shell history file, a log, or the
-   audit row. Replace `--issuer-url` with the discovery URL when the customer gives that instead.
-
-7. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
-   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
+   `read -rs` puts the secret into your shell's environment without typing it on the command line,
+   so it is not in the command's arguments and not in your shell history; `-e IDP_CLIENT_SECRET`
+   passes the name, not the value. The command reads it from the environment, and it never reaches
+   a log or the audit row. Replace `--issuer-url` with the discovery URL when the customer gives
+   that instead.
 
 ## Verify
 
-8. Open a private browser window at `PUBLIC_URL`. The browser must leave for the customer's
+7. Open a private browser window at `PUBLIC_URL`. The browser must leave for the customer's
    Keycloak without showing the Genie Ops Center realm's own form.
-9. Sign in as a person the customer assigned to the application. They land in the workspace.
-10. In the Groups screen, the person's directory groups are listed with source `idp`.
-11. Ask the customer to remove the test person from every group. Their directory memberships are
+8. Sign in as a person the customer assigned to the application. They land in the workspace.
+9. In the Groups screen, the person's directory groups are listed with source `idp`.
+10. Ask the customer to remove the test person from every group. Their directory memberships are
     removed at the next sign-in, and they keep no role from them — the person still signs in, with
     nothing. To block sign-in itself, disable or remove them in People, or remove their access at
     the customer's provider so the provider refuses them. Restore the assignment afterwards.

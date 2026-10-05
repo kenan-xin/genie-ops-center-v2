@@ -214,10 +214,6 @@ export async function provisionBrokered(
     `KEYCLOAK_REALM=${spec.realm}`,
     "-e",
     `KEYCLOAK_ADMIN_CLIENT_SECRET=${E2E_ADMIN_CLIENT_SECRET}`,
-    // The stand-in issuer is plain HTTP on `host.docker.internal`, which `idp set` accepts only
-    // in development. This is a test-only deployment, so its runtime mode is development.
-    "-e",
-    "NODE_ENV=development",
     "app",
   ]);
 
