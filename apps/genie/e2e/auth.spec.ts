@@ -159,13 +159,20 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   expect(`${location.origin}${location.pathname}`).toBe(END_SESSION);
   expect(aud).toBe(E2E_CLIENT_ID);
   expect(location.searchParams.get("post_logout_redirect_uri")).toBe(publicUrl);
+  expect(location.searchParams.get("state")).toBe("signed_out");
   expect(sid).toBeDefined();
   expect(await realmSessionIds(E2E_SIGN_IN_REALM, email)).toContain(sid);
 
-  // Keycloak accepts the hint, ends the realm session and returns the browser to PUBLIC_URL.
+  // Keycloak accepts the hint, ends the realm session and returns the browser to PUBLIC_URL with
+  // the state, which lands it on the signed-out sign-in page (R-17a).
   await page.goto(location.toString());
 
-  await expect.poll(() => new URL(page.url()).origin).toBe(publicUrl);
+  await expect
+    .poll(() => page.url(), { timeout: 15_000 })
+    .toBe(`${publicUrl}/sign-in?error=signed_out`);
+  await expect(page.getByTestId("sign-in-banner")).toHaveText(
+    "You are signed out."
+  );
   expect(await realmSessionIds(E2E_SIGN_IN_REALM, email)).not.toContain(sid);
 });
 

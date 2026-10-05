@@ -23,7 +23,9 @@
       "notRegistered": "This account is not registered for this service.",
       "accessDisabled": "Access for this account is disabled.",
       "sessionExpired": "You were signed out after {minutes} minutes of inactivity. Sign in again.",
-      "sessionMissing": "Sign in to continue."
+      "sessionMissing": "Sign in to continue.",
+      "signedOut": "You are signed out.",
+      "signedOutClientOnly": "You are signed out of {productName}. Your company sign-in stays active."
     }
   }
 }

@@ -85,7 +85,8 @@ test("S-C: client-only setup, sign-in, and sign-out that keeps the company sessi
   );
 
   // Sign out. In client-only mode the route deletes only the Ops Center session and sends the
-  // browser to PUBLIC_URL, never to the realm's end_session_endpoint (R-17, ADR 0010).
+  // browser to the signed-out sign-in page, never to the realm's end_session_endpoint (R-17,
+  // R-17a, ADR 0010).
   const response = await page.request.post(`${baseUrl}/api/auth/sign-out`, {
     headers: { origin: new URL(baseUrl).origin },
     maxRedirects: 0,
@@ -96,8 +97,16 @@ test("S-C: client-only setup, sign-in, and sign-out that keeps the company sessi
   const location = new URL(response.headers()["location"] ?? "");
 
   expect(location.origin).toBe(new URL(baseUrl).origin);
-  expect(location.pathname).toBe("/");
+  expect(`${location.pathname}${location.search}`).toBe(
+    "/sign-in?error=signed_out"
+  );
   expect(location.href).not.toContain("end_session");
+
+  // The signed-out banner says the company sign-in stays active (R-17a, client-only copy).
+  await page.goto(location.toString());
+  await expect(page.getByTestId("sign-in-banner")).toHaveText(
+    "You are signed out of Client Only Ops. Your company sign-in stays active."
+  );
 
   // The Ops Center session row is gone, but the company realm session is not: it serves the
   // customer's other applications.

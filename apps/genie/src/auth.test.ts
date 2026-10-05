@@ -146,6 +146,7 @@ describe("the sign-in page cause", () => {
     expect(signInCause("unable_to_link_account")).toBe("not_registered");
     expect(signInCause("break_glass_not_linkable")).toBe("not_registered");
     expect(signInCause("state_mismatch")).toBe("session_missing");
+    expect(signInCause("signed_out")).toBe("signed_out");
     expect(signInCause("<script>")).toBeUndefined();
     expect(signInCause(undefined)).toBeUndefined();
   });
@@ -168,17 +169,17 @@ describe("the sign-out destination", () => {
         providerLogoutUrl: END_SESSION,
         publicUrl: PUBLIC_URL,
       })
-    ).toBe(END_SESSION);
+    ).toBe(`${END_SESSION}?state=signed_out`);
   });
 
-  it("falls back to PUBLIC_URL in managed mode when the realm offered no end-session URL", () => {
+  it("falls back to the signed-out page in managed mode when the realm offered no end-session URL", () => {
     expect(
       signOutDestination({
         realmMode: "managed",
         providerLogoutUrl: undefined,
         publicUrl: PUBLIC_URL,
       })
-    ).toBe(PUBLIC_URL);
+    ).toBe(`${PUBLIC_URL}/sign-in?error=signed_out`);
   });
 
   it("never sends the browser to the realm in client-only mode (ADR 0010)", () => {
@@ -188,6 +189,6 @@ describe("the sign-out destination", () => {
         providerLogoutUrl: END_SESSION,
         publicUrl: PUBLIC_URL,
       })
-    ).toBe(PUBLIC_URL);
+    ).toBe(`${PUBLIC_URL}/sign-in?error=signed_out`);
   });
 });

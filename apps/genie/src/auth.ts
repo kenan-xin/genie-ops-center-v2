@@ -144,7 +144,18 @@ export type SignInCause =
   | "not_registered"
   | "access_disabled"
   | "session_expired"
-  | "session_missing";
+  | "session_missing"
+  | typeof SIGNED_OUT;
+
+/**
+ * The signed-out state of R-17a. The realm returns it as the `state` parameter of its
+ * end-session redirect to `PUBLIC_URL`, the one post-logout address the realm registers, and the
+ * home page forwards it to the sign-in page.
+ */
+export const SIGNED_OUT = "signed_out";
+
+/** The sign-in page in its signed-out state. */
+export const SIGNED_OUT_PATH = `${SIGN_IN_PATH}?error=${SIGNED_OUT}`;
 
 /**
  * The sign-in page state for one `?error=` value. The page's own causes map to themselves, and
@@ -162,6 +173,7 @@ export function signInCause(
     case "access_disabled":
     case "session_expired":
     case "session_missing":
+    case "signed_out":
       return error;
     case "signup_disabled":
     case "account_not_linked":
@@ -191,9 +203,11 @@ export function signInCause(
 
 /**
  * Where sign-out sends the browser (R-17). In managed mode the realm's end-session URL ends the
- * realm session too, and when there is none the browser still lands on `PUBLIC_URL`. In
- * client-only mode the realm session is the company's and serves its other applications, so only
- * the Genie Ops Center session ends and the browser goes to `PUBLIC_URL`.
+ * realm session too, and carries `state=signed_out`, which the realm hands back on its redirect
+ * to `PUBLIC_URL`. When there is no end-session URL the browser goes straight to the signed-out
+ * sign-in page. In client-only mode the realm session is the company's and serves its other
+ * applications, so only the Genie Ops Center session ends and the browser goes to the same page
+ * (R-17a).
  */
 export function signOutDestination(input: {
   readonly realmMode: "managed" | "customer";
@@ -201,8 +215,12 @@ export function signOutDestination(input: {
   readonly publicUrl: string;
 }): string {
   if (input.realmMode === "managed" && input.providerLogoutUrl !== undefined) {
-    return input.providerLogoutUrl;
+    const url = new URL(input.providerLogoutUrl);
+
+    url.searchParams.set("state", SIGNED_OUT);
+
+    return url.toString();
   }
 
-  return input.publicUrl;
+  return new URL(SIGNED_OUT_PATH, input.publicUrl).toString();
 }

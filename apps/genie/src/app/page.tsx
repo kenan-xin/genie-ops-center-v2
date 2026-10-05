@@ -2,7 +2,9 @@ import { permittedNavigation } from "@genie/core";
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
+import { redirect } from "next/navigation.js";
 
+import { SIGNED_OUT, SIGNED_OUT_PATH } from "../auth.ts";
 import { requireContext } from "../context.ts";
 import { modules } from "../registry.ts";
 import { requestPrincipal } from "../request-principal.ts";
@@ -21,7 +23,14 @@ export const dynamic = "force-dynamic";
  * Every user-facing string resolves through the catalogue, never a direct JSON
  * import, because R-43 requires the catalogue to be the one path for text.
  */
-export default async function HomePage() {
+export default async function HomePage(props: {
+  readonly searchParams: Promise<{ readonly state?: string }>;
+}) {
+  // The realm's end-session redirect returns to `PUBLIC_URL`, the one post-logout address it
+  // registers, with the `state` sign-out sent; the signed-out sign-in page owns that state (R-17a).
+  if ((await props.searchParams).state === SIGNED_OUT)
+    redirect(SIGNED_OUT_PATH);
+
   const t = await getTranslations("app");
   const { contextId, tenant } = requireContext();
 
