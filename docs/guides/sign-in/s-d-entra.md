@@ -28,18 +28,20 @@ OIDC identity provider.
 5. Run `genie-ops idp set` on the host.
 
    ```sh
-   docker compose exec app genie-ops idp set \
+   docker compose exec -e IDP_CLIENT_SECRET='<the secret>' app \
+     genie-ops idp set \
      --protocol oidc \
      --issuer-url https://login.microsoftonline.com/<tenant-id>/v2.0 \
-     --client-id '<application id>' \
-     --client-secret '<the secret>'
+     --client-id '<application id>'
    ```
 
    Replace `--issuer-url` with the discovery URL when the customer gives that instead. The client
-   secret is never written to a file, a log, or the audit row.
+   secret is not an argument: it is read from `IDP_CLIENT_SECRET` in the environment of that one
+   command, so it never reaches the process arguments, a shell history file, a log, or the audit
+   row.
 
-6. If the deployment predates the brokered realm's redirector default, add it once by hand, as
-   [the realm runbook](../../runbooks/keycloak-realm.md) describes.
+6. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
+   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
 
 ## Verify
 
@@ -47,8 +49,10 @@ OIDC identity provider.
    Genie Ops Center realm's own form.
 8. Sign in as an assigned person. They land in the workspace.
 9. In the Groups screen, their Entra groups are listed with source `idp`.
-10. Remove the test person from the app assignment. Their next sign-in is refused. Restore it
-    afterwards.
+10. Remove the test person from the app assignment in Entra, with assignment required, so Entra
+    refuses them. Their next sign-in is refused. Without assignment required, removing them from
+    every group only leaves them signed in with no roles; to block sign-in, disable or remove them
+    in People. Restore the assignment afterwards.
 
 ## When the claim goes missing
 

@@ -65,6 +65,8 @@ export type BrokeredSpec = {
   readonly keycloakIssuer: string;
   /** The `idp set` arguments after the command, for example `["--protocol","oidc",...]`. */
   readonly idpArgs: readonly string[];
+  /** Extra environment for the `idp set` command only, for example the provider secret. */
+  readonly idpEnv?: Readonly<Record<string, string>>;
   /** The SQL against the new database, run after setup and `idp set`. */
   readonly seedSql: string;
 };
@@ -212,6 +214,10 @@ export async function provisionBrokered(
     `KEYCLOAK_REALM=${spec.realm}`,
     "-e",
     `KEYCLOAK_ADMIN_CLIENT_SECRET=${E2E_ADMIN_CLIENT_SECRET}`,
+    // The stand-in issuer is plain HTTP on `host.docker.internal`, which `idp set` accepts only
+    // in development. This is a test-only deployment, so its runtime mode is development.
+    "-e",
+    "NODE_ENV=development",
     "app",
   ]);
 
@@ -234,8 +240,14 @@ export async function provisionBrokered(
     files.brandingSeed,
   ]);
 
+  const idpEnv = Object.entries(spec.idpEnv ?? {}).flatMap(([name, value]) => [
+    "-e",
+    `${name}=${value}`,
+  ]);
+
   await run("docker", [
     "exec",
+    ...idpEnv,
     container,
     "genie-ops",
     "idp",

@@ -1,6 +1,5 @@
 import {
   addClientProtocolMapper,
-  addIdentityProviderMapper,
   COMPANY_OIDC_CLIENT_ID,
   COMPANY_OIDC_CLIENT_SECRET,
   COMPANY_REALM,
@@ -107,9 +106,9 @@ export async function provisionScenarioDeployments(
       `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}`,
       "--client-id",
       COMPANY_OIDC_CLIENT_ID,
-      "--client-secret",
-      COMPANY_OIDC_CLIENT_SECRET,
     ],
+    // The provider secret travels in the command environment only, never on argv (R-58).
+    idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
     seedSql: OIDC_SEED,
   });
 
@@ -142,10 +141,9 @@ export async function provisionScenarioDeployments(
     redirectUris: [samlAcs],
   });
 
-  // A real SAML provider sends the person's email and name. The stand-in's SAML client emits only
-  // groups, so add property mappers for email and name on the company client and the matching
-  // Attribute Importer mappers on the tenant identity provider. Without an email the tenant
-  // realm's first-broker-login cannot create the person.
+  // A real SAML provider sends the person's email and name, so the stand-in's SAML client emits
+  // them as attributes. `idp set --protocol saml` writes the matching Attribute Importer mappers
+  // on the tenant provider, so this test proves the shipped command and no test-only mapper.
   for (const attribute of ["email", "firstName", "lastName"]) {
     // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
     await addClientProtocolMapper(COMPANY_REALM, "genie-saml", {
@@ -156,18 +154,6 @@ export async function provisionScenarioDeployments(
         "user.attribute": attribute,
         "attribute.name": attribute,
         "attribute.nameformat": "Basic",
-      },
-    });
-
-    // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
-    await addIdentityProviderMapper(SAML_REALM, BROKER_IDP_ALIAS, {
-      name: attribute,
-      identityProviderAlias: BROKER_IDP_ALIAS,
-      identityProviderMapper: "saml-user-attribute-idp-mapper",
-      config: {
-        "syncMode": "FORCE",
-        "attribute.name": attribute,
-        "user.attribute": attribute,
       },
     });
   }
@@ -190,6 +176,7 @@ async function seedCompanyPeople(): Promise<void> {
       groups: (project) => [preMappedGroupD(project), ...MANY_GROUPS],
     },
     { scenario: "s-d", state: "offboard", groups: () => [MAPPED_GROUP] },
+    { scenario: "s-d", state: "refused", groups: () => [UNMAPPED_GROUP] },
     { scenario: "s-e", state: "admitted", groups: () => [MAPPED_GROUP] },
     { scenario: "s-e", state: "refused", groups: () => [UNMAPPED_GROUP] },
     {

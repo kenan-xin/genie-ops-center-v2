@@ -29,12 +29,15 @@ the note at the end.
 5. Run the command.
 
    ```sh
-   docker compose exec app genie-ops idp set \
+   docker compose exec -e IDP_CLIENT_SECRET='<the secret>' app \
+     genie-ops idp set \
      --protocol oidc \
      --issuer-url https://id.customer.example \
-     --client-id genie-ops-center \
-     --client-secret '<the secret>'
+     --client-id genie-ops-center
    ```
+
+   The client secret is read from `IDP_CLIENT_SECRET` in the environment of that one command, so it
+   never reaches the process arguments, a shell history file, a log, or the audit row.
 
 ## SAML
 
@@ -45,30 +48,39 @@ the note at the end.
 2. Note the service-provider entity ID the customer's provider expects for Genie Ops Center; give
    that value to the operator.
 3. Emit the groups attribute (usually `groups`) with the groups assigned to this application only.
-4. Return the metadata URL and the attribute name.
+4. Emit an email attribute and name attributes for the person, and tell the operator their names.
+   A SAML assertion carries no email unless the provider sends one, and Genie Ops Center refuses a
+   token with no email, so the sign-in fails without it. Common names are `email`, `firstName` and
+   `lastName`.
+5. Return the metadata URL, the group attribute name, and the email and name attribute names.
 
 ### The operator's side
 
-5. Run the command.
+6. Run the command. `idp set` writes an Attribute Importer for each named attribute; the defaults
+   are `email`, `firstName` and `lastName`.
 
    ```sh
    docker compose exec app genie-ops idp set \
      --protocol saml \
      --metadata-url https://id.customer.example/metadata \
-     --entity-id genie-ops-center
+     --entity-id genie-ops-center \
+     --email-attribute mail \
+     --first-name-attribute givenName \
+     --last-name-attribute sn
    ```
 
    The provider's metadata must resolve for Keycloak, not for your own machine.
 
 ## Both
 
-6. If the deployment predates the brokered realm's redirector default, add it once by hand, as
-   [the realm runbook](../../runbooks/keycloak-realm.md) describes.
-7. Open a private browser window at `PUBLIC_URL`, sign in as an assigned person, and make sure the
+7. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
+   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
+8. Open a private browser window at `PUBLIC_URL`, sign in as an assigned person, and make sure the
    browser leaves for the customer's provider. In the Groups screen, their groups are listed with
    source `idp`.
-8. Remove the test person from the application assignment and make sure their next sign-in is
-   refused. Restore the assignment afterwards.
+9. To block sign-in, remove the person's access at the customer's provider with assignment
+   required, or disable or remove them in People. Removing them from every group only leaves them
+   signed in with no roles. Restore the assignment afterwards.
 
 ## LDAP
 

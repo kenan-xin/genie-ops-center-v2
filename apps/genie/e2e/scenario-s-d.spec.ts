@@ -86,3 +86,23 @@ test("S-D: removing every group offboards at the next sign-in", async ({
 
   expect(await memberCount()).toEqual(["0"]);
 });
+
+test("S-D: jit refuses a person without a mapped group", async ({
+  page,
+}, testInfo) => {
+  const email = scenarioEmail("s-d", "refused", testInfo.project.name);
+
+  await signInThroughBroker(page, {
+    baseUrl: brokeredBaseUrl(),
+    email,
+    landing: "/sign-in",
+  });
+
+  expect(new URL(page.url()).searchParams.get("error")).toBe("not_registered");
+  expect(
+    await queryBrokerDatabase(
+      BROKER_DB,
+      `select id from "user" where email = '${email}'`
+    )
+  ).toEqual([]);
+});

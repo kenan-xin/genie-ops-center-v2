@@ -38,18 +38,19 @@ This guide assumes the realm already exists. If it does not, follow
    the mapper that fills `groups`, and the realm already sends sign-in to it.
 
    ```sh
-   docker compose exec app genie-ops idp set \
+   docker compose exec -e IDP_CLIENT_SECRET='<the secret the customer returned>' app \
+     genie-ops idp set \
      --protocol oidc \
      --issuer-url https://id.customer.example/realms/their-realm \
-     --client-id genie-ops-center \
-     --client-secret '<the secret the customer returned>'
+     --client-id genie-ops-center
    ```
 
-   The client secret travels only into the realm. It is never written to a file, a log, or the
+   The client secret is not an argument: it is read from `IDP_CLIENT_SECRET` in the environment of
+   that one command, so it never reaches the process arguments, a shell history file, a log, or the
    audit row. Replace `--issuer-url` with the discovery URL when the customer gives that instead.
 
-7. If the deployment predates the brokered realm's redirector default, add it once by hand, as
-   [the realm runbook](../../runbooks/keycloak-realm.md) describes.
+7. If the deployment predates the brokered realm's flow values, run `genie-ops setup` again: the
+   `realm` step repairs the redirector default and the profile-review setting on an existing realm.
 
 ## Verify
 
@@ -57,8 +58,10 @@ This guide assumes the realm already exists. If it does not, follow
    Keycloak without showing the Genie Ops Center realm's own form.
 9. Sign in as a person the customer assigned to the application. They land in the workspace.
 10. In the Groups screen, the person's directory groups are listed with source `idp`.
-11. Ask the customer to remove the test person from the application assignment. Their next sign-in
-    is refused. Restore the assignment afterwards.
+11. Ask the customer to remove the test person from every group. Their directory memberships are
+    removed at the next sign-in, and they keep no role from them — the person still signs in, with
+    nothing. To block sign-in itself, disable or remove them in People, or remove their access at
+    the customer's provider so the provider refuses them. Restore the assignment afterwards.
 
 If the sign-in completes but the groups are missing, inspect the token: the `groups` claim must
 arrive as a list of plain names, and a missing claim with the `genie_groups` marker means the
