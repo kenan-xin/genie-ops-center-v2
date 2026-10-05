@@ -1139,6 +1139,18 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
         returnHeaders: true,
       });
 
+      // R-44: a sign-out is audited like the sign-in it ends.
+      const tenant = input.tenant?.();
+
+      if (current !== null && tenant !== undefined) {
+        await writeAuthAuditEvent(tenant, {
+          action: "auth:sign_out",
+          actorUserId: current.user.id,
+          targetUserId: current.user.id,
+          summary: "Signed out",
+        });
+      }
+
       const providerLogoutUrl =
         idToken === undefined || endSessionEndpoint === undefined
           ? undefined

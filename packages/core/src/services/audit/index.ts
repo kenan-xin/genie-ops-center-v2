@@ -56,6 +56,7 @@ export async function writeAuthAuditEvent(
     readonly action:
       | "auth:sign_in"
       | "auth:sign_in_refused"
+      | "auth:sign_out"
       | "auth:groups_claim_absent"
       | "auth:rate_limited"
       | "auth:break_glass_sign_in"

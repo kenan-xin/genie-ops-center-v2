@@ -428,6 +428,104 @@ describe("the groups router against a real database", () => {
     expect(await auditActions()).toContain("core:local_group_deleted");
   });
 
+  it("AC-7 R-24a R-24b: reports a directory group stale on read once a later sign-in no longer lists it", async () => {
+    const actor = await insertManager();
+    const suffix = Date.now();
+    const member = await insertUser(deployment.context);
+
+    await syncGroupMemberships(deployment.context, member, [
+      `Dropped-${suffix}`,
+    ]);
+
+    const [dropped] = await deployment.context.db
+      .select({ id: group.id })
+      .from(group)
+      .where(eq(group.externalId, `Dropped-${suffix}`));
+
+    // The provider stopped sending the group: its last sighting is older than a later sign-in.
+    await deployment.context.db
+      .update(group)
+      .set({ lastSeenAt: new Date(Date.now() - 86_400_000) })
+      .where(eq(group.id, dropped!.id));
+    await syncGroupMemberships(deployment.context, member, [
+      `Current-${suffix}`,
+    ]);
+
+    const unseen = await groupsCaller(actor).addDirectoryGroup({
+      externalId: `Unseen-${suffix}`,
+    });
+
+    const listed = await groupsCaller(actor).list({ includeArchived: false });
+
+    const staleOf = (externalId: string) =>
+      listed.find((entry) => entry.externalId === externalId)?.stale;
+
+    // Computed on read from `last_seen_at`: no flag was written, only the sighting moved.
+    expect(staleOf(`Dropped-${suffix}`)).toBe(true);
+    expect(
+      (await groupsCaller(actor).get({ groupId: dropped!.id })).stale
+    ).toBe(true);
+    // A group no sign-in has listed is "Not seen yet", never stale.
+    expect(staleOf(`Unseen-${suffix}`)).toBe(false);
+    expect((await groupsCaller(actor).get({ groupId: unseen.id })).stale).toBe(
+      false
+    );
+    // A group the latest sign-in just listed is not stale, and a sign-in that lists the dropped
+    // group again clears it on the next read.
+    expect(staleOf(`Current-${suffix}`)).toBe(false);
+
+    await syncGroupMemberships(deployment.context, member, [
+      `Dropped-${suffix}`,
+      `Current-${suffix}`,
+    ]);
+
+    expect(
+      (await groupsCaller(actor).get({ groupId: dropped!.id })).stale
+    ).toBe(false);
+  });
+
+  it("AC-9 R-39: the break-glass account is absent from the Groups and Roles reads even when it holds a membership and an assignment", async () => {
+    const actor = await insertManager();
+    const ordinary = await insertUser(deployment.context);
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    const groupId = await insertGroup(deployment.context, [
+      ordinary,
+      breakGlass,
+    ]);
+
+    const roleId = await insertRole(deployment.context, {
+      name: `Break-glass hidden ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    await deployment.context.db.insert(roleAssignment).values([
+      { roleId, principalType: "user", principalId: ordinary },
+      { roleId, principalType: "user", principalId: breakGlass },
+    ]);
+
+    const detail = await groupsCaller(actor).get({ groupId });
+
+    expect(detail.members.map((member) => member.id)).toEqual([ordinary]);
+    expect(detail.memberCount).toBe(1);
+
+    const listed = await groupsCaller(actor).list({ includeArchived: false });
+
+    expect(listed.find((entry) => entry.id === groupId)?.memberCount).toBe(1);
+
+    const role = await rolesCaller(actor).get({ roleId });
+
+    expect(role.assignments.map((row) => row.principalId)).toEqual([ordinary]);
+    expect(role.assignmentCount).toBe(1);
+
+    const roles = await rolesCaller(actor).list();
+
+    expect(roles.find((entry) => entry.id === roleId)?.assignmentCount).toBe(1);
+  });
+
   it("removes one member and all members, each with its own catalogue action", async () => {
     const actor = await insertManager();
     const one = await insertUser(deployment.context);
@@ -821,6 +919,58 @@ describe("the role-assignment service", () => {
       .where(eq(notification.userId, member));
 
     expect(notifications.some((row) => row.kind === "role-granted")).toBe(true);
+  });
+
+  it("AC-10 R-47: a grant and a revocation each send the role email", async () => {
+    // The role handlers read the company name, which the seed step writes.
+    await deployment.context.db.$client.query(
+      `insert into tenant_branding (company_name, product_name, default_locale, default_time_zone)
+       values ('Example', 'Genie', 'en', 'UTC') on conflict do nothing`
+    );
+
+    const actor = await insertManager();
+    const email = `role-mail-${Date.now()}@example.invalid`;
+    const person = await insertUser(deployment.context, { email });
+
+    const roleId = await insertRole(deployment.context, {
+      name: `Mailed ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    const mailer = deployment.context.mailer;
+    const sent: { templateId: string; to: string }[] = [];
+
+    // SAFETY: the context's mailer member is a fixed object; this test swaps it for a configured
+    // one that records each send, and restores the original in the finally.
+    (deployment.context as { mailer: typeof mailer }).mailer = {
+      ...mailer,
+      provider: "smtp",
+      send: async ({ templateId, to }) => {
+        sent.push({ templateId, to });
+      },
+    };
+
+    try {
+      const { id } = await rolesCaller(actor).assign({
+        roleId,
+        principalType: "user",
+        principalId: person,
+      });
+
+      await removeAssignment({
+        tenant: deployment.context,
+        actorUserId: actor,
+        assignmentId: id,
+      });
+    } finally {
+      // SAFETY: restores the fixed mailer member the test swapped out above.
+      (deployment.context as { mailer: typeof mailer }).mailer = mailer;
+    }
+
+    expect(sent).toEqual([
+      { templateId: "role-granted", to: email },
+      { templateId: "role-removed", to: email },
+    ]);
   });
 
   it("refuses a half scope through the router's schema", async () => {

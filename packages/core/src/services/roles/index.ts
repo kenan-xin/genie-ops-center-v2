@@ -182,7 +182,9 @@ const ROLE_COLUMNS = `
   r.is_system as "isSystem",
   r.module_id as "moduleId",
   r.permissions,
-  (select count(*) from role_assignment a where a.role_id = r.id)::int as "assignmentCount"`;
+  (select count(*) from role_assignment a
+     left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
+     where a.role_id = r.id and coalesce(u.is_break_glass, false) = false)::int as "assignmentCount"`;
 
 /** Every role, system first then by name (the Roles directory). */
 export async function listRoles(
@@ -280,6 +282,8 @@ export async function readRole(
        left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
        left join "group" g on a.principal_type = 'group' and g.id = a.principal_id::uuid
       where a.role_id = $1::uuid
+        -- R-39: the break-glass account appears only in the audit log.
+        and coalesce(u.is_break_glass, false) = false
       order by a.principal_type, lower(coalesce(u.name, g.name))`,
     [roleId]
   );

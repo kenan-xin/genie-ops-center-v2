@@ -7,7 +7,13 @@ import { symmetricDecrypt } from "better-auth/crypto";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { auditEvent, groupMember, notification, user } from "../src/schema.ts";
+import {
+  auditEvent,
+  groupMember,
+  notification,
+  session as sessionTable,
+  user,
+} from "../src/schema.ts";
 import type { AuthMember } from "../src/services/auth/index.ts";
 import {
   accountHooks,
@@ -316,6 +322,120 @@ describe("the Better Auth instance", () => {
     expect(row?.name).toBe("Changed Name");
     expect(row?.status).toBe("active");
     expect(row?.isBreakGlass).toBe(true);
+  });
+});
+
+describe("the stored session address (AC-1, AC-5, R-4a, R-16)", () => {
+  let deployment: DisposableDeployment;
+
+  beforeAll(async () => {
+    deployment = await startDisposableDeployment([], {
+      env: AUTH_ENV,
+      profile: "application",
+    });
+    await seedSettingsRow(deployment);
+  }, 240_000);
+
+  afterAll(async () => {
+    await deployment?.stop();
+  });
+
+  function memberWith(trustedProxies: readonly string[]): AuthMember {
+    return createAuthMember({
+      db: deployment.context.db,
+      publicUrl: PUBLIC_URL,
+      logger: silentLogger(),
+      settings: deployment.context.settings,
+      auth: AUTH_MEMBER,
+      trustedProxies,
+      runtimeMode: "production",
+    });
+  }
+
+  /** Signs in with a forwarded chain and answers the `ip_address` the new session row stored. */
+  async function storedAddress(
+    member: AuthMember,
+    forwardedFor: string
+  ): Promise<string | null> {
+    const email = `address-${randomUUID()}@example.invalid`;
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    const response = await member.handler(
+      new Request(`${PUBLIC_URL}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "origin": PUBLIC_URL,
+          "x-forwarded-for": forwardedFor,
+        },
+        body: JSON.stringify({ email, password: PASSWORD }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+
+    const [row] = await deployment.context.db
+      .select({ ipAddress: sessionTable.ipAddress })
+      .from(sessionTable)
+      .where(eq(sessionTable.userId, userId));
+
+    return row?.ipAddress ?? null;
+  }
+
+  it("AC-1 AC-5 R-4a R-16: stores the client address from X-Forwarded-For past a trusted proxy hop, never the proxy's or a spoofed one", async () => {
+    const member = memberWith(["10.0.0.0/8"]);
+
+    // The proxy appended its own hop; the trusted hop is stripped and the client remains.
+    expect(await storedAddress(member, "203.0.113.7, 10.0.0.2")).toBe(
+      "203.0.113.7"
+    );
+
+    // A client-sent leftmost value is not trusted: the first untrusted hop from the right wins.
+    expect(
+      await storedAddress(member, "198.51.100.9, 203.0.113.7, 10.0.0.2")
+    ).toBe("203.0.113.7");
+  });
+
+  it("AC-10 R-44: sign-out deletes the session row and writes exactly one auth:sign_out row", async () => {
+    // The context's own member, which carries the tenant hooks the audit row comes from.
+    const member = authOf(deployment);
+    const email = `signout-${randomUUID()}@example.invalid`;
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    const signIn = await signInWithPassword(member, email);
+
+    expect(signIn.status).toBe(200);
+
+    await member.signOut({
+      headers: new Headers({ cookie: cookieOf(signIn), origin: PUBLIC_URL }),
+      callbackURL: PUBLIC_URL,
+    });
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(sessionTable)
+        .where(eq(sessionTable.userId, userId))
+    ).toHaveLength(0);
+    expect(
+      await deployment.context.db
+        .select()
+        .from(auditEvent)
+        .where(
+          and(
+            eq(auditEvent.action, "auth:sign_out"),
+            eq(auditEvent.actorUserId, userId)
+          )
+        )
+    ).toHaveLength(1);
   });
 });
 

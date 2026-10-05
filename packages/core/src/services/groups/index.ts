@@ -91,7 +91,8 @@ const GROUP_COLUMNS = `
   g.source,
   g.external_id as "externalId",
   g.display_label as "displayLabel",
-  (select count(*) from group_member m where m.group_id = g.id)::int as "memberCount",
+  (select count(*) from group_member m join "user" u on u.id = m.user_id
+     where m.group_id = g.id and u.is_break_glass = false)::int as "memberCount",
   (select count(*) from role_assignment a
      where a.principal_type = 'group' and a.principal_id = g.id::text)::int as "assignmentCount",
   g.last_seen_at::text as "lastSeenAt",
@@ -173,6 +174,8 @@ export async function readGroup(
        from group_member m
        join "user" u on u.id = m.user_id
       where m.group_id = $1::uuid
+        -- R-39: the break-glass account appears only in the audit log.
+        and u.is_break_glass = false
       order by lower(u.name), lower(u.email)`,
     [groupId]
   );

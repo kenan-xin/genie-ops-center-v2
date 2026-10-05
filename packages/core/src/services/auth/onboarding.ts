@@ -126,7 +126,9 @@ export async function syncGroupMemberships(
       );
     if (claim.length === 0) return;
     const names = [...new Set(claim)];
-    const now = new Date();
+    // The database clock, the one `group_member.synced_at` defaults to: inside this transaction
+    // both read the same instant, so a group this sign-in listed never reads as stale (R-24a).
+    const now = sql`now()`;
     await tx
       .insert(group)
       .values(
