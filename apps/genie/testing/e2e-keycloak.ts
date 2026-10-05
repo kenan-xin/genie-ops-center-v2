@@ -351,7 +351,8 @@ export async function updateRealmClient(
 
 /**
  * Imports one client representation into a realm, as the customer's IT does in client-only mode
- * (R-54a). A 409 means a previous run already imported it.
+ * (R-54a). A 409 means a previous run already imported it, so the existing client is updated with
+ * the current representation; S-C then always tests the shipped file, never a stale one.
  */
 export async function importRealmClient(
   realm: string,
@@ -362,9 +363,35 @@ export async function importRealmClient(
     body: JSON.stringify(client),
   });
 
-  if (!response.ok && response.status !== 409) {
+  if (response.ok) return;
+
+  if (response.status !== 409) {
     throw new Error(
       `Importing client ${String(client.clientId)} into ${realm} failed with ${response.status}: ${await response.text()}`
+    );
+  }
+
+  const found = await admin(
+    `/realms/${realm}/clients?clientId=${encodeURIComponent(String(client.clientId))}`
+  );
+
+  // SAFETY: the admin client search answers a JSON list of client representations; only `id` is read.
+  const [existing] = (await found.json()) as readonly {
+    readonly id?: string;
+  }[];
+
+  if (existing?.id === undefined) {
+    throw new Error(`No realm client ${String(client.clientId)} in ${realm}`);
+  }
+
+  const updated = await admin(`/realms/${realm}/clients/${existing.id}`, {
+    method: "PUT",
+    body: JSON.stringify(client),
+  });
+
+  if (!updated.ok) {
+    throw new Error(
+      `Updating client ${String(client.clientId)} in ${realm} failed with ${updated.status}: ${await updated.text()}`
     );
   }
 }
