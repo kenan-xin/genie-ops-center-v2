@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type SetupStepView, setupSatisfied } from "./index.ts";
+import { type SetupStepView, setupSatisfied, stepSettled } from "./index.ts";
 
 function step(name: string, state: SetupStepView["state"]): SetupStepView {
   return { step: name, state, detail: null };
@@ -37,6 +37,17 @@ describe("the setup gate (R-15, R-54a)", () => {
 
     expect(
       setupSatisfied([step("migrations", "done"), step("seed", "failed")])
+    ).toBe(false);
+  });
+
+  it("treats skipped as settled only for realm and clients (one predicate)", () => {
+    expect(stepSettled("realm", "skipped")).toBe(true);
+    expect(stepSettled("clients", "skipped")).toBe(true);
+    expect(stepSettled("roles", "skipped")).toBe(false);
+
+    // The gate uses the same predicate, so a stray `skipped` row on another step does not open it.
+    expect(
+      setupSatisfied([step("migrations", "done"), step("roles", "skipped")])
     ).toBe(false);
   });
 });

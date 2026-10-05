@@ -452,4 +452,5 @@ export {
   type SetupStepView,
   readSetupProgress,
   setupSatisfied,
+  stepSettled,
 } from "./services/setup/index.ts";

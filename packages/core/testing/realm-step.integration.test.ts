@@ -24,6 +24,10 @@ import {
 import { silentLogger } from "../src/services/logging/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
 import {
+  readSetupProgress,
+  setupSatisfied,
+} from "../src/services/setup/index.ts";
+import {
   CLIENT_FILE_DIRECTORY,
   insertUser,
   OPS_CENTER_CLIENT_FILE,
@@ -1492,5 +1496,99 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
 
     expect(provider.clientId).toBe(renamedClientId);
     expect(provider.requireIdTokenVerification).toBe(true);
+  }, 180000);
+});
+
+describe("the R-54c address repair (R-54c)", () => {
+  it("never moves a settled clients step when the repair cannot run, and the gate stays open", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles();
+    const realm = `repair-managed-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    // A managed stack that finished normally: `clients` is `done` and the address is recorded.
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
+
+    // Simulate a stack whose `clients` step predates the column.
+    await observer.query(
+      "update tenant_settings set keycloak_url_at_setup = null"
+    );
+
+    // The rerun cannot run the repair: no admin secret. Run through `runStep` it would overwrite
+    // the settled row; run outside it, the row must survive and the command must fail.
+    const output: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(
+          source(postgres.url, realm, {
+            KEYCLOAK_ADMIN_CLIENT_SECRET: undefined,
+          })
+        ),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("KEYCLOAK_ADMIN_CLIENT_SECRET");
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
+
+    await expect(
+      observer.query("select keycloak_url_at_setup from tenant_settings")
+    ).resolves.toMatchObject({ rows: [{ keycloak_url_at_setup: null }] });
+
+    // The gate reads the same settled predicate, so the running app keeps serving.
+    const applicationContext = createTenantContext(
+      {
+        DATABASE_URL: postgres.url,
+        PUBLIC_URL: "https://genie.example.invalid",
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        KEYCLOAK_URL: keycloak!.baseUrl,
+        KEYCLOAK_REALM: realm,
+        KEYCLOAK_CLIENT_ID: "genie-ops-center",
+        KEYCLOAK_CLIENT_SECRET: "client-secret-value",
+      },
+      silentLogger(),
+      [],
+      undefined,
+      "application"
+    );
+
+    try {
+      expect(setupSatisfied(await readSetupProgress(applicationContext))).toBe(
+        true
+      );
+    } finally {
+      await applicationContext.db.$client.end();
+    }
   }, 180000);
 });

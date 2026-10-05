@@ -113,12 +113,14 @@ async function stepState(
 }
 
 /**
- * True when a step must not run again. Every step settles as `done`; the `realm` and `clients`
- * steps may also settle as `skipped` in client-only mode, because the customer owns the realm
- * (R-54a). A missing row and a `failed` or `pending` row all run again.
+ * True when a step must not run again, and the one predicate the runner and the setup gate share.
+ * Every step settles as `done`; the `realm` and `clients` steps may also settle as `skipped` in
+ * client-only mode, because the customer owns the realm (R-54a). A missing row and a `failed` or
+ * `pending` row all run again, and a `skipped` row on any other step unsettles the gate, so a stray
+ * row can never open it while the runner still wants to run that step.
  */
-function stepSettled(
-  step: SetupStep,
+export function stepSettled(
+  step: string,
   state: SetupStepState | undefined
 ): boolean {
   if (state === "done") return true;
@@ -173,12 +175,14 @@ export async function readSetupProgress(
 }
 
 /**
- * True when every known step is `done`, or `skipped` where the realm mode allows it (R-15,
- * R-54a). In client-only mode the `realm` and `clients` steps are `skipped` because the customer
- * owns the realm, so a deployment whose steps are all settled is set up either way.
+ * True when every known step is settled: `done`, or `skipped` where the realm mode allows it
+ * (R-15, R-54a). It calls {@link stepSettled}, the runner's own predicate, so the gate and the
+ * runner can never disagree about a step. In client-only mode the `realm` and `clients` steps are
+ * `skipped` because the customer owns the realm, so a deployment whose steps are all settled is
+ * set up either way.
  */
 export function setupSatisfied(steps: readonly SetupStepView[]): boolean {
-  return steps.every(({ state }) => state === "done" || state === "skipped");
+  return steps.every(({ step, state }) => stepSettled(step, state));
 }
 
 /**
@@ -582,23 +586,26 @@ export async function runSetup(
       const state = await stepState(context, step);
 
       // A `done` step never reruns. The `realm` and `clients` steps additionally settle as
-      // `skipped` in client-only mode (R-54a), and the `clients` step reruns once while its
-      // recorded address is still null, so a stack whose steps predate the column gets it
-      // written on its next run (R-54c).
+      // `skipped` in client-only mode (R-54a).
       const settled = stepSettled(step, state);
 
-      let needsAddress = false;
-
-      if (step === "clients") {
-        // oxlint-disable-next-line no-await-in-loop
-        needsAddress = (await keycloakUrlAtSetup(context)) === null;
-      }
-
-      if (!settled || needsAddress) {
+      if (!settled) {
         // oxlint-disable-next-line no-await-in-loop
         await runStep(context, step, () =>
           stepWork(step, context, files, options, log)
         );
+      } else if (step === "clients") {
+        // R-54c repair: a settled `clients` step whose address is still null records it now. It
+        // runs outside `runStep` on purpose, so a failure never moves the settled row (to
+        // `pending` or `failed`); it only fails this command with the step's own named cause, and
+        // the recorded gate keeps the running deployment serving.
+        // oxlint-disable-next-line no-await-in-loop
+        const needsAddress = (await keycloakUrlAtSetup(context)) === null;
+
+        if (needsAddress) {
+          // oxlint-disable-next-line no-await-in-loop
+          await stepWork(step, context, files, options, log);
+        }
       }
 
       // After the seed step, on every run, reconcile realm_mode before any later step acts on it,
