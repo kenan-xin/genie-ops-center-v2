@@ -11,7 +11,10 @@ import {
   loadTenantYaml,
   type SetupConfigFiles,
 } from "../setup/config.ts";
-import { configureDefaultRedirector } from "./broker.ts";
+import {
+  configureDefaultRedirector,
+  configureFirstBrokerLogin,
+} from "./broker.ts";
 import {
   createRealm,
   masterAdminToken,
@@ -198,6 +201,7 @@ export async function realmStep(
   // local-accounts variant has no identity provider and keeps no redirector.
   if (!localAccounts) {
     await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
+    await configureFirstBrokerLogin(target, base.keycloakRealm, accessToken);
   }
 
   await writeRealmSupportsLocalAccounts(context, localAccounts);

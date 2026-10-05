@@ -116,6 +116,7 @@ Keep the access token lifespan short, because nothing in Genie Ops Center reads 
 - No local registration, no forgot-password link, and no realm password policy, because the realm holds no employee password.
 - The User Attribute protocol mapper for `groups`.
 - The browser flow's Identity Provider Redirector has its "Default Identity Provider" set to the fixed alias `company-login`.
+- The first-broker-login flow's "Review Profile" step is off, so a provider that sends no email does not stop the person on a Keycloak review form.
 
 Keycloak. The redirector is the `identity-provider-redirector` execution in the browser flow. Set its "Default Identity Provider" configuration to the provider alias. If Keycloak does not find that alias, it shows the login form instead. The same authenticator processes the `kc_idp_hint` query parameter, and a client can override the default with it.
 

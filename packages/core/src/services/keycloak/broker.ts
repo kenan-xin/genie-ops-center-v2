@@ -1,5 +1,5 @@
 import {
-  browserFlowExecutions,
+  authenticationFlowExecutions,
   createExecutionConfig,
   type KeycloakTarget,
   readAuthenticationConfig,
@@ -36,7 +36,12 @@ export async function configureDefaultRedirector(
   accessToken: string,
   alias: string = BROKER_IDP_ALIAS
 ): Promise<void> {
-  const executions = await browserFlowExecutions(target, realm, accessToken);
+  const executions = await authenticationFlowExecutions(
+    target,
+    realm,
+    accessToken,
+    "browser"
+  );
 
   const redirector = executions.find(
     (execution) => execution.providerId === REDIRECTOR_PROVIDER_ID
@@ -77,6 +82,69 @@ export async function configureDefaultRedirector(
     {
       ...current,
       config: { ...existing, [REDIRECTOR_DEFAULT_PROVIDER]: alias },
+    }
+  );
+}
+
+/** The first-broker-login flow's review-profile execution and its update-policy config key. */
+export const REVIEW_PROFILE_PROVIDER_ID = "idp-review-profile";
+
+export const REVIEW_PROFILE_UPDATE = "update.profile.on.first.login";
+
+/**
+ * Sets the first-broker-login flow to skip the profile review. The identity provider is the source
+ * of truth for a brokered person's profile, so the realm has nothing to review; without this a
+ * provider that sends no email (a plain SAML assertion, for example) stops the person on a Keycloak
+ * review form instead of completing sign-in. Written with the bootstrap credential at realm
+ * creation, like the redirector default.
+ */
+export async function configureFirstBrokerLogin(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string
+): Promise<void> {
+  const executions = await authenticationFlowExecutions(
+    target,
+    realm,
+    accessToken,
+    "first broker login"
+  );
+
+  const review = executions.find(
+    (execution) => execution.providerId === REVIEW_PROFILE_PROVIDER_ID
+  );
+
+  if (review === undefined) return;
+
+  if (review.authenticationConfig === undefined) {
+    await createExecutionConfig(target, realm, accessToken, review.id, {
+      alias: "Review Profile",
+      config: { [REVIEW_PROFILE_UPDATE]: "off" },
+    });
+
+    return;
+  }
+
+  const current = await readAuthenticationConfig(
+    target,
+    realm,
+    accessToken,
+    review.authenticationConfig
+  );
+
+  const existing =
+    current.config !== undefined && isJsonObject(current.config)
+      ? current.config
+      : {};
+
+  await updateAuthenticationConfig(
+    target,
+    realm,
+    accessToken,
+    review.authenticationConfig,
+    {
+      ...current,
+      config: { ...existing, [REVIEW_PROFILE_UPDATE]: "off" },
     }
   );
 }

@@ -324,14 +324,15 @@ export type BrowserFlowExecution = {
   readonly authenticationConfig: string | undefined;
 };
 
-/** Lists the browser flow's executions, where the identity-provider-redirector lives (R-58). */
-export async function browserFlowExecutions(
+/** Lists one authentication flow's executions, for the redirector and the first-broker-login flow. */
+export async function authenticationFlowExecutions(
   target: KeycloakTarget,
   realm: string,
-  accessToken: string
+  accessToken: string,
+  flowAlias: string
 ): Promise<readonly BrowserFlowExecution[]> {
   const response = await target.fetch(
-    `${target.baseUrl}/admin/realms/${realm}/authentication/flows/browser/executions`,
+    `${target.baseUrl}/admin/realms/${realm}/authentication/flows/${encodeURIComponent(flowAlias)}/executions`,
     { headers: { authorization: `Bearer ${accessToken}` } }
   );
 

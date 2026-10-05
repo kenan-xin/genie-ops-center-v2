@@ -151,8 +151,10 @@ async function providerRepresentation(
   );
 
   // The remote IdP identifies this service provider by the entity id; the customer's provider
-  // registers it, and the runbook calls it the reply address.
-  config.entityID = options.entityId ?? "";
+  // registers it, and the runbook calls it the reply address. Keycloak's SAML identity-provider
+  // config keys the service-provider entity id as `entityId` (the remote IdP's own id is
+  // `idpEntityId`, filled by the metadata import).
+  config.entityId = options.entityId ?? "";
 
   return {
     alias: options.alias,

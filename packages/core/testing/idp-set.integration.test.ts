@@ -338,6 +338,30 @@ describe("genie-ops idp set", () => {
       },
     });
 
+    // The realm step also turned off the first-broker-login profile review, so a provider that
+    // sends no email does not stop the person on a Keycloak review form.
+    const executions = await adminJson<
+      readonly {
+        readonly providerId?: string;
+        readonly authenticationConfig?: string;
+      }[]
+    >("/authentication/flows/first%20broker%20login/executions", fixture.realm);
+
+    const review = executions.find(
+      (execution) => execution.providerId === "idp-review-profile"
+    );
+
+    expect(review?.authenticationConfig).toBeDefined();
+
+    const reviewConfig = await adminJson<{
+      readonly config?: Record<string, string>;
+    }>(
+      `/authentication/config/${review?.authenticationConfig ?? ""}`,
+      fixture.realm
+    );
+
+    expect(reviewConfig.config?.["update.profile.on.first.login"]).toBe("off");
+
     // The realm template named the alias as the default redirector at creation; after idp set the
     // same authorization request leaves for the provider.
     const redirect = await authorization(fixture.realm);
@@ -381,7 +405,7 @@ describe("genie-ops idp set", () => {
     );
 
     expect(provider.providerId).toBe("saml");
-    expect(provider.config?.entityID).toBe("genie-saml");
+    expect(provider.config?.entityId).toBe("genie-saml");
     expect(provider.config?.singleSignOnServiceUrl).toContain(
       "/realms/company/"
     );
