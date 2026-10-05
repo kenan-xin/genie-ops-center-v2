@@ -34,7 +34,12 @@ const FIRST_ADMINISTRATOR = "first.admin@example.invalid";
 const SECOND_ADMINISTRATOR = "second.admin@example.invalid";
 
 type SetupFixture = {
-  readonly source: { DATABASE_URL: string; PUBLIC_URL: string };
+  readonly source: {
+    readonly DATABASE_URL: string;
+    readonly PUBLIC_URL: string;
+    readonly KEYCLOAK_URL: string;
+    readonly KEYCLOAK_REALM: string;
+  };
   readonly compiledModules: readonly Module[];
   readonly histories: readonly MigrationHistory[];
   readonly observer: Client;
@@ -100,6 +105,9 @@ async function setupFixture(): Promise<SetupFixture> {
     source: {
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
+      // The `clients` step records this address even when it skips in client-only mode (R-54c).
+      KEYCLOAK_URL: "https://keycloak.example.invalid",
+      KEYCLOAK_REALM: "genie",
     },
     compiledModules: [fixtureModule()],
     histories: [await history("fixture", "select 1;")],
@@ -940,6 +948,7 @@ describe("concurrent setup runs (R-18)", () => {
       people: number;
       memberships: number;
       steps_done: number;
+      steps_skipped: number;
       steps_total: number;
     }>(`
       select
@@ -948,17 +957,20 @@ describe("concurrent setup runs (R-18)", () => {
         (select count(*)::int from "user") as people,
         (select count(*)::int from group_member where source = 'local') as memberships,
         (select count(*)::int from setup_step where state = 'done') as steps_done,
+        (select count(*)::int from setup_step where state = 'skipped') as steps_skipped,
         (select count(*)::int from setup_step) as steps_total
     `);
 
     // The setup lock serializes the two runs: one administrator group, one group assignment, two
-    // administrators, the break-glass person, its local memberships and all seven steps done.
+    // administrators, the break-glass person, its local memberships, and all seven steps settled —
+    // five `done` and the two client-only steps `skipped` (R-54a).
     expect(counts.rows[0]).toEqual({
       groups: 1,
       assignments: 1,
       people: 3,
       memberships: 2,
-      steps_done: 7,
+      steps_done: 5,
+      steps_skipped: 2,
       steps_total: 7,
     });
 
@@ -966,6 +978,10 @@ describe("concurrent setup runs (R-18)", () => {
       "select state from setup_step order by step"
     );
 
-    expect(statuses.rows.every(({ state }) => state === "done")).toBe(true);
+    expect(
+      statuses.rows.every(
+        ({ state }) => state === "done" || state === "skipped"
+      )
+    ).toBe(true);
   }, 120000);
 });

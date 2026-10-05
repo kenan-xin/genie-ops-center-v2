@@ -130,21 +130,26 @@ async function writeRealmSupportsLocalAccounts(
  * credential is read for this step only and is refused before any network call when absent
  * (DEC-37). The built representation holds secrets and is never logged.
  *
- * In customer mode the realm is S2-15's work; this step records nothing and does no work there
- * (the `skipped` state lands with S2-15).
+ * In client-only mode (`realm: customer`) the customer owns the realm, so this step reads no
+ * bootstrap credential, does no work, and answers `skipped` (R-54a); the `clients` step records
+ * the address instead (R-54c).
  */
 export async function realmStep(
   context: TenantContext,
   files: SetupConfigFiles,
   options: RealmStepOptions
-): Promise<void> {
+): Promise<"skipped" | undefined> {
   const tenant = await loadTenantYaml(files.tenantConfig);
   const branding = await loadBrandingSeed(files.brandingSeed);
 
   const [settings] = await context.db.select().from(tenantSettings).limit(1);
 
   if ((settings?.realmMode ?? "managed") === "customer") {
-    return;
+    options.output(
+      "realm step: client-only mode; the customer's realm is used and nothing is created"
+    );
+
+    return "skipped";
   }
 
   const base = readKeycloakBase(options.source);

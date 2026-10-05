@@ -26,7 +26,12 @@ afterEach(async () => {
 });
 
 type SetupFixture = {
-  readonly source: { DATABASE_URL: string; PUBLIC_URL: string };
+  readonly source: {
+    readonly DATABASE_URL: string;
+    readonly PUBLIC_URL: string;
+    readonly KEYCLOAK_URL: string;
+    readonly KEYCLOAK_REALM: string;
+  };
   readonly compiledModules: readonly Module[];
   readonly histories: readonly MigrationHistory[];
   readonly observer: Client;
@@ -79,6 +84,10 @@ async function setupFixture(): Promise<SetupFixture> {
   const source = {
     DATABASE_URL: postgres.url,
     PUBLIC_URL: "https://test.example.invalid",
+    // The `clients` step records this address even when it skips, so client-only mode needs it
+    // (R-54c); no call is made to it in the customer-mode runs.
+    KEYCLOAK_URL: "https://keycloak.example.invalid",
+    KEYCLOAK_REALM: "genie",
   };
 
   const compiledModules = [fixtureModule()];
@@ -257,9 +266,11 @@ describe("genie-ops setup", () => {
       rows: [
         { step: "admin_seed", state: "done" },
         { step: "break_glass", state: "done" },
-        { step: "clients", state: "done" },
+        // Client-only mode: the customer owns the realm, so these two settle as `skipped`
+        // (R-54a) and the `clients` step still records the address (R-54c).
+        { step: "clients", state: "skipped" },
         { step: "migrations", state: "done" },
-        { step: "realm", state: "done" },
+        { step: "realm", state: "skipped" },
         { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],
@@ -271,7 +282,11 @@ describe("genie-ops setup", () => {
        order by step
     `);
 
-    expect(completedSteps.rows.every((row) => row.state === "done")).toBe(true);
+    expect(
+      completedSteps.rows.every(
+        (row) => row.state === "done" || row.state === "skipped"
+      )
+    ).toBe(true);
 
     await expect(
       fixture.observer.query<{ migrations_before_seed: boolean }>(`
@@ -461,17 +476,17 @@ describe("genie-ops setup", () => {
 
     expect(refusedOutput.lines.join("\n")).toContain("realm_mode");
 
-    // The refusal is a reconciliation guard, not a step failure: the two steps stay done and the
-    // recorded realm_mode is unchanged, so the mode was never changed by editing tenant.yaml.
+    // The refusal is a reconciliation guard, not a step failure: the two steps stay skipped and
+    // the recorded realm_mode is unchanged, so the mode was never changed by editing tenant.yaml.
     await expect(
       fixture.observer.query("select step, state from setup_step order by step")
     ).resolves.toMatchObject({
       rows: [
         { step: "admin_seed", state: "done" },
         { step: "break_glass", state: "done" },
-        { step: "clients", state: "done" },
+        { step: "clients", state: "skipped" },
         { step: "migrations", state: "done" },
-        { step: "realm", state: "done" },
+        { step: "realm", state: "skipped" },
         { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],
@@ -615,9 +630,9 @@ describe("genie-ops setup", () => {
       rows: [
         { step: "admin_seed", state: "done" },
         { step: "break_glass", state: "done" },
-        { step: "clients", state: "done" },
+        { step: "clients", state: "skipped" },
         { step: "migrations", state: "done" },
-        { step: "realm", state: "done" },
+        { step: "realm", state: "skipped" },
         { step: "roles", state: "done" },
         { step: "seed", state: "done" },
       ],

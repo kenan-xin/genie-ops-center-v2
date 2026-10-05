@@ -3,7 +3,7 @@ import { createElement } from "react";
 export type NotSetUpPageProps = {
   readonly steps: readonly {
     readonly step: string;
-    readonly state: "pending" | "done" | "failed";
+    readonly state: "pending" | "done" | "failed" | "skipped";
     readonly detail: string | null;
   }[];
 };

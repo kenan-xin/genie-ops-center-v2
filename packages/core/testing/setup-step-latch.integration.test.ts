@@ -63,6 +63,9 @@ describe("the setup gate latch", () => {
       source: {
         DATABASE_URL: postgres.url,
         PUBLIC_URL: "https://test.example.invalid",
+        // The `clients` step records this address even when it skips in client-only mode (R-54c).
+        KEYCLOAK_URL: "https://keycloak.example.invalid",
+        KEYCLOAK_REALM: "genie",
       },
       compiledModules: [],
       histories: [],
@@ -84,11 +87,11 @@ describe("the setup gate latch", () => {
       "select step, state from setup_step order by step"
     );
 
-    const completedSteps = afterFirst.rows
-      .filter(({ state }) => state === "done")
+    const settledSteps = afterFirst.rows
+      .filter(({ state }) => state === "done" || state === "skipped")
       .map(({ step }) => step);
 
-    expect(completedSteps).toEqual([
+    expect(settledSteps).toEqual([
       "admin_seed",
       "break_glass",
       "clients",
@@ -97,6 +100,14 @@ describe("the setup gate latch", () => {
       "roles",
       "seed",
     ]);
+
+    // Client-only mode: the customer owns the realm, so these two settle as `skipped` (R-54a).
+    const firstStates = new Map(
+      afterFirst.rows.map(({ step, state }) => [step, state])
+    );
+
+    expect(firstStates.get("realm")).toBe("skipped");
+    expect(firstStates.get("clients")).toBe("skipped");
 
     await expect(runGenieOps(args, options)).resolves.toBe(0);
 
@@ -108,9 +119,9 @@ describe("the setup gate latch", () => {
       afterRerun.rows.map(({ step, state }) => [step, state])
     );
 
-    for (const step of completedSteps) {
+    for (const step of settledSteps) {
       expect(stateAfterRerun.get(step), `${step} after setup rerun`).toBe(
-        "done"
+        firstStates.get(step)
       );
     }
   }, 120000);

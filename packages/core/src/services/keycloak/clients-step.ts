@@ -55,24 +55,35 @@ function isHealthyAuthorization(
  * carries the expected redirect URI, and an error text that differs from a probe of a client that
  * cannot exist proves `genie-studio` exists.
  *
- * In customer mode the clients check is S2-15's work; this step records nothing and does no work
- * there (the `skipped` state lands with S2-15).
+ * In client-only mode (`realm: customer`) the customer's IT imported the two client files into
+ * their realm, so there is no `genie-admin` to authenticate with and nothing to verify. This step
+ * reads no bootstrap credential and no admin secret, does no network call, records the normalized
+ * address setup used (R-54c, so the address guard sees client-only mode), and answers `skipped`
+ * (R-54a).
  */
 export async function clientsStep(
   context: TenantContext,
   options: ClientsStepOptions
-): Promise<void> {
+): Promise<"skipped" | undefined> {
+  const base = readKeycloakBase(options.source);
+  const normalized = normalizeKeycloakUrl(base.keycloakUrl);
+
   const [settings] = await context.db.select().from(tenantSettings).limit(1);
 
   if ((settings?.realmMode ?? "managed") === "customer") {
-    return;
+    await recordKeycloakUrlAtSetup(context, normalized);
+
+    options.output(
+      `clients step: client-only mode; recorded ${normalized} as the Keycloak address and verified nothing`
+    );
+
+    return "skipped";
   }
 
-  const base = readKeycloakBase(options.source);
   const admin = readAdminClient(options.source);
 
   const target: KeycloakTarget = {
-    baseUrl: normalizeKeycloakUrl(base.keycloakUrl),
+    baseUrl: normalized,
     fetch: globalThis.fetch,
   };
 
@@ -137,12 +148,20 @@ export async function clientsStep(
     );
   }
 
-  await context.db
-    .update(tenantSettings)
-    .set({ keycloakUrlAtSetup: normalizeKeycloakUrl(base.keycloakUrl) })
-    .where(sql`true`);
+  await recordKeycloakUrlAtSetup(context, normalized);
 
   options.output(
     `clients step: verified genie-ops-center, genie-studio and genie-admin in realm "${base.keycloakRealm}"`
   );
+}
+
+/** Writes the normalized address setup used, the one value the R-54c guard compares (R-54c). */
+async function recordKeycloakUrlAtSetup(
+  context: TenantContext,
+  normalizedUrl: string
+): Promise<void> {
+  await context.db
+    .update(tenantSettings)
+    .set({ keycloakUrlAtSetup: normalizedUrl })
+    .where(sql`true`);
 }

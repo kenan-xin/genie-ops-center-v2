@@ -65,8 +65,12 @@ export const SETUP_STEPS = [
 
 type SetupStep = (typeof SETUP_STEPS)[number];
 
-/** The recorded state of a known step. `pending` is both the transient write and the missing row. */
-export type SetupStepState = "pending" | "done" | "failed";
+/**
+ * The recorded state of a known step. `pending` is both the transient write and the missing row.
+ * `skipped` is a settled state only the `realm` and `clients` steps take in client-only mode
+ * (R-54a): the realm and the clients live in the customer's own realm, so setup creates neither.
+ */
+export type SetupStepState = "pending" | "done" | "failed" | "skipped";
 
 /** One known step as the setup gate and the not-set-up page read it (R-14, R-16). */
 export type SetupStepView = {
@@ -75,8 +79,11 @@ export type SetupStepView = {
   readonly detail: string | null;
 };
 
-/** The two states a step settles on; `pending` is the transient one it leaves. */
-type SettledStepState = "done" | "failed";
+/** The states a step settles on; `pending` is the transient one it leaves. */
+type SettledStepState = "done" | "failed" | "skipped";
+
+/** What one step's work answers: it completed, or it is settled as `skipped` (R-54a). */
+type StepOutcome = "done" | "skipped";
 
 /** True once the migration that creates `setup_step` has run. */
 async function setupStepTableExists(context: TenantContext): Promise<boolean> {
@@ -103,6 +110,36 @@ async function stepState(
   );
 
   return result.rows[0]?.state;
+}
+
+/**
+ * True when a step must not run again. Every step settles as `done`; the `realm` and `clients`
+ * steps may also settle as `skipped` in client-only mode, because the customer owns the realm
+ * (R-54a). A missing row and a `failed` or `pending` row all run again.
+ */
+function stepSettled(
+  step: SetupStep,
+  state: SetupStepState | undefined
+): boolean {
+  if (state === "done") return true;
+
+  return (step === "realm" || step === "clients") && state === "skipped";
+}
+
+/**
+ * The address the `clients` step recorded, or null while it has not (R-54c). A stack whose steps
+ * are all settled while the column is null gets it written by its next setup run, so this is the
+ * one read that decides that repair.
+ */
+async function keycloakUrlAtSetup(
+  context: TenantContext
+): Promise<string | null> {
+  const [row] = await context.db
+    .select({ url: tenantSettings.keycloakUrlAtSetup })
+    .from(tenantSettings)
+    .limit(1);
+
+  return row?.url ?? null;
 }
 
 /**
@@ -135,9 +172,13 @@ export async function readSetupProgress(
   });
 }
 
-/** True when every known step is `done`; that is the gate of R-15. */
+/**
+ * True when every known step is `done`, or `skipped` where the realm mode allows it (R-15,
+ * R-54a). In client-only mode the `realm` and `clients` steps are `skipped` because the customer
+ * owns the realm, so a deployment whose steps are all settled is set up either way.
+ */
 export function setupSatisfied(steps: readonly SetupStepView[]): boolean {
-  return steps.every(({ state }) => state === "done");
+  return steps.every(({ state }) => state === "done" || state === "skipped");
 }
 
 /**
@@ -343,34 +384,48 @@ async function stepWork(
   files: SetupConfigFiles,
   options: SetupOptions,
   log: MigrationLog
-): Promise<void> {
+): Promise<StepOutcome> {
   switch (step) {
     case "migrations":
-      return migrationsStep(context, options, log);
+      await migrationsStep(context, options, log);
+
+      return "done";
 
     case "seed":
-      return seedStep(context, files, options);
+      await seedStep(context, files, options);
+
+      return "done";
 
     case "realm":
-      return realmStep(context, files, {
+      return (await realmStep(context, files, {
         source: options.source,
         output: options.output,
-      });
+      })) === "skipped"
+        ? "skipped"
+        : "done";
 
     case "clients":
-      return clientsStep(context, {
+      return (await clientsStep(context, {
         source: options.source,
         output: options.output,
-      });
+      })) === "skipped"
+        ? "skipped"
+        : "done";
 
     case "roles":
-      return rolesStep(context, options.compiledModules);
+      await rolesStep(context, options.compiledModules);
+
+      return "done";
 
     case "admin_seed":
-      return adminSeedStep(context, files);
+      await adminSeedStep(context, files);
+
+      return "done";
 
     case "break_glass":
-      return breakGlassStep(context, files, { output: options.output });
+      await breakGlassStep(context, files, { output: options.output });
+
+      return "done";
   }
 }
 
@@ -390,21 +445,24 @@ async function recordFailure(
 
 /**
  * Runs one step and records its state outside the step's own transaction (R-77, R-18): the row
- * moves to `pending` before the work, to `done` after it, and to `failed` with the cause when it
- * throws, so a later run starts again at that step. The `migrations` step creates `setup_step`,
- * so before that table exists there is no row to write and the command output is the only sink.
+ * moves to `pending` before the work, to `done` (or `skipped`, R-54a) after it, and to `failed`
+ * with the cause when it throws, so a later run starts again at that step. The `migrations` step
+ * creates `setup_step`, so before that table exists there is no row to write and the command
+ * output is the only sink.
  */
 async function runStep(
   context: TenantContext,
   step: SetupStep,
-  work: () => Promise<void>
+  work: () => Promise<StepOutcome>
 ): Promise<void> {
   const rowWritable = await setupStepTableExists(context);
 
   if (rowWritable) await markPending(context, step);
 
+  let outcome: StepOutcome;
+
   try {
-    await work();
+    outcome = await work();
   } catch (caught) {
     // The `migrations` step creates `setup_step` itself, so a fresh database reads the table as
     // absent before the work and present after it. Re-check inside the catch: the failed row
@@ -425,7 +483,7 @@ async function runStep(
     throw caught;
   }
 
-  await writeStep(context, step, "done", null);
+  await writeStep(context, step, outcome, null);
 }
 
 /**
@@ -521,7 +579,22 @@ export async function runSetup(
       // The steps run in their recorded order, each starting only once the one before it is done,
       // so the reads and the step work are sequential on purpose (R-18).
       // oxlint-disable-next-line no-await-in-loop
-      if ((await stepState(context, step)) !== "done") {
+      const state = await stepState(context, step);
+
+      // A `done` step never reruns. The `realm` and `clients` steps additionally settle as
+      // `skipped` in client-only mode (R-54a), and the `clients` step reruns once while its
+      // recorded address is still null, so a stack whose steps predate the column gets it
+      // written on its next run (R-54c).
+      const settled = stepSettled(step, state);
+
+      let needsAddress = false;
+
+      if (step === "clients") {
+        // oxlint-disable-next-line no-await-in-loop
+        needsAddress = (await keycloakUrlAtSetup(context)) === null;
+      }
+
+      if (!settled || needsAddress) {
         // oxlint-disable-next-line no-await-in-loop
         await runStep(context, step, () =>
           stepWork(step, context, files, options, log)
