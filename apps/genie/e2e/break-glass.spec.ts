@@ -12,7 +12,9 @@ import {
 } from "../testing/e2e-keycloak.ts";
 import { imageHostPort } from "../testing/image-ports.ts";
 import { startImage, type RunningImage } from "../testing/image-process.ts";
+import { expectNoAxeViolations } from "./support/axe.ts";
 import { fillAuthenticatorCode, totpCode } from "./support/break-glass.ts";
+import { expectSecurityHeaders } from "./support/headers.ts";
 
 /**
  * The break-glass door at phone and desktop viewports (Spec 2 AC-3, AC-15, R-19 to R-21, R-62 to
@@ -21,6 +23,9 @@ import { fillAuthenticatorCode, totpCode } from "./support/break-glass.ts";
  * manual key the enrollment card shows.
  */
 const NEW_PASSWORD = "BreakGlass1!sw0rd";
+
+/** The bound on a cold disposable image's first request under CPU contention. */
+const COLD_REQUEST_MS = 60_000;
 
 /** Starts a disposable app whose realm is a closed port, and one break-glass credential account. */
 async function startStandaloneBreakGlass(port: number): Promise<{
@@ -70,7 +75,10 @@ test("a limited break-glass session stays limited across navigation (S1, R-30)",
 }, testInfo) => {
   const email = e2eBreakGlassEmail(testInfo.project.name);
 
-  await page.goto("/admin/login");
+  // R-71: the break-glass door carries the Section 0 headers; it passes axe (DEC-21).
+  expectSecurityHeaders(await page.goto("/admin/login"), "/admin/login");
+  await expectNoAxeViolations(page, "/admin/login");
+
   await page.getByLabel("Email").fill(email);
   await page
     .getByLabel("Password", { exact: true })
@@ -79,10 +87,12 @@ test("a limited break-glass session stays limited across navigation (S1, R-30)",
 
   // The door itself is exempt and shows the first unmet step.
   await expect(page.getByLabel("Current password")).toBeVisible();
+  await expectNoAxeViolations(page, "forced password change");
 
-  // Every other route answers the limited-session page.
-  await page.goto("/");
+  // Every other route answers the limited-session page, with the Section 0 headers (R-71).
+  expectSecurityHeaders(await page.goto("/"), "limited-session page");
   await expect(page.getByTestId("limited-session-page")).toBeVisible();
+  await expectNoAxeViolations(page, "limited-session page");
 
   // "Continue setup" is a full navigation back to the door.
   await page.getByRole("link", { name: "Continue setup" }).click();
@@ -118,6 +128,8 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
     .getByTestId("enrollment-manual-key")
     .textContent();
 
+  await expectNoAxeViolations(page, "authenticator enrollment");
+
   expect(manualKey).toBeTruthy();
 
   await fillAuthenticatorCode(page, totpCode(manualKey ?? ""));
@@ -130,6 +142,7 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
     .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
     .toBe("/admin/account");
   await expect(page.getByTestId("limited-session-page")).toHaveCount(0);
+  await expectNoAxeViolations(page, "/admin/account");
 });
 
 test("a rate-limited break-glass sign-in shows the neutral notice and disables its inputs (R-21)", async ({
@@ -184,6 +197,12 @@ test("a rate-limited break-glass sign-in shows the neutral notice and disables i
 test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
   page,
 }, testInfo) => {
+  // The disposable image is cold: its first sign-in loads the auth route and runs the password
+  // hash, which on a two-core CI runner beside the full suite took past 15 seconds (develop run
+  // 37341899682). Health already answered, so the only wait left is that first request; the
+  // budget is the one bound below, inside a test bound that leaves room for the rest.
+  test.setTimeout(180_000);
+
   const port = imageHostPort(3610 + testInfo.workerIndex * 2);
   const stack = await startStandaloneBreakGlass(port);
 
@@ -197,7 +216,7 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
 
     const signedIn = page.waitForResponse(
       (response) => response.url().endsWith("/api/auth/sign-in/email"),
-      { timeout: 15000 }
+      { timeout: COLD_REQUEST_MS }
     );
 
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -206,7 +225,7 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
     expect((await signedIn).status(), await stack.image.logs()).toBe(200);
 
     await expect(page.getByLabel("Current password")).toBeVisible({
-      timeout: 15000,
+      timeout: COLD_REQUEST_MS,
     });
 
     await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);

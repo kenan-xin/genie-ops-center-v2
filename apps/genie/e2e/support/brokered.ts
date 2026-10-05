@@ -49,6 +49,19 @@ export function samlPort(): number {
   return scopedPort(3600);
 }
 
+/** The S2-16 invite-mode broker: its own realm, database and band (client-only uses 3800). */
+export const INVITE_REALM = "genie-invite";
+
+export const INVITE_DB = "genie_broker_invite";
+
+export function invitePort(): number {
+  return scopedPort(3900);
+}
+
+export function inviteBaseUrl(): string {
+  return `http://127.0.0.1:${invitePort()}`;
+}
+
 export function brokeredBaseUrl(): string {
   return `http://127.0.0.1:${brokeredPort()}`;
 }

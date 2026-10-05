@@ -1,3 +1,5 @@
+import { GENIE_ADMINISTRATORS_GROUP } from "@genie/core";
+
 import {
   addClientProtocolMapper,
   COMPANY_OIDC_CLIENT_ID,
@@ -16,6 +18,8 @@ import {
   BROKER_IDP_ALIAS,
   brokeredPort,
   BROKER_REALM,
+  INVITE_REALM,
+  invitePort,
   provisionBrokered,
   SAML_REALM,
   samlPort,
@@ -32,7 +36,32 @@ import {
  * a person or a group row.
  */
 
-export type Scenario = "s-b" | "s-d" | "s-e" | "s-g";
+export type Scenario = "s-b" | "s-d" | "s-e" | "s-g" | "done" | "invite";
+
+/**
+ * The S2-16 done-when groups (AC-20 to AC-24). The admit group is pre-added and mapped to a role
+ * that grants nothing, so it admits a `jit` person and nothing more. The grant group is first
+ * seen at sign-in; the proof maps it to the reader role through the Groups screen.
+ */
+export function doneAdmitGroup(project: string): string {
+  return `S2-16 admit ${project}`;
+}
+
+export function doneGrantGroup(project: string): string {
+  return `S2-16 grant ${project}`;
+}
+
+/** One pre-added active administrator per project, a local member of `Genie Administrators`. */
+function administratorSql(scenario: Scenario): string[] {
+  return E2E_PROJECTS.flatMap((project) => {
+    const email = scenarioEmail(scenario, "admin", project);
+
+    return [
+      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S2-16 Admin ${project}', '${email}', true, 'active') on conflict (email) do nothing`,
+      `insert into group_member (group_id, user_id, source) select g.id, u.id, 'local' from "group" g, "user" u where g.name = '${GENIE_ADMINISTRATORS_GROUP}' and u.email = '${email}' on conflict do nothing`,
+    ];
+  });
+}
 
 /** The mapped directory group the OIDC and SAML broker databases pre-add and assign a role. */
 export const MAPPED_GROUP = "genie-admins";
@@ -82,10 +111,24 @@ function seedSql(preAddedGroups: readonly string[]): string {
   ].join("; ");
 }
 
-const OIDC_SEED = seedSql([
-  ...E2E_PROJECTS.map(preMappedGroupD),
-  ...E2E_PROJECTS.map(preMappedGroupG),
-]);
+const OIDC_SEED = [
+  seedSql([
+    ...E2E_PROJECTS.map(preMappedGroupD),
+    ...E2E_PROJECTS.map(preMappedGroupG),
+  ]),
+  "insert into role (name, permissions, is_system) values ('S2-16 member', array[]::text[], false) on conflict (name) do nothing",
+  ...E2E_PROJECTS.flatMap((project) => [
+    `insert into "group" (name, external_id, source, last_seen_at) values ('${doneAdmitGroup(project)}', '${doneAdmitGroup(project)}', 'idp', null) on conflict do nothing`,
+    `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'group', g.id::text from role r, "group" g where r.name = 'S2-16 member' and g.external_id = '${doneAdmitGroup(project)}' on conflict do nothing`,
+  ]),
+  ...administratorSql("done"),
+].join("; ");
+
+/** The invite-mode broker: the default onboarding mode, and its administrators. */
+const INVITE_SEED = [
+  "update tenant_settings set onboarding_mode = 'invite'",
+  ...administratorSql("invite"),
+].join("; ");
 
 const SAML_SEED = seedSql([]);
 
@@ -129,6 +172,26 @@ export async function provisionScenarioDeployments(
       "--allow-http",
     ],
     seedSql: SAML_SEED,
+  });
+
+  // S2-16: the same OIDC provider behind a realm whose deployment stays in `invite` mode, so the
+  // done-when proofs run in both onboarding modes without changing a shared deployment's mode.
+  await provisionBrokered(compose, {
+    suffix: "invite",
+    realm: INVITE_REALM,
+    hostPort: invitePort(),
+    keycloakIssuer: keycloak.keycloakUrl,
+    idpArgs: [
+      "--protocol",
+      "oidc",
+      "--issuer-url",
+      `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}`,
+      "--client-id",
+      COMPANY_OIDC_CLIENT_ID,
+      "--allow-http",
+    ],
+    idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
+    seedSql: INVITE_SEED,
   });
 
   // The company stand-in's SAML client registers `http://*` as its ACS pattern, which Keycloak's
@@ -188,6 +251,20 @@ async function seedCompanyPeople(): Promise<void> {
       groups: (project) => [preMappedGroupG(project), ...MANY_GROUPS],
     },
     { scenario: "s-g", state: "refused", groups: () => [UNMAPPED_GROUP] },
+    { scenario: "done", state: "admin", groups: () => [] },
+    {
+      scenario: "done",
+      state: "member",
+      groups: (project) => [doneAdmitGroup(project), doneGrantGroup(project)],
+    },
+    {
+      scenario: "done",
+      state: "norole",
+      groups: (project) => [doneAdmitGroup(project)],
+    },
+    { scenario: "invite", state: "admin", groups: () => [] },
+    { scenario: "invite", state: "person", groups: () => [] },
+    { scenario: "invite", state: "unknown", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {

@@ -100,6 +100,9 @@ describe("header coverage on the built application", () => {
     "/probe.txt",
     "/api/trpc/placeholder.read?input=%7B%7D",
     "/api/trpc/does.not.exist?input=%7B%7D",
+    // Spec 2 R-71: the sign-in page in a refusal state and the break-glass door.
+    "/sign-in?error=signed_out",
+    "/admin/login",
   ]) {
     it(`${path} carries all five headers and the deny baseline`, async () => {
       const response = await raw(path);

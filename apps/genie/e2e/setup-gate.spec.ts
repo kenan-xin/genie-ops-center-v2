@@ -3,6 +3,7 @@ import { SETUP_STEPS } from "@genie/core";
 import { expect, test } from "@playwright/test";
 
 import { compose, HOST_PORT } from "./setup-gate/stack.ts";
+import { expectSecurityHeaders } from "./support/headers.ts";
 
 const BASE_URL = `http://127.0.0.1:${HOST_PORT}`;
 
@@ -54,6 +55,12 @@ test("AC-2: three routes switch from not-set-up to normal at phone and desktop s
       await expect(
         page.getByRole("heading", { name: "This deployment is not set up yet" })
       ).toBeVisible();
+
+      // R-71: the not-set-up page carries the Section 0 headers. The viewer route keeps its own
+      // frame policy, which the header integration suite pins.
+      if (path !== "/viewer/placeholder") {
+        expectSecurityHeaders(response, `${viewport.name} ${path} not set up`);
+      }
 
       // Every step the running image knows is listed (R-17b): all seven after Section 2.
       for (const step of SETUP_STEPS) {

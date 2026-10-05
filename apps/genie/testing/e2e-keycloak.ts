@@ -74,6 +74,7 @@ export const E2E_READER_SPECS = [
   "s-a",
   "groups",
   "people",
+  "screens",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -501,6 +502,41 @@ export async function deleteRealmUser(
   if (person === undefined) return;
 
   await admin(`/realms/${realm}/users/${person.id}`, { method: "DELETE" });
+}
+
+/**
+ * Turns a realm user on or off. Off is the stand-in for removing the person from the application
+ * assignment at the provider: the realm refuses their next sign-in before any token is issued.
+ */
+export async function setRealmUserEnabled(
+  realm: string,
+  email: string,
+  enabled: boolean
+): Promise<void> {
+  const found = await admin(
+    `/realms/${realm}/users?exact=true&email=${encodeURIComponent(email)}`
+  );
+
+  // SAFETY: the admin user search answers a JSON list of user representations.
+  const [person] = (await found.json()) as readonly JsonObject[];
+
+  if (person === undefined)
+    throw new Error(`No realm user ${email} in ${realm}`);
+
+  // The whole representation goes back, so the user profile keeps every attribute it validates.
+  const response = await admin(
+    `/realms/${realm}/users/${String(person["id"])}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ ...person, enabled }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Setting ${email} enabled=${enabled} in ${realm} failed with ${response.status}`
+    );
+  }
 }
 
 /** Creates a realm user with a password and a verified email. */
