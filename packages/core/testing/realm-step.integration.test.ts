@@ -1,28 +1,36 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentSource } from "../src/lib/environment/index.ts";
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { auditEvent, groupMember } from "../src/schema.ts";
+import { keycloakProviderConfig } from "../src/services/auth/config.ts";
 import {
   syncGroupMemberships,
   validateOAuthUser,
 } from "../src/services/auth/onboarding.ts";
+import { checkKeycloakAddress } from "../src/services/keycloak/address-guard.ts";
 import { masterAdminToken } from "../src/services/keycloak/client.ts";
 import {
   isJsonObject,
   type JsonObject,
   type JsonValue,
 } from "../src/services/keycloak/representation.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
 import {
+  CLIENT_FILE_DIRECTORY,
   insertUser,
+  OPS_CENTER_CLIENT_FILE,
+  renderClientFile,
   startDisposableDeployment,
   startDisposablePostgres,
+  STUDIO_CLIENT_FILE,
 } from "./index.ts";
 import {
   KEYCLOAK_BOOTSTRAP_PASSWORD,
@@ -1021,5 +1029,403 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(output.join("\n")).toContain("KEYCLOAK_BOOTSTRAP_USER");
     expect(output.join("\n")).not.toContain("ECONNREFUSED");
     expect(output.join("\n")).not.toContain("fetch failed");
+  }, 180000);
+});
+
+/** Creates a realm and imports client representations, as the customer's IT would (R-54a). */
+async function createRealmWithClients(
+  realm: string,
+  clients: readonly JsonObject[]
+): Promise<void> {
+  const token = await masterToken();
+
+  const created = await globalThis.fetch(`${keycloak!.baseUrl}/admin/realms`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ realm, enabled: true, sslRequired: "none" }),
+  });
+
+  if (!created.ok && created.status !== 409) {
+    throw new Error(`creating realm ${realm} failed with ${created.status}`);
+  }
+
+  for (const client of clients) {
+    // oxlint-disable-next-line no-await-in-loop -- each client is its own admin call.
+    const imported = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/clients`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(client),
+      }
+    );
+
+    if (!imported.ok) {
+      // oxlint-disable-next-line no-await-in-loop -- reading the failure body belongs to this call.
+      const detail = await imported.text();
+
+      throw new Error(
+        `importing client ${String(client.clientId)} into ${realm} failed with ${imported.status}: ${detail}`
+      );
+    }
+  }
+}
+
+/** Renders one shipped client file for a deployment URL. */
+function renderShipped(file: string, deploymentUrl: string) {
+  // `import.meta.dirname` is `packages/core/testing`; three levels up is the repository root,
+  // where `deploy/keycloak/` lives.
+  const folder = resolve(
+    import.meta.dirname,
+    "../../..",
+    CLIENT_FILE_DIRECTORY
+  );
+
+  return renderClientFile(resolve(folder, file), deploymentUrl);
+}
+
+/** Turns direct grants on for one client, so a test can inspect an ID token. */
+async function enableDirectGrants(
+  realm: string,
+  clientId: string
+): Promise<void> {
+  const token = await masterToken();
+  const client = clientBy(await adminClients(realm), clientId);
+
+  if (client === undefined)
+    throw new Error(`realm ${realm} has no ${clientId}`);
+
+  const updated = await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...client, directAccessGrantsEnabled: true }),
+    }
+  );
+
+  if (!updated.ok) {
+    throw new Error(`enabling direct grants on ${clientId} failed`);
+  }
+}
+
+/** The `aud` claim of an ID token minted by a direct grant, as a list of client ids. */
+async function idTokenAudiences(input: {
+  readonly realm: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly email: string;
+  readonly password: string;
+}): Promise<readonly string[]> {
+  const response = await globalThis.fetch(
+    `${keycloak!.baseUrl}/realms/${input.realm}/protocol/openid-connect/token`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "password",
+        client_id: input.clientId,
+        client_secret: input.clientSecret,
+        username: input.email,
+        password: input.password,
+        scope: "openid",
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `direct grant for ${input.email} failed with ${response.status}: ${await response.text()}`
+    );
+  }
+
+  // SAFETY: the token endpoint returned a JWT with a JSON claim set.
+  const body = (await response.json()) as { readonly id_token?: string };
+
+  if (body.id_token === undefined) throw new Error("no ID token in the answer");
+
+  // SAFETY: JSON.parse returns a JSON value from the JWT claim set.
+  const claims = JSON.parse(
+    Buffer.from(body.id_token.split(".")[1]!, "base64url").toString("utf8")
+  ) as JsonValue;
+
+  if (!isJsonObject(claims))
+    throw new Error("ID token claims are not an object");
+
+  const aud = claims.aud;
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a JWT `aud` is a string or a string list.
+  if (typeof aud === "string") return [aud];
+
+  return Array.isArray(aud)
+    ? // oxlint-disable-next-line anti-slop/no-runtime-typeof -- each list entry is a string or not.
+      aud.filter((value): value is string => typeof value === "string")
+    : [];
+}
+
+describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
+  it("skips the realm and clients steps, reads no bootstrap credential, records the address, and lets the guard see client-only mode", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles({ realm: "customer" });
+    const realm = `client-only-${process.pid}-${Date.now()}`;
+    const deploymentUrl = "https://genie.example.invalid";
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    // The customer's IT creates the realm and imports the two shipped client files.
+    await createRealmWithClients(realm, [
+      await renderShipped(OPS_CENTER_CLIENT_FILE, deploymentUrl),
+      await renderShipped(STUDIO_CLIENT_FILE, deploymentUrl),
+    ]);
+
+    const output: string[] = [];
+
+    // No bootstrap credential and no admin client secret at all: client-only mode reads neither.
+    const env: EnvironmentSource = {
+      DATABASE_URL: postgres.url,
+      PUBLIC_URL: deploymentUrl,
+      KEYCLOAK_URL: keycloak!.baseUrl,
+      KEYCLOAK_REALM: realm,
+      KEYCLOAK_CLIENT_SECRET: "client-secret-value",
+    };
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(env),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.toBe(0);
+
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "skipped" },
+        { step: "realm", state: "skipped" },
+      ],
+    });
+
+    // R-54c: the skipped clients step still records the normalized address setup used.
+    await expect(
+      observer.query(
+        "select realm_mode, keycloak_url_at_setup, realm_supports_local_accounts from tenant_settings"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          realm_mode: "customer",
+          keycloak_url_at_setup: keycloak!.baseUrl,
+          realm_supports_local_accounts: false,
+        },
+      ],
+    });
+
+    // Setup created no genie-admin client: the customer owns the realm (R-54a).
+    expect(clientBy(await adminClients(realm), "genie-admin")).toBeUndefined();
+
+    // The address the guard reads is now present, so it sees client-only mode and refuses the
+    // bundled Keycloak profile (R-54c).
+    const applicationContext = createTenantContext(
+      {
+        DATABASE_URL: postgres.url,
+        PUBLIC_URL: deploymentUrl,
+        BETTER_AUTH_SECRET: "x".repeat(32),
+        KEYCLOAK_URL: keycloak!.baseUrl,
+        KEYCLOAK_REALM: realm,
+        KEYCLOAK_CLIENT_ID: "genie-ops-center",
+        KEYCLOAK_CLIENT_SECRET: "client-secret-value",
+      },
+      silentLogger(),
+      [],
+      undefined,
+      "application"
+    );
+
+    try {
+      await expect(
+        checkKeycloakAddress({
+          context: applicationContext,
+          source: { STACK_PROFILES: "bundled-keycloak" },
+        })
+      ).resolves.toMatchObject({
+        ok: false,
+        cause: "client_only_bundled_keycloak",
+      });
+    } finally {
+      await applicationContext.db.$client.end();
+    }
+
+    expect(output.join("\n")).not.toContain("KEYCLOAK_BOOTSTRAP");
+  }, 180000);
+
+  it("refuses realm customer together with local_accounts true (R-54a)", async () => {
+    const postgres = await startDisposablePostgres();
+    const files = await configFiles({ realm: "customer", localAccounts: true });
+    const output: string[] = [];
+
+    cleanups.push(() => postgres.stop());
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions({
+          DATABASE_URL: postgres.url,
+          PUBLIC_URL: "https://genie.example.invalid",
+          KEYCLOAK_URL: keycloak!.baseUrl,
+          KEYCLOAK_REALM: `refused-${process.pid}`,
+        }),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("local_accounts");
+  }, 180000);
+
+  it("imports the two shipped client files as working clients with PKCE, the groups mapper and the marker", async () => {
+    const realm = `client-files-${process.pid}-${Date.now()}`;
+    const deploymentUrl = "https://genie.example.invalid";
+
+    const opsCenter = await renderShipped(
+      OPS_CENTER_CLIENT_FILE,
+      deploymentUrl
+    );
+
+    const studio = await renderShipped(STUDIO_CLIENT_FILE, deploymentUrl);
+
+    await createRealmWithClients(realm, [opsCenter, studio]);
+
+    const clients = await adminClients(realm);
+
+    for (const clientId of ["genie-ops-center", "genie-studio"]) {
+      const client = clientBy(clients, clientId);
+
+      expect(stringAttribute(client, "pkce.code.challenge.method")).toBe(
+        "S256"
+      );
+      expect(groupsMapper(client)).toBe("oidc-group-membership-mapper");
+      expect(markerMapper(client)).toMatchObject({
+        protocolMapper: "oidc-hardcoded-claim-mapper",
+        config: { "claim.name": "genie_groups", "claim.value": "true" },
+      });
+    }
+
+    expect(clientBy(clients, "genie-ops-center")?.redirectUris).toEqual([
+      `${deploymentUrl}/api/auth/callback/keycloak`,
+    ]);
+
+    // The public authorization endpoint treats the imported client as a healthy client: the
+    // prompt=none probe with a PKCE challenge redirects to the registered redirect URI with
+    // `error=login_required`. PKCE is required, so the challenge is part of the probe.
+    const probe = await globalThis.fetch(
+      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/auth?` +
+        new URLSearchParams({
+          client_id: "genie-ops-center",
+          redirect_uri: `${deploymentUrl}/api/auth/callback/keycloak`,
+          response_type: "code",
+          scope: "openid",
+          code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+          code_challenge_method: "S256",
+          prompt: "none",
+        }).toString(),
+      { redirect: "manual" }
+    );
+
+    expect(probe.status).toBe(302);
+    // SAFETY: a 302 from the authorization endpoint carries a Location header.
+    const location = probe.headers.get("location") ?? "";
+    expect(
+      location.startsWith(`${deploymentUrl}/api/auth/callback/keycloak`)
+    ).toBe(true);
+    expect(new URL(location).searchParams.get("error")).toBe("login_required");
+  }, 180000);
+
+  it("passes a renamed client id through to the aud check (R-54a, R-54d)", async () => {
+    const realm = `renamed-client-${process.pid}-${Date.now()}`;
+    const deploymentUrl = "https://genie.example.invalid";
+    const renamedClientId = "genie-ops-center-renamed";
+    const clientSecret = "renamed-client-secret-value";
+
+    const opsCenter = await renderShipped(
+      OPS_CENTER_CLIENT_FILE,
+      deploymentUrl
+    );
+
+    await createRealmWithClients(realm, [
+      { ...opsCenter, clientId: renamedClientId, secret: clientSecret },
+    ]);
+    await enableDirectGrants(realm, renamedClientId);
+
+    const email = `renamed-${process.pid}@genie.example.invalid`;
+    const token = await masterToken();
+
+    const created = await globalThis.fetch(
+      `${keycloak!.baseUrl}/admin/realms/${realm}/users`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: email,
+          email,
+          emailVerified: true,
+          firstName: "Renamed",
+          lastName: "Person",
+          enabled: true,
+          requiredActions: [],
+          credentials: [
+            {
+              type: "password",
+              value: "renamed-password-14",
+              temporary: false,
+            },
+          ],
+        }),
+      }
+    );
+
+    expect(created.status).toBe(201);
+
+    // The token the realm mints for the renamed client carries that id in `aud`, which is what
+    // the application's aud check compares against KEYCLOAK_CLIENT_ID (R-54d).
+    expect(
+      await idTokenAudiences({
+        realm,
+        clientId: renamedClientId,
+        clientSecret,
+        email,
+        password: "renamed-password-14",
+      })
+    ).toEqual([renamedClientId]);
+
+    // The app consumes the renamed id from KEYCLOAK_CLIENT_ID and keeps id-token verification on.
+    const provider = keycloakProviderConfig({
+      keycloakUrl: keycloak!.baseUrl,
+      realm,
+      clientId: renamedClientId,
+      clientSecret,
+      publicUrl: deploymentUrl,
+    });
+
+    expect(provider.clientId).toBe(renamedClientId);
+    expect(provider.requireIdTokenVerification).toBe(true);
   }, 180000);
 });
