@@ -138,7 +138,8 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await page
     .getByRole("button", { name: new RegExp(grantGroup) })
     .first()
-    .click();
+    // Keyboard: on the phone table a pointer click can land on the neighboring row.
+    .press("Enter");
 
   const group = page.getByRole("dialog", { name: grantGroup });
 
@@ -336,9 +337,20 @@ test("retained access: a disabled module's grant is ineffective, the mixed role 
 
       await brokeredGenieOps("invite", ["module", "disable", "placeholder"]);
 
-      // The module's keys grant nothing while it is unavailable, on the route and the procedure.
+      // The module's keys grant nothing while it is unavailable: its route and its procedure
+      // answer 403 with the module-disabled refusal of Section 1 R-8.
       await expectPlaceholderEntries(page, baseUrl, 0);
-      await placeholderRefused(page, baseUrl);
+
+      const route = await page.goto(`${baseUrl}/placeholder`);
+
+      expect(route?.status()).toBe(403);
+
+      const read = await page.request.get(
+        `${baseUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+      );
+
+      expect(read.status()).toBe(403);
+      expect(await read.text()).toContain("module-disabled");
 
       // The unrelated core key in the same role keeps working (R-33d, CF-MA-10).
       await page.goto(`${baseUrl}/admin/audit`);
