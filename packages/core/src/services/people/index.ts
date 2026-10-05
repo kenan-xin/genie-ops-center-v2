@@ -429,7 +429,7 @@ async function rateLimit(
     },
   });
 
-  throw new AppError(CORE_ERRORS["invalid-input"]);
+  throw new AppError(CORE_ERRORS["rate-limited"]);
 }
 
 /** Records one standalone administration audit row after a committed write (R-41). */
@@ -605,12 +605,21 @@ export async function addPerson(
       realm.secret
     );
 
+    // The administrator vouched for the address, so it is verified: the local-accounts realm has
+    // `verifyEmail` on (R-50), and an unverified account would be sent to a verification step
+    // instead of the set-password email. Both name parts are set, because Keycloak's user profile
+    // requires them and a missing one forces a `VERIFY_PROFILE` required action before the
+    // set-password step.
+    const displayName = input.name?.trim() || email.split("@")[0] || email;
+    const [firstName = displayName, ...rest] = displayName.split(/\s+/);
+
     keycloakUserId = await createRealmUser(realm.target, realm.realm, token, {
       username: email,
       email,
-      firstName: input.name?.trim() || email.split("@")[0] || email,
+      firstName,
+      lastName: rest.join(" ") || firstName,
       enabled: true,
-      emailVerified: false,
+      emailVerified: true,
     });
   }
 

@@ -12,6 +12,7 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["invalid-input", 400],
   ["email-taken", 400],
   ["local-accounts-unavailable", 400],
+  ["rate-limited", 429],
 ]);
 
 /**

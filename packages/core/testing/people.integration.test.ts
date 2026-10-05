@@ -270,7 +270,7 @@ describe("the People writers against a real database", () => {
 
     await expect(
       resendInvitation(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "invalid-input" });
+    ).rejects.toMatchObject({ code: "rate-limited" });
     /* eslint-enable no-await-in-loop */
 
     const limited = await deployment.context.db

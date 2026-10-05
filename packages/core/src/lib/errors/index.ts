@@ -37,6 +37,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "directory-group-exists":
     "A directory group with that exact claim value already exists.",
   "email-taken": "A person with that email already exists.",
+  "rate-limited":
+    "Too many attempts in a short time. Wait a few minutes and try again.",
   "local-accounts-unavailable":
     "Local accounts are not available in this realm, so this person cannot be created as a local account.",
   "realm-account-failed":

@@ -199,11 +199,12 @@ const schema = z.object({
   // The `genie-admin` service client's secret (environment contract, Required). Optional here
   // because client-only mode has no `genie-admin` client; the app profile requires the five sign-in
   // values but this one is consumed only by local-account creation, which refuses when it is absent
-  // and the realm is managed (R-40, ADR 0010).
+  // and the realm is managed (R-40, ADR 0010). A blank value is treated as unset, so a compose file
+  // can pass `${KEYCLOAK_ADMIN_CLIENT_SECRET:-}` without failing the start.
   KEYCLOAK_ADMIN_CLIENT_SECRET: z
     .string()
-    .min(1)
     .optional()
+    .transform(unsetWhenBlank)
     .meta({ secret: true }),
 });
 
