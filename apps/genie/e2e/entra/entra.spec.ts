@@ -212,10 +212,11 @@ test("observe the Attribute Importer when Entra sends no groups claim (overage, 
           ? "kept: the importer left the attribute, so an overage keeps the previous memberships"
           : `other: the attribute holds ${afterSecond.length} value(s)`;
 
+    // Counts and the verdict only: the attribute holds real tenant group object ids.
     await record(testInfo, [
       `Verdict: ${verdict}.`,
-      `groups attribute after the first sign-in: ${JSON.stringify(afterFirst ?? null)}`,
-      `groups attribute after the second sign-in: ${JSON.stringify(afterSecond ?? null)}`,
+      `groups attribute values after the first sign-in: ${afterFirst?.length ?? "absent"}`,
+      `groups attribute values after the second sign-in: ${afterSecond?.length ?? "absent"}`,
       `idp memberships in the app: ${(await directoryGroups(overage.email)).length}`,
       `auth:groups_claim_absent rows: ${(
         await sql(

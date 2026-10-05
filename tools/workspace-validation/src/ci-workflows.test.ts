@@ -683,7 +683,7 @@ describe("the Spec 0 CI gates", () => {
   // Spec 2 S2-16 (tech plan D2-2): the real Entra run is scheduled and manual, never a pull-request
   // check or a merge gate, and a missing secret skips it with a notice instead of failing.
   it("runs the Entra suite on a schedule and by hand, and skips without its secret", () => {
-    // SAFETY: the repository's own workflow; `on`, the job steps' `run` and `if` are read.
+    // SAFETY: the repository's own workflow; `on`, the job steps' `run`, `if` and `env` are read.
     const workflow = parseYaml(read(`${WORKFLOWS}/entra-scheduled.yml`)) as {
       readonly on: {
         readonly schedule?: readonly { readonly cron: string }[];
@@ -696,6 +696,7 @@ describe("the Spec 0 CI gates", () => {
             readonly steps: readonly {
               readonly run?: string;
               readonly if?: string;
+              readonly env?: { readonly ENTRA_TEST_TENANT: string };
             }[];
           }
         >
@@ -716,6 +717,21 @@ describe("the Spec 0 CI gates", () => {
     for (const step of rest) {
       expect(step.if).toBe("steps.secret.outputs.configured == 'true'");
     }
+
+    // The secret reaches the guard and the suite step only, never an install or setup step.
+    const text = read(`${WORKFLOWS}/entra-scheduled.yml`);
+    const [head = "", jobs = ""] = text.split(/^jobs:\n/m);
+
+    expect(head).not.toContain("secrets.");
+    expect(
+      jobs.split("\n").filter((line) => line.includes("secrets."))
+    ).toHaveLength(2);
+    expect(guard?.env).toEqual({
+      ENTRA_TEST_TENANT: "${{ secrets.ENTRA_TEST_TENANT }}",
+    });
+    expect(
+      rest.filter((step) => step.env !== undefined).map((step) => step.run)
+    ).toEqual(["pnpm exec nx run @genie/app:test:e2e:entra"]);
 
     for (const name of ["pull-request", "develop", "release"]) {
       expect(read(`${WORKFLOWS}/${name}.yml`), name).not.toContain("e2e:entra");

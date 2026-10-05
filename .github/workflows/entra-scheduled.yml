@@ -33,10 +33,11 @@ jobs:
   entra:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      ENTRA_TEST_TENANT: ${{ secrets.ENTRA_TEST_TENANT }}
+    # The secret reaches only the guard step and the suite step, never an install script.
     steps:
       - id: secret
+        env:
+          ENTRA_TEST_TENANT: ${{ secrets.ENTRA_TEST_TENANT }}
         run: |
           if [ -z "$ENTRA_TEST_TENANT" ]; then
             echo "::notice title=Entra run skipped::The ENTRA_TEST_TENANT repository secret is not set, so the Entra suite did not run. See docs/guides/sign-in/s-g-large-entra-jit.md."
@@ -67,4 +68,6 @@ jobs:
       - if: steps.secret.outputs.configured == 'true'
         run: pnpm exec playwright install --with-deps chromium
       - if: steps.secret.outputs.configured == 'true'
+        env:
+          ENTRA_TEST_TENANT: ${{ secrets.ENTRA_TEST_TENANT }}
         run: pnpm exec nx run @genie/app:test:e2e:entra

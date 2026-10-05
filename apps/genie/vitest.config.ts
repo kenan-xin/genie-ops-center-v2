@@ -27,7 +27,13 @@ export default defineConfig({
       "testing/image-scan.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
+      // The Entra secret parser is pure; it must never echo the secret it refuses.
+      "e2e/entra/tenant.test.ts",
     ],
-    exclude: (preset?.exclude ?? []).filter((glob) => glob !== "testing/**"),
+    // No include glob reaches the browser specs, so lifting the `e2e/**` exclusion collects only
+    // the one pure file named above.
+    exclude: (preset?.exclude ?? []).filter(
+      (glob) => glob !== "testing/**" && glob !== "e2e/**"
+    ),
   },
 });

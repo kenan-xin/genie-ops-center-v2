@@ -40,7 +40,16 @@ export function entraTenantFromEnv(): EntraTenant | undefined {
 
   if (raw === undefined || raw === "") return undefined;
 
-  const parsed = entraTenant.safeParse(JSON.parse(raw));
+  let value: unknown;
+
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    // A fixed message and no cause: the parser's own message quotes the start of the input.
+    throw new Error(`${ENTRA_SECRET} is not valid JSON`);
+  }
+
+  const parsed = entraTenant.safeParse(value);
 
   if (!parsed.success) {
     // The issue paths only, never the values: the secret holds passwords.
