@@ -153,3 +153,23 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await expect(page.getByText(/No people match/)).toBeVisible();
 });
+
+test("keeps the Add person dialog open and shows the email-taken refusal", async ({
+  page,
+}, testInfo) => {
+  const adminEmail = e2eReaderEmail("people", testInfo.project.name);
+
+  await signInThroughKeycloak(page, { email: adminEmail });
+  await page.goto("/admin/people");
+
+  await page.getByRole("button", { name: "Add person" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Add person" });
+
+  // The signed-in administrator's own address is already taken.
+  await dialog.getByLabel("Email", { exact: true }).fill(adminEmail);
+  await dialog.getByRole("button", { name: "Add person" }).press("Enter");
+
+  await expect(dialog.getByRole("alert")).toHaveText(/already exists/);
+  await expect(dialog).toBeVisible();
+});

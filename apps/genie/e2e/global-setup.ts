@@ -38,6 +38,7 @@ import {
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
 import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
+import { IMAGE } from "../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
 import { provisionScenarioDeployments } from "./scenarios.ts";
 import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
@@ -399,6 +400,8 @@ export default async function globalSetup(): Promise<void> {
     await run("docker", [...COMPOSE, "up", "-d", "--wait"], {
       env: {
         ...process.env,
+        // This worktree's image, not the shared fixed tag another worktree's build can overwrite.
+        GENIE_IMAGE: IMAGE,
         GENIE_HOST_PORT: String(READY_PORT),
         PUBLIC_URL,
         KEYCLOAK_URL: keycloak.keycloakUrl,
@@ -483,6 +486,7 @@ export default async function globalSetup(): Promise<void> {
       await run("docker", [...LOCAL_COMPOSE, "up", "-d", "--wait"], {
         env: {
           ...process.env,
+          GENIE_IMAGE: IMAGE,
           GENIE_HOST_PORT: String(e2eLocalHostPort()),
           PUBLIC_URL: e2eLocalBaseUrl(),
           KEYCLOAK_URL: keycloak.keycloakUrl,

@@ -12,6 +12,7 @@ import {
   standinKeycloakPort,
   standinKeycloakUrl,
 } from "../testing/e2e-keycloak.ts";
+import { IMAGE } from "../testing/image-tag.ts";
 import { scopedProject } from "../testing/worktree-scope.ts";
 import { COMPOSE } from "./global-setup.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -59,23 +60,28 @@ async function setUpStackHealth(project: string): Promise<{
 
   await run("docker", ["rm", "-f", name]).catch(() => undefined);
 
-  await run("docker", [
-    ...COMPOSE,
-    "run",
-    "-d",
-    "--no-deps",
-    "--name",
-    name,
-    "-e",
-    `KEYCLOAK_URL=${standinKeycloakUrl()}`,
-    "-e",
-    `KEYCLOAK_REALM=${E2E_SIGN_IN_REALM}`,
-    "-e",
-    `KEYCLOAK_CLIENT_ID=${E2E_CLIENT_ID}`,
-    "-e",
-    `KEYCLOAK_CLIENT_SECRET=${E2E_CLIENT_SECRET}`,
-    "app",
-  ]);
+  await run(
+    "docker",
+    [
+      ...COMPOSE,
+      "run",
+      "-d",
+      "--no-deps",
+      "--name",
+      name,
+      "-e",
+      `KEYCLOAK_URL=${standinKeycloakUrl()}`,
+      "-e",
+      `KEYCLOAK_REALM=${E2E_SIGN_IN_REALM}`,
+      "-e",
+      `KEYCLOAK_CLIENT_ID=${E2E_CLIENT_ID}`,
+      "-e",
+      `KEYCLOAK_CLIENT_SECRET=${E2E_CLIENT_SECRET}`,
+      "app",
+    ],
+    // This worktree's image, not the shared fixed tag another worktree's build can overwrite.
+    { env: { ...process.env, GENIE_IMAGE: IMAGE } }
+  );
 
   try {
     let health = "";
