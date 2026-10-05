@@ -57,3 +57,28 @@ export async function signInThroughBroker(
     .poll(() => new URL(page.url()).pathname, { timeout: 45000 })
     .toBe(input.landing ?? "/");
 }
+
+/**
+ * Signs the browser in through a specific deployment and the realm's own login form, with a
+ * caller-supplied password. Client-only mode (S-C) uses the customer's realm as the login form
+ * directly, and its company people carry the company password rather than the tenant realm's.
+ */
+export async function signInThroughRealmForm(
+  page: Page,
+  input: {
+    readonly baseUrl: string;
+    readonly email: string;
+    readonly password: string;
+    readonly landing?: string;
+  }
+): Promise<void> {
+  await page.goto(`${input.baseUrl}/api/auth/sign-in/keycloak`);
+
+  await page.locator("#username").fill(input.email);
+  await page.locator("#password").fill(input.password);
+  await page.locator("#kc-login").click();
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 45000 })
+    .toBe(input.landing ?? "/");
+}

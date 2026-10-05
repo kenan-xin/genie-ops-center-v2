@@ -41,6 +41,7 @@ import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
 import { IMAGE } from "../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
 import { provisionScenarioDeployments } from "./scenarios.ts";
+import { provisionClientOnly } from "./support/client-only.ts";
 import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 
 export { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
@@ -522,6 +523,11 @@ export default async function globalSetup(): Promise<void> {
       );
 
       await seedLocalSetup();
+
+      // S2-15 client-only mode: the same company realm plays the customer's existing realm, into
+      // which the two shipped client files are imported, and a `realm: customer` deployment runs
+      // against it (R-54a, AC-12a).
+      await provisionClientOnly(keycloak);
 
       // Discovery was refused while the realm did not exist; the member retries at most every ten
       // seconds, so the proofs start once health reads `ok` (R-54d).

@@ -1,3 +1,5 @@
+import { type JsonObject } from "@genie/core";
+
 import {
   startIdentityStandins,
   type IdentityStandins,
@@ -347,6 +349,54 @@ export async function updateRealmClient(
   }
 }
 
+/**
+ * Imports one client representation into a realm, as the customer's IT does in client-only mode
+ * (R-54a). A 409 means a previous run already imported it.
+ */
+export async function importRealmClient(
+  realm: string,
+  client: JsonObject
+): Promise<void> {
+  const response = await admin(`/realms/${realm}/clients`, {
+    method: "POST",
+    body: JSON.stringify(client),
+  });
+
+  if (!response.ok && response.status !== 409) {
+    throw new Error(
+      `Importing client ${String(client.clientId)} into ${realm} failed with ${response.status}: ${await response.text()}`
+    );
+  }
+}
+
+/** The generated secret of one confidential client, as the customer's IT returns it (R-54a). */
+export async function realmClientSecret(
+  realm: string,
+  clientId: string
+): Promise<string> {
+  const found = await admin(
+    `/realms/${realm}/clients?clientId=${encodeURIComponent(clientId)}`
+  );
+
+  // SAFETY: the admin client search answers a JSON list of client representations.
+  const [match] = (await found.json()) as readonly { readonly id?: string }[];
+
+  if (match?.id === undefined) {
+    throw new Error(`No realm client ${clientId} in ${realm}`);
+  }
+
+  const client = await admin(`/realms/${realm}/clients/${match.id}`);
+
+  // SAFETY: the admin client endpoint answers a client representation; only `secret` is read.
+  const representation = (await client.json()) as { readonly secret?: string };
+
+  if (representation.secret === undefined || representation.secret === "") {
+    throw new Error(`Client ${clientId} in ${realm} carries no secret`);
+  }
+
+  return representation.secret;
+}
+
 /** The fields of an identity provider mapper the tests write. */
 export type IdentityProviderMapperInput = {
   readonly name: string;
@@ -381,8 +431,7 @@ export async function addIdentityProviderMapper(
   }
 }
 
-/** Adds a protocol mapper to one realm client when it is absent. */
-export async function addClientProtocolMapper(
+/** Adds a protocol mapper to one realm client when it is absent. */ export async function addClientProtocolMapper(
   realm: string,
   clientId: string,
   mapper: ProtocolMapperInput
