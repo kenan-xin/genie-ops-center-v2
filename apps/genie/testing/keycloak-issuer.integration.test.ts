@@ -139,6 +139,68 @@ describe("the R-54c address guard refuses to start the application", () => {
   }, 180000);
 });
 
+describe("the R-54d unreachable realm from a built app", () => {
+  it("AC-12a R-54d: answers degraded health and refuses sign-in with a named cause while the realm is unreachable", async () => {
+    const database = await preparedDatabase({
+      realmMode: "managed",
+      keycloakUrlAtSetup: null,
+      setupSatisfied: false,
+    });
+
+    // Setup is complete before start, so only the realm's discovery can make health degraded.
+    const setup = createTenantContext(
+      { DATABASE_URL: database.url, PUBLIC_URL },
+      noopLogger,
+      []
+    );
+
+    try {
+      await markSetupDone(setup);
+    } finally {
+      await setup.db.$client.end();
+    }
+
+    // A closed port that is not the default test address, so no discovery stub answers for it.
+    const app = await startBuiltApp(database.url, scopedPort(3464), {
+      KEYCLOAK_URL: "http://127.0.0.1:2",
+    });
+
+    try {
+      const health = await fetch(`${app.baseUrl}/api/health`);
+
+      expect(health.status).toBe(200);
+      expect(await health.text()).toBe("degraded");
+
+      const start = await fetch(`${app.baseUrl}/api/auth/sign-in/keycloak`, {
+        redirect: "manual",
+      });
+
+      expect(start.status).toBe(307);
+
+      const location = new URL(start.headers.get("location") ?? "");
+
+      expect(location.pathname).toBe("/sign-in");
+      expect(location.searchParams.get("error")).toBe("keycloak_unavailable");
+
+      const social = await fetch(`${app.baseUrl}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: "keycloak" }),
+      });
+
+      expect(social.status).toBe(503);
+
+      // SAFETY: the route answers this JSON shape; the assertion below reads one field.
+      const body = (await social.json()) as { readonly code?: string };
+
+      expect(body.code).toBe("keycloak_unavailable");
+    } finally {
+      await app.stop();
+      await database.stop();
+    }
+  }, 180000);
+});
+
 describe("the R-54d issuer mismatch against a real Keycloak", () => {
   it("exits at start once setup is satisfied", async () => {
     const database = await preparedDatabase({

@@ -2,14 +2,23 @@ import { createSign, generateKeyPairSync, type KeyObject } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { account, tenantSettings, user } from "../src/schema.ts";
+import {
+  account,
+  auditEvent,
+  session,
+  tenantSettings,
+  user,
+} from "../src/schema.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
   assignRole,
   insertGroup,
   insertRole,
+  insertUser,
+  markSetupDone,
   startDisposableDeployment,
 } from "./index.ts";
 
@@ -50,6 +59,7 @@ function signIdToken(input: {
   readonly issuer: string;
   readonly audience: string;
   readonly email: string;
+  readonly groups: readonly string[];
   readonly nonce: string | undefined;
 }): string {
   const header = { alg: "RS256", typ: "JWT", kid: KEY_ID };
@@ -58,11 +68,12 @@ function signIdToken(input: {
   const payload: IdTokenPayload = {
     iss: input.issuer,
     aud: input.audience,
-    sub: "aud-test-subject",
+    // One subject per email, so a later case's sign-in is a new realm account, not the first one's.
+    sub: `aud-test-${input.email}`,
     email: input.email,
     email_verified: true,
     name: "Audience Test",
-    groups: ["Mapped"],
+    groups: input.groups,
     genie_groups: true,
     iat: now,
     exp: now + 300,
@@ -81,13 +92,19 @@ function signIdToken(input: {
   return `${signingInput}.${base64url(signature)}`;
 }
 
+/** The callback's `?error=` value, or null on an admitted sign-in. */
+function errorOf(response: Response): string | null {
+  return new URL(response.headers.get("location")!).searchParams.get("error");
+}
+
 describe("the id-token audience check (R-54d, AC-12a)", () => {
   let deployment: DisposableDeployment;
   let realm: Server;
   let issuerUrl: string;
   let audience = `${CLIENT_ID}-foreign`;
   let expectedNonce: string | undefined;
-  const email = "audience-check@example.invalid";
+  let email = "audience-check@example.invalid";
+  let groups: readonly string[] = ["Mapped"];
 
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
@@ -138,6 +155,7 @@ describe("the id-token audience check (R-54d, AC-12a)", () => {
               issuer: base,
               audience,
               email,
+              groups,
               nonce: expectedNonce,
             }),
           })
@@ -258,5 +276,128 @@ describe("the id-token audience check (R-54d, AC-12a)", () => {
       new URL(response.headers.get("location")!).searchParams.get("error")
     ).toBeNull();
     expect(await deployment.context.db.select().from(user)).toHaveLength(1);
+  });
+
+  function authOf() {
+    const auth = deployment.context.auth;
+
+    if (auth === undefined) throw new Error("auth member was not built");
+
+    return auth;
+  }
+
+  /** Swaps in a configured mailer that records each send; the returned function restores it. */
+  function recordMail() {
+    const original = deployment.context.mailer;
+    const sent: { templateId: string; to: string }[] = [];
+
+    // SAFETY: the context's mailer member is a fixed object; the swap is restored by `restore`.
+    (deployment.context as { mailer: typeof original }).mailer = {
+      ...original,
+      provider: "smtp",
+      send: async ({ templateId, to }) => {
+        sent.push({ templateId, to });
+      },
+    };
+
+    return {
+      sent,
+      restore: () => {
+        // SAFETY: restores the fixed mailer member swapped out above.
+        (deployment.context as { mailer: typeof original }).mailer = original;
+      },
+    };
+  }
+
+  it("AC-2 R-9: a refused jit sign-in with no mapped group writes no user and no session row", async () => {
+    audience = CLIENT_ID;
+    email = "unmapped@example.invalid";
+    groups = ["Unmapped"];
+
+    const sessionsBefore = await deployment.context.db.select().from(session);
+    const response = await callback(authOf());
+
+    expect(errorOf(response)).toBe("not_registered");
+    expect(
+      await deployment.context.db
+        .select()
+        .from(user)
+        .where(eq(user.email, email))
+    ).toHaveLength(0);
+    expect(await deployment.context.db.select().from(session)).toHaveLength(
+      sessionsBefore.length
+    );
+  });
+
+  it("AC-2 R-8 R-12: a person who already exists by email links the realm account without a second user row", async () => {
+    audience = CLIENT_ID;
+    email = "pre-added@example.invalid";
+    groups = ["Mapped"];
+
+    const userId = await insertUser(deployment.context, {
+      email,
+      status: "pending",
+      onboarding: "invited",
+      firstSignInAt: null,
+    });
+
+    const response = await callback(authOf());
+
+    expect(errorOf(response)).toBeNull();
+
+    const people = await deployment.context.db
+      .select({ id: user.id, status: user.status })
+      .from(user)
+      .where(eq(user.email, email));
+
+    expect(people).toEqual([{ id: userId, status: "active" }]);
+    expect(
+      await deployment.context.db
+        .select()
+        .from(account)
+        .where(
+          and(eq(account.userId, userId), eq(account.providerId, "keycloak"))
+        )
+    ).toHaveLength(1);
+  });
+
+  it("AC-10 AC-9a R-44 R-47 R-40a: an OAuth sign-in writes one auth:sign_in row and sends the new-device email, and the jit admission sends no invitation", async () => {
+    // The new-device handler reads the company name, which the seed step writes.
+    await markSetupDone(deployment.context);
+
+    audience = CLIENT_ID;
+    email = "new-device@example.invalid";
+    groups = ["Mapped"];
+
+    const mail = recordMail();
+
+    try {
+      const response = await callback(authOf());
+
+      expect(errorOf(response)).toBeNull();
+
+      const [person] = await deployment.context.db
+        .select({ id: user.id, onboarding: user.onboarding })
+        .from(user)
+        .where(eq(user.email, email));
+
+      expect(person?.onboarding).toBe("jit");
+      expect(
+        await deployment.context.db
+          .select()
+          .from(auditEvent)
+          .where(
+            and(
+              eq(auditEvent.actorUserId, person?.id ?? ""),
+              eq(auditEvent.action, "auth:sign_in")
+            )
+          )
+      ).toHaveLength(1);
+      expect(mail.sent).toEqual([
+        { templateId: "new-device-sign-in", to: email },
+      ]);
+    } finally {
+      mail.restore();
+    }
   });
 });

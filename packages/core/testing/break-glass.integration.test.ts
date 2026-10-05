@@ -420,4 +420,73 @@ describe("the break-glass lifecycle against a real database", () => {
 
     expect(accounts).toHaveLength(1);
   });
+
+  it("AC-6 R-19 R-20 R-21: refuses the break-glass password checks past the per-account window with one auth:rate_limited row", async () => {
+    const email = `password-window-${Date.now()}@example.invalid`;
+
+    await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    const signInResponse = await signIn(email);
+    expect(signInResponse.status).toBe(200);
+
+    const cookie = signInResponse.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0] ?? "")
+      .join("; ");
+
+    function post(
+      path: string,
+      body: Readonly<Record<string, string>>
+    ): Promise<Response> {
+      return authHandler().handler(
+        new Request(`${PUBLIC_URL}/api/auth${path}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "origin": PUBLIC_URL,
+            cookie,
+          },
+          body: JSON.stringify(body),
+        })
+      );
+    }
+
+    // R-20: one window per account covers change password, enable and disable. Five wrong-password
+    // checks across the three endpoints are counted and refused by Better Auth itself.
+    const attempts: readonly [string, Readonly<Record<string, string>>][] = [
+      [
+        "/change-password",
+        { currentPassword: "wrong-password-1!", newPassword: "Abcdefghij1!xy" },
+      ],
+      [
+        "/change-password",
+        { currentPassword: "wrong-password-1!", newPassword: "Abcdefghij1!xy" },
+      ],
+      ["/two-factor/enable", { password: "wrong-password-1!" }],
+      ["/two-factor/enable", { password: "wrong-password-1!" }],
+      ["/two-factor/disable", { password: "wrong-password-1!" }],
+    ];
+
+    for (const [path, body] of attempts) {
+      // oxlint-disable-next-line no-await-in-loop -- the counter is read-modify-write in order
+      const response = await post(path, body);
+
+      expect(response.status, path).not.toBe(200);
+      expect(response.status, path).not.toBe(429);
+    }
+
+    const refused = await post("/two-factor/enable", { password: PASSWORD });
+
+    expect(refused.status).toBe(429);
+    expect(await refused.json()).toMatchObject({ code: "rate_limited" });
+
+    const rows = await deployment.context.db.$client.query<{ count: number }>(
+      "select count(*)::int as count from audit_event where action = 'auth:rate_limited' and metadata->>'endpoint' = 'break_glass_password'"
+    );
+
+    expect(rows.rows[0]?.count).toBe(1);
+  });
 });

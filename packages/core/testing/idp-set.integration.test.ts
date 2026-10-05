@@ -265,6 +265,7 @@ async function authorization(realm: string): Promise<Authorization> {
 
 type Connector = {
   readonly providerId?: string;
+  readonly trustEmail?: boolean;
   readonly config?: Record<string, string>;
 };
 
@@ -335,6 +336,8 @@ describe("genie-ops idp set", () => {
     );
 
     expect(provider.providerId).toBe("oidc");
+    // AC-11, R-49a: trust email sits on the identity provider (runbook "Shared realm settings").
+    expect(provider.trustEmail).toBe(true);
     expect(provider.config?.authorizationUrl).toContain("/realms/company/");
 
     const mappers = await adminJson<readonly Mapper[]>(
@@ -412,6 +415,8 @@ describe("genie-ops idp set", () => {
     );
 
     expect(provider.providerId).toBe("saml");
+    // AC-11, R-49a: trust email sits on the identity provider (runbook "Shared realm settings").
+    expect(provider.trustEmail).toBe(true);
     expect(provider.config?.entityId).toBe("genie-saml");
     expect(provider.config?.singleSignOnServiceUrl).toContain(
       "/realms/company/"

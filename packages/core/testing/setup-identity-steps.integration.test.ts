@@ -385,6 +385,83 @@ describe("the roles setup step (R-55, R-33)", () => {
   }, 120000);
 });
 
+describe("a Section 1 stack upgraded by setup (R-52)", () => {
+  it("AC-12 R-52: runs only the five identity steps, in order and after seed, on a stack holding only migrations and seed", async () => {
+    const fixture = await setupFixture();
+    const folder = await mkdtemp(join(tmpdir(), "genie-ops-section-1-"));
+    const managedConfig = join(folder, "tenant.yaml");
+    const brandingSeed = join(folder, "branding.seed.json");
+
+    cleanups.push(() => rm(folder, { recursive: true, force: true }));
+
+    // A managed run with no bootstrap credential stops at the realm step, so the real Section 1
+    // steps have run and recorded; dropping every later row leaves exactly the Section 1 state.
+    await writeFile(
+      managedConfig,
+      validTenantYaml().replace("realm: customer", "realm: managed"),
+      "utf8"
+    );
+    await writeFile(brandingSeed, validBrandingSeed(), "utf8");
+
+    const first = outputCapture();
+
+    await expect(
+      runGenieOps(setupArgs({ tenantConfig: managedConfig, brandingSeed }), {
+        source: fixture.source,
+        compiledModules: fixture.compiledModules,
+        histories: fixture.histories,
+        output: first.output,
+        errorOutput: first.errorOutput,
+      })
+    ).resolves.not.toBe(0);
+
+    await fixture.observer.query(
+      "delete from setup_step where step not in ('migrations', 'seed')"
+    );
+
+    const before = await fixture.observer.query<{
+      step: string;
+      updated_at: Date;
+    }>("select step, updated_at from setup_step order by step");
+
+    expect(before.rows.map((row) => row.step)).toEqual(["migrations", "seed"]);
+
+    await expect(setup(fixture, outputCapture())).resolves.toBe(0);
+
+    const after = await fixture.observer.query<{
+      step: string;
+      state: string;
+      updated_at: Date;
+    }>("select step, state, updated_at from setup_step order by updated_at");
+
+    // The Section 1 rows did not move, and the identity steps settled in the recorded order.
+    expect(after.rows.map(({ step, state }) => ({ step, state }))).toEqual([
+      { step: "migrations", state: "done" },
+      { step: "seed", state: "done" },
+      { step: "realm", state: "skipped" },
+      { step: "clients", state: "skipped" },
+      { step: "roles", state: "done" },
+      { step: "admin_seed", state: "done" },
+      { step: "break_glass", state: "done" },
+    ]);
+    expect(after.rows.slice(0, 2)).toEqual(
+      before.rows.map((row) => expect.objectContaining(row))
+    );
+
+    const times = after.rows.map((row) => row.updated_at.getTime());
+
+    expect(times).toEqual(times.toSorted((left, right) => left - right));
+    expect(new Set(times.slice(2)).size).toBe(5);
+
+    // The roles step ran after seed, so it found the compiled module's `tenant_module` row.
+    await expect(
+      fixture.observer.query(
+        "select r.name from role r join tenant_module m on m.module_id = r.module_id where r.module_id = 'fixture'"
+      )
+    ).resolves.toMatchObject({ rows: [{ name: "Fixture user" }] });
+  }, 120000);
+});
+
 describe("the admin_seed setup step (R-56)", () => {
   it("pre-adds each initial administrator as a pending, invited local member without sending email", async () => {
     const fixture = await setupFixture();

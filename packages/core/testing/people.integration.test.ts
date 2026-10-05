@@ -1045,6 +1045,121 @@ describe("Add person partial success when the expected email fails (N1)", () => 
   });
 });
 
+/** The `auth:rate_limited` rows one endpoint's refusals wrote (R-21). */
+async function rateLimitedRows(endpoint: string): Promise<number> {
+  const result = await deployment.context.db.$client.query<{ count: number }>(
+    "select count(*)::int as count from audit_event where action = 'auth:rate_limited' and metadata->>'endpoint' = $1",
+    [endpoint]
+  );
+
+  return result.rows[0]?.count ?? 0;
+}
+
+describe("the People rate limits and the unchecked invitation (AC-6, AC-9a)", () => {
+  it("AC-6 R-19 R-20 R-21: refuses add person past the actor's window with exactly one auth:rate_limited row", async () => {
+    const actor = await manager();
+    const before = await rateLimitedRows("add_person");
+
+    // R-19 defaults: 30 in one hour per acting person.
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      // oxlint-disable-next-line no-await-in-loop -- the limit is a sequence by definition
+      await addPerson(deployment.context, {
+        actorUserId: actor,
+        email: `window-${attempt}-${randomUUID()}@example.invalid`,
+        roleIds: [],
+        sendInvitation: false,
+      });
+    }
+
+    const refusedEmail = `window-refused-${randomUUID()}@example.invalid`;
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email: refusedEmail,
+        roleIds: [],
+        sendInvitation: false,
+      })
+    ).rejects.toMatchObject({ code: "rate-limited" });
+
+    expect(await rateLimitedRows("add_person")).toBe(before + 1);
+    expect(
+      await deployment.context.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, refusedEmail))
+    ).toHaveLength(0);
+  });
+
+  it("AC-6 R-19 R-20 R-21: refuses resend set-password past the target's window with exactly one auth:rate_limited row", async () => {
+    const actor = await manager();
+
+    const personId = await insertCredentialPerson(deployment.context, {
+      email: `resend-sp-${randomUUID()}@example.invalid`,
+      password: "local-password-14",
+      isBreakGlass: false,
+      status: "pending",
+    });
+
+    installRealmStub();
+
+    const before = await rateLimitedRows("resend_set_password");
+
+    // R-19 defaults: 3 in one hour per target person.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      // oxlint-disable-next-line no-await-in-loop -- the limit is a sequence by definition
+      await resendSetPassword(deployment.context, {
+        actorUserId: actor,
+        personId,
+      });
+    }
+
+    await expect(
+      resendSetPassword(deployment.context, { actorUserId: actor, personId })
+    ).rejects.toMatchObject({ code: "rate-limited" });
+
+    expect(await rateLimitedRows("resend_set_password")).toBe(before + 1);
+  });
+
+  it("AC-9a R-40a: add person with the invitation unchecked sends no email and writes no core:invitation_sent row", async () => {
+    const actor = await manager();
+    const mailer = deployment.context.mailer;
+    const sent: string[] = [];
+
+    // SAFETY: the context's mailer member is a fixed object; this test swaps it for a configured
+    // one that records each send, and restores the original in the finally.
+    (deployment.context as { mailer: typeof mailer }).mailer = {
+      ...mailer,
+      provider: "smtp",
+      send: async ({ templateId }) => {
+        sent.push(templateId);
+      },
+    };
+
+    try {
+      const { id: personId } = await addPerson(deployment.context, {
+        actorUserId: actor,
+        email: `unchecked-${randomUUID()}@example.invalid`,
+        roleIds: [],
+        sendInvitation: false,
+      });
+
+      expect(sent).toEqual([]);
+      expect(
+        (
+          await deployment.context.db
+            .select({ targetId: auditEvent.targetId })
+            .from(auditEvent)
+            .where(eq(auditEvent.action, "core:invitation_sent"))
+        ).filter((row) => row.targetId === personId)
+      ).toHaveLength(0);
+    } finally {
+      // SAFETY: restores the fixed mailer member the test swapped out above.
+      (deployment.context as { mailer: typeof mailer }).mailer = mailer;
+    }
+  });
+});
+
 describe("Add person compensation failure is logged (N2)", () => {
   it("logs the Keycloak user id and the error when the orphan delete fails", async () => {
     const actor = await manager();

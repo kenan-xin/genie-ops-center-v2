@@ -325,6 +325,27 @@ async function disableStandardFlow(
   );
 }
 
+/** The config id of the browser flow's identity-provider-redirector, or undefined when unset. */
+async function redirectorConfig(realm: string): Promise<string | undefined> {
+  const token = await masterToken();
+
+  const response = await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/authentication/flows/browser/executions`,
+    { headers: { authorization: `Bearer ${token}` } }
+  );
+
+  const body: unknown = await response.json();
+  const executions = Array.isArray(body) ? body.filter(isJsonObject) : [];
+
+  const redirector = executions.find(
+    (execution) => execution.providerId === "identity-provider-redirector"
+  );
+
+  return redirector?.authenticationConfig === undefined
+    ? undefined
+    : String(redirector.authenticationConfig);
+}
+
 /** Every `setup_step` detail joined, for a non-leak assertion on a failed step's cause. */
 async function setupStepDetails(postgresUrl: string): Promise<string> {
   const observer = new Client({ connectionString: postgresUrl });
@@ -383,6 +404,9 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
       "https://genie.example.invalid/api/auth/callback/keycloak",
     ]);
     expect(groupsMapper(signIn)).toBe("oidc-usermodel-attribute-mapper");
+
+    // The brokered variant's redirector names the fixed alias, the control for the local case.
+    expect(await redirectorConfig(realm)).toBeDefined();
 
     for (const clientId of ["genie-ops-center", "genie-studio"]) {
       expect(markerMapper(clientBy(clients, clientId))).toMatchObject({
@@ -463,6 +487,11 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     const signIn = clientBy(clients, "genie-ops-center");
 
     expect(groupsMapper(signIn)).toBe("oidc-group-membership-mapper");
+
+    // AC-4, AC-11, R-50: the local variant carries no identity provider and its browser flow's
+    // redirector names no default, so nobody is sent away from the realm's own form.
+    expect(realmRep.identityProviders ?? []).toEqual([]);
+    expect(await redirectorConfig(realm)).toBeUndefined();
 
     for (const clientId of ["genie-ops-center", "genie-studio"]) {
       expect(markerMapper(clientBy(clients, clientId))).toMatchObject({
