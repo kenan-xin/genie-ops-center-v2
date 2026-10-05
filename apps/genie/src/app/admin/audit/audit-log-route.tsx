@@ -7,7 +7,7 @@ import {
   type AuditFilters,
   type AuditViewer,
 } from "@genie/core/features/audit";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
@@ -87,6 +87,10 @@ export function AuditLogRoute(props: AuditLogRouteProps) {
     initialPageParam: null as Cursor | null,
     queryFn: ({ pageParam }) => fetchAuditPage({ filters, cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor,
+    // A filter change is a new query key. Without the previous pages as a placeholder the route
+    // would fall back to its loading state and unmount the screen, which closed the open filter
+    // panel and took focus out of the search box after each keystroke.
+    placeholderData: keepPreviousData,
   });
 
   if (query.isPending) {
