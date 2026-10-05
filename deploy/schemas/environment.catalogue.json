@@ -33,6 +33,11 @@
       "secret": false
     },
     {
+      "name": "KEYCLOAK_ADMIN_CLIENT_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
       "name": "KEYCLOAK_CLIENT_ID",
       "required": false,
       "secret": false

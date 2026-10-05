@@ -196,6 +196,15 @@ const schema = z.object({
   KEYCLOAK_REALM: z.string().min(1).optional(),
   KEYCLOAK_CLIENT_ID: z.string().min(1).optional(),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1).optional().meta({ secret: true }),
+  // The `genie-admin` service client's secret (environment contract, Required). Optional here
+  // because client-only mode has no `genie-admin` client; the app profile requires the five sign-in
+  // values but this one is consumed only by local-account creation, which refuses when it is absent
+  // and the realm is managed (R-40, ADR 0010).
+  KEYCLOAK_ADMIN_CLIENT_SECRET: z
+    .string()
+    .min(1)
+    .optional()
+    .meta({ secret: true }),
 });
 
 /**
@@ -307,7 +316,7 @@ function authConfiguration(
     return undefined;
   }
 
-  return {
+  const base: AuthEnvironment = {
     betterAuthSecret: parsed.data.BETTER_AUTH_SECRET,
     // R-54c: a trailing slash is removed once, so a later issuer comparison is exact.
     keycloakUrl: parsed.data.KEYCLOAK_URL.replace(/\/+$/, ""),
@@ -315,6 +324,16 @@ function authConfiguration(
     keycloakClientId: parsed.data.KEYCLOAK_CLIENT_ID,
     keycloakClientSecret: parsed.data.KEYCLOAK_CLIENT_SECRET,
   };
+
+  // The five sign-in values above are the profile's requirement; the admin secret rides along
+  // only when present, because client-only mode omits it (exactOptionalPropertyTypes keeps an
+  // absent value off the object rather than storing `undefined`).
+  return value.KEYCLOAK_ADMIN_CLIENT_SECRET === undefined
+    ? base
+    : {
+        ...base,
+        keycloakAdminClientSecret: value.KEYCLOAK_ADMIN_CLIENT_SECRET,
+      };
 }
 
 /**

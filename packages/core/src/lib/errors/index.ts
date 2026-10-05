@@ -36,6 +36,11 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "role-name-taken": "A role with that name already exists.",
   "directory-group-exists":
     "A directory group with that exact claim value already exists.",
+  "email-taken": "A person with that email already exists.",
+  "local-accounts-unavailable":
+    "Local accounts are not available in this realm, so this person cannot be created as a local account.",
+  "realm-account-failed":
+    "The identity provider could not create the account. Try again, or check the realm.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

@@ -57,41 +57,12 @@ export type GroupDetail = GroupRow & {
   readonly lastAdministrator: boolean;
 };
 
-/** One person the local-group member picker may offer. */
-export type AssignablePerson = {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-};
-
 /** One role the group inspector may assign. */
 export type AssignableRole = {
   readonly id: string;
   readonly name: string;
   readonly moduleId: string | null;
 };
-
-/**
- * The people a local group may take: active, not banned, not erased, and never the break-glass
- * account (R-39). This is a narrow read behind `core:groups:manage`, not the People router, which
- * S2-10 owns; it exists so the member picker works before that screen lands.
- */
-export async function listActivePeople(
-  tenant: TenantContext
-): Promise<readonly AssignablePerson[]> {
-  const result = await tenant.db.$client.query(
-    `select u.id, u.name, u.email
-       from "user" u
-      where u.status = 'active'
-        and u.banned is not true
-        and u.erased_at is null
-        and u.is_break_glass = false
-      order by lower(u.name), lower(u.email)`
-  );
-
-  // SAFETY: the statement selects exactly these three columns.
-  return result.rows as readonly AssignablePerson[];
-}
 
 /** Every role a group may be given, system first then by name. */
 export async function listAssignableRoles(

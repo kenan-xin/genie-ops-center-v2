@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   createGroupsRouter,
+  createPeopleRouter,
   createRolesRouter,
   principalFor,
   removeAssignment,
@@ -153,6 +154,14 @@ function groupsCaller(userId: string) {
 
 function rolesCaller(userId: string) {
   return createRolesRouter(modules).createCaller({
+    tenant: deployment.context,
+    caller: request(userId),
+  });
+}
+
+/** The People router caller; `active` is the narrow picker read behind `core:groups:manage`. */
+function peopleCaller(userId: string) {
+  return createPeopleRouter().createCaller({
     tenant: deployment.context,
     caller: request(userId),
   });
@@ -1035,7 +1044,7 @@ describe("the review fixes", () => {
       isBreakGlass: true,
     });
 
-    const people = await groupsCaller(actor).people();
+    const people = await peopleCaller(actor).active();
     const ids = people.map((person) => person.id);
 
     expect(ids).toContain(active);

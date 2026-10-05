@@ -10,6 +10,7 @@
     "./features/audit": "./src/features/audit/index.ts",
     "./features/break-glass": "./src/features/break-glass/index.ts",
     "./features/groups": "./src/features/groups/index.ts",
+    "./features/people": "./src/features/people/index.ts",
     "./features/roles": "./src/features/roles/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",

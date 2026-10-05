@@ -148,10 +148,12 @@ export {
 
 export {
   assignRole,
+  assignRoleInTransaction,
   type AssignmentPrincipal,
   type AssignmentWrite,
   removeAssignment,
   removeGroupAssignments,
+  removeUserAssignments,
 } from "./services/authorization/role-assignment.ts";
 
 export {
@@ -185,6 +187,34 @@ export {
   setGroupLabel,
   updateLocalGroup,
 } from "./services/groups/index.ts";
+
+export {
+  createPeopleRouter,
+  type PeopleRouter,
+  type PeopleRouterContext,
+} from "./services/people/router.ts";
+
+export {
+  addPerson,
+  type AddPersonInput,
+  type AccountType as PersonAccountType,
+  type AssignablePerson as PersonPickerOption,
+  type AssignableRole as PersonAssignableRole,
+  disablePerson,
+  enablePerson,
+  listAssignableRoles as listPersonAssignableRoles,
+  listPeople,
+  type PersonAssignmentRow,
+  type PersonDetail,
+  type PersonGroupRow,
+  type PersonRow,
+  type PersonSessionRow,
+  type PersonStatus,
+  readPerson,
+  removePerson,
+  resendInvitation,
+  resendSetPassword,
+} from "./services/people/index.ts";
 
 export {
   createRolesRouter,

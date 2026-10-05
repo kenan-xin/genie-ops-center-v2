@@ -113,58 +113,131 @@ async function emitRoleEvents(
 }
 
 /**
- * Writes one assignment. The unique row is the database's own rule: two identical tenant-wide
- * grants cannot exist, so a repeat fails on the constraint rather than silently doubling.
+ * Writes one assignment on a caller-supplied transaction. Add person calls this in the same
+ * transaction as the `user` row, so the person and the picked roles are saved together or not at
+ * all (R-40, B1); every other caller reaches it through {@link assignRole}. It is still the one
+ * writer of `role_assignment`: nothing else inserts an assignment.
+ */
+export async function assignRoleInTransaction(
+  tenant: TenantContext,
+  tx: TenantTransaction,
+  input: Omit<AssignmentWrite, "tenant">
+): Promise<{ readonly id: string }> {
+  await lockAdministratorGuard(tx);
+
+  const roleName = await roleNameOf(tx, input.roleId);
+
+  const [row] = await tx
+    .insert(roleAssignment)
+    .values({
+      roleId: input.roleId,
+      principalType: input.principal.type,
+      principalId: input.principal.id,
+      scopeType: input.scope?.type ?? null,
+      scopeId: input.scope?.id ?? null,
+      createdByUserId: input.actorUserId,
+    })
+    .returning({ id: roleAssignment.id });
+
+  if (row === undefined) {
+    throw new Error("the role assignment insert returned no row");
+  }
+
+  await writeAdminAuditEvent(tx, {
+    action: "core:role_assignment_added",
+    actorUserId: input.actorUserId,
+    targetType: "role-assignment",
+    targetId: row.id,
+    summary: `Granted the ${roleName} role to ${input.principal.type} ${input.principal.id}`,
+    metadata: {
+      roleId: input.roleId,
+      principalType: input.principal.type,
+      principalId: input.principal.id,
+      scopeType: input.scope?.type ?? null,
+      scopeId: input.scope?.id ?? null,
+    },
+  });
+
+  await emitRoleEvents(
+    tenant,
+    tx,
+    coreRoleGranted,
+    roleName,
+    await affectedPeople(tx, input.principal)
+  );
+
+  return { id: row.id };
+}
+
+/**
+ * Writes one assignment in its own transaction. The unique row is the database's own rule: two
+ * identical tenant-wide grants cannot exist, so a repeat fails on the constraint rather than
+ * silently doubling.
  */
 export async function assignRole(
   input: AssignmentWrite
 ): Promise<{ readonly id: string }> {
-  return withTransaction(input.tenant, async (tx) => {
-    await lockAdministratorGuard(tx);
+  return withTransaction(input.tenant, (tx) =>
+    assignRoleInTransaction(input.tenant, tx, {
+      actorUserId: input.actorUserId,
+      roleId: input.roleId,
+      principal: input.principal,
+      scope: input.scope ?? null,
+    })
+  );
+}
 
-    const roleName = await roleNameOf(tx, input.roleId);
+/**
+ * Removes every direct assignment a person holds, in the caller's transaction, for Remove person
+ * (R-43). It shares the service's audit action and `core:role:revoked` emission, so a bulk removal
+ * and a single one leave the same trail; group-held assignments are not touched, because a
+ * membership change is what removes those.
+ */
+export async function removeUserAssignments(
+  tenant: TenantContext,
+  tx: TenantTransaction,
+  input: {
+    readonly actorUserId: string;
+    readonly userId: string;
+  }
+): Promise<void> {
+  const rows = await tx
+    .select({ id: roleAssignment.id, roleId: roleAssignment.roleId })
+    .from(roleAssignment)
+    .where(
+      and(
+        eq(roleAssignment.principalType, "user"),
+        eq(roleAssignment.principalId, input.userId)
+      )
+    );
 
-    const [row] = await tx
-      .insert(roleAssignment)
-      .values({
-        roleId: input.roleId,
-        principalType: input.principal.type,
-        principalId: input.principal.id,
-        scopeType: input.scope?.type ?? null,
-        scopeId: input.scope?.id ?? null,
-        createdByUserId: input.actorUserId,
-      })
-      .returning({ id: roleAssignment.id });
+  const people = await affectedPeople(tx, { type: "user", id: input.userId });
 
-    if (row === undefined) {
-      throw new Error("the role assignment insert returned no row");
-    }
+  for (const row of rows) {
+    // One statement at a time on the one transaction.
+    // oxlint-disable-next-line no-await-in-loop
+    await tx.delete(roleAssignment).where(eq(roleAssignment.id, row.id));
 
+    // oxlint-disable-next-line no-await-in-loop
+    const roleName = await roleNameOf(tx, row.roleId);
+
+    // oxlint-disable-next-line no-await-in-loop
     await writeAdminAuditEvent(tx, {
-      action: "core:role_assignment_added",
+      action: "core:role_assignment_removed",
       actorUserId: input.actorUserId,
       targetType: "role-assignment",
       targetId: row.id,
-      summary: `Granted the ${roleName} role to ${input.principal.type} ${input.principal.id}`,
+      summary: `Removed the ${roleName} role from user ${input.userId}`,
       metadata: {
-        roleId: input.roleId,
-        principalType: input.principal.type,
-        principalId: input.principal.id,
-        scopeType: input.scope?.type ?? null,
-        scopeId: input.scope?.id ?? null,
+        roleId: row.roleId,
+        principalType: "user",
+        principalId: input.userId,
       },
     });
 
-    await emitRoleEvents(
-      input.tenant,
-      tx,
-      coreRoleGranted,
-      roleName,
-      await affectedPeople(tx, input.principal)
-    );
-
-    return { id: row.id };
-  });
+    // oxlint-disable-next-line no-await-in-loop
+    await emitRoleEvents(tenant, tx, coreRoleRevoked, roleName, people);
+  }
 }
 
 /** Removes one assignment by id, refusing the R-38 cases and emitting `core:role:revoked`. */

@@ -15,7 +15,6 @@ import {
   createLocalGroup,
   deleteDirectoryGroup,
   deleteLocalGroup,
-  listActivePeople,
   listAssignableRoles,
   listGroups,
   readGroup,
@@ -103,10 +102,6 @@ export function createGroupsRouter() {
 
       return found;
     }),
-
-    // The local-group member picker's people: a narrow read behind `core:groups:manage` (R-39),
-    // not the People router S2-10 owns.
-    people: procedure.query(({ ctx }) => listActivePeople(ctx.tenant)),
 
     // The roles a group can be given, for the inspector's assign step (R-24b).
     assignableRoles: procedure.query(({ ctx }) =>

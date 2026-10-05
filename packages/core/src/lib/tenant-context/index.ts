@@ -89,6 +89,13 @@ export type AuthEnvironment = {
   readonly keycloakRealm: string;
   readonly keycloakClientId: string;
   readonly keycloakClientSecret: string;
+  /**
+   * `KEYCLOAK_ADMIN_CLIENT_SECRET`, the `genie-admin` service client's secret, read by the
+   * application's realm-management operations (local-account creation and the set-password email,
+   * R-40). It is absent in client-only mode, where no `genie-admin` client exists (ADR 0010), so a
+   * caller that needs it refuses with a named cause when it is missing rather than at start.
+   */
+  readonly keycloakAdminClientSecret?: string;
 };
 
 /**

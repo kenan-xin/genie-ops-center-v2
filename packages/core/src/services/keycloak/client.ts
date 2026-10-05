@@ -152,6 +152,76 @@ export async function createRealm(
 }
 
 /**
+ * Creates a realm account through the `genie-admin` service client (`POST
+ * /admin/realms/{realm}/users`, R-40) and answers the new account's Keycloak id, read from the
+ * `Location` response header. Keycloak answers 201 with that header; a bodyless answer without one
+ * is a refusal, because the caller needs the id for the follow-up action email.
+ */
+export async function createRealmUser(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  representation: JsonObject
+): Promise<string> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/users`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(representation),
+    }
+  );
+
+  const location = response.headers.get("location");
+  await parseResponse(response);
+
+  const id = location?.split("/").findLast((segment) => segment !== "");
+
+  if (id === undefined || id === "") {
+    throw new Error("Keycloak created the user without a Location id");
+  }
+
+  return id;
+}
+
+/**
+ * Triggers the realm's action email (`PUT /admin/realms/{realm}/users/{id}/execute-actions-email`,
+ * R-40). The `UPDATE_PASSWORD` action sends Keycloak's set-password email; `lifespanSeconds` is
+ * the link's own lifetime. Nothing here logs the link: the response is empty and the request body
+ * carries no token beyond the access token.
+ */
+export async function executeActionsEmail(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  userId: string,
+  actions: readonly string[],
+  lifespanSeconds?: number
+): Promise<void> {
+  const url = new URL(
+    `${target.baseUrl}/admin/realms/${realm}/users/${userId}/execute-actions-email`
+  );
+
+  if (lifespanSeconds !== undefined) {
+    url.searchParams.set("lifespan", String(lifespanSeconds));
+  }
+
+  const response = await target.fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(actions),
+  });
+
+  await parseResponse(response);
+}
+
+/**
  * The outcome of creating an identity provider: `exists` is a 409 for an alias already present,
  * which the caller turns into an update so a repeated `genie-ops idp set` is idempotent (R-58).
  */
