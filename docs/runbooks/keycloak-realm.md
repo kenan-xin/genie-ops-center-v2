@@ -305,6 +305,17 @@ These are obligations of the Keycloak server, not of the realm. They belong to w
 | Run more than one node. | One node is a single point of failure for every sign-in. |
 | Monitor the server. | A sign-in outage must not be reported by the customer first. |
 
+#### Hardening checklist (Spec 2 AC-14)
+
+The operator who hosts the Keycloak server completes this checklist on each real deployment. Each item names the check that proves it.
+
+1. Bootstrap administrator replaced. Sign in to the `master` realm as a named administrator. Make sure that the temporary bootstrap administrator no longer exists and that the console shows no temporary-administrator banner.
+2. External database, backed up. Make sure that `KC_DB` names an external Postgres and not the embedded H2 database. Make sure that a backup of that database ran in the last 24 hours, and that one restore was tested.
+3. More than one node. Make sure that at least two Keycloak nodes serve `KEYCLOAK_URL`, and that a sign-in still completes with one node stopped.
+4. Monitoring. Make sure that an alert fires when the realm's discovery document, `KEYCLOAK_URL/realms/<realm>/.well-known/openid-configuration`, does not answer, and that the alert reaches the operator.
+
+Confirmation status: not confirmed. No operator completed this checklist on a real deployment yet. When an operator completes it, record the date, the deployment, and the operator's name below this line. Spec 2 AC-14 stays open until that record exists.
+
 Keycloak. `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` create a temporary administrator in the `master` realm at the first start, when the `master` realm does not exist yet. The console marks the account as temporary with a banner. From Keycloak 26.4 the welcome page creates a regular administrator instead, but the environment and command-line path still creates a temporary one.
 
 The generated stack passes `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` from `.env`, blank by default, and unsets a blank value, so production starts without a bootstrap administrator. The operator creates the temporary administrator once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`deployment.md`, "Set up a new customer", step 6). The generated-stack smoke test sets the two in its own transient `.env` to create the administrator its `genie-ops setup` signs in with.
