@@ -1139,16 +1139,28 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
         returnHeaders: true,
       });
 
-      // R-44: a sign-out is audited like the sign-in it ends.
+      // R-44: a sign-out is audited like the sign-in it ends. The session row is already gone, so a
+      // failed audit write is logged and the sign-out still completes: the cookie is cleared and
+      // the realm session ends, rather than a 500 that leaves the person signed in at the realm.
       const tenant = input.tenant?.();
 
       if (current !== null && tenant !== undefined) {
-        await writeAuthAuditEvent(tenant, {
-          action: "auth:sign_out",
-          actorUserId: current.user.id,
-          targetUserId: current.user.id,
-          summary: "Signed out",
-        });
+        try {
+          await writeAuthAuditEvent(tenant, {
+            action: "auth:sign_out",
+            actorUserId: current.user.id,
+            targetUserId: current.user.id,
+            summary: "Signed out",
+          });
+        } catch (error) {
+          input.logger.error(
+            {
+              userId: current.user.id,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "sign-out audit write failed"
+          );
+        }
       }
 
       const providerLogoutUrl =

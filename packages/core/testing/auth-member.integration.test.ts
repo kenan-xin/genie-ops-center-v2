@@ -437,6 +437,56 @@ describe("the stored session address (AC-1, AC-5, R-4a, R-16)", () => {
         )
     ).toHaveLength(1);
   });
+
+  it("AC-5 R-17 R-44: a failed sign-out audit write still deletes the session and clears the cookie", async () => {
+    const member = authOf(deployment);
+    const email = `signout-fails-${randomUUID()}@example.invalid`;
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    const signIn = await signInWithPassword(member, email);
+
+    expect(signIn.status).toBe(200);
+
+    // A real database fault on the one row: the audit insert for this sign-out raises.
+    await deployment.context.db.$client.query(`
+      create function refuse_sign_out_audit() returns trigger language plpgsql as $$
+      begin
+        if new.action = 'auth:sign_out' then raise exception 'audit store unavailable'; end if;
+        return new;
+      end $$;
+      create trigger refuse_sign_out_audit before insert on audit_event
+        for each row execute function refuse_sign_out_audit();
+    `);
+
+    try {
+      const result = await member.signOut({
+        headers: new Headers({ cookie: cookieOf(signIn), origin: PUBLIC_URL }),
+        callbackURL: PUBLIC_URL,
+      });
+
+      // The cookie-clearing header still reaches the caller's redirect.
+      expect(
+        result.headers
+          .getSetCookie()
+          .some((cookie) => /genie-session=;/.test(cookie))
+      ).toBe(true);
+    } finally {
+      await deployment.context.db.$client.query(
+        "drop trigger refuse_sign_out_audit on audit_event; drop function refuse_sign_out_audit()"
+      );
+    }
+
+    expect(
+      await deployment.context.db
+        .select()
+        .from(sessionTable)
+        .where(eq(sessionTable.userId, userId))
+    ).toHaveLength(0);
+  });
 });
 
 describe("the discovery retry and swap", () => {
