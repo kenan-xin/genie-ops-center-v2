@@ -6,7 +6,6 @@
 
 export const MAIL_TEMPLATE_IDS = [
   "invitation-brokered",
-  "invitation-local-account",
   "role-granted",
   "role-removed",
   "new-device-sign-in",

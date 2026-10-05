@@ -22,10 +22,6 @@ const TEXT_PARTS = {
     heading: "You are invited",
     action: `Accept invitation: ${VARIABLES.invitationUrl}`,
   },
-  "invitation-local-account": {
-    heading: "Your account has been created",
-    action: `Open ${VARIABLES.productName}: ${VARIABLES.link}`,
-  },
   "role-granted": {
     heading: "Role granted",
     action: `Open ${VARIABLES.productName}: ${VARIABLES.link}`,
@@ -48,10 +44,9 @@ const TEXT_PARTS = {
 >;
 
 describe("mailer templates", () => {
-  it("contains every R-48 template and both invitation variants", () => {
+  it("contains every R-48 template", () => {
     expect(MAIL_TEMPLATE_IDS.toSorted()).toEqual([
       "invitation-brokered",
-      "invitation-local-account",
       "module-notification",
       "new-device-sign-in",
       "role-granted",

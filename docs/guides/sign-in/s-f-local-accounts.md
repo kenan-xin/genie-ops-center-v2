@@ -52,7 +52,10 @@ Follow the steps in order.
 7. The person sets a password and signs in. They open the set-password email, set a password that
    meets the realm policy, and sign in. Their first sign-in sets them active. Removing the person
    later ends their sessions, bans them, and drops their group memberships and direct roles; their
-   name, email, and audit trail stay.
+   name, email, and audit trail stay. Remove is a Genie Ops Center action only: it does not disable
+   the person's realm account, so a local account can still sign in to the other client in the same
+   realm, for example genie-studio. Disable the realm account itself in Keycloak when the person
+   must lose access to every client.
 
 ## What stays true when the setting changes
 

@@ -1,8 +1,8 @@
 /**
- * The R-48 template catalogue: invitation with a brokered and a local-account variant, role
- * granted, role removed, new-device sign-in and module notification. The templates and the mailer
- * land with this ticket; the events that send them land in Section 2 item 8 and the first module
- * that notifies.
+ * The R-48 template catalogue: invitation-brokered, role granted, role removed, new-device
+ * sign-in and module notification. A local account gets no core email; the realm sends its
+ * set-password email itself (Specification 02 R-40a). The templates and the mailer land with this
+ * ticket; the events that send them land in Section 2 item 8 and the first module that notifies.
  *
  * The HTML part is rendered from React Email components (`DEC-11`, tech-stack "Email templates").
  * The plain-text part is a hand-written builder per template and is never produced from the HTML
@@ -87,34 +87,6 @@ function invitationBrokered(variables: MailTemplateVariables): MailContent {
       ),
     },
     footer: `You received this email because an administrator invited ${value(variables, "email")}.`,
-  };
-}
-
-/**
- * The local-account variant of DEC-10 and DEC-40: it is a notice that the person was added and
- * that the realm will send the set-password email, never the credential email itself.
- */
-function invitationLocalAccount(variables: MailTemplateVariables): MailContent {
-  const companyName = value(variables, "companyName");
-  const productName = value(variables, "productName");
-
-  return {
-    subject: `Your ${productName} account is ready`,
-    heading: "Your account has been created",
-    preview: `An account was created for you at ${companyName}.`,
-    paragraphs: [
-      greeting(variables),
-      `An account was created for you at ${companyName}.`,
-      `${companyName} will send you a separate email with a link to set your password.`,
-    ],
-    action: {
-      label: `Open ${productName}`,
-      url: firstNonEmpty(
-        value(variables, "link"),
-        value(variables, "invitationUrl")
-      ),
-    },
-    footer: `Do not share this message. ${companyName} never asks you for your password.`,
   };
 }
 
@@ -206,7 +178,6 @@ const BUILDERS: Readonly<
   Record<MailTemplateId, (variables: MailTemplateVariables) => MailContent>
 > = {
   "invitation-brokered": invitationBrokered,
-  "invitation-local-account": invitationLocalAccount,
   "role-granted": roleGranted,
   "role-removed": roleRemoved,
   "new-device-sign-in": newDeviceSignIn,
