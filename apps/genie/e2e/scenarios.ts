@@ -273,8 +273,6 @@ async function seedCompanyPeople(): Promise<void> {
       groups: (project) => [doneAdmitGroup(project)],
     },
     { scenario: "invite", state: "admin", groups: () => [] },
-    { scenario: "invite", state: "person", groups: () => [] },
-    { scenario: "invite", state: "unknown", groups: () => [] },
     { scenario: "invite", state: "mixed", groups: () => [] },
   ];
 

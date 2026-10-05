@@ -176,6 +176,56 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   expect(await realmSessionIds(E2E_SIGN_IN_REALM, email)).not.toContain(sid);
 });
 
+test("with no stored id token, sign-out falls back to client_id and still ends the realm session (R-17)", async ({
+  page,
+}, testInfo) => {
+  const email = e2eReaderEmail("auth", testInfo.project.name);
+  const earlier = await realmSessionIds(E2E_SIGN_IN_REALM, email);
+
+  await signInThroughKeycloak(page, { email });
+
+  // The stored token is gone, for example after a secret rotation that cannot unseal it.
+  await queryDatabase(
+    `update account set id_token = null where provider_id = 'keycloak' and user_id = (select id from "user" where email = '${email}')`
+  );
+
+  // This browser's realm session: the one the sign-in above added.
+  const sessions = (await realmSessionIds(E2E_SIGN_IN_REALM, email)).filter(
+    (sid) => !earlier.includes(sid)
+  );
+
+  expect(sessions).toHaveLength(1);
+
+  const signOut = await page.request.post("/api/auth/sign-out", {
+    headers: { origin: new URL(page.url()).origin },
+    maxRedirects: 0,
+  });
+
+  expect(signOut.status()).toBe(303);
+
+  const publicUrl = new URL(page.url()).origin;
+  const location = new URL(signOut.headers()["location"] ?? "");
+
+  expect(`${location.origin}${location.pathname}`).toBe(END_SESSION);
+  expect(location.searchParams.has("id_token_hint")).toBe(false);
+  expect(location.searchParams.get("client_id")).toBe(E2E_CLIENT_ID);
+  expect(location.searchParams.get("post_logout_redirect_uri")).toBe(publicUrl);
+  expect(location.searchParams.get("state")).toBe("signed_out");
+
+  // Without a hint Keycloak asks for confirmation; confirming ends the realm session and returns
+  // the browser to the signed-out page, so "You are signed out." is true.
+  await page.goto(location.toString());
+  await page.locator("#kc-logout").click();
+
+  await expect
+    .poll(() => page.url(), { timeout: 15_000 })
+    .toBe(`${publicUrl}/sign-in?error=signed_out`);
+
+  const remaining = await realmSessionIds(E2E_SIGN_IN_REALM, email);
+
+  expect(remaining).not.toContain(sessions[0]);
+});
+
 test("a realm identity with the break-glass email is refused and never linked (R-62)", async ({
   page,
 }, testInfo) => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import {
   COMPANY_REALM,
+  createRealmUser,
   E2E_USER_PASSWORD,
   setRealmUserEnabled,
   setRealmUserGroupMemberships,
@@ -192,9 +194,18 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
 }, testInfo) => {
   const project = testInfo.project.name;
   const baseUrl = inviteBaseUrl();
-  const personEmail = scenarioEmail("invite", "person", project);
-  const unknown = scenarioEmail("invite", "unknown", project);
+  const run = randomUUID().slice(0, 8);
+  const personEmail = scenarioEmail("invite", `person-${run}`, project);
+  const unknown = scenarioEmail("invite", `unknown-${run}`, project);
   const displayName = `S2-16 Invited ${project}`;
+
+  // Run-unique people at the provider, so a rerun against a stack that persists
+  // (GENIE_E2E_EXTERNAL=1) never meets an earlier run's rows or disabled user.
+  await Promise.all(
+    [personEmail, unknown].map((email) =>
+      createRealmUser(COMPANY_REALM, { email, password: E2E_USER_PASSWORD })
+    )
+  );
 
   // AC-20 (invite): the administrator pre-adds the person on the People screen.
   await signInThroughBroker(page, {
