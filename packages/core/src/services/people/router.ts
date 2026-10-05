@@ -125,16 +125,14 @@ export function createPeopleRouter() {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
 
-        return {
-          id: await addPerson(ctx.tenant, {
-            actorUserId: ctx.caller.userId,
-            email: input.email,
-            name: input.name,
-            roleIds: input.roleIds,
-            accountType: input.accountType,
-            sendInvitation: input.sendInvitation,
-          }),
-        };
+        return addPerson(ctx.tenant, {
+          actorUserId: ctx.caller.userId,
+          email: input.email,
+          name: input.name,
+          roleIds: input.roleIds,
+          accountType: input.accountType,
+          sendInvitation: input.sendInvitation,
+        });
       }),
 
     disable: procedure.input(personId).mutation(async ({ ctx, input }) => {

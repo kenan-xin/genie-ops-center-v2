@@ -139,6 +139,17 @@ export function registerContextLogger(
 }
 
 /**
+ * The process logger recorded for one context, or nothing for a context this factory did not
+ * build. A service that must record a best-effort failure the transport does not surface - the Add
+ * person realm-user compensation, for example - reads it here rather than building its own logger.
+ */
+export function contextLoggerOf(
+  context: TenantContext
+): Pick<RedactingLogger, "error"> | undefined {
+  return slot().loggers.get(context);
+}
+
+/**
  * The transaction `withTransaction` hands a caller: the context's own drizzle transaction, so a
  * write it makes commits or rolls back with the caller's work and no second connection opens.
  */

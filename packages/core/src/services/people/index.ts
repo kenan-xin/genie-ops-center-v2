@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { contextLoggerOf } from "../../lib/tenant-context/with-transaction.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { account, groupMember, role, session, user } from "../../schema.ts";
@@ -579,6 +580,17 @@ export type AddPersonInput = {
 };
 
 /**
+ * The result of Add person. `emailSent` is false when the person was written but the expected
+ * email (the realm's set-password email for a local account, or the invitation for a brokered one)
+ * did not go out; the screen shows the partial-success notice and Resend is the recovery, so the
+ * administrator never has to retry the add (N1).
+ */
+export type AddPersonResult = {
+  readonly id: string;
+  readonly emailSent: boolean;
+};
+
+/**
  * Add person (R-40, R-40a): one transaction writes the `user` row and every picked role through
  * the one role-assignment service, so both are saved or neither is. A local account also creates
  * the realm account through `genie-admin`; a brokered add optionally sends the invitation email.
@@ -586,7 +598,7 @@ export type AddPersonInput = {
 export async function addPerson(
   tenant: TenantContext,
   input: AddPersonInput
-): Promise<string> {
+): Promise<AddPersonResult> {
   const email = input.email.trim().toLowerCase();
 
   if (!z.email().safeParse(email).success) {
@@ -743,37 +755,67 @@ export async function addPerson(
       });
     });
   } catch (caught) {
-    // Compensation: the realm user exists but the person row did not commit, so it is removed.
+    // Compensation: the realm user exists but the person row did not commit, so it is removed. A
+    // compensation that itself fails is logged with the Keycloak user id and the error, never a
+    // token, so the orphan is visible rather than silent (N2).
     if (realm !== null && realmToken !== null && keycloakUserId !== null) {
       await deleteRealmUser(
         realm.target,
         realm.realm,
         realmToken,
         keycloakUserId
-      ).catch(() => undefined);
+      ).catch((cause: unknown) => {
+        contextLoggerOf(tenant)?.error(
+          { keycloakUserId, err: cause },
+          "Add person compensation could not delete the orphan realm user"
+        );
+      });
     }
 
     throw caught;
   }
 
+  // The person is committed. A failure to send the expected email is a partial success: the add
+  // returns the id with `emailSent: false`, the screen closes and shows the notice, and Resend is
+  // the recovery (N1). The failure is logged without a token.
+  let emailSent = true;
+
   if (local) {
-    await sendSetPassword(tenant, {
-      actorUserId: input.actorUserId,
-      personId,
-      email,
-      resend: false,
-    });
+    try {
+      await sendSetPassword(tenant, {
+        actorUserId: input.actorUserId,
+        personId,
+        email,
+        resend: false,
+      });
+    } catch (sendError) {
+      emailSent = false;
+
+      contextLoggerOf(tenant)?.error(
+        { personId, email, err: sendError },
+        "Add person could not send the set-password email"
+      );
+    }
   } else if (shouldSendInvitation) {
-    await sendInvitation(tenant, {
-      actorUserId: input.actorUserId,
-      personId,
-      email,
-      name: displayName,
-      resend: false,
-    });
+    try {
+      await sendInvitation(tenant, {
+        actorUserId: input.actorUserId,
+        personId,
+        email,
+        name: displayName,
+        resend: false,
+      });
+    } catch (sendError) {
+      emailSent = false;
+
+      contextLoggerOf(tenant)?.error(
+        { personId, email, err: sendError },
+        "Add person could not send the invitation email"
+      );
+    }
   }
 
-  return personId;
+  return { id: personId, emailSent };
 }
 
 /**

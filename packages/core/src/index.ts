@@ -92,6 +92,7 @@ export {
 export {
   type AfterCommit,
   type AfterCommitEntry,
+  contextLoggerOf,
   type TenantTransaction,
   withTransaction,
 } from "./lib/tenant-context/with-transaction.ts";

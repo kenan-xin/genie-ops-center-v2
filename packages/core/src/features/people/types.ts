@@ -123,6 +123,11 @@ export type PeopleScreenProps = {
   /** R-38: person ids where disable or remove would leave no active tenant administrator. */
   readonly lastAdministratorPersonIds: readonly string[];
   readonly error?: string | undefined;
+  /**
+   * A partial-success notice, e.g. the person was added but the email did not go out (N1). Shown
+   * in a status region, not an error.
+   */
+  readonly notice?: string | undefined;
   readonly loading?: boolean | undefined;
   /** Fires when a row opens or the inspector closes, so the host can load that person's detail. */
   readonly onSelectPerson?: (personId: string | null) => void;

@@ -18,6 +18,7 @@ import {
   withTransaction,
   type RequestPrincipal,
 } from "../src/index.ts";
+import { registerContextLogger } from "../src/lib/tenant-context/with-transaction.ts";
 import {
   account,
   auditEvent,
@@ -151,7 +152,7 @@ describe("the People writers against a real database", () => {
 
     const email = `add-${Date.now()}@example.invalid`;
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email,
       name: "Added Person",
@@ -233,7 +234,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `invite-${Date.now()}@example.invalid`;
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -275,7 +276,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `resend-invite-${Date.now()}@example.invalid`;
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -308,7 +309,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `brokered-sp-${Date.now()}@example.invalid`;
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -340,7 +341,7 @@ describe("the People writers against a real database", () => {
 
     const email = `lifecycle-${Date.now()}@example.invalid`;
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -593,7 +594,15 @@ function urlOf(input: Parameters<typeof fetch>[0]): string {
 }
 
 /** A fetch stub standing in for the Keycloak admin API, counting user creates and deletes. */
-function installRealmStub(onPost?: () => Promise<void>) {
+function installRealmStub(
+  options: {
+    readonly onPost?: () => Promise<void>;
+    /** Answer the set-password action email with a 500, to force a partial success (N1). */
+    readonly failActionEmail?: boolean;
+    /** Answer the compensation delete with a 500, to force a logged compensation failure (N2). */
+    readonly failDelete?: boolean;
+  } = {}
+) {
   const counters = { posts: 0, deletes: 0 };
 
   // SAFETY: this stub implements the fetch surface the realm client uses; the cast satisfies the
@@ -611,7 +620,7 @@ function installRealmStub(onPost?: () => Promise<void>) {
     if (init?.method === "POST" && url.endsWith("/users")) {
       counters.posts += 1;
 
-      await onPost?.();
+      await options.onPost?.();
 
       return new Response(null, {
         status: 201,
@@ -619,8 +628,26 @@ function installRealmStub(onPost?: () => Promise<void>) {
       });
     }
 
+    if (init?.method === "PUT" && url.includes("execute-actions-email")) {
+      if (options.failActionEmail === true) {
+        return new Response(JSON.stringify({ error: "smtp" }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      return new Response(null, { status: 204 });
+    }
+
     if (init?.method === "DELETE") {
       counters.deletes += 1;
+
+      if (options.failDelete === true) {
+        return new Response(JSON.stringify({ error: "boom" }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        });
+      }
 
       return new Response(null, { status: 204 });
     }
@@ -752,7 +779,7 @@ describe("disable, re-enable and the R-38 count (R-10, R-38)", () => {
 
     const actor = await manager();
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email: `reenable-${Date.now()}@example.invalid`,
       roleIds: [],
@@ -805,7 +832,7 @@ describe("disable, re-enable and the R-38 count (R-10, R-38)", () => {
       .where(eq(roleTable.name, "Tenant administrator"))
       .limit(1);
 
-    const personId = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, {
       actorUserId: actor,
       email: `count-${Date.now()}@example.invalid`,
       roleIds: [adminRole!.id],
@@ -870,15 +897,17 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     const actor = await manager();
     const email = `race-${Date.now()}@example.invalid`;
 
-    const counters = installRealmStub(async () => {
-      // A concurrent add wins the unique email between the pre-check and the transaction.
-      await deployment.context.db.insert(user).values({
-        id: randomUUID(),
-        name: "Race Winner",
-        email,
-        status: "pending",
-        onboarding: "invited",
-      });
+    const counters = installRealmStub({
+      onPost: async () => {
+        // A concurrent add wins the unique email between the pre-check and the transaction.
+        await deployment.context.db.insert(user).values({
+          id: randomUUID(),
+          name: "Race Winner",
+          email,
+          status: "pending",
+          onboarding: "invited",
+        });
+      },
     });
 
     await expect(
@@ -956,5 +985,105 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
         .from(roleAssignment)
         .where(eq(roleAssignment.principalId, created.id))
     ).toHaveLength(1);
+  });
+});
+
+describe("Add person partial success when the expected email fails (N1)", () => {
+  it("returns the id with emailSent false when the realm set-password email fails", async () => {
+    const actor = await manager();
+
+    installRealmStub({ failActionEmail: true });
+
+    const result = await addPerson(deployment.context, {
+      actorUserId: actor,
+      email: `local-nomail-${Date.now()}@example.invalid`,
+      roleIds: [],
+      accountType: "local",
+    });
+
+    expect(result.emailSent).toBe(false);
+    expect(
+      await deployment.context.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, result.id))
+    ).toHaveLength(1);
+  });
+
+  it("returns the id with emailSent false when the invitation email fails", async () => {
+    const actor = await manager();
+    const mailer = deployment.context.mailer;
+
+    // SAFETY: the context's mailer member is a fixed object; this test swaps it for one whose send
+    // fails, and restores the original in the finally.
+    (deployment.context as { mailer: typeof mailer }).mailer = {
+      ...mailer,
+      send: async () => {
+        throw new Error("smtp down");
+      },
+    };
+
+    try {
+      const result = await addPerson(deployment.context, {
+        actorUserId: actor,
+        email: `brokered-nomail-${Date.now()}@example.invalid`,
+        roleIds: [],
+        sendInvitation: true,
+      });
+
+      expect(result.emailSent).toBe(false);
+      expect(
+        await deployment.context.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.id, result.id))
+      ).toHaveLength(1);
+    } finally {
+      // SAFETY: restores the fixed mailer member the test swapped out above.
+      (deployment.context as { mailer: typeof mailer }).mailer = mailer;
+    }
+  });
+});
+
+describe("Add person compensation failure is logged (N2)", () => {
+  it("logs the Keycloak user id and the error when the orphan delete fails", async () => {
+    const actor = await manager();
+    const email = `log-race-${Date.now()}@example.invalid`;
+
+    const lines: Array<{ readonly message: string; readonly fields: unknown }> =
+      [];
+
+    registerContextLogger(deployment.context, {
+      error: (cause: unknown, message?: string) => {
+        lines.push({ message: message ?? "", fields: cause });
+      },
+    });
+
+    installRealmStub({
+      failDelete: true,
+      onPost: async () => {
+        // A concurrent add wins the unique email between the pre-check and the transaction.
+        await deployment.context.db.insert(user).values({
+          id: randomUUID(),
+          name: "Race Winner",
+          email,
+          status: "pending",
+          onboarding: "invited",
+        });
+      },
+    });
+
+    await expect(
+      addPerson(deployment.context, {
+        actorUserId: actor,
+        email,
+        roleIds: [],
+        accountType: "local",
+      })
+    ).rejects.toMatchObject({ code: "email-taken" });
+
+    expect(
+      lines.some((line) => line.message.includes("orphan realm user"))
+    ).toBe(true);
   });
 });

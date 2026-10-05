@@ -349,6 +349,14 @@ export const AddPersonRateLimitedNamesTheWait: Story = {
   },
 };
 
+export const AddPersonPartialSuccessNotice: Story = {
+  args: { notice: "Person added; the email was not sent. Use Resend." },
+  play: async ({ canvas }) => {
+    // A committed add whose email failed is a status notice, not an error.
+    await expect(canvas.getByRole("status")).toHaveTextContent("Use Resend");
+  },
+};
+
 export const RolePickerHiddenWithoutTheRolesPermission: Story = {
   args: { canAssignRoles: false },
   play: async ({ canvas }) => {

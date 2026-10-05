@@ -668,6 +668,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
         </p>
       )}
 
+      {props.notice === undefined ? null : (
+        <p role="status" className="mt-3 text-sm text-foreground">
+          {props.notice}
+        </p>
+      )}
+
       {props.loading ? (
         <p role="status" className="mt-4 text-sm text-muted-foreground">
           Loading people…

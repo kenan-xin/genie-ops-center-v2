@@ -14,7 +14,11 @@ import { trpc } from "../../../trpc/client.ts";
 import type { AppRouter } from "../../../trpc/root.ts";
 
 /** What a write returns: an id for a create, nothing for the rest. */
-type WriteResult = void | { readonly id: string };
+type WriteResult = void | {
+  readonly id: string;
+  /** False on Add person when the expected email did not go out (N1). */
+  readonly emailSent?: boolean;
+};
 
 /** A refused write as the tRPC client hands it over: the safe message and the envelope data. */
 type RefusalError = TRPCClientError<AppRouter>;
@@ -48,6 +52,7 @@ export function PeopleRoute(props: {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [notice, setNotice] = useState<string | undefined>(undefined);
 
   const list = useQuery({
     queryKey: ["people"],
@@ -86,19 +91,30 @@ export function PeopleRoute(props: {
 
   const run = (work: () => Promise<WriteResult>) => {
     setError(undefined);
+    setNotice(undefined);
     action.mutate(work);
   };
 
-  // Add person resolves only on success, so the dialog stays open on a refusal and shows it. The
-  // rejection sets the message through `onError`; the screen catches it to stay open.
+  // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
+  // committed add whose email did not go out is a partial success: the dialog closes and a status
+  // notice points at Resend (N1).
   const addPerson = (input: NewPersonInput): Promise<void> => {
     setError(undefined);
+    setNotice(undefined);
 
     return action
       .mutateAsync(() =>
         trpc.people.add.mutate({ ...input, roleIds: [...input.roleIds] })
       )
-      .then(() => undefined);
+      .then((result) => {
+        if (
+          result !== undefined &&
+          "emailSent" in result &&
+          result.emailSent === false
+        ) {
+          setNotice("Person added; the email was not sent. Use Resend.");
+        }
+      });
   };
 
   return (
@@ -112,6 +128,7 @@ export function PeopleRoute(props: {
       error={
         error ?? (list.isError ? "The people could not be read." : undefined)
       }
+      notice={notice}
       lastAdministratorPersonIds={
         detail.data?.lastAdministrator === true && selectedId !== null
           ? [selectedId]
