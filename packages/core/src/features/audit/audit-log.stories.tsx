@@ -128,6 +128,23 @@ export const Empty: Story = {
   },
 };
 
+/**
+ * A filter change is loading: the rows on screen belong to the previous filter, so the footer
+ * names no count, Load more is gone, and a status says the log is reloading.
+ */
+export const RefreshingAfterFilterChange: Story = {
+  args: { refreshing: true },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("status")).toHaveTextContent(
+      "Loading the audit log…"
+    );
+    await expect(canvas.queryByText(/Showing \d+ of/)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: "Load more" })
+    ).not.toBeInTheDocument();
+  },
+};
+
 export const LoadingNextPage: Story = {
   args: { loading: true },
   play: async ({ canvas }) => {

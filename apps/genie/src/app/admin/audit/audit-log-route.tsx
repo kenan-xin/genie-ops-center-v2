@@ -121,6 +121,7 @@ export function AuditLogRoute(props: AuditLogRouteProps) {
       filters={filters}
       hasMore={query.hasNextPage}
       loading={query.isFetchingNextPage}
+      refreshing={query.isPlaceholderData}
       onChangeAuditFilters={setFilters}
       onLoadMoreAuditEvents={() => {
         void query.fetchNextPage();

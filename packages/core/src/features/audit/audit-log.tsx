@@ -645,11 +645,16 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
             </table>
 
             <div className="flex flex-col items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:justify-between text-muted-foreground">
-              <span>
-                Showing {props.events.length.toLocaleString("en-GB")} of{" "}
-                {props.total.toLocaleString("en-GB")}
-              </span>
-              {props.hasMore ? (
+              {props.refreshing === true ? (
+                // The rows above are the previous filter's; no count or Load more claims them.
+                <span role="status">Loading the audit log…</span>
+              ) : (
+                <span>
+                  Showing {props.events.length.toLocaleString("en-GB")} of{" "}
+                  {props.total.toLocaleString("en-GB")}
+                </span>
+              )}
+              {props.hasMore && props.refreshing !== true ? (
                 <button
                   type="button"
                   disabled={props.loading}
