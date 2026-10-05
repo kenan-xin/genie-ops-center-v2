@@ -113,6 +113,11 @@ export type PeopleScreenProps = {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
   readonly roles: readonly AssignableRole[];
+  /**
+   * Whether the caller may pick roles in Add person. False hides the picker; the server refuses
+   * roles in the input for a holder of `core:people:manage` alone (DEC-39). Defaults to true.
+   */
+  readonly canAssignRoles?: boolean | undefined;
   /** Per-person detail the host loads on selection, for the inspector. */
   readonly details?: Readonly<Record<string, PersonDetail>>;
   /** R-38: person ids where disable or remove would leave no active tenant administrator. */
@@ -121,7 +126,11 @@ export type PeopleScreenProps = {
   readonly loading?: boolean | undefined;
   /** Fires when a row opens or the inspector closes, so the host can load that person's detail. */
   readonly onSelectPerson?: (personId: string | null) => void;
-  readonly onAddPerson?: (input: NewPersonInput) => void;
+  /**
+   * Adds a person. The dialog stays open until this resolves; a rejection leaves it open and the
+   * refusal shows in the alert (the host maps the tRPC error to its catalogue message).
+   */
+  readonly onAddPerson?: (input: NewPersonInput) => Promise<void> | void;
   readonly onDisablePerson?: (personId: string) => void;
   readonly onEnablePerson?: (personId: string) => void;
   readonly onRemovePerson?: (personId: string) => void;

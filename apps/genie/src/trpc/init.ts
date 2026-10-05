@@ -62,6 +62,8 @@ export type FormattedErrorEnvelopeData = {
   readonly httpStatus: number;
   readonly appCode: string;
   readonly requestId: string;
+  /** Present on a rate-limit refusal: the whole minutes until the window resets (R-21). */
+  readonly retryAfterMinutes?: number;
 };
 
 /**
@@ -157,15 +159,22 @@ export function formatTrpcError(input: {
     const httpStatus = httpStatusForCode(cause.code);
     const protocol = protocolCodeFor(httpStatus);
 
+    // A rate-limit refusal carries the whole minutes so the screen can name the wait; the key is
+    // added only when present, so no other answer carries it (exactOptionalPropertyTypes).
+    const base = {
+      code: protocol.key,
+      httpStatus,
+      appCode: cause.code,
+      requestId: input.requestId,
+    };
+
     return {
       message: cause.safeMessage,
       code: protocol.number,
-      data: {
-        code: protocol.key,
-        httpStatus,
-        appCode: cause.code,
-        requestId: input.requestId,
-      },
+      data:
+        cause.retryAfterMinutes === undefined
+          ? base
+          : { ...base, retryAfterMinutes: cause.retryAfterMinutes },
     };
   }
 

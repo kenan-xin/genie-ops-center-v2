@@ -461,11 +461,27 @@ export function PeopleScreen(props: PeopleScreenProps) {
   const [groupFilter, setGroupFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [addSubmitting, setAddSubmitting] = useState(false);
 
   const [confirm, setConfirm] = useState<{
     readonly kind: "disable" | "remove";
     readonly person: Person;
   } | null>(null);
+
+  // The dialog stays open until the host's promise resolves; a refusal rejects it, the host sets
+  // the alert, and the dialog remains open with the reason visible (R-38, finding 4).
+  const submitAdd = async (input: NewPersonInput) => {
+    setAddSubmitting(true);
+
+    try {
+      await props.onAddPerson?.(input);
+      setAdding(false);
+    } catch {
+      // The host set the catalogue message on `error`; nothing else to do here.
+    } finally {
+      setAddSubmitting(false);
+    }
+  };
 
   const groupOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -760,10 +776,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
         <AddPersonDialog
           settings={props.settings}
           roles={props.roles}
+          canAssignRoles={props.canAssignRoles}
+          error={props.error}
+          submitting={addSubmitting}
           onCancel={() => setAdding(false)}
           onSubmit={(input) => {
-            props.onAddPerson?.(input);
-            setAdding(false);
+            void submitAdd(input);
           }}
         />
       ) : null}
@@ -852,6 +870,11 @@ function FilterChip(props: {
 export function AddPersonDialog(props: {
   readonly settings: PeopleScreenProps["settings"];
   readonly roles: readonly AssignableRole[];
+  /** False hides the role picker for a holder of `core:people:manage` alone (DEC-39). */
+  readonly canAssignRoles?: boolean | undefined;
+  /** The catalogue message of a refusal, shown in the alert; the dialog stays open. */
+  readonly error?: string | undefined;
+  readonly submitting?: boolean | undefined;
   readonly onCancel: () => void;
   readonly onSubmit: (input: NewPersonInput) => void;
 }) {
@@ -862,6 +885,8 @@ export function AddPersonDialog(props: {
   const [sendInvitation, setSendInvitation] = useState(true);
 
   const localAvailable = props.settings.localAccountsEnabled;
+
+  const canAssignRoles = props.canAssignRoles ?? true;
 
   const brokered = !localAvailable || accountType === "brokered";
 
@@ -895,27 +920,29 @@ export function AddPersonDialog(props: {
                 onChange={(event) => setName(event.target.value)}
               />
             </Field>
-            <Field label="Roles">
-              <select
-                multiple
-                className={`${inputClass} h-28`}
-                aria-label="Roles"
-                value={[...roleIds]}
-                onChange={(event) =>
-                  setRoleIds(
-                    [...event.target.selectedOptions].map(
-                      (option) => option.value
+            {canAssignRoles ? (
+              <Field label="Roles">
+                <select
+                  multiple
+                  className={`${inputClass} h-28`}
+                  aria-label="Roles"
+                  value={[...roleIds]}
+                  onChange={(event) =>
+                    setRoleIds(
+                      [...event.target.selectedOptions].map(
+                        (option) => option.value
+                      )
                     )
-                  )
-                }
-              >
-                {props.roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+                  }
+                >
+                  {props.roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
 
             {localAvailable ? (
               <fieldset>
@@ -967,6 +994,12 @@ export function AddPersonDialog(props: {
                 ? "People in a group mapped to a role can also sign in without being added here."
                 : "Pending until first sign-in."}
             </p>
+
+            {props.error === undefined ? null : (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {props.error}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-input p-5">
@@ -980,12 +1013,12 @@ export function AddPersonDialog(props: {
           <button
             type="button"
             className={btnPrimary}
-            disabled={email.trim() === ""}
+            disabled={email.trim() === "" || props.submitting === true}
             onClick={() =>
               props.onSubmit({
                 email: email.trim(),
                 name: name.trim() === "" ? undefined : name.trim(),
-                roleIds,
+                roleIds: canAssignRoles ? roleIds : [],
                 accountType: localAvailable ? accountType : undefined,
                 sendInvitation: brokered ? sendInvitation : undefined,
               })

@@ -317,3 +317,45 @@ export const SearchNarrowsTheList: Story = {
     await expect(canvas.queryByText("Ada Admin")).not.toBeInTheDocument();
   },
 };
+
+export const AddPersonShowsTheRefusalAndStaysOpen: Story = {
+  args: { error: "A person with that email already exists." },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+
+    await expect(dialog.getByRole("alert")).toHaveTextContent("already exists");
+    // The dialog stays open on a refusal.
+    await expect(
+      canvas.getByRole("dialog", { name: "Add person" })
+    ).toBeInTheDocument();
+  },
+};
+
+export const AddPersonRateLimitedNamesTheWait: Story = {
+  args: {
+    error:
+      "Too many attempts in a short time. Wait a few minutes and try again. Try again in 5 minutes.",
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+
+    await expect(dialog.getByRole("alert")).toHaveTextContent(
+      "Try again in 5 minutes."
+    );
+  },
+};
+
+export const RolePickerHiddenWithoutTheRolesPermission: Story = {
+  args: { canAssignRoles: false },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+
+    await expect(dialog.queryByLabelText("Roles")).not.toBeInTheDocument();
+  },
+};
