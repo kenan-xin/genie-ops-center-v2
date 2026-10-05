@@ -128,6 +128,16 @@ const OIDC_SEED = [
 const INVITE_SEED = [
   "update tenant_settings set onboarding_mode = 'invite'",
   ...administratorSql("invite"),
+  // AC-26: a mixed role, one module's keys beside a core key, held directly by one person.
+  "insert into role (name, permissions, is_system) values ('S2-16 mixed', array['placeholder:read', 'placeholder:use', 'core:audit:read'], false) on conflict (name) do nothing",
+  ...E2E_PROJECTS.flatMap((project) => {
+    const email = scenarioEmail("invite", "mixed", project);
+
+    return [
+      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S2-16 Mixed ${project}', '${email}', true, 'active') on conflict (email) do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'S2-16 mixed' and u.email = '${email}' on conflict do nothing`,
+    ];
+  }),
 ].join("; ");
 
 const SAML_SEED = seedSql([]);
@@ -265,6 +275,7 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "invite", state: "admin", groups: () => [] },
     { scenario: "invite", state: "person", groups: () => [] },
     { scenario: "invite", state: "unknown", groups: () => [] },
+    { scenario: "invite", state: "mixed", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {

@@ -288,6 +288,19 @@ export async function queryBrokerDatabase(
   return stdout.split("\n").filter((line) => line !== "");
 }
 
+/** Runs one `genie-ops` command in a brokered deployment's app container. */
+export async function brokeredGenieOps(
+  suffix: string,
+  args: readonly string[]
+): Promise<void> {
+  await run("docker", [
+    "exec",
+    scopedProject(`genie-brokered-${suffix}`),
+    "genie-ops",
+    ...args,
+  ]);
+}
+
 /** Stops one brokered deployment's container. */
 export async function stopBrokered(suffix: string): Promise<void> {
   await run("docker", [

@@ -1,3 +1,8 @@
+import { mkdir, rmdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import {
@@ -6,10 +11,12 @@ import {
   setRealmUserEnabled,
   setRealmUserGroupMemberships,
 } from "../testing/e2e-keycloak.ts";
+import { scopedProject } from "../testing/worktree-scope.ts";
 import { doneAdmitGroup, doneGrantGroup, scenarioEmail } from "./scenarios.ts";
 import {
   BROKER_DB,
   brokeredBaseUrl,
+  brokeredGenieOps,
   INVITE_DB,
   inviteBaseUrl,
   queryBrokerDatabase,
@@ -256,4 +263,99 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
   await personPage.context().close();
   await unknownPage.context().close();
   await blockedPage.context().close();
+});
+
+/**
+ * Holds a lock across Playwright's worker processes. The module entitlement is one row per
+ * deployment, so the phone and the desktop runs of the AC-26 proof must not disable it at once.
+ */
+async function withDeploymentLock<T>(run: () => Promise<T>): Promise<T> {
+  const lock = join(tmpdir(), scopedProject("genie-s2-16-entitlement.lock"));
+  const deadline = Date.now() + 120_000;
+
+  /* eslint-disable no-await-in-loop -- each attempt exists only because the lock was held. */
+  while (true) {
+    try {
+      await mkdir(lock);
+      break;
+    } catch (error) {
+      if (Date.now() > deadline) throw error;
+
+      await sleep(250);
+    }
+  }
+  /* eslint-enable no-await-in-loop */
+
+  try {
+    return await run();
+  } finally {
+    await rmdir(lock);
+  }
+}
+
+/** The ids of one person's direct role assignments, to prove they survive the lifecycle. */
+async function assignmentIds(email: string): Promise<readonly string[]> {
+  return queryBrokerDatabase(
+    INVITE_DB,
+    `select a.id::text from role_assignment a join "user" u on a.principal_type = 'user' and a.principal_id = u.id where u.email = '${email}' order by 1`
+  );
+}
+
+/** Reloads until the Placeholder entry has the expected count; the entitlement reader caches 10 s. */
+async function expectPlaceholderEntries(
+  page: Page,
+  baseUrl: string,
+  count: number
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await page.goto(`${baseUrl}/`);
+
+        return page
+          .getByRole("link", { name: "Placeholder", exact: true })
+          .count();
+      },
+      { timeout: 30_000, intervals: [1000] }
+    )
+    .toBe(count);
+}
+
+test("retained access: a disabled module's grant is ineffective, the mixed role keeps working, and enable restores it (AC-26)", async ({
+  page,
+}, testInfo) => {
+  const baseUrl = inviteBaseUrl();
+  const email = scenarioEmail("invite", "mixed", testInfo.project.name);
+  const before = await assignmentIds(email);
+
+  await signInThroughBroker(page, { baseUrl, email });
+
+  await withDeploymentLock(async () => {
+    try {
+      await expectPlaceholderEntries(page, baseUrl, 1);
+
+      await brokeredGenieOps("invite", ["module", "disable", "placeholder"]);
+
+      // The module's keys grant nothing while it is unavailable, on the route and the procedure.
+      await expectPlaceholderEntries(page, baseUrl, 0);
+      await placeholderRefused(page, baseUrl);
+
+      // The unrelated core key in the same role keeps working (R-33d, CF-MA-10).
+      await page.goto(`${baseUrl}/admin/audit`);
+      await expect(
+        page.getByRole("heading", { name: "Audit log" })
+      ).toBeVisible();
+
+      await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+
+      // The remaining valid grant comes back under the same assignment (CF-MA-11).
+      await expectPlaceholderEntries(page, baseUrl, 1);
+      await placeholderVisible(page, baseUrl);
+    } finally {
+      await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+    }
+  });
+
+  expect(before.length).toBe(1);
+  expect(await assignmentIds(email)).toEqual(before);
 });
