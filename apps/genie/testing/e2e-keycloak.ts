@@ -181,9 +181,12 @@ export function standinSmtpPort(): number {
  */
 export const E2E_LOCAL_REALM = "genie-e2e-local";
 
-/** The S-F app's own host port, in a band apart from the shared stack's 3400 band. */
+/**
+ * The S-F app's own host port, in its own band: 3400 is the shared local sign-in stack, 3500 and
+ * 3600 are the S2-13 brokered scenarios, so S-F sits at 3700.
+ */
 export function e2eLocalHostPort(): number {
-  return scopedPort(3500);
+  return scopedPort(3700);
 }
 
 /** The S-F app's browser address. */
