@@ -24,6 +24,7 @@ import {
   setRealmUserGroupMemberships,
   type E2eKeycloak,
 } from "../../testing/e2e-keycloak.ts";
+import { IMAGE } from "../../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
 import { ensureDatabase } from "./ensure-database.ts";
@@ -194,32 +195,39 @@ export async function provisionClientOnly(
     CLIENT_ONLY_CLIENT_ID
   );
 
-  await run("docker", [
-    ...COMPOSE,
-    "run",
-    "-d",
-    "--no-deps",
-    "--name",
-    container,
-    "-p",
-    `${clientOnlyPort()}:3400`,
-    "-e",
-    `DATABASE_URL=postgres://genie:genie@database:5432/${CLIENT_ONLY_DB}`,
-    "-e",
-    `PUBLIC_URL=${baseUrl}`,
-    "-e",
-    `KEYCLOAK_URL=${keycloak.keycloakUrl}`,
-    "-e",
-    `KEYCLOAK_REALM=${COMPANY_REALM}`,
-    "-e",
-    `KEYCLOAK_CLIENT_ID=${CLIENT_ONLY_CLIENT_ID}`,
-    "-e",
-    `KEYCLOAK_CLIENT_SECRET=${clientSecret}`,
-    // The customer's realm is on an outside server, so no bundled Keycloak profile (R-54b, R-54c).
-    "-e",
-    "STACK_PROFILES=",
-    "app",
-  ]);
+  await run(
+    "docker",
+    [
+      ...COMPOSE,
+      "run",
+      "-d",
+      "--no-deps",
+      "--name",
+      container,
+      "-p",
+      `${clientOnlyPort()}:3400`,
+      "-e",
+      `DATABASE_URL=postgres://genie:genie@database:5432/${CLIENT_ONLY_DB}`,
+      "-e",
+      `PUBLIC_URL=${baseUrl}`,
+      "-e",
+      `KEYCLOAK_URL=${keycloak.keycloakUrl}`,
+      "-e",
+      `KEYCLOAK_REALM=${COMPANY_REALM}`,
+      "-e",
+      `KEYCLOAK_CLIENT_ID=${CLIENT_ONLY_CLIENT_ID}`,
+      "-e",
+      `KEYCLOAK_CLIENT_SECRET=${clientSecret}`,
+      // The customer's realm is on an outside server, so no bundled Keycloak profile (R-54b, R-54c).
+      "-e",
+      "STACK_PROFILES=",
+      "app",
+    ],
+    {
+      // This worktree's image, not the shared fixed tag another worktree's build can overwrite.
+      env: { ...process.env, GENIE_IMAGE: IMAGE },
+    }
+  );
 
   await waitForHealth(baseUrl);
 

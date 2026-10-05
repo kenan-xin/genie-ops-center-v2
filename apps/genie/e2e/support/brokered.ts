@@ -10,6 +10,7 @@ import {
   E2E_BOOTSTRAP_PASSWORD,
   E2E_BOOTSTRAP_USER,
 } from "../../testing/e2e-keycloak.ts";
+import { IMAGE } from "../../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
 import { ensureDatabase } from "./ensure-database.ts";
@@ -189,27 +190,34 @@ export async function provisionBrokered(
   await ensureDatabase(compose, dbName);
   await run("docker", ["rm", "-f", container]).catch(() => undefined);
 
-  await run("docker", [
-    ...compose,
-    "run",
-    "-d",
-    "--no-deps",
-    "--name",
-    container,
-    "-p",
-    `${spec.hostPort}:3400`,
-    "-e",
-    `DATABASE_URL=postgres://genie:genie@database:5432/${dbName}`,
-    "-e",
-    `PUBLIC_URL=${baseUrl}`,
-    "-e",
-    `KEYCLOAK_URL=${spec.keycloakIssuer}`,
-    "-e",
-    `KEYCLOAK_REALM=${spec.realm}`,
-    "-e",
-    `KEYCLOAK_ADMIN_CLIENT_SECRET=${E2E_ADMIN_CLIENT_SECRET}`,
-    "app",
-  ]);
+  await run(
+    "docker",
+    [
+      ...compose,
+      "run",
+      "-d",
+      "--no-deps",
+      "--name",
+      container,
+      "-p",
+      `${spec.hostPort}:3400`,
+      "-e",
+      `DATABASE_URL=postgres://genie:genie@database:5432/${dbName}`,
+      "-e",
+      `PUBLIC_URL=${baseUrl}`,
+      "-e",
+      `KEYCLOAK_URL=${spec.keycloakIssuer}`,
+      "-e",
+      `KEYCLOAK_REALM=${spec.realm}`,
+      "-e",
+      `KEYCLOAK_ADMIN_CLIENT_SECRET=${E2E_ADMIN_CLIENT_SECRET}`,
+      "app",
+    ],
+    {
+      // This worktree's image, not the shared fixed tag another worktree's build can overwrite.
+      env: { ...process.env, GENIE_IMAGE: IMAGE },
+    }
+  );
 
   await waitForHealth(baseUrl);
 
