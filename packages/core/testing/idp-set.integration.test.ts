@@ -191,6 +191,8 @@ async function tenantFixture(slug: string): Promise<TenantFixture> {
     KEYCLOAK_ADMIN_CLIENT_SECRET: "admin-client-secret-value",
     KEYCLOAK_BOOTSTRAP_USER,
     KEYCLOAK_BOOTSTRAP_PASSWORD,
+    // The provider secret travels in the command environment, never on argv (R-58).
+    IDP_CLIENT_SECRET: PROVIDER_SECRET,
   };
 
   const deployment = await startDisposableDeployment([], { env: bootstrapEnv });
@@ -271,7 +273,7 @@ type Mapper = {
   readonly config?: Record<string, string>;
 };
 
-function oidcArgs(): readonly string[] {
+function oidcArgs(clientId = "genie-oidc"): readonly string[] {
   return [
     "idp",
     "set",
@@ -280,9 +282,20 @@ function oidcArgs(): readonly string[] {
     "--issuer-url",
     `${CONTAINER_KEYCLOAK_URL}/realms/company`,
     "--client-id",
-    "genie-oidc",
-    "--client-secret",
-    PROVIDER_SECRET,
+    clientId,
+  ];
+}
+
+function samlArgs(): readonly string[] {
+  return [
+    "idp",
+    "set",
+    "--protocol",
+    "saml",
+    "--metadata-url",
+    `${CONTAINER_KEYCLOAK_URL}/realms/company/protocol/saml/descriptor`,
+    "--entity-id",
+    "genie-saml",
   ];
 }
 
@@ -362,8 +375,8 @@ describe("genie-ops idp set", () => {
 
     expect(reviewConfig.config?.["update.profile.on.first.login"]).toBe("off");
 
-    // The realm template named the alias as the default redirector at creation; after idp set the
-    // same authorization request leaves for the provider.
+    // The realm step set the alias as the default redirector at creation; after idp set the same
+    // authorization request leaves for the provider.
     const redirect = await authorization(fixture.realm);
 
     expect(redirect.location ?? "", redirect.location).toContain(
@@ -377,27 +390,18 @@ describe("genie-ops idp set", () => {
       args: expect.any(Array),
       outcome: "success",
     });
+    // The secret is read from the environment, so it is not an argument: it reaches neither the
+    // audit row nor the command output.
     expect(JSON.stringify(rows[0]?.metadata)).not.toContain(PROVIDER_SECRET);
+    expect(fixture.lines.join("\n")).not.toContain(PROVIDER_SECRET);
   }, 200000);
 
   it("writes a SAML provider and a FORCE Attribute Importer", async () => {
     const fixture = await tenantFixture("saml");
 
-    await expect(
-      runGenieOps(
-        [
-          "idp",
-          "set",
-          "--protocol",
-          "saml",
-          "--metadata-url",
-          `${CONTAINER_KEYCLOAK_URL}/realms/company/protocol/saml/descriptor`,
-          "--entity-id",
-          "genie-saml",
-        ],
-        fixture.options
-      )
-    ).resolves.toBe(0);
+    await expect(runGenieOps([...samlArgs()], fixture.options)).resolves.toBe(
+      0
+    );
 
     const provider = await adminJson<Connector>(
       `/identity-provider/instances/${BROKER_IDP_ALIAS}`,
@@ -415,6 +419,9 @@ describe("genie-ops idp set", () => {
       fixture.realm
     );
 
+    // The command alone produces a working SAML login: it writes the groups mapper and the
+    // profile mappers a real provider needs, so no test-only mapper is required.
+    expect(mappers).toHaveLength(4);
     expect(mappers[0]).toMatchObject({
       identityProviderMapper: "saml-user-attribute-idp-mapper",
       config: {
@@ -422,6 +429,12 @@ describe("genie-ops idp set", () => {
         "user.attribute": "groups",
         "attribute.name": "groups",
       },
+    });
+    expect(
+      mappers.find((mapper) => mapper.config?.["user.attribute"] === "email")
+    ).toMatchObject({
+      identityProviderMapper: "saml-user-attribute-idp-mapper",
+      config: { "attribute.name": "email", "user.attribute": "email" },
     });
   }, 200000);
 
@@ -431,9 +444,17 @@ describe("genie-ops idp set", () => {
     await expect(runGenieOps([...oidcArgs()], fixture.options)).resolves.toBe(
       0
     );
-    await expect(runGenieOps([...oidcArgs()], fixture.options)).resolves.toBe(
-      0
+    await expect(
+      runGenieOps([...oidcArgs("genie-oidc-renamed")], fixture.options)
+    ).resolves.toBe(0);
+
+    // The changed field is read back, so a PUT Keycloak ignored would fail this.
+    const provider = await adminJson<Connector>(
+      `/identity-provider/instances/${BROKER_IDP_ALIAS}`,
+      fixture.realm
     );
+
+    expect(provider.config?.clientId).toBe("genie-oidc-renamed");
 
     const mappers = await adminJson<readonly Mapper[]>(
       `/identity-provider/instances/${BROKER_IDP_ALIAS}/mappers`,
@@ -441,6 +462,66 @@ describe("genie-ops idp set", () => {
     );
 
     expect(mappers).toHaveLength(1);
+  }, 200000);
+
+  it("removes the other protocol's mapper when a rerun switches protocol", async () => {
+    const fixture = await tenantFixture("switch");
+
+    await expect(runGenieOps([...oidcArgs()], fixture.options)).resolves.toBe(
+      0
+    );
+    await expect(runGenieOps([...samlArgs()], fixture.options)).resolves.toBe(
+      0
+    );
+
+    const provider = await adminJson<Connector>(
+      `/identity-provider/instances/${BROKER_IDP_ALIAS}`,
+      fixture.realm
+    );
+
+    expect(provider.providerId).toBe("saml");
+
+    const mappers = await adminJson<readonly Mapper[]>(
+      `/identity-provider/instances/${BROKER_IDP_ALIAS}/mappers`,
+      fixture.realm
+    );
+
+    expect(mappers).toHaveLength(4);
+    expect(
+      mappers.filter((mapper) => mapper.config?.["user.attribute"] === "groups")
+    ).toHaveLength(1);
+    expect(
+      mappers.map((mapper) => mapper.identityProviderMapper)
+    ).not.toContain("oidc-user-attribute-idp-mapper");
+  }, 200000);
+
+  it("keeps the secret out of a failing run's output and audit row", async () => {
+    const fixture = await tenantFixture("fail");
+    const captured = lineCapture();
+
+    await expect(
+      runGenieOps(
+        [
+          "idp",
+          "set",
+          "--protocol",
+          "oidc",
+          "--issuer-url",
+          "https://idp.invalid/realms/nope",
+          "--client-id",
+          "genie-oidc",
+        ],
+        { ...fixture.options, ...captured }
+      )
+    ).resolves.not.toBe(0);
+
+    expect(captured.lines.join("\n")).not.toContain(PROVIDER_SECRET);
+
+    const rows = await idpAuditRows(fixture);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.metadata).toMatchObject({ outcome: "failure" });
+    expect(JSON.stringify(rows[0]?.metadata)).not.toContain(PROVIDER_SECRET);
   }, 200000);
 
   it("refuses in client-only mode with the named cause", async () => {

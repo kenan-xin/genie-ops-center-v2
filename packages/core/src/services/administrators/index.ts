@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { group, groupMember, user } from "../../schema.ts";
@@ -15,8 +16,23 @@ import { nameForEmail } from "../setup/identity-rows.ts";
  *
  * The write is one transaction and idempotent: an existing person keeps their row, and a second
  * run changes no membership. The person is lower-cased, matching the `user.email` invariant the
- * whole identity layer keeps.
+ * whole identity layer keeps. Three rows are refused with a named cause, each writing a failing
+ * `ops:admin-add` audit row through the runner: the break-glass account (R-39 keeps it off every
+ * membership writer), and a banned or erased person, for whom the grant would silently do nothing
+ * because sign-in refuses them.
  */
+
+/** The named cause a break-glass target is refused with. */
+export const ADMIN_ADD_BREAK_GLASS =
+  "admin add cannot add the break-glass account; it holds no group membership (R-39)";
+
+/** The named cause a banned target is refused with, naming the way back. */
+export const ADMIN_ADD_DISABLED =
+  "admin add cannot add a disabled person; enable them in People first";
+
+/** The named cause an erased target is refused with. */
+export const ADMIN_ADD_ERASED = "admin add cannot add an erased person";
+
 export async function addAdministrator(
   context: TenantContext,
   email: string,
@@ -24,7 +40,7 @@ export async function addAdministrator(
 ): Promise<void> {
   const address = email.trim().toLowerCase();
 
-  if (address === "" || !address.includes("@")) {
+  if (!z.email().safeParse(address).success) {
     throw new Error("admin add needs an email address");
   }
 
@@ -49,10 +65,21 @@ export async function addAdministrator(
     }
 
     const [existing] = await tx
-      .select({ id: user.id })
+      .select({
+        id: user.id,
+        isBreakGlass: user.isBreakGlass,
+        banned: user.banned,
+        erasedAt: user.erasedAt,
+      })
       .from(user)
       .where(eq(user.email, address))
       .limit(1);
+
+    if (existing?.isBreakGlass === true) throw new Error(ADMIN_ADD_BREAK_GLASS);
+
+    if (existing?.erasedAt != null) throw new Error(ADMIN_ADD_ERASED);
+
+    if (existing?.banned === true) throw new Error(ADMIN_ADD_DISABLED);
 
     let userId = existing?.id;
 

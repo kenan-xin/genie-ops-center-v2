@@ -246,6 +246,62 @@ export type IdentityProviderMapper = {
   readonly identityProviderMapper: string | undefined;
 };
 
+/** Reads one identity provider, or nothing when the alias is absent. */
+export async function readIdentityProvider(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string
+): Promise<JsonObject | undefined> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (response.status === 404) return undefined;
+
+  const body = await parseResponse(response);
+
+  return isObject(body) ? body : {};
+}
+
+/** Deletes one identity provider, so a protocol switch can recreate it under the same alias. */
+export async function deleteIdentityProvider(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}`,
+    {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/** Deletes one identity provider mapper by id, so a protocol switch leaves no stale mapper. */
+export async function deleteIdentityProviderMapper(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string,
+  id: string
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/identity-provider/instances/${encodeURIComponent(alias)}/mappers/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  await parseResponse(response);
+}
+
 /** Lists the identity provider mappers of one provider, so a repeat can update the one it made. */
 export async function listIdentityProviderMappers(
   target: KeycloakTarget,

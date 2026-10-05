@@ -88,6 +88,23 @@ export function readRealmSecrets(source: EnvironmentSource): RealmSecrets {
   return { clientSecret, adminClientSecret };
 }
 
+/**
+ * The customer provider's client secret `genie-ops idp set` reads for one OIDC command (R-58).
+ * It is passed in the environment of that one command, exactly like the bootstrap credential, so
+ * it never appears on the command line, in a shell history file, or in an audit row.
+ */
+export function readIdpClientSecret(source: EnvironmentSource): string {
+  const secret = source.IDP_CLIENT_SECRET;
+
+  if (secret === undefined || secret === "") {
+    throw new Error(
+      "idp set --protocol oidc needs IDP_CLIENT_SECRET, passed in the environment of this one command; the secret is never an argument"
+    );
+  }
+
+  return secret;
+}
+
 /** The `genie-admin` service-account client id both templates fix, and its secret. */
 export const GENIE_ADMIN_CLIENT_ID = "genie-admin";
 

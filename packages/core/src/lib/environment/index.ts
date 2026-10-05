@@ -107,12 +107,12 @@ function unsetWhenBlank(value: string | undefined): string | undefined {
  * silently skipped (R-45, R-49). Only the exact value `development` is special; every other value,
  * known or not, fails closed as production. Tests pin the mode through `process.env`.
  */
-function runtimeModeOf(): RuntimeMode {
+export function runtimeModeOf(): RuntimeMode {
   return process.env.NODE_ENV === "development" ? "development" : "production";
 }
 
 /** True for an https:// URL, or for plain HTTP on a loopback host (R-4a). */
-function isSecureOrLoopback(value: string): boolean {
+export function isSecureOrLoopback(value: string): boolean {
   const url = new URL(value);
 
   return (

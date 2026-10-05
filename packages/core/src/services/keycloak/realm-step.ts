@@ -183,10 +183,18 @@ export async function realmStep(
   );
 
   if (await realmExists(target, base.keycloakRealm, accessToken)) {
+    // R-53: an existing realm keeps its clients and users, but the brokered flow values are
+    // repaired here. Both writes are idempotent, so a rerun after a flow write failed (a Keycloak
+    // restart between the create and the writes, for example) lands the values it was missing.
+    if (!localAccounts) {
+      await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
+      await configureFirstBrokerLogin(target, base.keycloakRealm, accessToken);
+    }
+
     await writeRealmSupportsLocalAccounts(context, localAccounts);
 
     options.output(
-      `realm step: realm "${base.keycloakRealm}" already exists; left unchanged`
+      `realm step: realm "${base.keycloakRealm}" already exists; clients and users left unchanged`
     );
 
     return;

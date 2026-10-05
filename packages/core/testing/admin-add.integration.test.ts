@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { group, groupMember, user } from "../src/schema.ts";
 import {
+  ADMIN_ADD_BREAK_GLASS,
+  ADMIN_ADD_DISABLED,
+  ADMIN_ADD_ERASED,
+} from "../src/services/administrators/index.ts";
+import {
   GENIE_ADMINISTRATORS_GROUP,
   seedGenieAdministrators,
   seedRoles,
@@ -129,7 +134,8 @@ describe("genie-ops admin add", () => {
       action: "ops:admin-add",
       metadata: {
         osUser: expect.any(String),
-        args: ["New.Admin@Example.INVALID"],
+        // The audit row and the `user` row name the same lower-cased address (R-61).
+        args: ["new.admin@example.invalid"],
         outcome: "success",
       },
     });
@@ -230,5 +236,116 @@ describe("genie-ops admin add", () => {
       action: "ops:admin-add",
       metadata: { outcome: "failure" },
     });
+  }, 120000);
+
+  it("refuses the break-glass account with a named cause and no membership", async () => {
+    const { context, source, output, errorOutput, lines } = await fixture();
+    const email = "break-glass@example.invalid";
+
+    const breakGlassId = await insertUser(context, {
+      email,
+      status: "active",
+      isBreakGlass: true,
+    });
+
+    await expect(
+      runGenieOps(["admin", "add", email], {
+        source,
+        compiledModules: [],
+        histories: [],
+        output,
+        errorOutput,
+      })
+    ).resolves.not.toBe(0);
+
+    expect(lines.join("\n")).toContain(ADMIN_ADD_BREAK_GLASS);
+    await expect(
+      context.db
+        .select()
+        .from(groupMember)
+        .where(eq(groupMember.userId, breakGlassId))
+    ).resolves.toHaveLength(0);
+    expect((await auditRows(context)).at(-1)).toMatchObject({
+      action: "ops:admin-add",
+      metadata: { outcome: "failure" },
+    });
+  }, 120000);
+
+  it("refuses a banned person with the way back named", async () => {
+    const { context, source, output, errorOutput, lines } = await fixture();
+    const email = "banned@example.invalid";
+
+    const bannedId = await insertUser(context, {
+      email,
+      status: "active",
+      banned: true,
+    });
+
+    await expect(
+      runGenieOps(["admin", "add", email], {
+        source,
+        compiledModules: [],
+        histories: [],
+        output,
+        errorOutput,
+      })
+    ).resolves.not.toBe(0);
+
+    expect(lines.join("\n")).toContain(ADMIN_ADD_DISABLED);
+    await expect(
+      context.db
+        .select()
+        .from(groupMember)
+        .where(eq(groupMember.userId, bannedId))
+    ).resolves.toHaveLength(0);
+  }, 120000);
+
+  it("refuses an erased person", async () => {
+    const { context, source, output, errorOutput, lines } = await fixture();
+    const email = "erased@example.invalid";
+
+    const erasedId = await insertUser(context, {
+      email,
+      status: "active",
+      erasedAt: new Date(),
+    });
+
+    await expect(
+      runGenieOps(["admin", "add", email], {
+        source,
+        compiledModules: [],
+        histories: [],
+        output,
+        errorOutput,
+      })
+    ).resolves.not.toBe(0);
+
+    expect(lines.join("\n")).toContain(ADMIN_ADD_ERASED);
+    await expect(
+      context.db
+        .select()
+        .from(groupMember)
+        .where(eq(groupMember.userId, erasedId))
+    ).resolves.toHaveLength(0);
+  }, 120000);
+
+  it("refuses an address that is not an email before any audit row", async () => {
+    const { context, source, output, errorOutput } = await fixture();
+
+    await expect(
+      runGenieOps(["admin", "add", "not-an-email"], {
+        source,
+        compiledModules: [],
+        histories: [],
+        output,
+        errorOutput,
+      })
+    ).resolves.not.toBe(0);
+
+    const rows = (await auditRows(context)).filter(
+      (row) => row.action === "ops:admin-add"
+    );
+
+    expect(rows).toHaveLength(0);
   }, 120000);
 });

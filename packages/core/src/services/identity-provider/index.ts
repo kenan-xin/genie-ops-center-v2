@@ -1,29 +1,40 @@
-import type { EnvironmentSource } from "../../lib/environment/index.ts";
+import {
+  isSecureOrLoopback,
+  runtimeModeOf,
+  type EnvironmentSource,
+} from "../../lib/environment/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { tenantSettings } from "../../schema.ts";
 import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
 import {
   createIdentityProvider,
   createIdentityProviderMapper,
+  deleteIdentityProvider,
+  deleteIdentityProviderMapper,
   importIdentityProviderConfig,
   listIdentityProviderMappers,
   type KeycloakTarget,
+  readIdentityProvider,
   serviceAccountToken,
   updateIdentityProvider,
   updateIdentityProviderMapper,
 } from "../keycloak/client.ts";
-import { readAdminClient, readKeycloakBase } from "../keycloak/environment.ts";
+import {
+  readAdminClient,
+  readIdpClientSecret,
+  readKeycloakBase,
+} from "../keycloak/environment.ts";
 import { normalizeKeycloakUrl } from "../keycloak/normalize-url.ts";
 import type { JsonObject } from "../keycloak/representation.ts";
 
 /**
  * `genie-ops idp set`: write the customer's identity provider into the realm under the fixed
- * `company-login` alias and add the Attribute Importer mapper that fills the `groups` user
- * attribute the brokered realm template reads (Spec 2 R-58, R-50). The realm template already
- * names that alias as the browser flow's default redirector, so the command never touches the
- * flow: it runs through the realm-scoped `genie-admin` client with `manage-identity-providers`
- * and `manage-realm` is never needed (`DEC-36`, `DEC-37`). Nothing about the provider is stored in
- * `customers/<slug>/`.
+ * `company-login` alias and add the Attribute Importer mappers that fill the `groups` user
+ * attribute (and, for SAML, `email`, `firstName` and `lastName`) the brokered realm reads
+ * (Spec 2 R-58, R-50). The realm step sets that alias as the browser flow's default redirector and
+ * turns off the profile review, so the command never touches the flow: it runs through the
+ * realm-scoped `genie-admin` client with `manage-identity-providers` and `manage-realm` is never
+ * needed (`DEC-36`, `DEC-37`). Nothing about the provider is stored in `customers/<slug>/`.
  *
  * LDAP and Active Directory federation is deferred (`docs/specs/02-identity-and-access.md`,
  * Deferred), so this command accepts OIDC and SAML only.
@@ -36,25 +47,37 @@ export type IdpProtocol = "oidc" | "saml";
 export type IdpSetOptions = {
   readonly source: EnvironmentSource;
   readonly protocol: IdpProtocol;
-  /** The fixed alias the realm template's redirector names; only {@link BROKER_IDP_ALIAS} is valid. */
+  /** The fixed alias the realm step's redirector names; only {@link BROKER_IDP_ALIAS} is valid. */
   readonly alias: string;
   /** OIDC: the issuer or discovery URL. */
   readonly issuerUrl: string | undefined;
   /** SAML: the metadata URL. */
   readonly metadataUrl: string | undefined;
   readonly clientId: string | undefined;
-  readonly clientSecret: string | undefined;
   /** SAML: the service-provider entity id the customer's provider expects. */
   readonly entityId: string | undefined;
   /** The claim (OIDC) or attribute (SAML) that carries group names. */
   readonly groupsClaim: string;
+  /** SAML: the attribute that carries the person's email. */
+  readonly emailAttribute: string;
+  /** SAML: the attribute that carries the person's first name. */
+  readonly firstNameAttribute: string;
+  /** SAML: the attribute that carries the person's last name. */
+  readonly lastNameAttribute: string;
   readonly output: (line: string) => void;
 };
 
 /** The default claim or attribute name that carries group names (runbook, "The `groups` claim"). */
 export const DEFAULT_GROUPS_CLAIM = "groups";
 
-/** The user attribute the brokered realm template reads as the `groups` claim (R-50). */
+/** The default SAML attribute names a real provider sends (runbook, "Add the customer's identity provider"). */
+export const DEFAULT_EMAIL_ATTRIBUTE = "email";
+
+export const DEFAULT_FIRST_NAME_ATTRIBUTE = "firstName";
+
+export const DEFAULT_LAST_NAME_ATTRIBUTE = "lastName";
+
+/** The user attribute the brokered realm reads as the `groups` claim (R-50). */
 export const GROUPS_USER_ATTRIBUTE = "groups";
 
 /** The Keycloak identity-provider factory ids. */
@@ -85,6 +108,35 @@ const FIRST_BROKER_LOGIN_FLOW = "first broker login";
 /** The named cause a client-only deployment refuses `idp set` with (R-58, ADR 0010). */
 export const CLIENT_ONLY_REFUSAL =
   "genie-ops idp set is not available in client-only mode, because the realm has no genie-admin service client (ADR 0010)";
+
+/**
+ * Parses and checks the issuer or metadata URL `idp set` was given (R-58). It is called from the
+ * command parser, before any context or audit row, so a URL that carries a username or password is
+ * refused as a parse failure and never reaches `audit_event`. Plain HTTP is refused outside
+ * development, so a network attacker between Keycloak and the provider cannot swap the metadata
+ * that decides which tokens are trusted; loopback stays allowed for a local test server.
+ */
+export function assertIdpUrl(value: string): string {
+  if (!URL.canParse(value)) {
+    throw new Error("the issuer or metadata URL must be a URL");
+  }
+
+  const url = new URL(value);
+
+  if (url.username !== "" || url.password !== "") {
+    throw new Error(
+      "the issuer or metadata URL must not carry a username or password"
+    );
+  }
+
+  if (runtimeModeOf() !== "development" && !isSecureOrLoopback(value)) {
+    throw new Error(
+      "the issuer or metadata URL must be https outside development"
+    );
+  }
+
+  return value;
+}
 
 /**
  * The discovery document URL Keycloak fetches for an OIDC provider. The operator may pass the
@@ -122,7 +174,7 @@ async function providerRepresentation(
     );
 
     config.clientId = options.clientId ?? "";
-    config.clientSecret = options.clientSecret ?? "";
+    config.clientSecret = readIdpClientSecret(options.source);
     config.defaultScope = "openid";
 
     return {
@@ -169,70 +221,204 @@ async function providerRepresentation(
   };
 }
 
-/** The Attribute Importer mapper that copies the named claim or attribute into `groups`. */
-export function groupsMapper(options: {
+/** One Attribute Importer mapper, keyed by the user attribute it fills. */
+export function attributeImporter(options: {
   readonly protocol: IdpProtocol;
   readonly alias: string;
-  readonly groupsClaim: string;
+  readonly attributeName: string;
+  readonly userAttribute: string;
 }): JsonObject {
   const config: JsonObject = {
     "syncMode": IMPORTER_SYNC_MODE,
-    "user.attribute": GROUPS_USER_ATTRIBUTE,
+    "user.attribute": options.userAttribute,
   };
 
   if (options.protocol === "oidc") {
-    config.claim = options.groupsClaim;
+    config.claim = options.attributeName;
   } else {
-    config["attribute.name"] = options.groupsClaim;
+    config["attribute.name"] = options.attributeName;
   }
 
   return {
-    name: GROUPS_MAPPER_NAME,
+    name: options.userAttribute,
     identityProviderAlias: options.alias,
     identityProviderMapper: ATTRIBUTE_IMPORTER_IDS[options.protocol],
     config,
   };
 }
 
-/** Creates the mapper, or replaces the one a previous run wrote, so `idp set` is idempotent. */
-async function upsertGroupsMapper(
+/** The `groups` Attribute Importer, kept as its own export for the unit test. */
+export function groupsMapper(options: {
+  readonly protocol: IdpProtocol;
+  readonly alias: string;
+  readonly groupsClaim: string;
+}): JsonObject {
+  return attributeImporter({
+    protocol: options.protocol,
+    alias: options.alias,
+    attributeName: options.groupsClaim,
+    userAttribute: GROUPS_USER_ATTRIBUTE,
+  });
+}
+
+/**
+ * Every mapper `idp set` writes. The `groups` mapper is always there. For SAML the provider is the
+ * only source of the person's profile, so `email`, `firstName` and `lastName` are imported too;
+ * without an email the tenant realm cannot create the brokered person. OIDC carries those in the
+ * id token, so it needs only `groups`.
+ */
+export function providerMappers(options: {
+  readonly protocol: IdpProtocol;
+  readonly alias: string;
+  readonly groupsClaim: string;
+  readonly emailAttribute: string;
+  readonly firstNameAttribute: string;
+  readonly lastNameAttribute: string;
+}): readonly JsonObject[] {
+  const mappers = [
+    groupsMapper({
+      protocol: options.protocol,
+      alias: options.alias,
+      groupsClaim: options.groupsClaim,
+    }),
+  ];
+
+  if (options.protocol === "saml") {
+    mappers.push(
+      attributeImporter({
+        protocol: "saml",
+        alias: options.alias,
+        attributeName: options.emailAttribute,
+        userAttribute: "email",
+      }),
+      attributeImporter({
+        protocol: "saml",
+        alias: options.alias,
+        attributeName: options.firstNameAttribute,
+        userAttribute: "firstName",
+      }),
+      attributeImporter({
+        protocol: "saml",
+        alias: options.alias,
+        attributeName: options.lastNameAttribute,
+        userAttribute: "lastName",
+      })
+    );
+  }
+
+  return mappers;
+}
+
+/**
+ * Creates each mapper, replaces the one a previous run wrote, and removes a stale mapper left by a
+ * run of the other protocol (matched by name, which is the user attribute it fills).
+ */
+async function upsertMappers(
   target: KeycloakTarget,
   realm: string,
   accessToken: string,
   options: IdpSetOptions
 ): Promise<void> {
-  const mapper = groupsMapper(options);
-
-  const existing = (
-    await listIdentityProviderMappers(target, realm, accessToken, options.alias)
-  ).find(
-    (entry) =>
-      entry.name === GROUPS_MAPPER_NAME &&
-      entry.identityProviderMapper ===
-        ATTRIBUTE_IMPORTER_IDS[options.protocol] &&
-      entry.id !== undefined
+  const existing = await listIdentityProviderMappers(
+    target,
+    realm,
+    accessToken,
+    options.alias
   );
 
-  if (existing?.id !== undefined) {
+  for (const mapper of providerMappers(options)) {
+    const current = existing.find(
+      (entry) => entry.name === mapper.name && entry.id !== undefined
+    );
+
+    if (current?.id === undefined) {
+      // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
+      await createIdentityProviderMapper(
+        target,
+        realm,
+        accessToken,
+        options.alias,
+        mapper
+      );
+
+      continue;
+    }
+
+    if (current.identityProviderMapper !== mapper.identityProviderMapper) {
+      // The other protocol's mapper shares the name but not the provider; replace it.
+      // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
+      await deleteIdentityProviderMapper(
+        target,
+        realm,
+        accessToken,
+        options.alias,
+        current.id
+      );
+
+      // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
+      await createIdentityProviderMapper(
+        target,
+        realm,
+        accessToken,
+        options.alias,
+        mapper
+      );
+
+      continue;
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
     await updateIdentityProviderMapper(
       target,
       realm,
       accessToken,
       options.alias,
-      existing.id,
-      // The update replaces the whole mapper, so the id it is addressed by must be present.
-      { ...mapper, id: existing.id }
+      current.id,
+      { ...mapper, id: current.id }
     );
+  }
+}
+
+/** Writes the provider, recreating it when a rerun switched protocol under the same alias. */
+async function upsertProvider(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  options: IdpSetOptions,
+  representation: JsonObject
+): Promise<void> {
+  const outcome = await createIdentityProvider(
+    target,
+    realm,
+    accessToken,
+    representation
+  );
+
+  if (outcome === "created") return;
+
+  const existing = await readIdentityProvider(
+    target,
+    realm,
+    accessToken,
+    options.alias
+  );
+
+  if (
+    existing !== undefined &&
+    existing.providerId !== representation.providerId
+  ) {
+    await deleteIdentityProvider(target, realm, accessToken, options.alias);
+    await createIdentityProvider(target, realm, accessToken, representation);
 
     return;
   }
 
-  await createIdentityProviderMapper(
+  await updateIdentityProvider(
     target,
     realm,
     accessToken,
     options.alias,
-    mapper
+    representation
   );
 }
 
@@ -251,9 +437,10 @@ async function assertManagedRealm(context: TenantContext): Promise<void> {
 /**
  * The work of `genie-ops idp set`. It refuses in client-only mode before any network call, obtains
  * a realm-scoped token for `genie-admin`, writes or replaces the provider under the fixed alias,
- * and upserts the Attribute Importer mapper. The browser flow already defaults to that alias, so
- * no `manage-realm` right is needed. The client secret travels only in the create/update request
- * body and never reaches the output, an audit row or a thrown message.
+ * and upserts the Attribute Importer mappers. The realm step already set the browser flow's
+ * redirector default and review, so no `manage-realm` right is needed. The client secret is read
+ * from `IDP_CLIENT_SECRET` and travels only in the request body: it never reaches the output, an
+ * audit row or a thrown message.
  */
 export async function idpSet(
   context: TenantContext,
@@ -289,24 +476,15 @@ export async function idpSet(
     options
   );
 
-  const outcome = await createIdentityProvider(
+  await upsertProvider(
     target,
     base.keycloakRealm,
     accessToken,
+    options,
     representation
   );
 
-  if (outcome === "exists") {
-    await updateIdentityProvider(
-      target,
-      base.keycloakRealm,
-      accessToken,
-      options.alias,
-      representation
-    );
-  }
-
-  await upsertGroupsMapper(target, base.keycloakRealm, accessToken, options);
+  await upsertMappers(target, base.keycloakRealm, accessToken, options);
 
   options.output(
     `idp set: realm "${base.keycloakRealm}" brokers to the "${options.alias}" provider (${options.protocol})`

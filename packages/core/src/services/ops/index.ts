@@ -2,6 +2,8 @@ import { userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
+import { z } from "zod";
+
 import {
   type EnvironmentSource,
   validateEnvironment,
@@ -16,7 +18,11 @@ import { addAdministrator } from "../administrators/index.ts";
 import { writeAuditEvent } from "../audit/index.ts";
 import { rotateBreakGlass } from "../break-glass/index.ts";
 import {
+  assertIdpUrl,
+  DEFAULT_EMAIL_ATTRIBUTE,
+  DEFAULT_FIRST_NAME_ATTRIBUTE,
   DEFAULT_GROUPS_CLAIM,
+  DEFAULT_LAST_NAME_ATTRIBUTE,
   idpSet,
   type IdpProtocol,
 } from "../identity-provider/index.ts";
@@ -271,9 +277,11 @@ function parseCommand(
           "issuer-url": { type: "string" },
           "metadata-url": { type: "string" },
           "client-id": { type: "string" },
-          "client-secret": { type: "string" },
           "entity-id": { type: "string" },
           "groups-claim": { type: "string" },
+          "email-attribute": { type: "string" },
+          "first-name-attribute": { type: "string" },
+          "last-name-attribute": { type: "string" },
         },
         strict: true,
         allowPositionals: true,
@@ -291,7 +299,7 @@ function parseCommand(
         throw new Error("idp set needs --protocol oidc or saml");
       }
 
-      // The realm template fixes the brokered provider's alias, so the command accepts no other.
+      // The realm step fixes the brokered provider's alias, so the command accepts no other.
       const alias = values.alias ?? BROKER_IDP_ALIAS;
       const groupsClaim = values["groups-claim"] ?? DEFAULT_GROUPS_CLAIM;
 
@@ -303,41 +311,37 @@ function parseCommand(
 
       const identity: IdpProtocol = protocol;
 
+      // R-58/R-66: the issuer or metadata URL is parsed and checked here, before any context or
+      // audit row, so a URL that carries a username or password never reaches `audit_event`. The
+      // provider's client secret is read from `IDP_CLIENT_SECRET` in the command environment, so
+      // it is never an argument at all.
+      let url: string;
+
       if (identity === "oidc") {
         if (
           values["issuer-url"] === undefined ||
-          values["client-id"] === undefined ||
-          values["client-secret"] === undefined
+          values["client-id"] === undefined
         ) {
           throw new Error(
-            "idp set --protocol oidc needs --issuer-url, --client-id and --client-secret"
+            "idp set --protocol oidc needs --issuer-url and --client-id"
           );
         }
-      } else if (
-        values["metadata-url"] === undefined ||
-        values["entity-id"] === undefined
-      ) {
-        throw new Error(
-          "idp set --protocol saml needs --metadata-url and --entity-id"
-        );
+
+        url = assertIdpUrl(values["issuer-url"]);
+      } else {
+        if (
+          values["metadata-url"] === undefined ||
+          values["entity-id"] === undefined
+        ) {
+          throw new Error(
+            "idp set --protocol saml needs --metadata-url and --entity-id"
+          );
+        }
+
+        url = assertIdpUrl(values["metadata-url"]);
       }
 
-      // D-4/R-66: the audit row carries the non-secret arguments only. The provider's client
-      // secret is deliberately absent from `args`, so no audit row, log line or error message can
-      // ever hold it.
-      const audited = [
-        "set",
-        identity,
-        alias,
-        values["issuer-url"] ?? values["metadata-url"] ?? "",
-        groupsClaim,
-      ];
-
-      const issuerUrl = values["issuer-url"];
-      const metadataUrl = values["metadata-url"];
-      const clientId = values["client-id"];
-      const clientSecret = values["client-secret"];
-      const entityId = values["entity-id"];
+      const audited = ["set", identity, alias, url, groupsClaim];
 
       return {
         name: "idp-set",
@@ -347,12 +351,17 @@ function parseCommand(
             source: options.source,
             protocol: identity,
             alias,
-            issuerUrl,
-            metadataUrl,
-            clientId,
-            clientSecret,
-            entityId,
+            issuerUrl: identity === "oidc" ? url : undefined,
+            metadataUrl: identity === "saml" ? url : undefined,
+            clientId: values["client-id"],
+            entityId: values["entity-id"],
             groupsClaim,
+            emailAttribute:
+              values["email-attribute"] ?? DEFAULT_EMAIL_ATTRIBUTE,
+            firstNameAttribute:
+              values["first-name-attribute"] ?? DEFAULT_FIRST_NAME_ATTRIBUTE,
+            lastNameAttribute:
+              values["last-name-attribute"] ?? DEFAULT_LAST_NAME_ATTRIBUTE,
             output: options.output,
           }),
       };
@@ -372,11 +381,19 @@ function parseCommand(
         throw new Error("unknown admin subcommand");
       }
 
+      // The audit row and the `user` row must name the same address, so the normalized value is
+      // what the runner records (R-61).
+      const address = email.trim().toLowerCase();
+
+      if (!z.email().safeParse(address).success) {
+        throw new Error("admin add needs an email address");
+      }
+
       return {
         name: "admin-add",
-        args: [email],
+        args: [address],
         run: (context, options) =>
-          addAdministrator(context, email, { output: options.output }),
+          addAdministrator(context, address, { output: options.output }),
       };
     }
 

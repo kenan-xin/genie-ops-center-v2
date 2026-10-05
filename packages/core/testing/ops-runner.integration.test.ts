@@ -29,10 +29,7 @@ import {
   type MigrationHistory,
   runMigrations,
 } from "../src/services/migrator/index.ts";
-import {
-  IDENTITY_COMMANDS,
-  runGenieOps,
-} from "../src/services/ops/index.ts";
+import { IDENTITY_COMMANDS, runGenieOps } from "../src/services/ops/index.ts";
 import { insertCredentialPerson, startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -346,8 +343,6 @@ describe("the R-54c identity-command guard", () => {
           "https://idp.example.com/realms/company",
           "--client-id",
           "genie-oidc",
-          "--client-secret",
-          "a-provider-secret",
         ],
         {
           source: { ...source, ...AUTH_ENV },
@@ -363,8 +358,6 @@ describe("the R-54c identity-command guard", () => {
     expect(joined).toContain(
       "KEYCLOAK_URL is not the Keycloak that setup used"
     );
-    // The provider secret never reaches the output, and the row carries the non-secret args only.
-    expect(joined).not.toContain("a-provider-secret");
 
     const rows = await auditRows(context);
 
@@ -372,9 +365,40 @@ describe("the R-54c identity-command guard", () => {
       action: "ops:idp-set",
       metadata: { outcome: "failure" },
     });
-    expect(JSON.stringify(rows.at(-1)?.metadata)).not.toContain(
-      "a-provider-secret"
-    );
+  }, 120000);
+
+  it("refuses an issuer URL that carries a username or password, and writes no row", async () => {
+    const { source, context } = await fixture();
+    const captured = outputCapture();
+    const secretUrl = "https://user:pass@idp.example.com/realms/company";
+
+    await expect(
+      runGenieOps(
+        [
+          "idp",
+          "set",
+          "--protocol",
+          "oidc",
+          "--issuer-url",
+          secretUrl,
+          "--client-id",
+          "genie-oidc",
+        ],
+        {
+          source: { ...source, ...AUTH_ENV },
+          compiledModules: [],
+          histories: [],
+          ...captured,
+        }
+      )
+    ).resolves.not.toBe(0);
+
+    // A parse failure writes no audit row and never echoes the rejected value.
+    expect(captured.lines.join("\n")).not.toContain("user:pass");
+    expect(captured.lines.join("\n")).not.toContain(secretUrl);
+    await expect(
+      context.db.$client.query("select count(*)::int as count from audit_event")
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
   }, 120000);
 
   it("does not guard module or retire, so an address mismatch leaves them alone", async () => {
