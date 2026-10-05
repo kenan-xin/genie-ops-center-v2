@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   assertIdpUrl,
@@ -15,52 +15,41 @@ import {
  * mappers whose sync mode decides whether an emptied claim clears the attribute.
  */
 describe("the idp URL check", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   it("refuses a URL that carries a username or password", () => {
     expect(() =>
-      assertIdpUrl("https://user:pass@idp.example/metadata", {})
+      assertIdpUrl("https://user:pass@idp.example/metadata", false)
     ).toThrow(/username or password/);
   });
 
   it("refuses a value that is not a URL", () => {
-    expect(() => assertIdpUrl("not-a-url", {})).toThrow();
+    expect(() => assertIdpUrl("not-a-url", false)).toThrow();
   });
 
-  it("refuses plain http outside development", () => {
-    vi.stubEnv("NODE_ENV", "production");
-
-    expect(() => assertIdpUrl("http://idp.example/metadata", {})).toThrow(
+  it("refuses plain http without the explicit flag", () => {
+    expect(() => assertIdpUrl("http://idp.example/metadata", false)).toThrow(
       /https/
     );
   });
 
-  it("allows plain http on a loopback host outside development", () => {
-    vi.stubEnv("NODE_ENV", "production");
-
-    expect(assertIdpUrl("http://127.0.0.1:8080/realms/company", {})).toBe(
-      "http://127.0.0.1:8080/realms/company"
-    );
+  it("refuses plain http on a loopback host without the flag, so https is the rule", () => {
+    expect(() =>
+      assertIdpUrl("http://127.0.0.1:8080/realms/company", false)
+    ).toThrow(/https/);
   });
 
-  it("allows plain http in development", () => {
-    vi.stubEnv("NODE_ENV", "development");
-
-    expect(assertIdpUrl("http://idp.example/metadata", {})).toBe(
+  it("allows plain http only when --allow-http is passed", () => {
+    expect(assertIdpUrl("http://idp.example/metadata", true)).toBe(
       "http://idp.example/metadata"
     );
   });
 
-  it("reads the development mode from the command's own source", () => {
-    // The shipped image constant-folds `process.env.NODE_ENV`, so the source is what a test
-    // deployment sets with `-e NODE_ENV=development`.
-    vi.stubEnv("NODE_ENV", "production");
-
-    expect(
-      assertIdpUrl("http://idp.example/metadata", { NODE_ENV: "development" })
-    ).toBe("http://idp.example/metadata");
+  it("allows https with or without the flag", () => {
+    expect(assertIdpUrl("https://idp.example/metadata", false)).toBe(
+      "https://idp.example/metadata"
+    );
+    expect(assertIdpUrl("https://idp.example/metadata", true)).toBe(
+      "https://idp.example/metadata"
+    );
   });
 });
 

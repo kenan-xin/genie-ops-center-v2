@@ -401,6 +401,46 @@ describe("the R-54c identity-command guard", () => {
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
   }, 120000);
 
+  it("records --allow-http in the audited arguments", async () => {
+    const { source, context } = await fixture();
+
+    await recordMismatchedAddress(context);
+
+    const captured = outputCapture();
+
+    await expect(
+      runGenieOps(
+        [
+          "idp",
+          "set",
+          "--protocol",
+          "oidc",
+          "--issuer-url",
+          "http://idp.example.com/realms/company",
+          "--client-id",
+          "genie-oidc",
+          "--allow-http",
+        ],
+        {
+          source: { ...source, ...AUTH_ENV },
+          compiledModules: [],
+          histories: [],
+          ...captured,
+        }
+      )
+    ).resolves.not.toBe(0);
+
+    const rows = await auditRows(context);
+
+    expect(rows.at(-1)).toMatchObject({
+      action: "ops:idp-set",
+      metadata: {
+        outcome: "failure",
+        args: expect.arrayContaining(["--allow-http"]),
+      },
+    });
+  }, 120000);
+
   it("does not guard module or retire, so an address mismatch leaves them alone", async () => {
     const { source, context } = await fixture();
 

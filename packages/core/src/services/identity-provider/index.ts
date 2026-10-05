@@ -1,16 +1,10 @@
-import {
-  isSecureOrLoopback,
-  runtimeModeOf,
-  type EnvironmentSource,
-} from "../../lib/environment/index.ts";
+import type { EnvironmentSource } from "../../lib/environment/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { tenantSettings } from "../../schema.ts";
 import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
 import {
   createIdentityProvider,
   createIdentityProviderMapper,
-  deleteIdentityProvider,
-  deleteIdentityProviderMapper,
   importIdentityProviderConfig,
   listIdentityProviderMappers,
   type KeycloakTarget,
@@ -112,11 +106,13 @@ export const CLIENT_ONLY_REFUSAL =
 /**
  * Parses and checks the issuer or metadata URL `idp set` was given (R-58). It is called from the
  * command parser, before any context or audit row, so a URL that carries a username or password is
- * refused as a parse failure and never reaches `audit_event`. Plain HTTP is refused outside
- * development, so a network attacker between Keycloak and the provider cannot swap the metadata
- * that decides which tokens are trusted; loopback stays allowed for a local test server.
+ * refused as a parse failure and never reaches `audit_event`. HTTPS is required unless the operator
+ * passes `--allow-http` for a local or test provider, so a network attacker between Keycloak and
+ * the provider cannot swap the metadata that decides which tokens are trusted. The flag is an
+ * explicit command-line choice, kept in the audit row, rather than a runtime mode the production
+ * build constant-folds away.
  */
-export function assertIdpUrl(value: string, source: EnvironmentSource): string {
+export function assertIdpUrl(value: string, allowHttp: boolean): string {
   if (!URL.canParse(value)) {
     throw new Error("the issuer or metadata URL must be a URL");
   }
@@ -129,16 +125,9 @@ export function assertIdpUrl(value: string, source: EnvironmentSource): string {
     );
   }
 
-  // `runtimeModeOf` reads `process.env.NODE_ENV`, which the production build constant-folds to
-  // `"production"`, so it can never see a runtime override in the shipped image. The command's own
-  // environment source still carries `NODE_ENV`, so the development exception reads both: a test
-  // deployment passes `-e NODE_ENV=development` and keeps its plain-HTTP stand-in issuer.
-  const development =
-    runtimeModeOf() === "development" || source.NODE_ENV === "development";
-
-  if (!development && !isSecureOrLoopback(value)) {
+  if (!allowHttp && url.protocol !== "https:") {
     throw new Error(
-      "the issuer or metadata URL must be https outside development"
+      "the issuer or metadata URL must be https; pass --allow-http only for a local or test provider"
     );
   }
 
@@ -317,8 +306,9 @@ export function providerMappers(options: {
 }
 
 /**
- * Creates each mapper, replaces the one a previous run wrote, and removes a stale mapper left by a
- * run of the other protocol (matched by name, which is the user attribute it fills).
+ * Creates each mapper, or replaces the one a previous run wrote (matched by name, which is the user
+ * attribute it fills). A protocol switch is refused before this runs, so every existing mapper is
+ * already the same kind and no stale mapper of the other protocol can exist.
  */
 async function upsertMappers(
   target: KeycloakTarget,
@@ -351,29 +341,6 @@ async function upsertMappers(
       continue;
     }
 
-    if (current.identityProviderMapper !== mapper.identityProviderMapper) {
-      // The other protocol's mapper shares the name but not the provider; replace it.
-      // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
-      await deleteIdentityProviderMapper(
-        target,
-        realm,
-        accessToken,
-        options.alias,
-        current.id
-      );
-
-      // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
-      await createIdentityProviderMapper(
-        target,
-        realm,
-        accessToken,
-        options.alias,
-        mapper
-      );
-
-      continue;
-    }
-
     // oxlint-disable-next-line no-await-in-loop -- each mapper is its own admin call.
     await updateIdentityProviderMapper(
       target,
@@ -386,7 +353,16 @@ async function upsertMappers(
   }
 }
 
-/** Writes the provider, recreating it when a rerun switched protocol under the same alias. */
+/** The named cause a rerun that changes the protocol under the fixed alias is refused with. */
+export function protocolSwitchRefusal(from: string, to: string): string {
+  return `idp set cannot switch the "${BROKER_IDP_ALIAS}" provider from ${from} to ${to}: its existing federated links would be lost. Delete the provider in the Keycloak admin console (which also removes its mappers) and run idp set again.`;
+}
+
+/**
+ * Writes the provider, or updates it in place when the alias already exists. A rerun that changes
+ * the protocol is refused, because Keycloak keeps the federated links on the existing provider and
+ * gives no way to migrate them to the other protocol.
+ */
 async function upsertProvider(
   target: KeycloakTarget,
   realm: string,
@@ -414,10 +390,12 @@ async function upsertProvider(
     existing !== undefined &&
     existing.providerId !== representation.providerId
   ) {
-    await deleteIdentityProvider(target, realm, accessToken, options.alias);
-    await createIdentityProvider(target, realm, accessToken, representation);
-
-    return;
+    throw new Error(
+      protocolSwitchRefusal(
+        String(existing.providerId),
+        String(representation.providerId)
+      )
+    );
   }
 
   await updateIdentityProvider(

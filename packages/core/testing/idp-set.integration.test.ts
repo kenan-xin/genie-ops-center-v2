@@ -283,6 +283,8 @@ function oidcArgs(clientId = "genie-oidc"): readonly string[] {
     `${CONTAINER_KEYCLOAK_URL}/realms/company`,
     "--client-id",
     clientId,
+    // The stand-in issuer is plain HTTP, which the command accepts only with this explicit flag.
+    "--allow-http",
   ];
 }
 
@@ -296,6 +298,7 @@ function samlArgs(): readonly string[] {
     `${CONTAINER_KEYCLOAK_URL}/realms/company/protocol/saml/descriptor`,
     "--entity-id",
     "genie-saml",
+    "--allow-http",
   ];
 }
 
@@ -467,35 +470,39 @@ describe("genie-ops idp set", () => {
     expect(mappers).toHaveLength(1);
   }, 200000);
 
-  it("removes the other protocol's mapper when a rerun switches protocol", async () => {
+  it("refuses a rerun that switches protocol on the existing provider", async () => {
     const fixture = await tenantFixture("switch");
 
     await expect(runGenieOps([...oidcArgs()], fixture.options)).resolves.toBe(
       0
     );
-    await expect(runGenieOps([...samlArgs()], fixture.options)).resolves.toBe(
-      0
-    );
 
+    const captured = lineCapture();
+
+    await expect(
+      runGenieOps([...samlArgs()], { ...fixture.options, ...captured })
+    ).resolves.not.toBe(0);
+
+    expect(captured.lines.join("\n")).toContain("cannot switch");
+    expect(captured.lines.join("\n")).toContain("federated links");
+
+    // The existing provider and its mapper are untouched, so no half-switched realm is left.
     const provider = await adminJson<Connector>(
       `/identity-provider/instances/${BROKER_IDP_ALIAS}`,
       fixture.realm
     );
 
-    expect(provider.providerId).toBe("saml");
+    expect(provider.providerId).toBe("oidc");
 
     const mappers = await adminJson<readonly Mapper[]>(
       `/identity-provider/instances/${BROKER_IDP_ALIAS}/mappers`,
       fixture.realm
     );
 
-    expect(mappers).toHaveLength(4);
-    expect(
-      mappers.filter((mapper) => mapper.config?.["user.attribute"] === "groups")
-    ).toHaveLength(1);
-    expect(
-      mappers.map((mapper) => mapper.identityProviderMapper)
-    ).not.toContain("oidc-user-attribute-idp-mapper");
+    expect(mappers).toHaveLength(1);
+    expect(mappers[0]?.identityProviderMapper).toBe(
+      "oidc-user-attribute-idp-mapper"
+    );
   }, 200000);
 
   it("keeps the secret out of a failing run's output and audit row", async () => {

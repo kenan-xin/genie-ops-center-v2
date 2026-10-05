@@ -144,8 +144,7 @@ export function osUserName(
 function parseCommand(
   command: string | undefined,
   rest: readonly string[],
-  compiledModules: readonly Module[],
-  source: EnvironmentSource
+  compiledModules: readonly Module[]
 ): ParsedCommand {
   // D-12: the ids derive once here from the one list, and reach the migrator run and the module
   // commands unchanged; setup receives the modules themselves so its `roles` step can seed them.
@@ -283,6 +282,7 @@ function parseCommand(
           "email-attribute": { type: "string" },
           "first-name-attribute": { type: "string" },
           "last-name-attribute": { type: "string" },
+          "allow-http": { type: "boolean" },
         },
         strict: true,
         allowPositionals: true,
@@ -311,11 +311,12 @@ function parseCommand(
       }
 
       const identity: IdpProtocol = protocol;
+      const allowHttp = values["allow-http"] === true;
 
       // R-58/R-66: the issuer or metadata URL is parsed and checked here, before any context or
-      // audit row, so a URL that carries a username or password never reaches `audit_event`. The
-      // provider's client secret is read from `IDP_CLIENT_SECRET` in the command environment, so
-      // it is never an argument at all.
+      // audit row, so a URL that carries a username or password never reaches `audit_event`. HTTPS
+      // is required unless `--allow-http` is passed. The provider's client secret is read from
+      // `IDP_CLIENT_SECRET` in the command environment, so it is never an argument at all.
       let url: string;
 
       if (identity === "oidc") {
@@ -328,7 +329,7 @@ function parseCommand(
           );
         }
 
-        url = assertIdpUrl(values["issuer-url"], source);
+        url = assertIdpUrl(values["issuer-url"], allowHttp);
       } else {
         if (
           values["metadata-url"] === undefined ||
@@ -339,10 +340,17 @@ function parseCommand(
           );
         }
 
-        url = assertIdpUrl(values["metadata-url"], source);
+        url = assertIdpUrl(values["metadata-url"], allowHttp);
       }
 
-      const audited = ["set", identity, alias, url, groupsClaim];
+      const audited = [
+        "set",
+        identity,
+        alias,
+        url,
+        groupsClaim,
+        ...(allowHttp ? ["--allow-http"] : []),
+      ];
 
       return {
         name: "idp-set",
@@ -496,12 +504,7 @@ export async function runGenieOps(
   let parsed: ParsedCommand;
 
   try {
-    parsed = parseCommand(
-      command,
-      rest,
-      options.compiledModules,
-      options.source
-    );
+    parsed = parseCommand(command, rest, options.compiledModules);
   } catch {
     // D-4: no context, no audit row, and never the rejected value.
     options.errorOutput(PARSE_REFUSAL);
