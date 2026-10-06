@@ -20,6 +20,7 @@ import {
   configureFirstBrokerLogin,
 } from "./broker.ts";
 import {
+  type ClientRedirectRepair,
   createRealm,
   masterAdminToken,
   realmExists,
@@ -131,15 +132,15 @@ async function writeRealmSupportsLocalAccounts(
 /**
  * Repairs the genie-studio client's redirect URIs on a rerun of the realm step (R-49a, R-53). The
  * bootstrap credential carries `manage-clients`, which `genie-admin` never holds, so the realm step
- * is the one place that can write them. The write is idempotent, so a rerun lands the values a
- * failed create or an earlier lack of the field left missing.
+ * is the one place that can write them. The repair merges, so a realm whose client already carries
+ * other redirect values keeps them; it is idempotent, so a rerun adds nothing.
  */
 function repairGenieStudioRedirects(
   target: KeycloakTarget,
   realm: string,
   accessToken: string,
   genieStudioUrl: string
-): Promise<void> {
+): Promise<ClientRedirectRepair> {
   return repairClientRedirects(
     target,
     realm,
@@ -148,6 +149,31 @@ function repairGenieStudioRedirects(
     [`${genieStudioUrl}${GENIE_STUDIO_CALLBACK_PATH}`],
     `${genieStudioUrl}/*`
   );
+}
+
+/**
+ * The line the realm step prints after a rerun over an existing realm. It names the redirect and
+ * post-logout values the repair added, or says that none was missing, so the operator can see what
+ * changed without reading the realm (R-53).
+ */
+function existingRealmMessage(
+  realm: string,
+  repair: ClientRedirectRepair | undefined
+): string {
+  if (repair === undefined) {
+    return `realm step: realm "${realm}" already exists; clients and users left unchanged`;
+  }
+
+  const added = [
+    ...repair.addedRedirectUris.map((uri) => `redirect URI ${uri}`),
+    ...repair.addedPostLogoutUris.map((uri) => `post-logout redirect ${uri}`),
+  ];
+
+  if (added.length === 0) {
+    return `realm step: realm "${realm}" already exists; genie-studio's redirect values were already present`;
+  }
+
+  return `realm step: realm "${realm}" already exists; added genie-studio ${added.join(" and ")}`;
 }
 
 /**
@@ -228,28 +254,26 @@ export async function realmStep(
     // R-53: an existing realm keeps its clients and users, but the brokered flow values and, when
     // `genie_studio_url` is set, the genie-studio client's redirect URIs are repaired here. Every
     // write is idempotent, so a rerun after a failed write (a Keycloak restart between the create
-    // and the writes, for example) lands the values it was missing.
+    // and the writes, for example) lands the values it was missing, and the repair merges, so a
+    // value the client already carried is kept.
     if (!localAccounts) {
       await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
       await configureFirstBrokerLogin(target, base.keycloakRealm, accessToken);
     }
 
-    if (genieStudioUrl !== undefined) {
-      await repairGenieStudioRedirects(
-        target,
-        base.keycloakRealm,
-        accessToken,
-        genieStudioUrl
-      );
-    }
+    const repair =
+      genieStudioUrl === undefined
+        ? undefined
+        : await repairGenieStudioRedirects(
+            target,
+            base.keycloakRealm,
+            accessToken,
+            genieStudioUrl
+          );
 
     await writeRealmSupportsLocalAccounts(context, localAccounts);
 
-    options.output(
-      genieStudioUrl === undefined
-        ? `realm step: realm "${base.keycloakRealm}" already exists; clients and users left unchanged`
-        : `realm step: realm "${base.keycloakRealm}" already exists; genie-studio's redirect URIs repaired`
-    );
+    options.output(existingRealmMessage(base.keycloakRealm, repair));
 
     return;
   }

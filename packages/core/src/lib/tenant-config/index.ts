@@ -12,7 +12,7 @@ export { brandingSeedSchema, type BrandingSeed } from "./branding-seed.ts";
 
 export {
   GENIE_STUDIO_CALLBACK_PATH,
-  isGenieStudioOrigin,
+  genieStudioUrlProblem,
   normalizeGenieStudioUrl,
 } from "./genie-studio.ts";
 

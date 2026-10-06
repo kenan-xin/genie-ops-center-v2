@@ -8,37 +8,52 @@
  * down for the managed realm; the client-only file keeps its own placeholder for the customer's IT.
  */
 
+import { LOOPBACK_HOSTS } from "../../utils/loopback-hosts.ts";
+
 /** genie-core's OIDC callback path (`app/routes/routes.go`, `app/auth/oidc/service.go`). */
 export const GENIE_STUDIO_CALLBACK_PATH = "/api/v1/auth/oidc/callback";
 
-/** A loopback hostname, the only host a plain-http origin is allowed on (`PUBLIC_URL`, R-4a). */
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+/** The origin-shape message, shared by every rejection that is not a wildcard host or port 0. */
+const ORIGIN_MESSAGE =
+  "genie_studio_url must be an https origin, or an http origin on loopback, with no userinfo, path, query or fragment";
 
 /**
- * True for the origin `genie_studio_url` accepts (R-49a): an https origin, or an http origin on a
- * loopback host, with no userinfo, no path, no query and no fragment. The scheme rule is the
- * `PUBLIC_URL` one: plain HTTP is allowed only on loopback, where no other machine can reach it.
+ * The named problem with a `genie_studio_url`, or `undefined` when it is valid (R-49a): an https
+ * origin, or an http origin on a loopback host, with no userinfo, no path, no query, no fragment,
+ * no wildcard host and no port 0. Keycloak matches the redirect host and port literally, so a
+ * wildcard or port 0 makes a client that cannot sign anyone in.
  */
-export function isGenieStudioOrigin(value: string): boolean {
-  if (!URL.canParse(value)) return false;
+export function genieStudioUrlProblem(value: string): string | undefined {
+  if (!URL.canParse(value)) return ORIGIN_MESSAGE;
 
   const url = new URL(value);
 
-  if (url.username !== "" || url.password !== "") return false;
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    return ORIGIN_MESSAGE;
 
-  if (url.search !== "" || url.hash !== "") return false;
+  if (url.username !== "" || url.password !== "") return ORIGIN_MESSAGE;
 
-  if (url.pathname !== "" && url.pathname !== "/") return false;
+  if (url.search !== "" || url.hash !== "") return ORIGIN_MESSAGE;
 
-  if (url.protocol === "https:") return url.hostname !== "";
+  if (url.pathname !== "" && url.pathname !== "/") return ORIGIN_MESSAGE;
 
-  return url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname);
+  if (url.hostname.includes("*")) {
+    return "genie_studio_url must not use a wildcard host";
+  }
+
+  if (url.port === "0") return "genie_studio_url must not use port 0";
+
+  if (url.protocol === "https:") {
+    return url.hostname === "" ? ORIGIN_MESSAGE : undefined;
+  }
+
+  return LOOPBACK_HOSTS.has(url.hostname) ? undefined : ORIGIN_MESSAGE;
 }
 
 /**
  * The normalized origin of a `genie_studio_url`: lower-case scheme and host, the default port
  * removed, and the trailing slash the empty path leaves removed, which `URL.origin` already does.
- * The caller has validated the value with `isGenieStudioOrigin`; normalizing this way keeps
+ * The caller has validated the value with `genieStudioUrlProblem`; reducing this way keeps
  * `https://Studio.example.com:443/` and `https://studio.example.com` the same origin.
  */
 export function normalizeGenieStudioUrl(value: string): string {

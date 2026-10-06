@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { isGenieStudioOrigin } from "./genie-studio.ts";
+import { genieStudioUrlProblem } from "./genie-studio.ts";
 
 /** Kebab-case, and never `core`, which names core's own keys and ledger (R-33c). */
 const MODULE_ID = /^(?!core$)[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -29,10 +29,13 @@ export const tenantYamlSchema = z
     local_accounts: z.boolean().optional(),
     genie_studio_url: z
       .url({ protocol: /^https?$/ })
-      .refine(
-        isGenieStudioOrigin,
-        "genie_studio_url must be an https origin, or an http origin on localhost, with no userinfo, path, query or fragment"
-      )
+      .superRefine((value, ctx) => {
+        const problem = genieStudioUrlProblem(value);
+
+        if (problem !== undefined) {
+          ctx.addIssue({ code: "custom", message: problem });
+        }
+      })
       .optional(),
     first_administrators: z.array(z.email()).min(1),
     break_glass_email: z.email(),

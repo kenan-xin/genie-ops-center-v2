@@ -171,4 +171,24 @@ describe("tenantYamlSchema", () => {
       ).toBe(false);
     }
   });
+
+  it("refuses a wildcard host and port 0 with a named cause (R-49a)", () => {
+    const cases = [
+      { value: "https://*.example.com", message: "wildcard host" },
+      { value: "https://studio.example.com:0", message: "port 0" },
+    ];
+
+    for (const { value, message } of cases) {
+      const result = tenantYamlSchema.safeParse({
+        ...VALID,
+        genie_studio_url: value,
+      });
+
+      expect(result.success, value).toBe(false);
+
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toContain(message);
+      }
+    }
+  });
 });

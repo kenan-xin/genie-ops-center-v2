@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 
 import { z } from "zod";
 
+import { LOOPBACK_HOSTS } from "../../utils/loopback-hosts.ts";
 import type {
   AuthEnvironment,
   DeploymentEnvironment,
@@ -115,10 +116,7 @@ export function runtimeModeOf(): RuntimeMode {
 export function isSecureOrLoopback(value: string): boolean {
   const url = new URL(value);
 
-  return (
-    url.protocol === "https:" ||
-    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
-  );
+  return url.protocol === "https:" || LOOPBACK_HOSTS.has(url.hostname);
 }
 
 /** The two schemes a `SMTP_URL` may use; the contract shows the `smtps://` form of the two. */

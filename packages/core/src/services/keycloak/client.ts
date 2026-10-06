@@ -196,13 +196,45 @@ async function updateClient(
   await parseResponse(response);
 }
 
+/** The `##` Keycloak uses to join the several values of the post-logout redirect attribute. */
+const POST_LOGOUT_SEPARATOR = "##";
+
+/** A JSON value as a list of strings; a non-list or a non-string entry contributes nothing. */
+function stringList(value: JsonValue | undefined): string[] {
+  return Array.isArray(value)
+    ? value.filter(
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a JSON list entry is a string or not; this is the discriminator.
+        (entry): entry is string => typeof entry === "string"
+      )
+    : [];
+}
+
+/** The post-logout attribute's `##`-joined value as a list; an absent or empty value is `[]`. */
+function postLogoutList(value: JsonValue | undefined): string[] {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a JSON attribute is a string or not; this is the discriminator.
+  if (typeof value !== "string" || value === "") return [];
+
+  return value
+    .split(POST_LOGOUT_SEPARATOR)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
+}
+
+/** What a redirect repair added, so the caller can print it (R-53). Empty lists mean nothing was missing. */
+export type ClientRedirectRepair = {
+  readonly addedRedirectUris: readonly string[];
+  readonly addedPostLogoutUris: readonly string[];
+};
+
 /**
- * Fills one client's redirect URIs and post-logout redirect URI, found by client id, with the
- * bootstrap credential. The realm step uses it to repair the genie-studio client on a rerun of a
- * step that is not done, when `tenant.yaml` sets `genie_studio_url` (R-49a, R-53): the realm was
- * created before the field existed, or the create succeeded and a later write failed. The
- * bootstrap token carries `manage-clients`, which `genie-admin` deliberately never holds. A
- * missing client is a named refusal, because the realm is then not the one this deployment made.
+ * Adds the given redirect URIs and post-logout redirect URI to one client, found by client id, with
+ * the bootstrap credential (R-49a, R-53). It merges rather than replaces: a value already present
+ * is left alone, every other existing value is kept, and the post-logout list is joined with `##`
+ * the way Keycloak stores it. The realm step uses it to repair the genie-studio client on a rerun
+ * of a step that is not done, so a realm whose client already carries another host, a loopback
+ * callback, or a hand-added value keeps it. The write is skipped when nothing is missing, so a
+ * rerun adds each value once. A missing client is a named refusal, because the realm is then not
+ * the one this deployment made.
  */
 export async function repairClientRedirects(
   target: KeycloakTarget,
@@ -211,7 +243,7 @@ export async function repairClientRedirects(
   clientId: string,
   redirectUris: readonly string[],
   postLogoutRedirectUris: string
-): Promise<void> {
+): Promise<ClientRedirectRepair> {
   const existing = await clientByClientId(target, realm, accessToken, clientId);
 
   if (existing === undefined || existing.id === undefined) {
@@ -220,18 +252,43 @@ export async function repairClientRedirects(
     );
   }
 
+  const currentRedirectUris = stringList(existing.redirectUris);
+
+  const addedRedirectUris = redirectUris.filter(
+    (uri) => !currentRedirectUris.includes(uri)
+  );
+
   const attributes =
     existing.attributes !== undefined && isObject(existing.attributes)
       ? existing.attributes
       : {};
 
-  attributes["post.logout.redirect.uris"] = postLogoutRedirectUris;
+  const currentPostLogoutUris = postLogoutList(
+    attributes["post.logout.redirect.uris"]
+  );
+
+  const addedPostLogoutUris = currentPostLogoutUris.includes(
+    postLogoutRedirectUris
+  )
+    ? []
+    : [postLogoutRedirectUris];
+
+  if (addedRedirectUris.length === 0 && addedPostLogoutUris.length === 0) {
+    return { addedRedirectUris: [], addedPostLogoutUris: [] };
+  }
+
+  attributes["post.logout.redirect.uris"] = [
+    ...currentPostLogoutUris,
+    ...addedPostLogoutUris,
+  ].join(POST_LOGOUT_SEPARATOR);
 
   await updateClient(target, realm, accessToken, existing.id, {
     ...existing,
-    redirectUris: [...redirectUris],
+    redirectUris: [...currentRedirectUris, ...addedRedirectUris],
     attributes,
   });
+
+  return { addedRedirectUris, addedPostLogoutUris };
 }
 
 /**

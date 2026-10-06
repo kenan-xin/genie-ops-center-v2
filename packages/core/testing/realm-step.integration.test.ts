@@ -397,6 +397,30 @@ async function redirectorConfig(realm: string): Promise<string | undefined> {
     : String(redirector.authenticationConfig);
 }
 
+/** One client's secret value, read with the master token. */
+async function readClientSecret(
+  realm: string,
+  clientId: string
+): Promise<string | undefined> {
+  const token = await masterToken();
+  const id = await clientIdOf(realm, clientId);
+
+  if (id === undefined) throw new Error(`realm ${realm} has no ${clientId}`);
+
+  const response = await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${id}/client-secret`,
+    { headers: { authorization: `Bearer ${token}` } }
+  );
+
+  // SAFETY: the client-secret endpoint returns a JSON object with a `value` string.
+  const body = (await response.json()) as JsonValue;
+
+  if (!isJsonObject(body)) return undefined;
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a JSON secret is a string or not.
+  return typeof body.value === "string" ? body.value : undefined;
+}
+
 /** Every `setup_step` detail joined, for a non-leak assertion on a failed step's cause. */
 async function setupStepDetails(postgresUrl: string): Promise<string> {
   const observer = new Client({ connectionString: postgresUrl });
@@ -1120,6 +1144,11 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
   const STUDIO_URL = "https://studio.example.invalid";
   const STUDIO_REDIRECT = `${STUDIO_URL}/api/v1/auth/oidc/callback`;
 
+  const LEGACY_REDIRECT =
+    "https://legacy.example.invalid/api/auth/callback/keycloak";
+
+  const LEGACY_POST_LOGOUT = "https://legacy.example.invalid";
+
   it("fills the two URIs at realm creation and the clients step proves the redirect", async () => {
     const postgres = await startDisposablePostgres();
     const observer = new Client({ connectionString: postgres.url });
@@ -1196,7 +1225,7 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
     expect(output.join("\n")).toContain("genie-studio");
   }, 180000);
 
-  it("repairs genie-studio's redirect URIs on a rerun of the realm step", async () => {
+  it("merges genie-studio's redirects on a rerun, keeping existing values, the secret and no duplicates (R-49a, R-53)", async () => {
     const postgres = await startDisposablePostgres();
     const observer = new Client({ connectionString: postgres.url });
     const files = await configFiles({ genieStudioUrl: STUDIO_URL });
@@ -1212,22 +1241,64 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
       runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
     ).resolves.toBe(0);
 
-    // A realm created before genie_studio_url existed: the client has no redirect URIs. Drop the
-    // realm and clients rows so the next setup reruns both steps.
-    await setClientRedirects(realm, "genie-studio", [], "");
+    const secretBefore = await readClientSecret(realm, "genie-studio");
+
+    // A realm created before genie_studio_url existed, or a client edited by hand: it carries
+    // another deployment's values and lacks the two this field names. Drop the realm and clients
+    // rows so the next setup reruns both steps.
+    await setClientRedirects(
+      realm,
+      "genie-studio",
+      [LEGACY_REDIRECT],
+      LEGACY_POST_LOGOUT
+    );
     await observer.query(
       "delete from setup_step where step in ('realm', 'clients')"
     );
 
+    const output: string[] = [];
+
     await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
     ).resolves.toBe(0);
+
+    // The repair merges: the legacy values stay and the two new ones are added.
+    expect(output.join("\n")).toContain("added genie-studio");
 
     const repaired = clientBy(await adminClients(realm), "genie-studio");
 
-    expect(repaired?.redirectUris).toEqual([STUDIO_REDIRECT]);
+    expect(repaired?.redirectUris).toEqual([LEGACY_REDIRECT, STUDIO_REDIRECT]);
     expect(stringAttribute(repaired, "post.logout.redirect.uris")).toBe(
-      `${STUDIO_URL}/*`
+      `${LEGACY_POST_LOGOUT}##${STUDIO_URL}/*`
+    );
+    // The full-representation PUT does not disturb the client secret.
+    expect(await readClientSecret(realm, "genie-studio")).toBe(secretBefore);
+
+    // A second rerun of the realm step finds every value already present: nothing is added and no
+    // value is duplicated.
+    await observer.query("delete from setup_step where step = 'realm'");
+
+    const secondOutput: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => secondOutput.push(line),
+        errorOutput: (line) => secondOutput.push(line),
+      })
+    ).resolves.toBe(0);
+
+    expect(secondOutput.join("\n")).toContain("were already present");
+
+    const again = clientBy(await adminClients(realm), "genie-studio");
+
+    expect(again?.redirectUris).toEqual([LEGACY_REDIRECT, STUDIO_REDIRECT]);
+    expect(stringAttribute(again, "post.logout.redirect.uris")).toBe(
+      `${LEGACY_POST_LOGOUT}##${STUDIO_URL}/*`
     );
   }, 180000);
 });
