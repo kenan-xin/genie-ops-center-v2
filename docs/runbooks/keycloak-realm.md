@@ -58,7 +58,7 @@ The `genie-studio` client carries these values when `tenant.yaml` sets `genie_st
 - Post-logout redirect URI: `<genie_studio_url>/*`, so genie-core's configured `OIDC_POST_LOGOUT_REDIRECT_URI`, which sits under that origin, is accepted.
 - No web origin. genie-core exchanges the code server-side, so the browser needs no CORS to the token endpoint.
 
-Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on `localhost`, with no userinfo, path, query or fragment; the tenant schema refuses anything else, and the realm step normalizes it the way `PUBLIC_URL` is compared. A later change to `genie_studio_url` is a realm edit: rerun `genie-ops setup` with the bootstrap credential, and the realm step repairs the client.
+Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on `localhost`, with no userinfo, path, query or fragment; the tenant schema refuses anything else, and the realm step normalizes it the way `PUBLIC_URL` is compared. The realm step writes the client at creation and repairs it whenever the step runs again while it is not done — after a failed write, or after its `setup_step` row is cleared. A realm whose `realm` step is already `done` is never reopened by an edit to `genie_studio_url`; clear that step's row first if the repair is wanted.
 
 The application never inspects the request hostname. `PUBLIC_URL` is the one address the realm points at (`DEC-19`).
 
