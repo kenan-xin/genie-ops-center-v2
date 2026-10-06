@@ -58,7 +58,15 @@ The `genie-studio` client carries these values when `tenant.yaml` sets `genie_st
 - Post-logout redirect URI: `<genie_studio_url>/*`, so genie-core's configured `OIDC_POST_LOGOUT_REDIRECT_URI`, which sits under that origin, is accepted.
 - No web origin. genie-core exchanges the code server-side, so the browser needs no CORS to the token endpoint.
 
-Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on `localhost`, with no userinfo, path, query or fragment; the tenant schema refuses anything else, and the realm step normalizes it the way `PUBLIC_URL` is compared. The realm step writes the client at creation and repairs it whenever the step runs again while it is not done — after a failed write, or after its `setup_step` row is cleared. A realm whose `realm` step is already `done` is never reopened by an edit to `genie_studio_url`; clear that step's row first if the repair is wanted.
+Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on loopback (`localhost`, `127.0.0.1`, `[::1]`), with no userinfo, path, query or fragment, no wildcard host and no port 0; the tenant schema refuses anything else, and the realm step reduces it to its origin — lower-case host, no default port, no trailing slash. The realm step writes the client at creation, and on a rerun while the step is not done it adds the missing redirect and post-logout values and keeps every value the client already carries. A rerun adds each value once and prints which values it added, or that none was missing.
+
+A realm whose `realm` step is already `done` is never reopened by an edit to `genie_studio_url`, because a done step does not rerun. Setup reads `setup_step` for that decision; it has no reset flag. To make the realm step run again, clear its row and the `clients` row in the deployment's database, for example with `psql` against the `DATABASE_URL` in `.env`:
+
+```
+psql "$DATABASE_URL" -c "delete from setup_step where step in ('realm', 'clients')"
+```
+
+Then run `docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD app genie-ops setup`. Clearing `realm` makes it repair the client; clearing `clients` as well makes Check 4 below re-run its proof, because a `done` clients step prints nothing.
 
 The application never inspects the request hostname. `PUBLIC_URL` is the one address the realm points at (`DEC-19`).
 
@@ -245,7 +253,7 @@ Perform these checks in order. Each one has a single clear answer.
 1. Make sure that the realm exists on the Keycloak server and carries the company name as its display name.
 2. Make sure that the clients `genie-ops-center`, `genie-studio`, and `genie-admin` exist in the realm.
 3. Make sure that the redirect URI of `genie-ops-center` is `PUBLIC_URL/api/auth/callback/keycloak`.
-4. When `tenant.yaml` sets `genie_studio_url`, make sure that the redirect URI of `genie-studio` is `<genie_studio_url>/api/v1/auth/oidc/callback` and its post-logout redirect is `<genie_studio_url>/*`. Skim the `clients` step output: it proves that redirect through the public authorization endpoint, the same way it proves `genie-ops-center`'s.
+4. When `tenant.yaml` sets `genie_studio_url`, make sure that the redirect URI of `genie-studio` is `<genie_studio_url>/api/v1/auth/oidc/callback` and its post-logout redirect is `<genie_studio_url>/*`. The `clients` step proves that redirect through the public authorization endpoint, the same way it proves `genie-ops-center`'s; read its output only when it actually ran in this setup, because a `done` `clients` step is skipped and prints nothing (clear its row as above to re-run the proof).
 5. Make sure that the PKCE method of `genie-ops-center` is `S256`.
 6. Make sure that the service account of `genie-admin` holds its roles on the `realm-management` client of this realm and on no other realm.
 7. Make sure that brute force protection is on and that its numbers are not zero.
