@@ -27,7 +27,7 @@ Two templates live in the repository under `deploy/keycloak/`.
 
 One customer delta file sits beside them, in `customers/<slug>/deploy/realm.overrides.json`. It holds only the values that differ for that customer. Keep it small. A value that the template already sets correctly must not be repeated there. The override may set only these top-level keys, and a key outside the list refuses the realm step by name (Spec 2 D2-3): `ssoSessionIdleTimeout`, `ssoSessionMaxLifespan`, `accessTokenLifespan`, `passwordPolicy`, `loginTheme`, `internationalizationEnabled`, `supportedLocales` and `defaultLocale`. The clients, the `users` service account, the identity providers and their mappers, the authentication flows, brute-force settings, the email theme, the display name, the SMTP server, and every secret are fixed by the template and core, and cannot be overridden.
 
-Keycloak. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it (objects merge key by key, a list in the override replaces the whole list), fills the values core owns (the client secrets, the redirect URIs from `PUBLIC_URL`, the display name, the SMTP settings), and applies the result in one `POST /admin/realms`. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
+Keycloak. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it (objects merge key by key, a list in the override replaces the whole list), fills the values core owns (the client secrets, the redirect URIs from `PUBLIC_URL` and, when set, `genie_studio_url`, the display name, the SMTP settings), and applies the result in one `POST /admin/realms`. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
 
 ## What the realm template guarantees
 
@@ -51,6 +51,14 @@ The `genie-ops-center` client carries these values.
 Keycloak. The client setting named "PKCE method" takes `S256`, `plain`, or blank. Blank means that Keycloak accepts PKCE but does not require it. `S256` means that Keycloak requires PKCE with SHA-256 for that client. Set `S256`, because an authorization code stolen without the verifier is then useless.
 
 Keycloak. Post-logout redirect URIs are a client attribute, and the values are joined with `##` when several are set. From Keycloak 26.6 the `secure-client-uris` client policy executor requires HTTPS on post-logout redirect URIs, so a plain HTTP address fails validation under that policy.
+
+The `genie-studio` client carries these values when `tenant.yaml` sets `genie_studio_url`.
+
+- Redirect URI: `<genie_studio_url>/api/v1/auth/oidc/callback`. genie-studio completes the OIDC code exchange on its own backend callback, so this is a different path from the Ops Center callback; genie-core reads it as `OIDC_REDIRECT_URI`.
+- Post-logout redirect URI: `<genie_studio_url>/*`, so genie-core's configured `OIDC_POST_LOGOUT_REDIRECT_URI`, which sits under that origin, is accepted.
+- No web origin. genie-core exchanges the code server-side, so the browser needs no CORS to the token endpoint.
+
+Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on `localhost`, with no userinfo, path, query or fragment; the tenant schema refuses anything else, and the realm step normalizes it the way `PUBLIC_URL` is compared. A later change to `genie_studio_url` is a realm edit: rerun `genie-ops setup` with the bootstrap credential, and the realm step repairs the client.
 
 The application never inspects the request hostname. `PUBLIC_URL` is the one address the realm points at (`DEC-19`).
 
@@ -237,11 +245,12 @@ Perform these checks in order. Each one has a single clear answer.
 1. Make sure that the realm exists on the Keycloak server and carries the company name as its display name.
 2. Make sure that the clients `genie-ops-center`, `genie-studio`, and `genie-admin` exist in the realm.
 3. Make sure that the redirect URI of `genie-ops-center` is `PUBLIC_URL/api/auth/callback/keycloak`.
-4. Make sure that the PKCE method of `genie-ops-center` is `S256`.
-5. Make sure that the service account of `genie-admin` holds its roles on the `realm-management` client of this realm and on no other realm.
-6. Make sure that brute force protection is on and that its numbers are not zero.
-7. Make sure that the group `Genie Administrators` exists in Genie Ops Center with the role `Tenant administrator` (`../architecture/access-model.md`).
-8. Make sure that setup printed the break-glass password once and that it went into the correct secret store (`DEC-24`).
+4. When `tenant.yaml` sets `genie_studio_url`, make sure that the redirect URI of `genie-studio` is `<genie_studio_url>/api/v1/auth/oidc/callback` and its post-logout redirect is `<genie_studio_url>/*`. Skim the `clients` step output: it proves that redirect through the public authorization endpoint, the same way it proves `genie-ops-center`'s.
+5. Make sure that the PKCE method of `genie-ops-center` is `S256`.
+6. Make sure that the service account of `genie-admin` holds its roles on the `realm-management` client of this realm and on no other realm.
+7. Make sure that brute force protection is on and that its numbers are not zero.
+8. Make sure that the group `Genie Administrators` exists in Genie Ops Center with the role `Tenant administrator` (`../architecture/access-model.md`).
+9. Make sure that setup printed the break-glass password once and that it went into the correct secret store (`DEC-24`).
 
 ## Verify after `idp set`
 

@@ -58,6 +58,7 @@ const TENANT_KEYS = [
   "modules",
   "onboarding_mode",
   "local_accounts",
+  "genie_studio_url",
   "first_administrators",
   "break_glass_email",
 ];
@@ -564,9 +565,32 @@ describe("the two configuration files", () => {
   });
 
   it("keeps every branding value out of the tenant file", () => {
+    // `genie_studio_url` is optional, so an input that omits it writes no such line; the base
+    // keys are exactly the required tenant keys.
     expect(Object.keys(buildTenantYaml(INPUT)).toSorted()).toEqual(
-      TENANT_KEYS.toSorted()
+      TENANT_KEYS.filter((key) => key !== "genie_studio_url").toSorted()
     );
+  });
+
+  it("writes genie_studio_url only when the customer supplies one (R-49a)", () => {
+    expect(buildTenantYaml(INPUT)).not.toHaveProperty("genie_studio_url");
+
+    const withStudio = buildTenantYaml({
+      ...INPUT,
+      genieStudioUrl: "https://studio.example.com",
+    });
+
+    expect(withStudio.genie_studio_url).toBe("https://studio.example.com");
+    expect(
+      renderTenant(
+        {
+          ...INPUT,
+          slug: "studio-co",
+          genieStudioUrl: "https://studio.example.com",
+        },
+        VALIDATORS
+      ).get("customers/studio-co/deploy/tenant.yaml")
+    ).toContain('genie_studio_url: "https://studio.example.com"');
   });
 
   it("seeds only the four values the branding contract requires", () => {

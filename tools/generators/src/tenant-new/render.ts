@@ -22,6 +22,12 @@ export type TenantRenderInput = {
   /** Checked by the core schema, which owns the documented set, not a copy of it here. */
   readonly onboardingMode: string;
   readonly localAccounts: boolean;
+  /**
+   * The genie-studio deployment's origin, when this customer runs it. Optional: an absent value
+   * writes no `genie_studio_url` and the managed realm leaves the genie-studio client's redirect
+   * URIs empty (R-49a).
+   */
+  readonly genieStudioUrl?: string;
   readonly firstAdministrators: readonly string[];
   readonly breakGlassEmail: string;
   readonly companyName: string;
@@ -35,6 +41,7 @@ export type TenantYamlFile = {
   readonly modules: readonly string[];
   readonly onboarding_mode: string;
   readonly local_accounts: boolean;
+  readonly genie_studio_url?: string;
   readonly first_administrators: readonly string[];
   readonly break_glass_email: string;
 };
@@ -76,13 +83,17 @@ export type TenantValidators = {
 
 /** Exactly the keys `tenant.yaml` owns. Branding belongs to the other file (DEC-35). */
 export function buildTenantYaml(input: TenantRenderInput): TenantYamlFile {
-  return {
+  const tenant: TenantYamlFile = {
     modules: [...input.modules],
     onboarding_mode: input.onboardingMode,
     local_accounts: input.localAccounts,
     first_administrators: [...input.firstAdministrators],
     break_glass_email: input.breakGlassEmail,
   };
+
+  if (input.genieStudioUrl === undefined) return tenant;
+
+  return { ...tenant, genie_studio_url: input.genieStudioUrl };
 }
 
 /**
@@ -136,14 +147,19 @@ function list(values: readonly string[]): string {
 }
 
 /**
- * The five fields of `tenant.yaml`, written out one by one rather than walked as a
+ * The fields of `tenant.yaml`, written out one by one rather than walked as a
  * dictionary, so the file's shape stays readable and every value keeps its type.
+ * `genie_studio_url` is omitted when unset, so an absent value is the field's own
+ * default and not an empty string.
  */
 function tenantYamlBody(tenant: TenantYamlFile): string {
   return [
     `modules:${list(tenant.modules)}`,
     `onboarding_mode: ${JSON.stringify(tenant.onboarding_mode)}`,
     `local_accounts: ${String(tenant.local_accounts)}`,
+    ...(tenant.genie_studio_url === undefined
+      ? []
+      : [`genie_studio_url: ${JSON.stringify(tenant.genie_studio_url)}`]),
     `first_administrators:${list(tenant.first_administrators)}`,
     `break_glass_email: ${JSON.stringify(tenant.break_glass_email)}`,
   ].join("\n");

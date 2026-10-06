@@ -66,6 +66,7 @@ async function configFiles(
   input: {
     readonly realm?: string;
     readonly localAccounts?: boolean;
+    readonly genieStudioUrl?: string;
     readonly overrides?: JsonObject;
   } = {}
 ): Promise<ConfigFiles> {
@@ -83,6 +84,9 @@ async function configFiles(
       "modules: []",
       ...(input.realm === undefined ? [] : [`realm: ${input.realm}`]),
       `local_accounts: ${input.localAccounts === true}`,
+      ...(input.genieStudioUrl === undefined
+        ? []
+        : [`genie_studio_url: ${JSON.stringify(input.genieStudioUrl)}`]),
       "first_administrators:",
       "  - admin@example.invalid",
       "break_glass_email: break-glass@example.invalid",
@@ -323,6 +327,53 @@ async function disableStandardFlow(
       body: JSON.stringify({ ...client, standardFlowEnabled: false }),
     }
   );
+}
+
+/**
+ * Replaces one client's redirect URIs and post-logout redirect URI, the shape a realm created
+ * before `genie_studio_url` existed would have (an empty list and no attribute).
+ */
+async function setClientRedirects(
+  realm: string,
+  clientId: string,
+  redirectUris: readonly string[],
+  postLogoutRedirectUris: string
+): Promise<void> {
+  const token = await masterToken();
+  const client = clientBy(await adminClients(realm), clientId);
+
+  if (client === undefined) {
+    throw new Error(`realm ${realm} has no client ${clientId}`);
+  }
+
+  const attributes =
+    client.attributes !== undefined && isJsonObject(client.attributes)
+      ? client.attributes
+      : {};
+
+  attributes["post.logout.redirect.uris"] = postLogoutRedirectUris;
+
+  const updated = await globalThis.fetch(
+    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...client,
+        redirectUris: [...redirectUris],
+        attributes,
+      }),
+    }
+  );
+
+  if (!updated.ok) {
+    throw new Error(
+      `setting ${clientId} redirects failed with ${updated.status}`
+    );
+  }
 }
 
 /** The config id of the browser flow's identity-provider-redirector, or undefined when unset. */
@@ -1062,6 +1113,122 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(output.join("\n")).toContain("KEYCLOAK_BOOTSTRAP_USER");
     expect(output.join("\n")).not.toContain("ECONNREFUSED");
     expect(output.join("\n")).not.toContain("fetch failed");
+  }, 180000);
+});
+
+describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-53)", () => {
+  const STUDIO_URL = "https://studio.example.invalid";
+  const STUDIO_REDIRECT = `${STUDIO_URL}/api/v1/auth/oidc/callback`;
+
+  it("fills the two URIs at realm creation and the clients step proves the redirect", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles({ genieStudioUrl: STUDIO_URL });
+    const realm = `studio-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    const studio = clientBy(await adminClients(realm), "genie-studio");
+
+    expect(studio?.redirectUris).toEqual([STUDIO_REDIRECT]);
+    expect(stringAttribute(studio, "post.logout.redirect.uris")).toBe(
+      `${STUDIO_URL}/*`
+    );
+
+    // The clients step proved genie-studio's redirect through the public endpoint, so both the
+    // realm and clients steps recorded done (R-54).
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
+  }, 180000);
+
+  it("refuses when genie-studio's registered redirect is not the one the field names", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles({ genieStudioUrl: STUDIO_URL });
+    const realm = `studio-wrong-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    // A client whose redirect does not match the field, with the realm step already done. The
+    // realm step does not rerun, so the client stays wrong and only the clients step can catch it.
+    await setClientRedirects(
+      realm,
+      "genie-studio",
+      ["https://wrong.example.invalid/api/v1/auth/oidc/callback"],
+      `${STUDIO_URL}/*`
+    );
+    await observer.query("delete from setup_step where step = 'clients'");
+
+    const output: string[] = [];
+
+    await expect(
+      runGenieOps(setupArgs(files), {
+        ...runnerOptions(source(postgres.url, realm)),
+        output: (line) => output.push(line),
+        errorOutput: (line) => output.push(line),
+      })
+    ).resolves.not.toBe(0);
+
+    expect(output.join("\n")).toContain("genie-studio");
+  }, 180000);
+
+  it("repairs genie-studio's redirect URIs on a rerun of the realm step", async () => {
+    const postgres = await startDisposablePostgres();
+    const observer = new Client({ connectionString: postgres.url });
+    const files = await configFiles({ genieStudioUrl: STUDIO_URL });
+    const realm = `studio-repair-${process.pid}-${Date.now()}`;
+
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    // A realm created before genie_studio_url existed: the client has no redirect URIs. Drop the
+    // realm and clients rows so the next setup reruns both steps.
+    await setClientRedirects(realm, "genie-studio", [], "");
+    await observer.query(
+      "delete from setup_step where step in ('realm', 'clients')"
+    );
+
+    await expect(
+      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
+    ).resolves.toBe(0);
+
+    const repaired = clientBy(await adminClients(realm), "genie-studio");
+
+    expect(repaired?.redirectUris).toEqual([STUDIO_REDIRECT]);
+    expect(stringAttribute(repaired, "post.logout.redirect.uris")).toBe(
+      `${STUDIO_URL}/*`
+    );
   }, 180000);
 });
 

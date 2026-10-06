@@ -15,6 +15,10 @@ Follow the steps in order.
 - A Keycloak server administrator on that shared server, for the realm-creation step only. Pass its
   username and password in the environment of that one command. They are never stored.
 - The client secret you will set for `genie-ops-center` in that realm.
+- If this deployment runs genie-studio, the origin people reach it at, for example
+  `https://studio.example.com`. Put it in `tenant.yaml` as `genie_studio_url`; setup then fills the
+  `genie-studio` client's redirect URIs in the same realm. Omit it when genie-studio does not run,
+  and the client keeps no redirect URIs.
 
 ## Steps
 
@@ -37,9 +41,10 @@ Follow the steps in order.
 4. Run setup with the bootstrap credential. Run `genie-ops setup` with `KEYCLOAK_BOOTSTRAP_USER` and
    `KEYCLOAK_BOOTSTRAP_PASSWORD` in the environment of that one command. Setup creates the realm on
    the shared server from the shipped template, makes sure that the three clients exist, and records
-   the address it used. The realm is named from the customer slug. The display name and the SMTP
-   settings come from the deployment's configuration. See
-   [the realm runbook](../../runbooks/keycloak-realm.md).
+   the address it used. When `tenant.yaml` sets `genie_studio_url`, it also fills the `genie-studio`
+   client's redirect URIs from that origin, and the `clients` step proves them. The realm is named
+   from the customer slug. The display name and the SMTP settings come from the deployment's
+   configuration. See [the realm runbook](../../runbooks/keycloak-realm.md).
 
 5. Decide what sits behind the realm. If people sign in with a company identity provider, add it now
    by following the guide that matches the provider (S-B to S-G in

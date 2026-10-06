@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises";
 import { sql } from "drizzle-orm";
 
 import type { EnvironmentSource } from "../../lib/environment/index.ts";
-import type { BrandingSeed } from "../../lib/tenant-config/index.ts";
+import {
+  type BrandingSeed,
+  GENIE_STUDIO_CALLBACK_PATH,
+  normalizeGenieStudioUrl,
+} from "../../lib/tenant-config/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { tenantSettings } from "../../schema.ts";
 import {
@@ -19,6 +23,7 @@ import {
   createRealm,
   masterAdminToken,
   realmExists,
+  repairClientRedirects,
   type KeycloakTarget,
 } from "./client.ts";
 import {
@@ -124,11 +129,35 @@ async function writeRealmSupportsLocalAccounts(
 }
 
 /**
+ * Repairs the genie-studio client's redirect URIs on a rerun of the realm step (R-49a, R-53). The
+ * bootstrap credential carries `manage-clients`, which `genie-admin` never holds, so the realm step
+ * is the one place that can write them. The write is idempotent, so a rerun lands the values a
+ * failed create or an earlier lack of the field left missing.
+ */
+function repairGenieStudioRedirects(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  genieStudioUrl: string
+): Promise<void> {
+  return repairClientRedirects(
+    target,
+    realm,
+    accessToken,
+    "genie-studio",
+    [`${genieStudioUrl}${GENIE_STUDIO_CALLBACK_PATH}`],
+    `${genieStudioUrl}/*`
+  );
+}
+
+/**
  * The `realm` step (D2-3, R-53): create the realm from the template variant `local_accounts`
  * selects, merged with `realm.overrides.json`, filled with the values core owns, in one
- * `POST /admin/realms`. An existing realm is left unchanged and recorded done. The bootstrap
- * credential is read for this step only and is refused before any network call when absent
- * (DEC-37). The built representation holds secrets and is never logged.
+ * `POST /admin/realms`. An existing realm keeps its clients and users and is recorded done, but
+ * the brokered flow values and, when `tenant.yaml` sets `genie_studio_url`, the genie-studio
+ * client's redirect URIs are repaired on the rerun. The bootstrap credential is read for this step
+ * only and is refused before any network call when absent (DEC-37). The built representation holds
+ * secrets and is never logged.
  *
  * In client-only mode (`realm: customer`) the customer owns the realm, so this step reads no
  * bootstrap credential, does no work, and answers `skipped` (R-54a); the `clients` step records
@@ -161,6 +190,13 @@ export async function realmStep(
   const overrides = await loadRealmOverrides(files.realmOverrides);
   const smtp = realmSmtp(context, branding);
 
+  // R-49a: the genie-studio origin tenant.yaml carries, normalized once here. Unset leaves the
+  // genie-studio client with no redirect URIs.
+  const genieStudioUrl =
+    tenant.genie_studio_url === undefined
+      ? undefined
+      : normalizeGenieStudioUrl(tenant.genie_studio_url);
+
   if (localAccounts && smtp === undefined) {
     throw new Error(
       "the local-accounts realm needs MAIL_PROVIDER=smtp with MAIL_FROM and SMTP_URL, because Keycloak sends its own set-password, reset-password and verify-email messages; set them in .env"
@@ -173,6 +209,7 @@ export async function realmStep(
     publicUrl: context.env.publicUrl,
     clientSecret: secrets.clientSecret,
     adminClientSecret: secrets.adminClientSecret,
+    genieStudioUrl,
     smtp,
   });
 
@@ -188,18 +225,30 @@ export async function realmStep(
   );
 
   if (await realmExists(target, base.keycloakRealm, accessToken)) {
-    // R-53: an existing realm keeps its clients and users, but the brokered flow values are
-    // repaired here. Both writes are idempotent, so a rerun after a flow write failed (a Keycloak
-    // restart between the create and the writes, for example) lands the values it was missing.
+    // R-53: an existing realm keeps its clients and users, but the brokered flow values and, when
+    // `genie_studio_url` is set, the genie-studio client's redirect URIs are repaired here. Every
+    // write is idempotent, so a rerun after a failed write (a Keycloak restart between the create
+    // and the writes, for example) lands the values it was missing.
     if (!localAccounts) {
       await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
       await configureFirstBrokerLogin(target, base.keycloakRealm, accessToken);
     }
 
+    if (genieStudioUrl !== undefined) {
+      await repairGenieStudioRedirects(
+        target,
+        base.keycloakRealm,
+        accessToken,
+        genieStudioUrl
+      );
+    }
+
     await writeRealmSupportsLocalAccounts(context, localAccounts);
 
     options.output(
-      `realm step: realm "${base.keycloakRealm}" already exists; clients and users left unchanged`
+      genieStudioUrl === undefined
+        ? `realm step: realm "${base.keycloakRealm}" already exists; clients and users left unchanged`
+        : `realm step: realm "${base.keycloakRealm}" already exists; genie-studio's redirect URIs repaired`
     );
 
     return;

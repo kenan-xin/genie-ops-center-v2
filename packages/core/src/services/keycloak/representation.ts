@@ -1,5 +1,6 @@
 import { cloneDeep, mergeWith } from "es-toolkit";
 
+import { GENIE_STUDIO_CALLBACK_PATH } from "../../lib/tenant-config/index.ts";
 import { IDENTITY_CALLBACK_PATH } from "../../lib/tenant-context/index.ts";
 
 /**
@@ -49,6 +50,12 @@ export type RealmFill = {
   readonly publicUrl: string;
   readonly clientSecret: string;
   readonly adminClientSecret: string;
+  /**
+   * The genie-studio deployment's normalized origin, when `tenant.yaml` sets `genie_studio_url`
+   * (R-49a). Unset leaves the genie-studio client with no redirect URIs, as it was before the
+   * field existed.
+   */
+  readonly genieStudioUrl: string | undefined;
   readonly smtp: RealmSmtp | undefined;
 };
 
@@ -126,6 +133,17 @@ function clientBy(realm: JsonObject, clientId: string): JsonObject {
   return client;
 }
 
+/** Writes one client's `post.logout.redirect.uris` attribute, creating the object when absent. */
+function writePostLogout(client: JsonObject, value: string): void {
+  const attributes = client.attributes;
+
+  const merged =
+    attributes !== undefined && isJsonObject(attributes) ? attributes : {};
+
+  merged["post.logout.redirect.uris"] = value;
+  client.attributes = merged;
+}
+
 /** Writes the values core owns into the merged representation (D2-3 step 3). */
 export function fillRealmRepresentation(
   realm: JsonObject,
@@ -138,14 +156,20 @@ export function fillRealmRepresentation(
   signIn.secret = fill.clientSecret;
   signIn.redirectUris = [`${fill.publicUrl}${IDENTITY_CALLBACK_PATH}`];
   signIn.webOrigins = [fill.publicUrl];
+  writePostLogout(signIn, fill.publicUrl);
 
-  const attributes = signIn.attributes;
-
-  const signInAttributes =
-    attributes !== undefined && isJsonObject(attributes) ? attributes : {};
-
-  signInAttributes["post.logout.redirect.uris"] = fill.publicUrl;
-  signIn.attributes = signInAttributes;
+  // R-49a: genie-studio is the second product in the same realm (DEC-8). When `tenant.yaml` sets
+  // `genie_studio_url`, its own product (genie-core) completes the exchange on a backend callback
+  // and signs out through the realm's end-session endpoint, so the client gets that one redirect
+  // URI and an origin wildcard as its post-logout redirect. webOrigins stay empty: genie-core
+  // exchanges the code server-side, so the browser needs no CORS to the token endpoint.
+  if (fill.genieStudioUrl !== undefined) {
+    const studio = clientBy(realm, "genie-studio");
+    studio.redirectUris = [
+      `${fill.genieStudioUrl}${GENIE_STUDIO_CALLBACK_PATH}`,
+    ];
+    writePostLogout(studio, `${fill.genieStudioUrl}/*`);
+  }
 
   const admin = clientBy(realm, "genie-admin");
   admin.secret = fill.adminClientSecret;

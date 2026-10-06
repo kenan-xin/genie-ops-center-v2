@@ -20,6 +20,10 @@
     "local_accounts": {
       "type": "boolean"
     },
+    "genie_studio_url": {
+      "type": "string",
+      "format": "uri"
+    },
     "first_administrators": {
       "minItems": 1,
       "type": "array",

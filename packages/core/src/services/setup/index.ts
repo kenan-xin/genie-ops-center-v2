@@ -409,7 +409,7 @@ async function stepWork(
         : "done";
 
     case "clients":
-      return (await clientsStep(context, {
+      return (await clientsStep(context, files, {
         source: options.source,
         output: options.output,
       })) === "skipped"

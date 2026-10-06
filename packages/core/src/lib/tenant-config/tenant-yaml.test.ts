@@ -121,4 +121,54 @@ describe("tenantYamlSchema", () => {
       }).realm
     ).toBe("managed");
   });
+
+  it("omits genie_studio_url by default, so the genie-studio client keeps no redirect URIs (R-49a)", () => {
+    expect(tenantYamlSchema.parse(VALID).genie_studio_url).toBeUndefined();
+  });
+
+  it("accepts an https origin as genie_studio_url", () => {
+    expect(
+      tenantYamlSchema.parse({
+        ...VALID,
+        genie_studio_url: "https://studio.example.com",
+      }).genie_studio_url
+    ).toBe("https://studio.example.com");
+  });
+
+  it("accepts a plain-http loopback origin, where no other machine can reach it (R-4a)", () => {
+    for (const value of [
+      "http://localhost:3400",
+      "http://127.0.0.1:3400",
+      "http://[::1]:3400",
+    ]) {
+      expect(
+        tenantYamlSchema.parse({ ...VALID, genie_studio_url: value })
+          .genie_studio_url
+      ).toBe(value);
+    }
+  });
+
+  it("refuses plain http on a non-loopback host", () => {
+    const result = tenantYamlSchema.safeParse({
+      ...VALID,
+      genie_studio_url: "http://studio.example.com",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("refuses a genie_studio_url with userinfo, a path, a query or a fragment", () => {
+    for (const value of [
+      "https://user:secret@studio.example.com",
+      "https://studio.example.com/app",
+      "https://studio.example.com?x=1",
+      "https://studio.example.com#top",
+    ]) {
+      expect(
+        tenantYamlSchema.safeParse({ ...VALID, genie_studio_url: value })
+          .success,
+        value
+      ).toBe(false);
+    }
+  });
 });

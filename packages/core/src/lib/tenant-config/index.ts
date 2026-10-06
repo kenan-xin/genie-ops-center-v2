@@ -10,4 +10,10 @@
  */
 export { brandingSeedSchema, type BrandingSeed } from "./branding-seed.ts";
 
+export {
+  GENIE_STUDIO_CALLBACK_PATH,
+  isGenieStudioOrigin,
+  normalizeGenieStudioUrl,
+} from "./genie-studio.ts";
+
 export { tenantYamlSchema, type TenantYaml } from "./tenant-yaml.ts";

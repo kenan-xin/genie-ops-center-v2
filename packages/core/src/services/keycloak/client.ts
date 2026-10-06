@@ -151,6 +151,89 @@ export async function createRealm(
   await parseResponse(response);
 }
 
+/** The one client representation of a realm by its client id, read with an administration token. */
+async function clientByClientId(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  clientId: string
+): Promise<JsonObject | undefined> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/clients?clientId=${encodeURIComponent(clientId)}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  return Array.isArray(body)
+    ? body.find(
+        (entry): entry is JsonObject =>
+          isObject(entry) && entry.clientId === clientId
+      )
+    : undefined;
+}
+
+/** Replaces one client representation (`PUT /admin/realms/{realm}/clients/{id}`). */
+async function updateClient(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  id: JsonValue,
+  representation: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/clients/${String(id)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(representation),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/**
+ * Fills one client's redirect URIs and post-logout redirect URI, found by client id, with the
+ * bootstrap credential. The realm step uses it to repair the genie-studio client on a rerun of a
+ * step that is not done, when `tenant.yaml` sets `genie_studio_url` (R-49a, R-53): the realm was
+ * created before the field existed, or the create succeeded and a later write failed. The
+ * bootstrap token carries `manage-clients`, which `genie-admin` deliberately never holds. A
+ * missing client is a named refusal, because the realm is then not the one this deployment made.
+ */
+export async function repairClientRedirects(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  clientId: string,
+  redirectUris: readonly string[],
+  postLogoutRedirectUris: string
+): Promise<void> {
+  const existing = await clientByClientId(target, realm, accessToken, clientId);
+
+  if (existing === undefined || existing.id === undefined) {
+    throw new Error(
+      `realm "${realm}" has no client "${clientId}", so its redirect URIs cannot be filled`
+    );
+  }
+
+  const attributes =
+    existing.attributes !== undefined && isObject(existing.attributes)
+      ? existing.attributes
+      : {};
+
+  attributes["post.logout.redirect.uris"] = postLogoutRedirectUris;
+
+  await updateClient(target, realm, accessToken, existing.id, {
+    ...existing,
+    redirectUris: [...redirectUris],
+    attributes,
+  });
+}
+
 /**
  * Creates a realm account through the `genie-admin` service client (`POST
  * /admin/realms/{realm}/users`, R-40) and answers the new account's Keycloak id, read from the

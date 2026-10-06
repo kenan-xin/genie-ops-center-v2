@@ -26,6 +26,10 @@
       "description": "Whether the deployment allows local accounts",
       "default": false
     },
+    "genieStudioUrl": {
+      "type": "string",
+      "description": "The genie-studio deployment's origin, for example https://studio.example.com; omit when the customer does not run genie-studio"
+    },
     "firstAdministrators": {
       "type": "array",
       "items": { "type": "string" },

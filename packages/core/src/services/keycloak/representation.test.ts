@@ -38,6 +38,7 @@ function fill(): RealmFill {
     publicUrl: "https://acme.example.invalid",
     clientSecret: "client-secret",
     adminClientSecret: "admin-secret",
+    genieStudioUrl: undefined,
     smtp: undefined,
   };
 }
@@ -140,6 +141,31 @@ describe("buildRealmRepresentation", () => {
 });
 
 describe("fillRealmRepresentation", () => {
+  it("fills the genie-studio redirect URI and post-logout attribute from the origin (R-49a)", () => {
+    const built = fillRealmRepresentation(minimalTemplate(), {
+      ...fill(),
+      genieStudioUrl: "https://studio.example.invalid",
+    });
+
+    const studio = clientOf(built, "genie-studio");
+
+    expect(studio?.redirectUris).toEqual([
+      "https://studio.example.invalid/api/v1/auth/oidc/callback",
+    ]);
+    expect(studio?.attributes).toEqual({
+      "post.logout.redirect.uris": "https://studio.example.invalid/*",
+    });
+    // genie-core exchanges the code server-side, so webOrigins are not widened.
+    expect(studio?.webOrigins).toBeUndefined();
+  });
+
+  it("leaves the genie-studio client without redirect URIs when the origin is unset", () => {
+    const built = fillRealmRepresentation(minimalTemplate(), fill());
+
+    expect(clientOf(built, "genie-studio")?.redirectUris).toBeUndefined();
+    expect(clientOf(built, "genie-studio")?.attributes).toBeUndefined();
+  });
+
   it("fills the local variant's SMTP server from the provided values", () => {
     const built = fillRealmRepresentation(minimalTemplate(), {
       ...fill(),
