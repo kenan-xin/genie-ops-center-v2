@@ -66,10 +66,10 @@ const manifest: Template = (names) =>
     },
     devDependencies: {
       "@genie/config": "workspace:*",
-      "@storybook/nextjs-vite": "10.6.0",
+      "@storybook/nextjs-vite": "10.6.1",
       "@types/react": "19.3.0",
       "oxlint": "1.83.0",
-      "storybook": "10.6.0",
+      "storybook": "10.6.1",
       "vitest": "4.1.11",
     },
     genie: { module: { id: names.id, entrypoint: "src/index.ts" } },
