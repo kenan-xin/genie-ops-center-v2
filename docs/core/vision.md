@@ -165,3 +165,4 @@ Ids are stable. A resolved item is removed here and named in the Decided table. 
 | --- | --- | --- |
 | OPEN-7 | How are setup and upgrade automated for normal operation, and with which tool? Decided after the platform is built and ready for its first deployment (`DEC-38`). | The manual steps in `../runbooks/deployment.md`. |
 | OPEN-9 | What are the branding explicit-null rules, default materialization and later name-change behavior, exact asset fallbacks and application-email readiness requirements? See [branding seed contract](../architecture/branding-seed.md#open-requirements). | Undecided; do not infer requirements from current schema choices. Approved required values and omission rules stand. |
+| OPEN-10 | How does a machine caller (not a browser session) authenticate to the REST API described by the checked-in OpenAPI document? | No public REST endpoint ships until it closes ([ADR 0011](../adr/0011-replace-trpc-with-orpc.md)). |

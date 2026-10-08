@@ -13,7 +13,8 @@ genie-ops-center/
       src/app/(auth)/               Sign-in, break-glass, tenant pages.
       src/app/(workspace)/          Member routes. Thin files that render module pages.
       src/app/(admin)/              Admin routes. Thin files that render core and module admin pages.
-      src/app/api/                  Better Auth handler, tRPC, chat stream, health, /api/m/<module>/ endpoints.
+      src/app/api/                  Better Auth handler, oRPC at /api/rpc, chat stream, health, /api/m/<module>/ endpoints.
+      src/rpc/                      oRPC handler options, error interceptor, and the browser client (ADR 0011).
       src/context.ts                Builds the one TenantContext at startup from the environment (DEC-34).
       src/modules.ts                Module registry. Generated at build time from MODULE_INCLUDE;
                                     imports only the included modules (DEC-33). Gitignored, never committed or
@@ -46,7 +47,8 @@ genie-ops-center/
                                     record types, navigation, pages, config schema, events, jobs.
         src/schema.ts               Drizzle tables.
         drizzle/                    This module's own drizzle-kit history and migrations table (DEC-33).
-        src/router.ts               tRPC procedures, every one behind can().
+        src/contract.ts             The module's oRPC contract (zod + @genie/core/rpc), published as ./contract (ADR 0011).
+        src/router.ts               oRPC procedures, every one behind can().
         src/permissions.ts          Permission keys and default roles.
         src/config.ts               zod schema for per-tenant module settings.
         src/pages/                  Workspace and admin page components.

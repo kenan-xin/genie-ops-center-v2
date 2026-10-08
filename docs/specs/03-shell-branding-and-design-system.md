@@ -280,7 +280,7 @@ R-92. Every screen in this section must be designed and built mobile first, with
 
 R-93. A screen the person may not open must be hidden from navigation, and its route must refuse on the server. The route is not unmounted, and no screen renders a denied state of its own (`DEC-39`, `README.md` in this folder, "Cross-section calls made in the drafting round", Permission-gated route row, `../design/sections/audit-and-tenant-settings/types.ts`, `AuditAndTenantSettingsProps`). The refusal is the one `can()` seam, answered by the per-request loader of `DEC-48`.
 
-R-94. Server state on every screen of this section must live in TanStack Query through tRPC, complex client state in zustand, and trivial local state in `useState` (`../core/tech-stack.md`, "Web application"). The Branding draft is complex client state.
+R-94. Server state on every screen of this section must live in TanStack Query through oRPC, complex client state in zustand, and trivial local state in `useState` (`../core/tech-stack.md`, "Web application"). The Branding draft is complex client state.
 
 R-95. No screen in this section may check a permission outside `can()` or filter a list outside `scopesFor()` (`DEC-39`). The shell renders navigation from `can()` answered by the one per-request loader, so a tree of a dozen entries costs one assignment read (`DEC-48`).
 

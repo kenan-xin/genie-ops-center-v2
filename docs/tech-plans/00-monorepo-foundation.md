@@ -17,7 +17,7 @@ Deliver the workspace, import boundaries, typed module extension points, placeho
 | Local caching only; remote provider deferred | R-3/R-3a, AC-24/AC-28 |
 | Dedicated migration session across all histories | R-24–R-28, AC-9 |
 | Module-owned factories, app-owned composition tests | R-20/R-39 |
-| Standard tRPC envelope with additive appCode/requestId | R-46, AC-15 |
+| oRPC error interceptor with additive appCode/requestId | R-46, AC-15 |
 | Categories/Settings extension declarations only | [Module contract](../architecture/module-contract.md), R-56/AC-29 |
 
 ## Delivery order and early gates
@@ -61,7 +61,7 @@ Bring up the single Storybook host with representative UI and placeholder storie
 **Permanent prerequisites, after G1 and before G2:** establish a thin production vertical slice using the final interfaces, not a disposable bootstrap spike:
 
 - The data-only selection resolver and app `generate-registry` target above, initially exercised with the placeholder selection; app-owned validation of the selected build-safe declaration and the unchanged authorization stub. Tooling never imports that declaration.
-- Runtime-only environment validation, the core context factory and app-owned context access seam; real page, tRPC, health and placeholder viewer routes needed by AC-25/AC-26.
+- Runtime-only environment validation, the core context factory and app-owned context access seam; real page, oRPC, health and placeholder viewer routes needed by AC-25/AC-26.
 - The final dedicated-session migrator over the minimal core migration-history scaffold and real placeholder history, including lock/timeout/cleanup behavior. Do not invent Section 1 deployment tables merely to populate core history.
 - A minimal version of the one production Dockerfile and app entrypoint, building without runtime secrets/services and using those same registry/context/migrator paths. No alternate test server, hard-coded registry or bypass migration runner.
 - The browser/header instrumentation, controlled iframe fixture and real database fixtures required for the G2 assertions, including the mandatory two-context isolation test referenced by AC-26. Fixtures are disposable; the production paths they exercise are retained.
@@ -70,9 +70,9 @@ G2 consumes this slice. G3 broadens selection/cache/concurrency and database ver
 
 Keep declarations/environment schemas build-safe. The app owns `src/context.ts`; core exports the factory only. Runtime bootstrap validates applicable configuration before any DB connection, creates one context, awaits migration completion and then permits request-bound handling. A failed validation/migration exits nonzero.
 
-Startup ordering amendment, 2026-09-21, approved after the G2 verification experiment: validation precedes every database connection, and successful migrations precede request-bound handlers, page rendering, tRPC operations and viewer-provider execution. Early socket binding and connection acceptance are permitted, because the supported server binds before it initializes. Readiness is a successful designated HTTP health response, not transport connectivity and not a framework ready log line. Bootstrap failure exits nonzero within one total budget covering diagnostics, cleanup and logger flushing. A client timeout does not cancel a queued request. Canonical wording is in R-19b and AC-26; measurements are in [the spike report](../tickets/spec-0/05-production-startup-and-csp-g2/native-composition-spike.md). Later setup-state gating must not be confused with schema readiness.
+Startup ordering amendment, 2026-09-21, approved after the G2 verification experiment: validation precedes every database connection, and successful migrations precede request-bound handlers, page rendering, oRPC operations and viewer-provider execution. Early socket binding and connection acceptance are permitted, because the supported server binds before it initializes. Readiness is a successful designated HTTP health response, not transport connectivity and not a framework ready log line. Bootstrap failure exits nonzero within one total budget covering diagnostics, cleanup and logger flushing. A client timeout does not cancel a queued request. Canonical wording is in R-19b and AC-26; measurements are in [the spike report](../tickets/spec-0/05-production-startup-and-csp-g2/native-composition-spike.md). Later setup-state gating must not be confused with schema readiness.
 
-Evaluate the native startup hook as the first candidate. Test the built image, not just a helper: deployment variables and services absent during build; invalid runtime configuration before connection; delayed/failed migration before listening; concurrent page/tRPC/viewer requests reuse one context/pool. A separate migration subprocess alone does not prove application context reuse.
+Evaluate the native startup hook as the first candidate. Test the built image, not just a helper: deployment variables and services absent during build; invalid runtime configuration before connection; delayed/failed migration before listening; concurrent page/oRPC/viewer requests reuse one context/pool. A separate migration subprocess alone does not prove application context reuse.
 
 Core owns a pure CSP serializer; modules supply validated origins only. The app must select one final CSP emission path per response class through framework-native mechanisms. Identify the actual composition point in the gate evidence; do not assume Proxy and page bundles share module-local state. No incoming client header may select a module or supply trusted policy origins. Static header coverage and viewer replacement must not produce two competing enforced CSP policies.
 
@@ -98,7 +98,7 @@ Core then included-module migration histories run under one fixed advisory lock 
 
 Complete module declarations and generator coverage, including optional Categories writes and Settings discovery metadata without their later runtime services. Keep the original placeholder's permission stub unchanged. Generated modules prove registration/schema and denied router/browser paths; real-role success arrives in Section 2. A disposable generated UI module proves automatic story discovery and story-first tests without a host or CI edit.
 
-Finish development-only devtools, i18n and root scripts under shared presets, required documentation and import checks. Implement the shared safe error catalogue with separate ordinary-HTTP and standard-tRPC adapters, plus redacted structured logs. No raw database/upstream errors reach clients. Every UI slice follows the documented story-first TDD workflow before app consumption; database integration and deployment E2E remain separate.
+Finish development-only devtools, i18n and root scripts under shared presets, required documentation and import checks. Implement the shared safe error catalogue with separate ordinary-HTTP and oRPC adapters, plus redacted structured logs. No raw database/upstream errors reach clients. Every UI slice follows the documented story-first TDD workflow before app consumption; database integration and deployment E2E remain separate.
 
 **Gate G4:** AC-1–AC-15 and AC-23/AC-27–AC-29 pass where applicable, together with the earlier gates. Prove failures propagate through Nx/CI rather than relying on empty successful runs.
 
