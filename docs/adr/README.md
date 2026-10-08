@@ -11,7 +11,7 @@ Accepted architectural choices and their trade-offs live here. Product behavior 
 | [0005](0005-tenant-migrations-at-deploy.md) | Migration lifecycle; amended by 0007 |
 | [0006](0006-keycloak-and-better-auth-split.md) | Identity/session split; sign-out amended by 0010 |
 | [0007](0007-one-deployment-per-customer.md) | Separate deployment and selected-module image per customer |
-| [0008](0008-foundation-integration-and-generated-registry.md) | Native-first integration, generated registry and minimal Storybook host |
+| [0008](0008-foundation-integration-and-generated-registry.md) | Native-first integration, generated registry and minimal Storybook host; amended by 0011 |
 | [0009](0009-storybook-pins-the-vitest-major.md) | Storybook-compatible Vitest major |
 | [0010](0010-client-only-mode-in-an-existing-realm.md) | Client-only mode in a customer's existing realm |
 | [0011](0011-replace-trpc-with-orpc.md) | oRPC as the module API and transport, replacing tRPC |
