@@ -1,9 +1,7 @@
-import { initTRPC, TRPCError } from "@trpc/server";
-import { z } from "zod";
-
-import { requireAuthenticated } from "../../lib/rpc/implement-module.ts";
-import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { can, type RequestPrincipal } from "../authorization/index.ts";
+import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
+import { can } from "../authorization/index.ts";
+import { peopleContract } from "./contract.ts";
 import {
   addPerson,
   disablePerson,
@@ -17,15 +15,6 @@ import {
   resendSetPassword,
 } from "./index.ts";
 
-/**
- * What a people procedure reads: the one tenant context and the request's own principal. Every
- * procedure is behind `core:people:manage` through the one `can()` seam (DEC-39, R-37).
- */
-export type PeopleRouterContext = {
-  readonly tenant: TenantContext;
-  readonly caller: RequestPrincipal;
-};
-
 const MANAGE_PERMISSION = "core:people:manage";
 
 /**
@@ -35,144 +24,123 @@ const MANAGE_PERMISSION = "core:people:manage";
  */
 const ASSIGN_PERMISSION = "core:roles:manage";
 
-const t = initTRPC.context<PeopleRouterContext>().create();
+// The session check, then the permission gate, both before input is parsed: an anonymous,
+// idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
+// `forbidden` at 403, however malformed the input is; only then does the handler read
+// (Spec 2 R-14, R-37).
+const os = implementCoreArea(peopleContract);
 
-// The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
-// answers the catalogue `unauthenticated` at 401 however malformed its input is; only then does the
-// permission gate call `can()` and the resolver read (Spec 2 R-14, R-37).
-const sessionGate = t.middleware(({ ctx, next }) => {
-  requireAuthenticated(ctx.caller);
-
-  return next();
-});
-
-const manage = t.middleware(async ({ ctx, next }) => {
-  if (!(await can(ctx.caller, MANAGE_PERMISSION))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+const managed = os.use(async ({ context, next }) => {
+  if (!(await can(context.caller, MANAGE_PERMISSION))) {
+    throw new AppError(CORE_ERRORS.forbidden);
   }
 
   return next();
 });
-
-const procedure = t.procedure.use(sessionGate).use(manage);
 
 /**
  * The narrow active-people read the Groups screen's local-member picker uses. It stays behind
  * `core:groups:manage`, because a holder of that key and not `core:people:manage` may still edit a
  * local group's members; the People router owns the read so it is defined once (S2-10).
  */
-const groupsManage = t.middleware(async ({ ctx, next }) => {
-  if (!(await can(ctx.caller, "core:groups:manage"))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+const picker = os.use(async ({ context, next }) => {
+  if (!(await can(context.caller, "core:groups:manage"))) {
+    throw new AppError(CORE_ERRORS.forbidden);
   }
 
   return next();
 });
 
-const pickerProcedure = t.procedure.use(sessionGate).use(groupsManage);
-
-const personId = z.object({ personId: z.string().min(1) });
-
 /**
- * The People screen's one router (R-37). The screen reads and writes only through it. Every writer
- * re-checks R-38 on the server through the one administrator guard, and every role assignment goes
- * through the one role-assignment service (DEC-39, R-40).
+ * The People screen's one router (R-37), built from its contract. Every procedure but the picker
+ * read is behind `core:people:manage` through the one `can()` seam (DEC-39). The screen reads and
+ * writes only through it. Every writer re-checks R-38 on the server through the one administrator
+ * guard, and every role assignment goes through the one role-assignment service (DEC-39, R-40).
  */
 export function createPeopleRouter() {
-  return t.router({
-    list: procedure.query(({ ctx }) => listPeople(ctx.tenant)),
+  return os.router({
+    list: managed.list.handler(({ context }) => listPeople(context.tenant)),
 
-    // The local-group member picker's people: a narrow read behind `core:groups:manage` (R-39),
-    // owned here so the groups router no longer duplicates it.
-    active: pickerProcedure.query(({ ctx }) => listActivePeople(ctx.tenant)),
+    active: picker.active.handler(({ context }) =>
+      listActivePeople(context.tenant)
+    ),
 
-    get: procedure.input(personId).query(async ({ ctx, input }) => {
-      const found = await readPerson(ctx.tenant, input.personId);
+    get: managed.get.handler(async ({ context, input }) => {
+      const found = await readPerson(context.tenant, input.personId);
 
       if (found === undefined) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new AppError(CORE_ERRORS["not-found"]);
       }
 
       return found;
     }),
 
-    // The roles Add person may assign now, from the same catalogue the Roles screen reads.
-    assignableRoles: procedure.query(({ ctx }) =>
-      listAssignableRoles(ctx.tenant)
+    assignableRoles: managed.assignableRoles.handler(({ context }) =>
+      listAssignableRoles(context.tenant)
     ),
 
-    // What the screen may show this caller. `canAssignRoles` hides the Add person role picker for
-    // a holder of `core:people:manage` alone, matching the server's refusal (DEC-39).
-    capabilities: procedure.query(async ({ ctx }) => ({
-      canAssignRoles: await can(ctx.caller, ASSIGN_PERMISSION),
+    // `canAssignRoles` hides the Add person role picker for a holder of `core:people:manage`
+    // alone, matching the server's refusal (DEC-39).
+    capabilities: managed.capabilities.handler(async ({ context }) => ({
+      canAssignRoles: await can(context.caller, ASSIGN_PERMISSION),
     })),
 
-    add: procedure
-      .input(
-        z.object({
-          email: z.email().max(320),
-          name: z.string().max(200).optional(),
-          roleIds: z.array(z.uuid()).default([]),
-          accountType: z.enum(["brokered", "local"]).optional(),
-          sendInvitation: z.boolean().optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        if (
-          input.roleIds.length > 0 &&
-          !(await can(ctx.caller, ASSIGN_PERMISSION))
-        ) {
-          throw new TRPCError({ code: "FORBIDDEN" });
-        }
+    add: managed.add.handler(async ({ context, input }) => {
+      if (
+        input.roleIds.length > 0 &&
+        !(await can(context.caller, ASSIGN_PERMISSION))
+      ) {
+        throw new AppError(CORE_ERRORS.forbidden);
+      }
 
-        return addPerson(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          email: input.email,
-          name: input.name,
-          roleIds: input.roleIds,
-          accountType: input.accountType,
-          sendInvitation: input.sendInvitation,
-        });
-      }),
+      return addPerson(context.tenant, {
+        actorUserId: context.caller.userId,
+        email: input.email,
+        name: input.name,
+        roleIds: input.roleIds,
+        accountType: input.accountType,
+        sendInvitation: input.sendInvitation,
+      });
+    }),
 
-    disable: procedure.input(personId).mutation(async ({ ctx, input }) => {
-      await disablePerson(ctx.tenant, {
-        actorUserId: ctx.caller.userId,
+    disable: managed.disable.handler(async ({ context, input }) => {
+      await disablePerson(context.tenant, {
+        actorUserId: context.caller.userId,
         personId: input.personId,
       });
     }),
 
-    enable: procedure.input(personId).mutation(async ({ ctx, input }) => {
-      await enablePerson(ctx.tenant, {
-        actorUserId: ctx.caller.userId,
+    enable: managed.enable.handler(async ({ context, input }) => {
+      await enablePerson(context.tenant, {
+        actorUserId: context.caller.userId,
         personId: input.personId,
       });
     }),
 
-    remove: procedure.input(personId).mutation(async ({ ctx, input }) => {
-      await removePerson(ctx.tenant, {
-        actorUserId: ctx.caller.userId,
+    remove: managed.remove.handler(async ({ context, input }) => {
+      await removePerson(context.tenant, {
+        actorUserId: context.caller.userId,
         personId: input.personId,
       });
     }),
 
-    resendSetPassword: procedure
-      .input(personId)
-      .mutation(async ({ ctx, input }) => {
-        await resendSetPassword(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    resendSetPassword: managed.resendSetPassword.handler(
+      async ({ context, input }) => {
+        await resendSetPassword(context.tenant, {
+          actorUserId: context.caller.userId,
           personId: input.personId,
         });
-      }),
+      }
+    ),
 
-    resendInvitation: procedure
-      .input(personId)
-      .mutation(async ({ ctx, input }) => {
-        await resendInvitation(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    resendInvitation: managed.resendInvitation.handler(
+      async ({ context, input }) => {
+        await resendInvitation(context.tenant, {
+          actorUserId: context.caller.userId,
           personId: input.personId,
         });
-      }),
+      }
+    ),
   });
 }
 

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  callProcedure,
   createGroupsRouter,
   createPeopleRouter,
   createRolesRouter,
@@ -140,20 +141,20 @@ function request(userId: string | undefined): RequestPrincipal {
 }
 
 const groupsRouter = () =>
-  createGroupsRouter().createCaller({
+  callProcedure(createGroupsRouter(), {
     tenant: deployment.context,
     caller: request(undefined),
   });
 
 function groupsCaller(userId: string) {
-  return createGroupsRouter().createCaller({
+  return callProcedure(createGroupsRouter(), {
     tenant: deployment.context,
     caller: request(userId),
   });
 }
 
 function rolesCaller(userId: string) {
-  return createRolesRouter(modules).createCaller({
+  return callProcedure(createRolesRouter(modules), {
     tenant: deployment.context,
     caller: request(userId),
   });
@@ -161,7 +162,7 @@ function rolesCaller(userId: string) {
 
 /** The People router caller; `active` is the narrow picker read behind `core:groups:manage`. */
 function peopleCaller(userId: string) {
-  return createPeopleRouter().createCaller({
+  return callProcedure(createPeopleRouter(), {
     tenant: deployment.context,
     caller: request(userId),
   });
@@ -194,7 +195,7 @@ describe("the groups router against a real database", () => {
     // No session: the catalogue `unauthenticated` (R-14) is raised before the permission gate.
     await expect(
       anonymous.list({ includeArchived: false })
-    ).rejects.toMatchObject({ cause: { code: "unauthenticated" } });
+    ).rejects.toMatchObject({ code: "unauthenticated" });
 
     const { userId } = await insertPersonWith(deployment.context, [
       "fixture:use",
@@ -204,7 +205,7 @@ describe("the groups router against a real database", () => {
 
     await expect(member.list({ includeArchived: false })).rejects.toMatchObject(
       {
-        code: "FORBIDDEN",
+        code: "forbidden",
       }
     );
   });
@@ -237,7 +238,7 @@ describe("the groups router against a real database", () => {
 
     await expect(
       groupsCaller(actor).addDirectoryGroup({ externalId: "Sales" })
-    ).rejects.toMatchObject({ cause: { code: "directory-group-exists" } });
+    ).rejects.toMatchObject({ code: "directory-group-exists" });
   });
 
   it("deletes a not-yet-seen directory group and refuses a seen one with group-seen", async () => {
@@ -267,7 +268,7 @@ describe("the groups router against a real database", () => {
 
     await expect(
       groupsCaller(actor).deleteDirectoryGroup({ groupId: seen })
-    ).rejects.toMatchObject({ cause: { code: "group-seen" } });
+    ).rejects.toMatchObject({ code: "group-seen" });
   });
 
   it("archives a directory group so its assignments stop granting while the rows stay", async () => {
@@ -581,7 +582,7 @@ describe("the R-38 self-protection rule", () => {
 
     await expect(
       groupsCaller(actor).deleteLocalGroup({ groupId })
-    ).rejects.toMatchObject({ cause: { code: "last-administrator" } });
+    ).rejects.toMatchObject({ code: "last-administrator" });
 
     // The transaction rolled back: the group and its membership are still there.
     expect(
@@ -606,11 +607,11 @@ describe("the R-38 self-protection rule", () => {
 
     await expect(
       groupsCaller(actor).removeMembers({ groupId, userIds: [admin] })
-    ).rejects.toMatchObject({ cause: { code: "last-administrator" } });
+    ).rejects.toMatchObject({ code: "last-administrator" });
 
     await expect(
       groupsCaller(actor).removeAllMembers({ groupId })
-    ).rejects.toMatchObject({ cause: { code: "last-administrator" } });
+    ).rejects.toMatchObject({ code: "last-administrator" });
   });
 
   it("refuses archiving a directory group that is the last administrator path", async () => {
@@ -633,7 +634,7 @@ describe("the R-38 self-protection rule", () => {
 
     await expect(
       groupsCaller(actor).archiveDirectoryGroup({ groupId })
-    ).rejects.toMatchObject({ cause: { code: "last-administrator" } });
+    ).rejects.toMatchObject({ code: "last-administrator" });
   });
 
   it("allows the same removal once a second active administrator exists", async () => {
@@ -710,7 +711,7 @@ describe("the roles router against a real database", () => {
     ]);
 
     await expect(rolesCaller(userId).list()).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: "forbidden",
     });
   });
 
@@ -757,17 +758,17 @@ describe("the roles router against a real database", () => {
         name: "Tenant administrator",
         permissions: ["core:roles:manage"],
       })
-    ).rejects.toMatchObject({ cause: { code: "system-role" } });
+    ).rejects.toMatchObject({ code: "system-role" });
 
     await expect(
       rolesCaller(actor).remove({ roleId: adminRoleId })
-    ).rejects.toMatchObject({ cause: { code: "system-role" } });
+    ).rejects.toMatchObject({ code: "system-role" });
 
     await rolesCaller(actor).create({ name: "Unique name", permissions: [] });
 
     await expect(
       rolesCaller(actor).create({ name: "Unique name", permissions: [] })
-    ).rejects.toMatchObject({ cause: { code: "role-name-taken" } });
+    ).rejects.toMatchObject({ code: "role-name-taken" });
   });
 
   it("copies a system role into an independent custom role", async () => {
@@ -848,7 +849,7 @@ describe("the roles router against a real database", () => {
 
     await expect(
       rolesCaller(actor).create({ name: "Bogus", permissions: ["nope:nope"] })
-    ).rejects.toMatchObject({ cause: { code: "invalid-input" } });
+    ).rejects.toMatchObject({ code: "invalid-input" });
   });
 });
 
@@ -1113,7 +1114,7 @@ describe("the review fixes", () => {
         name: `Dormant grant ${Date.now()}`,
         permissions: ["dormant:use"],
       })
-    ).rejects.toMatchObject({ cause: { code: "invalid-input" } });
+    ).rejects.toMatchObject({ code: "invalid-input" });
   });
 
   it("refuses grant writes for a caller holding only core:groups:manage", async () => {
@@ -1129,7 +1130,7 @@ describe("the review fixes", () => {
     });
 
     await expect(caller.assignRole({ groupId, roleId })).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: "forbidden",
     });
 
     const assignmentId = (
@@ -1141,7 +1142,7 @@ describe("the review fixes", () => {
 
     await expect(
       caller.unassign({ groupId, assignmentId })
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("refuses removing an assignment that is not the edited group's", async () => {
@@ -1161,7 +1162,7 @@ describe("the review fixes", () => {
     // Another group's id for this assignment is refused, and the row stays.
     await expect(
       groupsCaller(actor).unassign({ groupId: groupB, assignmentId })
-    ).rejects.toMatchObject({ cause: { code: "not-found" } });
+    ).rejects.toMatchObject({ code: "not-found" });
 
     // A person's direct assignment id is refused the same way.
     const person = await insertUser(deployment.context);
@@ -1175,7 +1176,7 @@ describe("the review fixes", () => {
 
     await expect(
       groupsCaller(actor).unassign({ groupId: groupA, assignmentId: directId })
-    ).rejects.toMatchObject({ cause: { code: "not-found" } });
+    ).rejects.toMatchObject({ code: "not-found" });
 
     expect(
       await deployment.context.db
@@ -1251,7 +1252,7 @@ describe("the entitlement filter on roles", () => {
     // A copy is a new role: its keys must be in the entitled catalogue, so a dormant key is refused.
     await expect(
       rolesCaller(actor).copy({ roleId: source, name: `Copy ${Date.now()}` })
-    ).rejects.toMatchObject({ cause: { code: "invalid-input" } });
+    ).rejects.toMatchObject({ code: "invalid-input" });
 
     // Enabling the module makes the same copy allowed (the entitlement reader caches for 10 s).
     await enableModules(deployment.context, ["enablelater"]);

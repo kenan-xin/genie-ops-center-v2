@@ -1,13 +1,11 @@
-import { initTRPC, TRPCError } from "@trpc/server";
-import { z } from "zod";
-
-import { requireAuthenticated } from "../../lib/rpc/implement-module.ts";
-import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { can, type RequestPrincipal } from "../authorization/index.ts";
+import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
+import { can } from "../authorization/index.ts";
 import {
   assignRole,
   removeAssignment,
 } from "../authorization/role-assignment.ts";
+import { groupsContract } from "./contract.ts";
 import {
   addDirectoryGroup,
   addLocalGroupMembers,
@@ -24,33 +22,19 @@ import {
   updateLocalGroup,
 } from "./index.ts";
 
-/**
- * What a groups procedure reads: the one tenant context and the request's own principal. Every
- * procedure is behind `core:groups:manage` through the one `can()` seam (DEC-39, R-37).
- */
-export type GroupsRouterContext = {
-  readonly tenant: TenantContext;
-  readonly caller: RequestPrincipal;
-};
-
 const MANAGE_PERMISSION = "core:groups:manage";
 
 const ASSIGN_PERMISSION = "core:roles:manage";
 
-const t = initTRPC.context<GroupsRouterContext>().create();
+// The session check, then the permission gate, both before input is parsed: an anonymous,
+// idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
+// `forbidden` at 403, however malformed the input is; only then does the handler read
+// (Spec 2 R-14, R-37).
+const os = implementCoreArea(groupsContract);
 
-// The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
-// answers the catalogue `unauthenticated` at 401 however malformed its input is; only then does the
-// permission gate call `can()` and the resolver read (Spec 2 R-14, R-37).
-const sessionGate = t.middleware(({ ctx, next }) => {
-  requireAuthenticated(ctx.caller);
-
-  return next();
-});
-
-const manage = t.middleware(async ({ ctx, next }) => {
-  if (!(await can(ctx.caller, MANAGE_PERMISSION))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+const managed = os.use(async ({ context, next }) => {
+  if (!(await can(context.caller, MANAGE_PERMISSION))) {
+    throw new AppError(CORE_ERRORS.forbidden);
   }
 
   return next();
@@ -61,198 +45,153 @@ const manage = t.middleware(async ({ ctx, next }) => {
  * (DEC-39, the Access screen). The Groups screen may edit its own group's grants only for a caller
  * that also holds that key; a holder of only `core:groups:manage` cannot change any assignment.
  */
-const manageAssignments = t.middleware(async ({ ctx, next }) => {
-  if (!(await can(ctx.caller, ASSIGN_PERMISSION))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+const assigning = managed.use(async ({ context, next }) => {
+  if (!(await can(context.caller, ASSIGN_PERMISSION))) {
+    throw new AppError(CORE_ERRORS.forbidden);
   }
 
   return next();
 });
 
-const procedure = t.procedure.use(sessionGate).use(manage);
-
-const assignmentProcedure = t.procedure
-  .use(sessionGate)
-  .use(manage)
-  .use(manageAssignments);
-
-const groupId = z.object({ groupId: z.uuid() });
-
-const memberIds = z.array(z.string().min(1)).min(1);
-
 /**
- * The Groups screen's one router (R-37). The screen reads and writes only through it, and every
- * writer records a catalogue audit action. Role assignments are not written here: this screen
- * reads who holds what and links to Access, which owns the one assignment service (DEC-39).
+ * The Groups screen's one router (R-37), built from its contract. Every procedure is behind
+ * `core:groups:manage` through the one `can()` seam (DEC-39). The screen reads and writes only
+ * through it, and every writer records a catalogue audit action.
  */
 export function createGroupsRouter() {
-  return t.router({
-    list: procedure
-      .input(z.object({ includeArchived: z.boolean().default(false) }))
-      .query(({ ctx, input }) =>
-        listGroups(ctx.tenant, { includeArchived: input.includeArchived })
-      ),
+  return os.router({
+    list: managed.list.handler(({ context, input }) =>
+      listGroups(context.tenant, { includeArchived: input.includeArchived })
+    ),
 
-    get: procedure.input(groupId).query(async ({ ctx, input }) => {
-      const found = await readGroup(ctx.tenant, input.groupId);
+    get: managed.get.handler(async ({ context, input }) => {
+      const found = await readGroup(context.tenant, input.groupId);
 
       if (found === undefined) {
-        throw new TRPCError({ code: "NOT_FOUND" });
+        throw new AppError(CORE_ERRORS["not-found"]);
       }
 
       return found;
     }),
 
-    // The roles a group can be given, for the inspector's assign step (R-24b).
-    assignableRoles: procedure.query(({ ctx }) =>
-      listAssignableRoles(ctx.tenant)
+    assignableRoles: managed.assignableRoles.handler(({ context }) =>
+      listAssignableRoles(context.tenant)
     ),
 
     // Assignment goes through the one role-assignment service, so the R-38 guard and the
     // core:role:granted event have one writer (DEC-39, R-47). It needs core:roles:manage, and the
     // removal checks the assignment belongs to this group in the same transaction.
-    assignRole: assignmentProcedure
-      .input(z.object({ groupId: z.uuid(), roleId: z.uuid() }))
-      .mutation(async ({ ctx, input }) => ({
-        id: (
-          await assignRole({
-            tenant: ctx.tenant,
-            actorUserId: ctx.caller.userId,
-            roleId: input.roleId,
-            principal: { type: "group", id: input.groupId },
-            scope: null,
-          })
-        ).id,
-      })),
-
-    unassign: assignmentProcedure
-      .input(z.object({ groupId: z.uuid(), assignmentId: z.uuid() }))
-      .mutation(async ({ ctx, input }) => {
-        await removeAssignment({
-          tenant: ctx.tenant,
-          actorUserId: ctx.caller.userId,
-          assignmentId: input.assignmentId,
-          expect: { type: "group", id: input.groupId },
-        });
-      }),
-
-    addDirectoryGroup: procedure
-      .input(
-        z.object({
-          externalId: z.string().min(1).max(1024),
-          displayLabel: z.string().max(200).nullish(),
+    assignRole: assigning.assignRole.handler(async ({ context, input }) => ({
+      id: (
+        await assignRole({
+          tenant: context.tenant,
+          actorUserId: context.caller.userId,
+          roleId: input.roleId,
+          principal: { type: "group", id: input.groupId },
+          scope: null,
         })
-      )
-      .mutation(async ({ ctx, input }) => ({
-        id: await addDirectoryGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+      ).id,
+    })),
+
+    unassign: assigning.unassign.handler(async ({ context, input }) => {
+      await removeAssignment({
+        tenant: context.tenant,
+        actorUserId: context.caller.userId,
+        assignmentId: input.assignmentId,
+        expect: { type: "group", id: input.groupId },
+      });
+    }),
+
+    addDirectoryGroup: managed.addDirectoryGroup.handler(
+      async ({ context, input }) => ({
+        id: await addDirectoryGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           externalId: input.externalId,
           displayLabel: input.displayLabel ?? null,
         }),
-      })),
+      })
+    ),
 
-    deleteDirectoryGroup: procedure
-      .input(groupId)
-      .mutation(async ({ ctx, input }) => {
-        await deleteDirectoryGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    deleteDirectoryGroup: managed.deleteDirectoryGroup.handler(
+      async ({ context, input }) => {
+        await deleteDirectoryGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           groupId: input.groupId,
         });
-      }),
+      }
+    ),
 
-    archiveDirectoryGroup: procedure
-      .input(groupId)
-      .mutation(async ({ ctx, input }) => {
-        await archiveDirectoryGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    archiveDirectoryGroup: managed.archiveDirectoryGroup.handler(
+      async ({ context, input }) => {
+        await archiveDirectoryGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           groupId: input.groupId,
         });
-      }),
+      }
+    ),
 
-    editLabel: procedure
-      .input(
-        z.object({
-          groupId: z.uuid(),
-          displayLabel: z.string().max(200).nullable(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await setGroupLabel(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          groupId: input.groupId,
-          displayLabel: input.displayLabel,
-        });
-      }),
+    editLabel: managed.editLabel.handler(async ({ context, input }) => {
+      await setGroupLabel(context.tenant, {
+        actorUserId: context.caller.userId,
+        groupId: input.groupId,
+        displayLabel: input.displayLabel,
+      });
+    }),
 
-    createLocalGroup: procedure
-      .input(
-        z.object({
-          name: z.string().min(1).max(200),
-          description: z.string().max(1000).optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => ({
-        id: await createLocalGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    createLocalGroup: managed.createLocalGroup.handler(
+      async ({ context, input }) => ({
+        id: await createLocalGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           name: input.name,
           description: input.description,
         }),
-      })),
+      })
+    ),
 
-    updateLocalGroup: procedure
-      .input(
-        z.object({
-          groupId: z.uuid(),
-          name: z.string().min(1).max(200),
-          description: z.string().max(1000).optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await updateLocalGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    updateLocalGroup: managed.updateLocalGroup.handler(
+      async ({ context, input }) => {
+        await updateLocalGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           groupId: input.groupId,
           name: input.name,
           description: input.description,
         });
-      }),
+      }
+    ),
 
-    deleteLocalGroup: procedure
-      .input(groupId)
-      .mutation(async ({ ctx, input }) => {
-        await deleteLocalGroup(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    deleteLocalGroup: managed.deleteLocalGroup.handler(
+      async ({ context, input }) => {
+        await deleteLocalGroup(context.tenant, {
+          actorUserId: context.caller.userId,
           groupId: input.groupId,
         });
-      }),
+      }
+    ),
 
-    addMembers: procedure
-      .input(z.object({ groupId: z.uuid(), userIds: memberIds }))
-      .mutation(async ({ ctx, input }) => {
-        await addLocalGroupMembers(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          groupId: input.groupId,
-          userIds: input.userIds,
-        });
-      }),
+    addMembers: managed.addMembers.handler(async ({ context, input }) => {
+      await addLocalGroupMembers(context.tenant, {
+        actorUserId: context.caller.userId,
+        groupId: input.groupId,
+        userIds: input.userIds,
+      });
+    }),
 
-    removeMembers: procedure
-      .input(z.object({ groupId: z.uuid(), userIds: memberIds }))
-      .mutation(async ({ ctx, input }) => {
-        await removeLocalGroupMembers(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          groupId: input.groupId,
-          userIds: input.userIds,
-        });
-      }),
+    removeMembers: managed.removeMembers.handler(async ({ context, input }) => {
+      await removeLocalGroupMembers(context.tenant, {
+        actorUserId: context.caller.userId,
+        groupId: input.groupId,
+        userIds: input.userIds,
+      });
+    }),
 
-    removeAllMembers: procedure
-      .input(groupId)
-      .mutation(async ({ ctx, input }) => {
-        await removeAllLocalGroupMembers(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
+    removeAllMembers: managed.removeAllMembers.handler(
+      async ({ context, input }) => {
+        await removeAllLocalGroupMembers(context.tenant, {
+          actorUserId: context.caller.userId,
           groupId: input.groupId,
         });
-      }),
+      }
+    ),
   });
 }
 

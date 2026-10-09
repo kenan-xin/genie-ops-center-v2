@@ -1,13 +1,11 @@
-import { initTRPC, TRPCError } from "@trpc/server";
-import { z } from "zod";
-
-import { requireAuthenticated } from "../../lib/rpc/implement-module.ts";
-import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { can, type RequestPrincipal } from "../authorization/index.ts";
+import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
+import { can } from "../authorization/index.ts";
 import {
   assignRole,
   removeAssignment,
 } from "../authorization/role-assignment.ts";
+import { rolesContract } from "./contract.ts";
 import {
   copyRole,
   createRole,
@@ -15,173 +13,112 @@ import {
   deleteRole,
   listRoles,
   readRole,
-  updateRole,
   type RolesModule,
+  updateRole,
 } from "./index.ts";
-
-/**
- * What a roles procedure reads: the one tenant context and the request's own principal. Every
- * procedure is behind `core:roles:manage` through the one `can()` seam (DEC-39, R-37).
- */
-export type RolesRouterContext = {
-  readonly tenant: TenantContext;
-  readonly caller: RequestPrincipal;
-};
 
 const MANAGE_PERMISSION = "core:roles:manage";
 
-const t = initTRPC.context<RolesRouterContext>().create();
+// The session check, then the permission gate, both before input is parsed: an anonymous,
+// idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
+// `forbidden` at 403, however malformed the input is; only then does the handler read
+// (Spec 2 R-14, R-37).
+const os = implementCoreArea(rolesContract);
 
-// The session check runs before `.input()` parses, so an anonymous, idle-expired or capped request
-// answers the catalogue `unauthenticated` at 401 however malformed its input is; only then does the
-// permission gate call `can()` and the resolver read (Spec 2 R-14, R-37).
-const sessionGate = t.middleware(({ ctx, next }) => {
-  requireAuthenticated(ctx.caller);
-
-  return next();
-});
-
-const manage = t.middleware(async ({ ctx, next }) => {
-  if (!(await can(ctx.caller, MANAGE_PERMISSION))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+const managed = os.use(async ({ context, next }) => {
+  if (!(await can(context.caller, MANAGE_PERMISSION))) {
+    throw new AppError(CORE_ERRORS.forbidden);
   }
 
   return next();
 });
 
-const procedure = t.procedure.use(sessionGate).use(manage);
-
-const permissions = z.array(z.string().min(1).max(200));
-
-const scope = z
-  .object({
-    scopeType: z.string().min(1).max(200).nullish(),
-    scopeId: z.string().min(1).max(200).nullish(),
-  })
-  .refine(
-    (value) =>
-      ((value.scopeType ?? null) === null) ===
-      ((value.scopeId ?? null) === null),
-    { message: "A scope is both columns or neither" }
-  );
-
 /**
- * The Roles screen's one router (R-37). It edits role definitions and, through the one
- * role-assignment service, writes grants; the Access screen and Add person reuse the same
- * service, so `role_assignment` has exactly one writer (DEC-39). Every write records a catalogue
- * audit action.
+ * The Roles screen's one router (R-37), built from its contract. Every procedure is behind
+ * `core:roles:manage` through the one `can()` seam (DEC-39). It edits role definitions and,
+ * through the one role-assignment service, writes grants; the Access screen and Add person reuse
+ * the same service, so `role_assignment` has exactly one writer (DEC-39). Every write records a
+ * catalogue audit action.
  */
 export function createRolesRouter(modules: readonly RolesModule[]) {
-  return t.router({
-    list: procedure.query(({ ctx }) => listRoles(ctx.tenant, modules)),
-
-    // The declared permission catalogue the role form picks from, grouped by module with each
-    // module's entitlement state (R-33). A new role is built from this, never from a stored role.
-    catalogue: procedure.query(({ ctx }) =>
-      declaredCatalogue(ctx.tenant, modules)
+  return os.router({
+    list: managed.list.handler(({ context }) =>
+      listRoles(context.tenant, modules)
     ),
 
-    get: procedure
-      .input(z.object({ roleId: z.uuid() }))
-      .query(async ({ ctx, input }) => {
-        const found = await readRole(ctx.tenant, input.roleId, modules);
+    catalogue: managed.catalogue.handler(({ context }) =>
+      declaredCatalogue(context.tenant, modules)
+    ),
 
-        if (found === undefined) throw new TRPCError({ code: "NOT_FOUND" });
+    get: managed.get.handler(async ({ context, input }) => {
+      const found = await readRole(context.tenant, input.roleId, modules);
 
-        return found;
+      if (found === undefined) {
+        throw new AppError(CORE_ERRORS["not-found"]);
+      }
+
+      return found;
+    }),
+
+    create: managed.create.handler(async ({ context, input }) => ({
+      id: await createRole(context.tenant, modules, {
+        actorUserId: context.caller.userId,
+        name: input.name,
+        description: input.description,
+        permissions: input.permissions,
       }),
+    })),
 
-    create: procedure
-      .input(
-        z.object({
-          name: z.string().min(1).max(200),
-          description: z.string().max(1000).optional(),
-          permissions,
-        })
-      )
-      .mutation(async ({ ctx, input }) => ({
-        id: await createRole(ctx.tenant, modules, {
-          actorUserId: ctx.caller.userId,
-          name: input.name,
-          description: input.description,
-          permissions: input.permissions,
-        }),
-      })),
+    copy: managed.copy.handler(async ({ context, input }) => ({
+      id: await copyRole(context.tenant, modules, {
+        actorUserId: context.caller.userId,
+        roleId: input.roleId,
+        name: input.name,
+      }),
+    })),
 
-    copy: procedure
-      .input(z.object({ roleId: z.uuid(), name: z.string().min(1).max(200) }))
-      .mutation(async ({ ctx, input }) => ({
-        id: await copyRole(ctx.tenant, modules, {
-          actorUserId: ctx.caller.userId,
+    update: managed.update.handler(async ({ context, input }) => {
+      await updateRole(context.tenant, modules, {
+        actorUserId: context.caller.userId,
+        roleId: input.roleId,
+        name: input.name,
+        description: input.description,
+        permissions: input.permissions,
+      });
+    }),
+
+    remove: managed.remove.handler(async ({ context, input }) => {
+      await deleteRole(context.tenant, {
+        actorUserId: context.caller.userId,
+        roleId: input.roleId,
+      });
+    }),
+
+    assign: managed.assign.handler(async ({ context, input }) => ({
+      id: (
+        await assignRole({
+          tenant: context.tenant,
+          actorUserId: context.caller.userId,
           roleId: input.roleId,
-          name: input.name,
-        }),
-      })),
-
-    update: procedure
-      .input(
-        z.object({
-          roleId: z.uuid(),
-          name: z.string().min(1).max(200),
-          description: z.string().max(1000).optional(),
-          permissions,
+          principal: {
+            type: input.principalType,
+            id: input.principalId,
+          },
+          scope:
+            input.scope?.scopeType != null && input.scope.scopeId != null
+              ? { type: input.scope.scopeType, id: input.scope.scopeId }
+              : null,
         })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await updateRole(ctx.tenant, modules, {
-          actorUserId: ctx.caller.userId,
-          roleId: input.roleId,
-          name: input.name,
-          description: input.description,
-          permissions: input.permissions,
-        });
-      }),
+      ).id,
+    })),
 
-    remove: procedure
-      .input(z.object({ roleId: z.uuid() }))
-      .mutation(async ({ ctx, input }) => {
-        await deleteRole(ctx.tenant, {
-          actorUserId: ctx.caller.userId,
-          roleId: input.roleId,
-        });
-      }),
-
-    assign: procedure
-      .input(
-        z.object({
-          roleId: z.uuid(),
-          principalType: z.enum(["user", "group"]),
-          principalId: z.string().min(1).max(200),
-          scope: scope.optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => ({
-        id: (
-          await assignRole({
-            tenant: ctx.tenant,
-            actorUserId: ctx.caller.userId,
-            roleId: input.roleId,
-            principal: {
-              type: input.principalType,
-              id: input.principalId,
-            },
-            scope:
-              input.scope?.scopeType != null && input.scope.scopeId != null
-                ? { type: input.scope.scopeType, id: input.scope.scopeId }
-                : null,
-          })
-        ).id,
-      })),
-
-    unassign: procedure
-      .input(z.object({ assignmentId: z.uuid() }))
-      .mutation(async ({ ctx, input }) => {
-        await removeAssignment({
-          tenant: ctx.tenant,
-          actorUserId: ctx.caller.userId,
-          assignmentId: input.assignmentId,
-        });
-      }),
+    unassign: managed.unassign.handler(async ({ context, input }) => {
+      await removeAssignment({
+        tenant: context.tenant,
+        actorUserId: context.caller.userId,
+        assignmentId: input.assignmentId,
+      });
+    }),
   });
 }
 

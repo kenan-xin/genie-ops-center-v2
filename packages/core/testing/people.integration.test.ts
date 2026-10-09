@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   addPerson,
   countActiveAdministrators,
+  callProcedure,
   createPeopleRouter,
   disablePerson,
   enablePerson,
@@ -554,27 +555,27 @@ describe("the People reads", () => {
 
 describe("the People router", () => {
   it("refuses an anonymous caller unauthenticated and a caller without the key forbidden", async () => {
-    const anonymous = createPeopleRouter().createCaller({
+    const anonymous = callProcedure(createPeopleRouter(), {
       tenant: deployment.context,
       caller: request(undefined),
     });
 
-    // A direct caller sees tRPC wrap the catalogue refusal; its `cause` is the AppError.
+    // A direct caller sees the catalogue refusal unchanged: the AppError itself.
     await expect(anonymous.list()).rejects.toMatchObject({
-      cause: { code: "unauthenticated" },
+      code: "unauthenticated",
     });
 
     const { userId } = await insertPersonWith(deployment.context, [
       "fixture:use",
     ]);
 
-    const unpermitted = createPeopleRouter().createCaller({
+    const unpermitted = callProcedure(createPeopleRouter(), {
       tenant: deployment.context,
       caller: request(userId),
     });
 
     await expect(unpermitted.list()).rejects.toMatchObject({
-      code: "FORBIDDEN",
+      code: "forbidden",
     });
   });
 });
@@ -928,7 +929,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
       "core:people:manage",
     ]);
 
-    const caller = createPeopleRouter().createCaller({
+    const caller = callProcedure(createPeopleRouter(), {
       tenant: deployment.context,
       caller: request(userId),
     });
@@ -945,7 +946,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
         roleIds: [roleId],
         sendInvitation: false,
       })
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    ).rejects.toMatchObject({ code: "forbidden" });
 
     const roleless = await caller.add({
       email: `perm-ok-${Date.now()}@example.invalid`,
@@ -962,7 +963,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
       "core:roles:manage",
     ]);
 
-    const caller = createPeopleRouter().createCaller({
+    const caller = callProcedure(createPeopleRouter(), {
       tenant: deployment.context,
       caller: request(userId),
     });

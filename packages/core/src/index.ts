@@ -173,9 +173,13 @@ export {
 } from "./services/authorization/administrators.ts";
 
 export {
+  type GroupsContract,
+  groupsContract,
+} from "./services/groups/contract.ts";
+
+export {
   createGroupsRouter,
   type GroupsRouter,
-  type GroupsRouterContext,
 } from "./services/groups/router.ts";
 
 export {
@@ -198,9 +202,13 @@ export {
 } from "./services/groups/index.ts";
 
 export {
+  type PeopleContract,
+  peopleContract,
+} from "./services/people/contract.ts";
+
+export {
   createPeopleRouter,
   type PeopleRouter,
-  type PeopleRouterContext,
 } from "./services/people/router.ts";
 
 export {
@@ -226,9 +234,13 @@ export {
 } from "./services/people/index.ts";
 
 export {
+  type RolesContract,
+  rolesContract,
+} from "./services/roles/contract.ts";
+
+export {
   createRolesRouter,
   type RolesRouter,
-  type RolesRouterContext,
 } from "./services/roles/router.ts";
 
 export {
