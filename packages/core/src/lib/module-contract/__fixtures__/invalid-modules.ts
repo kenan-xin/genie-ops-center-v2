@@ -1,7 +1,7 @@
-import { createModuleTRPC } from "../../entitlement/module-trpc.ts";
 import { permissionKeyFor } from "../keys.ts";
 import { moduleLedgerTable } from "../ledger.ts";
 import type { Module, NavigationEntry } from "../module.ts";
+import { fixtureApi } from "./valid-module.ts";
 
 /**
  * Contract fixtures: these live beside the tests that use them and are never
@@ -13,7 +13,7 @@ function actionOf(key: string, oldId: string): string {
   return key.replace(`${oldId}:`, "");
 }
 
-/** Rewrite the identity, the router's gate, every permission-key prefix and the ledger to a new module id. */
+/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix and the ledger to a new module id. */
 export function renameModule(module: Module, id: string): Module {
   const oldId = module.identity.id;
 
@@ -21,7 +21,7 @@ export function renameModule(module: Module, id: string): Module {
     ...module,
     identity: { ...module.identity, id },
     schema: { ...module.schema, migrationsTable: moduleLedgerTable(id) },
-    router: createModuleTRPC(id).router({}),
+    ...fixtureApi(id),
     permissions: module.permissions.map((entry) => ({
       ...entry,
       key: permissionKeyFor(id, actionOf(entry.key, oldId)),

@@ -33,6 +33,7 @@ export const killCaseModule = {
     migrationsTable: "__drizzle_migrations_event_kill",
   },
   // SAFETY: the worker contract test never dispatches application routes.
+  contract: {},
   router: {} as Module["router"],
   permissions: [],
   recordTypes: [],

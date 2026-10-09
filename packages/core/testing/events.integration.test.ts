@@ -198,6 +198,7 @@ const eventModule = {
     migrationsTable: "__drizzle_migrations_event_test",
   },
   // SAFETY: worker integration exercises event delivery only and never dispatches routes.
+  contract: {},
   router: {} as Module["router"],
   permissions: [],
   recordTypes: [],

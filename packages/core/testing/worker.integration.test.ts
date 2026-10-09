@@ -53,6 +53,7 @@ function moduleWithJob(
       migrations: () => [],
       migrationsTable: `__drizzle_migrations_${id}`,
     },
+    contract: {},
     // SAFETY: Worker tests never dispatch application routes; the router contract is not read.
     router: {} as Module["router"],
     permissions: [],

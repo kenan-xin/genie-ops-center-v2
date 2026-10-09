@@ -1,4 +1,5 @@
 import {
+  callProcedure,
   createRequestPrincipal,
   type ModuleRequestContext,
   type TenantContext,
@@ -156,39 +157,41 @@ const grantsAnotherModule = () =>
 
 describe("the placeholder router", () => {
   it("mounts one read procedure", () => {
-    const caller = placeholderRouter.createCaller(contextWith(grantsNothing));
+    const caller = callProcedure(placeholderRouter, contextWith(grantsNothing));
 
     expect(caller.read).toBeTypeOf("function");
   });
 
   it("refuses a disabled placeholder through its own procedure", async () => {
-    const caller = placeholderRouter.createCaller(
+    const caller = callProcedure(
+      placeholderRouter,
       contextWithModuleDisabled(grantsRead)
     );
 
     await expect(caller.read()).rejects.toMatchObject({
-      cause: { code: "module-disabled" },
+      code: "module-disabled",
     });
   });
 
   it("refuses a caller without placeholder:read, before reading anything", async () => {
-    const caller = placeholderRouter.createCaller(contextWith(grantsNothing));
+    const caller = callProcedure(placeholderRouter, contextWith(grantsNothing));
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    await expect(caller.read()).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("refuses a caller holding another module's key", async () => {
-    const caller = placeholderRouter.createCaller(
+    const caller = callProcedure(
+      placeholderRouter,
       contextWith(grantsAnotherModule)
     );
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    await expect(caller.read()).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("reaches the database once the grant allows the read", async () => {
     // The tripwire throws the moment the read starts, which is what proves the
     // check passed. The rows themselves are proved in the real-database test.
-    const caller = placeholderRouter.createCaller(contextWith(grantsRead));
+    const caller = callProcedure(placeholderRouter, contextWith(grantsRead));
 
     await expect(caller.read()).rejects.toThrow(
       "the router read the database before the permission check"

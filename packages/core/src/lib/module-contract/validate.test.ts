@@ -1,28 +1,48 @@
-import { initTRPC } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { createModuleTRPC } from "../entitlement/module-trpc.ts";
+import {
+  implementModule,
+  type ModuleContract,
+  type ModuleImplementer,
+  type ModuleRouter,
+} from "../rpc/implement-module.ts";
+import { oc } from "../rpc/index.ts";
 import {
   renameModule,
   withAdminLanding,
   withForeignAdminPermission,
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
-import { validModule } from "./__fixtures__/valid-module.ts";
+import { fixtureApi, validModule } from "./__fixtures__/valid-module.ts";
 import type { NavigationEntry } from "./module.ts";
 import { validateModule, validateRegistry } from "./validate.ts";
+
+/** The fixture with the given contract and the router `build` makes from core's implementer. */
+function withApi<TContract extends ModuleContract>(
+  contract: TContract,
+  build: (os: ModuleImplementer<TContract>) => ModuleRouter
+) {
+  return {
+    ...validModule,
+    contract,
+    router: build(implementModule("fixture", contract)),
+  };
+}
 
 describe("validateModule", () => {
   it("accepts the valid fixture", () => {
     expect(validateModule(validModule)).toEqual([]);
   });
 
-  it("reserves the module id core", () => {
-    expect(validateModule(renameModule(validModule, "core"))).toContain(
-      'Module id "core" is reserved for core.'
-    );
-  });
+  it.each(["core", "audit", "groups", "people", "roles"])(
+    "reserves the module id %s",
+    (id) => {
+      expect(validateModule(renameModule(validModule, id))).toContain(
+        `Module id "${id}" is reserved for core.`
+      );
+    }
+  );
 
   it("accepts an equivalent rename to a declared key from a retired one", () => {
     const renamed = {
@@ -149,23 +169,123 @@ describe("validateModule", () => {
     ]);
   });
 
-  it("rejects a router that createModuleTRPC did not build", () => {
-    const broken = { ...validModule, router: initTRPC.create().router({}) };
+  it("rejects a router that implementModule did not build", () => {
+    const broken = { ...validModule, router: { ...validModule.router } };
 
     expect(validateModule(broken)).toEqual([
-      'Module "fixture" has a router not built by createModuleTRPC("fixture").',
+      'Module "fixture" has a router not built by implementModule("fixture", contract).',
     ]);
   });
 
-  it("rejects a router built by createModuleTRPC for another module id", () => {
+  it("rejects a router built by implementModule for another module id", () => {
     const broken = {
       ...validModule,
-      router: createModuleTRPC("placeholder").router({}),
+      router: implementModule("placeholder", validModule.contract).router({
+        records: {
+          list: implementModule(
+            "placeholder",
+            validModule.contract
+          ).records.list.handler(() => []),
+        },
+      }),
     };
 
     expect(validateModule(broken)).toEqual([
-      'Module "fixture" has a router built by createModuleTRPC("placeholder"). It must use "fixture".',
+      'Module "fixture" has a router built by implementModule("placeholder", ...). It must use "fixture".',
     ]);
+  });
+
+  it("rejects a router built from a contract other than the declared one", () => {
+    // The same shape and paths, but another contract object: the router answers to that one.
+    const broken = { ...validModule, router: fixtureApi("fixture").router };
+
+    expect(validateModule(broken)).toEqual([
+      'Module "fixture" has a router built from a contract other than the one it declares.',
+    ]);
+  });
+
+  it("rejects a contract procedure the router does not implement", () => {
+    const contract = {
+      ...validModule.contract,
+      archive: oc.route({ method: "DELETE", path: "/fixture/records/{id}" }),
+    };
+
+    const os = implementModule("fixture", contract);
+
+    // @ts-expect-error the missing `archive` procedure is the point of the case
+    const router = os.router({
+      records: { list: os.records.list.handler(() => []) },
+    });
+
+    expect(validateModule({ ...validModule, contract, router })).toEqual([
+      'Module "fixture" declares procedure "archive" that its router does not implement.',
+    ]);
+  });
+
+  it("rejects a procedure with no route", () => {
+    expect(
+      validateModule(
+        withApi({ read: oc.input(z.object({})) }, (os) =>
+          os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([
+      'Procedure "read" of module "fixture" declares no route. Use oc.route({ method, path }).',
+    ]);
+  });
+
+  it("rejects a path outside the module prefix", () => {
+    expect(
+      validateModule(
+        withApi(
+          { read: oc.route({ method: "GET", path: "/people/all" }) },
+          (os) => os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([
+      'Procedure "read" of module "fixture" has path "/people/all". A module path starts with "/fixture/".',
+    ]);
+  });
+
+  it("rejects a GET whose input is not an object", () => {
+    expect(
+      validateModule(
+        withApi(
+          {
+            read: oc
+              .route({ method: "GET", path: "/fixture/records/{id}" })
+              .input(z.string()),
+          },
+          (os) => os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([
+      'Procedure "read" of module "fixture" is a GET with an input that is not an object.',
+    ]);
+  });
+
+  it("accepts a GET with no input and a POST with any input", () => {
+    expect(
+      validateModule(
+        withApi(
+          { read: oc.route({ method: "GET", path: "/fixture/records" }) },
+          (os) => os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([]);
+
+    expect(
+      validateModule(
+        withApi(
+          {
+            read: oc
+              .route({ method: "POST", path: "/fixture/records/{id}/archive" })
+              .input(z.string()),
+          },
+          (os) => os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([]);
   });
 
   it("rejects a job name outside its module prefix", () => {

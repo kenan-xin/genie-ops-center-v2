@@ -8,6 +8,8 @@
 
 export { placeholderModule } from "./module.ts";
 
+export { placeholderContract, type PlaceholderContract } from "./contract.ts";
+
 export { placeholderRouter, type PlaceholderRouter } from "./router.ts";
 
 export { MIGRATIONS, MIGRATIONS_TABLE, placeholderRecord } from "./schema.ts";

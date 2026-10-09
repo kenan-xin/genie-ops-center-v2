@@ -1,10 +1,12 @@
-import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { createModuleTRPC } from "../src/lib/entitlement/module-trpc.ts";
+import { AppError, CORE_ERRORS } from "../src/lib/errors/index.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
+import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
+import { implementModule } from "../src/lib/rpc/implement-module.ts";
+import { oc } from "../src/lib/rpc/index.ts";
 import { account, auditEvent, session, user } from "../src/schema.ts";
 import {
   BREAK_GLASS_OAUTH_REFUSED,
@@ -47,15 +49,21 @@ const AUTH_ENV = {
 
 const PASSWORD = "temporary-pass-1!";
 
-const trpc = createModuleTRPC("fixture");
+const fixtureContract = {
+  home: oc.route({ method: "GET", path: "/fixture/home" }),
+};
+
+const fixtureOs = implementModule("fixture", fixtureContract);
 
 /** A module route that refuses in its own `can()` check, as every route must (R-30). */
 const fixtureModule = {
   ...validModule,
-  router: trpc.router({
-    home: trpc.procedure.query(async ({ ctx }) => {
-      if (!(await can(ctx.caller, "fixture:use")))
-        throw new TRPCError({ code: "FORBIDDEN" });
+  contract: fixtureContract,
+  router: fixtureOs.router({
+    home: fixtureOs.home.handler(async ({ context }) => {
+      if (!(await can(context.caller, "fixture:use"))) {
+        throw new AppError(CORE_ERRORS.forbidden);
+      }
 
       return "home";
     }),
@@ -297,10 +305,11 @@ describe("the break-glass lifecycle against a real database", () => {
       // A module router refuses...
       // oxlint-disable-next-line no-await-in-loop
       await expect(
-        fixtureModule.router
-          .createCaller({ tenant: deployment.context, caller })
-          .home()
-      ).rejects.toThrow("FORBIDDEN");
+        callProcedure(fixtureModule.router, {
+          tenant: deployment.context,
+          caller,
+        }).home()
+      ).rejects.toMatchObject({ code: "forbidden" });
     }
 
     // ...and so does a session whose account is unlimited only when both conditions are cleared.

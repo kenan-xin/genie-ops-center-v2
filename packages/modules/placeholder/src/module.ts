@@ -7,6 +7,7 @@ import type {
 import { defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
 
+import { placeholderContract } from "./contract.ts";
 import {
   PlaceholderAdminPage,
   PlaceholderWorkspacePage,
@@ -153,6 +154,8 @@ export const placeholderModule = {
     migrations: MIGRATIONS,
     migrationsTable: MIGRATIONS_TABLE,
   },
+
+  contract: placeholderContract,
 
   router: placeholderRouter,
 

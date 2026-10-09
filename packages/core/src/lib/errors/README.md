@@ -8,7 +8,7 @@ The catalogue of stable application codes with their fixed safe messages, the `A
 
 ## What must not go here
 
-A transport. The route handler helper and the tRPC error formatter live with their adapters and both read this catalogue. Nothing here formats a log line, opens a connection, or puts an upstream message, a database message, a cause or a stack trace into a response.
+A transport. The route handler helper and the RPC error interceptor live with their adapters and both read this catalogue. Nothing here formats a log line, opens a connection, or puts an upstream message, a database message, a cause or a stack trace into a response.
 
 ## What it imports
 

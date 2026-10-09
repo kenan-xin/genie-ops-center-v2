@@ -8,6 +8,7 @@ packages:
 # pnpm 12 reads only auth and registry settings from .npmrc. Everything else
 # lives here: https://pnpm.io/settings
 saveExact: true
+
 strictPeerDependencies: true
 autoInstallPeers: false
 
@@ -30,7 +31,12 @@ packageExtensions:
 # duplicated types fail typecheck in a freshly generated module. The catalog is the one place
 # the version lives: core reads it with `catalog:`, and the override forces every transitive
 # pg, pg-boss's included, onto it. Bump pg here, never in a package.json.
+#
+# One exact version for every @orpc/* package (ADR 0011, decision 2). A later 2.x move bumps it
+# here, in one line per package.
 catalog:
+  "@orpc/contract": "1.15.5"
+  "@orpc/server": "1.15.5"
   pg: "8.23.1"
 
 overrides:

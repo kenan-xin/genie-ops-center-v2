@@ -1,11 +1,13 @@
-import { TRPCError } from "@trpc/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { permittedNavigation } from "../src/lib/entitlement/index.ts";
-import { createModuleTRPC } from "../src/lib/entitlement/module-trpc.ts";
+import { AppError, CORE_ERRORS } from "../src/lib/errors/index.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
+import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
+import { implementModule } from "../src/lib/rpc/implement-module.ts";
+import { oc } from "../src/lib/rpc/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import {
   TENANT_ADMINISTRATOR_ROLE,
@@ -34,12 +36,16 @@ import {
  */
 const RECORD = { type: "kept_record", id: "record-1" };
 
-const trpc = createModuleTRPC("kept");
+const keptContract = {
+  home: oc.route({ method: "GET", path: "/kept/home" }),
+};
 
-const keptRouter = trpc.router({
-  home: trpc.procedure.query(async ({ ctx }) => {
-    if (!(await can(ctx.caller, "kept:use"))) {
-      throw new TRPCError({ code: "FORBIDDEN" });
+const keptOs = implementModule("kept", keptContract);
+
+const keptRouter = keptOs.router({
+  home: keptOs.home.handler(async ({ context }) => {
+    if (!(await can(context.caller, "kept:use"))) {
+      throw new AppError(CORE_ERRORS.forbidden);
     }
 
     return "home";
@@ -73,7 +79,7 @@ function fixture(id: string, extra: Partial<Module> = {}): Module {
   };
 }
 
-const kept = fixture("kept", { router: keptRouter });
+const kept = fixture("kept", { contract: keptContract, router: keptRouter });
 
 const stays = fixture("stays");
 
@@ -210,8 +216,8 @@ describe("retained access across removal and reintroduction", () => {
 
     try {
       await expect(
-        keptRouter.createCaller({ tenant, caller: direct }).home()
-      ).rejects.toMatchObject({ cause: { code: "module-disabled" } });
+        callProcedure(keptRouter, { tenant, caller: direct }).home()
+      ).rejects.toMatchObject({ code: "module-disabled" });
       expect(
         await permittedNavigation({
           entitlements: tenant.entitlements,
@@ -231,14 +237,16 @@ describe("retained access across removal and reintroduction", () => {
 
     try {
       await expect(
-        keptRouter
-          .createCaller({ tenant, caller: request("direct", installed) })
-          .home()
+        callProcedure(keptRouter, {
+          tenant,
+          caller: request("direct", installed),
+        }).home()
       ).resolves.toBe("home");
       await expect(
-        keptRouter
-          .createCaller({ tenant, caller: request("mixed", installed) })
-          .home()
+        callProcedure(keptRouter, {
+          tenant,
+          caller: request("mixed", installed),
+        }).home()
       ).resolves.toBe("home");
     } finally {
       await tenant.db.$client.end();

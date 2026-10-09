@@ -1,13 +1,15 @@
-import { TRPCError } from "@trpc/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   landingRoute,
   permittedNavigation,
 } from "../src/lib/entitlement/index.ts";
-import { createModuleTRPC } from "../src/lib/entitlement/module-trpc.ts";
+import { AppError, CORE_ERRORS } from "../src/lib/errors/index.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
+import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
+import { implementModule } from "../src/lib/rpc/implement-module.ts";
+import { oc } from "../src/lib/rpc/index.ts";
 import type { AssignmentQuery } from "../src/services/authorization/grant-reader.ts";
 import {
   CORE_PERMISSION_KEYS,
@@ -49,13 +51,17 @@ const resolverTenants: unknown[] = [];
 /** A parent the fixture's resolver returns but its record type does not declare. */
 const UNDECLARED = { type: "fixture_shelf", id: "shelf-1" };
 
-const trpc = createModuleTRPC("fixture");
+const fixtureContract = {
+  home: oc.route({ method: "GET", path: "/fixture/home" }),
+};
+
+const fixtureOs = implementModule("fixture", fixtureContract);
 
 /** The fixture's workspace route, refusing in its own `can()` check as every route must. */
-const fixtureRouter = trpc.router({
-  home: trpc.procedure.query(async ({ ctx }) => {
-    if (!(await can(ctx.caller, "fixture:use"))) {
-      throw new TRPCError({ code: "FORBIDDEN" });
+const fixtureRouter = fixtureOs.router({
+  home: fixtureOs.home.handler(async ({ context }) => {
+    if (!(await can(context.caller, "fixture:use"))) {
+      throw new AppError(CORE_ERRORS.forbidden);
     }
 
     return "home";
@@ -64,6 +70,7 @@ const fixtureRouter = trpc.router({
 
 const fixtureModule: Module = {
   ...validModule,
+  contract: fixtureContract,
   router: fixtureRouter,
   recordTypes: [
     {
@@ -379,10 +386,11 @@ describe("the access seam against a real database", () => {
       });
       // oxlint-disable-next-line no-await-in-loop
       await expect(
-        fixtureRouter
-          .createCaller({ tenant: deployment.context, caller: request(userId) })
-          .home()
-      ).rejects.toThrow("FORBIDDEN");
+        callProcedure(fixtureRouter, {
+          tenant: deployment.context,
+          caller: request(userId),
+        }).home()
+      ).rejects.toMatchObject({ code: "forbidden" });
     }
   });
 
@@ -469,8 +477,11 @@ describe("the access seam against a real database", () => {
 
     expect(entries.map((entry) => entry.id)).toEqual(["fixture-admin"]);
     await expect(
-      fixtureRouter.createCaller({ tenant: deployment.context, caller }).home()
-    ).rejects.toThrow("FORBIDDEN");
+      callProcedure(fixtureRouter, {
+        tenant: deployment.context,
+        caller,
+      }).home()
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("sends a person to the landing route only when its entry survives", async () => {
@@ -493,12 +504,10 @@ describe("the access seam against a real database", () => {
     expect(nothing).toEqual([]);
     expect(landingRoute(nothing)).toBeUndefined();
     await expect(
-      fixtureRouter
-        .createCaller({
-          tenant: deployment.context,
-          caller: request(user.userId),
-        })
-        .home()
+      callProcedure(fixtureRouter, {
+        tenant: deployment.context,
+        caller: request(user.userId),
+      }).home()
     ).resolves.toBe("home");
   });
 });

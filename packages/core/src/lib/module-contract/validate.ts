@@ -1,6 +1,6 @@
 import type { ZodType } from "zod";
 
-import { moduleIdOfRouter } from "../entitlement/module-trpc.ts";
+import { moduleApiProblems } from "../rpc/conformance.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
 import type {
@@ -24,6 +24,15 @@ const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
  * parts of a permission key; the id rule is the id's own.
  */
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
+/** Ids a module may not take: core itself, and the core areas beside the modules in the RPC router. */
+const RESERVED_IDS: ReadonlySet<string> = new Set([
+  "core",
+  "audit",
+  "groups",
+  "people",
+  "roles",
+]);
 
 /** The navigation contract caps the pinned rail at six entries. */
 const MAX_PINNED = 6;
@@ -105,9 +114,10 @@ export function validateModule(module: Module): readonly string[] {
     problems.push(`Module id "${id}" is not kebab-case.`);
   }
 
-  // `core` names core's own permission keys, system roles and transformation ledger (R-33c).
-  if (id === "core") {
-    problems.push(`Module id "core" is reserved for core.`);
+  // `core` names core's own permission keys, system roles and transformation ledger (R-33c), and
+  // core's areas own the other ids as their RPC keys and path prefixes (ADR 0011).
+  if (RESERVED_IDS.has(id)) {
+    problems.push(`Module id "${id}" is reserved for core.`);
   }
 
   // The startup omission check finds an installed module by its ledger table, so
@@ -120,7 +130,7 @@ export function validateModule(module: Module): readonly string[] {
     );
   }
 
-  problems.push(...routerProblems(module));
+  problems.push(...moduleApiProblems(id, module.router, module.contract));
 
   for (const entry of module.permissions) {
     if (!isPermissionKey(entry.key) || !entry.key.startsWith(`${id}:`)) {
@@ -484,31 +494,6 @@ export function validateRegistry(
   }
 
   return problems;
-}
-
-/**
- * The per-procedure entitlement gate reads the id passed to `createModuleTRPC`, so a router built
- * elsewhere is ungated and one built for another id is gated on the wrong entitlement (d1y).
- * Lint bans a static `initTRPC` import in a module, but a dynamic `import("@trpc/server")`
- * cannot be linted; this check covers it, because a router core did not record is refused.
- */
-function routerProblems(module: Module): readonly string[] {
-  const id = module.identity.id;
-  const owner = moduleIdOfRouter(module.router);
-
-  if (owner === undefined) {
-    return [
-      `Module "${id}" has a router not built by createModuleTRPC("${id}").`,
-    ];
-  }
-
-  if (owner !== id) {
-    return [
-      `Module "${id}" has a router built by createModuleTRPC("${owner}"). It must use "${id}".`,
-    ];
-  }
-
-  return [];
 }
 
 /** Every field of the navigation contract, so a pinned copy cannot drift. */

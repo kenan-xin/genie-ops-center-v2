@@ -17,5 +17,5 @@ entry point. A fixture here is test-side only; a module that ships lives in
 ## What it imports
 
 The module contract types and permission-key primitives beside it, and the
-declaration-site dependencies a module contract names: zod, Drizzle, tRPC and
-React types.
+declaration-site dependencies a module contract names: zod, Drizzle, core's RPC
+entry and module implementer, and React types.

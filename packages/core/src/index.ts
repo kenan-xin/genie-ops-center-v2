@@ -252,15 +252,17 @@ export {
   permittedNavigation,
 } from "./lib/entitlement/index.ts";
 
+// The server half of the module API (ADR 0011). A module router throws `AppError`, never a
+// protocol error, so core re-exports no oRPC error; the browser-safe half is `@genie/core/rpc`.
 export {
-  createModuleTRPC,
-  type ModuleTRPCContext,
-} from "./lib/entitlement/module-trpc.ts";
+  implementModule,
+  type ModuleContract,
+  type ModuleImplementer,
+  type ModuleRouter,
+  type ModuleRPCContext,
+} from "./lib/rpc/implement-module.ts";
 
-// The one tRPC value a module still raises, re-exported so a module router builds entirely on
-// core: its `can()` denial throws a `FORBIDDEN` `TRPCError` without importing `@trpc/server`
-// (d1y, the oxlint `no-restricted-imports` override bans `initTRPC` there).
-export { TRPCError } from "@trpc/server";
+export { callProcedure } from "./lib/rpc/call-procedure.ts";
 
 export type {
   PermissionKey,

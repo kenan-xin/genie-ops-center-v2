@@ -2,7 +2,8 @@ import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
 import { z } from "zod";
 
-import { createModuleTRPC } from "../../entitlement/module-trpc.ts";
+import { implementModule } from "../../rpc/implement-module.ts";
+import { oc } from "../../rpc/index.ts";
 import type { Module } from "../module.ts";
 
 const fixtureRecord = pgTable("fixture_record", {
@@ -22,6 +23,26 @@ const configurationSchema = z.object({
   tags: z.array(z.string()).default([]),
 });
 
+/** A contract with one routed read and the router core builds from it, for the given module id. */
+export function fixtureApi(id: string) {
+  const contract = {
+    records: {
+      list: oc
+        .route({ method: "GET", path: `/${id}/records` })
+        .input(z.object({ limit: z.number().optional() })),
+    },
+  };
+
+  const os = implementModule(id, contract);
+
+  return {
+    contract,
+    router: os.router({ records: { list: os.records.list.handler(() => []) } }),
+  };
+}
+
+const fixture = fixtureApi("fixture");
+
 /**
  * A module declaration that exercises every point of the contract. It is a contract fixture:
  * it lives beside the tests that use it and is never exported from a public entry point.
@@ -35,7 +56,9 @@ export const validModule = {
     migrationsTable: "__drizzle_migrations_fixture",
   },
 
-  router: createModuleTRPC("fixture").router({}),
+  contract: fixture.contract,
+
+  router: fixture.router,
 
   permissions: [
     { key: "fixture:read", label: "Read fixture records" },

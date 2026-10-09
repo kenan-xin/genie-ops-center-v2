@@ -12,6 +12,7 @@
     "./features/groups": "./src/features/groups/index.ts",
     "./features/people": "./src/features/people/index.ts",
     "./features/roles": "./src/features/roles/index.ts",
+    "./rpc": "./src/lib/rpc/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./testing/stage-workspace": "./testing/stage-workspace.ts",
@@ -29,6 +30,8 @@
   },
   "dependencies": {
     "@genie/ui": "workspace:*",
+    "@orpc/contract": "catalog:",
+    "@orpc/server": "catalog:",
     "@react-email/components": "1.0.12",
     "@tanstack/react-pacer": "0.23.0",
     "@trpc/server": "11.19.0",

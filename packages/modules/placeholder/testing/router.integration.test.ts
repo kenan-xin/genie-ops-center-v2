@@ -1,4 +1,5 @@
 import {
+  callProcedure,
   createTenantContext,
   principalFor,
   seedRoles,
@@ -29,7 +30,7 @@ let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
 
-  // The read procedure's `createModuleTRPC` gate refuses a disabled module before `can()`, so
+  // The read procedure's `implementModule` gate refuses a disabled module before `can()`, so
   // the deployment starts disabled and the setup enables it: the read cases below prove the
   // authorization path, not the entitlement refusal.
   await enableModules(deployment.context, ["placeholder"]);
@@ -68,7 +69,7 @@ describe("the placeholder read procedure against a real database", () => {
       label: "A read row",
     });
 
-    const caller = placeholderRouter.createCaller(contextFor(await reader()));
+    const caller = callProcedure(placeholderRouter, contextFor(await reader()));
 
     const rows = await caller.read();
 
@@ -82,9 +83,9 @@ describe("the placeholder read procedure against a real database", () => {
       "placeholder:use",
     ]);
 
-    const caller = placeholderRouter.createCaller(contextFor(userId));
+    const caller = callProcedure(placeholderRouter, contextFor(userId));
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    await expect(caller.read()).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("refuses the read with module-disabled when the placeholder entitlement is off", async () => {
@@ -102,7 +103,7 @@ describe("the placeholder read procedure against a real database", () => {
         "insert into tenant_module (module_id, enabled) values ('placeholder', false) on conflict (module_id) do update set enabled = false"
       );
 
-      const caller = placeholderRouter.createCaller({
+      const caller = callProcedure(placeholderRouter, {
         tenant,
         caller: principalFor({
           tenant,
@@ -113,7 +114,7 @@ describe("the placeholder read procedure against a real database", () => {
       } satisfies ModuleRequestContext);
 
       await expect(caller.read()).rejects.toMatchObject({
-        cause: { code: "module-disabled" },
+        code: "module-disabled",
       });
     } finally {
       await tenant.db.$client.end();
@@ -137,16 +138,17 @@ describe("the placeholder read procedure against a real database", () => {
       { type: "placeholder-record", id: named.id }
     );
 
-    const rows = await placeholderRouter
-      .createCaller(contextFor(userId))
-      .read();
+    const rows = await callProcedure(
+      placeholderRouter,
+      contextFor(userId)
+    ).read();
 
     expect(rows.map((entry) => entry.id)).toEqual([named.id]);
     expect(rows.map((entry) => entry.id)).not.toContain(other.id);
   });
 
   it("refuses an anonymous caller", async () => {
-    const caller = placeholderRouter.createCaller({
+    const caller = callProcedure(placeholderRouter, {
       tenant: deployment.context,
       caller: principalFor({
         tenant: deployment.context,
@@ -158,7 +160,7 @@ describe("the placeholder read procedure against a real database", () => {
 
     // No valid session is refused as unauthenticated before any permission or read (Spec 2 R-14).
     await expect(caller.read()).rejects.toMatchObject({
-      cause: { code: "unauthenticated" },
+      code: "unauthenticated",
     });
   });
 

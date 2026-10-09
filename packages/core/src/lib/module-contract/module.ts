@@ -1,4 +1,3 @@
-import type { AnyTRPCRouter } from "@trpc/server";
 import type { MigrationMeta } from "drizzle-orm/migrator";
 import type { PgTable } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
@@ -11,6 +10,7 @@ import type {
 } from "../../../contracts/index.ts";
 import type { RequestPrincipal } from "../../services/authorization/index.ts";
 import type { FrameOriginProvider } from "../content-security-policy/index.ts";
+import type { ModuleContract, ModuleRouter } from "../rpc/implement-module.ts";
 import type { TenantContext } from "../tenant-context/index.ts";
 import type { PermissionKey, Scope } from "./keys.ts";
 
@@ -281,7 +281,10 @@ export type ModuleTests = { readonly presets: readonly string[] };
 export type Module = {
   readonly identity: ModuleIdentity;
   readonly schema: ModuleSchema;
-  readonly router: AnyTRPCRouter;
+  /** 3. Router: the module's contract, published as its `./contract` export (ADR 0011). */
+  readonly contract: ModuleContract;
+  /** The router `implementModule(id, contract)` built from that contract. */
+  readonly router: ModuleRouter;
   readonly permissions: readonly PermissionDeclaration[];
   readonly recordTypes: readonly RecordTypeDeclaration[];
   readonly defaultRoles: readonly DefaultRole[];

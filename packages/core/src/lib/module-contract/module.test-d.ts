@@ -41,10 +41,19 @@ export const schemaWithoutHistory: Module = {
   },
 };
 
-// 3. Router: a plain object is not a tRPC router.
+// 3. Router: a contract beside the router core builds from it.
+// @ts-expect-error the contract is part of the router point
+export const missingContract: Module = { ...validModule, contract: undefined };
+
+export const contractIsAString: Module = {
+  ...validModule,
+  // @ts-expect-error a contract is an oRPC contract router, not its name
+  contract: "fixture",
+};
+
 export const routerIsNotAnObject: Module = {
   ...validModule,
-  // @ts-expect-error the router is a tRPC router
+  // @ts-expect-error the router is an oRPC router
   router: { query: () => null },
 };
 

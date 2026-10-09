@@ -110,6 +110,7 @@ const correlationModule = {
     migrationsTable: "__drizzle_migrations_event_correlation",
   },
   // SAFETY: this suite exercises event correlation only and never dispatches routes.
+  contract: {},
   router: {} as Module["router"],
   permissions: [],
   recordTypes: [],

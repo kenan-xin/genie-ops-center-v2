@@ -1,8 +1,8 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
 
-import { requireAuthenticated } from "../../lib/entitlement/module-trpc.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
+import { requireAuthenticated } from "../../lib/rpc/implement-module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { RequestPrincipal } from "../authorization/index.ts";
 import {
