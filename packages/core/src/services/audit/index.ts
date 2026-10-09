@@ -23,6 +23,8 @@ export {
   readAuditPage,
 } from "./reader.ts";
 
+export { type AuditContract, auditContract } from "./contract.ts";
+
 export { createAuditRouter, type AuditRouter } from "./router.ts";
 
 /** One json value an audit row's metadata may carry. It is a closed shape, never `unknown`. */

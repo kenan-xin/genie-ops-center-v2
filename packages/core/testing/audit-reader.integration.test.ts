@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  callProcedure,
   createAuditRouter,
   principalFor,
   readAuditPage,
@@ -154,15 +155,15 @@ describe("the audit reader against a real database", () => {
 
     await expect(read({ caller })).rejects.toMatchObject({ code: "forbidden" });
 
-    // The router, the transport the app mounts, refuses the same way: tRPC wraps the catalogue
-    // `forbidden` error, which the app's formatter maps to a 403 with a FORBIDDEN body code.
-    const router = createAuditRouter(modules).createCaller({
+    // The router, the transport the app mounts, refuses the same way: the catalogue `forbidden`
+    // error reaches the caller unchanged, and the app's interceptor answers it at 403.
+    const router = callProcedure(createAuditRouter(modules), {
       tenant: deployment.context,
       caller,
     });
 
     await expect(router.list({})).rejects.toMatchObject({
-      cause: { code: "forbidden" },
+      code: "forbidden",
     });
   });
 
@@ -173,13 +174,13 @@ describe("the audit reader against a real database", () => {
       code: "forbidden",
     });
 
-    const router = createAuditRouter(modules).createCaller({
+    const router = callProcedure(createAuditRouter(modules), {
       tenant: deployment.context,
       caller: request(undefined),
     });
 
     await expect(router.list({})).rejects.toMatchObject({
-      cause: { code: "unauthenticated" },
+      code: "unauthenticated",
     });
   });
 

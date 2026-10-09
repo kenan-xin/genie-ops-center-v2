@@ -343,6 +343,8 @@ export {
   type AuditFilterOptions,
   type AuditMetadata,
   type AuditPage,
+  type AuditContract,
+  auditContract,
   createAuditRouter,
   isOperatorAction,
   readAuditPage,
