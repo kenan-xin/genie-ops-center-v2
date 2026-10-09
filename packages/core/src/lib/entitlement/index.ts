@@ -6,8 +6,8 @@ import type { EntitlementReader } from "../tenant-context/readers.ts";
 /**
  * The R-8 refusal that is a core capability rather than application wiring: hiding a disabled
  * module's navigation. It reads only the entitlement reader, never `can()`, because switching a
- * module off is a deployment decision and not a permission (DEC-39). The tRPC half moved to the
- * per-procedure gate in `module-trpc.ts`, where the module contract's router base lives (d1y).
+ * module off is a deployment decision and not a permission (DEC-39). The procedure half is the
+ * gate `implementModule` attaches in `lib/rpc/`, where the module router base lives (d1y).
  */
 
 /**

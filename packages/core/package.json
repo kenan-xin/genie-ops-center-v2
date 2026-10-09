@@ -34,7 +34,6 @@
     "@orpc/server": "catalog:",
     "@react-email/components": "1.0.12",
     "@tanstack/react-pacer": "0.23.0",
-    "@trpc/server": "11.19.0",
     "better-auth": "1.7.6",
     "dompurify": "3.4.16",
     "drizzle-orm": "0.45.2",
