@@ -324,9 +324,8 @@ const os = implementModule("${names.id}", ${names.camel}Contract);
  * module is enabled. The list read asks \`scopesFor()\` first and reads only the records the
  * person's grants cover, only through \`context.tenant.db\` (DEC-34, DEC-39): a tenant-wide grant
  * reads every row, a record-scoped grant reads the records it names, and no grant is refused
- * before any read. A procedure on one record passes that record to \`can()\` and throws
- * \`AppError\` \`not-found\` when it does not exist. The \`implementModule\` base refuses the
- * call with \`module-disabled\` when the entitlement is off, before any handler runs.
+ * before any read. The \`implementModule\` base refuses the call with \`module-disabled\` when
+ * the entitlement is off, before any handler runs.
  */
 export const ${names.camel}Router = os.router({
   read: os.read.handler(async ({ context }) => {

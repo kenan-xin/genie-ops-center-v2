@@ -43,12 +43,18 @@ export function moduleNamingError(
 
 type ModuleManifest = {
   readonly name?: string;
+  readonly exports?: { readonly "./contract"?: string };
   readonly genie?: { readonly module?: { readonly id?: string } };
 };
 
+/** The one file a module publishes as `./contract`: the lint rule that keeps it browser-safe is keyed to it (ADR 0011). */
+const CONTRACT_EXPORT = "./src/contract.ts";
+
 /**
  * Applies the naming rule to one module project by reading its manifest, and
- * returns one sentence or `undefined`. Reads bytes and parses JSON. It never
+ * returns one sentence or `undefined`. It also requires the manifest to publish
+ * `./contract` from `./src/contract.ts`, because the lint rule that keeps the
+ * contract browser-safe applies to that file only. Reads bytes and parses JSON. It never
  * imports, evaluates or resolves a module declaration.
  *
  * The workspace hygiene suite calls this for every project classified `module`,
@@ -79,5 +85,17 @@ export function moduleProjectNamingError(
 
   const folderBasename = projectRoot.split("/").at(-1) ?? "";
 
-  return moduleNamingError(folderBasename, manifest.name ?? "", moduleId);
+  const namingError = moduleNamingError(
+    folderBasename,
+    manifest.name ?? "",
+    moduleId
+  );
+
+  if (namingError !== undefined) return namingError;
+
+  if (manifest.exports?.["./contract"] !== CONTRACT_EXPORT) {
+    return `${projectRoot} must export "./contract" as "${CONTRACT_EXPORT}"`;
+  }
+
+  return undefined;
 }

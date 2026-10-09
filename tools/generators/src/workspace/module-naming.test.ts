@@ -79,6 +79,7 @@ describe("moduleNamingError", () => {
 /** One package.json body a disposable workspace holds under packages/modules. */
 type TestManifest = {
   readonly name?: string;
+  readonly exports?: Readonly<Record<string, string>>;
   readonly genie?: {
     readonly module?: { readonly id: string; readonly entrypoint: string };
   };
@@ -109,6 +110,7 @@ describe("moduleProjectNamingError over a disposable workspace", () => {
     const root = workspaceHolding({
       "contract-data": {
         name: "@genie/module-contract-data",
+        exports: { "./contract": "./src/contract.ts" },
         genie: { module: { id: "contract-data", entrypoint: "src/index.ts" } },
       },
     });
@@ -142,6 +144,20 @@ describe("moduleProjectNamingError over a disposable workspace", () => {
     expect(
       moduleProjectNamingError("packages/modules/contracts", root)
     ).toMatch(/folder "contracts" holds the module "contract-data"/);
+  });
+
+  it("rejects a module that publishes its contract from another file", () => {
+    const root = workspaceHolding({
+      "contract-data": {
+        name: "@genie/module-contract-data",
+        exports: { "./contract": "./src/contract/index.ts" },
+        genie: { module: { id: "contract-data", entrypoint: "src/index.ts" } },
+      },
+    });
+
+    expect(
+      moduleProjectNamingError("packages/modules/contract-data", root)
+    ).toMatch(/must export "\.\/contract" as "\.\/src\/contract\.ts"/);
   });
 
   it("reports a manifest that declares no id, rather than passing it", () => {
