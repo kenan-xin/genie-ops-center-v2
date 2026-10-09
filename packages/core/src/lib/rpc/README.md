@@ -10,7 +10,11 @@ The browser-safe `@genie/core/rpc` entry (`index.ts`): `oc` to declare a contrac
 root exports: `implementModule`, which attaches the entitlement gate and the session check before
 input validation, the conformance check module validation runs (the router serves exactly the
 contract's procedures, each starts with both gates, and no lazy router or root `.use()` is
-allowed), and `callProcedure`, the one server-side caller.
+allowed), and `callProcedure`, the one server-side caller. `implementCoreArea` builds the
+implementer of one of core's own areas (`audit`, `groups`, `people`, `roles`): only the session
+check before input validation, never the entitlement gate, because a core area has no entitlement
+row. A core service builds its router through it, since it may not import `@orpc/*`; the area's
+tests hold its contract to decision 7 with `contractRouteProblems`.
 
 ## What must not go here
 

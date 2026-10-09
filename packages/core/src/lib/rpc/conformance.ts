@@ -68,11 +68,12 @@ export function moduleApiProblems(
 
   return [
     ...contractProblems(moduleId, router, contract),
+    ...contractRouteProblems(moduleId, contract),
     ...routerProblems(moduleId, router, [], owner.gates, contract),
   ];
 }
 
-/** The contract's procedures: each implemented, under no reserved key, and routed by decision 7. */
+/** The contract's procedures: each implemented and under no reserved key. */
 function contractProblems(
   moduleId: string,
   router: ModuleRouter,
@@ -80,28 +81,45 @@ function contractProblems(
 ): readonly string[] {
   const problems: string[] = [];
 
+  traverseContractProcedures({ router: contract, path: [] }, ({ path }) => {
+    const name = path.join(".");
+    const reserved = path.find((key) => RESERVED_KEYS.has(key));
+
+    if (reserved !== undefined) {
+      problems.push(
+        `Module "${moduleId}" names procedure "${name}" with the key "${reserved}", which implementModule reserves.`
+      );
+    }
+
+    const implemented = getRouter(router, path);
+
+    // A lazy entry is reported once, by routerProblems.
+    if (!isProcedure(implemented) && !isLazy(implemented)) {
+      problems.push(
+        `Module "${moduleId}" declares procedure "${name}" that its router does not implement.`
+      );
+    }
+  });
+
+  return problems;
+}
+
+/**
+ * Decision 7 for every procedure of a contract under `/<prefix>/`. Module validation runs it with
+ * the module id; core's own areas are not modules, so their tests run it with the area name.
+ */
+export function contractRouteProblems(
+  prefix: string,
+  contract: ModuleContract
+): readonly string[] {
+  const problems: string[] = [];
+
   traverseContractProcedures(
     { router: contract, path: [] },
     ({ contract: procedure, path }) => {
-      const name = path.join(".");
-      const reserved = path.find((key) => RESERVED_KEYS.has(key));
-
-      if (reserved !== undefined) {
-        problems.push(
-          `Module "${moduleId}" names procedure "${name}" with the key "${reserved}", which implementModule reserves.`
-        );
-      }
-
-      const implemented = getRouter(router, path);
-
-      // A lazy entry is reported once, by routerProblems.
-      if (!isProcedure(implemented) && !isLazy(implemented)) {
-        problems.push(
-          `Module "${moduleId}" declares procedure "${name}" that its router does not implement.`
-        );
-      }
-
-      problems.push(...routeProblems(moduleId, name, procedure["~orpc"]));
+      problems.push(
+        ...routeProblems(prefix, path.join("."), procedure["~orpc"])
+      );
     }
   );
 
