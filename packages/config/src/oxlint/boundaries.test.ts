@@ -251,24 +251,86 @@ describe.concurrent(
       expect(result.output).not.toMatch(/no-restricted-imports/);
     });
 
-    it("stops a module importing initTRPC from @trpc/server", async () => {
+    it("stops a module importing @orpc/* (ADR 0011 confinement)", async () => {
       const result = await lintAt(
         "packages/modules/alpha/src/__boundary__.ts",
-        `import { initTRPC } from "@trpc/server";\n\nvoid initTRPC;\n`
+        `import { implement } from "@orpc/server";\n\nvoid implement;\n`
       );
 
       expect(result.failed).toBe(true);
-      expect(result.output).toContain("no-restricted-imports");
+      expect(result.output).toContain("@orpc/* is confined to");
     });
 
-    it("stops a module importing initTRPC from an @trpc/server subpath", async () => {
+    it("stops a core service importing @orpc/*", async () => {
       const result = await lintAt(
-        "packages/modules/alpha/src/__boundary__.ts",
-        `import { initTRPC } from "@trpc/server/unstable-core-do-not-import";\n\nvoid initTRPC;\n`
+        "packages/core/src/services/alpha/__boundary__.ts",
+        `import { oc } from "@orpc/contract";\n\nvoid oc;\n`
       );
 
       expect(result.failed).toBe(true);
-      expect(result.output).toContain("no-restricted-imports");
+      expect(result.output).toContain("@orpc/* is confined to");
+    });
+
+    it("stops an app screen importing @orpc/*", async () => {
+      const result = await lintAt(
+        "apps/genie/src/app/alpha/__boundary__.tsx",
+        `import { ORPCError } from "@orpc/client";\n\nvoid ORPCError;\n`
+      );
+
+      expect(result.failed).toBe(true);
+      expect(result.output).toContain("@orpc/* is confined to");
+    });
+
+    it("lets core's rpc folder import @orpc/*", async () => {
+      const result = await lintAt(
+        "packages/core/src/lib/rpc/__boundary__.ts",
+        `import { implement } from "@orpc/server";\n\nvoid implement;\n`
+      );
+
+      expect(result.output).not.toMatch(/no-restricted-imports/);
+    });
+
+    it("lets the app's oRPC folder and route file import @orpc/*", async () => {
+      const folder = await lintAt(
+        "apps/genie/src/rpc/__boundary__.ts",
+        `import { RPCHandler } from "@orpc/server/fetch";\n\nvoid RPCHandler;\n`
+      );
+
+      const route = await lintAt(
+        "apps/genie/src/app/api/rpc/[[...rest]]/__boundary__.ts",
+        `import { RPCHandler } from "@orpc/server/fetch";\n\nvoid RPCHandler;\n`
+      );
+
+      expect(folder.output).not.toMatch(/no-restricted-imports/);
+      expect(route.output).not.toMatch(/no-restricted-imports/);
+    });
+
+    it("keeps the core rpc folder's other layer bans", async () => {
+      const result = await lintAt(
+        "packages/core/src/lib/rpc/__boundary__.ts",
+        `import "@genie/module-alpha";\n`
+      );
+
+      expect(result.failed).toBe(true);
+      expect(result.output).toContain("core never imports a module");
+    });
+
+    it("keeps a module contract to zod and @genie/core/rpc", async () => {
+      const allowed = await lintAt(
+        "packages/modules/alpha/src/contract.ts",
+        `import { oc } from "@genie/core/rpc";\nimport { z } from "zod";\n\nvoid oc;\nvoid z;\n`
+      );
+
+      const server = await lintAt(
+        "packages/modules/alpha/src/contract.ts",
+        `import { implementModule } from "@genie/core";\n\nvoid implementModule;\n`
+      );
+
+      expect(allowed.output).not.toMatch(/no-restricted-imports/);
+      expect(server.failed).toBe(true);
+      expect(server.output).toContain(
+        "a module's contract.ts imports only zod and @genie/core/rpc"
+      );
     });
 
     it("stops a module from importing the application", async () => {
@@ -1531,6 +1593,29 @@ describe("the serialized oxlint configuration", () => {
     expect(entry?.rules?.["no-restricted-imports"]).toMatchObject([
       "error",
       { patterns: [expect.objectContaining({ allowTypeImports: true })] },
+    ]);
+  });
+
+  // The entry is a real product file, so no fixture can be planted at its path; the rule is read
+  // back from the configuration instead, together with its position after every other entry that
+  // matches the rpc folder, because the last matching entry wins.
+  it("keeps the @genie/core/rpc entry to @orpc/contract and zod, as the last entry for it", async () => {
+    const entryIndex = importBoundaryOverrides.findIndex((o) =>
+      o.files?.includes("packages/core/src/lib/rpc/index.ts")
+    );
+
+    const lastFolderIndex = importBoundaryOverrides.findLastIndex((o) =>
+      o.files?.includes("packages/core/src/lib/rpc/**")
+    );
+
+    expect(entryIndex).toBeGreaterThan(lastFolderIndex);
+
+    expect(patternsOf(importBoundaryOverrides[entryIndex]!)).toEqual([
+      {
+        group: ["*", "!zod", "!zod/**", "!@orpc/contract"],
+        message:
+          "the @genie/core/rpc entry is browser-safe: it imports only @orpc/contract and zod (ADR 0011).",
+      },
     ]);
   });
 

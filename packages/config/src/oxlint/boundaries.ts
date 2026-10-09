@@ -176,6 +176,15 @@ const INTERNAL = [
   "**/../ui/**",
 ];
 
+// oRPC confinement (ADR 0011): `@orpc/*` is imported only in core's `src/lib/rpc/` and the app's
+// oRPC files, so a later oRPC upgrade touches only them. Every layer list below carries this ban,
+// and the exception entries at the end drop it again for those folders.
+const NO_ORPC: RestrictedGroup = {
+  group: ["@orpc/*", "@orpc/**"],
+  message:
+    "@orpc/* is confined to packages/core/src/lib/rpc/ and the app's oRPC files. A module declares its contract with `oc` from @genie/core/rpc and builds its router with core's implementModule (ADR 0011).",
+};
+
 const NO_CONFIG = {
   group: CONFIG,
   message:
@@ -213,6 +222,7 @@ const UI_LAYER: readonly RestrictedGroup[] = [
   { group: CUSTOMERS, message: "ui imports no customer folder." },
   { group: DRIVERS, message: "only core opens a connection (DEC-34)." },
   NO_TOOLING,
+  NO_ORPC,
 ];
 
 const CORE_LAYER: readonly RestrictedGroup[] = [
@@ -227,6 +237,7 @@ const CORE_LAYER: readonly RestrictedGroup[] = [
   },
   { group: CUSTOMERS, message: "core never imports a customer folder." },
   NO_TOOLING,
+  NO_ORPC,
 ];
 
 const MODULE_LAYER: readonly RestrictedGroup[] = [
@@ -237,19 +248,36 @@ const MODULE_LAYER: readonly RestrictedGroup[] = [
     group: DRIVERS,
     message: "a module reads the database through ctx.tenant.db (DEC-34).",
   },
-  {
-    group: ["@trpc/server", "@trpc/server/**"],
-    importNames: ["initTRPC"],
-    message:
-      "a module builds its router from core's createModuleTRPC, never its own initTRPC root (d1y).",
-  },
   NO_TOOLING,
+  NO_ORPC,
 ];
 
 const APP_LAYER: readonly RestrictedGroup[] = [
   { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
   NO_TOOLING,
+  NO_ORPC,
 ];
+
+/** A layer list without the oRPC ban, for the folders the confinement allows. */
+function allowingOrpc(
+  layer: readonly RestrictedGroup[]
+): readonly RestrictedGroup[] {
+  return layer.filter((pattern) => pattern !== NO_ORPC);
+}
+
+// The browser-safe `@genie/core/rpc` entry and a module's `contract.ts` reach the browser, so
+// like the contracts folder they import nothing but their declared dependencies (ADR 0011).
+const RPC_ENTRY: RestrictedGroup = {
+  group: ["*", "!zod", "!zod/**", "!@orpc/contract"],
+  message:
+    "the @genie/core/rpc entry is browser-safe: it imports only @orpc/contract and zod (ADR 0011).",
+};
+
+const MODULE_CONTRACT: RestrictedGroup = {
+  group: ["*", "!zod", "!zod/**", "!@genie/core/rpc"],
+  message:
+    "a module's contract.ts imports only zod and @genie/core/rpc, so the browser client can import it (ADR 0011).",
+};
 
 // The shared configuration package is an internal project too, so a file inside
 // it reaches its siblings relatively, as `packages/config/vitest.config.ts`
@@ -260,6 +288,7 @@ const CONFIG_LAYER: readonly RestrictedGroup[] = [
     message: "config imports no internal project (R-7a).",
   },
   { group: DRIVERS, message: "config opens no database connection (DEC-34)." },
+  NO_ORPC,
 ];
 
 // Tooling reads module metadata as data, ships nothing, and reaches core only
@@ -287,6 +316,7 @@ const TOOLS_LAYER: readonly RestrictedGroup[] = [
     group: DRIVERS,
     message: "tooling opens no database connection (DEC-34).",
   },
+  NO_ORPC,
 ];
 
 // A sibling module is reached by climbing out of the module's own folder, and
@@ -315,7 +345,10 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     ["packages/core/*.config.ts", "packages/core/*.config.mts"],
     CORE_LAYER
   ),
-  restrict(["packages/core/src/lib/tenant-config/**"], [TENANT_SCHEMA_DRIVERS]),
+  restrict(
+    ["packages/core/src/lib/tenant-config/**"],
+    [TENANT_SCHEMA_DRIVERS, NO_ORPC]
+  ),
   restrict(
     ["packages/core/contracts/**"],
     [
@@ -369,6 +402,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         group: [...TOOLING, "!@genie/generators"],
         message: "Storybook main consumes only the public selector entrypoint.",
       },
+      NO_ORPC,
     ]
   ),
   // An app's own build tooling, which ADR 0008 requires: the app generates its
@@ -385,6 +419,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
         message:
           "an app's build tooling consumes only the public generators entrypoint (R-7a).",
       },
+      NO_ORPC,
     ]
   ),
   restrict(["packages/config/**"], CONFIG_LAYER),
@@ -409,7 +444,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
   // repeats its one rule and adds the testing ban.
   restrict(
     ["packages/core/src/lib/tenant-config/**"],
-    [TENANT_SCHEMA_DRIVERS, NO_TESTING_IMPORTS],
+    [TENANT_SCHEMA_DRIVERS, NO_ORPC, NO_TESTING_IMPORTS],
     NON_PRODUCT_FILE_PATTERNS
   ),
   restrict(
@@ -432,4 +467,27 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     [...TOOLS_LAYER, NO_TESTING_IMPORTS],
     NON_PRODUCT_FILE_PATTERNS
   ),
+  // The oRPC confinement exceptions (ADR 0011). They follow every entry above that matches the
+  // same files, because the last matching entry wins, and each repeats its layer list without
+  // the oRPC ban. The OpenAPI build script joins them when it exists.
+  restrict(
+    ["packages/core/src/lib/rpc/**"],
+    [...allowingOrpc(CORE_LAYER), NO_CONFIG]
+  ),
+  restrict(
+    ["packages/core/src/lib/rpc/**"],
+    [...allowingOrpc(CORE_LAYER), NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(["packages/core/src/lib/rpc/index.ts"], [RPC_ENTRY]),
+  restrict(
+    ["apps/genie/src/rpc/**", "apps/genie/src/app/api/rpc/**"],
+    [...allowingOrpc(APP_LAYER), NO_CONFIG]
+  ),
+  restrict(
+    ["apps/genie/src/rpc/**", "apps/genie/src/app/api/rpc/**"],
+    [...allowingOrpc(APP_LAYER), NO_CONFIG, NO_TESTING_IMPORTS],
+    NON_PRODUCT_FILE_PATTERNS
+  ),
+  restrict(["packages/modules/*/src/contract.ts"], [MODULE_CONTRACT]),
 ];
