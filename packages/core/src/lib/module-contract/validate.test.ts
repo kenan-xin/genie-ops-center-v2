@@ -288,6 +288,123 @@ describe("validateModule", () => {
     ).toEqual([]);
   });
 
+  it("rejects a router procedure the contract does not declare", () => {
+    const os = implementModule("fixture", validModule.contract);
+
+    const router = os.router({
+      records: { list: os.records.list.handler(() => []) },
+      hidden: os.records.list.handler(() => []),
+    });
+
+    expect(validateModule({ ...validModule, router })).toEqual([
+      'Module "fixture" serves procedure "hidden" that its contract does not declare.',
+    ]);
+  });
+
+  it("names a missing nested procedure by its dotted path", () => {
+    const contract = {
+      a: {
+        b: oc.route({ method: "POST", path: "/fixture/a/b" }),
+        c: oc.route({ method: "POST", path: "/fixture/a/c" }),
+      },
+    };
+
+    expect(
+      validateModule(
+        withApi(contract, (os) =>
+          // @ts-expect-error the missing `a.b` procedure is the point of the case
+          os.router({ a: { c: os.a.c.handler(() => null) } })
+        )
+      )
+    ).toEqual([
+      'Module "fixture" declares procedure "a.b" that its router does not implement.',
+    ]);
+  });
+
+  it("rejects a procedure that validates its input before the gates", () => {
+    const os = implementModule("fixture", validModule.contract);
+
+    // SAFETY: `$config` is oRPC's builder method that the implementer's type hides; reaching it
+    // through a cast is the escape this case proves validation refuses.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the hidden method has no public type to assert to directly.
+    const builder = os.records.list as unknown as {
+      $config: (config: {
+        initialInputValidationIndex: number;
+      }) => typeof os.records.list;
+    };
+
+    const early = builder.$config({ initialInputValidationIndex: -100 });
+    const router = os.router({ records: { list: early.handler(() => []) } });
+
+    expect(validateModule({ ...validModule, router })).toEqual([
+      'Procedure "records.list" of module "fixture" does not run the entitlement gate and the session check before input validation.',
+    ]);
+  });
+
+  it("rejects a lazy router", () => {
+    const contract = {
+      a: { b: oc.route({ method: "POST", path: "/fixture/a/b" }) },
+    };
+
+    expect(
+      validateModule(
+        withApi(contract, (os) =>
+          os.router({
+            a: os.a.lazy(() =>
+              Promise.resolve({ default: { b: os.a.b.handler(() => null) } })
+            ),
+          })
+        )
+      )
+    ).toEqual([
+      'Module "fixture" has a lazy router at "a": lazy routers are not supported.',
+    ]);
+  });
+
+  it("rejects a contract key implementModule reserves", () => {
+    const contract = {
+      records: {
+        use: oc.route({ method: "POST", path: "/fixture/records/use" }),
+      },
+    };
+
+    expect(
+      validateModule(
+        withApi(contract, (os) =>
+          os.router({ records: { use: os.records.use.handler(() => null) } })
+        )
+      )
+    ).toEqual([
+      'Module "fixture" names procedure "records.use" with the key "use", which implementModule reserves.',
+    ]);
+  });
+
+  it.each([
+    [
+      "POST",
+      "/fixture/../people/b",
+      'has path "/fixture/../people/b" with an empty, "." or ".." segment.',
+    ],
+    [
+      "POST",
+      "/fixture//records",
+      'has path "/fixture//records" with an empty, "." or ".." segment.',
+    ],
+    [
+      "HEAD",
+      "/fixture/records",
+      "is a HEAD with an input that is not an object.",
+    ],
+  ] as const)("rejects a %s to %s", (method, path, problem) => {
+    expect(
+      validateModule(
+        withApi({ read: oc.route({ method, path }).input(z.string()) }, (os) =>
+          os.router({ read: os.read.handler(() => null) })
+        )
+      )
+    ).toEqual([`Procedure "read" of module "fixture" ${problem}`]);
+  });
+
   it("rejects a job name outside its module prefix", () => {
     const broken = {
       ...validModule,

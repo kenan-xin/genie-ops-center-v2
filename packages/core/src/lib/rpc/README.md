@@ -8,8 +8,9 @@ that import `@orpc/*`, so a later oRPC upgrade touches only them.
 The browser-safe `@genie/core/rpc` entry (`index.ts`): `oc` to declare a contract, and the
 `appErrorData` schema a client parses refusals with. Beside it, the server half that the core
 root exports: `implementModule`, which attaches the entitlement gate and the session check before
-input validation, the conformance check module validation runs, and `callProcedure`, the one
-server-side caller.
+input validation, the conformance check module validation runs (the router serves exactly the
+contract's procedures, each starts with both gates, and no lazy router or root `.use()` is
+allowed), and `callProcedure`, the one server-side caller.
 
 ## What must not go here
 

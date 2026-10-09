@@ -141,6 +141,68 @@ describe("the module implementer", () => {
     ).rejects.toMatchObject({ code: "module-disabled" });
   });
 
+  it("runs the router's own gate before input validation for a procedure built for another module", async () => {
+    const contract = {
+      value: oc
+        .route({ method: "POST", path: "/reports/value" })
+        .input(z.object({ count: z.number() })),
+    };
+
+    // The procedure carries only the `other` gates; `.router()` must still put `reports` first.
+    const other = implementModule("other", contract);
+
+    const router = implementModule("reports", contract).router({
+      value: other.value.handler(() => "should not run"),
+    });
+
+    const { context, calls } = contextWithEntitlement(false);
+
+    await expect(
+      // SAFETY: the malformed input is the point of the case; the gate must answer before it is read.
+      callProcedure(router, context).value({ count: "many" } as never)
+    ).rejects.toMatchObject({ code: "module-disabled" });
+
+    expect(calls).toEqual(["reports"]);
+  });
+
+  it("runs the gate before input validation in a nested contract", async () => {
+    const contract = {
+      a: {
+        b: oc
+          .route({ method: "POST", path: "/reports/a/b" })
+          .input(z.object({ count: z.number() })),
+      },
+    };
+
+    const other = implementModule("other", contract);
+
+    const router = implementModule("reports", contract).router({
+      a: { b: other.a.b.handler(() => "should not run") },
+    });
+
+    const { context, calls } = contextWithEntitlement(false);
+
+    await expect(
+      // SAFETY: the malformed input is the point of the case; the gate must answer before it is read.
+      callProcedure(router, context).a.b({ count: "many" } as never)
+    ).rejects.toMatchObject({ code: "module-disabled" });
+
+    expect(calls).toEqual(["reports"]);
+  });
+
+  it("refuses a root .use() and .lazy() with a message that names the restriction", () => {
+    const os = implementModule("reports", valueContract);
+
+    expect(() => os.use(({ next }) => next())).toThrow(
+      ".use() on the module root is not supported"
+    );
+
+    // SAFETY: the loader never runs; the call itself is refused.
+    expect(() =>
+      os.lazy(() => Promise.resolve({ default: {} }) as never)
+    ).toThrow("lazy routers are not supported");
+  });
+
   it("keeps module-disabled first for an anonymous caller to a disabled module", async () => {
     const { context } = contextWithEntitlement(false, { anonymous: true });
 

@@ -54,6 +54,8 @@ export function requireAuthenticated(
 type RouterOwner = {
   readonly id: string;
   readonly contract: ModuleContract;
+  /** The entitlement gate and the session check, in run order: every router procedure starts with them. */
+  readonly gates: readonly unknown[];
 };
 
 const routerOwners = new WeakMap<ModuleRouter, RouterOwner>();
@@ -77,8 +79,10 @@ export function ownerOfRouter(router: ModuleRouter): RouterOwner | undefined {
  *
  * The gate reads only the entitlement reader and the request id: switching a module off is a
  * deployment decision, not a permission (DEC-39). Every router `.router()` builds is recorded
- * under `{ id, contract }`, so validation refuses a module whose router was built elsewhere, for
- * another module, or from another contract.
+ * under `{ id, contract, gates }`, so validation refuses a module whose router was built elsewhere,
+ * for another module, or from another contract, and any procedure that does not start with the
+ * gates. A root `.use()` or `.lazy()` throws: the gates are core's, and a lazy router would hide
+ * its procedures from that check.
  */
 export function implementModule<TContract extends ModuleContract>(
   moduleId: string,
@@ -87,43 +91,54 @@ export function implementModule<TContract extends ModuleContract>(
   // Typed as an empty contract router here: for a generic contract oRPC's implementer type stays
   // an unresolved procedure-or-router union, so `.use` would not be callable. The runtime value
   // is built from the real contract, and the return type restores it below.
-  const implementer = implement<Record<never, never>, ModuleRPCContext>(
-    contract
-  )
-    .use(async ({ context, next }) => {
-      if (!(await context.tenant.entitlements.isEnabled(moduleId))) {
-        const { requestId } = context;
+  const base = implement<Record<never, never>, ModuleRPCContext>(contract);
 
-        throw new AppError(
-          CORE_ERRORS["module-disabled"],
-          requestId === undefined ? {} : { requestId }
-        );
-      }
+  const entitlementGate = base.middleware(async ({ context, next }) => {
+    if (!(await context.tenant.entitlements.isEnabled(moduleId))) {
+      const { requestId } = context;
 
-      return next();
-    })
-    .use(({ context, next }) => {
-      requireAuthenticated(context.caller, context.requestId);
+      throw new AppError(
+        CORE_ERRORS["module-disabled"],
+        requestId === undefined ? {} : { requestId }
+      );
+    }
 
-      return next();
-    });
+    return next();
+  });
+
+  const sessionCheck = base.middleware(({ context, next }) => {
+    requireAuthenticated(context.caller, context.requestId);
+
+    return next();
+  });
+
+  const implementer = base.use(entitlementGate).use(sessionCheck);
 
   const recordingRouter = (
     router: Router<Record<never, never>, ModuleRPCContext>
   ) => {
     const built = implementer.router(router);
 
-    routerOwners.set(built, { id: moduleId, contract });
+    routerOwners.set(built, {
+      id: moduleId,
+      contract,
+      gates: [entitlementGate, sessionCheck],
+    });
 
     return built;
   };
 
+  const replaced = {
+    router: recordingRouter,
+    ...refusedRootMethods(moduleId),
+  };
+
   // oRPC's implementer is itself a Proxy over the contract, so it cannot be spread or wrapped key
-  // by key. This one forwards every read and replaces only `router` with the recording one.
+  // by key. This one forwards every read and replaces only `router`, `use` and `lazy`.
   const recording = new Proxy(implementer, {
     get: (target, key, receiver) =>
-      key === "router"
-        ? recordingRouter
+      key === "router" || key === "use" || key === "lazy"
+        ? replaced[key]
         : // oxlint-disable-next-line anti-slop/no-reflect-get -- forwarding a Proxy read to oRPC's implementer; there is no typed key to read.
           Reflect.get(target, key, receiver),
   });
@@ -133,4 +148,23 @@ export function implementModule<TContract extends ModuleContract>(
   // narrowed to an empty contract above so the middlewares could be attached.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the empty-contract type above and the caller's contract type do not overlap, by construction.
   return recording as unknown as ModuleImplementer<TContract>;
+}
+
+/**
+ * A root `.use()` and `.lazy()`, refused when called: the gates are core's to attach, and a lazy
+ * router would hide its procedures from the conformance check.
+ */
+function refusedRootMethods(moduleId: string) {
+  const refuse = (message: string) => () => {
+    throw new Error(`implementModule("${moduleId}"): ${message}`);
+  };
+
+  return {
+    use: refuse(
+      ".use() on the module root is not supported; core attaches the gates. Add middleware to one procedure with os.<procedure>.use()."
+    ),
+    lazy: refuse(
+      "lazy routers are not supported. Build the router with os.router({...})."
+    ),
+  };
 }
