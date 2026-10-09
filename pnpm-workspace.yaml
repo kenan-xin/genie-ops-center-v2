@@ -22,7 +22,7 @@ packageExtensions:
   # pinned, so bump it in the same change as any vitest bump, or this extension stops applying.
   "vitest@4.1.11":
     dependencies:
-      jsdom: "30.1.1"
+      jsdom: "30.1.2"
 
 # Supply-chain guard. Refuse any version published less than one day ago,
 # because a malicious release is usually pulled from the registry within the
@@ -31,8 +31,6 @@ packageExtensions:
 # and the install fails instead. Every exception is one auditable line below.
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
-minimumReleaseAgeExclude:
-  - "@types/node@26.6.2"
 
 # An install script runs arbitrary code at install time. Name each package that
 # needs one. Never use dangerouslyAllowAllBuilds.
