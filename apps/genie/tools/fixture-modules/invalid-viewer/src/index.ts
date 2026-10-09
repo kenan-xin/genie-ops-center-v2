@@ -1,4 +1,4 @@
-import { createModuleTRPC, type Module } from "@genie/core";
+import { implementModule, type Module } from "@genie/core";
 
 /**
  * A module whose frame-origin provider resolves only invalid origins (AC-25,
@@ -21,7 +21,9 @@ const invalidViewerModule = {
     migrationsTable: "__drizzle_migrations_invalid_viewer",
   },
 
-  router: createModuleTRPC("invalid-viewer").router({}),
+  contract: {},
+
+  router: implementModule("invalid-viewer", {}).router({}),
 
   permissions: [],
 

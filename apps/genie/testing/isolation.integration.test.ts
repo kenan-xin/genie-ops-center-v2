@@ -1,4 +1,5 @@
 import {
+  callProcedure,
   principalFor,
   createLogger,
   createTenantContext,
@@ -90,7 +91,7 @@ beforeAll(async () => {
     }),
   ]);
 
-  // The read procedure's `createModuleTRPC` gate refuses a disabled module before `can()`, so
+  // The read procedure's `implementModule` gate refuses a disabled module before `can()`, so
   // both deployments start disabled and the setup enables them: the read below must reach the
   // database, not the entitlement refusal.
   await Promise.all([
@@ -180,21 +181,24 @@ describe("two tenant contexts in one process", () => {
       label: "second-only",
     });
 
-    const fromFirst = await placeholderRouter
-      .createCaller(callerFor(first.context, firstReader))
-      .read();
+    const fromFirst = await callProcedure(
+      placeholderRouter,
+      callerFor(first.context, firstReader)
+    ).read();
 
-    const fromSecond = await placeholderRouter
-      .createCaller(callerFor(second.context, secondReader))
-      .read();
+    const fromSecond = await callProcedure(
+      placeholderRouter,
+      callerFor(second.context, secondReader)
+    ).read();
 
     // A person's grants live in their own deployment's database: the other context's loader
     // finds no such person and refuses.
     await expect(
-      placeholderRouter
-        .createCaller(callerFor(second.context, firstReader))
-        .read()
-    ).rejects.toThrow("FORBIDDEN");
+      callProcedure(
+        placeholderRouter,
+        callerFor(second.context, firstReader)
+      ).read()
+    ).rejects.toMatchObject({ code: "forbidden" });
 
     const [firstSettings, secondSettings] = await Promise.all([
       first.context.settings.get(),

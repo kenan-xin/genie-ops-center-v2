@@ -1,4 +1,4 @@
-import { createModuleTRPC, type Module } from "@genie/core";
+import { implementModule, type Module } from "@genie/core";
 
 /**
  * A module whose frame-origin provider resolves one valid origin. This is the
@@ -22,7 +22,9 @@ const permittedViewerModule = {
     migrationsTable: "__drizzle_migrations_permitted_viewer",
   },
 
-  router: createModuleTRPC("permitted-viewer").router({}),
+  contract: {},
+
+  router: implementModule("permitted-viewer", {}).router({}),
 
   permissions: [],
 

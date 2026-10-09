@@ -1,5 +1,5 @@
 import {
-  createModuleTRPC,
+  implementModule,
   type Module,
   type PermissionKey,
   validateRegistry,
@@ -44,7 +44,8 @@ function moduleWithLanding(id: string, landing: boolean): Module {
   return {
     ...placeholderModule,
     identity: { ...placeholderModule.identity, id, displayName: id },
-    router: createModuleTRPC(id).router({}),
+    contract: {},
+    router: implementModule(id, {}).router({}),
     permissions,
     defaultRoles: [{ name: `${id} user`, permissions: [usePermission] }],
     navigation: { pinned: [], entries: [entry] },
