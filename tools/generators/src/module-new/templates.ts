@@ -47,6 +47,7 @@ const manifest: Template = (names) =>
     type: "module",
     exports: {
       ".": "./src/index.ts",
+      "./contract": "./src/contract.ts",
       "./presentation": "./src/presentation/index.ts",
       "./testing": "./testing/index.ts",
     },
@@ -59,7 +60,6 @@ const manifest: Template = (names) =>
     dependencies: {
       "@genie/core": "workspace:*",
       "@genie/ui": "workspace:*",
-      "@trpc/server": "11.19.0",
       "drizzle-orm": "0.45.2",
       "react": "19.3.0",
       "zod": "4.6.5",
@@ -281,33 +281,62 @@ const MIGRATION_FILES = {
 export const MIGRATIONS = () => migrationsFromJournal(journal, MIGRATION_FILES);
 `;
 
-const router: Template = (names) =>
-  `import { createModuleTRPC, scopesFor, TRPCError } from "@genie/core";
-import { inArray, sql } from "drizzle-orm";
+const contract: Template = (names) =>
+  `import { oc } from "@genie/core/rpc";
+import { z } from "zod";
 
-import { ${names.camel}Record } from "./schema.ts";
-
-const t = createModuleTRPC("${names.id}");
+/** One ${names.displayName} record as the read answers it. */
+const ${names.camel}RecordOutput = z.object({
+  id: z.string(),
+  label: z.string(),
+  categoryId: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
 
 /**
- * The module's router, mounted under the module id when the module is enabled. The list read asks
- * \`scopesFor()\` first and reads only the records the person's grants cover, only through
- * \`ctx.tenant.db\` (DEC-34, DEC-39): a tenant-wide grant reads every row, a record-scoped grant
- * reads the records it names, and no grant is refused before any read. A procedure on one record
- * passes that record to \`can()\`. The
- * \`createModuleTRPC\` base refuses the call with \`module-disabled\` when the entitlement is
- * off, before any resolver runs. The dot in the path \`${names.id}.read\` is a tRPC path, not
- * the permission key.
+ * The module's API, published as \`${names.packageName}/contract\` (ADR 0011). It imports only zod
+ * and the browser-safe \`@genie/core/rpc\`, so the browser client types its calls from this file
+ * without pulling any server code. Every procedure declares its route, and every path starts with
+ * the module id: reads use GET, creation POST, field changes PATCH, removal DELETE, and an action
+ * POST \`/${names.id}/{id}/<action>\`.
  */
-export const ${names.camel}Router = t.router({
-  read: t.procedure.query(async ({ ctx }) => {
-    const scopes = await scopesFor(ctx.caller, "${names.id}:read");
+export const ${names.camel}Contract = {
+  read: oc
+    .route({ method: "GET", path: "/${names.id}/records" })
+    .output(z.array(${names.camel}RecordOutput)),
+};
+
+export type ${names.pascal}Contract = typeof ${names.camel}Contract;
+`;
+
+const router: Template = (names) =>
+  `import { AppError, CORE_ERRORS, implementModule, scopesFor } from "@genie/core";
+import { inArray, sql } from "drizzle-orm";
+
+import { ${names.camel}Contract } from "./contract.ts";
+import { ${names.camel}Record } from "./schema.ts";
+
+const os = implementModule("${names.id}", ${names.camel}Contract);
+
+/**
+ * The module's router, built by core from the contract and mounted under the module id when the
+ * module is enabled. The list read asks \`scopesFor()\` first and reads only the records the
+ * person's grants cover, only through \`context.tenant.db\` (DEC-34, DEC-39): a tenant-wide grant
+ * reads every row, a record-scoped grant reads the records it names, and no grant is refused
+ * before any read. A procedure on one record passes that record to \`can()\` and throws
+ * \`AppError\` \`not-found\` when it does not exist. The \`implementModule\` base refuses the
+ * call with \`module-disabled\` when the entitlement is off, before any handler runs.
+ */
+export const ${names.camel}Router = os.router({
+  read: os.read.handler(async ({ context }) => {
+    const scopes = await scopesFor(context.caller, "${names.id}:read");
 
     if (scopes.kind === "none") {
-      throw new TRPCError({ code: "FORBIDDEN" });
+      throw new AppError(CORE_ERRORS.forbidden);
     }
 
-    const rows = ctx.tenant.db.select().from(${names.camel}Record);
+    const rows = context.tenant.db.select().from(${names.camel}Record);
 
     if (scopes.kind === "all") return rows;
 
@@ -332,6 +361,7 @@ import {
   ${names.pascal}AdminPage,
   ${names.pascal}WorkspacePage,
 } from "./presentation/module-pages.tsx";
+import { ${names.camel}Contract } from "./contract.ts";
 import { ${names.camel}Router } from "./router.ts";
 import {
   MIGRATIONS,
@@ -382,6 +412,8 @@ export const ${names.camel}Module = {
     migrations: MIGRATIONS,
     migrationsTable: MIGRATIONS_TABLE,
   },
+
+  contract: ${names.camel}Contract,
 
   router: ${names.camel}Router,
 
@@ -618,6 +650,11 @@ const index: Template = (names) =>
  */
 
 export { ${names.camel}Module } from "./module.ts";
+
+export {
+  ${names.camel}Contract,
+  type ${names.pascal}Contract,
+} from "./contract.ts";
 
 export { ${names.camel}Router, type ${names.pascal}Router } from "./router.ts";
 
@@ -896,7 +933,11 @@ export {
 `;
 
 const integrationTest: Template = (names) =>
-  `import { principalFor, type ModuleRequestContext } from "@genie/core";
+  `import {
+  callProcedure,
+  principalFor,
+  type ModuleRequestContext,
+} from "@genie/core";
 import {
   enableModules,
   insertPersonWith,
@@ -913,7 +954,7 @@ import { insert${names.pascal}Record } from "./factories.ts";
  * is mocked (R-38).
  *
  * The deployment starts with the module disabled, so the setup enables it: the read procedure's
- * \`createModuleTRPC\` gate refuses a disabled module with \`module-disabled\` before \`can()\`
+ * \`implementModule\` gate refuses a disabled module with \`module-disabled\` before \`can()\`
  * runs, and the cases below prove the authorization, not the entitlement refusal. Every caller is
  * a real person whose keys come from a real role assignment, read by the real evaluator; nothing
  * fakes a permission answer and no principal bypasses the loader.
@@ -979,7 +1020,7 @@ describe("the ${names.id} read procedure", () => {
       "${names.id}:read",
     ]);
 
-    const rows = await ${names.camel}Router.createCaller(contextFor(userId)).read();
+    const rows = await callProcedure(${names.camel}Router, contextFor(userId)).read();
 
     expect(rows.map((entry) => entry.id)).toContain(row.id);
   });
@@ -999,7 +1040,7 @@ describe("the ${names.id} read procedure", () => {
       { type: "${names.id}-record", id: named.id }
     );
 
-    const rows = await ${names.camel}Router.createCaller(contextFor(userId)).read();
+    const rows = await callProcedure(${names.camel}Router, contextFor(userId)).read();
 
     expect(rows.map((entry) => entry.id)).toEqual([named.id]);
     expect(rows.map((entry) => entry.id)).not.toContain(other.id);
@@ -1014,17 +1055,17 @@ describe("the ${names.id} read procedure", () => {
       "${names.id}:use",
     ]);
 
-    const caller = ${names.camel}Router.createCaller(contextFor(userId));
+    const caller = callProcedure(${names.camel}Router, contextFor(userId));
 
-    await expect(caller.read()).rejects.toThrow("FORBIDDEN");
+    await expect(caller.read()).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("refuses an anonymous caller", async () => {
-    const caller = ${names.camel}Router.createCaller(contextFor(undefined));
+    const caller = callProcedure(${names.camel}Router, contextFor(undefined));
 
     // No valid session is refused as unauthenticated before any permission or read (Spec 2 R-14).
     await expect(caller.read()).rejects.toMatchObject({
-      cause: { code: "unauthenticated" },
+      code: "unauthenticated",
     });
   });
 });
@@ -1116,13 +1157,14 @@ The ${names.displayName} capability module.
 ## What belongs here
 
 The module declaration and everything it names: the \`${names.table}\` schema with its own
-migration history, the router behind \`can()\`, the permission keys, the navigation, the
+migration history, the contract and the router behind \`can()\`, the permission keys, the navigation, the
 configuration schema, the frame-origin provider, the page components with their fixtures and
 stories, and the factories for its own tables under \`testing/\`.
 
-Two entry points, so a browser never loads the server graph. \`${names.packageName}\` is the
-module-facing declaration the application mounts. \`${names.packageName}/presentation\` is the
-client surface a story and the shell render.
+Three entry points, so a browser never loads the server graph. \`${names.packageName}\` is the
+module-facing declaration the application mounts. \`${names.packageName}/contract\` is the API the
+browser client types its calls from. \`${names.packageName}/presentation\` is the client surface a
+story and the shell render.
 
 ## What must not go here
 
@@ -1132,7 +1174,7 @@ another module.
 
 ## What it imports
 
-\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\`, \`@trpc/server\` and \`drizzle-orm\`. A module sits
+\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\` and \`drizzle-orm\`, never \`@orpc/*\`. A module sits
 above core and the user-interface package and below the app, so nothing here imports an app, a
 customer folder, or a sibling module.
 `;
@@ -1145,7 +1187,8 @@ The module's source. \`index.ts\` is the module-facing surface the application i
 
 ## What belongs here
 
-The module declaration, its schema, its router, and the three folders the repository convention
+The module declaration, its schema, its contract (\`contract.ts\`, published as the \`./contract\`
+export), its router, and the three folders the repository convention
 names, created only when they hold something: \`lib/\` for a mini-package with its own API,
 \`services/\` for work the application does, and \`utils/\` for a small generic stateless helper.
 \`presentation/\` holds the components and their fixtures.
@@ -1154,13 +1197,15 @@ names, created only when they hold something: \`lib/\` for a mini-package with i
 
 A permission evaluation of its own: every check goes through core's \`can()\`. A read of the
 deployment environment or of the runtime registry. A database driver: the router reads through
-\`ctx.tenant.db\`, which core owns. A factory for this module's tables, which lives in
-\`testing/\`.
+\`context.tenant.db\`, which core owns. An import of \`@orpc/*\`: the contract uses \`oc\` from
+\`@genie/core/rpc\`, and core's \`implementModule\` builds the router. A factory for this
+module's tables, which lives in \`testing/\`.
 
 ## What it imports
 
-\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\`, \`@trpc/server\`, \`drizzle-orm\`, and its own files.
-Never another module, never an app, never a customer folder, never a database driver.
+\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\`, \`drizzle-orm\`, and its own files. \`contract.ts\`
+imports only \`zod\` and \`@genie/core/rpc\`. Never another module, never an app, never a customer
+folder, never a database driver.
 `;
 
 const presentationReadme: Template = () =>
@@ -1251,6 +1296,7 @@ export const MODULE_TEMPLATES = {
   "src/module.ts": declaration,
   "src/module.test.ts": declarationTest,
   "src/access.test.ts": accessTest,
+  "src/contract.ts": contract,
   "src/router.ts": router,
   "src/schema.ts": schema,
   "src/presentation/README.md": presentationReadme,

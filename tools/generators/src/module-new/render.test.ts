@@ -24,6 +24,7 @@ const EXPECTED_FILES = [
   "packages/modules/demo/package.json",
   "packages/modules/demo/src/README.md",
   "packages/modules/demo/src/access.test.ts",
+  "packages/modules/demo/src/contract.ts",
   "packages/modules/demo/src/index.ts",
   "packages/modules/demo/src/module.test.ts",
   "packages/modules/demo/src/module.ts",
@@ -107,10 +108,11 @@ describe("the rendered manifest", () => {
     ).toBeUndefined();
   });
 
-  it("carries the module tag and the three entry points", () => {
+  it("carries the module tag and the four entry points", () => {
     expect(manifest.nx.tags).toEqual(["module"]);
     expect(Object.keys(manifest.exports).toSorted()).toEqual([
       ".",
+      "./contract",
       "./presentation",
       "./testing",
     ]);
@@ -196,21 +198,39 @@ describe("the rendered declaration", () => {
   it("reads only through the tenant context", () => {
     const router = read("packages/modules/demo/src/router.ts");
 
-    expect(router).toContain("async ({ ctx })");
-    expect(router).toContain("ctx.tenant.db");
+    expect(router).toContain("async ({ context })");
+    expect(router).toContain("context.tenant.db");
     // A list read goes through scopesFor, so a record-scoped grant never reads every row (DEC-39).
-    expect(router).toContain('scopesFor(ctx.caller, "demo:read")');
-    expect(router).not.toContain("can(ctx.caller");
+    expect(router).toContain('scopesFor(context.caller, "demo:read")');
+    expect(router).not.toContain("can(context.caller");
     expect(router).not.toContain("drizzle-orm/node-postgres");
   });
 
-  it("builds the module router with core's per-procedure tRPC builder", () => {
+  it("builds the module router from its contract with core's module implementer", () => {
     const router = read("packages/modules/demo/src/router.ts");
 
-    expect(router).toContain('createModuleTRPC("demo")');
+    expect(router).toContain('implementModule("demo", demoContract)');
     expect(router).toContain('from "@genie/core"');
-    expect(router).not.toContain('from "@trpc/server"');
-    expect(router).not.toContain("initTRPC");
+    expect(router).toContain("throw new AppError(CORE_ERRORS.forbidden)");
+    expect(router).not.toContain("@orpc/");
+  });
+
+  it("declares a contract that imports only zod and @genie/core/rpc, with a routed GET", () => {
+    const contract = read("packages/modules/demo/src/contract.ts");
+
+    expect(contract).toContain('import { oc } from "@genie/core/rpc";');
+    expect(contract).toContain(
+      '.route({ method: "GET", path: "/demo/records" })'
+    );
+
+    const imports = contract
+      .split("\n")
+      .filter((line) => line.startsWith("import "));
+
+    expect(imports).toEqual([
+      'import { oc } from "@genie/core/rpc";',
+      'import { z } from "zod";',
+    ]);
   });
 });
 
