@@ -17,7 +17,7 @@ Deliver the workspace, import boundaries, typed module extension points, placeho
 | Local caching only; remote provider deferred | R-3/R-3a, AC-24/AC-28 |
 | Dedicated migration session across all histories | R-24–R-28, AC-9 |
 | Module-owned factories, app-owned composition tests | R-20/R-39 |
-| oRPC error interceptor with additive appCode/requestId | R-46, AC-15 |
+| oRPC error interceptor that builds `data` fresh with appCode/requestId | R-46, AC-15 |
 | Categories/Settings extension declarations only | [Module contract](../architecture/module-contract.md), R-56/AC-29 |
 
 ## Delivery order and early gates

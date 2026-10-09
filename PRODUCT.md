@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Decided before any code exists, authoritative in `docs/core/tech-stack.md`: Next.js (App Router) on React, Tailwind CSS with CSS variables carrying the fixed and tenant token layers, shadcn on Base UI primitives, tRPC + TanStack Query/Form/Table/Pacer, zustand, drizzle-orm on Postgres, pnpm workspaces with Nx. English only, `next-intl` catalog (`DEC-13`).
+Decided before any code exists, authoritative in `docs/core/tech-stack.md`: Next.js (App Router) on React, Tailwind CSS with CSS variables carrying the fixed and tenant token layers, shadcn on Base UI primitives, oRPC + TanStack Query/Form/Table/Pacer, zustand, drizzle-orm on Postgres, pnpm workspaces with Nx. English only, `next-intl` catalog (`DEC-13`).
 
 ## Users
 
