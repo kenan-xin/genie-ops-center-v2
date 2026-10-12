@@ -9,10 +9,10 @@ import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
-import { requireAuth } from "../auth.ts";
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
+import { documentSessionState } from "../document-session.ts";
 import { LimitedSessionMount } from "../limited-session-mount.tsx";
 import { PATHNAME_HEADER } from "../pathname-header.ts";
 import { QueryProvider } from "../providers.tsx";
@@ -65,7 +65,8 @@ export default async function RootLayout({
 
   // The activity client mounts for a live browser session. Its first expiry is supplied by this
   // enforced read (R-15a), so loading, restoring or navigating never writes last_active_at. The
-  // one read also decides the limited-session page below, so a document pays for one session read.
+  // one read also decides the limited-session page below, and the page rendering in parallel
+  // shares it, so a document pays for one session read and makes one idle decision.
   const context = readContext();
 
   const cookieName =
@@ -82,9 +83,7 @@ export default async function RootLayout({
   const session =
     context === undefined || !carriesSessionCookie
       ? undefined
-      : await requireAuth(context.tenant).sessionState({
-          headers: requestHeaders,
-        });
+      : await documentSessionState();
 
   if (session?.status === "idle-expired") redirect("/api/auth/session-expired");
 

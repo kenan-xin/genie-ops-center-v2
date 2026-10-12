@@ -3,6 +3,7 @@ import { redirect } from "next/navigation.js";
 
 import { requireAuth, SIGN_IN_PATH } from "../../../auth.ts";
 import { requireContext } from "../../../context.ts";
+import { documentSessionState } from "../../../document-session.ts";
 import { AdminAccountRoute } from "./admin-account-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function AdminAccountPage() {
   const auth = requireAuth(app.tenant);
   const requestHeaders = await headers();
 
-  const state = await auth.sessionState({ headers: requestHeaders });
+  const state = await documentSessionState();
 
   if (state.status === "idle-expired") redirect(EXPIRED_PATH);
 

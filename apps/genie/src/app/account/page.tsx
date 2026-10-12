@@ -5,6 +5,7 @@ import { redirect } from "next/navigation.js";
 
 import { requireAuth, SIGN_IN_PATH } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
+import { documentSessionState } from "../../document-session.ts";
 import { modules } from "../../registry.ts";
 import { AccountRoute } from "./account-route.tsx";
 
@@ -29,7 +30,7 @@ export default async function AccountPage() {
   const auth = requireAuth(app.tenant);
   const requestHeaders = await headers();
 
-  const state = await auth.sessionState({ headers: requestHeaders });
+  const state = await documentSessionState();
 
   if (state.status === "idle-expired") redirect(EXPIRED_PATH);
 

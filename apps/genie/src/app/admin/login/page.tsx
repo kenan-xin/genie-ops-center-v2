@@ -1,9 +1,8 @@
 import { breakGlassSteps, type BreakGlassStep } from "@genie/core";
-import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 
-import { requireAuth } from "../../../auth.ts";
 import { requireContext } from "../../../context.ts";
+import { documentSessionState } from "../../../document-session.ts";
 import { AdminLoginRoute } from "./admin-login-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +21,8 @@ const ANONYMOUS_STEPS: readonly BreakGlassStep[] = [
  */
 export default async function AdminLoginPage() {
   const app = requireContext();
-  const auth = requireAuth(app.tenant);
-  const requestHeaders = await headers();
 
-  const state = await auth.sessionState({ headers: requestHeaders });
+  const state = await documentSessionState();
 
   if (state.status === "idle-expired")
     redirect("/sign-in?error=session_expired");

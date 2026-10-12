@@ -1,13 +1,12 @@
 import { permittedNavigation } from "@genie/core";
 import { NavigationList } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
-import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 
 import { SIGNED_OUT, SIGNED_OUT_PATH } from "../auth.ts";
 import { requireContext } from "../context.ts";
+import { documentPrincipal } from "../document-session.ts";
 import { modules } from "../registry.ts";
-import { requestPrincipal } from "../request-principal.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +36,7 @@ export default async function HomePage(props: {
   const entries = await permittedNavigation({
     entitlements: tenant.entitlements,
     modules,
-    caller: await requestPrincipal(tenant, await headers()),
+    caller: await documentPrincipal(),
   });
 
   const items = entries.map((entry) => ({

@@ -1,5 +1,6 @@
 import {
   principalFor,
+  type AuthSession,
   type RequestPrincipal,
   type TenantContext,
 } from "@genie/core";
@@ -8,7 +9,8 @@ import { requireAuth } from "./auth.ts";
 import { modules } from "./registry.ts";
 
 /**
- * The one principal of one request, for the tRPC context and the page loader (R-27, DEC-48). Each
+ * The one principal of one request, for the tRPC context (R-27, DEC-48). Server components read
+ * `documentPrincipal`, which shares the request's one enforced read with the root layout. Each
  * call builds a fresh lazy loader, so nothing is shared between requests and a revoked role
  * applies on the next one.
  *
@@ -22,8 +24,17 @@ export async function requestPrincipal(
   tenant: TenantContext,
   headers: Headers
 ): Promise<RequestPrincipal> {
-  const session = await requireAuth(tenant).getSession({ headers });
+  return principalForSession(
+    tenant,
+    await requireAuth(tenant).getSession({ headers })
+  );
+}
 
+/** The principal of one enforced read's session; null is the anonymous principal. */
+export function principalForSession(
+  tenant: TenantContext,
+  session: AuthSession | null
+): RequestPrincipal {
   return principalFor({
     tenant,
     modules,
