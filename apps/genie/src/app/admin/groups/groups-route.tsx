@@ -4,10 +4,7 @@ import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { trpc } from "../../../trpc/client.ts";
-
-/** What a write returns: an id for a create, nothing for the rest. */
-type WriteResult = void | { readonly id: string };
+import { rpc } from "../../../rpc/client.ts";
 
 /**
  * The browser half of the Groups route. The server has already refused a caller without
@@ -22,12 +19,12 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
 
   const list = useQuery({
     queryKey: ["groups", includeArchived],
-    queryFn: () => trpc.groups.list.query({ includeArchived }),
+    queryFn: () => rpc.groups.list({ includeArchived }),
   });
 
   const detail = useQuery({
     queryKey: ["group", selectedId],
-    queryFn: () => trpc.groups.get.query({ groupId: selectedId ?? "" }),
+    queryFn: () => rpc.groups.get({ groupId: selectedId ?? "" }),
     enabled: selectedId !== null,
   });
 
@@ -35,26 +32,29 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   // still behind core:groups:manage (S2-10 moved it from the groups router).
   const people = useQuery({
     queryKey: ["people", "active"],
-    queryFn: () => trpc.people.active.query(),
+    queryFn: () => rpc.people.active(),
   });
 
   const assignableRoles = useQuery({
     queryKey: ["groups", "assignable-roles"],
-    queryFn: () => trpc.groups.assignableRoles.query(),
+    queryFn: () => rpc.groups.assignableRoles(),
   });
 
   // One mutation runs any write and reloads the list and the open detail; the server is the
   // authority for every change, so the client never edits its cache by hand.
   const action = useMutation({
-    mutationFn: (work: () => Promise<WriteResult>) => work(),
+    mutationFn: (work: () => Promise<void>) => work(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["groups"] });
       await queryClient.invalidateQueries({ queryKey: ["group", selectedId] });
     },
   });
 
-  const run = (work: () => Promise<WriteResult>) => {
-    action.mutate(work);
+  // A write's answer is not read: the screen reloads instead.
+  const run = <TResult,>(work: () => Promise<TResult>) => {
+    action.mutate(async () => {
+      await work();
+    });
   };
 
   const selected = selectedId ?? "";
@@ -85,50 +85,44 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       error={list.isError ? "The groups could not be read." : undefined}
       onAddDirectoryGroup={(externalId, displayLabel) =>
         run(() =>
-          trpc.groups.addDirectoryGroup.mutate({
+          rpc.groups.addDirectoryGroup({
             externalId,
             displayLabel: displayLabel ?? null,
           })
         )
       }
       onArchiveGroup={(groupId) =>
-        run(() => trpc.groups.archiveDirectoryGroup.mutate({ groupId }))
+        run(() => rpc.groups.archiveDirectoryGroup({ groupId }))
       }
       onDeleteGroup={(groupId) =>
-        run(() => trpc.groups.deleteDirectoryGroup.mutate({ groupId }))
+        run(() => rpc.groups.deleteDirectoryGroup({ groupId }))
       }
       onEditLabel={(groupId, displayLabel) =>
-        run(() => trpc.groups.editLabel.mutate({ groupId, displayLabel }))
+        run(() => rpc.groups.editLabel({ groupId, displayLabel }))
       }
       onCreateLocalGroup={(name, description) =>
-        run(() => trpc.groups.createLocalGroup.mutate({ name, description }))
+        run(() => rpc.groups.createLocalGroup({ name, description }))
       }
       onUpdateLocalGroup={(groupId, name, description) =>
-        run(() =>
-          trpc.groups.updateLocalGroup.mutate({ groupId, name, description })
-        )
+        run(() => rpc.groups.updateLocalGroup({ groupId, name, description }))
       }
       onDeleteLocalGroup={(groupId) =>
-        run(() => trpc.groups.deleteLocalGroup.mutate({ groupId }))
+        run(() => rpc.groups.deleteLocalGroup({ groupId }))
       }
       onAddMembers={(groupId, userIds) =>
-        run(() =>
-          trpc.groups.addMembers.mutate({ groupId, userIds: [...userIds] })
-        )
+        run(() => rpc.groups.addMembers({ groupId, userIds: [...userIds] }))
       }
       onRemoveMembers={(groupId, userIds) =>
-        run(() =>
-          trpc.groups.removeMembers.mutate({ groupId, userIds: [...userIds] })
-        )
+        run(() => rpc.groups.removeMembers({ groupId, userIds: [...userIds] }))
       }
       onRemoveAllMembers={(groupId) =>
-        run(() => trpc.groups.removeAllMembers.mutate({ groupId }))
+        run(() => rpc.groups.removeAllMembers({ groupId }))
       }
       onAssignRole={(groupId, roleId) =>
-        run(() => trpc.groups.assignRole.mutate({ groupId, roleId }))
+        run(() => rpc.groups.assignRole({ groupId, roleId }))
       }
       onUnassignRole={(groupId, assignmentId) =>
-        run(() => trpc.groups.unassign.mutate({ groupId, assignmentId }))
+        run(() => rpc.groups.unassign({ groupId, assignmentId }))
       }
     />
   );

@@ -192,7 +192,6 @@ describe("the generated customer stack smoke", () => {
       "/viewer/placeholder",
       "/m/placeholder",
       "/admin/m/placeholder",
-      "/api/trpc/placeholder.read?input=%7B%7D",
       "/api/m/placeholder/fixture/hooks",
     ];
 
@@ -217,6 +216,23 @@ describe("the generated customer stack smoke", () => {
       ).toBe(404);
     }
     /* eslint-enable no-await-in-loop */
+
+    // The RPC route serves every image, so an excluded module's procedure is an unknown path: the
+    // route answers the catalogue not-found at 404 rather than the framework.
+    const excludedProcedure = await running().request(
+      "/api/rpc/placeholder/read",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "sec-fetch-site": "same-origin",
+        },
+        body: "{}",
+      }
+    );
+
+    expect(excludedProcedure.status).toBe(404);
+    expect(await excludedProcedure.json()).toMatchObject({ code: "not-found" });
 
     expect(tableNames).not.toContain("placeholder_record");
 

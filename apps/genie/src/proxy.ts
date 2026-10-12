@@ -55,8 +55,8 @@ function applyStandardHeaders(response: NextResponse, requestId: string): void {
 /**
  * The public files the running image actually serves, listed once at module load. Membership is an
  * exact location-and-existence test, never a suffix: a suffix rule exempted any path ending in
- * `.json` or `.js`, and a tRPC batch path such as `/api/trpc/placeholder.read,x.json` then ran a
- * procedure before setup (finding 1). The process runs from the application root — the standalone
+ * `.json` or `.js`, and a batched procedure path ending in `,x.json` then ran a procedure before
+ * setup (finding 1). The process runs from the application root — the standalone
  * server chdirs to its own directory, and `next dev` starts in the project — so `public/` resolves
  * in both. A missing directory is an empty set, not a startup failure.
  */
@@ -191,7 +191,7 @@ const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
 /**
  * R-8: the refusal for a declared route whose module is switched off. It carries the catalogue
  * code, its fixed safe message and this request's id, at HTTP 403, so it reads exactly like the
- * tRPC gate's refusal and the ordinary route helper's body. The module stays mounted; it refuses
+ * RPC gate's refusal and the ordinary route helper's body. The module stays mounted; it refuses
  * rather than disappearing, which is what keeps it distinguishable from an excluded module whose
  * route does not exist.
  */
@@ -319,7 +319,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!satisfied) {
-      // R-80: no tRPC procedure, no inbound endpoint under `/api/m/` and no authentication route
+      // R-80: no RPC procedure, no inbound endpoint under `/api/m/` and no authentication route
       // answers. This is checked before the background branch, so an `/api/` request carrying an
       // RSC header refuses instead of reading as a 200 success (finding 6).
       if (pathname.startsWith("/api/")) {

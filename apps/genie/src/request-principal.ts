@@ -9,7 +9,7 @@ import { requireAuth } from "./auth.ts";
 import { modules } from "./registry.ts";
 
 /**
- * The one principal of one request, for the tRPC context (R-27, DEC-48). Server components read
+ * The one principal of one request, for the RPC context (R-27, DEC-48). Server components read
  * `documentPrincipal`, which shares the request's one enforced read with the root layout. Each
  * call builds a fresh lazy loader, so nothing is shared between requests and a revoked role
  * applies on the next one.

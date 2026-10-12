@@ -11,61 +11,12 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
-import {
-  isUnauthenticatedAnswer,
-  SESSION_EXPIRED_PATH,
-} from "../../../unauthenticated.ts";
+import { rpc } from "../../../rpc/client.ts";
 
 type Cursor = {
   readonly occurredAt: string;
   readonly id: string;
 };
-
-type AuditPageView = {
-  readonly events: readonly AuditEvent[];
-  /** Present on the first page only; null on a keyset page. */
-  readonly total: number | null;
-  readonly nextCursor: Cursor | null;
-  /** Present on the first page only; null on a keyset page. */
-  readonly filterOptions: AuditFilterOptions | null;
-};
-
-/**
- * One page of the reader through the real transport. The procedure answers a query with the tRPC
- * envelope `{ result: { data } }` and no transformer, so the page is plain JSON. The server
- * re-checks `core:audit:read` on every call, so a filter change is refused if the grant is gone.
- */
-async function fetchAuditPage(input: {
-  readonly filters: AuditFilters;
-  readonly cursor: Cursor | null;
-}): Promise<AuditPageView> {
-  const url = `/api/trpc/audit.list?input=${encodeURIComponent(JSON.stringify(input))}`;
-
-  const response = await fetch(url, {
-    headers: { accept: "application/json" },
-  });
-
-  if (!response.ok) {
-    // The session rendered under is gone (idle-expired, capped or revoked): land the browser on
-    // the sign-in page's expired state instead of leaving a bare error in the log (R-14, R-17a).
-    if (await isUnauthenticatedAnswer(response)) {
-      window.location.assign(SESSION_EXPIRED_PATH);
-
-      throw new Error("The audit read was refused: the session expired.");
-    }
-
-    throw new Error(`The audit read was refused (${response.status}).`);
-  }
-
-  // SAFETY: this route's own `audit.list` procedure returns the page, and the tRPC HTTP adapter
-  // wraps a query result as `{ result: { data } }`. The shape below is the one the screen renders.
-  const body = (await response.json()) as { result?: { data?: AuditPageView } };
-  const page = body.result?.data;
-
-  if (page === undefined) throw new Error("The audit read returned no page.");
-
-  return page;
-}
 
 export type AuditLogRouteProps = {
   readonly viewer: AuditViewer;
@@ -85,7 +36,9 @@ export function AuditLogRoute(props: AuditLogRouteProps) {
     queryKey: ["audit-log", filters],
     // SAFETY: the first page's param is no cursor at all, which the query sends as a null cursor.
     initialPageParam: null as Cursor | null,
-    queryFn: ({ pageParam }) => fetchAuditPage({ filters, cursor: pageParam }),
+    // The server re-checks `core:audit:read` on every call, so a filter change is refused if the
+    // grant is gone; an expired session lands on the sign-in page through the client.
+    queryFn: ({ pageParam }) => rpc.audit.list({ filters, cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor,
     // A filter change is a new query key. Without the previous pages as a placeholder the route
     // would fall back to its loading state and unmount the screen, which closed the open filter

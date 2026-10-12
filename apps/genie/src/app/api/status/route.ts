@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const LEDGER = `drizzle."${CORE_HISTORY.table}"`;
 
 /**
- * The ordinary HTTP counterpart of the tRPC path. It exists so a real database
+ * The ordinary HTTP counterpart of the RPC path. It exists so a real database
  * failure can be observed through the route-handler helper (R-46, AC-15), and
  * so the response body shape is proven over the wire rather than in isolation.
  *

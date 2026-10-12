@@ -5,22 +5,19 @@ import {
   UNAUTHENTICATED_APP_CODE,
 } from "./unauthenticated.ts";
 
-/** A tRPC error response carrying one app code, shaped exactly as the envelope the route writes. */
+/** An RPC error response carrying one app code, shaped as the body the route writes. */
 function answer(input: {
   readonly status: number;
   readonly appCode: string;
 }): Response {
   return Response.json(
     {
-      error: {
+      json: {
+        defined: false,
+        code: input.appCode,
+        status: input.status,
         message: "safe message",
-        code: -32001,
-        data: {
-          code: "UNAUTHORIZED",
-          httpStatus: input.status,
-          appCode: input.appCode,
-          requestId: "req-test",
-        },
+        data: { appCode: input.appCode, requestId: "req-test" },
       },
     },
     { status: input.status }
@@ -50,7 +47,7 @@ describe("isUnauthenticatedAnswer", () => {
     ).resolves.toBe(false);
   });
 
-  it("refuses a 401 body that is not a tRPC envelope", async () => {
+  it("refuses a 401 body that is not an RPC error body", async () => {
     await expect(
       isUnauthenticatedAnswer(
         Response.json({ code: "session_expired" }, { status: 401 })

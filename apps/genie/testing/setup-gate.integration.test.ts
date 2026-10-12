@@ -17,6 +17,7 @@ import {
 
 import { imageHostPort } from "./image-ports.ts";
 import { pollHealth, startImage, type RunningImage } from "./image-process.ts";
+import { rpcRequest } from "./rpc-request.ts";
 
 const PORT = imageHostPort(3441);
 
@@ -138,26 +139,22 @@ describe("the setup gate", () => {
     expect(script.headers.get("content-type")).toContain("javascript");
   });
 
-  it("refuses tRPC calls before setup with exactly 503 and standard security headers", async () => {
-    const response = await fetch(
-      url(`/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`)
-    );
+  it("refuses RPC calls before setup with exactly 503 and standard security headers", async () => {
+    const response = await rpcRequest(url(""), "placeholder/read");
 
     expect(response.status).toBe(503);
-    expectStandardHeaders(response, "tRPC refusal");
+    expectStandardHeaders(response, "RPC refusal");
   });
 
-  it("refuses static-looking tRPC and inbound API paths before setup", async () => {
-    const batchedTrpc = await fetch(
-      url("/api/trpc/placeholder.read,x.json?batch=1&input=%7B%7D")
-    );
+  it("refuses static-looking RPC and inbound API paths before setup", async () => {
+    const staticLookingRpc = await rpcRequest(url(""), "placeholder/read.json");
 
     const inbound = await fetch(url("/api/m/placeholder/fixture/hooks.json"), {
       method: "POST",
     });
 
-    expect(batchedTrpc.status).toBe(503);
-    expect(await batchedTrpc.text()).toBe("unavailable");
+    expect(staticLookingRpc.status).toBe(503);
+    expect(await staticLookingRpc.text()).toBe("unavailable");
     expect(inbound.status).toBe(503);
     expect(await inbound.text()).toBe("unavailable");
   });
@@ -253,10 +250,9 @@ describe("the setup gate", () => {
   });
 
   it("refuses an API request with an RSC header before setup", async () => {
-    const response = await fetch(
-      url(`/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`),
-      { headers: { RSC: "1" } }
-    );
+    const response = await rpcRequest(url(""), "placeholder/read", {
+      headers: { RSC: "1" },
+    });
 
     expect(response.status).toBe(503);
     expect(await response.text()).toBe("unavailable");

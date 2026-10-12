@@ -133,7 +133,7 @@ export type PeopleScreenProps = {
   readonly onSelectPerson?: (personId: string | null) => void;
   /**
    * Adds a person. The dialog stays open until this resolves; a rejection leaves it open and the
-   * refusal shows in the alert (the host maps the tRPC error to its catalogue message).
+   * refusal shows in the alert (the host maps the RPC error to its catalogue message).
    */
   readonly onAddPerson?: (input: NewPersonInput) => Promise<void> | void;
   readonly onDisablePerson?: (personId: string) => void;

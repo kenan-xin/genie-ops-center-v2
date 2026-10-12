@@ -1,4 +1,4 @@
-import { type GroupsRouter, type RolesRouter } from "@genie/core";
+import type { GroupsContract, RolesContract } from "@genie/core";
 import {
   enableModules,
   insertCredentialPerson,
@@ -10,27 +10,20 @@ import {
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { placeholderModule } from "@genie/module-placeholder";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { z } from "zod";
 
-import { t } from "../src/trpc/init.ts";
+import { createServerRpcClient } from "../src/rpc/server-client.ts";
 import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
+import { rpcRefusalBody, rpcRequest } from "./rpc-request.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 /**
  * The Groups and Roles transport proof (Spec 2 R-14, R-37), run against the built application:
  * the session gate answers an anonymous caller `unauthenticated` at 401 before any input parsing,
  * a signed-in caller without the key is refused `forbidden` at 403, and a role event emitted inside
- * a tRPC request carries that request's correlation id into its handler (the l65 follow-up).
- *
- * The router types are spelled from the application's own `t`, like the placeholder transport
- * test, so a typed path cannot be misspelled while the runtime still calls the same batch link.
+ * an RPC request carries that request's correlation id into its handler (the l65 follow-up).
  */
-type AdminTransportRouter = ReturnType<
-  typeof t.router<{ groups: GroupsRouter; roles: RolesRouter }>
->;
 
 const READ_PASSWORD = "groups-roles-password-14";
 
@@ -63,27 +56,26 @@ async function sessionFor(userId: string): Promise<string> {
   });
 }
 
+/** A standard RPC client typed from core's Groups and Roles contracts. */
 function adminClient(cookie: string) {
-  return createTRPCClient<AdminTransportRouter>({
-    links: [
-      httpBatchLink<AdminTransportRouter>({
-        url: `${baseUrl()}/api/trpc`,
-        headers: { cookie },
-      }),
-    ],
-  });
+  return createServerRpcClient<{
+    groups: GroupsContract;
+    roles: RolesContract;
+  }>({ url: `${baseUrl()}/api/rpc`, headers: { cookie } });
 }
 
-/** The tRPC error envelope's `appCode`, parsed at this boundary, or undefined for another shape. */
-const errorEnvelope = z.object({
-  error: z.object({ data: z.object({ appCode: z.string() }) }),
-});
-
+/** The RPC refusal's `appCode`, parsed at this boundary, or undefined for another shape. */
 async function readAppCode(response: Response): Promise<string | undefined> {
-  const parsed = errorEnvelope.safeParse(await response.json());
+  const parsed = rpcRefusalBody.safeParse(await response.json());
 
-  return parsed.success ? parsed.data.error.data.appCode : undefined;
+  return parsed.success ? parsed.data.json.data.appCode : undefined;
 }
+
+const listGroups = (headers?: Record<string, string>) =>
+  rpcRequest(baseUrl(), "groups/list", { input: {}, headers });
+
+const listRoles = (headers?: Record<string, string>) =>
+  rpcRequest(baseUrl(), "roles/list", { headers });
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
@@ -126,15 +118,13 @@ afterAll(async () => {
 
 describe("the groups and roles transport", () => {
   it("answers an anonymous caller unauthenticated at 401 before input parsing", async () => {
-    const response = await fetch(
-      `${baseUrl()}/api/trpc/groups.list?input=%7B%7D`
-    );
+    const response = await listGroups();
 
     expect(response.status).toBe(401);
     expect(await readAppCode(response)).toBe("unauthenticated");
 
     // Roles refuses the same way, so neither router can be reached without a session.
-    const roles = await fetch(`${baseUrl()}/api/trpc/roles.list?input=%7B%7D`);
+    const roles = await listRoles();
 
     expect(roles.status).toBe(401);
     expect(await readAppCode(roles)).toBe("unauthenticated");
@@ -143,19 +133,12 @@ describe("the groups and roles transport", () => {
   it("answers a signed-in caller without the key forbidden at 403", async () => {
     const cookie = await sessionFor(withoutPermissionId);
 
-    const groups = await fetch(
-      `${baseUrl()}/api/trpc/groups.list?input=%7B%7D`,
-      {
-        headers: { cookie },
-      }
-    );
+    const groups = await listGroups({ cookie });
 
     expect(groups.status).toBe(403);
     expect(await readAppCode(groups)).toBe("forbidden");
 
-    const roles = await fetch(`${baseUrl()}/api/trpc/roles.list?input=%7B%7D`, {
-      headers: { cookie },
-    });
+    const roles = await listRoles({ cookie });
 
     expect(roles.status).toBe(403);
     expect(await readAppCode(roles)).toBe("forbidden");
@@ -164,13 +147,10 @@ describe("the groups and roles transport", () => {
   it("answers a signed-in caller holding the key", async () => {
     const cookie = await sessionFor(withPermissionId);
 
-    const response = await fetch(
-      `${baseUrl()}/api/trpc/groups.list?input=%7B%7D`,
-      { headers: { cookie } }
-    );
+    const response = await listGroups({ cookie });
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("result");
+    expect(await response.text()).toContain('"json"');
   });
 
   it("carries the request's correlation id into the role event handler", async () => {
@@ -186,7 +166,7 @@ describe("the groups and roles transport", () => {
 
     const logBefore = server.logs().length;
 
-    await client.roles.assign.mutate({
+    await client.roles.assign({
       roleId,
       principalType: "user",
       principalId: targetUserId,
@@ -204,7 +184,7 @@ describe("the groups and roles transport", () => {
     // SAFETY: the proxy wrote each line this loop reads as JSON, so its one field is present.
     const requestId = recent
       .split("\n")
-      .filter((line) => line.includes('"path":"/api/trpc/roles.assign"'))
+      .filter((line) => line.includes('"path":"/api/rpc/roles/assign"'))
       .map((line) => JSON.parse(line) as { requestId?: string })
       .map((line) => line.requestId)
       .find((value) => value !== undefined);

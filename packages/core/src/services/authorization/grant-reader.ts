@@ -201,7 +201,7 @@ export function createRecordResolver(
 }
 
 /**
- * The one lazy loader for a request (R-27): the tRPC context and the page loader call this once
+ * The one lazy loader for a request (R-27): the RPC context and the page loader call this once
  * per request and never share the result. `userId` is the signed-in person's row id, and
  * `authenticated` says whether this request's enforced session read (R-14) found a valid session.
  * They are supplied separately on purpose: `userId` is unrestricted text, so no value of it - and

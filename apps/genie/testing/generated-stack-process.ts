@@ -283,11 +283,18 @@ function envValues(
     .join("\n");
 }
 
+/** The serializable part of a request the app container makes: a method, headers and a text body. */
+export type AppRequestInit = {
+  readonly method?: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly body?: string;
+};
+
 export type GeneratedStack = {
   readonly databaseName: string;
   readonly projectName: string;
   readonly slug: string;
-  readonly request: (path: string) => Promise<Response>;
+  readonly request: (path: string, init?: AppRequestInit) => Promise<Response>;
   readonly tableNames: () => Promise<readonly string[]>;
   /** Fetches `url` from inside the app container, so compose aliases resolve. */
   readonly requestFromApp: (url: string) => Promise<Response>;
@@ -504,14 +511,17 @@ export async function startGeneratedStack(input: {
     composeStarted = true;
     await composeCommand(["up", "--detach"]);
 
-    const requestFromApp = async (url: string): Promise<Response> => {
+    const requestFromApp = async (
+      url: string,
+      init: AppRequestInit = {}
+    ): Promise<Response> => {
       const result = await composeCommand([
         "exec",
         "--no-TTY",
         "app",
         "node",
         "-e",
-        `fetch(${JSON.stringify(url)}, { redirect: "manual" }).then(async response => console.log(JSON.stringify({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() }))).catch(error => { console.error(error); process.exitCode = 1; })`,
+        `fetch(${JSON.stringify(url)}, { ...${JSON.stringify(init)}, redirect: "manual" }).then(async response => console.log(JSON.stringify({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() }))).catch(error => { console.error(error); process.exitCode = 1; })`,
       ]);
 
       // SAFETY: the app-side probe serializes this exact response shape as JSON.
@@ -529,8 +539,8 @@ export async function startGeneratedStack(input: {
       });
     };
 
-    const request = async (path: string) =>
-      requestFromApp(`http://127.0.0.1:3000${path}`);
+    const request = async (path: string, init?: AppRequestInit) =>
+      requestFromApp(`http://127.0.0.1:3000${path}`, init);
 
     const serviceState = async (service: string): Promise<ServiceState> => {
       const { stdout } = await composeCommand([

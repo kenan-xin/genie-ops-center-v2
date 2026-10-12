@@ -7,11 +7,9 @@ import {
   type PeopleViewer,
 } from "@genie/core/features/people";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TRPCClientError } from "@trpc/client";
 import { useState } from "react";
 
-import { trpc } from "../../../trpc/client.ts";
-import type { AppRouter } from "../../../trpc/root.ts";
+import { refusalOf, rpc } from "../../../rpc/client.ts";
 
 /** What a write returns: an id for a create, nothing for the rest. */
 type WriteResult = void | {
@@ -20,19 +18,19 @@ type WriteResult = void | {
   readonly emailSent?: boolean;
 };
 
-/** A refused write as the tRPC client hands it over: the safe message and the envelope data. */
-type RefusalError = TRPCClientError<AppRouter>;
-
 /**
  * The catalogue message for a refused write, with the whole minutes on a rate-limit refusal
- * (R-21). The tRPC formatter already carried the safe message and the minutes, so the screen shows
- * the same reason the server refused with.
+ * (R-21). The transport's error interceptor already carried the safe message and the minutes, so
+ * the screen shows the same reason the server refused with.
  */
-function refusalMessage(error: RefusalError): string {
-  const minutes = error.data?.retryAfterMinutes;
+function refusalMessage(cause: Error): string {
+  const refusal = refusalOf(cause);
+  const minutes = refusal.retryAfterMinutes;
 
   const message =
-    error.message === "" ? "The action could not be completed." : error.message;
+    refusal.message === ""
+      ? "The action could not be completed."
+      : refusal.message;
 
   return minutes === undefined
     ? message
@@ -56,30 +54,26 @@ export function PeopleRoute(props: {
 
   const list = useQuery({
     queryKey: ["people"],
-    queryFn: () => trpc.people.list.query(),
+    queryFn: () => rpc.people.list(),
   });
 
   const detail = useQuery({
     queryKey: ["person", selectedId],
-    queryFn: () => trpc.people.get.query({ personId: selectedId ?? "" }),
+    queryFn: () => rpc.people.get({ personId: selectedId ?? "" }),
     enabled: selectedId !== null,
   });
 
   const roles = useQuery({
     queryKey: ["people", "assignable-roles"],
-    queryFn: () => trpc.people.assignableRoles.query(),
+    queryFn: () => rpc.people.assignableRoles(),
   });
 
   const capabilities = useQuery({
     queryKey: ["people", "capabilities"],
-    queryFn: () => trpc.people.capabilities.query(),
+    queryFn: () => rpc.people.capabilities(),
   });
 
-  const action = useMutation<
-    WriteResult,
-    RefusalError,
-    () => Promise<WriteResult>
-  >({
+  const action = useMutation<WriteResult, Error, () => Promise<WriteResult>>({
     mutationFn: (work) => work(),
     onSuccess: async () => {
       setError(undefined);
@@ -89,10 +83,13 @@ export function PeopleRoute(props: {
     onError: (refusal) => setError(refusalMessage(refusal)),
   });
 
-  const run = (work: () => Promise<WriteResult>) => {
+  // The status writes return nothing the screen reads, so their answer is dropped here.
+  const run = <TResult,>(work: () => Promise<TResult>) => {
     setError(undefined);
     setNotice(undefined);
-    action.mutate(work);
+    action.mutate(async () => {
+      await work();
+    });
   };
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
@@ -104,7 +101,7 @@ export function PeopleRoute(props: {
 
     return action
       .mutateAsync(() =>
-        trpc.people.add.mutate({ ...input, roleIds: [...input.roleIds] })
+        rpc.people.add({ ...input, roleIds: [...input.roleIds] })
       )
       .then((result) => {
         if (
@@ -140,19 +137,15 @@ export function PeopleRoute(props: {
       onSelectPerson={setSelectedId}
       onAddPerson={addPerson}
       onDisablePerson={(personId) =>
-        run(() => trpc.people.disable.mutate({ personId }))
+        run(() => rpc.people.disable({ personId }))
       }
-      onEnablePerson={(personId) =>
-        run(() => trpc.people.enable.mutate({ personId }))
-      }
-      onRemovePerson={(personId) =>
-        run(() => trpc.people.remove.mutate({ personId }))
-      }
+      onEnablePerson={(personId) => run(() => rpc.people.enable({ personId }))}
+      onRemovePerson={(personId) => run(() => rpc.people.remove({ personId }))}
       onResendSetPassword={(personId) =>
-        run(() => trpc.people.resendSetPassword.mutate({ personId }))
+        run(() => rpc.people.resendSetPassword({ personId }))
       }
       onResendInvitation={(personId) =>
-        run(() => trpc.people.resendInvitation.mutate({ personId }))
+        run(() => rpc.people.resendInvitation({ personId }))
       }
     />
   );

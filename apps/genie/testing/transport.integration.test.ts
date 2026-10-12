@@ -1,4 +1,5 @@
 import { CORE_ERROR_MESSAGES, CORE_HISTORY } from "@genie/core";
+import { appErrorData } from "@genie/core/rpc";
 import {
   enableModules,
   insertCredentialPerson,
@@ -7,22 +8,19 @@ import {
   signedSessionCookie,
   startDisposableDeployment,
 } from "@genie/core/testing";
-import {
-  type PlaceholderRouter,
-  placeholderModule,
-} from "@genie/module-placeholder";
+import { placeholderModule } from "@genie/module-placeholder";
+import type { PlaceholderContract } from "@genie/module-placeholder/contract";
 import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
-import {
-  type TRPCClientError,
-  createTRPCClient,
-  httpBatchLink,
-  isTRPCClientError,
-} from "@trpc/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { t } from "../src/trpc/init.ts";
+import {
+  createServerRpcClient,
+  type RpcFailure,
+  rpcFailureOf,
+} from "../src/rpc/server-client.ts";
 import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
+import { rpcRequest } from "./rpc-request.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 // Drizzle creates its ledger in the `drizzle` schema, not `public`.
@@ -38,20 +36,6 @@ const ENTITLEMENT_TABLE = "tenant_module";
 // reading the buffer synchronously after a response can miss the last line.
 const LOG_SETTLE_MS = 5000;
 
-/**
- * The transport router, spelled at the type level from the application's own
- * `t`, which is where the error formatter lives.
- *
- * The registry types every module router as `AnyTRPCRouter` (`readonly router:
- * AnyTRPCRouter`, module-contract.ts), and `Object.fromEntries` then yields an
- * index signature, so `AppRouter` cannot carry a typed proxy. This recovers one
- * without touching the contract: the runtime still calls the application router
- * over the same batch link, and a typed path cannot be misspelled.
- */
-type PlaceholderTransportRouter = ReturnType<
-  typeof t.router<{ placeholder: PlaceholderRouter }>
->;
-
 // Start the built application against the disposable database, then break the
 // objects it reads so every read fails inside the database rather than in
 // application code.
@@ -65,13 +49,10 @@ const baseUrl = () => server.baseUrl;
 // imported outside core.
 const pool = () => deployment.context.db.$client;
 
+/** A standard RPC client typed from the placeholder module's contract alone. */
 function placeholderClient() {
-  return createTRPCClient<PlaceholderTransportRouter>({
-    links: [
-      httpBatchLink<PlaceholderTransportRouter>({
-        url: `${baseUrl()}/api/trpc`,
-      }),
-    ],
+  return createServerRpcClient<{ placeholder: PlaceholderContract }>({
+    url: `${baseUrl()}/api/rpc`,
   });
 }
 
@@ -82,22 +63,25 @@ type PlaceholderClient = ReturnType<typeof placeholderClient>;
  * succeeded.
  *
  * The rejection is narrowed rather than annotated: a network-level rejection is
- * not a `TRPCClientError` and carries no `data`, so it stays `undefined` here
- * and the assertions below fail loudly instead of reading a field the runtime
- * never promised.
+ * not a refusal and carries no `data`, so it stays `undefined` here and the
+ * assertions below fail loudly instead of reading a field the runtime never
+ * promised.
  */
 async function readFailure(
   client: PlaceholderClient
-): Promise<TRPCClientError<PlaceholderTransportRouter> | undefined> {
+): Promise<RpcFailure | undefined> {
   try {
-    await client.placeholder.read.query();
+    await client.placeholder.read();
 
     return undefined;
   } catch (caught) {
-    return isTRPCClientError<PlaceholderTransportRouter>(caught)
-      ? caught
-      : undefined;
+    return rpcFailureOf(caught);
   }
+}
+
+/** The refusal data the client decoded, parsed with the schema the browser uses. */
+function dataOf(failure: RpcFailure | undefined) {
+  return appErrorData.safeParse(failure?.data).data;
 }
 
 beforeAll(async () => {
@@ -127,8 +111,8 @@ describe("both transports", () => {
     // The positive control for this transport. The anonymous request holds no session, so the
     // envelope answers `unauthenticated` at 401 (Spec 2 R-14); that app code proves the context
     // reached the module's procedure rather than an unknown path, and a signed-in read follows.
-    expect(failure?.data?.code).toBe("UNAUTHORIZED");
-    expect(failure?.data?.appCode).toBe("unauthenticated");
+    expect(failure?.status).toBe(401);
+    expect(dataOf(failure)?.appCode).toBe("unauthenticated");
   });
 
   it("the module transport reads the placeholder row for a signed-in person with a real grant", async () => {
@@ -156,10 +140,9 @@ describe("both transports", () => {
       name: "__Host-genie-session",
     });
 
-    const read = await fetch(
-      `${baseUrl()}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
-      { headers: { cookie } }
-    );
+    const read = await rpcRequest(baseUrl(), "placeholder/read", {
+      headers: { cookie },
+    });
 
     expect(read.status).toBe(200);
     expect(await read.text()).toContain(record.label);
@@ -245,7 +228,7 @@ describe("both transports", () => {
     expect(server.logs().slice(logBefore)).toContain(body.requestId);
   });
 
-  it("a standard tRPC client decodes the failure with appCode and requestId", async () => {
+  it("a standard RPC client decodes the failure with appCode and requestId", async () => {
     // The entitlement table, so this transport fails inside the database in
     // the module gate every procedure passes first, rather than depending on
     // the ordinary route's injection still being in place. An anonymous caller
@@ -278,24 +261,25 @@ describe("both transports", () => {
     // The entitlement reader serves a filled value for 10 seconds (DEC-46), so
     // the read fails once the value the refusal case filled has expired.
     await expect
-      .poll(async () => (await readFailure(placeholderClient()))?.data?.code, {
+      .poll(async () => (await readFailure(placeholderClient()))?.status, {
         timeout: 15000,
         interval: 1000,
       })
-      .toBe("INTERNAL_SERVER_ERROR");
+      .toBe(500);
 
     // A failed read fills no cache, so this request fails the same way.
     const failure = await readFailure(placeholderClient());
 
     // The standard client decoded it without a custom transport, and the
-    // protocol code says the server failed rather than that the path was
-    // unknown or the caller was refused.
-    expect(failure?.data?.code).toBe("INTERNAL_SERVER_ERROR");
-    expect(failure?.data?.appCode).toBe("internal-error");
-    expect(failure?.data?.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    // status says the server failed rather than that the path was unknown or
+    // the caller was refused.
+    expect(failure?.status).toBe(500);
+    expect(failure?.code).toBe("internal-error");
+    expect(dataOf(failure)?.appCode).toBe("internal-error");
+    expect(dataOf(failure)?.requestId).toMatch(/^[0-9a-f-]{36}$/);
 
     // The whole decoded error, not just `data`. `message` is the field the
-    // formatter overwrites with `safeMessageFor`, so leaving it out would let
+    // interceptor overwrites with `safeMessageFor`, so leaving it out would let
     // raw database text reach the client with this test still green.
     const decoded = JSON.stringify(failure);
 
@@ -313,6 +297,8 @@ describe("both transports", () => {
       .poll(() => server.logs().slice(logBefore), { timeout: LOG_SETTLE_MS })
       .toContain("request failed");
 
-    expect(server.logs().slice(logBefore)).toContain(failure?.data?.requestId);
+    expect(server.logs().slice(logBefore)).toContain(
+      dataOf(failure)?.requestId
+    );
   });
 });

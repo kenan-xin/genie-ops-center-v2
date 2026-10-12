@@ -17,8 +17,8 @@ const STATUS_BY_CODE = new Map<string, number>([
 
 /**
  * The one status mapping of R-46: a catalogue code's HTTP status, or 500 for a
- * code the table does not hold (a module code, or the generic entry). The tRPC
- * error formatter reads the same function, so a procedure and an ordinary route
+ * code the table does not hold (a module code, or the generic entry). The RPC
+ * error interceptor reads the same function, so a procedure and an ordinary route
  * answer the same status for the same code.
  */
 export function httpStatusForCode(code: string): number {

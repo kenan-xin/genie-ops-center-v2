@@ -32,11 +32,11 @@ export * from "@genie/core/testing/required-tests-validator";
 
 export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
-    file: "testing/trpc-unauthenticated.integration.test.ts",
+    file: "testing/rpc-unauthenticated.integration.test.ts",
     reason:
       "S2-09 review S2 requires the app-owned routes to refuse a limited break-glass session, with only the two clearing endpoints answering",
     cases: [
-      "the tRPC answer for an unauthenticated request refuses a limited break-glass session on every app-owned route except the two clearing endpoints (R-30, S2)",
+      "the RPC answer for an unauthenticated request refuses a limited break-glass session on every app-owned route except the two clearing endpoints (R-30, S2)",
     ],
   },
   {
@@ -56,7 +56,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the built image blocks every request-bound path while migrations are still running",
       "the built image exits nonzero and never answers when the migration lock times out",
       "the built image exits nonzero for malformed configuration without connecting",
-      "the built image shares one context across concurrent page, tRPC and viewer requests",
+      "the built image shares one context across concurrent page, RPC and viewer requests",
       "the built image runs genie-ops from PATH through docker exec and migrates",
       "the built image runs genie-ops migrate on a fresh database through the image entrypoint",
       "the built image serves no migration SQL url",
@@ -131,13 +131,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/disabled-module.integration.test.ts",
     cases: [
-      "compiled disabled module refusal a compiled disabled module hides navigation refuses tRPC and routes and keeps its tables",
+      "compiled disabled module refusal a compiled disabled module hides navigation refuses RPC and routes and keeps its tables",
     ],
   },
   {
-    file: "testing/module-batch.integration.test.ts",
+    file: "testing/module-parallel.integration.test.ts",
     cases: [
-      "module procedures in one tRPC batch answers an enabled module call while refusing only the disabled module call",
+      "module procedures in two parallel calls answers the enabled module call while refusing only the disabled module call",
     ],
   },
   {
@@ -145,8 +145,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "the setup gate reports degraded health with the standard security headers before setup",
       "the setup gate serves public and Next static files before setup",
-      "the setup gate refuses tRPC calls before setup with exactly 503 and standard security headers",
-      "the setup gate refuses static-looking tRPC and inbound API paths before setup",
+      "the setup gate refuses RPC calls before setup with exactly 503 and standard security headers",
+      "the setup gate refuses static-looking RPC and inbound API paths before setup",
       "the setup gate renders the not-set-up page for a module document before setup",
       "the setup gate refuses authentication routes before setup",
       "the setup gate refuses inbound module endpoints before setup",

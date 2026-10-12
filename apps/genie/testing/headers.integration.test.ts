@@ -49,9 +49,20 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
+/** One RPC call as the browser makes it: a same-origin `POST` with an RPC body. */
+const RPC_POST: RequestInit = {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    "sec-fetch-site": "same-origin",
+  },
+  body: "{}",
+};
+
 /** Raw request, redirects never followed, so the redirect itself is observable. */
-async function raw(path: string) {
+async function raw(path: string, init: RequestInit = {}) {
   const response = await fetch(`${server.baseUrl}${path}`, {
+    ...init,
     redirect: "manual",
   });
 
@@ -89,23 +100,23 @@ const providerCountIn = (logs: string) =>
     .filter((line) => line.includes("frame origin provider invoked")).length;
 
 describe("header coverage on the built application", () => {
-  // AC-25 names every response class, and a tRPC error is one of them. Its
+  // AC-25 names every response class, and an RPC error is one of them. Its
   // success form is included too, so a broken route cannot make the error case
   // pass for the wrong reason.
-  for (const path of [
-    "/",
-    "/api/status",
-    "/api/health",
-    "/definitely-missing",
-    "/probe.txt",
-    "/api/trpc/placeholder.read?input=%7B%7D",
-    "/api/trpc/does.not.exist?input=%7B%7D",
+  for (const [path, init] of [
+    ["/"],
+    ["/api/status"],
+    ["/api/health"],
+    ["/definitely-missing"],
+    ["/probe.txt"],
+    ["/api/rpc/placeholder/read", RPC_POST],
+    ["/api/rpc/does/not-exist", RPC_POST],
     // Spec 2 R-71: the sign-in page in a refusal state and the break-glass door.
-    "/sign-in?error=signed_out",
-    "/admin/login",
-  ]) {
+    ["/sign-in?error=signed_out"],
+    ["/admin/login"],
+  ] as const) {
     it(`${path} carries all five headers and the deny baseline`, async () => {
-      const response = await raw(path);
+      const response = await raw(path, init);
 
       for (const header of FIVE) {
         expect(
@@ -301,44 +312,50 @@ describe("header coverage on the built application", () => {
   }
 
   // Headers alone do not prove the transport worked. Without these two, a
-  // `placeholder.read` that returned an ordinary framework 404, or an unknown
+  // `placeholder/read` that returned an ordinary framework 404, or an unknown
   // procedure that never reached the adapter, would still pass the header loop.
-  // The request is anonymous, so the envelope answers `unauthenticated` at 401
-  // (Spec 2 R-14); the tRPC envelope is the proof the adapter was reached.
-  it("the tRPC procedure path answers its refusal envelope, not a framework 404", async () => {
-    const response = await raw("/api/trpc/placeholder.read?input=%7B%7D");
+  // The request is anonymous, so the refusal answers `unauthenticated` at 401
+  // (Spec 2 R-14); the RPC error body is the proof the handler was reached.
+  it("the RPC procedure path answers its refusal body, not a framework 404", async () => {
+    const response = await raw("/api/rpc/placeholder/read", RPC_POST);
 
     expect(response.status).toBe(401);
 
-    // SAFETY: the body is the tRPC envelope this route wrote, and the assertions
-    // below check the fields this test reads.
+    // SAFETY: the body is the RPC error body this route wrote, and the
+    // assertions below check the fields this test reads.
     const body = JSON.parse(response.body) as {
-      error?: { data?: { code?: string; appCode?: string } };
+      json?: { status?: number; data?: { appCode?: string } };
     };
 
-    expect(body.error?.data?.code).toBe("UNAUTHORIZED");
-    expect(body.error?.data?.appCode).toBe("unauthenticated");
+    expect(body.json?.status).toBe(401);
+    expect(body.json?.data?.appCode).toBe("unauthenticated");
   });
 
-  it("an unknown procedure returns a tRPC error envelope with the additive fields", async () => {
-    const response = await raw("/api/trpc/does.not.exist?input=%7B%7D");
+  it("an unknown procedure answers the catalogue not-found body with the request id", async () => {
+    const response = await raw("/api/rpc/does/not-exist", RPC_POST);
 
-    // The default transformer serializes the error directly under `error`.
-    // There is no `json` wrapper unless a data transformer adds one, so an
-    // earlier draft that read `error.json.data` asserted three undefined values.
-    // SAFETY: the body is the tRPC envelope this route wrote, and the
+    // SAFETY: the body is the catalogue body this route wrote, and the
     // assertions below check every field this test reads.
     const body = JSON.parse(response.body) as {
-      error?: {
-        data?: { code?: string; appCode?: string; requestId?: string };
-      };
+      code?: string;
+      requestId?: string;
     };
 
     expect(response.status).toBe(404);
-    expect(body.error).toBeDefined();
-    expect(body.error?.data?.code).toBe("NOT_FOUND");
-    expect(body.error?.data?.appCode).toBeDefined();
-    expect(body.error?.data?.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(body.code).toBe("not-found");
+    expect(body.requestId).toBe(response.requestId);
+    expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  // The route exports only POST, so the framework refuses a GET that oRPC's
+  // handler would otherwise serve for every read (ADR 0011, decision 5).
+  it("refuses a GET to an RPC read", async () => {
+    const response = await raw(
+      `/api/rpc/placeholder/read?data=${encodeURIComponent("{}")}`
+    );
+
+    expect(response.status).toBe(405);
+    expect(response.body).not.toContain("placeholder");
   });
 
   it("a static chunk carries the headers", async () => {

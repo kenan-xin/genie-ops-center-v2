@@ -192,7 +192,8 @@ afterAll(async () => {
  */
 const ABANDONED_PATHS = [
   "/api/health",
-  "/api/trpc/placeholder.read",
+  // The probe sends a GET, which the RPC route refuses at 405; it still has to be answered.
+  "/api/rpc/placeholder/read",
   "/viewer/placeholder",
 ] as const;
 
@@ -282,21 +283,32 @@ async function contextIdOf(
   };
 }
 
+const RPC_ROUTE = "/api/rpc/placeholder/read";
+
 /**
  * The three route classes AC-26 names, one per real framework bundle: the page,
- * the tRPC route handler and the viewer page. Twenty-four requests cycle through
+ * the RPC route handler and the viewer page. Twenty-four requests cycle through
  * them, so each class is served eight times.
  */
-const ROUTE_CLASSES = [
-  "/",
-  "/api/trpc/placeholder.read?input=%7B%7D",
-  "/viewer/placeholder",
-] as const;
+const ROUTE_CLASSES = ["/", RPC_ROUTE, "/viewer/placeholder"] as const;
+
+/** The RPC route takes a same-origin `POST`, as the browser sends it; the pages take a `GET`. */
+const initFor = (path: string): RequestInit =>
+  path === RPC_ROUTE
+    ? {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "sec-fetch-site": "same-origin",
+        },
+        body: "{}",
+      }
+    : {};
 
 /**
  * The pathname the proxy logs for each route class. The proxy logs
- * `request.nextUrl.pathname`, so the tRPC member's query string is dropped and
- * each batch path can be matched in a request line exactly.
+ * `request.nextUrl.pathname`, so a query string is dropped and each batch path
+ * can be matched in a request line exactly.
  */
 const BATCH_PATHS = ROUTE_CLASSES.map(
   (route) => new URL(route, "http://batch.invalid").pathname
@@ -595,7 +607,7 @@ describe("the built image", () => {
     // Hold the migrator's own advisory lock from this process, so the container's
     // migrator blocks on the real lock rather than on an injected timer. This is
     // the ordering Amendment A requires: migrations precede request-bound
-    // handlers, page rendering, tRPC and viewer-provider execution.
+    // handlers, page rendering, RPC and viewer-provider execution.
     const holder = await pool().connect();
 
     await holder.query("select pg_advisory_lock($1)", [
@@ -670,7 +682,7 @@ describe("the built image", () => {
       const bootstrapAt = logs.indexOf("bootstrap complete");
       const afterBootstrap = logs.slice(bootstrapAt);
 
-      // Task 9 widened this from `/api/health` alone. `/api/trpc` and
+      // Task 9 widened this from `/api/health` alone. `/api/rpc` and
       // `/viewer/placeholder` exist now, and all three were queued above, so all
       // three must be answered and logged once the bootstrap completes. A path
       // that could not be proven here would be named as such rather than
@@ -806,9 +818,9 @@ describe("the built image", () => {
   // than through the proxy's log alone. The proxy is one bundle, so its log
   // lines can only ever show what the proxy saw; the route handler and each page
   // report the context their own bundle read, which is what a second context
-  // would split. Twenty-four concurrent page, tRPC and viewer requests, and one
+  // would split. Twenty-four concurrent page, RPC and viewer requests, and one
   // id across every observation.
-  it("shares one context across concurrent page, tRPC and viewer requests", async () => {
+  it("shares one context across concurrent page, RPC and viewer requests", async () => {
     const image = await startImage(
       {
         DATABASE_URL: databaseUrl(),
@@ -825,7 +837,10 @@ describe("the built image", () => {
         Array.from({ length: 24 }, (_, index) => {
           const path = ROUTE_CLASSES[index % ROUTE_CLASSES.length] ?? "";
 
-          return fetch(`http://127.0.0.1:${imageHostPort(3402)}${path}`).then(
+          return fetch(
+            `http://127.0.0.1:${imageHostPort(3402)}${path}`,
+            initFor(path)
+          ).then(
             async (response) => ({
               path,
               status: response.status,
@@ -847,14 +862,13 @@ describe("the built image", () => {
       // Assert the responses, rather than swallowing them. Nothing else in this
       // repository asserts that the ordinary document renders at all, so a `/`
       // that threw would be invisible to every gate: the next-intl request
-      // configuration could be deleted and the suite would stay green. The tRPC
-      // request is anonymous, so its envelope answers `unauthenticated` at 401
+      // configuration could be deleted and the suite would stay green. The RPC
+      // request is anonymous, so its refusal answers `unauthenticated` at 401
       // (Spec 2 R-14), which still proves it was served.
       expect(
         responses.every(
           (response) =>
-            response.status ===
-            (response.path.startsWith("/api/trpc") ? 401 : 200)
+            response.status === (response.path === RPC_ROUTE ? 401 : 200)
         ),
         `not every response had its expected status: ${JSON.stringify(
           responses.map((response) => response.status)
@@ -869,14 +883,14 @@ describe("the built image", () => {
         .map((response) => response.observed.document)
         .filter((id): id is string => id !== null);
 
-      // Each class is observed through the bundle that served it. The eight tRPC
+      // Each class is observed through the bundle that served it. The eight RPC
       // responses carry the header the route-handler bundle wrote; the sixteen
       // page responses carry the attribute their page bundle rendered. A zero in
       // either half would shrink the set below and let it pass for the wrong
       // reason, so both counts are asserted, not just the set size.
       expect(
         headerIds.length,
-        "no tRPC response carried the context header"
+        "no RPC response carried the context header"
       ).toBe(8);
       expect(documentIds.length, "no page rendered the context attribute").toBe(
         16
@@ -903,8 +917,8 @@ describe("the built image", () => {
       expect(requestLines.length).toBe(24);
 
       // All three route classes were served, so the batch really exercised the
-      // page, the tRPC handler and the viewer rather than one class three times.
-      for (const needle of ['"path":"/"', "api/trpc", "viewer/placeholder"]) {
+      // page, the RPC handler and the viewer rather than one class three times.
+      for (const needle of ['"path":"/"', "api/rpc", "viewer/placeholder"]) {
         expect(
           requestLines.some((line) => line.includes(needle)),
           `no request line for ${needle}`
@@ -916,7 +930,7 @@ describe("the built image", () => {
         .filter((id): id is string => id !== undefined);
 
       // One context for the whole process, however many bundles served the load.
-      // The set mixes observations from the proxy's log, the tRPC handler's
+      // The set mixes observations from the proxy's log, the RPC handler's
       // header and both pages' rendered attribute, so it cannot be satisfied by
       // the proxy alone.
       const observed = new Set([...headerIds, ...documentIds, ...logIds]);

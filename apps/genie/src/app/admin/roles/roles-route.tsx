@@ -5,10 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
-import { trpc } from "../../../trpc/client.ts";
-
-/** What a write returns: an id for a create, nothing for the rest. */
-type WriteResult = void | { readonly id: string };
+import { rpc } from "../../../rpc/client.ts";
 
 /**
  * The browser half of the Roles route. The server refused a caller without `core:roles:manage`
@@ -22,23 +19,23 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
 
   const list = useQuery({
     queryKey: ["roles"],
-    queryFn: () => trpc.roles.list.query(),
+    queryFn: () => rpc.roles.list(),
   });
 
   const detail = useQuery({
     queryKey: ["role", selectedRoleId],
-    queryFn: () => trpc.roles.get.query({ roleId: selectedRoleId ?? "" }),
+    queryFn: () => rpc.roles.get({ roleId: selectedRoleId ?? "" }),
     enabled: selectedRoleId !== null,
   });
 
   // The declared permission catalogue the role form picks from (R-33).
   const catalogue = useQuery({
     queryKey: ["roles", "catalogue"],
-    queryFn: () => trpc.roles.catalogue.query(),
+    queryFn: () => rpc.roles.catalogue(),
   });
 
   const action = useMutation({
-    mutationFn: (work: () => Promise<WriteResult>) => work(),
+    mutationFn: (work: () => Promise<void>) => work(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["roles"] });
       await queryClient.invalidateQueries({
@@ -47,8 +44,11 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     },
   });
 
-  const run = (work: () => Promise<WriteResult>) => {
-    action.mutate(work);
+  // A write's answer is not read: the screen reloads instead.
+  const run = <TResult,>(work: () => Promise<TResult>) => {
+    action.mutate(async () => {
+      await work();
+    });
   };
 
   return (
@@ -63,7 +63,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       error={list.isError ? "The roles could not be read." : undefined}
       onCreateRole={(input) =>
         run(() =>
-          trpc.roles.create.mutate({
+          rpc.roles.create({
             name: input.name,
             description: input.description,
             permissions: [...input.permissions],
@@ -72,7 +72,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       }
       onUpdateRole={(roleId, input) =>
         run(() =>
-          trpc.roles.update.mutate({
+          rpc.roles.update({
             roleId,
             name: input.name,
             description: input.description,
@@ -80,7 +80,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
           })
         )
       }
-      onDeleteRole={(roleId) => run(() => trpc.roles.remove.mutate({ roleId }))}
+      onDeleteRole={(roleId) => run(() => rpc.roles.remove({ roleId }))}
       onOpenInAccess={(roleId) => {
         router.push(`/admin/access?recipient=${encodeURIComponent(roleId)}`);
       }}
