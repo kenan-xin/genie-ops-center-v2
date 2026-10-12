@@ -45,7 +45,7 @@ Each decision below states what was chosen and its gain, then the cost of the ch
 - oRPC confinement, so a later 2.x upgrade touches only these files: one oxlint `no-restricted-imports` rule bans `@orpc/*` everywhere except four places. They are core's `packages/core/src/lib/rpc/`, the app's `apps/genie/src/rpc/` (handler options, error interceptor, browser client), the route file under `apps/genie/src/app/api/rpc/`, and the OpenAPI build script. Inside `packages/core/src/lib/rpc/`, the `@genie/core/rpc` entry file exports only browser-safe values (`oc` from `@orpc/contract`, and `appErrorData`). `implementModule`, the conformance check, and one server-side caller `callProcedure` (built on `createRouterClient`) live beside it and are exported from the core root, never from `@genie/core/rpc`. Tests call procedures through `callProcedure` instead of importing `@orpc/*`. A `boundaries.test.ts` case proves the rule refuses an import from a module, a core service, and an app screen.
 - Route contract: the `/api/rpc` handler reuses the proxy's `x-request-id`, runs each call inside `correlationScope.run`, logs the original error before converting it (AC-15), and sets `CONTEXT_HEADER` (AC-26).
 - `TenantContext` and the per-request loader (`DEC-34`, request-scoped grants) enter through the handler `context`, as they enter the tRPC context today.
-- Screens keep `useQuery` with an oRPC `queryFn`, or `createTanstackQueryUtils(...).x.queryOptions()`. TanStack Query stays the owner of server state.
+- Screens keep `useQuery` with a client call passed as its `queryFn`. `@orpc/tanstack-query` is added only when a screen needs its `queryOptions` builder. TanStack Query stays the owner of server state.
 
 ## oRPC behaviors the code relies on
 
