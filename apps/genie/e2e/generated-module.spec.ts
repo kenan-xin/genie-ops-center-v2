@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import { rpcPost } from "./support/rpc.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -104,9 +105,7 @@ test("a signed-in person with a real grant sees the generated module and reads i
   ).toBeVisible();
   await expect(page.getByTestId("permission-denied")).toHaveCount(0);
 
-  const response = await page.request.get(
-    `/api/trpc/${id}.read?input=${encodeURIComponent("{}")}`
-  );
+  const response = await rpcPost(page.request, `/api/rpc/${id}/read`);
 
   expect(response.status()).toBe(200);
 });

@@ -23,6 +23,7 @@ import {
   inviteBaseUrl,
   queryBrokerDatabase,
 } from "./support/brokered.ts";
+import { rpcPost } from "./support/rpc.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
 /**
@@ -62,8 +63,9 @@ async function placeholderVisible(page: Page, baseUrl: string): Promise<void> {
   await page.goto(`${baseUrl}/placeholder`);
   await expect(page.getByTestId("permission-denied")).toHaveCount(0);
 
-  const read = await page.request.get(
-    `${baseUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+  const read = await rpcPost(
+    page.request,
+    `${baseUrl}/api/rpc/placeholder/read`
   );
 
   expect(read.status()).toBe(200);
@@ -79,8 +81,9 @@ async function placeholderRefused(page: Page, baseUrl: string): Promise<void> {
   await page.goto(`${baseUrl}/placeholder`);
   await expect(page.getByTestId("permission-denied")).toBeVisible();
 
-  const read = await page.request.get(
-    `${baseUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+  const read = await rpcPost(
+    page.request,
+    `${baseUrl}/api/rpc/placeholder/read`
   );
 
   expect(read.status()).toBe(403);
@@ -356,8 +359,9 @@ test("retained access: a disabled module's grant is ineffective, the mixed role 
 
       expect(route?.status()).toBe(403);
 
-      const read = await page.request.get(
-        `${baseUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+      const read = await rpcPost(
+        page.request,
+        `${baseUrl}/api/rpc/placeholder/read`
       );
 
       expect(read.status()).toBe(403);

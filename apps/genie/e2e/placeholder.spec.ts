@@ -2,6 +2,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import { rpcPost } from "./support/rpc.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -73,20 +74,21 @@ test("the placeholder read procedure refuses an anonymous request through the re
   request,
   baseURL,
 }) => {
-  const response = await request.get(
-    `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+  const response = await rpcPost(
+    request,
+    `${baseURL}/api/rpc/placeholder/read`
   );
 
   expect(response.status()).toBe(401);
 
-  // SAFETY: the body is the tRPC envelope this route wrote, and the assertions
+  // SAFETY: the body is the RPC error body this route wrote, and the assertions
   // below check the fields this test reads.
   const body = (await response.json()) as {
-    error?: { data?: { code?: string; appCode?: string } };
+    json?: { status?: number; data?: { appCode?: string } };
   };
 
-  expect(body.error?.data?.code).toBe("UNAUTHORIZED");
-  expect(body.error?.data?.appCode).toBe("unauthenticated");
+  expect(body.json?.status).toBe(401);
+  expect(body.json?.data?.appCode).toBe("unauthenticated");
 });
 
 // S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak
@@ -103,9 +105,7 @@ test("a signed-in person with a real grant sees the module entry and reads the p
     page.getByRole("link", { name: "Placeholder", exact: true })
   ).toBeVisible();
 
-  const response = await page.request.get(
-    `/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
-  );
+  const response = await rpcPost(page.request, "/api/rpc/placeholder/read");
 
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain("e2e-visible");

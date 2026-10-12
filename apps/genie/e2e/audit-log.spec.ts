@@ -15,7 +15,7 @@ const IDLE_MINUTES = 15;
  * The anonymous cases stay as controls: the route stays mounted and refuses on the server (R-35),
  * and the list procedure refuses through the transport as `unauthenticated` at 401 rather than a
  * bare permission refusal (Spec 2 R-14). The signed-in success path at both viewports is the
- * AC-16 case at the end; the expired-session case proves the tRPC refusal lands the browser on the
+ * AC-16 case at the end; the expired-session case proves the RPC refusal lands the browser on the
  * sign-in page's session-expired state.
  */
 test("the audit route refuses an anonymous request and reveals nothing", async ({
@@ -33,20 +33,22 @@ test("the audit list procedure refuses an anonymous request through the real tra
   request,
   baseURL,
 }) => {
-  const response = await request.get(
-    `${baseURL}/api/trpc/audit.list?input=${encodeURIComponent("{}")}`
-  );
+  // The browser's same-origin proof, which the RPC route checks before any procedure runs.
+  const response = await request.post(`${baseURL}/api/rpc/audit/list`, {
+    headers: { "sec-fetch-site": "same-origin" },
+    data: { json: {} },
+  });
 
   expect(response.status()).toBe(401);
 
-  // SAFETY: the body is the tRPC envelope this route wrote, and the assertions below read the
+  // SAFETY: the body is the RPC error body this route wrote, and the assertions below read the
   // two fields this test checks.
   const body = (await response.json()) as {
-    error?: { data?: { code?: string; appCode?: string } };
+    json?: { status?: number; data?: { appCode?: string } };
   };
 
-  expect(body.error?.data?.code).toBe("UNAUTHORIZED");
-  expect(body.error?.data?.appCode).toBe("unauthenticated");
+  expect(body.json?.status).toBe(401);
+  expect(body.json?.data?.appCode).toBe("unauthenticated");
 });
 
 /** The current browser session's row id, read through the cookie the sign-in set. */
@@ -73,7 +75,7 @@ async function currentSessionId(page: Page, email: string): Promise<string> {
 /**
  * Drives the controlled search filter with a synthetic `input` event only. Playwright's own
  * `fill` would also dispatch a pointer or key event, which the session-activity client listens
- * for; that call would expire the session first and mask the tRPC proof.
+ * for; that call would expire the session first and mask the RPC proof.
  */
 async function setSearchQuery(page: Page, value: string): Promise<void> {
   await page.getByLabel("Search summary or target").evaluate((node, text) => {
@@ -90,7 +92,7 @@ async function setSearchQuery(page: Page, value: string): Promise<void> {
   }, value);
 }
 
-test("an expired session on a tRPC call lands on the sign-in page", async ({
+test("an expired session on an RPC call lands on the sign-in page", async ({
   page,
 }, testInfo) => {
   const email = e2eReaderEmail("audit", testInfo.project.name);
@@ -122,13 +124,13 @@ test("an expired session on a tRPC call lands on the sign-in page", async ({
 
   const refusal = page.waitForResponse(
     (response) =>
-      response.url().includes("/api/trpc/audit.list") &&
+      response.url().includes("/api/rpc/audit/list") &&
       response.status() === 401
   );
 
   await setSearchQuery(page, "e2e");
 
-  // The tRPC answer is the unauthenticated refusal (Spec 2 R-14), and the client lands the
+  // The RPC answer is the unauthenticated refusal (Spec 2 R-14), and the client lands the
   // browser on the sign-in page's expired state (R-17a). The response body is not read: the
   // client navigates on it, and its app code is pinned by the app integration suite.
   const answer = await refusal;

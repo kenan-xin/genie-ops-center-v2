@@ -119,7 +119,7 @@ test("every signed-in Section 2 screen carries the headers and passes axe", asyn
 
     expectSecurityHeaders(response, path);
 
-    // The client screens read through tRPC after hydration; axe runs on the settled page.
+    // The client screens read through RPC after hydration; axe runs on the settled page.
     // oxlint-disable-next-line no-await-in-loop -- one screen at a time on one page.
     await page.waitForLoadState("networkidle");
 

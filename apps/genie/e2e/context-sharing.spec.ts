@@ -13,6 +13,7 @@ import { type Page, expect, test } from "@playwright/test";
 import { TEST_AUTH_ENV } from "../testing/auth-env.ts";
 import { imageHostPort } from "../testing/image-ports.ts";
 import { startImage } from "../testing/image-process.ts";
+import { rpcPost } from "./support/rpc.ts";
 
 const CONTEXT_HEADER = "x-genie-context-id";
 
@@ -55,11 +56,11 @@ async function documentContextId(page: Page, path: string): Promise<string> {
 }
 
 // AC-26 across real bundles, observed from the browser. The proxy is a single
-// bundle, so its one log line cannot show that the page, tRPC and viewer bundles
+// bundle, so its one log line cannot show that the page, RPC and viewer bundles
 // share a context. Each of these observations is produced by the bundle that
 // served the request: two documents by their page bundles, one header by the
-// tRPC route handler. A second context anywhere would split the set.
-test("one process context serves the page, tRPC and viewer bundles", async ({
+// RPC route handler. A second context anywhere would split the set.
+test("one process context serves the page, RPC and viewer bundles", async ({
   page,
   request,
   baseURL,
@@ -67,19 +68,20 @@ test("one process context serves the page, tRPC and viewer bundles", async ({
   const home = await documentContextId(page, "/");
   const viewer = await documentContextId(page, "/viewer/placeholder");
 
-  const response = await request.get(
-    `${baseURL}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+  const response = await rpcPost(
+    request,
+    `${baseURL}/api/rpc/placeholder/read`
   );
 
-  // The anonymous request holds no session, so the envelope answers `unauthenticated` at 401
-  // (Spec 2 R-14); the refusal is still written by the tRPC route handler bundle.
+  // The anonymous request holds no session, so the refusal answers `unauthenticated` at 401
+  // (Spec 2 R-14); the refusal is still written by the RPC route handler bundle.
   expect(response.status()).toBe(401);
 
-  const trpc = response.headers()[CONTEXT_HEADER];
+  const rpc = response.headers()[CONTEXT_HEADER];
 
-  expect(trpc, "the tRPC handler wrote no context header").toBeDefined();
+  expect(rpc, "the RPC handler wrote no context header").toBeDefined();
 
-  expect(new Set([home, viewer, trpc]).size).toBe(1);
+  expect(new Set([home, viewer, rpc]).size).toBe(1);
 });
 
 test("two stacks of one image keep placeholder data isolated at phone and desktop viewports", async ({
@@ -162,14 +164,16 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
 
     await page.goto(firstUrl);
 
-    const firstResponse = await request.get(
-      `${firstUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+    const firstResponse = await rpcPost(
+      request,
+      `${firstUrl}/api/rpc/placeholder/read`
     );
 
     await page.goto(secondUrl);
 
-    const secondResponse = await request.get(
-      `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`
+    const secondResponse = await rpcPost(
+      request,
+      `${secondUrl}/api/rpc/placeholder/read`
     );
 
     // An anonymous request is refused by each stack's own handler as unauthenticated at 401, and
@@ -195,13 +199,15 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
 
     const secondCookie = await sessionFor(second.context, secondReader);
 
-    const firstSigned = await request.get(
-      `${firstUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
+    const firstSigned = await rpcPost(
+      request,
+      `${firstUrl}/api/rpc/placeholder/read`,
       { headers: { cookie: firstCookie } }
     );
 
-    const secondSigned = await request.get(
-      `${secondUrl}/api/trpc/placeholder.read?input=${encodeURIComponent("{}")}`,
+    const secondSigned = await rpcPost(
+      request,
+      `${secondUrl}/api/rpc/placeholder/read`,
       { headers: { cookie: secondCookie } }
     );
 
