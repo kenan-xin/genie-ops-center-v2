@@ -28,7 +28,7 @@ export type AuditFilterInput = z.infer<typeof filters>;
  */
 export const auditContract = {
   list: oc
-    .route({ method: "GET", path: "/audit/list" })
+    .route({ method: "GET", path: "/audit" })
     .input(
       z.object({
         filters: filters.optional(),

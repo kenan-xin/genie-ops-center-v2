@@ -30,7 +30,7 @@ const scope = z
  */
 export const rolesContract = {
   list: oc
-    .route({ method: "GET", path: "/roles/list" })
+    .route({ method: "GET", path: "/roles" })
     .output(z.custom<readonly RoleRow[]>()),
 
   // The declared permission catalogue the role form picks from, grouped by module with each
@@ -45,7 +45,7 @@ export const rolesContract = {
     .output(z.custom<RoleDetail>()),
 
   create: oc
-    .route({ method: "POST", path: "/roles/create" })
+    .route({ method: "POST", path: "/roles" })
     .input(
       z.object({
         name: z.string().min(1).max(200),

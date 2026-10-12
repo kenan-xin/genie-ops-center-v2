@@ -234,17 +234,29 @@ describe("validateModule", () => {
     ]);
   });
 
-  it("rejects a path outside the module prefix", () => {
+  it.each<`/${string}`>(["/people/all", "/fixtures"])(
+    "rejects the path %s outside the module prefix",
+    (path) => {
+      expect(
+        validateModule(
+          withApi({ read: oc.route({ method: "GET", path }) }, (os) =>
+            os.router({ read: os.read.handler(() => null) })
+          )
+        )
+      ).toEqual([
+        `Procedure "read" of module "fixture" has path "${path}". A module path is "/fixture" or starts with "/fixture/".`,
+      ]);
+    }
+  );
+
+  it("accepts the bare module prefix as the collection path", () => {
     expect(
       validateModule(
-        withApi(
-          { read: oc.route({ method: "GET", path: "/people/all" }) },
-          (os) => os.router({ read: os.read.handler(() => null) })
+        withApi({ read: oc.route({ method: "GET", path: "/fixture" }) }, (os) =>
+          os.router({ read: os.read.handler(() => null) })
         )
       )
-    ).toEqual([
-      'Procedure "read" of module "fixture" has path "/people/all". A module path starts with "/fixture/".',
-    ]);
+    ).toEqual([]);
   });
 
   it("rejects a GET whose input is not an object", () => {

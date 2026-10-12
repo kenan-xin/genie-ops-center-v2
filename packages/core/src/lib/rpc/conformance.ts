@@ -105,7 +105,7 @@ function contractProblems(
 }
 
 /**
- * Decision 7 for every procedure of a contract under `/<prefix>/`. Module validation runs it with
+ * Decision 7 for every procedure of a contract at `/<prefix>` or under `/<prefix>/`. Module validation runs it with
  * the module id; core's own areas are not modules, so their tests run it with the area name.
  */
 export function contractRouteProblems(
@@ -200,11 +200,12 @@ function routeProblems(
   }
 
   const problems: string[] = [];
-  const prefix = `/${moduleId}/`;
+  const prefix = `/${moduleId}`;
 
-  if (!route.path.startsWith(prefix)) {
+  // The bare prefix is the collection itself (`GET /people`); anything else sits under it.
+  if (route.path !== prefix && !route.path.startsWith(`${prefix}/`)) {
     problems.push(
-      `${where} has path "${route.path}". A module path starts with "${prefix}".`
+      `${where} has path "${route.path}". A module path is "${prefix}" or starts with "${prefix}/".`
     );
   }
 

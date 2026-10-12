@@ -19,7 +19,7 @@ const personId = z.object({ personId: z.string().min(1) });
  */
 export const peopleContract = {
   list: oc
-    .route({ method: "GET", path: "/people/list" })
+    .route({ method: "GET", path: "/people" })
     .output(z.custom<readonly PersonRow[]>()),
 
   // The local-group member picker's people: a narrow read behind `core:groups:manage` (R-39).
@@ -43,7 +43,7 @@ export const peopleContract = {
     .output(z.object({ canAssignRoles: z.boolean() })),
 
   add: oc
-    .route({ method: "POST", path: "/people/add" })
+    .route({ method: "POST", path: "/people" })
     .input(
       z.object({
         email: z.email().max(320),

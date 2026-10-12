@@ -20,7 +20,7 @@ const created = z.custom<{ readonly id: string }>();
  */
 export const groupsContract = {
   list: oc
-    .route({ method: "GET", path: "/groups/list" })
+    .route({ method: "GET", path: "/groups" })
     .input(z.object({ includeArchived: z.boolean().default(false) }))
     .output(z.custom<readonly GroupRow[]>()),
 
