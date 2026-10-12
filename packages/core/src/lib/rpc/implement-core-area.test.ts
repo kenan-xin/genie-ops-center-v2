@@ -9,7 +9,6 @@ import {
   createRequestPrincipal,
   createRolesRouter,
   groupsContract,
-  implementCoreArea,
   type ModuleRPCContext,
   peopleContract,
   type PermissionKey,
@@ -17,6 +16,7 @@ import {
   type TenantContext,
 } from "../../index.ts";
 import { contractRouteProblems } from "./conformance.ts";
+import { implementCoreArea } from "./implement-core-area.ts";
 import { oc } from "./index.ts";
 
 /** A core area must never consult entitlements, so reading one fails the test. */

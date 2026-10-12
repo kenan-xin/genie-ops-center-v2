@@ -276,8 +276,6 @@ export {
 
 export { callProcedure } from "./lib/rpc/call-procedure.ts";
 
-export { implementCoreArea } from "./lib/rpc/implement-core-area.ts";
-
 export type {
   PermissionKey,
   ResourceRef,
