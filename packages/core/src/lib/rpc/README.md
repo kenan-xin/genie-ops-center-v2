@@ -1,7 +1,8 @@
 # packages/core/src/lib/rpc
 
-The module API seam on oRPC (ADR 0011). This folder and the app's oRPC files are the only places
-that import `@orpc/*`, so a later oRPC upgrade touches only them.
+The module API seam on oRPC (ADR 0011). This folder, the app's oRPC files and the OpenAPI build
+script (`apps/genie/tools/generate-openapi.ts`) are the only places that import `@orpc/*`, so a
+later oRPC upgrade touches only them.
 
 ## What belongs here
 

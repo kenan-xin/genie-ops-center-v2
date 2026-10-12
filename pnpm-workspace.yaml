@@ -37,7 +37,9 @@ packageExtensions:
 catalog:
   "@orpc/client": "1.15.5"
   "@orpc/contract": "1.15.5"
+  "@orpc/openapi": "1.15.5"
   "@orpc/server": "1.15.5"
+  "@orpc/zod": "1.15.5"
   pg: "8.23.1"
 
 overrides:
