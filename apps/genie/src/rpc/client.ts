@@ -57,13 +57,18 @@ export type Refusal = {
 
 /**
  * Reads a failed call. A transport refusal carries the catalogue's safe message and the data
- * `appErrorData` describes; anything else (a network failure) has no message a person can use.
+ * `appErrorData` describes. Anything else has no message a person can use: a network failure, or
+ * an answer the route wrote outside the interceptor (the origin refusal, an unknown path), whose
+ * `ORPCError` holds only oRPC's fallback text.
  */
 export function refusalOf(cause: unknown): Refusal {
   if (!(cause instanceof ORPCError)) return { message: "" };
 
   const data = appErrorData.safeParse(cause.data);
-  const minutes = data.success ? data.data.retryAfterMinutes : undefined;
+
+  if (!data.success) return { message: "" };
+
+  const minutes = data.data.retryAfterMinutes;
 
   return minutes === undefined
     ? { message: cause.message }

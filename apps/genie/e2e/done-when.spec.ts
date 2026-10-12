@@ -86,7 +86,9 @@ async function placeholderRefused(page: Page, baseUrl: string): Promise<void> {
     `${baseUrl}/api/rpc/placeholder/read`
   );
 
+  // The app code, not only the status: the origin refusal answers 403 as well.
   expect(read.status()).toBe(403);
+  expect(await read.text()).toContain('"appCode":"forbidden"');
 }
 
 test("jit: admitted through a mapped group, a role on another group reaches the person, and removal strips it (AC-20 to AC-24)", async ({

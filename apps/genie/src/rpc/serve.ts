@@ -50,6 +50,18 @@ async function answer(input: {
   if (!stateChangeOriginAllowed(request, app.tenant.env.publicUrl))
     return crossOriginRefusal();
 
+  // The principal is read before the handler runs, so its error interceptor never sees a failed
+  // session read. The failure is logged and answered here with the same id (R-46, AC-15).
+  let caller: RequestPrincipal;
+
+  try {
+    caller = await input.principal();
+  } catch (cause) {
+    app.logError(cause, { requestId });
+
+    return errorResponse(cause, requestId);
+  }
+
   // The correlation scope holds this request's id for the whole procedure, so an event a
   // procedure emits inherits it (module-contract.md, "every event carries a correlation id").
   const result = await app.tenant.correlationScope.run(requestId, async () =>
@@ -62,7 +74,7 @@ async function answer(input: {
         tenant: app.tenant,
         // An anonymous, idle-expired or capped session yields an unauthenticated principal that
         // a protected procedure refuses at 401 (Spec 2 R-14).
-        caller: await input.principal(),
+        caller,
       },
     })
   );

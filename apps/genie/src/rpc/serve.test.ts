@@ -18,7 +18,9 @@ const contract = { read: oc.route({ method: "POST", path: "/reports/read" }) };
 
 const os = implementModule("reports", contract);
 
-function setup() {
+function setup(options: { readonly principalFails?: boolean } = {}) {
+  const logged: string[] = [];
+
   const scopes: string[] = [];
   const reads: string[] = [];
 
@@ -44,7 +46,14 @@ function setup() {
   } as TenantContext;
 
   // SAFETY: as above, the route reads only the tenant and the context id.
-  const app = { tenant, contextId: "context-1" } as AppContext;
+  const app = {
+    tenant,
+    contextId: "context-1",
+    logError: (cause: unknown, meta: { readonly requestId: string }) => {
+      expect(String(cause)).toContain("session table unavailable");
+      logged.push(meta.requestId);
+    },
+  } as AppContext;
 
   const serve = (path: string, headers: Record<string, string>) =>
     serveRpc({
@@ -55,15 +64,17 @@ function setup() {
       app,
       handler: createRpcHandler({ reports: router }, () => undefined),
       principal: () =>
-        Promise.resolve(
-          createRequestPrincipal(
-            { userId: "test-user", groups: [], authenticated: true },
-            () => Promise.resolve({ keys: new Set(), scopes: new Map() })
-          )
-        ),
+        options.principalFails === true
+          ? Promise.reject(new Error("session table unavailable"))
+          : Promise.resolve(
+              createRequestPrincipal(
+                { userId: "test-user", groups: [], authenticated: true },
+                () => Promise.resolve({ keys: new Set(), scopes: new Map() })
+              )
+            ),
     });
 
-  return { serve, scopes, reads };
+  return { serve, scopes, reads, logged };
 }
 
 describe("serveRpc", () => {
@@ -90,6 +101,27 @@ describe("serveRpc", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ code: "cross-origin-request" });
+    expect(reads).toEqual([]);
+    expect(response.headers.get(CONTEXT_HEADER)).toBe("context-1");
+  });
+
+  it("logs a failed session read with the request id and answers the generic 500", async () => {
+    const { serve, reads, logged } = setup({ principalFails: true });
+
+    const response = await serve("/reports/read", {
+      "origin": PUBLIC_URL,
+      "x-request-id": "req-session",
+    });
+
+    const text = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(text)).toMatchObject({
+      code: "internal-error",
+      requestId: "req-session",
+    });
+    expect(text).not.toContain("session table");
+    expect(logged).toEqual(["req-session"]);
     expect(reads).toEqual([]);
     expect(response.headers.get(CONTEXT_HEADER)).toBe("context-1");
   });

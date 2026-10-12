@@ -81,9 +81,11 @@ export function toTransportError(input: {
 }
 
 /**
- * The request contexts whose procedure client was entered. A context object is built fresh by the
- * route for each request and passed by reference to both interceptor chains, so it marks exactly
- * one request, and the weak reference lets it go with the request.
+ * The request contexts whose procedure client was entered. The route builds a fresh context object
+ * for each request, and the default `StrictGetMethodPlugin` copies it once in a root interceptor,
+ * before both chains below run; both chains then receive that one copy by reference. So a key
+ * marks exactly one request, and the weak reference lets it go with the request. A root
+ * interceptor added later that replaces the context between the chains would break this mark.
  */
 const procedureEntered = new WeakSet<RequestContext>();
 
