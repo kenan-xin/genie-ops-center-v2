@@ -101,7 +101,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const [response] = await Promise.all([
       page.waitForResponse((one) =>
-        one.url().includes("people.resendSetPassword")
+        one.url().includes("/api/rpc/people/resendSetPassword")
       ),
       inspector
         .getByRole("button", { name: "Resend set-password email" })
@@ -114,7 +114,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
   // The fourth is refused with the neutral rate-limited code, and one audit row records it.
   const [limited] = await Promise.all([
     page.waitForResponse((one) =>
-      one.url().includes("people.resendSetPassword")
+      one.url().includes("/api/rpc/people/resendSetPassword")
     ),
     inspector
       .getByRole("button", { name: "Resend set-password email" })

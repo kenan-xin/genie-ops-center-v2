@@ -54,7 +54,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   const [addResponse] = await Promise.all([
     page.waitForResponse((response) =>
-      response.url().includes("groups.addDirectoryGroup")
+      response.url().includes("/api/rpc/groups/addDirectoryGroup")
     ),
     addDialog.getByRole("button", { name: "Add group" }).click(),
   ]);
@@ -79,7 +79,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   const [assignResponse] = await Promise.all([
     page.waitForResponse((response) =>
-      response.url().includes("groups.assignRole")
+      response.url().includes("/api/rpc/groups/assignRole")
     ),
     inspector.getByRole("button", { name: "Assign role" }).click(),
   ]);
@@ -139,7 +139,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   const [archiveResponse] = await Promise.all([
     page.waitForResponse((response) =>
-      response.url().includes("groups.archiveDirectoryGroup")
+      response.url().includes("/api/rpc/groups/archiveDirectoryGroup")
     ),
     archiveDialog.getByRole("button", { name: "Archive group" }).click(),
   ]);
@@ -199,7 +199,9 @@ test("the role editor warns on an unavailable key and offers its removal", async
 
   // A custom role may remove the unavailable key without deleting the role.
   const [removeResponse] = await Promise.all([
-    page.waitForResponse((response) => response.url().includes("roles.update")),
+    page.waitForResponse((response) =>
+      response.url().includes("/api/rpc/roles/update")
+    ),
     page.getByRole("button", { name: "Remove" }).click(),
   ]);
 

@@ -157,7 +157,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
 
   const [assigned] = await Promise.all([
     page.waitForResponse((response) =>
-      response.url().includes("groups.assignRole")
+      response.url().includes("/api/rpc/groups/assignRole")
     ),
     group.getByRole("button", { name: "Assign role" }).click(),
   ]);
