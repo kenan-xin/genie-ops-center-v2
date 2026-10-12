@@ -79,14 +79,7 @@
         "cache": false
       },
       "check-openapi": {
-        "cache": false,
-        "inputs": [
-          "default",
-          "^production",
-          "{workspaceRoot}/packages/core/src/services/**/*",
-          "{workspaceRoot}/packages/modules/**/*",
-          "{workspaceRoot}/apps/genie/openapi.json"
-        ]
+        "cache": false
       },
       "build": {
         "dependsOn": [

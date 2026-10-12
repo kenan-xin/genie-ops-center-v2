@@ -61,7 +61,7 @@ jobs:
         with:
           main-branch-name: develop
           fallback-sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
-      - run: pnpm exec nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm run validate
+      - run: pnpm exec nx affected -t lint typecheck test build build-storybook test-storybook --base="$NX_BASE" && pnpm exec nx run @genie/app:check-openapi && pnpm run validate
 
   integration-discover:
     # One projection of the affected integration roster, so the matrix below
