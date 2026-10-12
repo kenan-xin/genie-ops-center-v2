@@ -305,6 +305,40 @@ describe.concurrent(
       expect(route.output).not.toMatch(/no-restricted-imports/);
     });
 
+    it("lets the OpenAPI build script import @orpc/*, the fourth confinement place", async () => {
+      // The script itself owns this path, so it lints in an isolated root rather
+      // than the checkout: `lintAt` refuses a path the product already holds.
+      const result = await lintAtIsolated(
+        "apps/genie/tools/generate-openapi.ts",
+        `import { OpenAPIGenerator } from "@orpc/openapi";\nimport { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";\n\nvoid OpenAPIGenerator;\n\nvoid ZodToJsonSchemaConverter;\n`
+      );
+
+      expect(result.failed).toBe(false);
+      expect(result.output).not.toMatch(/no-restricted-imports/);
+    });
+
+    it("keeps every other app-tool ban on the OpenAPI build script", async () => {
+      // The exception widens the oRPC ban and no other: without this, the entry
+      // could drop the driver ban and every remaining test would still pass.
+      const result = await lintAtIsolated(
+        "apps/genie/tools/generate-openapi.ts",
+        `import "pg";\n`
+      );
+
+      expect(result.failed).toBe(true);
+      expect(result.output).toContain("an app opens no connection (DEC-34).");
+    });
+
+    it("still bans @orpc/* for the rest of an app's build tooling", async () => {
+      const result = await lintAt(
+        "apps/genie/tools/__boundary__.ts",
+        `import { OpenAPIGenerator } from "@orpc/openapi";\n\nvoid OpenAPIGenerator;\n`
+      );
+
+      expect(result.failed).toBe(true);
+      expect(result.output).toContain("@orpc/* is confined to");
+    });
+
     it("keeps the core rpc folder's other layer bans", async () => {
       const result = await lintAt(
         "packages/core/src/lib/rpc/__boundary__.ts",

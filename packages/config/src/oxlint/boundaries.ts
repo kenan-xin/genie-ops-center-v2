@@ -176,13 +176,13 @@ const INTERNAL = [
   "**/../ui/**",
 ];
 
-// oRPC confinement (ADR 0011): `@orpc/*` is imported only in core's `src/lib/rpc/` and the app's
-// oRPC files, so a later oRPC upgrade touches only them. Every layer list below carries this ban,
-// and the exception entries at the end drop it again for those folders.
+// oRPC confinement (ADR 0011): `@orpc/*` is imported only in core's `src/lib/rpc/`, the app's
+// oRPC files, and the OpenAPI build script, so a later oRPC upgrade touches only them. Every layer
+// list below carries this ban, and the exception entries at the end drop it again for those paths.
 const NO_ORPC: RestrictedGroup = {
   group: ["@orpc/*", "@orpc/**"],
   message:
-    "@orpc/* is confined to packages/core/src/lib/rpc/ and the app's oRPC files. A module declares its contract with `oc` from @genie/core/rpc and builds its router with core's implementModule (ADR 0011).",
+    "@orpc/* is confined to packages/core/src/lib/rpc/, the app's oRPC files and the OpenAPI build script. A module declares its contract with `oc` from @genie/core/rpc and builds its router with core's implementModule (ADR 0011).",
 };
 
 const NO_CONFIG = {
@@ -256,6 +256,18 @@ const APP_LAYER: readonly RestrictedGroup[] = [
   { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
   NO_TOOLING,
   NO_ORPC,
+];
+
+// An app's own build tooling (ADR 0008): it reaches the public generators entrypoint and nothing
+// else among the tools, and every other app ban holds. The oRPC build script reuses this list
+// without the oRPC ban (ADR 0011).
+const APP_TOOLS_LAYER: readonly RestrictedGroup[] = [
+  { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
+  {
+    group: [...TOOLING, "!@genie/generators"],
+    message:
+      "an app's build tooling consumes only the public generators entrypoint (R-7a).",
+  },
 ];
 
 /** A layer list without the oRPC ban, for the folders the confinement allows. */
@@ -412,15 +424,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
   // included. The glob is `tools/` only, so nothing under `src/` gains this.
   restrict(
     ["apps/*/tools/**", "customers/*/app/tools/**"],
-    [
-      { group: DRIVERS, message: "an app opens no connection (DEC-34)." },
-      {
-        group: [...TOOLING, "!@genie/generators"],
-        message:
-          "an app's build tooling consumes only the public generators entrypoint (R-7a).",
-      },
-      NO_ORPC,
-    ]
+    [...APP_TOOLS_LAYER, NO_ORPC]
   ),
   restrict(["packages/config/**"], CONFIG_LAYER),
   restrict(["tools/**"], TOOLS_LAYER),
@@ -469,7 +473,7 @@ export const importBoundaryOverrides: OxlintOverride[] = [
   ),
   // The oRPC confinement exceptions (ADR 0011). They follow every entry above that matches the
   // same files, because the last matching entry wins, and each repeats its layer list without
-  // the oRPC ban. The OpenAPI build script joins them when it exists.
+  // the oRPC ban. The OpenAPI build script is the fourth, below.
   restrict(
     ["packages/core/src/lib/rpc/**"],
     [...allowingOrpc(CORE_LAYER), NO_CONFIG]
@@ -490,4 +494,9 @@ export const importBoundaryOverrides: OxlintOverride[] = [
     NON_PRODUCT_FILE_PATTERNS
   ),
   restrict(["packages/modules/*/src/contract.ts"], [MODULE_CONTRACT]),
+  // The fourth oRPC confinement place (ADR 0011): the OpenAPI build script imports
+  // `@orpc/openapi` and `@orpc/zod/zod4`. It is the one app-tool file the ban drops
+  // for, and every other app-tool ban holds. It follows the `apps/*/tools/**` entry,
+  // which the last matching entry wins over.
+  restrict(["apps/genie/tools/generate-openapi.ts"], APP_TOOLS_LAYER),
 ];
