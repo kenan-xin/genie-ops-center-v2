@@ -99,6 +99,12 @@ const procedureEntered = new WeakSet<RequestContext>();
  * The `clientInterceptors` entry only marks that the procedure started, and maps or swallows
  * nothing. The one `interceptors` entry logs every raw error with the request id, then maps a raw
  * error from before that mark to `invalid-input` and one from after it to the generic 500.
+ *
+ * The default `StrictGetMethodPlugin.init` runs in the `StandardHandler` constructor and unshifts
+ * its own client interceptor ahead of that mark, so a plugin or client interceptor placed before
+ * the mark would answer its raw errors as `invalid-input` at 400. Nothing sits before the mark
+ * today (the route exports only `POST`, so the plugin's `METHOD_NOT_SUPPORTED` branch never
+ * fires), but the 2.x upgrade chore must re-check this ordering before adding one.
  */
 export function createRpcHandler(
   router: AppRouter,
