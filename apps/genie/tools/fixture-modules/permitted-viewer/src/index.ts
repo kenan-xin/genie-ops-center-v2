@@ -1,5 +1,8 @@
 import { implementModule, type Module } from "@genie/core";
 
+/** The fixture's empty API. The declaration and the router must name this one object. */
+const contract = {};
+
 /**
  * A module whose frame-origin provider resolves one valid origin. This is the
  * positive control of the fixture browser run: on the same harness and the same
@@ -22,9 +25,9 @@ const permittedViewerModule = {
     migrationsTable: "__drizzle_migrations_permitted_viewer",
   },
 
-  contract: {},
+  contract,
 
-  router: implementModule("permitted-viewer", {}).router({}),
+  router: implementModule("permitted-viewer", contract).router({}),
 
   permissions: [],
 

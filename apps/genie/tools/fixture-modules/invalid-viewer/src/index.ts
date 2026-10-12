@@ -1,5 +1,8 @@
 import { implementModule, type Module } from "@genie/core";
 
+/** The fixture's empty API. The declaration and the router must name this one object. */
+const contract = {};
+
 /**
  * A module whose frame-origin provider resolves only invalid origins (AC-25,
  * invalid provider): a wildcard, a scheme, a non-https origin, and a string
@@ -21,9 +24,9 @@ const invalidViewerModule = {
     migrationsTable: "__drizzle_migrations_invalid_viewer",
   },
 
-  contract: {},
+  contract,
 
-  router: implementModule("invalid-viewer", {}).router({}),
+  router: implementModule("invalid-viewer", contract).router({}),
 
   permissions: [],
 

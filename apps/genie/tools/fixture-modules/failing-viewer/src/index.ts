@@ -1,5 +1,8 @@
 import { implementModule, type Module } from "@genie/core";
 
+/** The fixture's empty API. The declaration and the router must name this one object. */
+const contract = {};
+
 /**
  * A module whose frame-origin provider always fails (AC-25, failed provider).
  * This is a fixture template: it is never in the repository's module inventory,
@@ -20,9 +23,9 @@ const failingViewerModule = {
     migrationsTable: "__drizzle_migrations_failing_viewer",
   },
 
-  contract: {},
+  contract,
 
-  router: implementModule("failing-viewer", {}).router({}),
+  router: implementModule("failing-viewer", contract).router({}),
 
   permissions: [],
 
