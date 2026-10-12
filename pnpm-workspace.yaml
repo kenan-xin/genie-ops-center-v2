@@ -24,6 +24,18 @@ packageExtensions:
     dependencies:
       jsdom: "30.1.2"
 
+# One pg for the whole graph. drizzle-orm takes pg as an optional peer, and pnpm satisfies it
+# from whatever pg the graph holds. pg-boss depends on pg by range, so a second pg version
+# beside core's lets each importer that links drizzle-orm get a different peer set, and their
+# duplicated types fail typecheck in a freshly generated module. The catalog is the one place
+# the version lives: core reads it with `catalog:`, and the override forces every transitive
+# pg, pg-boss's included, onto it. Bump pg here, never in a package.json.
+catalog:
+  pg: "8.23.1"
+
+overrides:
+  pg: "catalog:"
+
 # Supply-chain guard. Refuse any version published less than one day ago,
 # because a malicious release is usually pulled from the registry within the
 # hour. The 1440 default is non-strict, so a too-fresh pin would silently fall
