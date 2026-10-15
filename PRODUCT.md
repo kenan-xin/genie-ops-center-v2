@@ -30,7 +30,7 @@ One codebase and one Dockerfile produce a fully isolated deployment per customer
 ## Operating Context
 
 - Customers are in regulated industries with security teams that must approve the deployment; hosting is Genie-hosted or customer-hosted (customer-managed or Genie-managed) from the same image (`DEC-33`).
-- Sign-in comes from the customer's own identity provider brokered through a per-customer Keycloak realm (OIDC, SAML 2.0, LDAP/AD), or local realm accounts when the customer has no provider; offboarding in the provider locks the person out.
+- Sign-in comes from the customer's own identity provider brokered through a per-customer Keycloak realm (OIDC or SAML 2.0; LDAP/AD federation is deferred until a customer asks), or local realm accounts when the customer has no provider; offboarding in the provider locks the person out.
 - Operators deploy with the `genie-ops` CLI and generated compose or Helm values; dev, staging, and production are Genie-hosted stacks of a demo customer (`DEC-18`); deployment today follows the manual runbook (`DEC-38`).
 - Mobile-first web on evergreen browsers, no native apps (`DEC-25`).
 

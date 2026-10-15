@@ -91,11 +91,11 @@ Keycloak. Two different mappers can produce that claim, and they read different 
 - The Group Membership protocol mapper reads the person's group memberships inside the realm. Its `full.path` property defaults to `true`, which emits `/Finance-Managers` rather than `Finance-Managers`.
 - The User Attribute protocol mapper reads a user attribute and writes it into a claim. It must be multivalued for a list of group names.
 
-Keycloak. A brokered person has no realm group membership by default. The identity provider mapper imports the provider's claim or attribute into a user attribute, and the User Attribute protocol mapper then emits it as `groups`. A local account and an LDAP-federated account do have realm group memberships, so the Group Membership mapper serves them.
+Keycloak. A brokered person has no realm group membership by default. The identity provider mapper imports the provider's claim or attribute into a user attribute, and the User Attribute protocol mapper then emits it as `groups`. A local account does have realm group memberships, so the Group Membership mapper serves it (an LDAP-federated account would too, once LDAP federation is reopened).
 
 The claim carries bare group names, never paths (`docs/specs/README.md`, "Cross-section calls made in the drafting round"). Set `full.path` to `false` on the Group Membership mapper. Let the identity provider mappers import the names exactly as the provider sends them. Genie Ops Center matches a `group` row on that plain name (`../architecture/access-model.md`). Make sure at the first provisioning that the emitted claim carries no leading slash (to confirm at first provisioning).
 
-One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. LDAP federation creates real realm groups, so it uses the Group Membership mapper as well.
+One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. LDAP federation, when reopened, creates real realm groups, so it would use the Group Membership mapper as well.
 
 ### Shared realm settings
 
@@ -370,6 +370,6 @@ Every line here must be confirmed at the first provisioning against a running Ke
 3. The exact broker endpoint path that a customer registers, `KEYCLOAK_URL/realms/<realm>/broker/<alias>/endpoint`.
 4. The Trust Email setting on the identity provider, and whether the brokered variant needs it when the realm does not verify email at all.
 5. The correct `sslRequired` value behind a reverse proxy that terminates TLS, together with the Keycloak proxy headers setting.
-6. Whether one realm can carry both the User Attribute mapper and the Group Membership mapper on the same claim name without a conflict, which an LDAP realm would need if it also brokers a provider.
+6. Whether one realm can carry both the User Attribute mapper and the Group Membership mapper on the same claim name without a conflict, which an LDAP realm would need if it also brokers a provider. Moot until LDAP federation is reopened.
 7. Settled (Spec 2 D2-3): `realm.overrides.json` merges over the template with es-toolkit `mergeWith` — objects merge key by key, a list replaces the whole list — and is then checked against the allow-list named in "Where the realm templates live". A key outside the list refuses the step.
 8. Whether the application idle window and the realm SSO idle timeout can be equal without a race at the boundary.

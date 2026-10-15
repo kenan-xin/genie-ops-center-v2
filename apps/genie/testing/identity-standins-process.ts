@@ -10,8 +10,7 @@ const run = promisify(execFile);
 /**
  * The identity stand-ins of tech plan D2-2: one test Keycloak that imports the
  * `company` realm (an OpenID Connect and SAML 2.0 identity provider with seeded
- * users and groups), an OpenLDAP directory with the memberOf overlay, and
- * Mailpit. They are test-only and never reach a customer stack; the compose file
+ * users and groups), and Mailpit. They are test-only and never reach a customer stack; the compose file
  * lives beside the other test stacks in `deploy/stack/`.
  */
 const COMPOSE_FILE = resolve(
@@ -48,12 +47,6 @@ export type IdentityStandins = {
   readonly mailpitUrl: string;
   readonly smtpPort: number;
   readonly stop: () => Promise<void>;
-  /** Runs a simple-bind search inside the OpenLDAP container and returns its exit and output. */
-  readonly ldapSearch: (filter: string) => Promise<{
-    readonly code: number;
-    readonly stdout: string;
-    readonly stderr: string;
-  }>;
 };
 
 /**
@@ -80,7 +73,6 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
   // network while the app stack in this one joins it by the same name.
   const networkName = projectName;
   const keycloakPort = standinPort(15080);
-  const ldapPort = standinPort(15389);
   const smtpPort = standinPort(15025);
   const mailpitPort = standinPort(18025);
 
@@ -91,7 +83,6 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
         ...process.env,
         GENIE_STANDIN_NETWORK: networkName,
         GENIE_STANDIN_KEYCLOAK_PORT: String(keycloakPort),
-        GENIE_STANDIN_LDAP_PORT: String(ldapPort),
         GENIE_STANDIN_SMTP_PORT: String(smtpPort),
         GENIE_STANDIN_MAILPIT_PORT: String(mailpitPort),
       },
@@ -103,45 +94,9 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
     );
   };
 
-  const ldapSearch = async (filter: string) => {
-    try {
-      const { stdout, stderr } = await compose([
-        "exec",
-        "--no-TTY",
-        "openldap",
-        "ldapsearch",
-        "-H",
-        "ldap://127.0.0.1:10389",
-        "-x",
-        "-b",
-        "dc=planetexpress,dc=com",
-        "-D",
-        "cn=admin,dc=planetexpress,dc=com",
-        "-w",
-        "GoodNewsEveryone",
-        filter,
-        "dn",
-      ]);
-
-      return { code: 0, stdout, stderr };
-    } catch (error) {
-      // SAFETY: execFile rejects with the captured streams on a nonzero exit.
-      const failure = error as {
-        readonly stdout?: string | Buffer;
-        readonly stderr?: string | Buffer;
-      };
-
-      return {
-        code: 1,
-        stdout: String(failure.stdout ?? ""),
-        stderr: String(failure.stderr ?? ""),
-      };
-    }
-  };
-
   try {
     // `--wait` returns once the services with a health check are healthy, so the
-    // test never races Keycloak's realm import or the directory's bootstrap.
+    // test never races Keycloak's realm import.
     await compose(["up", "-d", "--wait"]);
   } catch (error) {
     await stop();
@@ -156,7 +111,6 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
     mailpitUrl: `http://127.0.0.1:${mailpitPort}`,
     smtpPort,
     stop,
-    ldapSearch,
   };
 }
 

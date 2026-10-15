@@ -201,15 +201,4 @@ describe("the identity stand-ins", () => {
       "Mailpit did not receive the test mail"
     ).toBe(true);
   }, 60000);
-
-  it("answers an LDAP bind and resolves a memberOf group", async () => {
-    const result = await running().ldapSearch(
-      "(memberOf=cn=ship_crew,ou=people,dc=planetexpress,dc=com)"
-    );
-
-    expect(result.code, result.stderr).toBe(0);
-    expect(result.stdout).toContain(
-      "dn: cn=Philip J. Fry,ou=people,dc=planetexpress,dc=com"
-    );
-  }, 60000);
 });

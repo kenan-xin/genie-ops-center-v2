@@ -4,7 +4,8 @@
   "meta": {
     "title": "Sign-in through Keycloak and the customer's identity provider",
     "quality_profile": "showcase",
-    "viewBox": [1000, 544],
+    "output": "docs/architecture/diagrams/sign-in-sequence.html",
+    "viewBox": [1000, 570],
     "column_fit": "spread",
     "views": [
       { "id": "authenticate", "label": "Authenticate", "focus": ["user", "app", "keycloak", "entra"], "note": "The browser is redirected from the app to the tenant's Keycloak realm and on to the customer's identity provider." },
@@ -15,7 +16,7 @@
     { "id": "user", "type": "external", "label": "Employee", "sublabel": "browser" },
     { "id": "app", "type": "frontend", "label": "Customer app", "sublabel": "Next.js + Better Auth" },
     { "id": "keycloak", "type": "security", "label": "Keycloak", "sublabel": "customer realm" },
-    { "id": "entra", "type": "external", "label": "Identity provider", "sublabel": "customer's: Entra, Okta, SAML, LDAP" },
+    { "id": "entra", "type": "external", "label": "Identity provider", "sublabel": "customer's: Entra, Okta, SAML" },
     { "id": "db", "type": "database", "label": "Postgres", "sublabel": "user, account, session" }
   ],
   "segments": [

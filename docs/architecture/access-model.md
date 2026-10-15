@@ -10,7 +10,7 @@ The customer's identity provider owns people and groups. Genie Ops Center owns r
 
 1. The person opens Genie Ops Center and clicks sign in.
 2. Genie Ops Center sends the browser to Keycloak, to the customer's own realm.
-3. Keycloak sends the browser to the customer's identity provider, for example Microsoft Entra ID, Google, or Okta. A tenant that federates an on-premises LDAP or Active Directory signs in on the realm's own form instead, and Keycloak checks the password against the directory.
+3. Keycloak sends the browser to the customer's identity provider, for example Microsoft Entra ID, Google, or Okta. LDAP or Active Directory federation, where the realm's own form checks the password against an on-premises directory, is deferred until a customer asks (Specification 02, "Deferred").
 4. The provider checks the password and any second factor, then returns a signed token to Keycloak. A token is a small signed document with facts about the person. Each fact is a claim: name, email, and the groups the person belongs to.
 5. Keycloak puts the group list into its own token under the fixed claim name `groups`, whatever the provider called it. An identity provider mapper in the realm imports the list, and a protocol mapper on the client emits the claim. A second mapper emits `genie_groups: true` so an omitted empty list still means zero groups.
 6. Keycloak returns its token to Genie Ops Center. Better Auth creates the application session, and the sync described below records the groups.
@@ -19,7 +19,7 @@ A customer without an identity provider uses local accounts. Keycloak then holds
 
 ## Where the group list comes from
 
-Every provider sends groups in its own way: an OIDC claim, a SAML attribute, or LDAP `memberOf`. The command `genie-ops idp set` writes the provider into the realm (for LDAP or Active Directory, a user federation with its group mapper) and creates the mappers that carry that list into the `groups` claim (`../runbooks/keycloak-realm.md`). Genie Ops Center reads that claim and the `genie_groups` marker; it reads no provider-specific group format. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
+Every provider sends groups in its own way: an OIDC claim or a SAML attribute (LDAP `memberOf` joins when LDAP federation is reopened). The command `genie-ops idp set` writes the provider into the realm and creates the mappers that carry that list into the `groups` claim (`../runbooks/keycloak-realm.md`). Genie Ops Center reads that claim and the `genie_groups` marker; it reads no provider-specific group format. That is why the sync code, the Groups screen, and the role mapping are the same for every provider, and why a customer can change providers without a change in the product.
 
 One provider per customer is the current design. A second provider in the same realm is a Keycloak addition with a chooser on the sign-in page. It is not described in the runbook until a customer needs it.
 

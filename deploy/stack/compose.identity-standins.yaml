@@ -9,7 +9,7 @@
 # `genie-ops setup` creates it later; this stack never imports it.
 #
 # Every service joins one named network, so the e2e app stack joins it as an
-# external network and reaches Keycloak, OpenLDAP and Mailpit by name instead of
+# external network and reaches Keycloak and Mailpit by name instead of
 # through a published port. The name is fixed by default and overridable through
 # GENIE_STANDIN_NETWORK, which the test harness sets to its worktree-scoped value
 # so two worktrees never share the network.
@@ -23,8 +23,8 @@
 # where the engine does not add it for us. This stack still imports no tenant
 # realm and runs no brokering flow; that belongs to S2-13.
 #
-# The OpenLDAP and Mailpit services are the LDAP federation and the mail sink the
-# Section 2 scenarios need. Host ports are overridable so each worktree's run
+# Mailpit is the mail sink the Section 2 scenarios need. LDAP federation is
+# deferred (Specification 02, "Out of scope"), so no directory stand-in runs. Host ports are overridable so each worktree's run
 # stays apart; testing/identity-standins-process.ts fills them from the scoped
 # worktree offset, and every port stays below the ephemeral range at 32768.
 services:
@@ -68,28 +68,6 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
-
-  openldap:
-    # Test-only OpenLDAP with the memberOf overlay and a seeded directory:
-    # admin `cn=admin,dc=planetexpress,dc=com` / `GoodNewsEveryone`, users under
-    # `ou=people`, groups `cn=admin_staff` and `cn=ship_crew` with `memberOf`.
-    # Pinned by digest because the image publishes no version tags.
-    image: ghcr.io/rroemhild/docker-test-openldap@sha256:f8a8d190cac6ba602a080fd6bec351c65fa09729875ac0cd60c492b15c685d82
-    hostname: openldap
-    ports:
-      - "${GENIE_STANDIN_LDAP_PORT:-15389}:10389"
-    networks:
-      standins:
-        aliases:
-          - openldap
-    healthcheck:
-      # The image's own /healthcheck.sh reports unhealthy here, so this bind is
-      # the readiness check `docker compose up --wait` waits on.
-      test: ["CMD", "ldapsearch", "-H", "ldap://127.0.0.1:10389", "-x", "-b", "dc=planetexpress,dc=com", "-D", "cn=admin,dc=planetexpress,dc=com", "-w", "GoodNewsEveryone", "-s", "base", "dn"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 15s
 
   mailpit:
     # Catches the set-password and invitation emails the Section 2 scenarios send.

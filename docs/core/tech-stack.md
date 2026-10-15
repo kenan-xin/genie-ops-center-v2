@@ -64,9 +64,9 @@ The oRPC and TanStack Query setup lives in `apps/genie/src/rpc/` and these rules
 | Item | Choice | Version | Why |
 | --- | --- | --- | --- |
 | Session and account library | Better Auth | 1.7.6 | One instance per deployment, built inside the tenant context, database-backed sessions with a fixed 24 hour cap while the application enforces the idle timeout per request from `tenant_settings` (`DEC-46`), account linking. Two-factor plugin for the break-glass administrator (`DEC-15`). Pinned exactly: the identity migration (Spec 2 R-1) ships the tables its CLI generated, so the schema is load-bearing and the version must not drift. |
-| Identity broker | Keycloak | 26.7 | One realm per tenant. Brokers any OpenID Connect or SAML 2.0 provider and federates LDAP or Active Directory. Holds local accounts, passwords, and second factors for a tenant without a provider. Normalizes groups into one claim. The app speaks only OIDC to Keycloak, and uses a per-realm admin service client to create accounts for local-account tenants. |
+| Identity broker | Keycloak | 26.7 | One realm per tenant. Brokers any OpenID Connect or SAML 2.0 provider; LDAP or Active Directory federation is deferred until a customer asks. Holds local accounts, passwords, and second factors for a tenant without a provider. Normalizes groups into one claim. The app speaks only OIDC to Keycloak, and uses a per-realm admin service client to create accounts for local-account tenants. |
 | App to Keycloak | Better Auth `genericOAuth` Keycloak provider | bundled | Authorization code with PKCE. Callback `/api/auth/callback/keycloak`, the core callback route since Better Auth 1.7. Sign-in is `signIn.social({ provider: "keycloak" })` with no client plugin. The realm template registers the same path as the client redirect URI. |
-| Customer identity providers | Microsoft Entra ID, Okta, Ping, ADFS, Google Workspace, LDAP or Active Directory | customer's | Configured in Keycloak per realm. Entra is an example, not a requirement. |
+| Customer identity providers | Microsoft Entra ID, Okta, Ping, ADFS, Google Workspace (LDAP or Active Directory deferred) | customer's | Configured in Keycloak per realm. Entra is an example, not a requirement. |
 | Authorization | In-application scoped role-based access | own code | `role`, `role_assignment`, one `can()` seam. Keycloak authorization services are not used. |
 | Provisioning | SCIM | later | Not in Keycloak core. An extension or an app endpoint when a customer requires push-based joiners and leavers. |
 
@@ -111,7 +111,6 @@ Test-only containers for the end-to-end stack (tech plan D2-2). They run in `dep
 
 | Item | Choice | Version | Why |
 | --- | --- | --- | --- |
-| LDAP federation stand-in | OpenLDAP (`ghcr.io/rroemhild/docker-test-openldap`) | pinned by digest | A real OpenLDAP directory with seeded users, groups, and the memberOf overlay, so the LDAP federation scenarios bind and read group membership; the image publishes no version tags, so the digest is the pin. |
 | Mail sink stand-in | Mailpit (`axllent/mailpit`) | v1.31.3 | Receives the set-password and invitation emails the identity scenarios send over SMTP and exposes them over HTTP for the test to assert. |
 
 ## Delivery
