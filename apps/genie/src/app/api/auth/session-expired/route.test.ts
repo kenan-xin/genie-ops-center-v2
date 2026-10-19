@@ -20,6 +20,9 @@ const LIVE: AuthSessionState = {
 /** What the stub auth member answers; each case sets it before its visit. */
 let current: AuthSessionState = { status: "anonymous" };
 
+/** How many times the route asked the member to delete an idle row. */
+let ended = 0;
+
 const unused = () => Promise.reject(new Error("the route does not call this"));
 
 /** The auth member the route reads; only its enforced read answers. */
@@ -27,6 +30,11 @@ const auth: AuthMember = {
   handler: unused,
   getSession: unused,
   sessionState: () => Promise.resolve(current),
+  endIdleSession: () => {
+    ended += 1;
+
+    return Promise.resolve(true);
+  },
   recordActivity: unused,
   listOwnSessions: unused,
   revokeOwnSession: unused,
@@ -57,6 +65,7 @@ afterAll(async () => {
 
 function answering(state: AuthSessionState): void {
   current = state;
+  ended = 0;
 }
 
 function visit(): Promise<Response> {
@@ -83,14 +92,15 @@ describe("GET /api/auth/session-expired", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe(`${PUBLIC_URL}/`);
     expect(response.headers.getSetCookie()).toEqual([]);
+    expect(ended).toBe(0);
   });
 
   it.each([
-    ["idle-expired", "/sign-in?error=session_expired"],
-    ["anonymous", "/sign-in"],
+    ["idle-expired", "/sign-in?error=session_expired", 1],
+    ["anonymous", "/sign-in", 0],
   ] as const)(
     "clears the cookie of a %s session and lands on %s",
-    async (status, target) => {
+    async (status, target, deletes) => {
       answering({ status });
 
       const response = await visit();
@@ -102,6 +112,8 @@ describe("GET /api/auth/session-expired", () => {
           /^__Host-genie-session=;.*Expires=Thu, 01 Jan 1970/
         ),
       ]);
+      // The idle row ends with its cookie (R-14).
+      expect(ended).toBe(deletes);
     }
   );
 });

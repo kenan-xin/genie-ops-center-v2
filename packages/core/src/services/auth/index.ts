@@ -4,7 +4,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { twoFactor as twoFactorPlugin } from "better-auth/plugins/two-factor";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 /* oxlint-disable anti-slop/require-readable-spacing -- the Better Auth hook scopes keep adjacent guards and writes together. */
 
@@ -294,6 +294,50 @@ export function sessionCreateBefore(
   };
 }
 
+/** A session row's idle baseline: the activity call's column, or its creation before the first call. */
+const IDLE_BASELINE = sql<Date>`coalesce(${session.lastActiveAt}, ${session.createdAt})`;
+
+/**
+ * The idle rule (R-14) as a SQL condition: true for a row past the window at `at`. It is
+ * `isIdleExpired` over the row's columns, so a conditional write and the enforced read agree on
+ * the same half-open boundary.
+ */
+function idleRow(at: Date, idleMinutes: number): SQL {
+  return lte(IDLE_BASELINE, new Date(at.getTime() - idleMinutes * 60_000));
+}
+
+/**
+ * Removes the person's dead sessions when they sign in again (R-14): rows past the 24 hour cap,
+ * and rows past the idle window whose browser never came back to have its cookie cleared. The
+ * new session is kept. Running it twice deletes nothing more.
+ *
+ * The cleanup is best effort. While the settings row is absent (a deployment the `seed` step has
+ * not finished) the idle window is unknown, so only capped rows go, and the sign-in still
+ * succeeds.
+ */
+async function removeDeadSessions(
+  input: Pick<AuthMemberInput, "db" | "settings" | "now">,
+  created: { readonly id: string; readonly userId: string }
+): Promise<void> {
+  const at = new Date((input.now ?? Date.now)());
+
+  const idleMinutes = await input.settings
+    .get()
+    .then((settings) => settings.sessionIdleMinutes)
+    .catch(() => undefined);
+
+  const dead =
+    idleMinutes === undefined
+      ? lte(session.expiresAt, at)
+      : or(lte(session.expiresAt, at), idleRow(at, idleMinutes));
+
+  await input.db
+    .delete(session)
+    .where(
+      and(eq(session.userId, created.userId), ne(session.id, created.id), dead)
+    );
+}
+
 /** Rejects when `work` does not settle within `timeoutMs`. */
 function withTimeout<T>(work: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -354,7 +398,17 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
     },
     databaseHooks:
       input.tenant === undefined || input.requestScope === undefined
-        ? { account: accountHooks(input) }
+        ? {
+            account: accountHooks(input),
+            session: {
+              create: {
+                after: (data: {
+                  readonly id: string;
+                  readonly userId: string;
+                }) => removeDeadSessions(input, data),
+              },
+            },
+          }
         : {
             account: {
               ...accountHooks(input),
@@ -434,9 +488,11 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
               create: {
                 before: sessionCreateBefore(input),
                 async after(data: {
+                  readonly id: string;
                   readonly userId: string;
                   readonly userAgent?: string | null | undefined;
                 }) {
+                  await removeDeadSessions(input, data);
                   const facts = input.requestScope?.current();
                   if (facts?.oauth !== true) return;
                   const tenant = input.tenant?.();
@@ -982,7 +1038,9 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
    * browser sends several requests at once: a reload, a prefetch, a second tab, the activity
    * call. When the first refusal deleted the row, every later request with the same cookie found
    * no row and answered anonymous, so the browser kept a dead cookie and missed the expired
-   * banner. A kept row gives every such request the same answer. The activity call is the only
+   * banner. A kept row gives every such request the same answer. The row is deleted where the
+   * application clears the browser's cookie (`endIdleSession`), and otherwise at the person's
+   * next sign-in (`removeDeadSessions`). The activity call is the only
    * writer of `last_active_at`, and its write carries the idle condition, so it cannot slide a
    * row past the window. Raising the tenant's idle minutes can make a kept row live again, as it
    * can any row no request read. The handler below hides the row from Better Auth's own
@@ -1060,15 +1118,16 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
       // R-15: this update is the one writer of `last_active_at`. It carries the idle condition
       // itself, so a session that crossed the window after the read above, and that a parallel
       // request already refused, is not slid back to life.
-      const cutoff = new Date(at.getTime() - sessionIdleMinutes * 60_000);
-
       const slid = await input.db
         .update(session)
         .set({ lastActiveAt: at })
         .where(
           and(
             eq(session.id, state.session.session.id),
-            sql`coalesce(${session.lastActiveAt}, ${session.createdAt}) > ${cutoff}`
+            gt(
+              IDLE_BASELINE,
+              new Date(at.getTime() - sessionIdleMinutes * 60_000)
+            )
           )
         )
         .returning({ id: session.id });
@@ -1082,6 +1141,30 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
           idleMinutes: sessionIdleMinutes,
         }),
       };
+    },
+
+    async endIdleSession({ headers }) {
+      const value = await instance.api.getSession({ headers });
+
+      const current = value === null ? null : toSession(value);
+
+      if (current === null) return false;
+
+      const { sessionIdleMinutes } = await input.settings.get();
+
+      // The idle condition is in the delete itself, so a live session is never removed, even
+      // one an activity call slid between this read and the write.
+      const deleted = await input.db
+        .delete(session)
+        .where(
+          and(
+            eq(session.id, current.session.id),
+            idleRow(new Date(now()), sessionIdleMinutes)
+          )
+        )
+        .returning({ id: session.id });
+
+      return deleted.length > 0;
     },
 
     async listOwnSessions({ session: current }) {

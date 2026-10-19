@@ -1,12 +1,17 @@
 import type { PoolClient } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { sessionCookieName } from "../src/services/auth/config.ts";
 import type { AuthMember, AuthSession } from "../src/services/auth/index.ts";
 import { createAuthMember } from "../src/services/auth/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
-import { insertCredentialPerson, startDisposableDeployment } from "./index.ts";
+import {
+  insertCredentialPerson,
+  insertSession,
+  signedSessionCookie,
+  startDisposableDeployment,
+} from "./index.ts";
 
 /**
  * The idle rule and the Sessions block's member reads (Spec 2 R-14, R-15, R-15a, R-18, AC-5)
@@ -115,6 +120,18 @@ async function countRows(client: PoolClient, id: string): Promise<number> {
   return Number(result.rows[0]?.count ?? 0);
 }
 
+async function countByToken(
+  client: PoolClient,
+  token: string
+): Promise<number> {
+  const result = await client.query<{ readonly count: string }>(
+    "select count(*) as count from session where token = $1",
+    [token]
+  );
+
+  return Number(result.rows[0]?.count ?? 0);
+}
+
 /** Moves a session row's idle baseline without waiting the window out. */
 async function ageSession(
   client: PoolClient,
@@ -144,6 +161,12 @@ describe("the session idle rule", () => {
       IDLE_MINUTES,
     ]);
   }, 240_000);
+
+  // The break-glass sign-in window (R-19) is per deployment; each case starts with a fresh one so
+  // the number of sign-ins in this file does not decide whether a case can sign in.
+  beforeEach(async () => {
+    await client.query("delete from rate_limit_window");
+  });
 
   afterAll(async () => {
     client?.release();
@@ -400,6 +423,94 @@ describe("the session idle rule", () => {
     expect((await sessionRow(client, sessionId)).last_active_at).toEqual(
       before.last_active_at
     );
+  });
+
+  it("ends an idle session's row and never a live one (R-14, amended 2026-10-19)", async () => {
+    const auth = authOf(deployment);
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email: "end-idle@example.com",
+      password: PASSWORD,
+    });
+
+    const cookieFor = async (minutesAgo: number) => {
+      const token = await insertSession(deployment.context, {
+        userId,
+        lastActiveAt: new Date(Date.now() - minutesAgo * 60_000),
+      });
+
+      return {
+        token,
+        cookie: await signedSessionCookie({
+          token,
+          secret: AUTH_ENV.BETTER_AUTH_SECRET,
+          name: SESSION_COOKIE,
+        }),
+      };
+    };
+
+    const live = await cookieFor(1);
+    const idle = await cookieFor(IDLE_MINUTES + 1);
+
+    expect(
+      await auth.endIdleSession({
+        headers: new Headers({ cookie: live.cookie }),
+      })
+    ).toBe(false);
+    expect(await countByToken(client, live.token)).toBe(1);
+
+    expect(
+      await auth.endIdleSession({
+        headers: new Headers({ cookie: idle.cookie }),
+      })
+    ).toBe(true);
+    expect(await countByToken(client, idle.token)).toBe(0);
+
+    // Twice is harmless: the row is already gone.
+    expect(
+      await auth.endIdleSession({
+        headers: new Headers({ cookie: idle.cookie }),
+      })
+    ).toBe(false);
+  });
+
+  it("removes the person's dead sessions when they sign in again, and keeps live ones (R-14)", async () => {
+    const auth = authOf(deployment);
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email: "sign-in-cleanup@example.com",
+      password: PASSWORD,
+    });
+
+    const idle = await insertSession(deployment.context, {
+      userId,
+      lastActiveAt: new Date(Date.now() - (IDLE_MINUTES + 1) * 60_000),
+    });
+
+    const capped = await insertSession(deployment.context, {
+      userId,
+      lastActiveAt: new Date(),
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    const live = await insertSession(deployment.context, {
+      userId,
+      lastActiveAt: new Date(),
+    });
+
+    const { sessionId } = await signIn(auth, "sign-in-cleanup@example.com");
+
+    expect(await countByToken(client, idle)).toBe(0);
+    expect(await countByToken(client, capped)).toBe(0);
+    expect(await countByToken(client, live)).toBe(1);
+    expect(await countRows(client, sessionId)).toBe(1);
+
+    // A second sign-in finds nothing more to remove and keeps both live sessions.
+    const again = await signIn(auth, "sign-in-cleanup@example.com");
+
+    expect(await countByToken(client, live)).toBe(1);
+    expect(await countRows(client, sessionId)).toBe(1);
+    expect(await countRows(client, again.sessionId)).toBe(1);
   });
 
   it("an anonymous activity call answers null and writes nothing", async () => {

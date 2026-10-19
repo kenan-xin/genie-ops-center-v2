@@ -22,10 +22,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
   const { tenant } = requireContext();
   const publicUrl = tenant.env.publicUrl;
+  const auth = requireAuth(tenant);
 
-  const state = await requireAuth(tenant).sessionState({
-    headers: request.headers,
-  });
+  const state = await auth.sessionState({ headers: request.headers });
 
   if (state.status === "authenticated") {
     const home = NextResponse.redirect(new URL("/", publicUrl), 303);
@@ -34,6 +33,10 @@ export async function GET(request: Request): Promise<Response> {
 
     return home;
   }
+
+  // The row ends with the cookie: this response clears it, so the browser stops sending it.
+  if (state.status === "idle-expired")
+    await auth.endIdleSession({ headers: request.headers });
 
   const response = NextResponse.redirect(
     new URL(

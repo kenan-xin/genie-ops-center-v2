@@ -27,6 +27,9 @@ async function handler(request: Request): Promise<Response> {
   const result = await auth.recordActivity({ headers: request.headers });
 
   if (result === null) {
+    // The cookie is cleared below, so an idle row ends here too; a missing row is a no-op.
+    await auth.endIdleSession({ headers: request.headers });
+
     const cookie = `${sessionCookieName(app.tenant.env.publicUrl)}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${app.tenant.env.publicUrl.startsWith("https://") ? "; Secure" : ""}`;
 
     return Response.json(

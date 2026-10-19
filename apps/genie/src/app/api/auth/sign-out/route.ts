@@ -35,6 +35,9 @@ async function handler(request: Request): Promise<Response> {
   const state = await auth.sessionState({ headers: request.headers });
 
   if (state.status === "idle-expired") {
+    // R-17: sign-out removes the session row; an idle one goes with the cookie cleared below.
+    await auth.endIdleSession({ headers: request.headers });
+
     const expired = NextResponse.redirect(
       new URL("/sign-in?error=session_expired", publicUrl),
       303

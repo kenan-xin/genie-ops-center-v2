@@ -38,6 +38,7 @@ const ENFORCED_READS = new Set([
   "recordActivity",
   "revokeOwnSession",
   "revokeOtherOwnSessions",
+  "endIdleSession",
   "requestPrincipal",
   "refuseLimitedSession",
 ]);

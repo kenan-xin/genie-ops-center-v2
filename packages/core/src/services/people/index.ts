@@ -334,14 +334,21 @@ export async function readPerson(
     [personId]
   );
 
+  const { sessionIdleMinutes } = await tenant.settings.get();
+
+  // Live sessions only (R-14): a row past the 24 hour cap or past the idle window is refused on
+  // every request, and its cleanup waits for the cookie to be cleared or the person's next
+  // sign-in, so it is not shown as a session.
   const sessions = await tenant.db.$client.query(
     `select id, user_agent as "userAgent", ip_address as "ipAddress",
             created_at::text as "signedInAt",
             coalesce(last_active_at, updated_at)::text as "lastActiveAt"
        from session
       where user_id = $1
+        and expires_at > now()
+        and coalesce(last_active_at, created_at) > now() - make_interval(mins => $2)
       order by coalesce(last_active_at, updated_at) desc`,
-    [personId]
+    [personId, sessionIdleMinutes]
   );
 
   // SAFETY: the group statement selects exactly the group columns.

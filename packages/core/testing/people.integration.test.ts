@@ -523,6 +523,42 @@ describe("the People reads", () => {
     expect(await readPerson(deployment.context, breakGlass)).toBeUndefined();
   });
 
+  it("shows live sessions only, not rows past the idle window or the 24 hour cap (R-14)", async () => {
+    const personId = await insertCredentialPerson(deployment.context, {
+      email: `sessions-${Date.now()}@example.invalid`,
+      password: "people-sessions-password-14",
+      isBreakGlass: false,
+    });
+
+    const { sessionIdleMinutes } = await deployment.context.settings.get();
+
+    const live = await insertSession(deployment.context, {
+      userId: personId,
+      lastActiveAt: new Date(),
+    });
+
+    // Refused on every request, and kept until its cookie is cleared or the next sign-in.
+    await insertSession(deployment.context, {
+      userId: personId,
+      lastActiveAt: new Date(Date.now() - (sessionIdleMinutes + 1) * 60_000),
+    });
+
+    await insertSession(deployment.context, {
+      userId: personId,
+      lastActiveAt: new Date(),
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    const [liveRow] = await deployment.context.db
+      .select({ id: sessionTable.id })
+      .from(sessionTable)
+      .where(eq(sessionTable.token, live));
+
+    const person = await readPerson(deployment.context, personId);
+
+    expect(person?.sessions.map((one) => one.id)).toEqual([liveRow?.id]);
+  });
+
   it("reads the account type from the account's own provider row (R-51a)", async () => {
     const localId = await insertCredentialPerson(deployment.context, {
       email: `local-type-${Date.now()}@example.invalid`,

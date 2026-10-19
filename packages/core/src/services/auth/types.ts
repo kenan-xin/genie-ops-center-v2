@@ -145,6 +145,12 @@ export type AuthMember = {
     input: AuthSessionInput
   ) => Promise<AuthActivityResult | null>;
   /**
+   * Deletes the session row this request's cookie names, only while that session is past the
+   * idle window, and answers whether a row went (R-14). The routes that clear an idle browser's
+   * cookie call it, so the row ends with the cookie. A live session is never deleted.
+   */
+  readonly endIdleSession: (input: AuthSessionInput) => Promise<boolean>;
+  /**
    * The person's own Sessions block rows (R-18): live sessions only, current first. It takes the
    * session the request's one enforced read answered and makes no read of its own, so a page
    * that already read the session decides once (genie-ops-center-v2-jfq9).
