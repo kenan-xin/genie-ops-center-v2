@@ -3,7 +3,8 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { scopedPort, scopedProject } from "./worktree-scope.ts";
+import { standinNetworkName, sweepStandinNetwork } from "./standin-network.ts";
+import { scopedPort } from "./worktree-scope.ts";
 
 const run = promisify(execFile);
 
@@ -50,27 +51,16 @@ export type IdentityStandins = {
 };
 
 /**
- * Stops the stand-in stack this worktree owns, for a teardown that did not keep the handle.
+ * This worktree's stand-in stack: its compose project, network and host ports.
+ *
+ * Start and stop both run compose through here. `down` must see the same
+ * GENIE_STANDIN_NETWORK as `up`: without it compose looks for the default
+ * network name, finds nothing, and leaves the scoped network behind on every run.
  */
-export async function stopIdentityStandins(): Promise<void> {
-  const projectName = scopedProject("genie-identity-standins");
-
-  await run("docker", [
-    "compose",
-    "-p",
-    projectName,
-    "-f",
-    COMPOSE_FILE,
-    "down",
-    "--volumes",
-    "--remove-orphans",
-  ]).catch(() => undefined);
-}
-
-export async function startIdentityStandins(): Promise<IdentityStandins> {
-  const projectName = scopedProject("genie-identity-standins");
-  // The shared network carries the worktree scope, so two worktrees never share a
-  // network while the app stack in this one joins it by the same name.
+function standinStack() {
+  // The project and the network share one worktree-scoped name, so two worktrees
+  // never share a network.
+  const projectName = standinNetworkName();
   const networkName = projectName;
   const keycloakPort = standinPort(15080);
   const smtpPort = standinPort(15025);
@@ -92,7 +82,29 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
     await compose(["down", "--volumes", "--remove-orphans"]).catch(
       () => undefined
     );
+    // `down` skips a network it did not create in this project, so remove the
+    // network directly too. The sweep keeps it while any container uses it.
+    await sweepStandinNetwork();
   };
+
+  return { networkName, keycloakPort, smtpPort, mailpitPort, compose, stop };
+}
+
+/**
+ * Stops the stand-in stack this worktree owns, for a teardown that did not keep the handle.
+ */
+export async function stopIdentityStandins(): Promise<void> {
+  await standinStack().stop();
+}
+
+export async function startIdentityStandins(): Promise<IdentityStandins> {
+  const { networkName, keycloakPort, smtpPort, mailpitPort, compose, stop } =
+    standinStack();
+
+  // A killed run, or a teardown that never ran, can leave this worktree's network
+  // behind. Remove it first when nothing uses it, so stale networks do not use up
+  // Docker's address pools.
+  await sweepStandinNetwork();
 
   try {
     // `--wait` returns once the services with a health check are healthy, so the

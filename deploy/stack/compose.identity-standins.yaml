@@ -12,7 +12,9 @@
 # external network and reaches Keycloak and Mailpit by name instead of
 # through a published port. The name is fixed by default and overridable through
 # GENIE_STANDIN_NETWORK, which the test harness sets to its worktree-scoped value
-# so two worktrees never share the network.
+# so two worktrees never share the network. Every compose command, `down`
+# included, must get the same value: `down` without it looks for the default
+# name and leaves the scoped network behind.
 #
 # Keycloak carries one fixed frontend hostname, so the discovery issuer is the
 # same value for the host browser and for every container (Specification 02

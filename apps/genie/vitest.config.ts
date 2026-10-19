@@ -27,6 +27,8 @@ export default defineConfig({
       "testing/image-scan.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
+      // The stand-in network sweep's name filter and in-use guard are pure.
+      "testing/standin-network.test.ts",
       // The Entra secret parser is pure; it must never echo the secret it refuses.
       "e2e/entra/tenant.test.ts",
     ],
