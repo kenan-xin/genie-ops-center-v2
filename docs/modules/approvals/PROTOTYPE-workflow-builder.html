@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE - one workflow builder, many approval flows</title>
+<style>
+  :root { --accent:#2563eb; --core:#0f766e; --appr:#2563eb; --contr:#9333ea; --cust:#b45309; --bad:#dc2626; }
+  * { box-sizing:border-box; }
+  body { font-family: system-ui, sans-serif; margin:0; background:#f8fafc; color:#0f172a; }
+  main { max-width:1200px; margin:0 auto; padding:28px; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  h2 { font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:#475569; margin:26px 0 10px; }
+  .intro { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px 18px; line-height:1.5; }
+  .proto { display:inline-block; background:#fef3c7; color:#92400e; font-size:12px; padding:2px 8px; border-radius:6px; margin-bottom:8px; }
+  .layers { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .layer { border-radius:10px; padding:12px; background:#fff; border:2px solid; font-size:13px; line-height:1.45; }
+  .layer b { display:block; margin-bottom:4px; }
+  .l-core { border-color:var(--core); } .l-appr { border-color:var(--appr); } .l-contr { border-color:var(--contr); } .l-cust { border-color:var(--cust); }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+  th { color:#64748b; font-weight:600; }
+  button { font:inherit; font-size:13px; padding:7px 11px; margin:3px; border-radius:7px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.step { border-color:var(--accent); }
+  button.done { opacity:.4; }
+  button.next { background:var(--accent); color:#fff; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:5px; color:#fff; white-space:nowrap; }
+  .t-core{background:var(--core)} .t-approvals{background:var(--appr)} .t-contracts{background:var(--contr)} .t-customer{background:var(--cust)} .t-refused{background:var(--bad)}
+  .log { font-size:13px; max-height:320px; overflow:auto; }
+  .log div { padding:4px 0; border-bottom:1px solid #f1f5f9; }
+  .log .new { background:#eff6ff; }
+  .tabs button.active { background:var(--accent); color:#fff; }
+  .flow { font-size:13px; line-height:1.7; }
+  .node { display:inline-block; padding:2px 8px; border:1px solid #cbd5e1; border-radius:6px; margin:2px 0; background:#f8fafc; }
+  .node.cur { border-color:var(--accent); background:#dbeafe; font-weight:600; }
+  .muted { color:#64748b; font-size:12px; }
+  select { font:inherit; font-size:13px; padding:5px; }
+</style>
+</head>
+<body>
+<main>
+<span class="proto">PROTOTYPE - throwaway, in-memory, not product code</span>
+<h1>One workflow builder, many approval flows</h1>
+<div class="intro">
+<b>Question.</b> Can one workflow builder (the <i>approvals</i> module) run both the legal agreement review and a new IT access request, with no code change, and does each piece land in the right part of Ops Center?
+The four boxes below are the four places code or configuration lives. Every effect in the log is tagged with the part that handles it.
+Try the walkthroughs, then press buttons freely. Watch the <b>Event log</b>: if something is handled by the wrong part, the split is wrong.
+</div>
+
+<h2>Where each piece lives</h2>
+<div class="layers">
+  <div class="layer l-core"><b style="color:var(--core)">Core platform</b>Sign-in and people, roles and groups, <code>can()</code> access check, files, background jobs, audit, notifications inbox, outbound HTTP with secrets from the environment (<code>secret_ref</code>). Knows nothing about workflows.</div>
+  <div class="layer l-appr"><b style="color:var(--appr)">Approvals module (the builder)</b>Workflow definitions and versions, steps (approval, IF, HTTP, end), one form per workflow, cases, the engine that moves a case forward, backups and delegation. Knows nothing about contracts or IT.</div>
+  <div class="layer l-contr"><b style="color:var(--contr)">Contracts module</b>The master register and register numbers. Listens for "case finished" events from workflows tagged <i>contract</i>. Never imports the approvals module.</div>
+  <div class="layer l-cust"><b style="color:var(--cust)">Customer configuration</b>The two workflows below are <i>data</i>: drawn in the builder, or seeded from the customer folder. Adding the IT request needs no new code.</div>
+</div>
+
+<h2>Workflows built in the builder</h2>
+<div class="grid2" id="defs"></div>
+
+<h2>Guided walkthroughs</h2>
+<div class="card">
+  <div class="tabs" id="tabs"></div>
+  <p id="scenario-text"></p>
+  <div id="scenario-steps"></div>
+</div>
+
+<h2>Free play</h2>
+<div class="card" id="free"></div>
+
+<h2>Current state</h2>
+<div class="grid2">
+  <div class="card"><b>Cases</b><div id="cases"></div></div>
+  <div class="card"><b>Contracts register</b> <span class="tag t-contracts">contracts</span><div id="register"></div><br><b>Who is away</b> <span class="tag t-approvals">approvals</span><div id="away"></div></div>
+</div>
+<div class="grid2" style="margin-top:14px">
+  <div class="card"><b>Who can see each case</b> <span class="tag t-core">core can()</span><div id="vis"></div></div>
+  <div class="card"><b>Event log</b> <span class="muted">newest first; blue = from your last click</span><div class="log" id="log"></div></div>
+</div>
+</main>
+
+<script>
+// ===== Pure module: the part worth keeping. No DOM in here. =====
+const Platform = (() => {
+  const PEOPLE = {
+    alice: "Alice (Sales, applicant)", ben: "Ben (Sales GM)", tom: "Tom (Ben's backup)",
+    lina: "Lina (Legal)", mark: "Mark (Legal Manager)", grace: "Grace (Company GM)",
+    ivan: "Ivan (IT Manager)", sara: "Sara (IT Security)", eve: "Eve (Engineering)",
+  };
+  // Core roles: whole-workflow visibility comes from a role, not from the workflow.
+  const ROLES = { lina: ["View all contract cases"], mark: ["View all contract cases"], ivan: ["View all IT cases"] };
+  // Core integrations: the secret lives in the environment, the module only names it.
+  const CONNECTIONS = { "it-service-desk": { baseUrl: "https://itsm.example", secretRef: "ITSM_TOKEN", allowed: ["itsm.example"] } };
+
+  const contractV1 = {
+    id: "agreement-review", version: 1, name: "Agreement review", tags: ["contract"], viewRole: "View all contract cases",
+    form: ["Counterparty", "Agreement type", "Value (SGD)"],
+    steps: [
+      { id: "s1", kind: "approval", label: "Department GM", to: "ben", backup: "tom" },
+      { id: "s2", kind: "approval", label: "Legal check", to: "lina" },
+      { id: "s3", kind: "approval", label: "Legal Manager", to: "mark" },
+      { id: "s4", kind: "if", label: "Value over 100,000?", field: "Value (SGD)", over: 100000, yes: "s5", no: "end" },
+      { id: "s5", kind: "approval", label: "Company GM", to: "grace" },
+      { id: "end", kind: "end", label: "Done" },
+    ],
+  };
+  const itV1 = {
+    id: "it-access", version: 1, name: "IT access request", tags: ["it"], viewRole: "View all IT cases",
+    form: ["System", "Access level", "Reason"],
+    steps: [
+      { id: "s1", kind: "approval", label: "Line manager", to: "ben", backup: "tom" },
+      { id: "s2", kind: "if", label: "Admin access?", field: "Access level", equals: "admin", yes: "s3", no: "s4" },
+      { id: "s3", kind: "approval", label: "IT Security", to: "sara" },
+      { id: "s4", kind: "approval", label: "IT Manager", to: "ivan" },
+      { id: "s5", kind: "http", label: "Create account in IT service desk", connection: "it-service-desk", url: "https://itsm.example/accounts" },
+      { id: "end", kind: "end", label: "Done" },
+    ],
+  };
+  // s4 (IT Manager) goes to s5 next; a plain approval goes to the next step in the list.
+  const nextOf = (def, id) => { const i = def.steps.findIndex(s => s.id === id); return def.steps[i + 1].id; };
+
+  function initialState() {
+    return { people: PEOPLE, roles: ROLES, connections: CONNECTIONS,
+      definitions: { "agreement-review": [contractV1], "it-access": [itV1] },
+      away: {}, cases: [], register: [], log: [], seq: 1, regSeq: 1, tick: 0 };
+  }
+  const clone = s => JSON.parse(JSON.stringify(s));
+  const latest = (s, id) => s.definitions[id][s.definitions[id].length - 1];
+  const defOf = (s, c) => s.definitions[c.workflow].find(d => d.version === c.version);
+  const stepOf = (s, c) => defOf(s, c).steps.find(x => x.id === c.at);
+  const log = (s, part, text) => s.log.unshift({ part, text, tick: s.tick });
+
+  // Approver now: the named person, or the backup while the named person is away.
+  function assigneeOf(s, step) {
+    if (step.kind !== "approval") return null;
+    return s.away[step.to] && step.backup ? step.backup : step.to;
+  }
+
+  // Core access check, relationship based: requester, current approver, past actors, or a viewing role.
+  function canView(s, person, c) {
+    if (c.requester === person) return "requester";
+    if (c.assignee === person) return "current approver";
+    if (c.history.some(h => h.by === person)) return "acted on it";
+    const def = defOf(s, c);
+    if ((s.roles[person] || []).includes(def.viewRole)) return "role: " + def.viewRole;
+    return null;
+  }
+
+  // The engine: move a case until it waits for a person or an external system.
+  function run(s, c) {
+    for (let guard = 0; guard < 20; guard++) {
+      const def = defOf(s, c), step = stepOf(s, c);
+      if (step.kind === "approval") {
+        c.assignee = assigneeOf(s, step); c.status = "Waiting: " + step.label;
+        if (c.assignee !== step.to) log(s, "approvals", `${step.to} is away, so the step goes to backup ${c.assignee}`);
+        log(s, "core", `Notification to ${c.assignee}: case ${c.id} needs your approval`);
+        return;
+      }
+      if (step.kind === "if") {
+        const v = c.data[step.field];
+        const yes = step.over !== undefined ? Number(v) > step.over : v === step.equals;
+        log(s, "approvals", `${step.label} ${yes ? "yes" : "no"} (${step.field} = ${v})`);
+        c.at = yes ? step.yes : step.no; continue;
+      }
+      if (step.kind === "http") {
+        const conn = s.connections[step.connection];
+        const host = new URL(step.url).hostname;
+        if (!conn.allowed.includes(host)) { c.status = "Stopped: address not allowed"; c.assignee = null; log(s, "refused", `Outbound call to ${host} refused by core: not in the connection's allowed list`); return; }
+        c.assignee = null; c.status = "Waiting: external system";
+        log(s, "core", `Background job queued: POST ${step.url}, secret read from environment ${conn.secretRef} (the module never sees it)`);
+        return;
+      }
+      if (step.kind === "end") {
+        c.assignee = null; c.status = "Approved"; c.done = true;
+        log(s, "core", `Audit: case ${c.id} approved`);
+        log(s, "core", `Event published: "approvals case finished" (workflow ${def.name}, tags: ${def.tags.join(", ")})`);
+        if (def.tags.includes("contract")) {
+          const no = "AGR-2026-" + String(s.regSeq++).padStart(3, "0");
+          s.register.push({ no, counterparty: c.data["Counterparty"], value: c.data["Value (SGD)"], from: c.id });
+          log(s, "contracts", `Register row ${no} created from case ${c.id}`);
+        } else {
+          log(s, "contracts", `Ignored: workflow is not tagged "contract"`);
+        }
+        return;
+      }
+    }
+  }
+
+  function reduce(prev, a) {
+    const s = clone(prev); s.tick++;
+    const c = a.caseId ? s.cases.find(x => x.id === a.caseId) : null;
+    switch (a.type) {
+      case "start": {
+        const def = latest(s, a.workflow);
+        const nc = { id: "C" + s.seq++, workflow: def.id, version: def.version, requester: a.by, data: a.data, at: def.steps[0].id, history: [], status: "", assignee: null };
+        s.cases.push(nc);
+        log(s, "approvals", `${a.by} started case ${nc.id}: ${def.name} v${def.version}`);
+        log(s, "core", `Audit: case ${nc.id} created; form checked against the workflow's form`);
+        run(s, nc); break;
+      }
+      case "approve": {
+        if (!c || c.done || !c.assignee) { log(s, "refused", "Nothing to approve"); break; }
+        if (a.by !== c.assignee) { log(s, "refused", `${a.by} tried to approve case ${c.id}, but it is waiting for ${c.assignee}. Refused by core can()`); break; }
+        const step = stepOf(s, c);
+        c.history.push({ step: step.label, by: a.by, did: "approved" });
+        log(s, "approvals", `${a.by} approved "${step.label}" on case ${c.id}`);
+        log(s, "core", `Audit: ${a.by} approved ${c.id} / ${step.label}`);
+        c.at = nextOf(defOf(s, c), step.id); run(s, c); break;
+      }
+      case "reject": {
+        if (!c || c.done || a.by !== c.assignee) { log(s, "refused", "Only the current approver can reject"); break; }
+        c.history.push({ step: stepOf(s, c).label, by: a.by, did: "rejected" });
+        c.done = true; c.status = "Rejected"; c.assignee = null;
+        log(s, "approvals", `${a.by} rejected case ${c.id}`); log(s, "core", `Notification to ${c.requester}: case ${c.id} rejected`); break;
+      }
+      case "http-ok": case "http-fail": {
+        if (!c || stepOf(s, c).kind !== "http" || c.status !== "Waiting: external system") { log(s, "refused", "No external call is waiting"); break; }
+        if (a.type === "http-fail") { log(s, "core", `External system failed for case ${c.id}; background job will retry`); break; }
+        log(s, "core", `External system answered 201 for case ${c.id}; run log stores the call with the secret masked`);
+        c.history.push({ step: stepOf(s, c).label, by: "system", did: "done" });
+        c.at = nextOf(defOf(s, c), c.at); run(s, c); break;
+      }
+      case "away": {
+        s.away[a.person] = !s.away[a.person];
+        log(s, "approvals", `${a.person} is now ${s.away[a.person] ? "away (backup takes new steps)" : "back"}`);
+        break;
+      }
+      case "publish-v2": {
+        const v1 = latest(s, "it-access"); if (v1.version > 1) { log(s, "refused", "Version 2 is already published"); break; }
+        const v2 = clone(v1); v2.version = 2;
+        v2.steps = v2.steps.filter(x => x.id !== "s4"); v2.steps.find(x => x.id === "s2").no = "s5";
+        s.definitions["it-access"].push(v2);
+        log(s, "approvals", "IT access request v2 published in the builder: IT Manager step removed. Running cases stay on v1");
+        break;
+      }
+      case "bad-connection": {
+        const def = latest(s, "it-access"); def.steps.find(x => x.kind === "http").url = "http://169.254.169.254/latest";
+        log(s, "approvals", "An admin changed the HTTP step address in the builder to an internal address");
+        break;
+      }
+    }
+    return s;
+  }
+  return { initialState, reduce, canView, latest };
+})();
+
+// ===== Page shell: throwaway =====
+let state = Platform.initialState();
+let lastTick = 0;
+const $ = id => document.getElementById(id);
+const P = id => state.people[id] ? state.people[id].split(" (")[0] : id;
+const lastCase = w => [...state.cases].reverse().find(c => !w || c.workflow === w);
+function dispatch(a) { lastTick = state.tick + 1; state = Platform.reduce(state, a); render(); }
+
+const contractData = { "Counterparty": "Acme Pte Ltd", "Agreement type": "NDA", "Value (SGD)": "250000" };
+const smallContract = { "Counterparty": "Beta Ltd", "Agreement type": "Service", "Value (SGD)": "20000" };
+const itAdmin = { "System": "ERP", "Access level": "admin", "Reason": "Month-end close" };
+const itRead = { "System": "Wiki", "Access level": "read", "Reason": "Onboarding" };
+const approveNext = () => { const c = state.cases.find(x => !x.done && x.assignee); return c ? { type: "approve", caseId: c.id, by: c.assignee } : { type: "approve" }; };
+const approveCase = w => () => { const c = lastCase(w); return { type: "approve", caseId: c && c.id, by: c && c.assignee }; };
+
+const SCENARIOS = [
+  { name: "Agreement review", text: "The legal flow, built in the builder. Alice asks for a 250,000 agreement, so the value check routes it to the Company GM. At the end, watch the contracts module (purple) create a register row from the event. The approvals module never calls it.",
+    steps: [["Alice submits an agreement (250,000)", () => ({ type: "start", workflow: "agreement-review", by: "alice", data: contractData })],
+      ["Ben approves (Department GM)", approveCase("agreement-review")], ["Lina approves (Legal check)", approveCase("agreement-review")],
+      ["Mark approves (Legal Manager)", approveCase("agreement-review")], ["Grace approves (Company GM)", approveCase("agreement-review")]] },
+  { name: "IT access request", text: "A second flow, drawn in the same builder with no new code. Eve asks for admin access, so the IF step sends it to IT Security, then an HTTP step creates the account through a core connection. The secret stays in the environment. No register row is created, because the workflow is not tagged contract.",
+    steps: [["Eve asks for admin access to ERP", () => ({ type: "start", workflow: "it-access", by: "eve", data: itAdmin })],
+      ["Ben approves (Line manager)", approveCase("it-access")], ["Sara approves (IT Security)", approveCase("it-access")],
+      ["Ivan approves (IT Manager)", approveCase("it-access")], ["IT service desk fails once", () => ({ type: "http-fail", caseId: lastCase("it-access").id })],
+      ["IT service desk answers OK", () => ({ type: "http-ok", caseId: lastCase("it-access").id })]] },
+  { name: "Approver on leave", text: "Ben is away. Both flows name Ben as the first approver with Tom as backup, so new steps go to Tom. Check \"Who can see each case\": Tom can see the case because he is the current approver, not because of a role.",
+    steps: [["Mark Ben as away", () => ({ type: "away", person: "ben" })], ["Alice submits a small agreement", () => ({ type: "start", workflow: "agreement-review", by: "alice", data: smallContract })],
+      ["Ben tries to approve anyway", () => ({ type: "approve", caseId: lastCase().id, by: "ben" })], ["Tom approves as backup", approveCase()]] },
+  { name: "New version mid-case", text: "Eve's request is running on v1. An admin publishes v2 of the IT flow without the IT Manager step. Eve's case keeps v1 rules, a new case uses v2.",
+    steps: [["Eve asks for read access to Wiki (v1)", () => ({ type: "start", workflow: "it-access", by: "eve", data: itRead })], ["Ben approves", approveCase("it-access")],
+      ["Admin publishes IT flow v2", () => ({ type: "publish-v2" })], ["Alice asks for read access (v2)", () => ({ type: "start", workflow: "it-access", by: "alice", data: itRead })]] },
+  { name: "Things that must be refused", text: "Each step tries something the split must stop. Look for red log lines and for who can see what.",
+    steps: [["Alice submits an agreement", () => ({ type: "start", workflow: "agreement-review", by: "alice", data: contractData })],
+      ["Ivan (IT) tries to approve it", () => ({ type: "approve", caseId: lastCase().id, by: "ivan" })],
+      ["Admin points the HTTP step at an internal address", () => ({ type: "bad-connection" })],
+      ["Eve starts an IT request", () => ({ type: "start", workflow: "it-access", by: "eve", data: itRead })], ["Ben approves", approveCase("it-access")], ["Ivan approves", approveCase("it-access")]] },
+];
+let active = 0, stepIdx = 0;
+function startScenario(i) { active = i; stepIdx = 0; state = Platform.initialState(); lastTick = 0; render(); }
+
+function renderDefs() {
+  $("defs").innerHTML = ["agreement-review", "it-access"].map(id => {
+    const vs = state.definitions[id]; const d = vs[vs.length - 1];
+    const nodes = d.steps.map(s => `<span class="node">${s.kind === "approval" ? "Approve: " + s.label + " (" + P(s.to) + (s.backup ? ", backup " + P(s.backup) : "") + ")" : s.kind === "if" ? "IF " + s.label : s.kind === "http" ? "HTTP: " + s.label : "End"}</span>`).join(" &rarr; ");
+    return `<div class="card"><b>${d.name}</b> <span class="tag t-customer">customer config</span> <span class="muted">latest v${d.version}, tags: ${d.tags.join(", ")}</span>
+      <div class="muted">Form: ${d.form.join(", ")}</div><div class="flow">${nodes}</div></div>`;
+  }).join("");
+}
+function render() {
+  renderDefs();
+  $("tabs").innerHTML = SCENARIOS.map((s, i) => `<button class="${i === active ? "active" : ""}" onclick="startScenario(${i})">${s.name}</button>`).join("");
+  const sc = SCENARIOS[active];
+  $("scenario-text").textContent = sc.text + " Clicking a tab resets everything.";
+  $("scenario-steps").innerHTML = sc.steps.map((st, i) => `<button class="step ${i < stepIdx ? "done" : i === stepIdx ? "next" : ""}" ${i === stepIdx ? "" : "disabled"} onclick="doStep(${i})">${i + 1}. ${st[0]}</button>`).join("");
+  $("free").innerHTML = `
+    <button onclick="dispatch({type:'start',workflow:'agreement-review',by:'alice',data:contractData})">Alice submits agreement (250k)</button>
+    <button onclick="dispatch({type:'start',workflow:'agreement-review',by:'alice',data:smallContract})">Alice submits agreement (20k)</button>
+    <button onclick="dispatch({type:'start',workflow:'it-access',by:'eve',data:itAdmin})">Eve asks for admin access</button>
+    <button onclick="dispatch({type:'start',workflow:'it-access',by:'eve',data:itRead})">Eve asks for read access</button>
+    <button onclick="dispatch(approveNext())">Current approver approves (oldest open case)</button>
+    <button onclick="(()=>{const c=state.cases.find(x=>!x.done&&x.assignee); dispatch({type:'reject',caseId:c&&c.id,by:c&&c.assignee})})()">Current approver rejects</button>
+    <button onclick="(()=>{const c=state.cases.find(x=>x.status==='Waiting: external system'); dispatch({type:'http-ok',caseId:c&&c.id})})()">External system answers OK</button>
+    <button onclick="(()=>{const c=state.cases.find(x=>x.status==='Waiting: external system'); dispatch({type:'http-fail',caseId:c&&c.id})})()">External system fails</button>
+    <button onclick="dispatch({type:'away',person:'ben'})">Ben away / back</button>
+    <button onclick="dispatch({type:'publish-v2'})">Publish IT flow v2</button>
+    <button onclick="dispatch({type:'bad-connection'})">Point HTTP step at internal address</button>
+    <button onclick="startScenario(active)">Reset</button>`;
+  $("cases").innerHTML = state.cases.length ? `<table><tr><th>Case</th><th>Workflow</th><th>Status</th><th>Waiting for</th><th>History</th></tr>${state.cases.map(c => `<tr><td>${c.id}<div class="muted">by ${P(c.requester)}</div></td><td>${state.definitions[c.workflow][0].name} <b>v${c.version}</b></td><td>${c.status}</td><td>${c.assignee ? P(c.assignee) : "-"}</td><td class="muted">${c.history.map(h => `${h.step}: ${h.did} by ${P(h.by)}`).join("<br>") || "-"}</td></tr>`).join("")}</table>` : `<p class="muted">No cases yet.</p>`;
+  $("register").innerHTML = state.register.length ? `<table><tr><th>No.</th><th>Counterparty</th><th>Value</th><th>From case</th></tr>${state.register.map(r => `<tr><td>${r.no}</td><td>${r.counterparty}</td><td>${r.value}</td><td>${r.from}</td></tr>`).join("")}</table>` : `<p class="muted">Empty. Only finished contract-tagged cases add rows.</p>`;
+  const aw = Object.keys(state.away).filter(k => state.away[k]);
+  $("away").innerHTML = aw.length ? aw.map(P).join(", ") : `<span class="muted">Nobody</span>`;
+  $("vis").innerHTML = state.cases.length ? `<table><tr><th>Case</th>${Object.keys(state.people).map(p => `<th>${P(p)}</th>`).join("")}</tr>${state.cases.map(c => `<tr><td>${c.id}</td>${Object.keys(state.people).map(p => { const r = Platform.canView(state, p, c); return `<td title="${r || "no access"}">${r ? "&#10003;" : "&middot;"}</td>`; }).join("")}</tr>`).join("")}</table><p class="muted">Hover a tick to see the reason.</p>` : `<p class="muted">No cases yet.</p>`;
+  $("log").innerHTML = state.log.map(l => `<div class="${l.tick === lastTick ? "new" : ""}"><span class="tag t-${l.part === "refused" ? "refused" : l.part}">${l.part}</span> ${l.text}</div>`).join("") || `<p class="muted">Nothing yet.</p>`;
+}
+function doStep(i) { if (i !== stepIdx) return; dispatch(SCENARIOS[active].steps[i][1]()); stepIdx++; render(); }
+render();
+</script>
+</body>
+</html>
