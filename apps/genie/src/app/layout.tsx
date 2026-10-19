@@ -1,6 +1,7 @@
 import {
   idleExpiry,
   isLimitedBreakGlass,
+  readCookie,
   sessionCookieName,
 } from "@genie/core";
 import { NextIntlClientProvider } from "next-intl";
@@ -74,9 +75,10 @@ export default async function RootLayout({
       ? undefined
       : sessionCookieName(context.tenant.env.publicUrl);
 
+  // Read with the same name rule as Better Auth's cookie parser, so `name =token` counts too.
   const carriesSessionCookie =
     cookieName !== undefined &&
-    ((await headers()).get("cookie") ?? "").includes(`${cookieName}=`);
+    readCookie((await headers()).get("cookie") ?? "", cookieName) !== undefined;
 
   const requestHeaders = await headers();
 

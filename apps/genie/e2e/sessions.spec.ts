@@ -287,6 +287,11 @@ test("an idle session is refused and the browser lands on the expired banner (R-
       (cookie) => cookie.name === "genie-session"
     )
   ).toBe(false);
+
+  // The row ends with the cookie (R-14, amended 2026-10-19).
+  await expect
+    .poll(() => sessionRowCount(current), { timeout: 10_000 })
+    .toBe("0");
 });
 
 test("an idle document reload clears the cookie and lands on the expired banner (R-14, R-17a)", async ({
@@ -323,6 +328,11 @@ test("an idle document reload clears the cookie and lands on the expired banner 
       (cookie) => cookie.name === "genie-session"
     )
   ).toBe(false);
+
+  // The row ends with the cookie (R-14, amended 2026-10-19).
+  await expect
+    .poll(() => sessionRowCount(current), { timeout: 10_000 })
+    .toBe("0");
 });
 
 test("an idle reload of the account page clears the cookie and lands on the expired banner (genie-ops-center-v2-jfq9)", async ({
@@ -361,6 +371,11 @@ test("an idle reload of the account page clears the cookie and lands on the expi
       (cookie) => cookie.name === "genie-session"
     )
   ).toBe(false);
+
+  // The row ends with the cookie (R-14, amended 2026-10-19).
+  await expect
+    .poll(() => sessionRowCount(current), { timeout: 10_000 })
+    .toBe("0");
 });
 
 test("an idle in-app navigation to the account page clears the cookie and lands on the expired banner (genie-ops-center-v2-jfq9)", async ({
@@ -424,6 +439,11 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
       (cookie) => cookie.name === "genie-session"
     )
   ).toBe(false);
+
+  // The row ends with the cookie (R-14, amended 2026-10-19).
+  await expect
+    .poll(() => sessionRowCount(current), { timeout: 10_000 })
+    .toBe("0");
 });
 
 test("a link to the session-expired route does not sign a live browser out (genie-ops-center-v2-1rr0)", async ({
@@ -449,7 +469,7 @@ test("a link to the session-expired route does not sign a live browser out (geni
   await expect(page.getByText(email)).toBeVisible();
 });
 
-test("sign-out refuses an idle-dead session before it can redirect to Keycloak", async ({
+test("sign-out of an idle session deletes its row and clears the cookie without a Keycloak redirect (R-17)", async ({
   page,
 }, testInfo) => {
   const email = sessionsEmail(testInfo);
@@ -476,4 +496,5 @@ test("sign-out refuses an idle-dead session before it can redirect to Keycloak",
   expect(response.headers()["set-cookie"] ?? "").toMatch(
     /genie-session=;.*Expires=Thu, 01 Jan 1970/
   );
+  expect(await sessionRowCount(current)).toBe("0");
 });
