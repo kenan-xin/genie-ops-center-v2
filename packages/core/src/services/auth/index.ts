@@ -311,12 +311,13 @@ function idleRow(at: Date, idleMinutes: number): SQL {
  * and rows past the idle window whose browser never came back to have its cookie cleared. The
  * new session is kept. Running it twice deletes nothing more.
  *
- * The cleanup is best effort. While the settings row is absent (a deployment the `seed` step has
- * not finished) the idle window is unknown, so only capped rows go, and the sign-in still
- * succeeds.
+ * The cleanup is best effort and never fails the sign-in. While the settings row is absent (a
+ * deployment the `seed` step has not finished) the idle window is unknown, so only capped rows
+ * go. A failed delete is logged and the sign-in goes on, with the group sync that follows it; the
+ * leftover rows are refused anyway and the next sign-in tries again.
  */
 async function removeDeadSessions(
-  input: Pick<AuthMemberInput, "db" | "settings" | "now">,
+  input: Pick<AuthMemberInput, "db" | "settings" | "now" | "logger">,
   created: { readonly id: string; readonly userId: string }
 ): Promise<void> {
   const at = new Date((input.now ?? Date.now)());
@@ -331,11 +332,50 @@ async function removeDeadSessions(
       ? lte(session.expiresAt, at)
       : or(lte(session.expiresAt, at), idleRow(at, idleMinutes));
 
-  await input.db
-    .delete(session)
-    .where(
-      and(eq(session.userId, created.userId), ne(session.id, created.id), dead)
+  try {
+    await input.db
+      .delete(session)
+      .where(
+        and(
+          eq(session.userId, created.userId),
+          ne(session.id, created.id),
+          dead
+        )
+      );
+  } catch (error) {
+    // The member's logger has no warn level; the line names the cause, never a token.
+    input.logger.error(
+      { err: error, userId: created.userId },
+      "dead session cleanup at sign-in failed; the sign-in continues"
     );
+  }
+}
+
+/**
+ * What runs after Better Auth creates a session on a context with a request scope: the dead
+ * session cleanup, then, for a realm sign-in, the group sync (R-10) and the sign-in record. It is
+ * exported so an integration test can drive it with a fake request scope, as `sessionCreateBefore`
+ * is.
+ */
+export function sessionCreateAfter(
+  input: Pick<
+    AuthMemberInput,
+    "db" | "settings" | "now" | "logger" | "requestScope" | "tenant"
+  >
+) {
+  return async (data: {
+    readonly id: string;
+    readonly userId: string;
+    readonly userAgent?: string | null | undefined;
+  }): Promise<void> => {
+    await removeDeadSessions(input, data);
+    const facts = input.requestScope?.current();
+    if (facts?.oauth !== true) return;
+    const tenant = input.tenant?.();
+    if (tenant === undefined) return;
+    await syncGroupMemberships(tenant, data.userId, facts.groups);
+    await recordOAuthSignIn(tenant, data);
+  };
 }
 
 /** Rejects when `work` does not settle within `timeoutMs`. */
@@ -487,19 +527,7 @@ function buildInstance(input: AuthMemberInput, withKeycloak: boolean) {
             session: {
               create: {
                 before: sessionCreateBefore(input),
-                async after(data: {
-                  readonly id: string;
-                  readonly userId: string;
-                  readonly userAgent?: string | null | undefined;
-                }) {
-                  await removeDeadSessions(input, data);
-                  const facts = input.requestScope?.current();
-                  if (facts?.oauth !== true) return;
-                  const tenant = input.tenant?.();
-                  if (tenant === undefined) return;
-                  await syncGroupMemberships(tenant, data.userId, facts.groups);
-                  await recordOAuthSignIn(tenant, data);
-                },
+                after: sessionCreateAfter(input),
               },
             },
           },

@@ -3,7 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { sessionCookieName } from "../src/services/auth/config.ts";
 import type { AuthMember, AuthSession } from "../src/services/auth/index.ts";
-import { createAuthMember } from "../src/services/auth/index.ts";
+import {
+  createAuthMember,
+  sessionCreateAfter,
+} from "../src/services/auth/index.ts";
+import { AuthRequestScope } from "../src/services/auth/request-scope.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
@@ -511,6 +515,68 @@ describe("the session idle rule", () => {
     expect(await countByToken(client, live)).toBe(1);
     expect(await countRows(client, sessionId)).toBe(1);
     expect(await countRows(client, again.sessionId)).toBe(1);
+  });
+
+  it("a failed dead-session cleanup fails neither the sign-in nor the group sync", async () => {
+    const auth = authOf(deployment);
+
+    const email = "cleanup-fails@example.com";
+
+    const userId = await insertCredentialPerson(deployment.context, {
+      email,
+      password: PASSWORD,
+    });
+
+    // A leftover idle row gives the cleanup a row to delete, and the trigger refuses that delete.
+    const idle = await insertSession(deployment.context, {
+      userId,
+      lastActiveAt: new Date(Date.now() - (IDLE_MINUTES + 1) * 60_000),
+    });
+
+    await client.query(
+      `create or replace function refuse_session_delete() returns trigger language plpgsql as $$
+         begin raise exception 'session delete refused by the test'; end $$`
+    );
+    await client.query(
+      `create trigger refuse_session_delete before delete on session for each row
+         when (old.user_id::text = '${userId}') execute function refuse_session_delete()`
+    );
+
+    try {
+      // The credential sign-in still answers a session...
+      const { sessionId } = await signIn(auth, email);
+
+      expect(await countRows(client, sessionId)).toBe(1);
+      expect(await countByToken(client, idle)).toBe(1);
+
+      // ...and a realm sign-in still syncs its groups after the failed cleanup.
+      const scope = new AuthRequestScope();
+
+      const after = sessionCreateAfter({
+        db: deployment.context.db,
+        settings: deployment.context.settings,
+        logger: silentLogger(),
+        requestScope: scope,
+        tenant: () => deployment.context,
+      });
+
+      await scope.run(async () => {
+        scope.capture(["Cleanup Sync"], true);
+
+        await after({ id: sessionId, userId });
+      });
+
+      const synced = await client.query<{ readonly count: string }>(
+        `select count(*) as count from group_member m join "group" g on g.id = m.group_id
+          where m.user_id = $1 and g.name = 'Cleanup Sync'`,
+        [userId]
+      );
+
+      expect(Number(synced.rows[0]?.count)).toBe(1);
+    } finally {
+      await client.query("drop trigger refuse_session_delete on session");
+      await client.query("drop function refuse_session_delete()");
+    }
   });
 
   it("an anonymous activity call answers null and writes nothing", async () => {
