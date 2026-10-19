@@ -12,6 +12,7 @@
     "./features/groups": "./src/features/groups/index.ts",
     "./features/people": "./src/features/people/index.ts",
     "./features/roles": "./src/features/roles/index.ts",
+    "./logging": "./src/services/logging/index.ts",
     "./rpc": "./src/lib/rpc/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",

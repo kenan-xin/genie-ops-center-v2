@@ -226,8 +226,17 @@ export async function runRelease(
   // the only one that loads them. `await import()` keeps them out of the
   // promote path's module graph; at this point the run has already passed the
   // verified-identity branch above.
+  //
+  // `redact` comes from the narrow `@genie/core/logging` entry, not the core
+  // barrel. The barrel loads all of core (the database, the job queue, the
+  // routers) and costs about ten times as long to import. On a busy CI runner
+  // that made each CLI test spend most of its 5 second budget on one import
+  // (genie-ops-center-v2-5fl8).
   const [{ redact }, { readModuleInventory, readModulesFile }] =
-    await Promise.all([import("@genie/core"), import("@genie/generators")]);
+    await Promise.all([
+      import("@genie/core/logging"),
+      import("@genie/generators"),
+    ]);
 
   let include: string;
 

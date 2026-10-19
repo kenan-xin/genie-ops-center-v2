@@ -22,6 +22,28 @@ const PUSH_DIGEST = `sha256:${"e".repeat(64)}`;
 const temporary: string[] = [];
 
 /**
+ * A resolve hook that makes loading the `@genie/core` barrel fail the run.
+ *
+ * The barrel loads all of core and made each CLI run spend most of a CI
+ * runner's 5 second test budget on one import (genie-ops-center-v2-5fl8). The
+ * release only needs `redact`, which `@genie/core/logging` serves. Every CLI
+ * run here goes through this hook, so a return to the barrel fails these tests
+ * at once instead of timing out on a slow runner later.
+ */
+const REFUSE_CORE_BARREL = `data:text/javascript,${encodeURIComponent(`
+import { registerHooks } from "node:module";
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const result = nextResolve(specifier, context);
+    if (result.url.endsWith("/packages/core/src/index.ts")) {
+      throw new Error("the release CLI loaded the @genie/core barrel");
+    }
+    return result;
+  },
+});
+`)}`;
+
+/**
  * A workspace with one customer and a pair of stub binaries on `PATH`.
  *
  * The stubs are the smallest honest substitute for a Docker daemon and the Nx
@@ -109,7 +131,7 @@ function runCli(
   args: readonly string[]
 ) {
   try {
-    execFileSync("node", [CLI, ...args], {
+    execFileSync("node", ["--import", REFUSE_CORE_BARREL, CLI, ...args], {
       encoding: "utf8",
       env: {
         ...process.env,
