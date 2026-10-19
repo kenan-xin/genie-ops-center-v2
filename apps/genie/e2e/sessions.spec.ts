@@ -363,6 +363,69 @@ test("an idle reload of the account page clears the cookie and lands on the expi
   ).toBe(false);
 });
 
+test("an idle in-app navigation to the account page clears the cookie and lands on the expired banner (genie-ops-center-v2-jfq9)", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+
+  // The activity call answers live without reaching the server, so it can neither slide the
+  // session nor land the browser on the banner itself. Only the page's redirect can.
+  await page.route("**/api/session/activity", (route) =>
+    route.fulfill({
+      json: { idleExpiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+    })
+  );
+
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+
+  await queryDatabase(
+    `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
+  );
+
+  // An in-app navigation: the client router fetches the page's server payload, and the root
+  // layout does not run again, so the page's own idle redirect is the one the browser follows.
+  // No link to the account page exists yet, so the test drives Next's client router directly.
+  const payload = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === "/account" &&
+      request.headers()["rsc"] === "1"
+  );
+
+  await page.evaluate(() => {
+    // SAFETY: Next sets `window.next.router` to the app router instance in every build; the test
+    // calls its `push` and nothing else, and fails loudly below if the router is not there.
+    const { next } = window as {
+      readonly next?: { readonly router?: { push(href: string): void } };
+    };
+
+    if (next?.router === undefined)
+      throw new Error("Next's client router is not on window.next");
+
+    next.router.push("/account");
+  });
+
+  await payload;
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .toBe("/sign-in");
+
+  expect(new URL(page.url()).searchParams.get("error")).toBe("session_expired");
+  await expect(page.getByTestId("sign-in-banner")).toContainText(
+    `${IDLE_MINUTES} minutes`
+  );
+  expect(
+    (await page.context().cookies()).some(
+      (cookie) => cookie.name === "genie-session"
+    )
+  ).toBe(false);
+});
+
 test("a link to the session-expired route does not sign a live browser out (genie-ops-center-v2-1rr0)", async ({
   page,
 }, testInfo) => {
