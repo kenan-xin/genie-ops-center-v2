@@ -57,6 +57,20 @@ Try the walkthroughs, then press buttons freely. Watch the <b>Event log</b>: if 
   <div class="layer l-cust"><b style="color:var(--cust)">Customer configuration</b>The two workflows below are <i>data</i>: drawn in the builder, or seeded from the customer folder. Adding the IT request needs no new code.</div>
 </div>
 
+<h2>The portal sidebar, per person</h2>
+<div class="card" style="display:grid;grid-template-columns:260px 1fr;gap:18px">
+  <div style="background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px;min-height:200px">
+    <div class="muted" style="color:#94a3b8">Signed in as</div>
+    <select id="who" onchange="render()" style="width:100%;margin:4px 0 12px"></select>
+    <div id="sidebar"></div>
+  </div>
+  <div>
+    <p style="margin-top:0">Each published workflow becomes one sidebar entry. Who sees it is a normal Ops Center role assignment, scoped to that workflow, given to a person or to a group. This is the same mechanism Solutions uses for <code>solution:&lt;id&gt;</code>. Inside a workflow, who approves each step is workflow configuration, and who can see a case comes from the person's relationship to it.</p>
+    <b>Role assignments</b> <span class="tag t-core">core People &gt; Roles</span>
+    <div id="assign"></div>
+  </div>
+</div>
+
 <h2>Workflows built in the builder</h2>
 <div class="grid2" id="defs"></div>
 
@@ -121,8 +135,19 @@ const Platform = (() => {
   // s4 (IT Manager) goes to s5 next; a plain approval goes to the next step in the list.
   const nextOf = (def, id) => { const i = def.steps.findIndex(s => s.id === id); return def.steps[i + 1].id; };
 
+  // Core groups (from the identity provider) and role assignments with a scope, like solution:<id> today.
+  const GROUPS = { "All staff": Object.keys(PEOPLE), "Sales": ["alice", "ben", "tom"], "Legal": ["lina", "mark"], "IT": ["ivan", "sara"] };
+  const ASSIGNMENTS = [
+    { who: "All staff", role: "IT request user", perm: "approvals:use", scope: "workflow:it-access" },
+    { who: "Sales", role: "Agreement review user", perm: "approvals:use", scope: "workflow:agreement-review" },
+    { who: "Legal", role: "Agreement review user", perm: "approvals:use", scope: "workflow:agreement-review" },
+    { who: "Legal", role: "Register reader", perm: "contracts:read", scope: null },
+    { who: "grace", role: "Register reader", perm: "contracts:read", scope: null },
+    { who: "ivan", role: "Workflow designer", perm: "approvals:admin", scope: null },
+  ];
+
   function initialState() {
-    return { people: PEOPLE, roles: ROLES, connections: CONNECTIONS,
+    return { people: PEOPLE, roles: ROLES, connections: CONNECTIONS, groups: GROUPS, assignments: clone(ASSIGNMENTS),
       definitions: { "agreement-review": [contractV1], "it-access": [itV1] },
       away: {}, cases: [], register: [], log: [], seq: 1, regSeq: 1, tick: 0 };
   }
@@ -136,6 +161,28 @@ const Platform = (() => {
   function assigneeOf(s, step) {
     if (step.kind !== "approval") return null;
     return s.away[step.to] && step.backup ? step.backup : step.to;
+  }
+
+  // Core seam: scopesFor(person, permission) -> "all" or a list of scopes, from person and group assignments.
+  function scopesFor(s, person, perm) {
+    const mine = s.assignments.filter(a => a.perm === perm && (a.who === person || (s.groups[a.who] || []).includes(person)));
+    if (mine.some(a => a.scope === null)) return "all";
+    return mine.map(a => a.scope);
+  }
+  function can(s, person, perm, scope) { const r = scopesFor(s, person, perm); return r === "all" || (scope ? r.includes(scope) : r.length > 0); }
+
+  // The sidebar: core renders it, each module supplies its entries, filtered by can() per request.
+  function sidebarFor(s, person) {
+    const items = [];
+    for (const id of Object.keys(s.definitions)) {
+      const d = latest(s, id);
+      if (can(s, person, "approvals:use", "workflow:" + id)) items.push({ part: "approvals", label: d.name, why: "role with scope workflow:" + id });
+    }
+    const tasks = s.cases.filter(c => c.assignee === person).length;
+    if (tasks) items.push({ part: "approvals", label: `My approvals (${tasks})`, why: "you are the current approver" });
+    if (can(s, person, "contracts:read")) items.push({ part: "contracts", label: "Contracts register", why: "contracts:read" });
+    if (can(s, person, "approvals:admin")) items.push({ part: "approvals", label: "Admin: workflow builder", why: "approvals:admin" });
+    return items;
   }
 
   // Core access check, relationship based: requester, current approver, past actors, or a viewing role.
@@ -194,6 +241,7 @@ const Platform = (() => {
     switch (a.type) {
       case "start": {
         const def = latest(s, a.workflow);
+        if (!can(s, a.by, "approvals:use", "workflow:" + a.workflow)) { log(s, "refused", `${a.by} cannot start ${def.name}: no role with scope workflow:${a.workflow}. Refused by core can()`); break; }
         const nc = { id: "C" + s.seq++, workflow: def.id, version: def.version, requester: a.by, data: a.data, at: def.steps[0].id, history: [], status: "", assignee: null };
         s.cases.push(nc);
         log(s, "approvals", `${a.by} started case ${nc.id}: ${def.name} v${def.version}`);
@@ -235,6 +283,12 @@ const Platform = (() => {
         log(s, "approvals", "IT access request v2 published in the builder: IT Manager step removed. Running cases stay on v1");
         break;
       }
+      case "toggle-grant": {
+        const i = s.assignments.findIndex(x => x.who === a.who && x.scope === a.scope);
+        if (i >= 0) { s.assignments.splice(i, 1); log(s, "core", `Administrator removed ${a.who}'s access to ${a.scope} (People > Roles)`); }
+        else { s.assignments.push({ who: a.who, role: "Agreement review user", perm: "approvals:use", scope: a.scope }); log(s, "core", `Administrator gave ${a.who} the role "Agreement review user" scoped to ${a.scope} (People > Roles)`); }
+        break;
+      }
       case "bad-connection": {
         const def = latest(s, "it-access"); def.steps.find(x => x.kind === "http").url = "http://169.254.169.254/latest";
         log(s, "approvals", "An admin changed the HTTP step address in the builder to an internal address");
@@ -243,7 +297,7 @@ const Platform = (() => {
     }
     return s;
   }
-  return { initialState, reduce, canView, latest };
+  return { initialState, reduce, canView, latest, sidebarFor, scopesFor };
 })();
 
 // ===== Page shell: throwaway =====
@@ -271,6 +325,11 @@ const SCENARIOS = [
       ["Ben approves (Line manager)", approveCase("it-access")], ["Sara approves (IT Security)", approveCase("it-access")],
       ["Ivan approves (IT Manager)", approveCase("it-access")], ["IT service desk fails once", () => ({ type: "http-fail", caseId: lastCase("it-access").id })],
       ["IT service desk answers OK", () => ({ type: "http-ok", caseId: lastCase("it-access").id })]] },
+  { name: "Who sees which menu", text: "Switch \"Signed in as\" between people and watch the sidebar. Eve (Engineering) sees only IT access request, because only All staff has it. Alice (Sales) sees both. Lina (Legal) also sees the Contracts register. Ivan sees the workflow builder. Then an administrator gives Eve the agreement flow, with no code change.",
+    steps: [["Eve tries to submit an agreement", () => ({ type: "start", workflow: "agreement-review", by: "eve", data: smallContract })],
+      ["Admin gives Eve: Agreement review", () => ({ type: "toggle-grant", who: "eve", scope: "workflow:agreement-review" })],
+      ["Eve submits the agreement", () => ({ type: "start", workflow: "agreement-review", by: "eve", data: smallContract })],
+      ["Ben approves (now has My approvals)", approveCase("agreement-review")]] },
   { name: "Approver on leave", text: "Ben is away. Both flows name Ben as the first approver with Tom as backup, so new steps go to Tom. Check \"Who can see each case\": Tom can see the case because he is the current approver, not because of a role.",
     steps: [["Mark Ben as away", () => ({ type: "away", person: "ben" })], ["Alice submits a small agreement", () => ({ type: "start", workflow: "agreement-review", by: "alice", data: smallContract })],
       ["Ben tries to approve anyway", () => ({ type: "approve", caseId: lastCase().id, by: "ben" })], ["Tom approves as backup", approveCase()]] },
@@ -294,7 +353,15 @@ function renderDefs() {
       <div class="muted">Form: ${d.form.join(", ")}</div><div class="flow">${nodes}</div></div>`;
   }).join("");
 }
+function renderSidebar() {
+  const sel = $("who"); const cur = sel.value || "alice";
+  sel.innerHTML = Object.keys(state.people).map(p => `<option value="${p}" ${p === cur ? "selected" : ""}>${state.people[p]}</option>`).join("");
+  const items = Platform.sidebarFor(state, cur);
+  $("sidebar").innerHTML = `<div style="padding:6px 8px">Home</div>` + (items.map(i => `<div style="padding:6px 8px;border-left:3px solid var(--${i.part === "contracts" ? "contr" : "appr"})" title="${i.why}">${i.label}<div style="font-size:11px;color:#94a3b8">${i.why}</div></div>`).join("") || `<div style="color:#94a3b8;padding:6px 8px">No modules for this person</div>`) + `<div style="padding:6px 8px;color:#94a3b8">Account</div>`;
+  $("assign").innerHTML = `<table><tr><th>Given to</th><th>Role</th><th>Permission</th><th>Scope</th></tr>${state.assignments.map(a => `<tr><td>${state.groups[a.who] ? "group " + a.who : P(a.who)}</td><td>${a.role}</td><td><code>${a.perm}</code></td><td>${a.scope || "all"}</td></tr>`).join("")}</table>`;
+}
 function render() {
+  renderSidebar();
   renderDefs();
   $("tabs").innerHTML = SCENARIOS.map((s, i) => `<button class="${i === active ? "active" : ""}" onclick="startScenario(${i})">${s.name}</button>`).join("");
   const sc = SCENARIOS[active];
@@ -309,6 +376,8 @@ function render() {
     <button onclick="(()=>{const c=state.cases.find(x=>!x.done&&x.assignee); dispatch({type:'reject',caseId:c&&c.id,by:c&&c.assignee})})()">Current approver rejects</button>
     <button onclick="(()=>{const c=state.cases.find(x=>x.status==='Waiting: external system'); dispatch({type:'http-ok',caseId:c&&c.id})})()">External system answers OK</button>
     <button onclick="(()=>{const c=state.cases.find(x=>x.status==='Waiting: external system'); dispatch({type:'http-fail',caseId:c&&c.id})})()">External system fails</button>
+    <button onclick="dispatch({type:'start',workflow:'agreement-review',by:'eve',data:smallContract})">Eve tries to submit an agreement</button>
+    <button onclick="dispatch({type:'toggle-grant',who:'eve',scope:'workflow:agreement-review'})">Admin gives / removes Eve: Agreement review</button>
     <button onclick="dispatch({type:'away',person:'ben'})">Ben away / back</button>
     <button onclick="dispatch({type:'publish-v2'})">Publish IT flow v2</button>
     <button onclick="dispatch({type:'bad-connection'})">Point HTTP step at internal address</button>
