@@ -145,12 +145,13 @@ export type AuthMember = {
     input: AuthSessionInput
   ) => Promise<AuthActivityResult | null>;
   /**
-   * The person's own Sessions block rows (R-18): live sessions only, current first, or null when
-   * the request holds no live session.
+   * The person's own Sessions block rows (R-18): live sessions only, current first. It takes the
+   * session the request's one enforced read answered and makes no read of its own, so a page
+   * that already read the session decides once (genie-ops-center-v2-jfq9).
    */
-  readonly listOwnSessions: (
-    input: AuthSessionInput
-  ) => Promise<readonly AuthOwnSession[] | null>;
+  readonly listOwnSessions: (input: {
+    readonly session: AuthSession;
+  }) => Promise<readonly AuthOwnSession[]>;
   /**
    * Per-session sign-out (R-18). The current session is refused with `current` - the block marks
    * it and offers no revoke - and a row that is not the caller's own answers `not-found`.

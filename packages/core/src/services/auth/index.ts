@@ -1054,15 +1054,11 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
       };
     },
 
-    async listOwnSessions({ headers }) {
-      const state = await enforcedSession(headers);
-
-      if (state.status !== "authenticated") return null;
-
+    async listOwnSessions({ session: current }) {
       const rows = await input.db
         .select()
         .from(session)
-        .where(eq(session.userId, state.session.user.id))
+        .where(eq(session.userId, current.user.id))
         .orderBy(desc(session.createdAt));
 
       const { sessionIdleMinutes } = await input.settings.get();
@@ -1088,7 +1084,7 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
           ipAddress: row.ipAddress ?? "—",
           signedInAt: row.createdAt,
           lastActiveAt: row.lastActiveAt ?? row.createdAt,
-          isCurrent: row.id === state.session.session.id,
+          isCurrent: row.id === current.session.id,
         } satisfies AuthOwnSession;
       });
 

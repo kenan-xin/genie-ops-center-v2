@@ -325,6 +325,44 @@ test("an idle document reload clears the cookie and lands on the expired banner 
   ).toBe(false);
 });
 
+test("an idle reload of the account page clears the cookie and lands on the expired banner (genie-ops-center-v2-jfq9)", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+
+  await page.goto("/account");
+  await expect(page.getByText(email)).toBeVisible();
+
+  // As above: no activity call from the landing may slide the session after the idle time.
+  await page.waitForLoadState("networkidle");
+
+  await queryDatabase(
+    `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
+  );
+
+  // The layout and the page both redirect an idle session; both must go to the route that
+  // clears the cookie.
+  await page.reload();
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .toBe("/sign-in");
+
+  expect(new URL(page.url()).searchParams.get("error")).toBe("session_expired");
+  await expect(page.getByTestId("sign-in-banner")).toContainText(
+    `${IDLE_MINUTES} minutes`
+  );
+  expect(
+    (await page.context().cookies()).some(
+      (cookie) => cookie.name === "genie-session"
+    )
+  ).toBe(false);
+});
+
 test("a link to the session-expired route does not sign a live browser out (genie-ops-center-v2-1rr0)", async ({
   page,
 }, testInfo) => {

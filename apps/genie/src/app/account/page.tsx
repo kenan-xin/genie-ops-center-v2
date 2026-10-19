@@ -1,6 +1,5 @@
 import { principalFor, readOwnGroups, readRoleSummaries } from "@genie/core";
 import { getTranslations } from "next-intl/server";
-import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 
 import { requireAuth, SIGN_IN_PATH } from "../../auth.ts";
@@ -11,8 +10,13 @@ import { AccountRoute } from "./account-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-/** The sign-in page a dead session lands on, with the cause the banner names (R-14, R-17a). */
-const EXPIRED_PATH = `${SIGN_IN_PATH}?error=session_expired`;
+/**
+ * Where an idle session goes: the route that clears its cookie and shows the expired banner (R-14,
+ * R-17a). The root layout redirects there too. On an in-app navigation the layout does not run
+ * again, so this page's redirect is the one the browser follows, and it must clear the cookie as
+ * well (genie-ops-center-v2-jfq9).
+ */
+const EXPIRED_PATH = "/api/auth/session-expired";
 
 /**
  * The account page (R-18): the person's own Profile, Sessions with per-session sign-out and sign
@@ -28,7 +32,6 @@ const EXPIRED_PATH = `${SIGN_IN_PATH}?error=session_expired`;
 export default async function AccountPage() {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
-  const requestHeaders = await headers();
 
   const state = await documentSessionState();
 
@@ -53,7 +56,7 @@ export default async function AccountPage() {
   const [groups, summaries, sessions, branding] = await Promise.all([
     readOwnGroups(tenant, userId),
     readRoleSummaries(principal),
-    auth.listOwnSessions({ headers: requestHeaders }),
+    auth.listOwnSessions({ session: state.session }),
     tenant.branding.get(),
   ]);
 
@@ -94,7 +97,7 @@ export default async function AccountPage() {
         name: group.name,
         source: group.source,
       }))}
-      sessions={(sessions ?? []).map((session) => ({
+      sessions={sessions.map((session) => ({
         id: session.id,
         device: session.device,
         browser: session.browser,

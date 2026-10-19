@@ -1,4 +1,3 @@
-import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 
 import { requireAuth, SIGN_IN_PATH } from "../../../auth.ts";
@@ -8,7 +7,8 @@ import { AdminAccountRoute } from "./admin-account-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-const EXPIRED_PATH = `${SIGN_IN_PATH}?error=session_expired`;
+/** The route that clears an idle session's cookie and shows the expired banner (R-14, R-17a). */
+const EXPIRED_PATH = "/api/auth/session-expired";
 
 /**
  * The break-glass account page at `/admin/account` (R-66): change password with the current one,
@@ -19,7 +19,6 @@ const EXPIRED_PATH = `${SIGN_IN_PATH}?error=session_expired`;
 export default async function AdminAccountPage() {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
-  const requestHeaders = await headers();
 
   const state = await documentSessionState();
 
@@ -35,7 +34,7 @@ export default async function AdminAccountPage() {
     redirect("/admin/login");
 
   const [sessions, branding] = await Promise.all([
-    auth.listOwnSessions({ headers: requestHeaders }),
+    auth.listOwnSessions({ session: state.session }),
     app.tenant.branding.get(),
   ]);
 
@@ -46,7 +45,7 @@ export default async function AdminAccountPage() {
       productName={branding.productName}
       // The two-factor table carries no enrollment timestamp; the field shows the unknown copy.
       authenticatorEnrolledAt={null}
-      sessions={(sessions ?? []).map((session) => ({
+      sessions={sessions.map((session) => ({
         id: session.id,
         device: session.device,
         browser: session.browser,

@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { AuthMember } from "../src/services/auth/index.ts";
+import type { AuthMember, AuthSession } from "../src/services/auth/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import { insertCredentialPerson, startDisposableDeployment } from "./index.ts";
 
@@ -67,6 +67,18 @@ async function signIn(
     throw new Error("the signed-in session did not read back");
 
   return { cookie, sessionId: session.session.id };
+}
+
+/** The live session a cookie names, read through the enforced read a page makes first. */
+async function liveSession(
+  auth: AuthMember,
+  cookie: string
+): Promise<AuthSession> {
+  const session = await auth.getSession({ headers: new Headers({ cookie }) });
+
+  if (session === null) throw new Error("the cookie names no live session");
+
+  return session;
 }
 
 type SessionRow = {
@@ -169,13 +181,13 @@ describe("the session idle rule", () => {
 
     const { cookie, sessionId } = await signIn(auth, "idle-race@example.com");
 
-    const liveSession = await auth.handler(
+    const liveRead = await auth.handler(
       new Request(`${PUBLIC_URL}/api/auth/get-session`, {
         headers: { cookie, origin: PUBLIC_URL },
       })
     );
 
-    expect(await liveSession.json()).not.toBeNull();
+    expect(await liveRead.json()).not.toBeNull();
 
     await ageSession(client, sessionId, IDLE_MINUTES);
 
@@ -355,10 +367,9 @@ describe("the session idle rule", () => {
     await ageSession(client, second.sessionId, IDLE_MINUTES + 1);
 
     const rows = await auth.listOwnSessions({
-      headers: new Headers({ cookie }),
+      session: await liveSession(auth, cookie),
     });
 
-    expect(rows).not.toBeNull();
     expect(rows?.map((row) => row.id)).toEqual([sessionId]);
     expect(rows?.[0]?.isCurrent).toBe(true);
     expect(rows?.[0]?.browser).toBe("Chrome");
@@ -380,9 +391,9 @@ describe("the session idle rule", () => {
     expect(
       (
         await auth.listOwnSessions({
-          headers: new Headers({ cookie: current.cookie }),
+          session: await liveSession(auth, current.cookie),
         })
-      )?.length
+      ).length
     ).toBe(2);
 
     await expect(

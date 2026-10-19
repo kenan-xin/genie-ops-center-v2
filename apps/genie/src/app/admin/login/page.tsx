@@ -24,8 +24,9 @@ export default async function AdminLoginPage() {
 
   const state = await documentSessionState();
 
-  if (state.status === "idle-expired")
-    redirect("/sign-in?error=session_expired");
+  // The route clears the idle session's cookie, whichever of this redirect and the layout's the
+  // browser follows (R-14, R-17a).
+  if (state.status === "idle-expired") redirect("/api/auth/session-expired");
 
   let step: BreakGlassStep = "credentials";
   let steps: readonly BreakGlassStep[] = ANONYMOUS_STEPS;
