@@ -26,6 +26,19 @@ const IMAGE_PORT_BASE = 30000;
  */
 const EPHEMERAL_PORT_MIN = 32768;
 
+/**
+ * How many worker slots one test's band holds. Playwright raises `workerIndex`
+ * after every failed test, so an unbounded `base + workerIndex * 2` grew into
+ * the next test's band and two tests bound one port (bead 5ee8). The index wraps
+ * inside `WORKER_SLOTS * 2` ports, so bases 100 apart never overlap.
+ */
+const WORKER_SLOTS = 40;
+
+/** The host port one Playwright worker uses for the image test whose band starts at `base`. */
+export function workerImagePort(base: number, workerIndex: number): number {
+  return imageHostPort(base + (workerIndex % WORKER_SLOTS) * 2);
+}
+
 export function imageHostPort(configured: number): number {
   const port = scopedPort(IMAGE_PORT_BASE + (configured - IMAGE_PORT_MIN));
 

@@ -11,7 +11,7 @@ import { insertPlaceholderRecord } from "@genie/module-placeholder/testing";
 import { type Page, expect, test } from "@playwright/test";
 
 import { TEST_AUTH_ENV } from "../testing/auth-env.ts";
-import { imageHostPort } from "../testing/image-ports.ts";
+import { workerImagePort } from "../testing/image-ports.ts";
 import { startImage } from "../testing/image-process.ts";
 import { rpcPost } from "./support/rpc.ts";
 
@@ -96,10 +96,9 @@ test("two stacks of one image keep placeholder data isolated at phone and deskto
   const first = await startDisposableDeployment([placeholderModule]);
   const second = await startDisposableDeployment([placeholderModule]);
   // The phone and desktop runs can share a moment, so each worker gets its own
-  // pair. The worker index stays small, which keeps the ports below the
-  // ephemeral range that imageHostPort refuses; the process id did not.
-  const firstPort = imageHostPort(3500 + testInfo.workerIndex * 2);
-  const secondPort = imageHostPort(3501 + testInfo.workerIndex * 2);
+  // pair inside this test's band.
+  const firstPort = workerImagePort(3500, testInfo.workerIndex);
+  const secondPort = workerImagePort(3501, testInfo.workerIndex);
   let firstImage: Awaited<ReturnType<typeof startImage>> | undefined;
   let secondImage: Awaited<ReturnType<typeof startImage>> | undefined;
 

@@ -10,7 +10,7 @@ import {
   E2E_BREAK_GLASS_PASSWORD,
   e2eBreakGlassEmail,
 } from "../testing/e2e-keycloak.ts";
-import { imageHostPort } from "../testing/image-ports.ts";
+import { workerImagePort } from "../testing/image-ports.ts";
 import { startImage, type RunningImage } from "../testing/image-process.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { fillAuthenticatorCode, totpCode } from "./support/break-glass.ts";
@@ -27,6 +27,9 @@ const NEW_PASSWORD = "BreakGlass1!sw0rd";
 /** The bound on a cold disposable image's first request under CPU contention. */
 const COLD_REQUEST_MS = 60_000;
 
+/** A test that starts its own image: the 60 s health wait plus the test body (bead 5ee8). */
+const STANDALONE_TEST_MS = 120_000;
+
 /** Starts a disposable app whose realm is a closed port, and one break-glass credential account. */
 async function startStandaloneBreakGlass(port: number): Promise<{
   readonly deployment: DisposableDeployment;
@@ -34,40 +37,49 @@ async function startStandaloneBreakGlass(port: number): Promise<{
   readonly url: string;
 }> {
   const deployment = await startDisposableDeployment([]);
-
-  await markSetupDone(deployment.context);
-  await insertCredentialPerson(deployment.context, {
-    email: "standalone@example.invalid",
-    password: E2E_BREAK_GLASS_PASSWORD,
-    mustChangePassword: true,
-    twoFactorEnabled: false,
-  });
-
   const url = `http://127.0.0.1:${port}`;
+  let image: RunningImage | undefined;
 
-  const image = await startImage(
-    {
-      DATABASE_URL: deployment.context.env.databaseUrl,
-      PUBLIC_URL: url,
-      // A closed port: the realm never answers, exactly as a stopped Keycloak (R-54d, DEC-24).
-      KEYCLOAK_URL: "http://127.0.0.1:1",
-    },
-    port
-  );
+  // A start that fails stops what it started: a leaked container kept its host port and failed
+  // the next run with "port is already allocated" (bead 5ee8).
+  try {
+    await markSetupDone(deployment.context);
+    await insertCredentialPerson(deployment.context, {
+      email: "standalone@example.invalid",
+      password: E2E_BREAK_GLASS_PASSWORD,
+      mustChangePassword: true,
+      twoFactorEnabled: false,
+    });
 
-  // The published port answers before the first navigation, exactly as the compose stack's
-  // readiness is checked. Health is `degraded` with the realm closed, so only the status matters.
-  await expect
-    .poll(
-      async () =>
-        fetch(`${url}/api/health`)
-          .then((response) => response.status)
-          .catch(() => 0),
-      { timeout: 60000 }
-    )
-    .toBe(200);
+    image = await startImage(
+      {
+        DATABASE_URL: deployment.context.env.databaseUrl,
+        PUBLIC_URL: url,
+        // A closed port: the realm never answers, exactly as a stopped Keycloak (R-54d, DEC-24).
+        KEYCLOAK_URL: "http://127.0.0.1:1",
+      },
+      port
+    );
 
-  return { deployment, image, url };
+    // The published port answers before the first navigation, exactly as the compose stack's
+    // readiness is checked. Health is `degraded` with the realm closed, so only the status matters.
+    await expect
+      .poll(
+        async () =>
+          fetch(`${url}/api/health`)
+            .then((response) => response.status)
+            .catch(() => 0),
+        { timeout: 60000 }
+      )
+      .toBe(200);
+
+    return { deployment, image, url };
+  } catch (error) {
+    await image?.stop();
+    await deployment.stop();
+
+    throw error;
+  }
 }
 
 test("a limited break-glass session stays limited across navigation (S1, R-30)", async ({
@@ -148,7 +160,9 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
 test("a rate-limited break-glass sign-in shows the neutral notice and disables its inputs (R-21)", async ({
   page,
 }, testInfo) => {
-  const port = imageHostPort(3600 + testInfo.workerIndex * 2);
+  test.setTimeout(STANDALONE_TEST_MS);
+
+  const port = workerImagePort(3600, testInfo.workerIndex);
   const stack = await startStandaloneBreakGlass(port);
 
   try {
@@ -203,7 +217,7 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
   // budget is the one bound below, inside a test bound that leaves room for the rest.
   test.setTimeout(180_000);
 
-  const port = imageHostPort(3610 + testInfo.workerIndex * 2);
+  const port = workerImagePort(3700, testInfo.workerIndex);
   const stack = await startStandaloneBreakGlass(port);
 
   try {
@@ -256,7 +270,9 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
 test("re-enroll replaces the authenticator and the new code signs in (R-66, B3)", async ({
   page,
 }, testInfo) => {
-  const port = imageHostPort(3620 + testInfo.workerIndex * 2);
+  test.setTimeout(STANDALONE_TEST_MS);
+
+  const port = workerImagePort(3800, testInfo.workerIndex);
   const stack = await startStandaloneBreakGlass(port);
 
   try {
