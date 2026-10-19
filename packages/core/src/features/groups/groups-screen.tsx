@@ -25,6 +25,7 @@ import {
   inputClass,
   Pill,
   SlideOver,
+  wideColumn,
 } from "../admin/ui.tsx";
 import {
   groupLabel,
@@ -575,14 +576,14 @@ export function GroupsScreen(props: GroupsScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <label className="relative block">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+          <label className="relative block min-w-0 flex-1 sm:flex-none">
             <span className="sr-only">Search groups</span>
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               <SearchIcon />
             </span>
             <input
-              className={`${inputClass} w-72 pl-9`}
+              className={`${inputClass} pl-9 sm:w-72`}
               aria-label="Search groups"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -594,7 +595,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
             be deleted. Both kinds carry roles.
           </HelpDisclosure>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex items-center gap-2 text-sm text-foreground">
             <input
               type="checkbox"
@@ -653,8 +654,8 @@ export function GroupsScreen(props: GroupsScreenProps) {
             <tr className="text-xs uppercase text-muted-foreground">
               <th className="py-2">Group</th>
               <th className="py-2">Source</th>
-              <th className="py-2">Members</th>
-              <th className="py-2">Roles</th>
+              <th className={`py-2 ${wideColumn}`}>Members</th>
+              <th className={`py-2 ${wideColumn}`}>Roles</th>
               <th className="py-2">Last sync</th>
             </tr>
           </thead>
@@ -670,17 +671,19 @@ export function GroupsScreen(props: GroupsScreenProps) {
                       props.onSelectGroup?.(group.id);
                     }}
                   >
-                    <span className="font-semibold text-foreground">
+                    <span className="font-semibold text-foreground wrap-anywhere">
                       {groupLabel(group)}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground wrap-anywhere">
                       {group.description}
                     </span>
                   </button>
                 </td>
                 <td className="py-2">{sourcePill(group)}</td>
-                <td className="py-2 text-foreground">{group.memberCount}</td>
-                <td className="py-2 text-foreground">
+                <td className={`py-2 text-foreground ${wideColumn}`}>
+                  {group.memberCount}
+                </td>
+                <td className={`py-2 text-foreground ${wideColumn}`}>
                   {group.assignmentCount}
                 </td>
                 <td className="py-2">{syncBadge(group, props.viewer)}</td>

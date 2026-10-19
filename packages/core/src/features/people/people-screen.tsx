@@ -19,6 +19,7 @@ import {
   inputClass,
   Pill,
   SlideOver,
+  wideColumn,
   type PillTone,
 } from "../admin/ui.tsx";
 import type {
@@ -547,14 +548,14 @@ export function PeopleScreen(props: PeopleScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <label className="relative block">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+          <label className="relative block min-w-0 flex-1 sm:flex-none">
             <span className="sr-only">Search people</span>
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               <SearchIcon />
             </span>
             <input
-              className={`${inputClass} w-72 pl-9`}
+              className={`${inputClass} pl-9 sm:w-72`}
               aria-label="Search people"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -566,7 +567,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             operator command.
           </HelpDisclosure>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="text-sm text-foreground">
             <span className="mr-2">Sort</span>
             <select
@@ -698,9 +699,9 @@ export function PeopleScreen(props: PeopleScreenProps) {
             <tr className="text-xs uppercase text-muted-foreground">
               <th className="py-2">Person</th>
               <th className="py-2">Status</th>
-              <th className="py-2">Groups</th>
-              <th className="py-2">Roles</th>
-              <th className="py-2">Last sign-in</th>
+              <th className={`py-2 ${wideColumn}`}>Groups</th>
+              <th className={`py-2 ${wideColumn}`}>Roles</th>
+              <th className={`py-2 ${wideColumn}`}>Last sign-in</th>
               <th className="py-2">
                 <span className="sr-only">Actions</span>
               </th>
@@ -729,14 +730,14 @@ export function PeopleScreen(props: PeopleScreenProps) {
                       <span className="font-semibold text-foreground">
                         {initials(person.name)}
                       </span>
-                      <span>{person.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="wrap-anywhere">{person.name}</span>
+                      <span className="text-xs text-muted-foreground wrap-anywhere">
                         {person.email}
                       </span>
                     </button>
                   </td>
                   <td className="py-2">{statusPill(person.status)}</td>
-                  <td className="py-2">
+                  <td className={`py-2 ${wideColumn}`}>
                     <span className="flex flex-wrap items-center gap-1">
                       {person.groups.slice(0, 2).map((group) => (
                         <Pill key={group.id} tone="info">
@@ -750,8 +751,10 @@ export function PeopleScreen(props: PeopleScreenProps) {
                       ) : null}
                     </span>
                   </td>
-                  <td className="py-2 text-foreground">{person.roleCount}</td>
-                  <td className="py-2 text-muted-foreground">
+                  <td className={`py-2 text-foreground ${wideColumn}`}>
+                    {person.roleCount}
+                  </td>
+                  <td className={`py-2 text-muted-foreground ${wideColumn}`}>
                     {fmtDateTime(
                       person.lastSignInAt,
                       props.viewer.timeZone,

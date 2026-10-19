@@ -15,6 +15,13 @@ export const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.
 
 export const btnGhost = `inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
+/**
+ * A directory-table column a phone leaves out; the inspector still shows its value. The table
+ * must fit a phone (DEC-25): a page wider than the viewport makes a phone browser zoom out, and a
+ * tap then lands on a neighboring row (genie-ops-center-v2-vdm9).
+ */
+export const wideColumn = "hidden sm:table-cell";
+
 export const inputClass = `h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground dark:bg-card ${focusRing}`;
 
 export type PillTone = "neutral" | "success" | "warning" | "danger" | "info";
