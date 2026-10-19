@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import { Client } from "pg";
+import type { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
@@ -19,6 +19,7 @@ import {
   runMigrations,
 } from "../src/services/migrator/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -92,7 +93,7 @@ function disabledModule(): Module {
 
 async function setupFixture(): Promise<SetupFixture> {
   const postgres = await startDisposablePostgres();
-  const observer = new Client({ connectionString: postgres.url });
+  const observer = databaseClient({ connectionString: postgres.url });
 
   await observer.connect();
 

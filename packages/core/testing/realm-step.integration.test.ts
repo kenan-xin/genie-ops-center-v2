@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { and, eq } from "drizzle-orm";
-import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentSource } from "../src/lib/environment/index.ts";
@@ -27,6 +26,7 @@ import {
   readSetupProgress,
   setupSatisfied,
 } from "../src/services/setup/index.ts";
+import { databaseClient } from "./database-client.ts";
 import {
   CLIENT_FILE_DIRECTORY,
   insertUser,
@@ -423,7 +423,7 @@ async function readClientSecret(
 
 /** Every `setup_step` detail joined, for a non-leak assertion on a failed step's cause. */
 async function setupStepDetails(postgresUrl: string): Promise<string> {
-  const observer = new Client({ connectionString: postgresUrl });
+  const observer = databaseClient({ connectionString: postgresUrl });
 
   await observer.connect();
 
@@ -441,7 +441,7 @@ async function setupStepDetails(postgresUrl: string): Promise<string> {
 describe("the realm and clients setup steps against a real Keycloak", () => {
   it("creates the brokered realm in one POST with the three clients, PKCE, brute force, the groups mapper and the display name", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `brokered-${process.pid}-${Date.now()}`;
 
@@ -853,7 +853,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
   it("reuses an existing realm when the realm step has no done row after a crash", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `resume-${process.pid}-${Date.now()}`;
 
@@ -958,7 +958,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
   it("refuses and names a missing client", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `missing-${process.pid}-${Date.now()}`;
 
@@ -991,7 +991,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
   it("refuses a missing genie-studio even when the realm error page is not English", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
 
     const files = await configFiles({
       overrides: {
@@ -1033,7 +1033,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
   it("refuses when the sign-in client's standard flow is off", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `flowoff-${process.pid}-${Date.now()}`;
 
@@ -1067,7 +1067,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
 
   it("resumes after an induced realm step failure", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `resume-fail-${process.pid}-${Date.now()}`;
 
@@ -1151,7 +1151,7 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
 
   it("fills the two URIs at realm creation and the clients step proves the redirect", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles({ genieStudioUrl: STUDIO_URL });
     const realm = `studio-${process.pid}-${Date.now()}`;
 
@@ -1188,7 +1188,7 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
 
   it("refuses when genie-studio's registered redirect is not the one the field names", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles({ genieStudioUrl: STUDIO_URL });
     const realm = `studio-wrong-${process.pid}-${Date.now()}`;
 
@@ -1227,7 +1227,7 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
 
   it("merges genie-studio's redirects on a rerun, keeping existing values, the secret and no duplicates (R-49a, R-53)", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles({ genieStudioUrl: STUDIO_URL });
     const realm = `studio-repair-${process.pid}-${Date.now()}`;
 
@@ -1446,7 +1446,7 @@ async function idTokenAudiences(input: {
 describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
   it("skips the realm and clients steps, reads no bootstrap credential, records the address, and lets the guard see client-only mode", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles({ realm: "customer" });
     const realm = `client-only-${process.pid}-${Date.now()}`;
     const deploymentUrl = "https://genie.example.invalid";
@@ -1548,7 +1548,7 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
 
   it("writes the recorded address on a rerun of a settled stack whose column is null (R-54c)", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles({ realm: "customer" });
     const realm = `repair-${process.pid}-${Date.now()}`;
     const deploymentUrl = "https://genie.example.invalid";
@@ -1769,7 +1769,7 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
 describe("the R-54c address repair (R-54c)", () => {
   it("never moves a settled clients step when the repair cannot run, and the gate stays open", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `repair-managed-${process.pid}-${Date.now()}`;
 

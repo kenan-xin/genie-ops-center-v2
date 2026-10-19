@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runGenieOps } from "../src/services/ops/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -17,7 +17,7 @@ afterEach(async () => {
 describe("the setup gate latch", () => {
   it("keeps every completed setup step done after a setup rerun", async () => {
     const postgres = await startDisposablePostgres();
-    const observer = new Client({ connectionString: postgres.url });
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await mkdtemp(join(tmpdir(), "genie-setup-latch-"));
 
     cleanups.push(async () => {

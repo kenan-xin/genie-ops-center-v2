@@ -1,6 +1,6 @@
 import { userInfo } from "node:os";
 
-import { Client } from "pg";
+import type { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ import { silentLogger } from "../src/services/logging/index.ts";
 import { CORE_HISTORY, runMigrations } from "../src/services/migrator/index.ts";
 import { ModuleManagementError } from "../src/services/module-management/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -99,7 +100,7 @@ async function createFixture(
 
   const moduleIds = compiledModules.map((module) => module.identity.id);
   const context = createTenantContext(source, silentLogger(), moduleIds);
-  const observer = new Client({ connectionString: postgres.url });
+  const observer = databaseClient({ connectionString: postgres.url });
 
   await observer.connect();
 

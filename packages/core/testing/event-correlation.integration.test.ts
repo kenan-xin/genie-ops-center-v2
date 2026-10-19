@@ -1,4 +1,4 @@
-import { Client } from "pg";
+import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ import {
   type RedactingLogger,
 } from "../src/services/logging/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./postgres.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration fixtures group contract data and setup together. */
@@ -231,7 +232,7 @@ beforeAll(async () => {
       [moduleId]
     )
   );
-  observer = new Client({ connectionString: databaseUrl });
+  observer = databaseClient({ connectionString: databaseUrl });
   await observer.connect();
 
   // The fast chain: first's handler emits second, and second's handler records what it sees.

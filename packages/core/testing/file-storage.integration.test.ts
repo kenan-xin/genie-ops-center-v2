@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { JSDOM } from "jsdom";
-import { Client } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { withTransaction } from "../src/index.ts";
@@ -14,6 +13,7 @@ import { file, fileBlob } from "../src/schema.ts";
 import type { RequestPrincipal } from "../src/services/authorization/index.ts";
 import { createRequestPrincipal } from "../src/services/authorization/index.ts";
 import type { PermissionGrants } from "../src/services/authorization/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposableDeployment } from "./index.ts";
 
 /** The key the file links in this file are created under; the file store only records it. */
@@ -582,7 +582,10 @@ describe("FileStorage against a real Postgres deployment", () => {
 
   it("writes metadata and bytes in the caller transaction so rollback leaves neither", async () => {
     const { context } = await startStorageDeployment();
-    const observer = new Client({ connectionString: context.env.databaseUrl });
+
+    const observer = databaseClient({
+      connectionString: context.env.databaseUrl,
+    });
 
     cleanups.push(() => observer.end());
     await observer.connect();

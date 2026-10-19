@@ -155,6 +155,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/database-client.integration.test.ts",
+    reason:
+      "genie-ops-center-v2-lcst: a test-owned client whose session Postgres ends must not fail the run with an uncaught error",
+    cases: [
+      "a database client a test owns stays handled when the backend of its idle session is terminated",
+    ],
+  },
+  {
     file: "testing/tenant-context-readers.integration.test.ts",
     reason:
       "Spec 1 AC-1 second half and R-5 require reader cache expiry and disabled-module proof",

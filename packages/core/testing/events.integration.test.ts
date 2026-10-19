@@ -1,4 +1,4 @@
-import { Client } from "pg";
+import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -19,6 +19,7 @@ import {
 import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposableDeployment } from "./index.ts";
 import { startDisposablePostgres } from "./postgres.ts";
 
@@ -373,7 +374,7 @@ beforeAll(async () => {
       [moduleId, "event-queue-gate"]
     )
   );
-  observer = new Client({ connectionString: databaseUrl });
+  observer = databaseClient({ connectionString: databaseUrl });
   await observer.connect();
   await registerModules(context, [eventModule, queueGateModule]);
 

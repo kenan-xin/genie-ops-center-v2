@@ -36,6 +36,8 @@ export { markSetupDone } from "./mark-setup-done.ts";
 
 export { startDisposablePostgres } from "./postgres.ts";
 
+export { databaseClient } from "./database-client.ts";
+
 export type { DisposablePostgres } from "./postgres.ts";
 
 export {

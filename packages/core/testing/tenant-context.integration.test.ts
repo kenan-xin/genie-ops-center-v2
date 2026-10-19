@@ -1,10 +1,10 @@
-import { Client } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { validateEnvironment } from "../src/lib/environment/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import type { LogValue } from "../src/services/logging/index.ts";
 import { createLogger, silentLogger } from "../src/services/logging/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -33,7 +33,7 @@ describe("tenant context database clients", () => {
     });
 
     const context = createTenantContext(source, logger, []);
-    const terminator = new Client({ connectionString: postgres.url });
+    const terminator = databaseClient({ connectionString: postgres.url });
 
     cleanups.push(async () => {
       await context.db.$client.end();
@@ -127,7 +127,7 @@ describe("tenant context database clients", () => {
       []
     );
 
-    const terminator = new Client({ connectionString: postgres.url });
+    const terminator = databaseClient({ connectionString: postgres.url });
 
     cleanups.push(async () => {
       await context.db.$client.end();

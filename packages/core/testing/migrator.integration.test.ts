@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import { Client, type Pool, type PoolClient, type QueryConfig } from "pg";
+import type { Client, Pool, PoolClient, QueryConfig } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -17,6 +17,7 @@ import {
   migrationPlan,
   runMigrations,
 } from "../src/services/migrator/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 /**
@@ -312,7 +313,9 @@ describe("the migrator's one reserved session, watched on a real database", () =
     // session to read who owns the lock while the run is inside it.
     const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(0.5);");
 
-    const observer = new Client({ connectionString: context.env.databaseUrl });
+    const observer = databaseClient({
+      connectionString: context.env.databaseUrl,
+    });
 
     await observer.connect();
 
@@ -365,7 +368,9 @@ describe("the migrator's one reserved session, watched on a real database", () =
     const context = await freshDeployment(250);
     const alpha = await writeHistory("alpha", ALPHA_TABLE);
 
-    const holder = new Client({ connectionString: context.env.databaseUrl });
+    const holder = databaseClient({
+      connectionString: context.env.databaseUrl,
+    });
 
     await holder.connect();
 
@@ -462,7 +467,9 @@ describe("the migrator against a real database", () => {
     const context = await freshDeployment(250);
     const alpha = await writeHistory("alpha", ALPHA_TABLE);
 
-    const holder = new Client({ connectionString: context.env.databaseUrl });
+    const holder = databaseClient({
+      connectionString: context.env.databaseUrl,
+    });
 
     await holder.connect();
 
@@ -668,7 +675,7 @@ describe("the migrator recovering from a real database failure", () => {
     const context = await freshDeployment();
     const sleeper = await writeHistory("sleeper", "SELECT pg_sleep(2);");
 
-    const executioner = new Client({
+    const executioner = databaseClient({
       connectionString: context.env.databaseUrl,
     });
 

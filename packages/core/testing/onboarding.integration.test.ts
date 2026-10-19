@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
-import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
@@ -21,6 +20,7 @@ import {
 } from "../src/services/auth/onboarding.ts";
 import { recordOAuthSignIn } from "../src/services/auth/session-events.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
+import { databaseClient } from "./database-client.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
   assignRole,
@@ -224,11 +224,11 @@ describe("OAuth onboarding and group sync against Postgres", () => {
       []
     );
 
-    const blocker = new Client({
+    const blocker = databaseClient({
       connectionString: jit.context.env.databaseUrl,
     });
 
-    const observer = new Client({
+    const observer = databaseClient({
       connectionString: jit.context.env.databaseUrl,
     });
 

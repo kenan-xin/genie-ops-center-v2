@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { Client } from "pg";
+import type { Client } from "pg";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { type AfterCommit, withTransaction } from "../src/index.ts";
@@ -10,6 +10,7 @@ import {
   createLogger,
   silentLogger,
 } from "../src/services/logging/index.ts";
+import { databaseClient } from "./database-client.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -42,7 +43,7 @@ async function startTransactionFixture(
     []
   );
 
-  const observer = new Client({ connectionString: postgres.url });
+  const observer = databaseClient({ connectionString: postgres.url });
 
   cleanups.push(async () => {
     await observer.end();
