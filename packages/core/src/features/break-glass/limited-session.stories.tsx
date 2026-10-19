@@ -54,6 +54,19 @@ export const BothOutstanding: Story = {
     // Both items are outstanding: two "To do:" announcements and no "Done:".
     await expect(canvas.getAllByText("To do:")).toHaveLength(2);
     await expect(canvas.queryByText("Done:")).not.toBeInTheDocument();
+
+    // The host loads the product stylesheet, so the page has its real layout.
+    // Without it the checklist is not a column, and the status words meant
+    // only for screen readers are visible.
+    const checklist = getComputedStyle(canvas.getByRole("list"));
+
+    await expect(checklist.display).toBe("flex");
+    await expect(checklist.flexDirection).toBe("column");
+    await expect(
+      canvas
+        .getAllByText("To do:")
+        .map((status) => getComputedStyle(status).position)
+    ).toEqual(["absolute", "absolute"]);
   },
 };
 

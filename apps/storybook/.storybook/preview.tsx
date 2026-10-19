@@ -1,6 +1,8 @@
 import { ThemeProvider, type ThemeName } from "@genie/ui";
 import type { Preview } from "@storybook/nextjs-vite";
 
+import "./preview.css";
+
 const preview: Preview = {
   parameters: {
     // Violations fail the component test in the user interface and on the

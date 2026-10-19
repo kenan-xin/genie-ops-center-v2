@@ -41,6 +41,10 @@ const OWNER_INPUTS = [
   "{workspaceRoot}/packages/modules/*/package.json",
   "{workspaceRoot}/packages/modules/*/tsconfig.json",
   "{workspaceRoot}/packages/config/src/**/*",
+  // The preview imports the application's stylesheet, which reads the
+  // application's Tailwind configuration.
+  "{workspaceRoot}/apps/genie/src/styles/**/*",
+  "{workspaceRoot}/apps/genie/tailwind.config.ts",
 ];
 
 type Target = {

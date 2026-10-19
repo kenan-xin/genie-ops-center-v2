@@ -38,7 +38,9 @@
       "{workspaceRoot}/packages/modules/*/package.json",
       "{workspaceRoot}/packages/modules/*/tsconfig.json",
       "{workspaceRoot}/packages/config/src/**/*",
-      "{workspaceRoot}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)"
+      "{workspaceRoot}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)",
+      "{workspaceRoot}/apps/genie/src/styles/**/*",
+      "{workspaceRoot}/apps/genie/tailwind.config.ts"
     ]
   },
   "targetDefaults": {
