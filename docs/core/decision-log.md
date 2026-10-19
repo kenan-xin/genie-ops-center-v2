@@ -465,6 +465,8 @@ Guard: `can()` and `scopesFor()` are the only readers of `role` and `role_assign
 
 Designed in: Section 0, as the shape of the stub. Implemented: Section 2 item 6. Revisit when a customer needs a revoke to end a session that is mid-request, or when the per-request query shows in a profile; the change is a per-user cache cleared by the assignment write, and every caller stays the same.
 
+Amended 2026-10-19, grants only add access: the loader unions every grant a person holds, through any group or directly, and no assignment removes access. A person who must not get a group's access is kept out of that group at the identity provider, for example through a narrower group, and a person who needs extra access gets a direct assignment or a local group. Why no exclusion rule: a deny grant makes every `can()` and `scopesFor()` answer depend on which grants win, and no customer case has needed one. Revisit if a customer needs an exclusion that a narrower group cannot express; the change is a deny grant read by this same loader, and it needs its own decision.
+
 ## DEC-49. The landing page after sign-in is the module's own hub
 
 Question: `OPEN-8` asked whether the page after sign-in is the solutions module's own hub, or a core page named Dashboard that renders a module's catalogue through a landing-slot contract point. The shell design had run ahead with a Dashboard entry while the recorded default said the opposite, so the two trees disagreed on the first page a person sees.
@@ -566,3 +568,5 @@ Trade-off: a typing mistake creates a group that never fills, and it holds roles
 Guard: the sync looks up directory groups by claim value only, so a pre-added row and a synced row are the same kind of row. The group sync test covers a pre-added group that a later sign-in fills, and a pre-added group whose value never arrives.
 
 Designed in: now. Implemented: Section 2, the Groups screen and item 5 (group sync). Design files affected: `design/sections/people-groups-and-roles/spec.md` gains an Add directory group action and the "Not seen yet" state. Revisit if customers need the group list itself pulled from the provider; the change is a per-provider resolver that fills pre-added rows, and it needs its own decision.
+
+Amended 2026-10-19, Entra groups by object ID: the deployment guide asks a Microsoft Entra ID customer to send groups by object ID, never by display name. The object ID does not change when the group is renamed. A name does, and the sync then sees a new, unmapped value, so the people of the renamed group lose its roles at their next sign-in until an administrator maps the new value.
