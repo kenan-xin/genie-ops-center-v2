@@ -12,6 +12,8 @@
     "validate": "nx run @genie/workspace-validation:validate",
     "format": "oxfmt --disable-nested-config",
     "format:check": "oxfmt --check --disable-nested-config",
+    "gate:fast": "nx affected -t lint typecheck test --base=${NX_BASE:-origin/develop}",
+    "gate:merge": "pnpm run ci:develop",
     "affected": "nx affected -t build test lint typecheck test-storybook test:integration && nx run @genie/app:check-openapi && pnpm run validate",
     "ci:pr": "nx affected -t lint typecheck test build build-storybook test-storybook --base=${NX_BASE:-origin/develop} && nx run @genie/app:check-openapi && nx affected -t test:integration --nx-bail --parallel=1 --base=${NX_BASE:-origin/develop} && pnpm run validate",
     "ci:develop": "pnpm run ci:pr && nx run @genie/app:test:e2e:fixture && nx run @genie/app:test:e2e && nx run @genie/app:test:e2e:generated",
