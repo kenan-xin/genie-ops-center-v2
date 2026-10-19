@@ -87,7 +87,7 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 - Locale: default_locale, default_time_zone, date_format, number_format.
 - Bookkeeping: updated_by_user_id (nullable, foreign key added with `user` in Section 2), updated_at.
 
-`user_preference`: user_id (primary key), locale (nullable), time_zone (nullable), theme (nullable), updated_at. A person's overrides of the tenant defaults.
+`user_preference`: user_id (primary key), locale (nullable), time_zone (nullable), updated_at. A person's overrides of the tenant defaults. There is no personal theme: theme belongs to the organization and comes from `tenant_branding` (owner decision 2026-10-19).
 
 ### Files
 
