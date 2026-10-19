@@ -2,7 +2,7 @@ Confidence: 8.1/10
 
 Business scenario: [CF-MA-01](../flows/module-access-upgrades.md) describes configuring a newly delivered module before explicit activation. R-84a must support this journey; the flow is not evidence that the delivered design already includes the pre-enable state.
 Reasoning: Every platform document and every design file that serves this section was read, and each requirement below is traced to a roadmap item, a decision id, a data-shape column, a design heading, or a row of the cross-section call table in `README.md`. The integration pass closed the three document drifts this draft had found and settled the font list, the landing-route fallback, the hub entry placement, the idle-timeout seam, and the optional `configSchema`; the decisions of 2026-09-18 settled the email gallery and the realm capability column, so no open question remains. A cross-specification review found that the first draft had carried no migration requirement at all, which is now R-86a, and that finding keeps the score modest. Nothing is built, so the per-request token layer, the one navigation tree, and the contrast checks are proven only on paper, and five of the eleven work items land after Section 2 and consume a seam that does not exist yet.
-Status: Draft — awaiting user approval
+Status: Approved by the product owner for ticket breakdown, 2026-10-19, after the branding cut (three Branding tabs), the organization-only theme, and the OPEN-9 seed decisions of the same day.
 
 ## Goal and scope
 
@@ -94,7 +94,7 @@ R-15. The dark theme must keep the fixed starting points pinned in `../design/de
 
 R-16. The emitted variables must be carried on the document root in a style element; the minimal CSP does not require a nonce (`../core/roadmap.md`, Section 0 item 11, `DEC-31`). A route that renders the shell or the sign-in page is request-bound because it reads branding, and the implementation must accept that rather than cache the markup across tenants.
 
-R-17. Resolving the theme must not flash the wrong theme before hydration. The resolved theme is written on the document root by the server when it is known, and the client corrects it before paint when the person's preference is `system`.
+R-17. Resolving the theme must not flash the wrong theme before hydration. The resolved theme is written on the document root by the server when it is known, and the client corrects it before paint when the organization's default theme is `system`. A person has no theme preference (R-60).
 
 R-18. A branding change must show on the next page load in a process whose branding reader cache has expired, within the 10 second window of `DEC-46`. Nothing invalidates the cache on save, and no process restarts.
 

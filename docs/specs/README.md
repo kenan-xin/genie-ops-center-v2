@@ -9,7 +9,7 @@ One specification per core roadmap section, named `NN-<section>.md`. A specifica
 | `00-monorepo-foundation.md` | Section 0: Monorepo foundation | Approved for ticket breakdown, 2026-09-19; integrated 2026-09-23 | 8.2 |
 | `01-deployment-and-setup.md` | Section 1: Deployment and setup | Approved for ticket breakdown, 2026-09-23 | 8.4 |
 | `02-identity-and-access.md` | Section 2: Identity and access | Draft, awaiting approval | 8.5 |
-| `03-shell-branding-and-design-system.md` | Section 3: Shell, branding, and design system | Draft, awaiting approval | 8.1 |
+| `03-shell-branding-and-design-system.md` | Section 3: Shell, branding, and design system | Approved 2026-10-19 | 8.1 |
 | `04-solutions-module.md` | Section 4: Solutions module | Draft, awaiting approval | 8.0 |
 | `05-operations.md` | Section 5: Operations | Draft, awaiting approval | 8.4 |
 
