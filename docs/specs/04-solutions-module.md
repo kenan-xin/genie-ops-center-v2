@@ -2,7 +2,7 @@ Confidence: 8.0/10
 
 Business scenarios: [CF-MA-02–09](../flows/module-access-upgrades.md) apply through the shared permission-evolution policy, especially independent role copies, broad grants covering future records rather than future actions, and retained access on re-enable. R-6a/R-30 and the Section 2 upgrade proof own these guarantees; illustrative approval examples add no Solutions permissions.
 Reasoning: Every core work item in Section 4 has a named owner document, and the solutions domain definitions are complete and internally consistent in `../modules/solutions/`, so the requirements below are citation work rather than invention. The drift findings that would have broken the route are fixed at their source: the message-stream mapping in `../modules/solutions/chat-proxy.md` matches AI SDK 7 ordering, the streaming route mounts under the module endpoint prefix with session authentication, the route validates the upstream before it commits its response and keeps the browser connection alive through an edge, and the renderer and Access tab proposals were decided on 2026-09-18, so no open question remains. The score is held below nine by two things documentation cannot settle: the streaming route is the one genuinely new core capability and no implementation of it exists to measure, and the external chat API contract is a dated observation that must be revalidated before the route ships (R-42). Sections 0, 2, and 3 must also deliver the record-type, navigation-tree, and shell contracts exactly as written for this section to add no core change.
-Status: Draft — awaiting user approval
+Status: Approved by the product owner for ticket breakdown, 2026-10-19, with R-39 set to four test layers and AC-5a moved to Section 5 AC-11.
 
 ## Goal and scope
 
@@ -149,7 +149,7 @@ R-38. Every administration action on a module record writes one `audit_event` ro
 
 ### Tests and the second module
 
-R-39. The module's tests run in the three layers through the shared presets in `packages/config` with no module-specific continuous integration configuration. The module ships unit tests, integration tests for its router and schema, factories for its tables, and at least one end-to-end test for its main path. Source: `../core/roadmap.md` Section 4 item 5 and Section 0 item 6.
+R-39. The module's tests run in the four layers (unit, Storybook component, integration, end-to-end) through the shared presets in `packages/config` with no module-specific continuous integration configuration. The module ships unit tests, component stories with behavior tests for its screens, integration tests for its router and schema, factories for its tables, and at least one end-to-end test for its main path. Source: `../core/roadmap.md` Section 4 item 5 and Section 0 item 6.
 
 R-40. A second, empty module generated with `nx g @genie/generators:module-new` mounts through the same registry with no change to any file in `packages/core` or `apps/genie` other than the generated registry file. Source: `../core/roadmap.md` Section 4 done-when, `DEC-22`.
 
@@ -199,7 +199,7 @@ AC-15 (isolation). The standing two-context test runs with the module compiled i
 
 AC-16 (external interface readiness). A dated revalidation record exists, covers every item in R-42, and is filed before the streaming route is merged. Any contradiction it finds is recorded in `../modules/solutions/external-chat-api-contract.md` and, where it changes behavior, in `../modules/solutions/chat-proxy.md`, before the route is built. Proves R-42 and R-43.
 
-AC-5a (existing deployment). Repeat the [removal lifecycle matrix](../architecture/module-removal.md) with real Solutions records, files and scoped/broad grants. Unauthorized omission is refused; when controlled removal is supported, no routes/code remain in the image but retained records survive, reintroduction stays disabled, and review plus explicit enable restores only valid remaining access. Proves R-31 and CF-MA-10–11, not the fresh-database AC-5 alone.
+AC-5a moved to Section 5 (owner decision 2026-10-19). The removal lifecycle proof with real Solutions records depends on controlled removal, which Section 5 builds; it is now part of `05-operations.md` AC-11. Section 4 still proves the rejection rule of R-31 through AC-5 and the Section 1 rejection gate.
 
 AC-13a (R-37a). Real-database tests prove assignment, reassignment and clear through the contribution, category validation, both required permissions, cross-tenant denial, disabled-module refusal, retained placement, and the owning audit event. Phone/desktop E2E prove one Categories page can assign a whole module and a solution to the same category, show per-row failure/retry and reflect navigation placement without changing grants or module-only category summary counts. No special-case core Solutions import/table access is introduced. See `../flows/categories-and-settings.md`.
 

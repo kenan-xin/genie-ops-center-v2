@@ -143,7 +143,7 @@ Success: disable, image removal and reintroduction never purge data. No module d
 | CF-MA-02–06, CF-MA-09 | Section 2 R-33a–R-33c; Section 4 R-6a | Section 2 AC-25 and the permission-evolution matrix: real-database upgrade tests, explicit opt-in, preserved identities/scopes, failed/repeated execution, retirement and security revocation. Roles design needs unavailable-key and independent-copy behavior |
 | CF-MA-07 | Section 2 R-28/R-29/R-33b | Section 2 AC-8/AC-25: broad and narrow grants, future records but not future actions/modules. Access guidance must make the scope clear |
 | CF-MA-08 | Section 1 R-68/R-68a; Section 2 R-31; Section 4 R-30 | Section 1 activation verification and Section 4 AC-4: retained assignments, removal while off, and restored access with current gates. Access/Modules show inactive rather than deleted access |
-| CF-MA-10 | Section 1 R-79/AC-18/AC-19a; Section 2 R-33d/AC-26; Section 4 R-31/AC-5a; Section 5 R-26b/AC-11 | Early rejection gate; populated-database removal proof; retained but ineffective access |
+| CF-MA-10 | Section 1 R-79/AC-18/AC-19a; Section 2 R-33d/AC-26; Section 4 R-31/AC-5; Section 5 R-26b/AC-11 | Early rejection gate; populated-database removal proof; retained but ineffective access |
 | CF-MA-11 | Section 1 R-79a/AC-19a; Section 2 R-33d/AC-26; Section 3 R-84b/AC-14a; Section 5 R-26c/AC-11 | Disabled return, grant review, UI/CLI parity, explicit activation; no revived credentials/work |
 | CF-MA-12 | Section 5 R-26c/AC-11 | No implicit purge; separately approved deletion scope and recoverability |
 
