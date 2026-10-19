@@ -1,5 +1,5 @@
 import { globSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -49,12 +49,19 @@ const OWNERS = new Set([
   "apps/genie/src/limited-session.ts",
 ]);
 
+/**
+ * A Next route handler: a `route.ts` inside the `app/` router directory of the standard app or a
+ * customer app. A handler is one request with no parallel render, so its reads run in order. A
+ * file named `route.ts` anywhere else, a helper in a package for instance, is not exempt.
+ */
+const ROUTE_HANDLER =
+  /^(?:apps\/[^/]+\/src|customers\/[^/]+\/app(?:\/src)?)\/app\/(?:.+\/)?route\.ts$/;
+
 function mayReadDirectly(path: string): boolean {
   return (
     OWNERS.has(path) ||
     path.startsWith("packages/core/src/services/auth/") ||
-    // A route handler is one request with no parallel render, so its reads run in order.
-    basename(path) === "route.ts"
+    ROUTE_HANDLER.test(path)
   );
 }
 
@@ -164,6 +171,17 @@ describe("the document session read", () => {
     ],
   ])("finds %s", (_, text) => {
     expect(enforcedReadsIn("page.tsx", text)).not.toEqual([]);
+  });
+
+  it.each([
+    ["apps/genie/src/app/api/session/activity/route.ts", true],
+    ["apps/genie/src/app/route.ts", true],
+    ["customers/acme/app/src/app/api/x/route.ts", true],
+    ["packages/core/src/features/account/route.ts", false],
+    ["packages/modules/placeholder/src/route.ts", false],
+    ["apps/genie/src/route.ts", false],
+  ])("exempts %s as a route handler: %s", (path, exempt) => {
+    expect(mayReadDirectly(path)).toBe(exempt);
   });
 
   it("lets the shared read and a session list through", () => {
