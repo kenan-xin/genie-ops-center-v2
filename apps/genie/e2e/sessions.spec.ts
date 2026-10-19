@@ -281,10 +281,12 @@ test("an idle session is refused and the browser lands on the expired banner (R-
   await expect(banner).toBeVisible();
   await expect(banner).toContainText(`${IDLE_MINUTES} minutes`);
 
-  // The idle rule deleted the row; the cleared cookie names no session.
-  await expect
-    .poll(() => sessionRowCount(current), { timeout: 10_000 })
-    .toBe("0");
+  // The activity call's refusal cleared the cookie.
+  expect(
+    (await page.context().cookies()).some(
+      (cookie) => cookie.name === "genie-session"
+    )
+  ).toBe(false);
 });
 
 test("an idle document reload clears the cookie and lands on the expired banner (R-14, R-17a)", async ({
@@ -316,9 +318,6 @@ test("an idle document reload clears the cookie and lands on the expired banner 
   await expect(page.getByTestId("sign-in-banner")).toContainText(
     `${IDLE_MINUTES} minutes`
   );
-  await expect
-    .poll(() => sessionRowCount(current), { timeout: 10_000 })
-    .toBe("0");
   expect(
     (await page.context().cookies()).some(
       (cookie) => cookie.name === "genie-session"
@@ -350,5 +349,7 @@ test("sign-out refuses an idle-dead session before it can redirect to Keycloak",
   expect(
     new URL(response.headers()["location"] ?? "").searchParams.get("error")
   ).toBe("session_expired");
-  expect(await sessionRowCount(current)).toBe("0");
+  expect(response.headers()["set-cookie"] ?? "").toMatch(
+    /genie-session=;.*Expires=Thu, 01 Jan 1970/
+  );
 });

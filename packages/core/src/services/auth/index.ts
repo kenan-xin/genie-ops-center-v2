@@ -224,6 +224,15 @@ export function readCookie(header: string, name: string): string | undefined {
   return undefined;
 }
 
+/** A `Cookie` header with every value of `name` removed and the other cookies kept as sent. */
+export function withoutCookie(header: string, name: string): string {
+  return header
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part !== "" && part.split("=", 1)[0] !== name)
+    .join("; ");
+}
+
 /** The change-password body the R-64 server check reads; unknown fields are ignored. */
 const changePasswordBody = z.object({
   newPassword: z.string(),
@@ -793,6 +802,8 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
 
   const now = input.now ?? (() => Date.now());
 
+  const cookieName = sessionCookieName(input.publicUrl);
+
   let instance: BetterAuthInstance = buildInstance(input, false);
 
   let discovery: AuthDiscoveryState = {
@@ -952,10 +963,16 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
   /**
    * The enforced session read (R-14). Better Auth's own read has already refused the 24 hour cap
    * (`expiresAt`, never extended because refresh is off); this adds the tenant's idle window,
-   * read through the settings reader behind its cache, and deletes the row a request finds past
-   * the window so the next request - and every parallel one - is unauthenticated too. The last
-   * activity baseline is the activity call's column, or the session's creation until the first
-   * call writes it.
+   * read through the settings reader behind its cache. The last activity baseline is the activity
+   * call's column, or the session's creation until the first call writes it.
+   *
+   * A session past the window is refused but its row is kept (genie-ops-center-v2-lqns). One
+   * browser sends several requests at once: a reload, a prefetch, a second tab, the activity
+   * call. When the first refusal deleted the row, every later request with the same cookie found
+   * no row and answered anonymous, so the browser kept a dead cookie and missed the expired
+   * banner. A kept row gives every such request the same answer. Nothing can bring the row back:
+   * the activity call is the only writer of `last_active_at`, and it refuses an idle session
+   * here. The handler below hides the row from Better Auth's own endpoints.
    */
   async function enforcedSession(headers: Headers): Promise<AuthSessionState> {
     const value = await instance.api.getSession({ headers });
@@ -977,17 +994,34 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
         idleMinutes: sessionIdleMinutes,
         now: new Date(now()),
       })
-    ) {
-      await input.db.delete(session).where(eq(session.id, current.session.id));
-
+    )
       return { status: "idle-expired" };
-    }
 
     return { status: "authenticated", session: current };
   }
 
   return {
-    handler: (request) => instance.handler(request),
+    // R-14: Better Auth's own endpoints check only the 24 hour cap, and the idle rule keeps the
+    // row of an idle session. A request whose cookie names an idle session therefore reaches
+    // Better Auth without that cookie, so its endpoints treat it as signed out.
+    async handler(request) {
+      const header = request.headers.get("cookie") ?? "";
+
+      if (readCookie(header, cookieName) === undefined)
+        return instance.handler(request);
+
+      const state = await enforcedSession(request.headers);
+
+      if (state.status !== "idle-expired") return instance.handler(request);
+
+      const headers = new Headers(request.headers);
+      const kept = withoutCookie(header, cookieName);
+
+      if (kept === "") headers.delete("cookie");
+      else headers.set("cookie", kept);
+
+      return instance.handler(new Request(request, { headers }));
+    },
 
     async getSession({ headers }) {
       const state = await enforcedSession(headers);

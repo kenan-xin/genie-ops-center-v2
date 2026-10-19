@@ -150,19 +150,11 @@ describe("the RPC answer for an unauthenticated request", () => {
     expect(answer.status).toBe(401);
     expect(answer.body?.data.appCode).toBe("unauthenticated");
 
-    // The enforced idle read deleted the row, so a second call is anonymous too.
-    await expect
-      .poll(
-        async () =>
-          (
-            await deployment.context.db.$client.query<{ count: number }>(
-              'select count(*)::int as count from session where user_id = (select id from "user" where email = $1)',
-              [email]
-            )
-          ).rows[0]?.count,
-        { timeout: 10_000 }
-      )
-      .toBe(0);
+    // The idle row is kept and refused, so a second call is refused the same way.
+    const again = await readAnswer(cookie);
+
+    expect(again.status).toBe(401);
+    expect(again.body?.data.appCode).toBe("unauthenticated");
   });
 
   it("answers an anonymous request with an invalid audit cursor unauthenticated, not invalid-input", async () => {

@@ -8,14 +8,14 @@ import { principalForSession } from "./request-principal.ts";
 
 /**
  * The one enforced session read of a server-rendered request (R-14). The root layout and the page
- * render in parallel, and the read that finds a session past the idle window deletes its row. Two
- * independent reads therefore race: the one that selects after the other deleted finds no row and
- * answers anonymous, and when that loser is the layout it renders the document instead of
- * redirecting to the session-expired route (genie-ops-center-v2-pt9d). React's request-scoped
- * `cache` hands every server component of one request the first read's promise, so the request
- * makes one decision, and the layout's redirect and the page's principal agree on it.
+ * render in parallel. Two independent reads could disagree: one made just before the idle
+ * boundary says live and one made just after says idle, so the layout and the page would decide
+ * differently (genie-ops-center-v2-pt9d). React's request-scoped `cache` hands every server
+ * component of one request the first read's promise, so the request makes one decision and pays
+ * for one read, and the layout's redirect and the page's principal agree on it.
  *
- * Route handlers read through the auth member directly: each makes one read per request.
+ * Outside a render (a route handler, a server action) `cache` is a plain call. Route handlers
+ * therefore read through the auth member directly: each makes its reads one after another.
  */
 export const documentSessionState = cache(async (): Promise<AuthSessionState> =>
   requireAuth(requireContext().tenant).sessionState({

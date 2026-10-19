@@ -19,9 +19,9 @@ const EXPIRED_PATH = `${SIGN_IN_PATH}?error=session_expired`;
  * out everywhere, and the read-only Roles and access. Any signed-in person may read it; no
  * permission key guards a person's own account, and the page edits nothing.
  *
- * The one enforced session read decides where an unauthenticated visitor goes: a session the
- * idle rule just deleted lands on the session-expired banner, and a request that never carried
- * one lands on the plain sign-in page. The roles summary reads through the R-27 loader's seam -
+ * The one enforced session read decides where an unauthenticated visitor goes: a session past
+ * the idle window lands on the session-expired banner, and a request that never carried one
+ * lands on the plain sign-in page. The roles summary reads through the R-27 loader's seam -
  * the same per-request principal the rest of the application builds - with each scoped row's
  * label resolved by the record type's owning module (R-28).
  */

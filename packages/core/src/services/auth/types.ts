@@ -53,10 +53,11 @@ export type AuthSession = {
 };
 
 /**
- * What one enforced session read answers (R-14). `idle-expired` names the request whose own
- * session the idle rule just deleted, so a caller can land the browser on the session-expired
- * banner rather than the plain signed-out state; `anonymous` is every request without a live
- * session, including the one after a revoked row.
+ * What one enforced session read answers (R-14). `idle-expired` names a request whose session is
+ * past the idle window, so a caller can land the browser on the session-expired banner rather
+ * than the plain signed-out state. The row is kept, so every request that carries the same cookie
+ * gets this answer, not only the first. `anonymous` is every request without a live session,
+ * including one whose row was revoked or passed the 24 hour cap.
  */
 export type AuthSessionState =
   | { readonly status: "authenticated"; readonly session: AuthSession }
@@ -116,13 +117,17 @@ export type AuthSignOutResult = {
  * A profile that does not consume authentication builds no member.
  */
 export type AuthMember = {
-  /** The Better Auth handler, mounted once under `/api/auth/` (D2-5). */
+  /**
+   * The Better Auth handler, mounted once under `/api/auth/` (D2-5). A request whose session is
+   * past the idle window reaches Better Auth without its session cookie, so Better Auth's own
+   * endpoints refuse that session too (R-14).
+   */
   readonly handler: (request: Request) => Promise<Response>;
   /**
    * The signed-in session for this request's headers, or null. The read enforces the idle rule
-   * (R-14): a session past the tenant's idle window is deleted here and answered as null, so
-   * every caller of the member - the request principal, the page loader, the activity call -
-   * refuses it on the same comparison.
+   * (R-14): a session past the tenant's idle window is answered as null, so every caller of the
+   * member - the request principal, the page loader, the activity call - refuses it on the same
+   * comparison.
    */
   readonly getSession: (input: AuthSessionInput) => Promise<AuthSession | null>;
   /**

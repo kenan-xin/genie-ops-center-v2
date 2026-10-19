@@ -133,7 +133,7 @@ describe("the session idle rule", () => {
     await deployment?.stop();
   });
 
-  it("refuses a session past the idle window, deletes the row, and names the cause (R-14, R-17a)", async () => {
+  it("refuses a session past the idle window and names the cause (R-14, R-17a)", async () => {
     const auth = authOf(deployment);
 
     await insertCredentialPerson(deployment.context, {
@@ -151,15 +151,81 @@ describe("the session idle rule", () => {
     const state = await auth.sessionState({ headers: new Headers({ cookie }) });
 
     expect(state).toEqual({ status: "idle-expired" });
-    expect(await countRows(client, sessionId)).toBe(0);
-
-    // The request after the deletion is plainly anonymous.
-    const next = await auth.sessionState({ headers: new Headers({ cookie }) });
-
-    expect(next).toEqual({ status: "anonymous" });
     expect(
       await auth.getSession({ headers: new Headers({ cookie }) })
     ).toBeNull();
+    expect(
+      await auth.recordActivity({ headers: new Headers({ cookie }) })
+    ).toBeNull();
+  });
+
+  it("answers idle-expired to every request of the browser, not only the first (genie-ops-center-v2-lqns)", async () => {
+    const auth = authOf(deployment);
+
+    await insertCredentialPerson(deployment.context, {
+      email: "idle-race@example.com",
+      password: PASSWORD,
+    });
+
+    const { cookie, sessionId } = await signIn(auth, "idle-race@example.com");
+
+    const liveSession = await auth.handler(
+      new Request(`${PUBLIC_URL}/api/auth/get-session`, {
+        headers: { cookie, origin: PUBLIC_URL },
+      })
+    );
+
+    expect(await liveSession.json()).not.toBeNull();
+
+    await ageSession(client, sessionId, IDLE_MINUTES);
+
+    // A reload, a prefetch, and a second tab at the same moment, then the activity call and one
+    // more page load after them. When the first refusal deleted the row, every request that read
+    // after the delete answered anonymous, and that browser kept its dead cookie.
+    const parallel = await Promise.all(
+      [1, 2, 3].map(() =>
+        auth.sessionState({ headers: new Headers({ cookie }) })
+      )
+    );
+
+    const activity = await auth.recordActivity({
+      headers: new Headers({ cookie }),
+    });
+
+    const later = await auth.sessionState({ headers: new Headers({ cookie }) });
+
+    expect([...parallel, later]).toEqual(
+      Array.from({ length: 4 }, () => ({ status: "idle-expired" }))
+    );
+    expect(activity).toBeNull();
+    expect(await countRows(client, sessionId)).toBe(1);
+
+    // The kept row is invisible to Better Auth's own endpoints, so they treat the request as
+    // signed out, and a password change on that session is refused (R-14).
+    const getSession = await auth.handler(
+      new Request(`${PUBLIC_URL}/api/auth/get-session`, {
+        headers: { cookie, origin: PUBLIC_URL },
+      })
+    );
+
+    expect(await getSession.json()).toBeNull();
+
+    const change = await auth.handler(
+      new Request(`${PUBLIC_URL}/api/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "cookie": cookie,
+          "origin": PUBLIC_URL,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: PASSWORD,
+          newPassword: "another-long-password-15",
+        }),
+      })
+    );
+
+    expect(change.status).toBe(401);
   });
 
   it("refuses a session past the 24 hour cap regardless of activity (R-13, AC-5)", async () => {

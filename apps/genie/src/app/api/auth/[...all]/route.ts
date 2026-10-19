@@ -1,4 +1,4 @@
-import { flushRefusalAudit, sessionCookieName } from "@genie/core";
+import { flushRefusalAudit } from "@genie/core";
 
 import {
   authPath,
@@ -64,15 +64,8 @@ async function handler(request: Request): Promise<Response> {
     return notFound();
   }
 
-  // R-14: Better Auth's own read answers only the 24 hour cap, so an allowed endpoint that
-  // carries a session cookie runs the enforced read first. An idle-dead row is deleted here,
-  // and Better Auth then answers unauthenticated for the same request.
-  const cookieName = sessionCookieName(app.tenant.env.publicUrl);
-
-  if ((request.headers.get("cookie") ?? "").includes(`${cookieName}=`)) {
-    await auth.sessionState({ headers: request.headers });
-  }
-
+  // R-14: the member's handler runs the enforced read for a request that carries a session
+  // cookie, and hides an idle session from Better Auth, so no read is needed here.
   if (request.method === "POST" && path === "/sign-in/social") {
     const discovery = await auth.ensureDiscovery();
 

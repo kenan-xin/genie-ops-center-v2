@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
  * the SessionActivity client on real pointer, keyboard, or touch input, throttled to half the
  * idle window on its side. A live session answers the new absolute idle expiry; an
  * unauthenticated request answers 401 and expires the session cookie, so a browser whose
- * session the idle rule deleted lands on the sign-in page's session-expired state instead of
- * retrying forever against a cookie that names no row.
+ * session the idle rule refused lands on the sign-in page's session-expired state instead of
+ * retrying forever against a cookie that names no live session.
  */
 async function handler(request: Request): Promise<Response> {
   const app = requireContext();
