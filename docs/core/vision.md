@@ -15,7 +15,7 @@ Genie Ops Center is the enterprise application platform that Genie builds once a
 | Modules | A module is a business capability. A tenant sees a module only when it holds an entitlement for it. |
 | Sign-in | The customer's own identity provider, brokered through Keycloak. Microsoft Entra ID is one example. OpenID Connect and SAML 2.0 are supported through Keycloak. LDAP or Active Directory federation is deferred until a customer asks (Specification 02, "Deferred"); Keycloak supports it, so the path back is configuration, not a redesign. A customer with no identity provider uses local accounts in its own realm: Keycloak holds the passwords and sends the invite and reset emails, and the customer can add a provider later without re-onboarding anyone. |
 | Access | Roles made of permissions, assigned to groups or people at a scope. Groups come from the customer's identity provider. |
-| Branding | The customer's IT administrator configures the tenant's identity, colors, sign-in page, email, and locale from the admin portal. |
+| Branding | The customer's IT administrator configures the tenant's identity, colors, and sign-in page from the admin portal. Typography, email, links, and locale are set in the branding seed at setup, and get admin-portal tabs when a customer asks. |
 | Repository | One monorepo managed with pnpm workspaces and Nx: `apps/genie`, `packages/core`, `packages/ui`, `packages/modules/*`. |
 
 ## Who it serves
@@ -60,7 +60,7 @@ Genie operator. Sets up a customer's deployment: builds its image, creates its d
 - People: list, disable, re-enable, remove, view sessions.
 - Groups: sourced from the identity provider through a normalized groups claim, with local groups allowed for tenants whose provider sends none.
 - Roles and permissions: each module declares permission keys. A role is a named set of permission keys. A role is assigned to a group or a person, either tenant-wide or at a scope such as an office or a single record. One function, `can(user, permission, resource?)`, answers every check.
-- Branding, configured by the tenant's administrator with live preview:
+- Branding, configured by the tenant's administrator with live preview (Identity, Colors, and Sign-in page in the first release; Typography, Email, Links, and Locale come from the branding seed until a customer asks for their tabs, owner decision 2026-10-19):
   - Identity: company name, product display name, logo for light and dark backgrounds, square logo mark for small spaces, favicon.
   - Colors: one primary color, with its foreground color computed and a contrast check that rejects an unreadable pair (`DEC-47`). Default theme: light, dark, or follow the device.
   - Typography: font family chosen from an approved list, a font size preset (compact, default, large) that sets the root font size, and the text color for light surfaces, contrast-checked. No font upload.
