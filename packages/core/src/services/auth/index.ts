@@ -209,27 +209,39 @@ export const PASSWORD_POLICY_CODE = "password_policy";
  */
 const TWO_FACTOR_CHALLENGE_COOKIE = "two_factor";
 
-/** The one value of `name` in a `Cookie` header, or undefined (no decoding: tokens are opaque). */
+/**
+ * The name of one `Cookie` header part, read as Better Auth's parser (better-call `parseCookies`)
+ * reads it: the text before the first `=`, with surrounding whitespace trimmed. Undefined for a
+ * part with no `=`, which that parser skips.
+ */
+function cookiePartName(part: string): string | undefined {
+  const separator = part.indexOf("=");
+
+  return separator === -1 ? undefined : part.slice(0, separator).trim();
+}
+
+/**
+ * The first value of `name` in a `Cookie` header, or undefined (no decoding: tokens are opaque).
+ * The first value is the one Better Auth reads.
+ */
 export function readCookie(header: string, name: string): string | undefined {
   for (const part of header.split(";")) {
-    const trimmed = part.trim();
-    const separator = trimmed.indexOf("=");
-
-    if (separator === -1) continue;
-
-    if (trimmed.slice(0, separator) === name)
-      return trimmed.slice(separator + 1) || undefined;
+    if (cookiePartName(part) === name)
+      return part.slice(part.indexOf("=") + 1).trim() || undefined;
   }
 
   return undefined;
 }
 
-/** A `Cookie` header with every value of `name` removed and the other cookies kept as sent. */
+/**
+ * A `Cookie` header with every value of `name` removed and the other cookies kept as sent. Names
+ * are compared after trimming, as Better Auth's parser does, so `name =value` is removed too.
+ */
 export function withoutCookie(header: string, name: string): string {
   return header
     .split(";")
     .map((part) => part.trim())
-    .filter((part) => part !== "" && part.split("=", 1)[0] !== name)
+    .filter((part) => part !== "" && cookiePartName(part) !== name)
     .join("; ");
 }
 
@@ -970,9 +982,11 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
    * browser sends several requests at once: a reload, a prefetch, a second tab, the activity
    * call. When the first refusal deleted the row, every later request with the same cookie found
    * no row and answered anonymous, so the browser kept a dead cookie and missed the expired
-   * banner. A kept row gives every such request the same answer. Nothing can bring the row back:
-   * the activity call is the only writer of `last_active_at`, and it refuses an idle session
-   * here. The handler below hides the row from Better Auth's own endpoints.
+   * banner. A kept row gives every such request the same answer. The activity call is the only
+   * writer of `last_active_at`, and its write carries the idle condition, so it cannot slide a
+   * row past the window. Raising the tenant's idle minutes can make a kept row live again, as it
+   * can any row no request read. The handler below hides the row from Better Auth's own
+   * endpoints.
    */
   async function enforcedSession(headers: Headers): Promise<AuthSessionState> {
     const value = await instance.api.getSession({ headers });
@@ -1004,18 +1018,22 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
     // R-14: Better Auth's own endpoints check only the 24 hour cap, and the idle rule keeps the
     // row of an idle session. A request whose cookie names an idle session therefore reaches
     // Better Auth without that cookie, so its endpoints treat it as signed out.
+    //
+    // The enforced read runs on every request, not only on one this code thinks carries the
+    // cookie: it reads the cookie with Better Auth's own parser, so the two cannot disagree about
+    // a header such as `name =token`. A request without a session cookie answers without a
+    // query; one with a session pays one session read and one settings read before Better Auth
+    // reads the session again.
     async handler(request) {
-      const header = request.headers.get("cookie") ?? "";
-
-      if (readCookie(header, cookieName) === undefined)
-        return instance.handler(request);
-
       const state = await enforcedSession(request.headers);
 
       if (state.status !== "idle-expired") return instance.handler(request);
 
       const headers = new Headers(request.headers);
-      const kept = withoutCookie(header, cookieName);
+      const kept = withoutCookie(
+        request.headers.get("cookie") ?? "",
+        cookieName
+      );
 
       if (kept === "") headers.delete("cookie");
       else headers.set("cookie", kept);
@@ -1039,11 +1057,23 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
       const at = new Date(now());
       const { sessionIdleMinutes } = await input.settings.get();
 
-      // R-15: this update is the one writer of `last_active_at`.
-      await input.db
+      // R-15: this update is the one writer of `last_active_at`. It carries the idle condition
+      // itself, so a session that crossed the window after the read above, and that a parallel
+      // request already refused, is not slid back to life.
+      const cutoff = new Date(at.getTime() - sessionIdleMinutes * 60_000);
+
+      const slid = await input.db
         .update(session)
         .set({ lastActiveAt: at })
-        .where(eq(session.id, state.session.session.id));
+        .where(
+          and(
+            eq(session.id, state.session.session.id),
+            sql`coalesce(${session.lastActiveAt}, ${session.createdAt}) > ${cutoff}`
+          )
+        )
+        .returning({ id: session.id });
+
+      if (slid.length === 0) return null;
 
       // R-15a: the absolute expiry computed from the activity just recorded.
       return {

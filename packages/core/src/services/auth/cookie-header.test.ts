@@ -18,6 +18,21 @@ describe("withoutCookie", () => {
     expect(readCookie(kept, "genie-session")).toBeUndefined();
   });
 
+  it.each([
+    "genie-session =token.sig",
+    "genie-session\t=token.sig",
+    " genie-session = token.sig ",
+    "genie-session  \t =token.sig",
+  ])(
+    "removes the cookie whatever whitespace surrounds its name: %j",
+    (part) => {
+      const header = `a=1; ${part}; b=2`;
+
+      expect(readCookie(header, "genie-session")).toBe("token.sig");
+      expect(withoutCookie(header, "genie-session")).toBe("a=1; b=2");
+    }
+  );
+
   it("answers an empty header when the named cookie was the only one", () => {
     expect(withoutCookie("genie-session=token.sig", "genie-session")).toBe("");
   });

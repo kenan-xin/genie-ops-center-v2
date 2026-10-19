@@ -1,7 +1,10 @@
 import type { PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { sessionCookieName } from "../src/services/auth/config.ts";
 import type { AuthMember, AuthSession } from "../src/services/auth/index.ts";
+import { createAuthMember } from "../src/services/auth/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import type { DisposableDeployment } from "./index.ts";
 import { insertCredentialPerson, startDisposableDeployment } from "./index.ts";
 
@@ -22,6 +25,8 @@ const AUTH_ENV = {
 };
 
 const PASSWORD = "break-glass-password-14";
+
+const SESSION_COOKIE = sessionCookieName(PUBLIC_URL);
 
 /** The tenant's idle window for this suite; the settings row is seeded with it below. */
 const IDLE_MINUTES = 15;
@@ -222,6 +227,28 @@ describe("the session idle rule", () => {
 
     expect(await getSession.json()).toBeNull();
 
+    // Better Auth trims cookie names, so whitespace around the name must not get the idle token
+    // past the handler (the session-followups review, finding 1).
+    const spacedReads = await Promise.all(
+      [" =", "\t=", "  ="].map(async (spaced) => {
+        const answer = await auth.handler(
+          new Request(`${PUBLIC_URL}/api/auth/get-session`, {
+            headers: {
+              cookie: cookie.replace(
+                `${SESSION_COOKIE}=`,
+                `${SESSION_COOKIE}${spaced}`
+              ),
+              origin: PUBLIC_URL,
+            },
+          })
+        );
+
+        return answer.json();
+      })
+    );
+
+    expect(spacedReads).toEqual([null, null, null]);
+
     const change = await auth.handler(
       new Request(`${PUBLIC_URL}/api/auth/change-password`, {
         method: "POST",
@@ -328,6 +355,51 @@ describe("the session idle rule", () => {
     const state = await auth.sessionState({ headers: new Headers({ cookie }) });
 
     expect(state.status).toBe("authenticated");
+  });
+
+  it("an activity call does not slide a session that crossed the window after its read", async () => {
+    await insertCredentialPerson(deployment.context, {
+      email: "activity-boundary@example.com",
+      password: PASSWORD,
+    });
+
+    // The member's clock answers these instants in order, then the real time. The read inside
+    // the activity call sees the first; the write sees the second, past the window, as if a
+    // parallel request had refused the session in between.
+    const instants: number[] = [];
+
+    const member = createAuthMember({
+      db: deployment.context.db,
+      publicUrl: PUBLIC_URL,
+      logger: silentLogger(),
+      settings: deployment.context.settings,
+      auth: {
+        betterAuthSecret: AUTH_ENV.BETTER_AUTH_SECRET,
+        keycloakUrl: AUTH_ENV.KEYCLOAK_URL,
+        keycloakRealm: AUTH_ENV.KEYCLOAK_REALM,
+        keycloakClientId: AUTH_ENV.KEYCLOAK_CLIENT_ID,
+        keycloakClientSecret: AUTH_ENV.KEYCLOAK_CLIENT_SECRET,
+      },
+      trustedProxies: [],
+      runtimeMode: "production",
+      now: () => instants.shift() ?? Date.now(),
+    });
+
+    const { cookie, sessionId } = await signIn(
+      member,
+      "activity-boundary@example.com"
+    );
+
+    const before = await sessionRow(client, sessionId);
+
+    instants.push(Date.now(), Date.now() + (IDLE_MINUTES + 1) * 60_000);
+
+    expect(
+      await member.recordActivity({ headers: new Headers({ cookie }) })
+    ).toBeNull();
+    expect((await sessionRow(client, sessionId)).last_active_at).toEqual(
+      before.last_active_at
+    );
   });
 
   it("an anonymous activity call answers null and writes nothing", async () => {
