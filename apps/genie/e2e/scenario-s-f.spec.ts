@@ -93,7 +93,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
   await page
     .getByRole("button", { name: new RegExp(personName) })
     .first()
-    .press("Enter");
+    .click();
 
   const inspector = page.getByRole("dialog", { name: personName });
 
@@ -105,7 +105,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
       ),
       inspector
         .getByRole("button", { name: "Resend set-password email" })
-        .press("Enter"),
+        .click(),
     ]);
 
     expect(response.status()).toBe(200);
@@ -118,7 +118,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
     ),
     inspector
       .getByRole("button", { name: "Resend set-password email" })
-      .press("Enter"),
+      .click(),
   ]);
 
   expect(limited.status()).toBe(429);
@@ -131,7 +131,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
 
   expect(rateLimitedRows[0]).not.toBe("0");
 
-  await inspector.getByRole("button", { name: "Close" }).press("Enter");
+  await inspector.getByRole("button", { name: "Close" }).click();
   /* eslint-enable no-await-in-loop */
 
   // Read the realm's set-password link from Mailpit and open it in a fresh browser context, so the

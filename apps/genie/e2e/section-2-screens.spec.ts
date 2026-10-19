@@ -125,6 +125,22 @@ test("every signed-in Section 2 screen carries the headers and passes axe", asyn
 
     // oxlint-disable-next-line no-await-in-loop -- one screen at a time on one page.
     await expectNoAxeViolations(page, path);
+
+    // DEC-25: the screen fits the viewport. A wider page makes a phone browser zoom out, and a
+    // tap then lands on a neighboring row (genie-ops-center-v2-vdm9).
+    // oxlint-disable-next-line no-await-in-loop -- one screen at a time on one page.
+    const width = await page.evaluate(() => ({
+      page: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+
+    expect(
+      width.page,
+      `${path} is wider than the viewport`
+    ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+    expect(width.viewport, `${path} zoomed out`).toBe(
+      page.viewportSize()?.width
+    );
   }
 
   // R-35: the reader holds no `placeholder:admin`, so the route refuses on the server for a

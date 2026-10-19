@@ -128,7 +128,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await page
     .getByRole("button", { name: new RegExp(member.replaceAll(".", "\\.")) })
     .first()
-    .press("Enter");
+    .click();
 
   const person = page.getByRole("dialog", { name: "E2E Person" });
 
@@ -137,7 +137,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
     person.getByText(doneAdmitGroup(project), { exact: true })
   ).toBeVisible();
   await expect(person.getByText(grantGroup, { exact: true })).toBeVisible();
-  await person.getByRole("button", { name: "Close" }).press("Enter");
+  await person.getByRole("button", { name: "Close" }).click();
 
   // AC-22: the administrator maps the person's other group to the reader role on the Groups
   // screen. The person does nothing further.
@@ -145,8 +145,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await page
     .getByRole("button", { name: new RegExp(grantGroup) })
     .first()
-    // Keyboard: on the phone table a pointer click can land on the neighboring row.
-    .press("Enter");
+    .click();
 
   const group = page.getByRole("dialog", { name: grantGroup });
 

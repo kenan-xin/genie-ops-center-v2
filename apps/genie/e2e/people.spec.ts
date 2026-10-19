@@ -96,7 +96,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await page
     .getByRole("button", { name: new RegExp(`E2E Added ${project}`) })
     .first()
-    .press("Enter");
+    .click();
 
   const inspector = page.getByRole("dialog", {
     name: `E2E Added ${project}`,
@@ -106,7 +106,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
     inspector.getByText("Identity provider", { exact: true })
   ).toBeVisible();
 
-  await inspector.getByRole("button", { name: /Remove/ }).press("Enter");
+  await inspector.getByRole("button", { name: /Remove/ }).click();
 
   const confirm = page.getByRole("dialog", {
     name: `Remove E2E Added ${project}?`,
@@ -114,7 +114,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await expect(confirm.getByText(/Every session ends/)).toBeVisible();
 
-  await confirm.getByRole("button", { name: "Remove person" }).press("Enter");
+  await confirm.getByRole("button", { name: "Remove person" }).click();
 
   await expect
     .poll(
@@ -129,7 +129,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
     )
     .toBe("true:disabled");
 
-  await inspector.getByRole("button", { name: "Close" }).press("Enter");
+  await inspector.getByRole("button", { name: "Close" }).click();
 
   // Self-protection: the signed-in administrator's own row cannot disable itself (R-38).
   await page.getByLabel("Search people").fill(adminEmail);
@@ -137,7 +137,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await page
     .getByRole("button", { name: new RegExp(adminEmail.replace(".", "\\.")) })
     .first()
-    .press("Enter");
+    .click();
 
   const self = page.getByRole("dialog", { name: "E2E Person" });
 
@@ -146,7 +146,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
     self.getByText("You cannot disable or remove yourself")
   ).toBeVisible();
 
-  await self.getByRole("button", { name: "Close" }).press("Enter");
+  await self.getByRole("button", { name: "Close" }).click();
 
   // The break-glass account never appears in People (R-39).
   await page.getByLabel("Search people").fill(e2eBreakGlassEmail(project));
