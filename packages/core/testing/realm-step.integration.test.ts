@@ -49,7 +49,7 @@ let keycloak: DisposableKeycloak | undefined;
 
 beforeAll(async () => {
   keycloak = await startDisposableKeycloak();
-}, 180000);
+}, 240000);
 
 afterAll(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));

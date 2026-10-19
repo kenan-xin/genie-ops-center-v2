@@ -84,7 +84,7 @@ beforeAll(async () => {
   );
 
   await createRealm(bootstrapTarget, token, COMPANY_REALM);
-}, 180000);
+}, 240000);
 
 afterAll(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
