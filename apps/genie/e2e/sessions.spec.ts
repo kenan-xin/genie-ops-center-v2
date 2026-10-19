@@ -325,6 +325,29 @@ test("an idle document reload clears the cookie and lands on the expired banner 
   ).toBe(false);
 });
 
+test("a link to the session-expired route does not sign a live browser out (genie-ops-center-v2-1rr0)", async ({
+  page,
+}, testInfo) => {
+  const email = sessionsEmail(testInfo);
+
+  await signInThroughKeycloak(page, { email });
+
+  const current = await currentSessionId(page, email);
+
+  // Another site can link here, and the session cookie travels on a top-level link.
+  await page.goto("/api/auth/session-expired");
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .toBe("/");
+
+  expect(await currentSessionId(page, email)).toBe(current);
+
+  await page.goto("/account");
+
+  await expect(page.getByText(email)).toBeVisible();
+});
+
 test("sign-out refuses an idle-dead session before it can redirect to Keycloak", async ({
   page,
 }, testInfo) => {
