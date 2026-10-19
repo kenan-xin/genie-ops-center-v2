@@ -85,17 +85,18 @@ describe("GET /api/auth/session-expired", () => {
     expect(response.headers.getSetCookie()).toEqual([]);
   });
 
-  it.each(["idle-expired", "anonymous"] as const)(
-    "clears the cookie of a %s session and shows the expired banner",
-    async (status) => {
+  it.each([
+    ["idle-expired", "/sign-in?error=session_expired"],
+    ["anonymous", "/sign-in"],
+  ] as const)(
+    "clears the cookie of a %s session and lands on %s",
+    async (status, target) => {
       answering({ status });
 
       const response = await visit();
 
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe(
-        `${PUBLIC_URL}/sign-in?error=session_expired`
-      );
+      expect(response.headers.get("location")).toBe(`${PUBLIC_URL}${target}`);
       expect(response.headers.getSetCookie()).toEqual([
         expect.stringMatching(
           /^__Host-genie-session=;.*Expires=Thu, 01 Jan 1970/

@@ -1,14 +1,16 @@
 import { sessionCookieName } from "@genie/core";
 import { NextResponse } from "next/server.js";
 
-import { requireAuth } from "../../../../auth.ts";
+import { requireAuth, SIGN_IN_PATH } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Clears the cookie of a session the idle rule refused, then shows the expired banner (R-14,
- * R-17a). The layout and the account pages send an idle browser here.
+ * R-17a). The layout and the account pages send an idle browser here. A visitor whose cookie
+ * names no session at all - none sent, revoked, or past the 24 hour cap - is cleared too but
+ * lands on the plain sign-in page, because no idle window ended for them.
  *
  * The route reads the session first and clears only a cookie that names no live session. A
  * `SameSite=Lax` cookie travels on a top-level link from another site, so a route that always
@@ -34,7 +36,12 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const response = NextResponse.redirect(
-    new URL("/sign-in?error=session_expired", publicUrl),
+    new URL(
+      state.status === "idle-expired"
+        ? "/sign-in?error=session_expired"
+        : SIGN_IN_PATH,
+      publicUrl
+    ),
     303
   );
 
