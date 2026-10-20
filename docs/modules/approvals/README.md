@@ -24,7 +24,7 @@ DEFERRED (D-1 to D-10). Provisional work items:
 2. Versions: upload to object storage or link, assign the next version number, keep every prior version.
 3. Expiry and renewal: computed status, and one daily job declared through the module contract's Jobs point that evaluates `reminder_rule`, sends email through the core mailer, and records each send in `reminder_sent`.
 4. Search and retrieval: filter by counterparty, type, office, status, date range. One click opens the current version.
-5. Permissions and default roles as below. Office as a role-assignment scope if the customer confirms office-scoped visibility.
+5. Permissions and default roles as below. Office as a role-assignment scope if the customer confirms office-scoped visibility. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide, so office stays a filter and a field, not a register visibility scope. Case visibility follows ADR 0012, section 3.
 6. Import: a one-time loader from the existing Excel register.
 
 Done when: the legal team loads the current register, a business user finds an agreement and opens its document, and an owner receives a reminder 90 days before expiry. Reminder lead time is provisional.
@@ -42,7 +42,7 @@ DEFERRED (D-11 and D-12). The engine, the builder, and the register feature as A
 
 Done when: a business user opens an agreement and reads its summary and key dates without opening the document.
 
-The order of these phases follows the customer's phase plan, which discovery confirms.
+The order of these phases is provisional. It follows the customer's phase plan as recorded on 2026-09-16, which the discovery answer map must confirm before work starts.
 
 ## Permissions and roles `provisional`
 
@@ -54,7 +54,7 @@ DEFERRED (D-1 to D-12). Names and cardinality change after discovery (`OPEN-3`).
 
 `counterparty`: id, name, country, notes, created_at, updated_at.
 
-`office`: id, code (unique), name, created_at, updated_at. A role-assignment scope when the customer confirms office-scoped visibility.
+`office`: id, code (unique), name, created_at, updated_at. A filter on register entries. It was planned as a role-assignment scope, which the 2026-10-20 register audience decision replaces.
 
 `agreement`: id, reference_code (unique), title, agreement_type, counterparty_id, office_id, owner_user_id, legal_contact_user_id, effective_date, expiry_date, validity_months, renewal_kind (`none`, `auto`, `manual`), termination_notice_days, status (`draft`, `active`, `expiring`, `expired`, `terminated`, `archived`), remarks, created_at, updated_at.
 

@@ -6,6 +6,8 @@ Design and implementation paths that depend on an unanswered question are marked
 
 ## What the customer has confirmed
 
+Recorded 2026-09-16, before the merge into this module. The last item describes the phase plan as stated then, and the discovery answer map of ADR 0012 must confirm it again.
+
 - Agreements are tracked today in an Excel register, with validity dates and status maintained by hand.
 - Documents are kept on an encrypted server the customer calls the "info cage".
 - Versions must not overwrite each other. A simple agreed format such as V1, V2, V3 is acceptable in principle.
@@ -23,11 +25,13 @@ D-4. Is any class of agreement sensitive enough that its text must never be extr
 
 D-5. How are versions managed today: file names, folders per year, or nothing formal? Would Legal accept Genie Ops Center assigning the version number on upload, so that nothing can overwrite an earlier version?
 
-Deferred until D-1 to D-5 are answered: the choice between managed storage and link-only storage, the `agreement_version` and `file` design for contracts, the upload path in the contracts module, and the phase-two extraction pipeline.
+Deferred until D-1 to D-5 are answered: the choice between managed storage and link-only storage, the `agreement_version` and `file` design for the register (written "for contracts" before the merge), the upload path in the contracts module, and the phase-two extraction pipeline.
 
 ## Register fields and roles (unblocks OPEN-3)
 
 D-6. Which columns of the current Excel register are used in practice, which are obsolete, and which are missing? A copy of the register with sample rows, sensitive values removed, answers this fastest.
+
+Note on D-7, 2026-10-20: the owner settled the register audience (ADR 0012): `approvals:register-read` holders read the full register tenant-wide. The question stays, with its original wording, to learn whether office is needed as a filter or field.
 
 D-7. Which offices or entities own agreements, and must a person in one office be prevented from seeing another office's agreements? This decides whether office is a visibility scope or only a filter.
 
@@ -37,7 +41,7 @@ D-9. Reminders: how many days before expiry, to whom, how often, and by what cha
 
 D-10. Are there agreement types with different fields, for example NDA versus distributor versus service agreement, or does one field set cover all types?
 
-Deferred until D-6 to D-10 are answered: the `agreement` field list, the `office` scope, the contracts default roles, the reminder rules, and the Excel import mapping.
+Deferred until D-6 to D-10 are answered: the `agreement` field list, the `office` scope, the register default roles (written "contracts" before the merge), the reminder rules, and the Excel import mapping.
 
 ## The approval workflow
 

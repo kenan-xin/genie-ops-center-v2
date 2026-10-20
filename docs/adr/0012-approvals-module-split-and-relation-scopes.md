@@ -10,7 +10,7 @@ The first customer's product is a legal agreement approval flow. Its own design 
 
 This record settles four questions. What does the module hold, and where does the register live? Who may see a case or a register entry, and how do detail checks and list queries give the same answer? How does a published flow become a sidebar entry, and who may start and act on it? What does core gain, and how does it stay free of module knowledge?
 
-Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. The tables at the end map every review finding to its answer. Vision principle 9, "Core knows no module" (proposed on branch `chore/vision-core-knows-no-module`), is the test for every core change here.
+Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. A final cross-family review of revision 4 returned "accept after fixes"; this text includes those fixes and two more owner decisions of 2026-10-20 (the landing page and where flow definitions live). The tables at the end map every review finding to its answer. Vision principle 9, "Core knows no module" (on `develop` since 2026-10-20), is the test for every core change here.
 
 A throwaway logic prototype illustrates the portal, on the branch `chore/prototype-workflow-builder`, in `docs/modules/approvals/PROTOTYPE-workflow-builder.html`. Its sidebar and register logic are simulated and decide nothing.
 
@@ -36,8 +36,11 @@ How a person sees a case because of their part in it (requester, current approve
 
 - `approvals` owns workflow definitions and versions, the builder, the step kinds, one form per workflow, cases and their history, statuses, backups, leave, and delegation, and the agreement register: register entries, register numbers, signing records, amended versions, expiry, and import and export.
 - A customer's flows are data. A new flow needs no code when the existing step kinds, form fields, and integrations can express it.
-- The register is a feature of a workflow. A designer turns it on for a workflow and maps that workflow's form fields to register fields. The mapping is stored with the workflow definition version, so a case registers with the mapping of the version it ran on. A workflow without the feature never creates a register entry. A deployment whose workflows never turn it on shows no register screens.
+- Flow definitions live in the customer's database, where their designers edit them (owner decision). The builder exports and imports a definition file. A seed export in `customers/<slug>/` is used only for first setup, and a customer's edits never need a release.
+- Automatic registration is a feature of a workflow. A designer turns it on for a workflow and maps that workflow's form fields to register fields. The mapping is stored with the workflow definition version, so a case registers with the mapping of the version it ran on. A workflow without the feature never creates a register entry.
+- The register itself is available whenever the deployment holds at least one register entry or one workflow with automatic registration. Imported entries with no workflow therefore stay reachable to `approvals:register-read` holders, with no dummy workflow.
 - When a case of a register workflow completes, the module creates the register entry and allocates its number in the same transaction that completes the case, as the product's own design requires. There are no cross-module events, no rebuild job, and no pending state.
+- Register invariants: one register entry per source case, enforced by a unique key on the source case id. The completion transition happens once, guarded by a conditional update on the case state. A retried completion returns the existing entry and number. A number, once allocated, never changes. A mapping that fails validation rolls back the completion. Fields that register work adds later, such as signing records and corrections, are never overwritten by a retry. Acceptance tests cover simultaneous completion and a retry after commit.
 - A file is referenced by `file.id` from the case, and the register entry references the same file. The module issues a download link after `can()` on the record the reader opened: the case through `approvals:case-read`, the register entry through `approvals:register-read` (`data-shape.md`, Files).
 - Checked on 2026-10-20 in `packages/core/src/services/file-storage/index.ts`: the file service offers `store`, `fetch`, `createLink`, and `fetchLink`, and no delete. A file therefore stays while any record references it. A later delete or retention feature must count references before it removes a file.
 - The file service checks `can()` on the record named in a link request, but not that this record references the file. The module must name the record that references the file, and its tests prove that a reader of one case cannot obtain a link to another case's file.
@@ -45,7 +48,7 @@ How a person sees a case because of their part in it (requester, current approve
 
 #### When to split again
 
-If a real customer needs only the register without the engine, or only the engine without carrying register code, the register moves into its own module. Revision 3 of this record (`6cd25cb`) holds the tested path for that split: one snapshot event applied atomically, a system rebuild capability, and the trade-offs listed there.
+If a real customer needs only the register without the engine, or only the engine without carrying register code, the register moves into its own module. Revision 3 of this record (`6cd25cb`) holds the previous proposed design for that split, reviewed but never built: one snapshot event applied atomically, a system rebuild capability, and the trade-offs listed there.
 
 ### 2. Who may read what
 
@@ -61,12 +64,13 @@ Owner decisions of 2026-10-20 fix the audiences:
 
 Core gains one generic table and one write API. Neither knows workflows, cases, or registers.
 
-`record_relation`: id, module_id, record_type, record_id, principal_type (`user` or `group`), principal_id, relation, valid_from, valid_until (nullable), source, acting_for_user_id (nullable), source_revision, created_at. Index on (record_type, record_id) and on (principal_type, principal_id, relation, record_type).
+`record_relation`: id, module_id, record_type, record_id, principal_type (`user` or `group`), principal_id, relation, valid_from, valid_until (nullable), source, acting_for_user_id (nullable), created_at. `record_relation_version`: module_id, record_type, record_id, relation, version, updated_at, primary key on the four identifying columns. Index on (record_type, record_id) and on (principal_type, principal_id, relation, record_type).
 
 Writes:
 
 - A module declares, per record type it owns, the relation names it writes. Two modules cannot declare the same record type.
-- A module writes rows only through `ctx.tenant.relations`, inside the transaction of its own change. Core refuses a write for a record type the module does not own, for an undeclared relation, or with a `source_revision` older than the stored one for that record and relation, so a late repair cannot overwrite a newer change.
+- A module writes rows only through `ctx.tenant.relations`, inside the transaction of its own change. Core refuses a write for a record type the module does not own, or for an undeclared relation.
+- Versioned replacement. Core keeps a version row per record and relation, `record_relation_version`, which stays when the set of rows becomes empty. A write replaces the whole set of rows for one record and relation, and names the version it read. Core locks the version row, and accepts the write only when the stored version still equals the one named, then increments it. Otherwise the write fails with a conflict, and the writer reads the authoritative state again. Every writer uses this rule: case changes, delegation and absence changes, membership processing, and reconciliation. A delayed old repair therefore always fails, even after the last row was removed. Acceptance tests cover removing the last row and then an old repair that arrives afterwards.
 - Core writes an audit event for every relation write, with the source.
 
 Grants. A relation grants nothing by itself. It grants through a role assignment with the scope type `relation` and the scope id `<record-type>.<relation>`. Core refuses such an assignment when the relation is not declared, or when the record type does not belong to the module of the role's permissions. A role may be marked relation-only by its module, and core then refuses a tenant-wide or record scope for it, so an administrator cannot turn it into access to every case by accident.
@@ -85,6 +89,8 @@ The rows that setup writes, as an explicit and audited administrator action (ins
 | Register reader | `approvals:register-read` | For example the legal team and the general manager | Tenant-wide |
 
 No assignment of a relation-only role has a null scope. Administrators narrow access by removing assignments. System role definitions stay read-only.
+
+Permission and record type compatibility. A module declares, for each of its permissions, the record types that permission may authorize, for example `approvals:case-read` for `case` and `approvals:register-read` for `register-entry`. `can()`, `canMany()`, and the list filter of `scopesFor()` answer false for a record of any other type, also under a tenant-wide grant. A check with no record, as navigation and module entry use, answers only "holds this key somewhere" and never authorizes reading a record. Negative acceptance cases: `approvals:case-read` on a register entry, `approvals:register-read` on a case, and the placeholder key on another module's record.
 
 #### The effective-access rule
 
@@ -106,9 +112,13 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 
 - `requester`, `assignee`, `past-actor`, and `viewer` are written when the case changes. A person who acted as themself gets a `past-actor` row with no end. That matches the product rule that "whoever acted as themself" keeps view.
 - Acting for someone never creates lasting visibility. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction. The person acted for keeps their own rows.
-- Department follows the requester's current department (owner decision). The module's configuration lists which groups are departments. A `department` row names the requester's current department group. Core publishes a generic event when a person's group memberships change, after a sync at sign-in or an edit on the Groups screen. The module subscribes and rewrites the `department` rows of that person's cases in one transaction. The old department head loses the cases on the next request after that event is processed.
+- Department follows the requester's current department (owner decision). The module's configuration lists which groups are departments. A `department` row names the requester's current department group.
+- Core publishes a durable event, `core.group-membership-changed`, enqueued in the same transaction as every change to a person's memberships: the sync at sign-in, an edit on the Groups or People screen, archiving or restoring a group, and removing a person. The payload names the person and the membership revision, a number that rises with every membership change of that person. Delivery is at least once.
+- The module processes it idempotently: it reads the person's current memberships from core, not from the payload, and replaces the `department` rows of that person's cases through the versioned replacement above. A duplicate or out-of-order event finds the work already done. A change to the module's list of department groups starts a job that recomputes every `department` row.
+- Catch-up: when the module is enabled again after being disabled, it first ends every `department` row (sets `valid_until` to now) and then recomputes them, so no old department keeps access during the gap.
+- The old department head loses the cases once the event is processed, normally within seconds on the job worker. Until then, the next-request guarantee of `DEC-48` does not apply to department rows, and this delay is accepted and stated in the module's documentation. Acceptance tests cover a worker crash, duplicate and out-of-order delivery, a person's removal, and disable and re-enable.
 - All times are stored in UTC. The module converts a delegation's dates from the deployment's time zone setting.
-- Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations, absences, and memberships. It locks the case row first, writes with the case's current revision, removes stale rows, and is audited. It never writes a row whose validity already ended.
+- Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations, absences, and memberships. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
 
 ### 4. Entry, starting, acting, and the sidebar
 
@@ -121,8 +131,8 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 | May this person open the full register? | `approvals:register-read`, tenant-wide | Role assignment |
 
 - Core gains a generic navigation provider: a module may supply a function that receives the tenant context and the caller and returns entries, each with a required permission and an optional resource. `permittedNavigation()` passes that resource to `can()`. The module returns one entry per published workflow whose start group holds the caller, with the required permission `approvals:use`, and one register entry for holders of `approvals:register-read`.
-- Workflow placement under headings such as Legal or IT uses the category contribution of `DEC-51`. The landing page stays as `DEC-49` defines it, see open point 1.
-- Core gains a generic query, "effective holders": the active people who hold a permission, optionally for one resource, and the groups that hold it through their own assignment. It is paginated and only callers holding the module's design or admin key may run it. The builder's person picker and start-group picker use it with `approvals:use`.
+- Workflow placement under headings such as Legal or IT uses the category contribution of `DEC-51`. The landing page stays the Solutions hub of `DEC-49` (owner decision 2026-10-20). The hub links to the approvals portal.
+- Core gains a generic query, "effective holders": the active people who hold a permission, optionally for one resource, and the groups that hold it through their own assignment. It is paginated. Core sets no caller rule of its own: the module procedure that calls it first checks the caller's own permission and resource. The builder's pickers check `approvals:design` for the workflow being edited, then ask for holders of `approvals:use`. A designer scoped to one workflow is refused for another workflow, and an acceptance test proves it.
 - Checks at run time, not only at publish: starting a case checks the start group and `approvals:use`. Opening a task checks that the assignee is active and holds `approvals:use`. If not, the task goes to the step's backups, and if none can act, to the administrators' reassignment queue. Publishing reports people and groups that fail these checks as an early warning.
 - The workflow designer is a workspace page gated by `approvals:design` plus `approvals:use`. It is not an admin page, so the contract rule that admin entries need `approvals:admin` does not apply to it.
 
@@ -147,10 +157,10 @@ The product's keys map as follows: `view:department` and `view:all` become `appr
 
 | Core change | Generic name | Contract row it extends | Acceptance proof without any customer module |
 |---|---|---|---|
-| Relation table, write API, relation scope, relation-only roles, `canMany()` | Record relations | Record types | The placeholder module declares a relation, writes rows, and passes the shared access suite. It includes refused writes for another module's record type, refused relation scopes on a foreign permission, and paired detail and list tests for expiry boundaries, archived groups, removed memberships, early ends, and surviving grants. |
+| Relation table, version table, write API, relation scope, relation-only roles, permission and record type compatibility, `canMany()` | Record relations | Record types and Permission keys | The placeholder module declares a relation, writes rows, and passes the shared access suite. It includes refused writes for another module's record type, refused relation scopes on a foreign permission, refused reads of a record type the permission does not cover, a stale versioned write after the last row was removed, and paired detail and list tests for expiry boundaries, archived groups, removed memberships, early ends, and surviving grants. |
 | Navigation provider with resource-aware checks | Request-time navigation | Navigation | The placeholder returns one entry per placeholder record |
 | Effective holders query | Permission holders | Capabilities (core service) | Tested on core roles and the placeholder key, with archived groups and disabled people excluded |
-| Group membership changed event | Membership events | Events | Emitted by the sync and the Groups screen, consumed by a placeholder subscriber |
+| Durable group membership changed event | Membership events | Events | Enqueued with every membership change, including a person's removal, and consumed by a placeholder subscriber through crash, duplicate, and out-of-order delivery |
 | Outbound HTTP service with an allowed-host list, owning secret resolution | Outbound HTTP | Integrations | A placeholder HTTP call against a test server, then the Solutions chat proxy moves onto it |
 
 An image built with no business module must start and pass the core test suite, with `record_relation` empty. Core code names no module outside tests, fixtures, and examples, and this record adds nothing to `packages/core/contracts`. These are acceptance proofs for the specifications that implement each change, not claims about existing code.
@@ -183,6 +193,7 @@ What the decision costs:
 - One large module: the engine, the builder, and the register, with their own jobs, retries, timeouts, and idempotent HTTP calls on the core job worker.
 - Five core changes, each with its own specification.
 - Relation rows must follow every case change, delegation change, and membership change. A bug in the module can leave stale rows until reconciliation runs.
+- A department head who loses a department keeps its cases for the few seconds until the membership event is processed.
 - Current-department visibility rewrites a person's department rows when they move, which can touch many rows for a long-serving requester.
 - A register reader sees every agreement. A person who needs only their own agreements uses their case list, not the register.
 
@@ -198,8 +209,7 @@ What the decision costs:
 
 ## Open points
 
-1. Whether a deployment may choose the approvals portal as its landing page, which amends `DEC-49`.
-2. How a customer's flow definitions are versioned in the repository: an export file in `customers/<slug>/`, or data only.
+None. The two points of revision 4 were decided by the owner on 2026-10-20: the landing page stays the Solutions hub (`DEC-49` unchanged), and flow definitions live as data with export and import (section 1).
 
 Revisit when a second module needs relations that this table cannot express, such as a relation that depends on another relation. The change then is ADR 0004's relationship engine behind the same `can()` and `scopesFor()` calls, and modules keep writing facts through the same API.
 
@@ -236,4 +246,16 @@ Findings of the cross-family review of revision 2:
 | 8. Query bound not possible | Section 3: per-record read kept per request, `canMany()` for known sets |
 | 9. Totals can leak | Section 7: totals over the caller's readable set only, or no total |
 | 10. Principle 9 proofs incomplete | Section 6: placeholder proof for every change, zero-module image must start |
-| 11. Hidden contract choices | Sections 3, 4, and 5: refused foreign scopes, explanation fields, designer placement |
+| 11. Hidden contract choices | Sections 3, 4, and 5: refused foreign scopes, explanation fields, designer placement, and the permission and record type compatibility rule |
+
+Findings of the final cross-family review of revision 4:
+
+| Finding | Answer |
+|---|---|
+| 1. Department access may not converge | Section 3: durable membership event with every membership change, idempotent processing, recompute on configuration change, catch-up after re-enable, stated delay |
+| 2. Revision guard lost on an empty set | Section 3: version table kept for empty sets, compare-and-set replacement for every writer |
+| 3. No permission and record type compatibility | Section 3: declared record types per permission, enforced in `can()`, `canMany()`, and lists |
+| 4. Register exactly-once rule dropped | Section 1: register invariants |
+| 5. Imported entries hidden | Section 1: register availability separate from automatic registration |
+| 6. Holders query caller rule | Section 4: the module procedure checks its caller first |
+| 7. Stale wording | Revision history, section 1, and annotations in `docs/modules/approvals/` |
