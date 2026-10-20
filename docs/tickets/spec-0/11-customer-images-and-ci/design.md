@@ -63,11 +63,13 @@ Decisions:
   on the runner that holds the token. The identity comes from the verify job: a job output
   for the single development path, and the per-slug artifact for the customer matrix, whose
   job outputs GitHub resolves to the last instance that finished.
-- **A tag publishes only from a green develop run (`genie-ops-center-v2-sl1`).** The release
-  workflow's `discover` job refuses the run unless `gh run list --workflow develop.yml
-  --commit "$GITHUB_SHA" --status success` finds a successful run for the tagged commit, and
-  fails closed naming the SHA. Releases come from `develop` for now; the ancestor-of-main rule
-  is deferred to `genie-ops-center-v2-3ui`. Every action is pinned to a full commit SHA with a
+- **A tag publishes only from a release merged to main with a green develop run
+  (`genie-ops-center-v2-sl1`, `genie-ops-center-v2-3ui`).** The release workflow's `discover`
+  job refuses the run unless the tagged commit is an ancestor of `origin/main`, is the squash
+  commit of exactly one merged pull request from `develop` into `main`, and that pull
+  request's head commit has a successful `develop.yml` push run on `develop`. The squash commit
+  never gets its own `develop.yml` run, so the gate reads the head commit's run. Each check
+  fails closed naming the SHA. Every action is pinned to a full commit SHA with a
   `# vX.Y.Z` comment, the runtime base image is pinned by digest, the runtime stage runs as the
   base image's non-root `node` user, and `.dockerignore` keeps `.env*` out of the build context.
 

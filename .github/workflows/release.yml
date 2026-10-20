@@ -7,9 +7,13 @@ name: release
 # build path is proved before the first customer exists. That image contains the
 # placeholder and is not a customer deliverable.
 #
-# A release is refused unless the tagged commit already has a successful
-# develop.yml push run (genie-ops-center-v2-sl1). Releases come from develop for
-# now; the main-based rule is deferred to genie-ops-center-v2-3ui.
+# A release tag must point at the squash commit of a merged develop-to-main pull
+# request, and the develop tip that pull request squashed must have a
+# successful develop.yml push run (genie-ops-center-v2-sl1,
+# genie-ops-center-v2-3ui). main receives only squash merges and has no push
+# workflow, so the squash commit itself never gets a develop.yml run: the gate
+# reads the green run from the pull request's head commit instead. A tag on any
+# other main commit is refused, so a tag always maps to exactly one release.
 #
 # Every publish goes through `scripts/build-customer-image.sh` (or the
 # development wrapper), which resolves the built image's immutable digest,
@@ -39,7 +43,8 @@ on:
       - "v*"
 
 # The repository's default workflow token is read-only. The discover job asks
-# for `actions: read` to look up the tagged commit's develop run; only the two
+# for `pull-requests: read` to find the pull request that produced the tagged
+# commit and `actions: read` to look up its head's develop run; only the two
 # publishing jobs ask for package write, which the registry login and push need
 # (genie-ops-center-v2-0lj).
 permissions:
@@ -52,23 +57,41 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
       customers: ${{ steps.list.outputs.customers }}
     steps:
+      # Full history, so origin/main is present for the ancestry check.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      # genie-ops-center-v2-sl1: refuse the tag unless the tagged commit has a
-      # successful develop.yml push run. Releases come from develop for now; a
-      # main-based rule (an ancestor-of-main check) is deferred to
-      # genie-ops-center-v2-3ui. Fail closed, naming the commit.
+          fetch-depth: 0
+      # genie-ops-center-v2-sl1, genie-ops-center-v2-3ui: refuse the tag unless
+      # (1) the tagged commit is on main, (2) it is the squash commit of exactly
+      # one merged pull request from this repository's develop into main, and
+      # (3) that pull request's head commit has a successful develop.yml push
+      # run on develop. Every missing piece fails closed, naming the commit.
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set -eu
-          runs=$(gh run list --workflow develop.yml --commit "$GITHUB_SHA" --branch develop --event push --status success --limit 1 --json databaseId)
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tagged commit $GITHUB_SHA is not on main. A release tag must point at the squash commit of a merged develop-to-main pull request."
+            exit 1
+          fi
+          pulls=$(gh api "repos/$REPO/commits/$GITHUB_SHA/pulls")
+          heads=$(printf '%s' "$pulls" | jq -c --arg sha "$GITHUB_SHA" --arg repo "$REPO" \
+            '[.[] | select(.merged_at != null and .merge_commit_sha == $sha and .base.ref == "main" and .head.ref == "develop" and .head.repo.full_name == $repo) | .head.sha]')
+          count=$(printf '%s' "$heads" | jq 'length')
+          if [ "$count" != "1" ]; then
+            echo "::error::Tagged commit $GITHUB_SHA is not the squash commit of exactly one merged develop-to-main pull request (found $count). Tag the commit that merging the release pull request created on main."
+            exit 1
+          fi
+          head_sha=$(printf '%s' "$heads" | jq -r '.[0]')
+          runs=$(gh run list --workflow develop.yml --commit "$head_sha" --branch develop --event push --status success --limit 1 --json databaseId)
           if [ -z "$runs" ] || [ "$runs" = "[]" ]; then
-            echo "::error::No successful develop.yml run for $GITHUB_SHA. A release tag must point at a commit that passed the develop gate; merge it to develop, wait for the run to succeed, then re-tag."
+            echo "::error::No successful develop.yml run for $head_sha, the develop head that main commit $GITHUB_SHA squashed. Wait for the develop run to succeed, then re-tag."
             exit 1
           fi
       - id: list
