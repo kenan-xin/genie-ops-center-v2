@@ -387,6 +387,12 @@ Guard: the folder is self-contained by lint, so lifting it out is a move, not a 
 
 Designed in: now. Implemented: Section 1, with the events service. Revisit when `packages/ui` or a second product needs the same contracts; the change is then to move the folder to `packages/contracts` and point the imports at it.
 
+Amended 2026-10-20, which modules may share a contract (owner decision): `packages/core/contracts` ships in every customer's image, so a shape placed there reaches every customer's servers. `DEC-33` keeps one customer's module code and table shapes off other customers' servers. Rule: a contract enters the folder only when both modules that use it may be compiled into any customer's image, because neither is built for one customer. Two modules built for one customer that need to share an event or a capability are merged into one module instead, as ADR 0012 did for approvals and the agreement register. A review of a new contract names both modules and confirms that rule.
+
+Why not generate the folder per image from the included modules: it needs a generator, a second build input, and per-image type checks, for a case that a merge avoids. Why not accept every shape as platform surface: it would amend `DEC-33` and leak a customer module's data shape to other customers.
+
+Revisit if two modules built for one customer must stay separate, for example because a second customer wants only one of them. The change then is per-image generation of the folder from `MODULE_INCLUDE`, with its own decision.
+
 ## DEC-43. Migration safety is a lint in continuous integration, not a runtime check
 
 Question: expand-then-contract and the three-release upgrade rule (`DEC-9`) are load-bearing, and only human review guarded them. What guards them in code?
