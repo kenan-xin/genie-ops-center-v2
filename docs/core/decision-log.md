@@ -164,6 +164,8 @@ Why not react-jsonschema-form, AutoForm, FormEngine, or a generative UI renderer
 
 Designed in: Section 3 (Tenant Settings, with a placeholder module section that shows all five kinds; no shipped module has configuration yet, see DEC-30). Implemented: Section 3. Revisit when a real module needs a sixth kind twice; then weigh one more kind against adopting react-jsonschema-form with a Base UI theme.
 
+Amended 2026-10-20, forms that designers build (owner decision): the approvals module stores one form per workflow as JSON Schema, built by a designer in the builder, so the form is data, not code. The module draws and validates those forms with react-jsonschema-form (RJSF) and a theme in our `packages/ui` components, and validates the same schema on the server. TanStack Form with zod stays the rule for every form a developer writes, and core `ConfigForm` keeps its five kinds. Why not our own renderer on TanStack Form: it is code we would write and maintain for a solved problem, which vision principle 10 rules out. The library and its theme get a `tech-stack.md` entry in the change that adds them. Revisit if a second module needs designer-built forms; the theme then moves to `packages/ui`.
+
 ## DEC-29. Agent runtime and generative UI, deferred
 
 Question: the product owner wants Genie Ops Center to be ready for model-generated UI and for agents that act inside the application (copilot pattern). Which framework, and when?
