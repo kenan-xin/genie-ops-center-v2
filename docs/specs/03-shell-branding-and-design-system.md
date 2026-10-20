@@ -146,7 +146,7 @@ R-38. Below 768 pixels the shell must show no sidebar. The header carries the te
 
 R-39. The shell must read branding for the tenant identity block, the logo or letter tile, the company name, the product name, and the footer links, through the branding reader on the tenant context (`DEC-34`, `DEC-46`).
 
-R-40. The shell must show no notification surface until the inbox screen is scheduled. The Inbox navigation entry and its unread pill stay hidden (`DEC-21`, `../design/shell/spec.md`, "Navigation Structure"). No bell exists in either header.
+R-40. The shell must show no notification surface until the inbox screen is scheduled (`DEC-21`, `../design/shell/spec.md`, "Navigation Structure"). Amended 2026-10-20 (owner): when the inbox ships, its entry point is a bell with an unread count in the header of both chromes, not an Inbox navigation entry.
 
 R-41. Every user-facing string in the shell and in every screen of this section must go through the `next-intl` message catalog installed in Section 0. No string is written inline (`DEC-13`, `../core/roadmap.md`, Section 0 item 9).
 
