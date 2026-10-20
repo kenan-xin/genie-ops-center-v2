@@ -179,7 +179,7 @@ Implementation reconciliation, 2026-09-22: folder and ledger ownership are uncha
 
 **R-26a.** On success or failure, finish or roll back any active transaction before unlocking on the owning session. Track whether acquisition succeeded so cleanup never assumes ownership after a timeout. Before returning a client to the pool, confirm unlock and restore changed session settings. If connection health or cleanup is uncertain, destroy that client instead of returning it for reuse. Preserve the original migration error and report cleanup failures through redacted logs; a cleanup failure must not turn a failed run into a successful startup.
 
-**R-27.** A migration failure must leave the container unhealthy, so the previous version keeps serving. The migrator must be idempotent, so re-running it after a fix applies only what is missing (`DEC-9`, `../adr/0007-one-deployment-per-customer.md`, Consequences).
+**R-27.** A migration failure must leave the container unhealthy, so the previous version keeps serving. The migrator must be idempotent, so re-running it after a fix applies only what is missing (`DEC-9`, `../adr/0007-one-deployment-per-customer.md`, Consequences). Amended 2026-10-20 (`DEC-33` in `../core/decision-log.md`): the unhealthy container still holds, but the previous version does not keep serving, because the stack has one application container. An upgrade is a short planned maintenance window, and the operator restarts the previous image by a documented step.
 
 **R-28.** The Testcontainers preset must apply the same set of histories that the image applies, in the same order (`../core/roadmap.md`, Section 0 item 4b).
 
@@ -205,7 +205,7 @@ Amendment 2026-09-21: initial branding follows the [approved seed requirements](
 
 **R-36.** The application must read its public address from `PUBLIC_URL` and must never inspect the request hostname (`DEC-19`).
 
-**R-36a.** The application must serve an unauthenticated health endpoint at `GET /api/health` whose body is `ok` and nothing else. It must answer only after startup completed, so that a migration failure leaves the container unhealthy and the previous version keeps serving. The endpoint must never return error text, a secret, or a version string. Section 1 items 2 and 4 add `degraded` on the same path (`DEC-9`, `../specs/README.md`, Cross-section calls, Health endpoint).
+**R-36a.** The application must serve an unauthenticated health endpoint at `GET /api/health` whose body is `ok` and nothing else. It must answer only after startup completed, so that a migration failure leaves the container unhealthy and the previous version keeps serving. The endpoint must never return error text, a secret, or a version string. Section 1 items 2 and 4 add `degraded` on the same path (`DEC-9`, `../specs/README.md`, Cross-section calls, Health endpoint). Amended 2026-10-20 (`DEC-33` in `../core/decision-log.md`): the endpoint still answers only after startup, but the previous version does not keep serving during a failed upgrade, because the stack has one application container.
 
 ### Test infrastructure (item 6)
 

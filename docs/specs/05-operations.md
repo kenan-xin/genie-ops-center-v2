@@ -145,7 +145,7 @@ The run writes every item outside the host it protects and encrypts it at rest. 
 
 R-19. In a customer-managed deployment the customer takes the same backup set. The backup runbook states each item and why it is needed. The image is not in the set, because Genie rebuilds it from the repository for the recorded version.
 
-R-20. A Keycloak server that serves several realms, such as Genie's shared server, is backed up whole in every backup run of every deployment on it. A restore after the server itself is lost restores the whole Keycloak database. A restore of one deployment while the shared server keeps serving the other realms follows this procedure, which the drill of R-21 proves before the first deployment on a shared server relies on it:
+R-20. A Keycloak server that serves several realms, such as Genie's shared server, is backed up whole in every backup run of every deployment on it. A restore after the server itself is lost restores the whole Keycloak database. A restore of one deployment while the shared server keeps serving the other realms follows this procedure (owner choice, 2026-10-20). The procedure is unproven until the drill of R-21 proves it, and the first deployment on a shared server does not rely on it before then:
 
 1. Restore the Keycloak database backup into a separate, stopped Keycloak server.
 2. Export that one realm with its users from the stopped server with `kc.sh export --realm <realm> --users realm_file`.
@@ -226,7 +226,7 @@ Moving an existing genie-studio deployment to a new realm on sso.001.gs is a liv
 
 R-28. Genie runs a demo customer as three Genie-hosted stacks, dev, staging, and production, each with its own database and realm, set up by the same commands with no special mode in code (`DEC-18`). The staging stack is the target of the restore drill (R-21) and of every rehearsal (R-41).
 
-R-28a. The first deployment is Genie's own internal deployment, with every module, for demo and testing. It signs in through the Keycloak server on sso.001.gs, which also serves other realms, so R-20 applies to it. It is the first real host for the new-customer runbook, the go-live checklist of R-7c, the backup set, and the Keycloak hardening checklist of R-46. A runbook finding on this deployment is fixed in the runbook before a customer deployment starts.
+R-28a. The first deployment is Genie's own internal deployment, with every module, for demo and testing. It is Genie-hosted (owner, 2026-10-20), so its rehearsal counts against AC-9. It signs in through the Keycloak server on sso.001.gs, which also serves other realms, so R-20 applies to it. It is the first real host for the new-customer runbook, the go-live checklist of R-7c, the backup set, and the Keycloak hardening checklist of R-46. A runbook finding on this deployment is fixed in the runbook before a customer deployment starts.
 
 R-29. A customer's UAT is a second stack of that customer, with its own database and realm, on Genie's staging servers or on the customer's own (`DEC-18`). It gets its own row in the deployment inventory and its own entry in the customer's record.
 
@@ -377,7 +377,6 @@ Assumptions
 - `docker save` writes a loadable archive that preserves the image tag, and `docker load` restores it on a host with no registry access. Consequence if wrong: the release file path fails and only the registry path remains.
 - The release-tag pipeline is a matrix job over the customer folders, triggered by a tag pattern on push. Verified on 2026-09-18 that tag-filtered `push` triggers and matrix jobs are current GitHub Actions syntax. Consequence if wrong: the job shape changes and R-23 does not.
 - The five minute alert threshold in R-15 is a routine operational default with no source. Consequence if wrong: one number changes in one runbook.
-- The first deployment of R-28a is Genie-hosted. Consequence if wrong: its rehearsal counts against AC-10 instead of AC-9.
 - The demo customer of `DEC-18` and the first deployment are Genie's own, so naming their stacks and sso.001.gs breaks no writing rule.
 
 Open questions
@@ -406,4 +405,6 @@ Findings of the review of 2026-10-20 (verdict: rework before approval):
 
 Kept as the review found them sound: the split between the image push and the delivery to a customer (R-13), the worker heartbeat (R-16), the manual automation seam (R-2, R-3), and R-26b, R-26c, and AC-11 on removal and reintroduction.
 
-Not changed here: these documents still state that the previous version keeps serving after a failed migration, and they change in their own documents under the `DEC-9` amendment: `../adr/0005-tenant-migrations-at-deploy.md` (status line), `../adr/0007-one-deployment-per-customer.md`, `../core/roadmap.md` (Section 0 item 5), Spec 0 R-27 and its health endpoint requirement, and Spec 1 R-12. The Helm wording in `DEC-33`, `../core/vision.md`, `../core/tech-stack.md`, `../core/roadmap.md`, and `../architecture/repository-layout.md` changes with Beads `2xfl`.
+Dated notes of 2026-10-20 that point to the `DEC-33` amendment now follow each old statement that the previous version keeps serving after a failed migration: `../adr/0005-tenant-migrations-at-deploy.md` (status line), `../adr/0007-one-deployment-per-customer.md`, `../core/roadmap.md` (Section 0 item 5), Spec 0 R-27 and R-36a, and Spec 1 R-12. The original text stays as history.
+
+Not changed here: the Helm wording in `DEC-33`, `../core/vision.md`, `../core/tech-stack.md`, `../core/roadmap.md`, and `../architecture/repository-layout.md` changes with Beads `2xfl`.
