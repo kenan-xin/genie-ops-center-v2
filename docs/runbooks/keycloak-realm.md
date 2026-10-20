@@ -303,7 +303,7 @@ A provider that publishes a metadata URL is easier to repair than one that hands
 
 ### Export the realm as a restore shortcut
 
-The realm is recreated by setup from the template plus `realm.overrides.json`, so it needs no backup. An export still shortens a restore, because it carries the state after `idp set`.
+The realm is not recreated by setup. A restored application database marks the realm steps done, and setup never reruns a done step. Back up the Keycloak database with the application database and restore them together (`deployment.md`, "Backups", `DEC-31` as amended 2026-10-20). An export is an extra copy of the state after `idp set`, not a replacement for that backup.
 
 1. Export the realm from the Keycloak admin console after setup and after every `idp set`.
 2. Store the export beside the customer's runbook, never in the repository.
@@ -346,7 +346,7 @@ Those two variable names belong to the Keycloak server. They are not `KEYCLOAK_B
 | Problem | What to do |
 | --- | --- |
 | Nobody can sign in, because the provider is down or misconfigured. | Sign in with the break-glass account at `PUBLIC_URL/admin/login`, then repair the provider with `genie-ops idp set` on the host. |
-| The realm is broken or was deleted. | Run `genie-ops setup` again, then run `genie-ops idp set` again. |
+| The realm is broken or was deleted. | Restore the Keycloak database from the backup set of the same run as the application database (`deployment.md`, "Backups"). Clearing the `realm` and `clients` rows of `setup_step` and running setup again is a last resort when no Keycloak backup exists. It loses local accounts, second factors, and the federated identity links, and `genie-ops idp set` must then run again. |
 | The last administrator left the company. | Run `genie-ops admin add <email>` on the host, on the customer's written request (`DEC-23`). |
 
 Use the break-glass account only for the rows that name it, and sign out as soon as the fix is done. Every action in that session bypasses the permission checks (`DEC-15`).

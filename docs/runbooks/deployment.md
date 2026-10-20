@@ -100,10 +100,13 @@ The protocol and the credentials of the customer's identity provider are not in 
 
 ## Upgrade
 
+An upgrade is a short planned maintenance window (`DEC-9` as amended 2026-10-20). The application is unavailable from step 4 until the new container is healthy, because the stack has one application container and `docker compose up -d` replaces it.
+
 1. Build and push the new version with the build script, or hand over the new image file.
-2. On the host, change `IMAGE_TAG` in `.env` to the new version.
-3. Run `docker compose pull` and `docker compose up -d`.
-4. The new container applies the migration histories under one lock before it serves. If a migration fails, the container stays unhealthy and the previous version keeps serving. Read the container log, fix the cause, and repeat step 3.
+2. Announce the window to the tenant administrators. Take a backup set ("Backups") and record its time.
+3. On the host, change `IMAGE_TAG` in `.env` to the new version.
+4. Run `docker compose pull` and `docker compose up -d`. The new container applies the migration histories under one lock before it serves.
+   If a migration fails, its transaction rolls back and the new container never becomes healthy. Nothing serves until you act. Read the container log and record the cause. Set `IMAGE_TAG` back to the previous version and run `docker compose up -d` again. Make sure that the previous version is healthy, then fix the cause and plan a new window. If the previous image refuses to start, for example because the new release installed a module that the previous image omits, restore the backup set of step 2.
 5. If the release notes name a new `genie-ops setup` step, run `docker compose exec app genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done, or skipped in client-only mode (`../core/roadmap.md`, Section 1 items 2 and 5).
 6. A module that the new image adds arrives disabled. An administrator configures it and enables it on the Modules page, or you run `docker compose exec app genie-ops module enable <module-id>` on the administrator's request. Nobody gets access to it until then (`DEC-50`).
 
@@ -148,7 +151,19 @@ This fresh realm is the default. A customer that refuses a second realm can inst
 
 ## Backups
 
-Back up the database and `.env`. The image is rebuilt from the repository. A brokered realm is recreated by setup from the template plus `realm.overrides.json`, so it needs no backup, but a realm export after setup shortens a restore. If `local_accounts` is on, back up the Keycloak database as well. That realm holds the people's passwords and second factors (`DEC-10`), and the template cannot recreate them. A Genie-hosted database gets a nightly logical backup kept for 30 days (`DEC-31`). A customer-managed stack backs up on its own schedule. Test a restore on a second host before go-live, and every quarter after that.
+Back up the whole backup set in one run (`DEC-31` as amended 2026-10-20):
+
+1. The application database.
+2. The Keycloak database, when Genie manages the realm (`realm_mode` `managed`), directly after the application database. This applies to a brokered realm and to a local-accounts realm alike. Setup does not recreate a lost realm, because a restored database marks the realm steps done and setup never reruns a done step.
+3. The file bytes, when `FILE_STORAGE_ADAPTER` is `s3`: turn on object versioning and keep noncurrent versions for 30 days.
+4. `.env` and the break-glass password, in the operator's secret store.
+5. The identity provider inputs: the non-secret values and the callback URLs that the customer registered in the customer's runbook, and the client secret in the secret store.
+
+The image is not in the set, because it is rebuilt from the repository for the recorded version. In client-only mode the realm belongs to the customer's IT, so keep the client id and the client secret instead. A Genie-hosted deployment gets a nightly backup kept for 30 days. A customer-managed stack takes the same set on its own schedule.
+
+Restore the application database and the Keycloak database from the same run, together. A Keycloak server that serves several realms is backed up whole. To restore one realm while the server keeps serving the others, restore the Keycloak backup into a separate stopped server, export that realm with `kc.sh export --realm <realm> --users realm_file`, delete the realm on the shared server through the Admin API, and import the file. Clearing `setup_step` rows to recreate a lost realm is a last resort when no Keycloak backup exists, and it loses local accounts, second factors, the federated identity links, and every change since setup.
+
+Test a restore on new hosts before go-live, and every quarter after that. The test assumes that the application host, its Postgres, and its Keycloak server are lost.
 
 ## Logs
 
@@ -164,4 +179,4 @@ An invalid environment in the application writes one JSON line with no tenant id
 
 ## Retire a customer
 
-Stop the stack with `docker compose down`. Keep the database, the realm, and the last backup for 90 days. After the hold, run `genie-ops retire --confirm` against the database to delete what Genie holds (`DEC-17`). A customer-managed stack retires itself. Genie deletes only what Genie holds, such as the image on the registry.
+Stop the stack with `docker compose down`. Keep the database, the realm that Genie manages, and the bucket for 90 days. Keep the last backup set for the period that the customer's contract names, and name that period in the retirement plan. No default period exists. After the hold, run `genie-ops retire --confirm` against the database to delete what Genie holds (`DEC-17` as amended 2026-10-20). In client-only mode it deletes no realm, and the customer's IT removes the two clients. A customer-managed stack retires itself. Genie deletes only what Genie holds, such as the image on the registry.
