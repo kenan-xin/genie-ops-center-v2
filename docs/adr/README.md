@@ -15,6 +15,6 @@ Accepted architectural choices and their trade-offs live here. Product behavior 
 | [0009](0009-storybook-pins-the-vitest-major.md) | Storybook-compatible Vitest major |
 | [0010](0010-client-only-mode-in-an-existing-realm.md) | Client-only mode in a customer's existing realm |
 | [0011](0011-replace-trpc-with-orpc.md) | oRPC as the module API and transport, replacing tRPC |
-| [0012](0012-approvals-module-split-and-relation-scopes.md) | Proposed: reusable approvals module, contracts as consumer, relation scopes in `can()` |
+| [0012](0012-approvals-module-split-and-relation-scopes.md) | Proposed: reusable approvals module, contracts as consumer, core-owned record relations |
 
 Preserve superseded reasoning with an explicit amendment and current authority. Acceptance of a decision is distinct from proof that its implementation passes.
