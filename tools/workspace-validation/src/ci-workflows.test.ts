@@ -1179,12 +1179,11 @@ describe("the Spec 0 CI gates", () => {
     expect(workflow).not.toMatch(/cancel-in-progress:\s*true/);
   });
 
-  // genie-ops-center-v2-sl1: a tag used to publish any commit. A release is now
-  // refused unless the tagged commit already has a successful develop.yml push
-  // run, so a tag on a commit whose develop gate failed or was cancelled cannot
-  // publish. Releases come from develop for now; the main-based rule is
-  // deferred to genie-ops-center-v2-3ui.
-  it("refuses a release tag whose commit has no green develop run", () => {
+  // genie-ops-center-v2-sl1 and -3ui: a release tag must be the squash commit of
+  // one merged develop-to-main pull request (owner decision 2026-10-20), and that
+  // pull request's develop head must have a successful develop.yml push run. The
+  // squash commit on main never gets a develop run of its own.
+  it("refuses a release tag that is not a main squash commit with a green develop head", () => {
     const workflow = read(`${WORKFLOWS}/release.yml`);
     const discover = jobsOf(workflow).get("discover");
 
@@ -1215,11 +1214,26 @@ describe("the Spec 0 CI gates", () => {
     expect(scripts).toContain("exit 1");
     expect(scripts).toMatch(/GITHUB_SHA/);
 
-    // The ancestor-of-main rule is deferred to genie-ops-center-v2-3ui; the
-    // one-line pointer to it stays, and no main check is added here.
-    expect(workflow).toContain("3ui");
-    expect(workflow).not.toContain("merge-base");
-    expect(workflow).not.toMatch(/origin\/main/);
+    // The tagged commit must be on main, and must be the merge commit of one
+    // merged develop-to-main pull request of this repository, whose head is
+    // the commit the develop run is looked up for.
+    expect(scripts).toContain(
+      'git merge-base --is-ancestor "$GITHUB_SHA" origin/main'
+    );
+    expect(discover, "full history so origin/main exists").toMatch(
+      /fetch-depth: 0/
+    );
+    expect(scripts).toContain("/commits/$GITHUB_SHA/pulls");
+    expect(scripts).toMatch(/merge_commit_sha == \$sha/);
+    expect(scripts).toContain('.base.ref == "main"');
+    expect(scripts).toContain('.head.ref == "develop"');
+    expect(scripts).toContain(".head.repo.full_name == $repo");
+    expect(scripts).toContain('--commit "$head_sha"');
+    expect(scripts).not.toContain('--commit "$GITHUB_SHA"');
+    expect(
+      discover,
+      "the pull-request lookup needs pull-requests: read"
+    ).toMatch(/^ {6}pull-requests: read\n/m);
   });
 
   // genie-ops-center-v2-sl1 and -dwn: docker/login-action writes a
