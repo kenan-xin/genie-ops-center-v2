@@ -131,7 +131,7 @@ Product/configuration reasoning lives in [the decision log](decision-log.md); ar
 | DEC-26 | Embedded (iframe) solutions are kept alongside chat solutions. Solutions module, `../modules/solutions/README.md`. |
 | DEC-27 | Chat resumes on reopen; Draft, Maintenance, and Down never stream. Solutions module, `../modules/solutions/README.md`. |
 | DEC-28 | Schema-driven module configuration with five field kinds and no form engine. `decision-log.md`. |
-| DEC-29 | Agent runtime is AI SDK; copilot layer and generative UI deferred behind two seams. `decision-log.md`. |
+| DEC-29 | Agent runtime is AI SDK; copilot layer and generative UI deferred behind two seams. Amended 2026-10-20: the boss agent is a core capability that finds module tools only through the capabilities registry, runs every tool as the user behind `can()`, works with zero modules, and is off without a model connection. `decision-log.md`. |
 | DEC-30 | Chat endpoint per solution; allowed origins are an operator setting. Solutions module, `../modules/solutions/README.md`. |
 | DEC-31 | Platform hardening defaults: logs, error responses, headers, rate limits, backups. `decision-log.md`. |
 | DEC-32 | Capabilities considered and not in the foundation. `decision-log.md`. |

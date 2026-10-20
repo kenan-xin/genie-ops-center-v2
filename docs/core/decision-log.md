@@ -172,6 +172,20 @@ Candidates checked on 2026-09-16, all pre-1.0 or fast-moving: json-render (Verce
 
 Designed in: none yet. Implemented: none. Revisit when a customer module needs an in-app copilot or a bot returns structured UI.
 
+Amended 2026-10-20, the boss agent is core (owner decision): every customer gets an in-app agent, the boss agent, that answers questions across modules, spawns helper agents for parts of a question, and creates documents such as Word and PowerPoint files. It is a core capability, not a module, because every deployment carries it.
+
+- It knows no module (vision principle 9). It discovers what it can do only at run time, through agent tools that modules provide in the capabilities registry under one interface declared in `packages/core/contracts`. The registry returns one provider per name today, so it gains a form that lists every provider of an interface. A module without agent tools adds nothing.
+- It runs as the signed-in user. Every tool call, including the calls of a helper agent, goes through `can()` and `scopesFor()` for that user, so the agent sees exactly what the user may see. It never uses a service account and never queries a module's tables or writes SQL.
+- Tools read by default. A tool that writes asks the user to approve it first, through the approval part type above. Every tool call is written to the audit log with the user, the tool, and the records it returned.
+- It works with zero modules: core's own tools cover core data that the user may see, such as people, groups, and the audit log.
+- It is off when the deployment has no model connection. The model connection is a per-deployment setting, so a customer that forbids models outside its network points it at its own endpoint or leaves it empty. The deployment then runs normally with no agent entry.
+- Generated files are saved through `FileStorage` as files owned by the user (`DEC-20`).
+- The three reserved seams are the capability catalog above, the one message-part renderer, and the model connection setting.
+
+Trade-off: the document generation libraries enter every image, and every module author must write agent tools with clear descriptions and read-only defaults. In return, one agent answers across modules without any module knowing another.
+
+Designed in: the seams, now. Implemented: none; the agent needs its own specification before work starts. Revisit if a customer needs the agent to act without a signed-in user, for example on a schedule. That needs its own decision on whose rights it uses.
+
 ## DEC-30. Chat endpoint is a per-solution setting
 
 Solutions module decision. The full record is in `../modules/solutions/README.md` under Decisions. The platform side, the operator variable `GENIE_CHAT_API_ALLOWED_ORIGINS`, stays in `../architecture/environment-contract.md`.
