@@ -18,6 +18,8 @@ When a requester moves to another department, the readers of the old department 
 
 Workflow definitions with versions, the five step kinds of ADR 0012, one form per workflow, cases with a full history, statuses, backups, leave, and delegation, and attachments that reference core `file`. A workflow may turn on the register feature: a case of that workflow creates a register entry with its number when it completes, in the same transaction.
 
+Search, 2026-10-20 (owner): the module ships its own search page and list filters, filtered through `scopesFor()`. A Ctrl K search across modules is core work for later, when a second module needs it.
+
 ## Phases
 
 ### Register: register, versions, retrieval. No AI.
