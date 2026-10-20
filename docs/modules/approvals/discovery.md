@@ -49,4 +49,8 @@ D-11. What does the current e-sign approval hierarchy look like: fixed chains pe
 
 D-12. What must be kept when e-sign is shut down: history of past approvals, templates, signatures as evidence, or nothing?
 
+D-13. Added 2026-10-20 from the first-customer fit review. The product documents say only that "identities come from Active Directory". Do people sign in through Microsoft Entra ID or ADFS, or is there only an on-premises Active Directory with no cloud or federation service? Entra ID and ADFS work today through the brokered realm. On-premises Active Directory alone needs LDAP federation, which is deferred (Specification 02, "Deferred").
+
+Deferred until D-13 is answered: the identity-provider setup for this customer, and whether LDAP federation must be reopened.
+
 Deferred until D-11 and D-12 are answered: the workflow engine, its approval steps, and the import of e-sign history. Before 2026-10-20 this line deferred the whole approvals module, which then held only the workflow.
