@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-20
-amends: DEC-39 (a role assignment gains a relation scope), DEC-48 (the loader reads relation rows at one time per request), the module contract rows Record types, Navigation, and Events, docs/modules/approvals and docs/modules/contracts provisional shapes
+amends: DEC-39 (a role assignment gains a relation scope), DEC-48 (the loader reads relation rows at one time per request), the module contract rows Record types, Permission keys, Navigation, Events, and module management (a before-enable step), docs/modules/approvals and docs/modules/contracts provisional shapes
 ---
 
 # Approvals as one reusable workflow module with an agreement register, and core-owned record relations
@@ -70,7 +70,9 @@ Writes:
 
 - A module declares, per record type it owns, the relation names it writes. Two modules cannot declare the same record type.
 - A module writes rows only through `ctx.tenant.relations`, inside the transaction of its own change. Core refuses a write for a record type the module does not own, or for an undeclared relation.
-- Versioned replacement. Core keeps a version row per record and relation, `record_relation_version`, which stays when the set of rows becomes empty. A write replaces the whole set of rows for one record and relation, and names the version it read. Core locks the version row, and accepts the write only when the stored version still equals the one named, then increments it. Otherwise the write fails with a conflict, and the writer reads the authoritative state again. Every writer uses this rule: case changes, delegation and absence changes, membership processing, and reconciliation. A delayed old repair therefore always fails, even after the last row was removed. Acceptance tests cover removing the last row and then an old repair that arrives afterwards.
+- Versioned replacement. Core keeps a version row per record and relation, `record_relation_version`, which stays when the set of rows becomes empty. A write replaces the whole set of rows for one record and relation, and names the version it read. Core locks the version row, and accepts the write only when the stored version still equals the one named, then increments it. Otherwise the write fails with a conflict, and the writer reads the authoritative state again. Every writer uses this rule: case changes, delegation and absence changes, membership processing, and reconciliation. A delayed old repair therefore always fails, even after the last row was removed.
+- Read order. A writer reads the expected version first, and only then reads the authoritative inputs from which it derives the new rows. On a conflict it discards both the derived rows and those inputs, and retries the whole read, derive, and write. A membership fan-out never reuses a membership snapshot taken before it read a case's expected version. This order is what lets the version protect against stale input, not only against stale writes. Acceptance tests cover removing the last row and then an old repair that arrives afterwards, and this interleaving: repair A reads an active delegation, writer B ends it, then A tries to write.
+- The membership revision in the event payload is not the relation version. Idempotence comes from deriving fresh from current state in this read order.
 - Core writes an audit event for every relation write, with the source.
 
 Grants. A relation grants nothing by itself. It grants through a role assignment with the scope type `relation` and the scope id `<record-type>.<relation>`. Core refuses such an assignment when the relation is not declared, or when the record type does not belong to the module of the role's permissions. A role may be marked relation-only by its module, and core then refuses a tenant-wide or record scope for it, so an administrator cannot turn it into access to every case by accident.
@@ -115,8 +117,8 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 - Department follows the requester's current department (owner decision). The module's configuration lists which groups are departments. A `department` row names the requester's current department group.
 - Core publishes a durable event, `core.group-membership-changed`, enqueued in the same transaction as every change to a person's memberships: the sync at sign-in, an edit on the Groups or People screen, archiving or restoring a group, and removing a person. The payload names the person and the membership revision, a number that rises with every membership change of that person. Delivery is at least once.
 - The module processes it idempotently: it reads the person's current memberships from core, not from the payload, and replaces the `department` rows of that person's cases through the versioned replacement above. A duplicate or out-of-order event finds the work already done. A change to the module's list of department groups starts a job that recomputes every `department` row.
-- Catch-up: when the module is enabled again after being disabled, it first ends every `department` row (sets `valid_until` to now) and then recomputes them, so no old department keeps access during the gap.
-- The old department head loses the cases once the event is processed, normally within seconds on the job worker. Until then, the next-request guarantee of `DEC-48` does not apply to department rows, and this delay is accepted and stated in the module's documentation. Acceptance tests cover a worker crash, duplicate and out-of-order delivery, a person's removal, and disable and re-enable.
+- Catch-up: when the module is enabled again after being disabled, every `department` row ends (`valid_until` set to now) before the enablement can be observed. Core's enable operation runs a module's declared before-enable step inside the same transaction that sets the module enabled, so the invalidation commits with it or not at all. The step uses the versioned replacement. Recomputing the rows afterwards may run as a job. Acceptance tests stop the worker right after enable and try detail reads, lists, and file links before any recompute runs.
+- After a requester changes department, the readers of the old department keep this derived access until the event is processed: normally within seconds on the job worker, longer during a worker outage or backlog. Only this case is delayed. A change to the reader's own memberships or role assignments still applies on the next request (`DEC-48`). The delay is accepted and stated in the module's README. Acceptance tests cover a worker crash, duplicate and out-of-order delivery, a person's removal, and disable and re-enable.
 - All times are stored in UTC. The module converts a delegation's dates from the deployment's time zone setting.
 - Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations, absences, and memberships. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
 
@@ -161,6 +163,7 @@ The product's keys map as follows: `view:department` and `view:all` become `appr
 | Navigation provider with resource-aware checks | Request-time navigation | Navigation | The placeholder returns one entry per placeholder record |
 | Effective holders query | Permission holders | Capabilities (core service) | Tested on core roles and the placeholder key, with archived groups and disabled people excluded |
 | Durable group membership changed event | Membership events | Events | Enqueued with every membership change, including a person's removal, and consumed by a placeholder subscriber through crash, duplicate, and out-of-order delivery |
+| Before-enable step run inside the enable transaction | Module lifecycle | Module management | A placeholder before-enable step that fails rolls back the enablement; one that succeeds commits with it |
 | Outbound HTTP service with an allowed-host list, owning secret resolution | Outbound HTTP | Integrations | A placeholder HTTP call against a test server, then the Solutions chat proxy moves onto it |
 
 An image built with no business module must start and pass the core test suite, with `record_relation` empty. Core code names no module outside tests, fixtures, and examples, and this record adds nothing to `packages/core/contracts`. These are acceptance proofs for the specifications that implement each change, not claims about existing code.
@@ -191,9 +194,9 @@ What the decision costs:
 - A customer that wants approval flows without a register still receives the register code and its empty tables. The register is generic, not one customer's code, so `DEC-33` is not touched, but the image is larger.
 - A customer that wants only a register must take the workflow engine, or wait for the split described above.
 - One large module: the engine, the builder, and the register, with their own jobs, retries, timeouts, and idempotent HTTP calls on the core job worker.
-- Five core changes, each with its own specification.
+- Six core changes, each with its own specification.
 - Relation rows must follow every case change, delegation change, and membership change. A bug in the module can leave stale rows until reconciliation runs.
-- A department head who loses a department keeps its cases for the few seconds until the membership event is processed.
+- When a requester changes department, the old department's readers keep that requester's cases until the membership event is processed, normally seconds, longer if the worker is down.
 - Current-department visibility rewrites a person's department rows when they move, which can touch many rows for a long-serving requester.
 - A register reader sees every agreement. A person who needs only their own agreements uses their case list, not the register.
 
@@ -259,3 +262,12 @@ Findings of the final cross-family review of revision 4:
 | 5. Imported entries hidden | Section 1: register availability separate from automatic registration |
 | 6. Holders query caller rule | Section 4: the module procedure checks its caller first |
 | 7. Stale wording | Revision history, section 1, and annotations in `docs/modules/approvals/` |
+
+Findings of the follow-up review of the fixes (accepted after these):
+
+| Finding | Answer |
+|---|---|
+| 1. Version must precede the source read | Section 3: read order, retry of the whole read, derive, and write |
+| 2. Re-enable must invalidate before it is observable | Section 3: before-enable step in the enable transaction; section 6 row |
+| 3. Delay names the wrong person | Section 3 and costs: the requester's move, normally seconds, longer during an outage; README states it |
+| 4. Two discovery lines name superseded work | `docs/modules/approvals/discovery.md` |

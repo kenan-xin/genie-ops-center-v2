@@ -1,6 +1,6 @@
 # Module: Approvals
 
-Kind: customer module, first customer, built to be reused by other customers. Status: DEFERRED on customer discovery (`discovery.md`, D-1 to D-12). Its shape is proposed in [ADR 0012](../../adr/0012-approvals-module-split-and-relation-scopes.md), revision 4: one module with a workflow engine, a builder, and an agreement register that a workflow turns on. On 2026-10-20 the former contracts module was merged into this one, and its discovery questions moved here unchanged.
+Kind: customer module, first customer, built to be reused by other customers. Status: DEFERRED on customer discovery (`discovery.md`, D-1 to D-12). Its shape is decided in [ADR 0012](../../adr/0012-approvals-module-split-and-relation-scopes.md), revision 4: one module with a workflow engine, a builder, and an agreement register that a workflow turns on. On 2026-10-20 the former contracts module was merged into this one, and its discovery questions moved here unchanged.
 
 ## Who it is for
 
@@ -9,6 +9,10 @@ People who request an approval, the approvers in the chain, the designers who de
 ## Problem
 
 Approvals run in a 2017 e-sign system the customer intends to shut down after moving. Agreements are tracked in an Excel register with validity dates and status maintained by hand. Documents sit on an encrypted server the customer calls the "info cage". Business users cannot find or understand agreements without the legal team, and the legal team spends its time on extraction and tracking rather than review.
+
+## Accepted delay
+
+When a requester moves to another department, the readers of the old department keep that requester's cases until the membership event is processed: normally within seconds, longer if the job worker is down or backed up. A change to a reader's own groups or roles applies on their next request. ADR 0012, section 3, records this.
 
 ## Provisional shape
 

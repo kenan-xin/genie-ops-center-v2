@@ -25,7 +25,7 @@ D-4. Is any class of agreement sensitive enough that its text must never be extr
 
 D-5. How are versions managed today: file names, folders per year, or nothing formal? Would Legal accept Genie Ops Center assigning the version number on upload, so that nothing can overwrite an earlier version?
 
-Deferred until D-1 to D-5 are answered: the choice between managed storage and link-only storage, the `agreement_version` and `file` design for the register (written "for contracts" before the merge), the upload path in the contracts module, and the phase-two extraction pipeline.
+Deferred until D-1 to D-5 are answered: the choice between managed storage and link-only storage, the `agreement_version` and `file` design for the register (written "for contracts" before the merge), the register upload path in approvals, and the phase-two extraction pipeline.
 
 ## Register fields and roles (unblocks OPEN-3)
 
@@ -41,7 +41,7 @@ D-9. Reminders: how many days before expiry, to whom, how often, and by what cha
 
 D-10. Are there agreement types with different fields, for example NDA versus distributor versus service agreement, or does one field set cover all types?
 
-Deferred until D-6 to D-10 are answered: the `agreement` field list, the `office` scope, the register default roles (written "contracts" before the merge), the reminder rules, and the Excel import mapping.
+Deferred until D-6 to D-10 are answered: the `agreement` field list, the `office` field and filter, the register default roles (written "contracts" before the merge), the reminder rules, and the Excel import mapping.
 
 ## The approval workflow
 
