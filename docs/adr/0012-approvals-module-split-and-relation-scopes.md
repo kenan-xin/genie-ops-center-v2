@@ -188,7 +188,7 @@ What the decision costs:
 
 ## Consequences
 
-- `docs/modules/contracts/` folds into `docs/modules/approvals/`: its discovery questions move there and keep their history, and the modules list shows one module.
+- `docs/modules/contracts/` is folded into `docs/modules/approvals/` (done 2026-10-20): its discovery questions moved there with their ids and text, and the modules list shows one module.
 - Before the module ships, the platform also needs: module pages with nested routes and server data loading, composed on the oRPC module contracts of ADR 0011; the notification inbox and its module API (`DEC-21`); and the `s3` adapter in deployments whose documents require it.
 - The workflow form engine is module-local. `DEC-28` limits only the core configuration form. Accepting this record does not approve a form library. The form engine and its dependencies need their own decision, against the repository's TanStack Form and zod conventions.
 - Secrets stay as environment references for this release. The core outbound HTTP service resolves and sends them, so the module never sees a secret. A screen that lets an administrator type a secret needs a separate storage decision.

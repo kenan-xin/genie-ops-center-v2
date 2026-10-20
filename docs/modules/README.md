@@ -5,8 +5,7 @@ A module is a business capability that plugs into the core through the module co
 | Module | Kind | Status | Folder |
 | --- | --- | --- | --- |
 | Solutions | Platform module, every tenant | Core roadmap Section 4 | `solutions/` |
-| Contracts | Customer module, first customer | Deferred on customer discovery | `contracts/` |
-| Approvals | Customer module, first customer | Deferred on customer discovery | `approvals/` |
+| Approvals | Customer module, first customer, with the agreement register (contracts merged in on 2026-10-20, ADR 0012) | Deferred on customer discovery | `approvals/` |
 | Slides | Planned capability module | Planned, no specification yet | none yet |
 | Analytics | Planned capability module | Planned, deferred on the dataset seam (`OPEN-11` in `../core/vision.md`) | none yet |
 
