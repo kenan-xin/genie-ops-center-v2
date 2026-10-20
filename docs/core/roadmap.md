@@ -127,7 +127,7 @@ Done when: the module described in `../modules/solutions/README.md` meets its ow
 
 ## Customer modules
 
-Customer modules are not core roadmap sections. Each module has its own roadmap in `../modules/<module>/README.md`, with its own phases, open decisions, and customer discovery questions. A module may start once Sections 0 to 4 are done and its own discovery has closed. The core commits to the module contract and to the services modules need (object storage, mailer, audit, permissions, file table), all of which Sections 0 to 3 deliver.
+Customer modules are not core roadmap sections. Each module has its own roadmap in `../modules/<module>/README.md`, with its own phases, open decisions, and customer discovery questions. A module may start once Sections 0 to 4 are done and its own discovery has closed. A module that needs a Section 6 item also waits for that item. The core commits to the module contract and to the services modules need (object storage, mailer, audit, permissions, file table), all of which Sections 0 to 3 deliver, and Section 6 adds what a large module needs.
 
 ## Section 5: Operations
 
@@ -143,8 +143,23 @@ Work items:
 5. Cross-product step: each genie-studio deployment is configured with its tenant's realm issuer and the `genie-studio` client credentials from the realm template (`DEC-8`). Part of the new-tenant checklist for customers with both products.
 6. Environments: dev, staging, and production as three Genie-hosted stacks of a demo customer. A customer's UAT is a second stack of that customer (`DEC-18`).
 7. Offboarding: the operator stops the stack and `genie-ops retire` records the date (a command inside the container cannot stop its own stack); after 90 days `genie-ops retire --confirm` deletes database, realm, and bucket unless held. Personal erasure, `genie-ops erase <email>`, anonymizes the user row, never deletes it, keeps audit, and deletes the person's record in the tenant realm, never their account at the identity provider (`DEC-14`, `DEC-17`).
-8. Later capabilities, tracked but not scheduled: SCIM provisioning, Keycloak page branding per realm, audit CSV export and SIEM push, ClamAV upload scanning, in-app inbox screen, support impersonation with consent, operator console, Kubernetes rollout for many stacks.
+8. Later capabilities, tracked but not scheduled: SCIM provisioning, Keycloak page branding per realm, audit CSV export and SIEM push, ClamAV upload scanning, support impersonation with consent, operator console, Kubernetes rollout for many stacks.
+
+## Section 6: Module platform
+
+Goal: the core seams that a large module needs, so that the approvals module (ADR 0012) builds with no workaround inside the module. Owner decision 2026-10-20: these items are one core section with its own specification, not work inside Section 4 or inside module tickets. Each item is general, so no item names approvals in core (vision principle 9).
+
+Work items:
+
+1. Module pages with nested routes, route parameters, server-side data loading, and a permission per route, composed on the oRPC module contracts of ADR 0011.
+2. A typed browser client for each module's own procedures.
+3. Relation scopes inside `can()`, `scopesFor()` and `canMany()`: the `record_relation` and `record_relation_version` tables, relation-scope role assignments, and the effective-access rule (ADR 0012, section 3).
+4. The outbound HTTP service: allowed hosts, redirect re-checks, timeouts, size caps, and secret resolution from environment references. The Solutions chat proxy moves onto it (ADR 0012).
+5. The notification inbox: a module API to write and mark notifications, the inbox screen, and the header bell with its unread count (`DEC-21`, amended 2026-10-20).
+6. The `s3` file adapter, tested against MinIO in CI. Cloudflare R2 is the first real target (`DEC-20`).
+
+Done when: the placeholder module shows a page with a route parameter, calls its own procedure from the browser with types, lists only the records a relation grants, makes one allowed outbound call, writes a notification that the bell counts, and stores a file through the `s3` adapter, at a phone and a desktop viewport.
 
 ## Order and parallelism
 
-Sections 0, 1, and 2 are sequential and are the foundation. Section 3 starts when Section 1 is done. Its items 1, 2, 3, 6, 8, and 9 run in parallel with Section 2; items 4, 5, 7, 10, and 11 need the access seam and the account page from Section 2 and follow it. Section 4 starts when Sections 2 and 3 are done. Section 5 runs alongside from Section 1 onward. Customer modules start after Section 4 and their own discovery, in the order their module READMEs state.
+Sections 0, 1, and 2 are sequential and are the foundation. Section 3 starts when Section 1 is done. Its items 1, 2, 3, 6, 8, and 9 run in parallel with Section 2; items 4, 5, 7, 10, and 11 need the access seam and the account page from Section 2 and follow it. Section 4 starts when Sections 2 and 3 are done. Section 5 runs alongside from Section 1 onward. Section 6 starts when Section 4 is done, and its items can run in parallel. Customer modules start after Section 4 and their own discovery, in the order their module READMEs state, and a module that needs a Section 6 item waits for it.
