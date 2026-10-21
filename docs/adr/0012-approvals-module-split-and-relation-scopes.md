@@ -123,7 +123,8 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 - A workflow group is a named set of workflows, kept as module data, for example Sales holding a purchase approval and a contract approval. An administrator or designer puts each workflow in at most one group. A group only decides who reads, never who starts or acts.
 - `workflow-group` is a record type of the module. The `case` record type declares `workflow` and `workflow-group` as parent types, and its resolver returns the case's workflow and that workflow's current group. `can()` matches the parent scopes, and the list filter of `scopesFor()` joins the case to its workflow's group (module contract, Record types row).
 - The group belongs to the workflow, not to a definition version, so every case of the workflow follows it. Moving a workflow to another group is one data change that applies on the next request. No event, job, or recompute follows, because nothing is derived from group membership.
-- A head of a department that has many workflows, such as a sales purchase approval and a sales contract approval, holds case-read on that department's group and reads every case of those workflows, whoever filed it. A case that a department member files in another department's workflow is outside that grant. A grant on that workflow covers it when a customer needs it.
+- A head of a department that has many workflows, such as a sales purchase approval and a sales contract approval, holds case-read on that department's group and reads every case of those workflows, whoever filed it. A case that a department member files in another department's workflow is outside that grant.
+- Rationale for that gap (owner, 2026-10-21): no mechanism is added for it. If a head must see such cases, a designer gives the head a step in that workflow, for example an acknowledgement step. The step writes the `assignee` and `past-actor` rows, so the head sees every case that reaches it, with no new grant, no department rule, and no core change. A workflow that serves several departments uses one copy per department for that step, as PD-112 already does.
 - All times are stored in UTC. The module converts a delegation's dates from the deployment's time zone setting.
 - Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations and absences. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
 
@@ -199,7 +200,7 @@ What the decision costs:
 - One large module: the engine, the builder, and the register, with their own jobs, retries, timeouts, and idempotent HTTP calls on the core job worker.
 - Four core changes, each with its own specification.
 - Relation rows must follow every case change and delegation change. A bug in the module can leave stale rows until reconciliation runs.
-- A department head does not see a case that a department member files in another department's workflow, unless an administrator grants that workflow too.
+- A department head does not see a case that a department member files in another department's workflow, unless a designer gives the head a step in that workflow (section 3, Workflow groups).
 - Administrators keep workflows in the right group. A workflow in no group is read only through relations, `workflow:<id>` grants, and tenant-wide grants.
 - A register reader sees every agreement. A person who needs only their own agreements uses their case list, not the register.
 
