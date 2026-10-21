@@ -108,6 +108,21 @@ services:
       KEYCLOAK_REALM: \${KEYCLOAK_REALM:?set KEYCLOAK_REALM in .env}
       KEYCLOAK_CLIENT_ID: \${KEYCLOAK_CLIENT_ID:?set KEYCLOAK_CLIENT_ID in .env}
       KEYCLOAK_CLIENT_SECRET: \${KEYCLOAK_CLIENT_SECRET:?set KEYCLOAK_CLIENT_SECRET in .env}
+      # The secret of the genie-admin service client. Add person on a local-accounts realm and the
+      # genie-ops idp set and admin add commands use it. Unset in client-only mode.
+      KEYCLOAK_ADMIN_CLIENT_SECRET: \${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+      # The optional values of the environment contract. A value the service does not list never
+      # reaches the container, and a blank value stays unset, so the documented default applies.
+      AUTH_TRUSTED_PROXIES: \${AUTH_TRUSTED_PROXIES:-}
+      FILE_MAX_BYTES: \${FILE_MAX_BYTES:-}
+      FILE_STORAGE_ADAPTER: \${FILE_STORAGE_ADAPTER:-}
+      GENIE_CHAT_API_ALLOWED_ORIGINS: \${GENIE_CHAT_API_ALLOWED_ORIGINS:-}
+      LOCK_TIMEOUT_MS: \${LOCK_TIMEOUT_MS:-}
+      LOG_LEVEL: \${LOG_LEVEL:-}
+      MAIL_PROVIDER: \${MAIL_PROVIDER:-}
+      MAIL_FROM: \${MAIL_FROM:-}
+      RESEND_API_KEY: \${RESEND_API_KEY:-}
+      SMTP_URL: \${SMTP_URL:-}
       # The Compose profiles this stack was started with. The start-up guard reads it
       # to refuse an impossible realm-mode combination (Specification 02 R-54c).
       STACK_PROFILES: \${COMPOSE_PROFILES:-}
@@ -130,6 +145,17 @@ services:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       WORKER_HEARTBEAT_PATH: /tmp/genie-worker-heartbeat
+      # The worker sends the email of durable handlers, runs file jobs and waits on the migrator
+      # lock, so it reads the same optional values as the app, except the sign-in ones.
+      FILE_MAX_BYTES: \${FILE_MAX_BYTES:-}
+      FILE_STORAGE_ADAPTER: \${FILE_STORAGE_ADAPTER:-}
+      GENIE_CHAT_API_ALLOWED_ORIGINS: \${GENIE_CHAT_API_ALLOWED_ORIGINS:-}
+      LOCK_TIMEOUT_MS: \${LOCK_TIMEOUT_MS:-}
+      LOG_LEVEL: \${LOG_LEVEL:-}
+      MAIL_PROVIDER: \${MAIL_PROVIDER:-}
+      MAIL_FROM: \${MAIL_FROM:-}
+      RESEND_API_KEY: \${RESEND_API_KEY:-}
+      SMTP_URL: \${SMTP_URL:-}
       # The Compose profiles this stack was started with, as passed to the application.
       STACK_PROFILES: \${COMPOSE_PROFILES:-}
     networks:

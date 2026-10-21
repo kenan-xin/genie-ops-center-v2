@@ -32,12 +32,12 @@ OIDC identity provider.
 
 ## The operator's side
 
-6. Run `genie-ops idp set` on the host, in the stack folder.
+6. Run `genie-ops idp set` on the host, in the stack folder. The app service carries
+   `KEYCLOAK_ADMIN_CLIENT_SECRET` from `.env`, which the command needs.
 
    ```sh
-   set -a; . ./.env; set +a
    read -rs IDP_CLIENT_SECRET && export IDP_CLIENT_SECRET
-   docker compose exec -e IDP_CLIENT_SECRET -e KEYCLOAK_ADMIN_CLIENT_SECRET app \
+   docker compose exec -e IDP_CLIENT_SECRET app \
      genie-ops idp set \
      --protocol oidc \
      --issuer-url https://login.microsoftonline.com/<tenant-id>/v2.0 \
@@ -48,8 +48,7 @@ OIDC identity provider.
    puts the secret into your shell's environment without typing it on the command line, so it is
    not in the command's arguments and not in your shell history; `-e IDP_CLIENT_SECRET` passes the
    name, not the value. The command reads it from the environment, and it never reaches a log or
-   the audit row. The app service does not carry `KEYCLOAK_ADMIN_CLIENT_SECRET`, so the first line
-   loads it from `.env` for this one command. The command asks the provider for `openid profile
+   the audit row. The command asks the provider for `openid profile
    email`, so the token carries the person's name and email.
 
 ## Verify

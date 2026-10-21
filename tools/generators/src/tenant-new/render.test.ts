@@ -157,6 +157,15 @@ function service(compose: string, name: string): string {
   );
 }
 
+/** The names under a service's `environment:` key, which sit six spaces deep. */
+function environmentNames(body: string): ReadonlySet<string> {
+  return new Set(
+    [...body.matchAll(/^ {6}([A-Z][A-Z0-9_]*):/gm)].map(
+      ([, name]) => name ?? ""
+    )
+  );
+}
+
 describe("the rendered deployment folder", () => {
   it("holds the seven files and nothing else", () => {
     expect([...files.keys()].toSorted()).toEqual([
@@ -465,6 +474,33 @@ describe("the rendered deployment folder", () => {
     }
 
     expect(entries.get("IMAGE_TAG")).toBe("");
+  });
+
+  // A value in .env reaches a container only when the service lists it. A missing name is
+  // silently unset: the mailer never starts and `genie-ops idp set` has no genie-admin secret.
+  it("passes every catalogue variable to the app, and the ones the worker reads to the worker", () => {
+    const compose = read("compose.yaml");
+    const app = environmentNames(service(compose, "app"));
+    const worker = environmentNames(service(compose, "worker"));
+    // The worker serves no HTTP and signs nobody in.
+    const notForWorker = new Set([
+      "AUTH_TRUSTED_PROXIES",
+      "BETTER_AUTH_SECRET",
+      "KEYCLOAK_ADMIN_CLIENT_SECRET",
+      "KEYCLOAK_CLIENT_ID",
+      "KEYCLOAK_CLIENT_SECRET",
+      "KEYCLOAK_REALM",
+      "KEYCLOAK_URL",
+      "PORT",
+    ]);
+    const catalogue = environmentCatalogue()
+      .map(({ name }) => name)
+      .filter((name) => !name.startsWith("KEYCLOAK_BOOTSTRAP_"));
+
+    for (const name of catalogue) {
+      expect(app.has(name), `app: ${name}`).toBe(true);
+      expect(worker.has(name), `worker: ${name}`).toBe(!notForWorker.has(name));
+    }
   });
 
   // An operator copies .env.example to .env and fills every listed value, then runs
