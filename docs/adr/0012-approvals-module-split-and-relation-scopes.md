@@ -10,7 +10,7 @@ The first customer's product is a legal agreement approval flow. Its own design 
 
 This record settles four questions. What does the module hold, and where does the register live? Who may see a case or a register entry, and how do detail checks and list queries give the same answer? How does a published flow become a sidebar entry, and who may start and act on it? What does core gain, and how does it stay free of module knowledge?
 
-Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. A final cross-family review of revision 4 returned "accept after fixes"; this text includes those fixes and two more owner decisions of 2026-10-20 (the landing page and where flow definitions live). The tables at the end map every review finding to its answer. Amended 2026-10-21 (owner): the module has no department logic, as in the product's own rule PD-112. Department rows, the core membership event, and the before-enable step are removed. A department head sees the cases they handle through relations, and the cases of their department's workflows through a workflow group grant (section 3). Vision principle 9, "Core knows no module" (on `develop` since 2026-10-20), is the test for every core change here.
+Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. A final cross-family review of revision 4 returned "accept after fixes"; this text includes those fixes and two more owner decisions of 2026-10-20 (the landing page and where flow definitions live). The tables at the end map every review finding to its answer. Amended 2026-10-21 (owner): the module has no department logic, as in the product's own rule PD-112. Department rows, the core membership event, and the before-enable step are removed. Nobody sees cases by department, as in the product's rule PD-121 of 2026-10-21. A department head sees the cases they handled, through relations (section 3). Vision principle 9, "Core knows no module" (on `develop` since 2026-10-20), is the test for every core change here.
 
 A throwaway logic prototype illustrates the portal, on the branch `chore/prototype-workflow-builder`, in `docs/modules/approvals/PROTOTYPE-workflow-builder.html`. Its sidebar and register logic are simulated and decide nothing.
 
@@ -56,7 +56,7 @@ Owner decisions of 2026-10-20 fix the audiences:
 
 | Record | Who reads it |
 |---|---|
-| A case, its form values, history, files, and its register number and register fields | People related to the case (section 3), plus holders of a `workflow:<id>`, `workflow-group:<id>`, or tenant-wide `approvals:case-read` grant. A requester therefore sees her own agreements, their documents, and their register numbers in her case list. |
+| A case, its form values, history, files, and its register number and register fields | People related to the case (section 3), plus holders of a `workflow:<id>` or tenant-wide `approvals:case-read` grant. A requester therefore sees her own agreements, their documents, and their register numbers in her case list. |
 | The full agreement register, its entries, and their files | Holders of `approvals:register-read`, tenant-wide. Case participation alone grants no access to other people's register entries. |
 | Search, reports, exports, and agent reads | The same rule as the records they return, applied in the query before pagination and totals |
 
@@ -87,8 +87,7 @@ The rows that setup writes, as an explicit and audited administrator action (ins
 | Case participant | same | same | `relation` `case.delegate` |
 | Case participant | same | same | `relation` `case.viewer` |
 | Case participant | same | same | `relation` `case.acted-for` |
-| Workflow group reader | `approvals:case-read` | For example a department head | `workflow-group:<id>` |
-| Case reader | `approvals:case-read` | For example the legal team | Tenant-wide, `workflow:<id>`, or `workflow-group:<id>` |
+| Case reader | `approvals:case-read` | For example the legal team | Tenant-wide or `workflow:<id>` |
 | Register reader | `approvals:register-read` | For example the legal team and the general manager | Tenant-wide |
 
 No assignment of a relation-only role has a null scope. Administrators narrow access by removing assignments. System role definitions stay read-only.
@@ -114,17 +113,16 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 #### Relation rules for cases
 
 - `requester`, `assignee`, `past-actor`, and `viewer` are written when the case changes. A person who acted as themself gets a `past-actor` row with no end. That matches the product rule that "whoever acted as themself" keeps view.
-- Acting for someone never creates lasting visibility for the person who acts. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction.
+- An `assignee` row names the person in charge of a step, never a backup or a delegate, and has no end. A person who is or was in charge of a step keeps sight of the case, also when the task was reassigned before anyone acted (PD-121, amended 2026-10-21).
+- Acting for someone never creates lasting visibility for the substitute. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction.
 - The person acted for gets an `acted-for` row with no end, written in the same transaction as the action. A department head on leave therefore keeps sight of a case that their backup approved for them, although the head never acted (amended 2026-10-21).
 
-#### Workflow groups (amended 2026-10-21)
+#### No department logic (amended 2026-10-21)
 
-- The module has no department logic (the product's rule PD-112). A step names a person, and a department with its own head gets its own workflow copy.
-- A workflow group is a named set of workflows, kept as module data, for example Sales holding a purchase approval and a contract approval. An administrator or designer puts each workflow in at most one group. A group only decides who reads, never who starts or acts.
-- `workflow-group` is a record type of the module. The `case` record type declares `workflow` and `workflow-group` as parent types, and its resolver returns the case's workflow and that workflow's current group. `can()` matches the parent scopes, and the list filter of `scopesFor()` joins the case to its workflow's group (module contract, Record types row).
-- The group belongs to the workflow, not to a definition version, so every case of the workflow follows it. Moving a workflow to another group is one data change that applies on the next request. No event, job, or recompute follows, because nothing is derived from group membership.
-- A head of a department that has many workflows, such as a sales purchase approval and a sales contract approval, holds case-read on that department's group and reads every case of those workflows, whoever filed it. A case that a department member files in another department's workflow is outside that grant.
-- Rationale for that gap (owner, 2026-10-21): no mechanism is added for it. If a head must see such cases, a designer gives the head a step in that workflow, for example an acknowledgement step. The step writes the `assignee` and `past-actor` rows, so the head sees every case that reaches it, with no new grant, no department rule, and no core change. This is the existing PD-112 pattern, not a new one: "Sales legal review" has the Sales staff as its start group and the Sales head as its first approver, and "Procurement legal review" is the same workflow with the Procurement staff and the Procurement head. Each head is a step only in their own copy, so they see only their own staff's cases.
+- The module has no department logic, in who acts (PD-112) and in who sees (PD-121). A step names a person, and a department with its own head gets its own workflow copy. A department from the directory is plain data and grants nothing.
+- A department head sees the cases they handled: cases they raised, cases where they are or were in charge of a step, cases they acted on, and cases their backup or delegate acted on for them. In practice the head sees every case of their own department's copy, because every case passes their step.
+- No viewer setting replaces the department view. A head does not see a case of a workflow where they have no step. An Ops Center extension with a workflow group grant was proposed and dropped on 2026-10-21 to follow PD-121.
+- Rationale (owner, 2026-10-21): no mechanism is added for that gap. If a head must see such cases, a designer gives the head a step in that workflow, for example an acknowledgement step. The step writes the `assignee` and `past-actor` rows, so the head sees every case that reaches it, with no new grant, no department rule, and no core change. This is the existing PD-112 pattern, not a new one: "Sales legal review" has the Sales staff as its start group and the Sales head as its first approver, and "Procurement legal review" is the same workflow with the Procurement staff and the Procurement head. Each head is a step only in their own copy, so they see only their own staff's cases.
 - All times are stored in UTC. The module converts a delegation's dates from the deployment's time zone setting.
 - Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations and absences. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
 
@@ -159,7 +157,7 @@ Keys follow the contract format `<module>:<action>`, two parts:
 | `approvals:run-log` | Read the run log of HTTP steps, which can hold agreement text |
 | `approvals:admin` | The module's admin pages, such as statuses, absences, and reassignment, with its platform meaning |
 
-The product's keys map as follows: `view:department` and `view:all` become `approvals:case-read` with a `workflow-group:<id>` scope and with a tenant-wide scope, `contracts:read` becomes `approvals:register-read`, and `contracts:manage` becomes `approvals:register-manage`.
+The product's keys map as follows: `view:all` becomes `approvals:case-read` with a tenant-wide scope (PD-121 removed `view:department`, which has no equivalent), `contracts:read` becomes `approvals:register-read`, and `contracts:manage` becomes `approvals:register-manage`.
 
 ### 6. What core gains, under principle 9
 
@@ -200,8 +198,7 @@ What the decision costs:
 - One large module: the engine, the builder, and the register, with their own jobs, retries, timeouts, and idempotent HTTP calls on the core job worker.
 - Four core changes, each with its own specification.
 - Relation rows must follow every case change and delegation change. A bug in the module can leave stale rows until reconciliation runs.
-- A department head does not see a case that a department member files in another department's workflow, unless a designer gives the head a step in that workflow (section 3, Workflow groups).
-- Administrators keep workflows in the right group. A workflow in no group is read only through relations, `workflow:<id>` grants, and tenant-wide grants.
+- A department head sees only the cases they handled (PD-121). A head who must see a workflow where they have no step gets a step in it (section 3, No department logic).
 - A register reader sees every agreement. A person who needs only their own agreements uses their case list, not the register.
 
 ## Consequences
@@ -211,7 +208,7 @@ What the decision costs:
 - The workflow form engine is module-local. `DEC-28` limits only the core configuration form. Accepting this record does not approve a form library. The form engine and its dependencies need their own decision, against the repository's TanStack Form and zod conventions.
 - Secrets stay as environment references for this release. The core outbound HTTP service resolves and sends them, so the module never sees a secret. A screen that lets an administrator type a secret needs a separate storage decision.
 - Imported history (agreements from the old system) enters the register as entries with a source id and provenance, with no invented workflow history. The import is idempotent and keeps number continuity. The bulk file migration follows `DEC-20` and has its own procedure.
-- Discovery is not closed. Before work starts, `docs/modules/approvals/discovery.md` records an answer map for D-1 to D-12 and the former contracts questions: the source, whether it is a customer fact or a design proposal, and what it blocks. Which workflow groups exist, and who reads each, is recorded there.
+- Discovery is not closed. Before work starts, `docs/modules/approvals/discovery.md` records an answer map for D-1 to D-12 and the former contracts questions: the source, whether it is a customer fact or a design proposal, and what it blocks.
 - An agent that reads cases or register entries, such as the boss agent of `DEC-29`, reads them only through capabilities that apply this record's rules for the signed-in user.
 
 ## Open points
@@ -227,7 +224,7 @@ Findings of the critique of revision 1:
 | Finding | Answer |
 |---|---|
 | 1. Two implementations of the relation rule | Section 3: one table and one effective-access rule for detail checks and lists |
-| 2. Delegation expiry undecided | Section 3, relation rules for cases: validity windows, no lasting visibility from acting for someone |
+| 2. Delegation expiry undecided | Section 3, relation rules for cases: validity windows, no lasting visibility for the substitute |
 | 3. Silent default grant | Section 3: roles seeded unassigned, scoped assignments written by an explicit administrator action |
 | 4. Sidebar needs a core change | Section 4: request-time navigation provider |
 | 5. Register event incomplete | Section 1: removed by the merge. The register entry and number are written in the completion transaction. |
@@ -247,7 +244,7 @@ Findings of the cross-family review of revision 2:
 | 2. Detail and list agreement not established | Section 3, the effective-access rule |
 | 3. Four events not convergent | Removed by the merge: there are no cross-module events |
 | 4. Rebuild incomplete and without authority | Removed by the merge: there is no rebuild |
-| 5. Stale department and unsafe reconciliation | Section 3: reconciliation from current state with a lock and revision. Department rows removed 2026-10-21: workflow groups derive nothing from membership |
+| 5. Stale department and unsafe reconciliation | Section 3: reconciliation from current state with a lock and revision. Department rows removed 2026-10-21: no case relation derives from department membership |
 | 6. Copied data and file access undecided | Sections 1 and 2: one owner per file, owner decisions on audiences |
 | 7. Picker mixes entry, starting, and acting | Section 4: decision table, TD-035 kept, effective holders query, run-time checks and reassignment |
 | 8. Query bound not possible | Section 3: per-record read kept per request, `canMany()` for known sets |
@@ -259,7 +256,7 @@ Findings of the final cross-family review of revision 4:
 
 | Finding | Answer |
 |---|---|
-| 1. Department access may not converge | Superseded 2026-10-21: no department rows. A workflow group is read from current workflow data on each request, so nothing must converge |
+| 1. Department access may not converge | Superseded 2026-10-21: no department access exists (PD-121), so nothing must converge |
 | 2. Revision guard lost on an empty set | Section 3: version table kept for empty sets, compare-and-set replacement for every writer |
 | 3. No permission and record type compatibility | Section 3: declared record types per permission, enforced in `can()`, `canMany()`, and lists |
 | 4. Register exactly-once rule dropped | Section 1: register invariants |
@@ -275,3 +272,12 @@ Findings of the follow-up review of the fixes (accepted after these):
 | 2. Re-enable must invalidate before it is observable | Superseded 2026-10-21: no derived department rows, so no before-enable step |
 | 3. Delay names the wrong person | Superseded 2026-10-21: no membership delay remains |
 | 4. Two discovery lines name superseded work | `docs/modules/approvals/discovery.md` |
+
+Findings of the cross-family review of the 2026-10-21 amendment (accept after fixes):
+
+| Finding | Answer |
+|---|---|
+| 1. Workflow groups contradict the product's PD-121 | Workflow groups dropped by the owner. Section 3 follows PD-121, and `view:department` has no equivalent |
+| 2. Group deletion has no authorization rule | Removed with workflow groups |
+| 3. A former person in charge has no lasting row | Section 3: `assignee` rows name only the person in charge and have no end |
+| 4. Wording gaps | Section 3 says "for the substitute". The module README says that no case relation derives from department membership |

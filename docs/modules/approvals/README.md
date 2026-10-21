@@ -12,7 +12,7 @@ Approvals run in a 2017 e-sign system the customer intends to shut down after mo
 
 ## No department logic
 
-Amended 2026-10-21 (owner, ADR 0012 section 3): the module has no department logic, as in the product's rule PD-112. A department head sees the cases they handle through relations, including cases a backup approved for them. They see every case of their department's workflows through a case-read grant on a workflow group. No access is derived from group membership, so a requester's move to another department causes no delay.
+Amended 2026-10-21 (owner, ADR 0012 section 3): the module has no department logic, as in the product's rules PD-112 and PD-121. A department head sees the cases they handled through relations: cases they raised, cases where they are or were in charge of a step, cases they acted on, and cases their backup acted on for them. No case relation derives from department membership, so a requester's move to another department causes no delay.
 
 ## Provisional shape
 
@@ -36,7 +36,7 @@ Provisional (D-2 and D-5 to D-10 answered from the product docs, D-1 and D-3 in 
 2. Versions: upload to managed storage, assign the next version number, keep every prior version. Applicants upload new versions. The storage region is DEFERRED (D-3).
 3. Expiry and renewal: a computed active or inactive status. No reminder job and no email in phase one. Later: one daily job declared through the module contract's Jobs point that evaluates `reminder_rule`, sends email through the core mailer, and records each send in `reminder_sent`. The figures are DEFERRED (D-9) until the customer confirms them.
 4. Search and retrieval: filter by counterparty, type, department, office, status, date range. One click opens the current version.
-5. Permissions and default roles as below. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide. Office is a field and a filter only (D-7). Case visibility comes from relations and from workflow group grants (ADR 0012, section 3, amended 2026-10-21), never from the requester's department.
+5. Permissions and default roles as below. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide. Office is a field and a filter only (D-7). Case visibility comes from relations and case-read grants (ADR 0012, section 3, amended 2026-10-21), never from a department (PD-121).
 6. Import: a loader for the old register rows and their case folders, with no invented workflow history. The product plans it for phase two. What it keeps from e-sign beyond the case history is DEFERRED (D-12).
 
 Done when: an applicant uploads an agreement, its register row appears with the status, the case completes with its register number, and a business user finds the agreement and opens its document.
