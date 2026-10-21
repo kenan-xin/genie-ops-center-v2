@@ -15,7 +15,7 @@ realm is the customer's, so Ops Center holds no administrator rights in it.
 - Two client files from the repository, `deploy/keycloak/genie-ops-center.client.json` and
   `deploy/keycloak/genie-studio.client.json`. They carry no secret.
 - This deployment's `PUBLIC_URL` (the address people open, for example `https://ops.company.example`).
-- The redirect URI for the genie-studio deployment, from that product's own configuration.
+- The address of the genie-studio deployment, if the customer runs it.
 - The company name and the first administrators that belong in `tenant.yaml` (the operator supplies
   these; they are not Keycloak values).
 
@@ -29,9 +29,10 @@ applications.
    redirect URI becomes `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect is
    `PUBLIC_URL`.
 2. Import `genie-studio.client.json` the same way, replacing
-   `https://replace-with-your-genie-studio-url.invalid` with the redirect URI from the genie-studio
-   deployment's own configuration. That product names its callback; take the value from its
-   configuration rather than assuming the Ops Center callback path.
+   `https://replace-with-your-genie-studio-url.invalid` with the genie-studio address, so the
+   redirect URI becomes `<genie-studio address>/api/v1/auth/oidc/callback` and the post-logout
+   redirect is `<genie-studio address>/*`. genie-studio completes the sign-in on its own backend
+   callback, which is a different path from the Ops Center callback.
 3. Keep PKCE on. Both files require it (`pkce.code.challenge.method` is `S256`), so an
    authorization code stolen without the verifier is useless.
 4. Keep both protocol mappers on each client. The claim name must be exactly `groups` (plus the

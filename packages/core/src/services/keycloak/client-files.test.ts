@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { GENIE_STUDIO_CALLBACK_PATH } from "../../lib/tenant-config/genie-studio.ts";
+import { IDENTITY_CALLBACK_PATH } from "../../lib/tenant-context/index.ts";
 import {
   isJsonObject,
   type JsonObject,
@@ -24,6 +26,15 @@ const FILES = {
     "../../../../../deploy/keycloak/genie-studio.client.json",
     import.meta.url
   ),
+} as const;
+
+/**
+ * The callback path each product completes the code exchange on. genie-studio's backend has its own
+ * path, so its file must not carry the Ops Center path (the realm template fills the same values).
+ */
+const CALLBACK_PATHS = {
+  "genie-ops-center": IDENTITY_CALLBACK_PATH,
+  "genie-studio": GENIE_STUDIO_CALLBACK_PATH,
 } as const;
 
 /** The maximum client `description` Keycloak accepts before it answers a 500. */
@@ -87,6 +98,22 @@ describe.each(Object.entries(FILES))("the %s client file", (clientId, url) => {
     });
 
     expect(JSON.stringify(client.redirectUris)).toContain(".invalid");
+  });
+
+  it("registers the callback path its own product completes the sign-in on", () => {
+    const client = load(url);
+    const redirects = client.redirectUris;
+
+    if (!Array.isArray(redirects))
+      throw new Error(`${clientId} has no redirect URIs`);
+
+    const expected = Object.entries(CALLBACK_PATHS).find(
+      ([id]) => id === clientId
+    )?.[1];
+
+    expect(expected).toBeDefined();
+    expect(redirects).toHaveLength(1);
+    expect(new URL(String(redirects[0])).pathname).toBe(expected);
   });
 
   it("keeps the description short enough for Keycloak to import", () => {
