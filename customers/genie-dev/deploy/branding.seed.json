@@ -1,0 +1,7 @@
+{
+  "$schema": "../../../deploy/schemas/branding.seed.schema.json",
+  "company_name": "Genie",
+  "product_name": "Genie Ops Center",
+  "default_locale": "en",
+  "default_time_zone": "Asia/Singapore"
+}

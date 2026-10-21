@@ -1,0 +1,127 @@
+# The deployment stack for genie-dev. Generated from the module include
+# list in tenant.yaml; committed, and free of every secret (DEC-33, DEC-35).
+# The host supplies Postgres through DATABASE_URL, so no database service is
+# started here. No port is published: the reverse proxy reaches the aliases
+# below on the external proxy network (R-28).
+services:
+  app:
+    image: ${IMAGE_TAG:?set IMAGE_TAG in .env}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+      PORT: "3000"
+      # The Section 2 application profile requires the authentication values. KEYCLOAK_URL must be
+      # the one address that both the browser and this container use for Keycloak, and it is the
+      # address setup recorded (Specification 02 R-4, R-54c).
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:?set KEYCLOAK_URL in .env}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:?set KEYCLOAK_REALM in .env}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:?set KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?set KEYCLOAK_CLIENT_SECRET in .env}
+      # The Compose profiles this stack was started with. The start-up guard reads it
+      # to refuse an impossible realm-mode combination (Specification 02 R-54c).
+      STACK_PROFILES: ${COMPOSE_PROFILES:-}
+    networks:
+      proxy:
+        aliases:
+          - genie-dev-app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  worker:
+    image: ${IMAGE_TAG:?set IMAGE_TAG in .env}
+    command: ["worker"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+      WORKER_HEARTBEAT_PATH: /tmp/genie-worker-heartbeat
+      # The Compose profiles this stack was started with, as passed to the application.
+      STACK_PROFILES: ${COMPOSE_PROFILES:-}
+    networks:
+      proxy:
+    restart: unless-stopped
+    # The worker serves no HTTP. Its core heartbeat job rewrites the file every minute
+    # after a database round trip (D-10), so the check fails once the file is stale.
+    healthcheck:
+      # The test refuses a file older than 180 s (three missed minutes). start_period covers the migrator lock wait, LOCK_TIMEOUT_MS (120 s by default),
+      # plus one heartbeat interval.
+      test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(stat -c %Y \"$$WORKER_HEARTBEAT_PATH\") )) -lt 180"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
+      start_period: 240s
+
+  keycloak:
+    # Production mode. The reverse proxy terminates HTTPS and reaches this
+    # service over plain HTTP on 8080 at the genie-dev-keycloak alias, so
+    # Keycloak trusts the proxy's X-Forwarded headers and takes its public
+    # address from KEYCLOAK_URL (runbooks/reverse-proxy.md). Its database lives
+    # on the host-supplied Postgres beside the application database. The server
+    # administrator is created once with "docker compose run --rm keycloak
+    # bootstrap-admin user" and is never written to .env (runbooks/deployment.md).
+    #
+    # This service starts only while COMPOSE_PROFILES holds bundled-keycloak,
+    # which .env sets by default. A customer who runs their own Keycloak removes
+    # the profile and points KEYCLOAK_URL at that server (Specification 02 R-54b).
+    # Enable profiles through COMPOSE_PROFILES only, never with --profile, and
+    # never start this service by name, because the start-up guard reads only
+    # STACK_PROFILES and cannot see either.
+    profiles: ["bundled-keycloak"]
+    image: quay.io/keycloak/keycloak:26.7.4
+    # The refusal checks name the missing connection value, so a stack with the
+    # profile on fails with a cause instead of restart-looping on an empty
+    # variable; a blank KC_PROXY_TRUSTED_ADDRESSES is unset because Keycloak
+    # rejects the empty string for that one.
+    entrypoint: ["/bin/bash", "-c", ": \"$${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}\"; : \"$${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}\"; : \"$${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}\"; : \"$${KC_HOSTNAME:?set KEYCLOAK_URL in .env}\"; [ -n \"$${KC_PROXY_TRUSTED_ADDRESSES:-}\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; [ -n \"$${KC_BOOTSTRAP_ADMIN_USERNAME:-}\" ] || unset KC_BOOTSTRAP_ADMIN_USERNAME; [ -n \"$${KC_BOOTSTRAP_ADMIN_PASSWORD:-}\" ] || unset KC_BOOTSTRAP_ADMIN_PASSWORD; exec /opt/keycloak/bin/kc.sh \"$$@\"", "kc.sh"]
+    command: ["start", "--http-enabled=true", "--http-port=8080"]
+    # Every KC_ value is defaulted rather than required, because compose
+    # interpolates this service even when the profile is off. The entrypoint
+    # refuses a blank connection value while the profile is on, naming the
+    # variable, so a stack without the profile starts without them and a stack
+    # with it fails with a cause (Specification 02 R-54b).
+    environment:
+      KC_DB: ${KC_DB:-postgres}
+      KC_DB_URL_HOST: ${KC_DB_URL_HOST:-}
+      KC_DB_URL_PORT: ${KC_DB_URL_PORT:-5432}
+      KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE:-keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+      # The reverse proxy's address on the proxy network. Blank trusts forwarded
+      # headers from every peer on that network (runbooks/reverse-proxy.md).
+      KC_PROXY_TRUSTED_ADDRESSES: ${KC_PROXY_TRUSTED_ADDRESSES:-}
+      KC_HOSTNAME: ${KEYCLOAK_URL:-}
+      # The temporary master-realm administrator the setup realm step signs in
+      # with, blank by default. The operator creates the administrator with
+      # "bootstrap-admin user" and these stay blank (runbooks/keycloak-realm.md);
+      # the smoke test sets them in its own transient .env.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-}
+      # Opens /health/ready on the management port 9000, which is never published.
+      KC_HEALTH_ENABLED: "true"
+    networks:
+      proxy:
+        aliases:
+          - genie-dev-keycloak
+    restart: unless-stopped
+    # The image has no curl, so the check is Keycloak's documented bash /dev/tcp
+    # request (keycloak.org/observability/health). No service depends on it: the
+    # application reaches Keycloak only at sign-in and setup, and a customer who
+    # runs their own Keycloak removes the profile instead of listing this
+    # service (Specification 02 R-54b).
+    healthcheck:
+      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
+
+networks:
+  proxy:
+    external: true
+    name: proxy

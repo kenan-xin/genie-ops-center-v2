@@ -1,0 +1,23 @@
+# Helm values for genie-dev. Used only when this customer runs
+# Kubernetes; the compose file serves every other deployment.
+nameOverride: "genie-dev"
+replicaCount: 1
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  host: ""
+
+# The name of the cluster secret holding DATABASE_URL and the other run-time
+# values. This file names it and never carries its contents.
+envFromSecretName: ""
+
+resources: {}
