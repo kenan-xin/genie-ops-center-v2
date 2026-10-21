@@ -41,6 +41,8 @@ DEFERRED (D-11 and D-12). The engine, the builder, and the register feature as A
 
 ### AI understanding
 
+Model path, 2026-10-21 (owner): the register AI calls the genie-studio smart API over HTTP (`DEC-8`), through the core outbound HTTP service, with its key held as a `secret_ref`. It does not depend on the boss agent's model setting (`OPEN-12`).
+
 1. Extraction on upload: key obligations, important dates, payment terms, service commitments, termination conditions. Stored as a structured summary per version.
 2. Clause search across agreements.
 3. Ask-the-agreement chat, using the streaming route pattern that core provides (core roadmap Section 4, item 3) with the document as context.
