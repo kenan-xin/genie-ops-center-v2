@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-10-20
-amends: DEC-39 (a role assignment gains a relation scope), DEC-48 (the loader reads relation rows at one time per request), the module contract rows Record types, Permission keys, Navigation, Events, and module management (a before-enable step), docs/modules/approvals and docs/modules/contracts provisional shapes
+amends: DEC-39 (a role assignment gains a relation scope), DEC-48 (the loader reads relation rows at one time per request), the module contract rows Record types, Permission keys, and Navigation, docs/modules/approvals and docs/modules/contracts provisional shapes
 ---
 
 # Approvals as one reusable workflow module with an agreement register, and core-owned record relations
@@ -10,7 +10,7 @@ The first customer's product is a legal agreement approval flow. Its own design 
 
 This record settles four questions. What does the module hold, and where does the register live? Who may see a case or a register entry, and how do detail checks and list queries give the same answer? How does a published flow become a sidebar entry, and who may start and act on it? What does core gain, and how does it stay free of module knowledge?
 
-Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. A final cross-family review of revision 4 returned "accept after fixes"; this text includes those fixes and two more owner decisions of 2026-10-20 (the landing page and where flow definitions live). The tables at the end map every review finding to its answer. Vision principle 9, "Core knows no module" (on `develop` since 2026-10-20), is the test for every core change here.
+Revision history. Revision 1 (2026-10-19) split the product into an `approvals` module and a `contracts` module and got the verdict "rework" from an independent critique. Revision 2 (`0711b27`) answered it and got "rework" from a cross-family review. Revision 3 (`6cd25cb`) answered that review and recorded three owner decisions of 2026-10-20: department visibility follows the requester's current department, the workflow's start group decides who starts (the product's rule TD-035), and the full agreement list is read only by holders of a register permission. Revision 4 (this text) merges the two modules into one, by owner decision of 2026-10-20, because the split needed an event protocol, a rebuild job, a pending state, two owners per file, and still could not show the register number on the requester's own case. A final cross-family review of revision 4 returned "accept after fixes"; this text includes those fixes and two more owner decisions of 2026-10-20 (the landing page and where flow definitions live). The tables at the end map every review finding to its answer. Amended 2026-10-21 (owner): the module has no department logic, as in the product's own rule PD-112. Department rows, the core membership event, and the before-enable step are removed. A department head sees the cases they handle through relations, and the cases of their department's workflows through a workflow group grant (section 3). Vision principle 9, "Core knows no module" (on `develop` since 2026-10-20), is the test for every core change here.
 
 A throwaway logic prototype illustrates the portal, on the branch `chore/prototype-workflow-builder`, in `docs/modules/approvals/PROTOTYPE-workflow-builder.html`. Its sidebar and register logic are simulated and decide nothing.
 
@@ -22,7 +22,7 @@ Where the engine and the register live:
 2. Two modules, `approvals` for the engine and `contracts` for the register, joined by events (revisions 1 to 3). Rejected: the register needs the case's data at completion, the case needs the register number, and both need the same files and the same readers. The module contract says that modules which need each other's data often belong together. The split also moved the register number out of the completion transaction, against the product's own design. It served only a later customer that wants one half without the other, and no such customer exists.
 3. One `approvals` module with the engine, the builder, and the register, where the register is a feature that a workflow turns on. Chosen.
 
-How a person sees a case because of their part in it (requester, current approver, past actor, delegate, department):
+How a person sees a case because of their part in it (requester, current approver, past actor, delegate, person acted for):
 
 1. The module checks relations itself behind one broad permission. Rejected: it breaks `DEC-39` and keeps the rule in two places.
 2. A relation resolver that core calls per record, with a matching SQL filter written by the module for lists. Rejected: two implementations of one rule can drift, and it costs one call per record.
@@ -56,7 +56,7 @@ Owner decisions of 2026-10-20 fix the audiences:
 
 | Record | Who reads it |
 |---|---|
-| A case, its form values, history, files, and its register number and register fields | People related to the case (section 3), plus holders of a `workflow:<id>` or tenant-wide `approvals:case-read` grant. A requester therefore sees her own agreements, their documents, and their register numbers in her case list. |
+| A case, its form values, history, files, and its register number and register fields | People related to the case (section 3), plus holders of a `workflow:<id>`, `workflow-group:<id>`, or tenant-wide `approvals:case-read` grant. A requester therefore sees her own agreements, their documents, and their register numbers in her case list. |
 | The full agreement register, its entries, and their files | Holders of `approvals:register-read`, tenant-wide. Case participation alone grants no access to other people's register entries. |
 | Search, reports, exports, and agent reads | The same rule as the records they return, applied in the query before pagination and totals |
 
@@ -70,9 +70,9 @@ Writes:
 
 - A module declares, per record type it owns, the relation names it writes. Two modules cannot declare the same record type.
 - A module writes rows only through `ctx.tenant.relations`, inside the transaction of its own change. Core refuses a write for a record type the module does not own, or for an undeclared relation.
-- Versioned replacement. Core keeps a version row per record and relation, `record_relation_version`, which stays when the set of rows becomes empty. A write replaces the whole set of rows for one record and relation, and names the version it read. Core locks the version row, and accepts the write only when the stored version still equals the one named, then increments it. Otherwise the write fails with a conflict, and the writer reads the authoritative state again. Every writer uses this rule: case changes, delegation and absence changes, membership processing, and reconciliation. A delayed old repair therefore always fails, even after the last row was removed.
-- Read order. A writer reads the expected version first, and only then reads the authoritative inputs from which it derives the new rows. On a conflict it discards both the derived rows and those inputs, and retries the whole read, derive, and write. A membership fan-out never reuses a membership snapshot taken before it read a case's expected version. This order is what lets the version protect against stale input, not only against stale writes. Acceptance tests cover removing the last row and then an old repair that arrives afterwards, and this interleaving: repair A reads an active delegation, writer B ends it, then A tries to write.
-- The membership revision in the event payload is not the relation version. Idempotence comes from deriving fresh from current state in this read order.
+- Versioned replacement. Core keeps a version row per record and relation, `record_relation_version`, which stays when the set of rows becomes empty. A write replaces the whole set of rows for one record and relation, and names the version it read. Core locks the version row, and accepts the write only when the stored version still equals the one named, then increments it. Otherwise the write fails with a conflict, and the writer reads the authoritative state again. Every writer uses this rule: case changes, delegation and absence changes, and reconciliation. A delayed old repair therefore always fails, even after the last row was removed.
+- Read order. A writer reads the expected version first, and only then reads the authoritative inputs from which it derives the new rows. On a conflict it discards both the derived rows and those inputs, and retries the whole read, derive, and write. This order is what lets the version protect against stale input, not only against stale writes. Acceptance tests cover removing the last row and then an old repair that arrives afterwards, and this interleaving: repair A reads an active delegation, writer B ends it, then A tries to write.
+- Idempotence comes from deriving fresh from current state in this read order.
 - Core writes an audit event for every relation write, with the source.
 
 Grants. A relation grants nothing by itself. It grants through a role assignment with the scope type `relation` and the scope id `<record-type>.<relation>`. Core refuses such an assignment when the relation is not declared, or when the record type does not belong to the module of the role's permissions. A role may be marked relation-only by its module, and core then refuses a tenant-wide or record scope for it, so an administrator cannot turn it into access to every case by accident.
@@ -86,8 +86,9 @@ The rows that setup writes, as an explicit and audited administrator action (ins
 | Case participant | same | same | `relation` `case.past-actor` |
 | Case participant | same | same | `relation` `case.delegate` |
 | Case participant | same | same | `relation` `case.viewer` |
-| Department viewer (relation-only) | `approvals:case-read` | The department heads' group or people | `relation` `case.department` |
-| Case reader | `approvals:case-read` | For example the legal team | Tenant-wide or `workflow:<id>` |
+| Case participant | same | same | `relation` `case.acted-for` |
+| Workflow group reader | `approvals:case-read` | For example a department head | `workflow-group:<id>` |
+| Case reader | `approvals:case-read` | For example the legal team | Tenant-wide, `workflow:<id>`, or `workflow-group:<id>` |
 | Register reader | `approvals:register-read` | For example the legal team and the general manager | Tenant-wide |
 
 No assignment of a relation-only role has a null scope. Administrators narrow access by removing assignments. System role definitions stay read-only.
@@ -113,14 +114,18 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 #### Relation rules for cases
 
 - `requester`, `assignee`, `past-actor`, and `viewer` are written when the case changes. A person who acted as themself gets a `past-actor` row with no end. That matches the product rule that "whoever acted as themself" keeps view.
-- Acting for someone never creates lasting visibility. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction. The person acted for keeps their own rows.
-- Department follows the requester's current department (owner decision). The module's configuration lists which groups are departments. A `department` row names the requester's current department group.
-- Core publishes a durable event, `core.group-membership-changed`, enqueued in the same transaction as every change to a person's memberships: the sync at sign-in, an edit on the Groups or People screen, archiving or restoring a group, and removing a person. The payload names the person and the membership revision, a number that rises with every membership change of that person. Delivery is at least once.
-- The module processes it idempotently: it reads the person's current memberships from core, not from the payload, and replaces the `department` rows of that person's cases through the versioned replacement above. A duplicate or out-of-order event finds the work already done. A change to the module's list of department groups starts a job that recomputes every `department` row.
-- Catch-up: when the module is enabled again after being disabled, every `department` row ends (`valid_until` set to now) before the enablement can be observed. Core's enable operation runs a module's declared before-enable step inside the same transaction that sets the module enabled, so the invalidation commits with it or not at all. The step uses the versioned replacement. Recomputing the rows afterwards may run as a job. Acceptance tests stop the worker right after enable and try detail reads, lists, and file links before any recompute runs.
-- After a requester changes department, the readers of the old department keep this derived access until the event is processed: normally within seconds on the job worker, longer during a worker outage or backlog. Only this case is delayed. A change to the reader's own memberships or role assignments still applies on the next request (`DEC-48`). The delay is accepted and stated in the module's README. Acceptance tests cover a worker crash, duplicate and out-of-order delivery, a person's removal, and disable and re-enable.
+- Acting for someone never creates lasting visibility for the person who acts. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction.
+- The person acted for gets an `acted-for` row with no end, written in the same transaction as the action. A department head on leave therefore keeps sight of a case that their backup approved for them, although the head never acted (amended 2026-10-21).
+
+#### Workflow groups (amended 2026-10-21)
+
+- The module has no department logic (the product's rule PD-112). A step names a person, and a department with its own head gets its own workflow copy.
+- A workflow group is a named set of workflows, kept as module data, for example Sales holding a purchase approval and a contract approval. An administrator or designer puts each workflow in at most one group. A group only decides who reads, never who starts or acts.
+- `workflow-group` is a record type of the module. The `case` record type declares `workflow` and `workflow-group` as parent types, and its resolver returns the case's workflow and that workflow's current group. `can()` matches the parent scopes, and the list filter of `scopesFor()` joins the case to its workflow's group (module contract, Record types row).
+- The group belongs to the workflow, not to a definition version, so every case of the workflow follows it. Moving a workflow to another group is one data change that applies on the next request. No event, job, or recompute follows, because nothing is derived from group membership.
+- A head of a department that has many workflows, such as a sales purchase approval and a sales contract approval, holds case-read on that department's group and reads every case of those workflows, whoever filed it. A case that a department member files in another department's workflow is outside that grant. A grant on that workflow covers it when a customer needs it.
 - All times are stored in UTC. The module converts a delegation's dates from the deployment's time zone setting.
-- Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations, absences, and memberships. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
+- Reconciliation, when a bug is found, rebuilds a case's rows from the current case state plus its history plus the current delegations and absences. It writes through the versioned replacement, so a concurrent change wins and the repair retries. It removes stale rows, is audited, and never writes a row whose validity already ended.
 
 ### 4. Entry, starting, acting, and the sidebar
 
@@ -153,7 +158,7 @@ Keys follow the contract format `<module>:<action>`, two parts:
 | `approvals:run-log` | Read the run log of HTTP steps, which can hold agreement text |
 | `approvals:admin` | The module's admin pages, such as statuses, absences, and reassignment, with its platform meaning |
 
-The product's keys map as follows: `view:department` and `view:all` become `approvals:case-read` with a department relation scope and with a tenant-wide scope, `contracts:read` becomes `approvals:register-read`, and `contracts:manage` becomes `approvals:register-manage`.
+The product's keys map as follows: `view:department` and `view:all` become `approvals:case-read` with a `workflow-group:<id>` scope and with a tenant-wide scope, `contracts:read` becomes `approvals:register-read`, and `contracts:manage` becomes `approvals:register-manage`.
 
 ### 6. What core gains, under principle 9
 
@@ -162,8 +167,6 @@ The product's keys map as follows: `view:department` and `view:all` become `appr
 | Relation table, version table, write API, relation scope, relation-only roles, permission and record type compatibility, `canMany()` | Record relations | Record types and Permission keys | The placeholder module declares a relation, writes rows, and passes the shared access suite. It includes refused writes for another module's record type, refused relation scopes on a foreign permission, refused reads of a record type the permission does not cover, a stale versioned write after the last row was removed, and paired detail and list tests for expiry boundaries, archived groups, removed memberships, early ends, and surviving grants. |
 | Navigation provider with resource-aware checks | Request-time navigation | Navigation | The placeholder returns one entry per placeholder record |
 | Effective holders query | Permission holders | Capabilities (core service) | Tested on core roles and the placeholder key, with archived groups and disabled people excluded |
-| Durable group membership changed event | Membership events | Events | Enqueued with every membership change, including a person's removal, and consumed by a placeholder subscriber through crash, duplicate, and out-of-order delivery |
-| Before-enable step run inside the enable transaction | Module lifecycle | Module management | A placeholder before-enable step that fails rolls back the enablement; one that succeeds commits with it |
 | Outbound HTTP service with an allowed-host list, owning secret resolution | Outbound HTTP | Integrations | A placeholder HTTP call against a test server, then the Solutions chat proxy moves onto it |
 
 An image built with no business module must start and pass the core test suite, with `record_relation` empty. Core code names no module outside tests, fixtures, and examples, and this record adds nothing to `packages/core/contracts`. These are acceptance proofs for the specifications that implement each change, not claims about existing code.
@@ -194,10 +197,10 @@ What the decision costs:
 - A customer that wants approval flows without a register still receives the register code and its empty tables. The register is generic, not one customer's code, so `DEC-33` is not touched, but the image is larger.
 - A customer that wants only a register must take the workflow engine, or wait for the split described above.
 - One large module: the engine, the builder, and the register, with their own jobs, retries, timeouts, and idempotent HTTP calls on the core job worker.
-- Six core changes, each with its own specification.
-- Relation rows must follow every case change, delegation change, and membership change. A bug in the module can leave stale rows until reconciliation runs.
-- When a requester changes department, the old department's readers keep that requester's cases until the membership event is processed, normally seconds, longer if the worker is down.
-- Current-department visibility rewrites a person's department rows when they move, which can touch many rows for a long-serving requester.
+- Four core changes, each with its own specification.
+- Relation rows must follow every case change and delegation change. A bug in the module can leave stale rows until reconciliation runs.
+- A department head does not see a case that a department member files in another department's workflow, unless an administrator grants that workflow too.
+- Administrators keep workflows in the right group. A workflow in no group is read only through relations, `workflow:<id>` grants, and tenant-wide grants.
 - A register reader sees every agreement. A person who needs only their own agreements uses their case list, not the register.
 
 ## Consequences
@@ -207,7 +210,7 @@ What the decision costs:
 - The workflow form engine is module-local. `DEC-28` limits only the core configuration form. Accepting this record does not approve a form library. The form engine and its dependencies need their own decision, against the repository's TanStack Form and zod conventions.
 - Secrets stay as environment references for this release. The core outbound HTTP service resolves and sends them, so the module never sees a secret. A screen that lets an administrator type a secret needs a separate storage decision.
 - Imported history (agreements from the old system) enters the register as entries with a source id and provenance, with no invented workflow history. The import is idempotent and keeps number continuity. The bulk file migration follows `DEC-20` and has its own procedure.
-- Discovery is not closed. Before work starts, `docs/modules/approvals/discovery.md` records an answer map for D-1 to D-12 and the former contracts questions: the source, whether it is a customer fact or a design proposal, and what it blocks. Which groups count as departments is recorded there.
+- Discovery is not closed. Before work starts, `docs/modules/approvals/discovery.md` records an answer map for D-1 to D-12 and the former contracts questions: the source, whether it is a customer fact or a design proposal, and what it blocks. Which workflow groups exist, and who reads each, is recorded there.
 - An agent that reads cases or register entries, such as the boss agent of `DEC-29`, reads them only through capabilities that apply this record's rules for the signed-in user.
 
 ## Open points
@@ -243,7 +246,7 @@ Findings of the cross-family review of revision 2:
 | 2. Detail and list agreement not established | Section 3, the effective-access rule |
 | 3. Four events not convergent | Removed by the merge: there are no cross-module events |
 | 4. Rebuild incomplete and without authority | Removed by the merge: there is no rebuild |
-| 5. Stale department and unsafe reconciliation | Section 3: current department through the membership event, reconciliation from current state with a lock and revision |
+| 5. Stale department and unsafe reconciliation | Section 3: reconciliation from current state with a lock and revision. Department rows removed 2026-10-21: workflow groups derive nothing from membership |
 | 6. Copied data and file access undecided | Sections 1 and 2: one owner per file, owner decisions on audiences |
 | 7. Picker mixes entry, starting, and acting | Section 4: decision table, TD-035 kept, effective holders query, run-time checks and reassignment |
 | 8. Query bound not possible | Section 3: per-record read kept per request, `canMany()` for known sets |
@@ -255,7 +258,7 @@ Findings of the final cross-family review of revision 4:
 
 | Finding | Answer |
 |---|---|
-| 1. Department access may not converge | Section 3: durable membership event with every membership change, idempotent processing, recompute on configuration change, catch-up after re-enable, stated delay |
+| 1. Department access may not converge | Superseded 2026-10-21: no department rows. A workflow group is read from current workflow data on each request, so nothing must converge |
 | 2. Revision guard lost on an empty set | Section 3: version table kept for empty sets, compare-and-set replacement for every writer |
 | 3. No permission and record type compatibility | Section 3: declared record types per permission, enforced in `can()`, `canMany()`, and lists |
 | 4. Register exactly-once rule dropped | Section 1: register invariants |
@@ -268,6 +271,6 @@ Findings of the follow-up review of the fixes (accepted after these):
 | Finding | Answer |
 |---|---|
 | 1. Version must precede the source read | Section 3: read order, retry of the whole read, derive, and write |
-| 2. Re-enable must invalidate before it is observable | Section 3: before-enable step in the enable transaction; section 6 row |
-| 3. Delay names the wrong person | Section 3 and costs: the requester's move, normally seconds, longer during an outage; README states it |
+| 2. Re-enable must invalidate before it is observable | Superseded 2026-10-21: no derived department rows, so no before-enable step |
+| 3. Delay names the wrong person | Superseded 2026-10-21: no membership delay remains |
 | 4. Two discovery lines name superseded work | `docs/modules/approvals/discovery.md` |
