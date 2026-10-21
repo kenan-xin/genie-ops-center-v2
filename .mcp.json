@@ -3,6 +3,10 @@
     "graft": {
       "command": "graft",
       "args": ["mcp"]
+    },
+    "genie-storybook": {
+      "type": "http",
+      "url": "http://127.0.0.1:6006/mcp"
     }
   }
 }

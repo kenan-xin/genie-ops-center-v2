@@ -16,6 +16,17 @@ Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and po
 
 Before creating, changing, or integrating UI, read and follow [the Storybook and UI TDD workflow](docs/architecture/ui-development.md). Develop documented stories and failing behavior tests one slice at a time, make them pass before app consumption, and retain separate integration/E2E proof. Section 0 establishes this tooling; until it exists, report the missing harness rather than claiming tests passed.
 
+### Storybook MCP
+
+Start Storybook with `nx run @genie/storybook:storybook` (it serves `http://127.0.0.1:6006`). Its MCP endpoint is `http://127.0.0.1:6006/mcp`, registered in `.mcp.json` as `genie-storybook`. If Storybook is not running, the tools are unavailable; start it rather than guessing.
+
+- When working on UI components, use the `genie-storybook` MCP tools to read component documentation before you use or change a component.
+- Never invent component properties. Query `docs-list` for the documented components, then `docs-show` for the component you use, and use only the properties and examples it lists.
+- Before you write or edit a story, call `get-storybook-story-instructions`.
+- Story names can differ from property names, so check every property against `docs-show`.
+- If a property is not documented, ask instead of guessing.
+- Check your work with `test-run` on the stories you touched.
+
 TanStack Devtools is mounted once, in `apps/genie/src/devtools/`, and only in development. Add a panel there for new client state rather than logging to the console. Every devtools package stays a development dependency, and `apps/genie/testing/devtools-exclusion.test.ts` fails if any of them reaches the production build. That folder's `README.md` holds the rest, including the rule for adding a probe to the exclusion test.
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.

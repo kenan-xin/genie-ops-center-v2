@@ -15,6 +15,7 @@ export type SharedStorybookConfig = {
   readonly framework: "@storybook/nextjs-vite";
   readonly stories: readonly string[];
   readonly addons: readonly string[];
+  readonly features: { readonly componentsManifest: true };
 };
 
 const STORY_GLOB = "src/**/*.stories.@(ts|tsx|mdx)";
@@ -44,5 +45,8 @@ export function sharedStorybookConfig(
       // static build carries no server, so no endpoint ships.
       "@storybook/addon-mcp",
     ],
+    // The MCP docs toolset (docs-list, docs-show, docs-show-story) reads the components
+    // manifest, which Storybook leaves off by default.
+    features: { componentsManifest: true },
   };
 }

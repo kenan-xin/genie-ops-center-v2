@@ -35,6 +35,7 @@ const config: StorybookConfig = {
     `${FROM_HOST}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)`,
   ],
   addons: [...shared.addons],
+  features: { ...shared.features },
   // Storybook does not read the application's PostCSS setup, so the preview
   // compiles the product stylesheet with Tailwind's own Vite plugin.
   viteFinal: (viteConfig) =>
