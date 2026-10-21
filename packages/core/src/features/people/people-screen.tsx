@@ -199,9 +199,6 @@ export function PersonInspector(props: {
   return (
     <SlideOver title={person.name} onClose={props.onClose}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-foreground">
-          {person.name}
-        </span>
         {statusPill(person.status)}
         <span className="text-xs text-muted-foreground">{person.email}</span>
       </div>

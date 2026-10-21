@@ -37,9 +37,9 @@ function SheetSection(props: {
 }): JSX.Element {
   return (
     <section className="flex flex-col gap-1.5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {props.title}
-      </h3>
+      </h2>
       {props.children}
     </section>
   );
