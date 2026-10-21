@@ -47,3 +47,6 @@ apps/genie/src/modules.ts
 .env
 .env.*
 !.env.example
+
+.claude/worktrees
+.claude/settings.local.json
