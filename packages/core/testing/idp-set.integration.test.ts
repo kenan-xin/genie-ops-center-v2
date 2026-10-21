@@ -339,6 +339,9 @@ describe("genie-ops idp set", () => {
     // AC-11, R-49a: trust email sits on the identity provider (runbook "Shared realm settings").
     expect(provider.trustEmail).toBe(true);
     expect(provider.config?.authorizationUrl).toContain("/realms/company/");
+    // Without `email` and `profile` the provider's token carries no email, and Keycloak's
+    // first-broker-login stops with "Email is null" because the profile review is off.
+    expect(provider.config?.defaultScope).toBe("openid profile email");
 
     const mappers = await adminJson<readonly Mapper[]>(
       `/identity-provider/instances/${BROKER_IDP_ALIAS}/mappers`,

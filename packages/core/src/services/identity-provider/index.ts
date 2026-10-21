@@ -171,7 +171,10 @@ async function providerRepresentation(
 
     config.clientId = options.clientId ?? "";
     config.clientSecret = readIdpClientSecret(options.source);
-    config.defaultScope = "openid";
+    // `profile` and `email` make the provider send the name and the email. Without the email,
+    // Keycloak's first-broker-login stops with "Email is null", because the profile review that
+    // would ask for it is off, and a typed email must never link a person.
+    config.defaultScope = "openid profile email";
 
     return {
       alias: options.alias,

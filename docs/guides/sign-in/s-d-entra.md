@@ -21,15 +21,23 @@ OIDC identity provider.
 3. Add the `groups` claim to the tokens (App registrations, Token configuration, Add groups claim,
    Security groups). Restrict the app assignment to the people who must have access; an app with no
    assignment check lets everyone in the tenant reach the sign-in.
-4. Return the tenant issuer URL, the application id, the client secret, and the claim name.
+4. Add the `email` claim to the ID token (App registrations, Token configuration, Add optional
+   claim, token type ID, `email`), and accept the Microsoft Graph email permission when Entra asks.
+   Entra sends the email of a member of the tenant only when the app asks for it, and only when the
+   user's own Email field (Users, Properties, Contact information) holds an address. Fill that field
+   for every person who signs in. Without an email, Keycloak stops the sign-in with "Email is null",
+   and Genie Ops Center never accepts a typed email in its place, because a typed address could
+   claim another person's pre-added account.
+5. Return the tenant issuer URL, the application id, the client secret, and the claim name.
 
 ## The operator's side
 
-5. Run `genie-ops idp set` on the host.
+6. Run `genie-ops idp set` on the host, in the stack folder.
 
    ```sh
+   set -a; . ./.env; set +a
    read -rs IDP_CLIENT_SECRET && export IDP_CLIENT_SECRET
-   docker compose exec -e IDP_CLIENT_SECRET app \
+   docker compose exec -e IDP_CLIENT_SECRET -e KEYCLOAK_ADMIN_CLIENT_SECRET app \
      genie-ops idp set \
      --protocol oidc \
      --issuer-url https://login.microsoftonline.com/<tenant-id>/v2.0 \
@@ -40,15 +48,17 @@ OIDC identity provider.
    puts the secret into your shell's environment without typing it on the command line, so it is
    not in the command's arguments and not in your shell history; `-e IDP_CLIENT_SECRET` passes the
    name, not the value. The command reads it from the environment, and it never reaches a log or
-   the audit row.
+   the audit row. The app service does not carry `KEYCLOAK_ADMIN_CLIENT_SECRET`, so the first line
+   loads it from `.env` for this one command. The command asks the provider for `openid profile
+   email`, so the token carries the person's name and email.
 
 ## Verify
 
-6. Open a private browser window at `PUBLIC_URL`. The browser leaves for Entra without showing the
+7. Open a private browser window at `PUBLIC_URL`/sign-in. The browser leaves for Entra without showing the
    Genie Ops Center realm's own form.
-7. Sign in as an assigned person. They land in the workspace.
-8. In the Groups screen, their Entra groups are listed with source `idp`.
-9. Remove the test person from the app assignment in Entra, with assignment required, so Entra
+8. Sign in as an assigned person. They land in the workspace.
+9. In the Groups screen, their Entra groups are listed with source `idp`.
+10. Remove the test person from the app assignment in Entra, with assignment required, so Entra
    refuses them. Their next sign-in is refused. Without assignment required, removing them from
    every group only leaves them signed in with no roles; to block sign-in, disable or remove them
    in People. Restore the assignment afterwards.
