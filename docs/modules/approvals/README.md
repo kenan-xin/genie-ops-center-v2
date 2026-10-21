@@ -1,6 +1,6 @@
 # Module: Approvals
 
-Kind: customer module, first customer, built to be reused by other customers. Status: DEFERRED on customer discovery (`discovery.md`, D-1 to D-12). Its shape is decided in [ADR 0012](../../adr/0012-approvals-module-split-and-relation-scopes.md), revision 4: one module with a workflow engine, a builder, and an agreement register that a workflow turns on. On 2026-10-20 the former contracts module was merged into this one, and its discovery questions moved here unchanged.
+Kind: customer module, first customer, built to be reused by other customers. Status: DEFERRED on customer discovery (`discovery.md`, D-1 to D-13). On 2026-10-21 the answers that the product docs already hold were recorded there. They are not confirmed by the customer, and they allow provisional design only. Parts that still depend on an open question stay marked DEFERRED below. Its shape is decided in [ADR 0012](../../adr/0012-approvals-module-split-and-relation-scopes.md), revision 4: one module with a workflow engine, a builder, and an agreement register that a workflow turns on. On 2026-10-20 the former contracts module was merged into this one, and its discovery questions moved here unchanged.
 
 ## Who it is for
 
@@ -22,35 +22,37 @@ Search, 2026-10-20 (owner): the module ships its own search page and list filter
 
 ## Phases
 
-### Register: register, versions, retrieval. No AI.
-
-DEFERRED (D-1 to D-10). Provisional work items:
-
-1. Agreement register: create, edit, archive. Fields from the Excel register. Counterparty as its own record.
-2. Versions: upload to object storage or link, assign the next version number, keep every prior version.
-3. Expiry and renewal: computed status, and one daily job declared through the module contract's Jobs point that evaluates `reminder_rule`, sends email through the core mailer, and records each send in `reminder_sent`.
-4. Search and retrieval: filter by counterparty, type, office, status, date range. One click opens the current version.
-5. Permissions and default roles as below. Office as a role-assignment scope if the customer confirms office-scoped visibility. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide, so office stays a filter and a field, not a register visibility scope. Case visibility follows ADR 0012, section 3.
-6. Import: a one-time loader from the existing Excel register.
-
-Done when: the legal team loads the current register, a business user finds an agreement and opens its document, and an owner receives a reminder 90 days before expiry. Reminder lead time is provisional.
+Phase plan, 2026-10-21, aligned with the product docs (`discovery.md`, answer map). Phase one of the product holds the workflow, the register, and AI reading at upload, in one release that replaces the e-sign system for agreements. This replaces the phase plan recorded on 2026-09-16, which put the register first and AI and the workflow later. The product team decided the new plan, and the customer has not confirmed it. Phase one has in-app notifications only. Email comes later, through the core mailer, when the customer accepts it (D-9). Phase two holds data migration, the chatbot, Reject, and the other items that wait for the customer. The three parts below are work areas of phase one, not separate releases.
 
 ### Workflow: the engine, the builder, and the agreement review flow
 
-DEFERRED (D-11 and D-12). The engine, the builder, and the register feature as ADR 0012 describes them. Done when: an applicant submits an agreement review, it passes its approval steps, and on completion its register entry and number appear on the applicant's own case.
+Provisional (D-11 answered from the product docs). The engine, the builder, and the register feature as ADR 0012 describes them. The seed flow is one fixed chain with one copy per department, each copy with its own department head. Done when: an applicant submits an agreement review, it passes its approval steps, and on completion its register entry and number appear on the applicant's own case.
+
+### Register: register, versions, retrieval
+
+Provisional (D-2 and D-5 to D-10 answered from the product docs, D-1 and D-3 in part). Work items:
+
+1. Agreement register: the customer's master list format, 17 columns plus a status. A row exists from submission and gets its number when the case completes. Counterparty as its own record. Nothing is deleted, and documents are kept forever.
+2. Versions: upload to managed storage, assign the next version number, keep every prior version. Applicants upload new versions. The storage region is DEFERRED (D-3).
+3. Expiry and renewal: a computed active or inactive status. No reminder job and no email in phase one. Later: one daily job declared through the module contract's Jobs point that evaluates `reminder_rule`, sends email through the core mailer, and records each send in `reminder_sent`. The figures are DEFERRED (D-9) until the customer confirms them.
+4. Search and retrieval: filter by counterparty, type, department, office, status, date range. One click opens the current version.
+5. Permissions and default roles as below. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide. Office is a field and a filter only (D-7). Case visibility follows the requester's current department, through the relation scopes of ADR 0012, section 3.
+6. Import: a loader for the old register rows and their case folders, with no invented workflow history. The product plans it for phase two. What it keeps from e-sign beyond the case history is DEFERRED (D-12).
+
+Done when: an applicant uploads an agreement, its register row appears with the status, the case completes with its register number, and a business user finds the agreement and opens its document.
 
 ### AI understanding
 
 Model path, 2026-10-21 (owner): the register AI calls the genie-studio smart API over HTTP (`DEC-8`), through the core outbound HTTP service, with its key held as a `secret_ref`. It does not depend on the boss agent's model setting (`OPEN-12`).
 
-1. Extraction on upload: key obligations, important dates, payment terms, service commitments, termination conditions. Stored as a structured summary per version.
+The product docs put AI reading at upload in phase one. The whole part stays DEFERRED (D-4), because the product docs contradict the customer on whether the AI is allowed to read the customer's highest-rank documents.
+
+1. Extraction on upload: the register fields with page and quote, and a key-terms brief with obligations, important dates, payment terms, service commitments, termination conditions. Stored as a structured summary per version. The reading runs in the background, and the applicant gets an in-app notification to review the fields.
 2. Clause search across agreements.
-3. Ask-the-agreement chat, using the streaming route pattern that core provides (core roadmap Section 4, item 3) with the document as context.
+3. Ask-the-agreement chat, using the streaming route pattern that core provides (core roadmap Section 4, item 3) with the document as context. The product plans its chatbot for phase two.
 4. Human review flag: a summary is marked reviewed by the legal team or not.
 
 Done when: a business user opens an agreement and reads its summary and key dates without opening the document.
-
-The order of these phases is provisional. It follows the customer's phase plan as recorded on 2026-09-16, which the discovery answer map must confirm before work starts.
 
 ## Permissions and roles `provisional`
 
@@ -58,11 +60,11 @@ Proposed in ADR 0012, section 5: `approvals:use`, `approvals:case-read`, `approv
 
 ## Tables `provisional`
 
-DEFERRED (D-1 to D-12). Names and cardinality change after discovery (`OPEN-3`). The storage model, and therefore `agreement_version` and its use of `file` versus `external_url`, is `OPEN-2`. Workflow tables (definitions, versions, cases, steps, history, delegations) are designed when the workflow phase starts.
+Provisional (D-1 to D-12, answer map of 2026-10-21). Names and cardinality change when the customer confirms the answers (`OPEN-3`). The storage model, and therefore `agreement_version` and its use of `file` versus `external_url`, is `OPEN-2`. Workflow tables (definitions, versions, cases, steps, history, delegations) are designed when the workflow phase starts.
 
 `counterparty`: id, name, country, notes, created_at, updated_at.
 
-`office`: id, code (unique), name, created_at, updated_at. A filter on register entries. It was planned as a role-assignment scope, which the 2026-10-20 register audience decision replaces.
+`office`: id, code (unique), name, created_at, updated_at. A filter on register entries. It was planned as a role-assignment scope, which the 2026-10-20 register audience decision replaces. The product docs keep the department and the group office as two fields (D-7).
 
 `agreement`: id, reference_code (unique), title, agreement_type, counterparty_id, office_id, owner_user_id, legal_contact_user_id, effective_date, expiry_date, validity_months, renewal_kind (`none`, `auto`, `manual`), termination_notice_days, status (`draft`, `active`, `expiring`, `expired`, `terminated`, `archived`), remarks, created_at, updated_at.
 
@@ -80,5 +82,5 @@ Ids were the contracts module's and are kept.
 
 | Id | Question | Default if not decided |
 | --- | --- | --- |
-| OPEN-2 | Store document files in object storage, or store metadata plus a link to the customer's existing encrypted file server? DEFERRED (D-1 to D-5). | Managed storage, because versioning and AI reading need the bytes. Link-only is a per-record option. |
-| OPEN-3 | Register fields, roles, and reminder rules. DEFERRED (D-6 to D-10). | Fields taken from the Excel register shown in the brief. |
+| OPEN-2 | Store document files in object storage, or store metadata plus a link to the customer's existing encrypted file server? Provisional, 2026-10-21: managed storage, from the product docs (D-2, D-3, D-5). The storage region stays DEFERRED (D-3). | Managed storage, because versioning and AI reading need the bytes. Link-only is a per-record option. |
+| OPEN-3 | Register fields, roles, and reminder rules. Provisional, 2026-10-21: the 17 master-list columns, the roles of the product docs, and no reminders in phase one (D-6 to D-10). The later reminder figures stay DEFERRED (D-9). | Fields taken from the customer's master list format. |
