@@ -154,7 +154,7 @@ Work items:
 1. Module pages with nested routes, route parameters, server-side data loading, and a permission per route, composed on the oRPC module contracts of ADR 0011.
 2. A typed browser client for each module's own procedures.
 3. Relation scopes inside `can()`, `scopesFor()` and `canMany()`: the `record_relation` and `record_relation_version` tables, relation-scope role assignments, and the effective-access rule (ADR 0012, section 3).
-4. The outbound HTTP service: allowed hosts, redirect re-checks, timeouts, size caps, and secret resolution from environment references. The Solutions chat proxy moves onto it (ADR 0012).
+4. The outbound HTTP service: allowed hosts, redirect re-checks, timeouts, size caps, and secret resolution from environment references and from keys that an administrator types on a write-only screen (`DEC-53`). The Solutions chat proxy moves onto it (ADR 0012).
 5. The notification inbox: a module API to write and mark notifications, the inbox screen, and the header bell with its unread count (`DEC-21`, amended 2026-10-20).
 6. The `s3` file adapter, tested against MinIO in CI. Cloudflare R2 is the first real target (`DEC-20`).
 

@@ -102,7 +102,7 @@ Rules that keep the channels safe: `packages/core/contracts` imports only zod an
 - Import another module. Cross-module needs go through core events or core records.
 - Read or write another module's tables, or core tables other than `audit_event`, `notification`, and `file` through the services above.
 - Check permissions anywhere except `can()`, or list records with record-scoped access without filtering on `scopesFor()` (`DEC-39`).
-- Store a credential. Only a `tenant_integration.secret_ref`.
+- Store a credential. Only a `tenant_integration.secret_ref`, or a key that an administrator typed, which core stores and resolves (`DEC-53`).
 - Know who hosts the deployment, or which adapter stores files.
 - Import a database driver or open a connection. The only database is `ctx.tenant.db` (`DEC-34`).
 - Import from any `apps/*` package or assume the standard shell. Pages and navigation are components rendered by whichever app composes the module.

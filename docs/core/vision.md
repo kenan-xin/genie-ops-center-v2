@@ -156,6 +156,7 @@ Product/configuration reasoning lives in [the decision log](decision-log.md); ar
 | DEC-50 | A tenant administrator switches a compiled module on or off, sees which groups and people reach it, and places it in a category from a Modules page in the admin portal, behind `core:settings:manage`. Every module with a workspace entry declares `<id>:use` and seeds a `<Display name> user` role. The command line and the page share one procedure. `decision-log.md`. |
 | DEC-51 | Navigation categories are a core table with a Categories admin page. A module's navigation entries carry a core category id, `tenant_module.category_id` places a module's static entries, and core renders one tree. The solutions module references the core category by id. `decision-log.md`. |
 | DEC-52 | A tenant administrator can add a directory group by typing its exact `groups` claim value and assign roles to it before any member signs in. It shows as "Not seen yet" until a sign-in lists it, and the sync fills that same row. `decision-log.md`. |
+| DEC-53 | An administrator types a connection's API key on a write-only screen. Core stores it as plain text in one core table that only the integrations service reads, an accepted risk with encryption as the revisit path. `decision-log.md`. |
 
 Initial tenant branding requires customer identity, locale and time zone, with standard product appearance defaults; application email configuration may follow later. See the [branding seed contract](../architecture/branding-seed.md) for the approved rules and their DEC-35 amendment.
 
