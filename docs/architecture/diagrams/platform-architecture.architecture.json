@@ -3,7 +3,8 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "Genie Ops Center: One Customer's Deployment",
-    "quality_profile": "showcase",
+    "quality_profile": "standard",
+    "output": "docs/architecture/diagrams/platform-architecture.html",
     "viewBox": [1280, 680],
     "views": [
       { "id": "one-image", "label": "One image, three entrypoints", "focus": ["app", "worker", "ops"], "note": "The app, the job worker, and genie-ops start from the same image. The worker reads its pg-boss jobs from the one database." },
@@ -12,7 +13,7 @@
     ]
   },
   "components": [
-    { "id": "idp", "type": "external", "label": "Customer identity provider", "sublabel": "OIDC, SAML, or LDAP", "pos": [900, 60], "size": [190, 62] },
+    { "id": "idp", "type": "external", "label": "Customer identity provider", "sublabel": "OIDC or SAML", "pos": [900, 60], "size": [190, 62] },
     { "id": "users", "type": "external", "label": "Employees", "sublabel": "PUBLIC_URL in the browser", "pos": [40, 390], "size": [190, 62] },
     { "id": "proxy", "type": "security", "label": "Reverse proxy", "sublabel": "owns the certificate", "pos": [330, 390], "size": [180, 62], "tag": "host" },
     { "id": "mail", "type": "external", "label": "Mail server", "sublabel": "SMTP or provider", "pos": [330, 550], "size": [180, 62], "tag": "host" },

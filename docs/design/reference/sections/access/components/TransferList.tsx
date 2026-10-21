@@ -34,6 +34,11 @@ export interface TransferListProps {
   targetLabel?: string
   emptyAvailable?: string
   emptyTarget?: string
+  /**
+   * What both sides search for on first render. A link that arrives carrying one record uses it, so
+   * the row the administrator came for is on screen whichever side it sits on. They can clear it.
+   */
+  initialQuery?: string
   /** Reads as the whole list with no controls, for example while every record is granted at once. */
   disabled?: boolean
 }
@@ -41,7 +46,7 @@ export interface TransferListProps {
 const matches = (item: TransferItem, q: string) =>
   !q || item.label.toLowerCase().includes(q) || (item.description?.toLowerCase().includes(q) ?? false)
 
-function Side({ heading, items, pending, selected, onSelected, actionLabel, actionClass, onAction, quickLabel, onQuick, empty, disabled, blockAdds }: {
+function Side({ heading, items, pending, selected, onSelected, actionLabel, actionClass, onAction, quickLabel, onQuick, empty, disabled, blockAdds, initialQuery }: {
   heading: string
   items: TransferItem[]
   pending: Set<string>
@@ -56,8 +61,9 @@ function Side({ heading, items, pending, selected, onSelected, actionLabel, acti
   disabled?: boolean
   /** The side that adds. A row with a blocked reason cannot be ticked, selected in bulk, or added. */
   blockAdds?: boolean
+  initialQuery?: string
 }) {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery ?? '')
   const headingId = useId()
   const q = query.trim().toLowerCase()
   const shown = items.filter((i) => matches(i, q))
@@ -142,6 +148,7 @@ export function TransferList({
   targetLabel = 'Granted',
   emptyAvailable = 'Nothing left to add.',
   emptyTarget = 'Nothing granted yet.',
+  initialQuery,
   disabled,
 }: TransferListProps) {
   const [availableSelected, setAvailableSelected] = useState<Set<string>>(new Set())
@@ -179,6 +186,7 @@ export function TransferList({
         onQuick={add}
         empty={emptyAvailable}
         disabled={disabled}
+        initialQuery={initialQuery}
         blockAdds
       />
       <Side
@@ -194,6 +202,7 @@ export function TransferList({
         onQuick={remove}
         empty={emptyTarget}
         disabled={disabled}
+        initialQuery={initialQuery}
       />
     </div>
   )

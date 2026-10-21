@@ -1,6 +1,9 @@
 export type PersonStatus = 'active' | 'pending' | 'disabled'
+
 export type GroupSource = 'idp' | 'local'
+
 export type RoleKind = 'system' | 'custom'
+
 export type PrincipalType = 'user' | 'group'
 
 export interface TenantSettingsSummary {
@@ -47,6 +50,8 @@ export interface Group {
   stale: boolean
   lastSeenAt: string | null
   archived: boolean
+  /** Directory groups only: the readable label an administrator gave the group, shown in place of the value in lists and Access. Never used for matching. Null when unset. */
+  displayLabel: string | null
 }
 
 export interface Role {
@@ -78,6 +83,8 @@ export interface Person {
   onboarding: 'invited' | 'jit'
   /** Server-derived. Local accounts only: when the realm last sent the set-password email to a pending person. */
   setPasswordSentAt?: string | null
+  /** Server-derived. Brokered accounts only: when the invitation email was last sent to a pending person, read from the latest `core:invitation_sent` audit row. */
+  invitationSentAt?: string | null
 }
 
 export interface RoleAssignment {
@@ -108,6 +115,8 @@ export interface NewPersonInput {
   roleIds: string[]
   /** Only offered when local accounts are on; defaults to brokered. */
   accountType?: AccountType
+  /** Brokered accounts only: send the invitation email. Defaults to true. */
+  sendInvitation?: boolean
 }
 
 export interface RoleInput {
@@ -155,6 +164,14 @@ export interface PeopleGroupsAndRolesProps {
   onRemoveAllMembers?: (groupId: string) => void
   /** Send the realm's set-password email again to a pending local-account person. */
   onResendSetPassword?: (personId: string) => void
+  /** Send the invitation email again to a pending brokered person. */
+  onResendInvitation?: (personId: string) => void
+  /** Add a directory group before first sign-in by the exact value the provider puts in the `groups` claim. */
+  onAddDirectoryGroup?: (externalId: string, displayLabel?: string) => void
+  /** Set or clear a directory group's display label. */
+  onEditGroupLabel?: (groupId: string, displayLabel: string | null) => void
+  /** Delete a directory group that no sign-in has listed yet. */
+  onDeleteGroup?: (groupId: string) => void
   /** Create a custom role. */
   onCreateRole?: (input: RoleInput) => void
   /** Edit a custom role. */

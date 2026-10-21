@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+# Runs the Beads hook of the same name, then Lefthook for pre-commit.
+# Fails loudly when either required piece is missing, so a broken install can
+# never look like a clean commit.
+set -eu
+
+hook_name=$(basename "$0")
+here=$(cd "$(dirname "$0")" && pwd)
+beads_hook="$here/../.beads/hooks/$hook_name"
+
+if [ ! -x "$beads_hook" ]; then
+  echo "hook dispatcher: $beads_hook is missing or not executable" >&2
+  exit 1
+fi
+
+"$beads_hook" "$@"
+
+if [ "$hook_name" = "pre-commit" ]; then
+  lefthook_bin="$here/../node_modules/.bin/lefthook"
+  if [ ! -x "$lefthook_bin" ]; then
+    echo "hook dispatcher: pinned workspace Lefthook is missing" >&2
+    exit 1
+  fi
+  "$lefthook_bin" run pre-commit
+fi

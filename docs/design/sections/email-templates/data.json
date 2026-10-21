@@ -8,7 +8,7 @@
     },
     "relationships": [
       "Every template renders against any sample deployment; nothing in a template is deployment-specific",
-      "Keycloak templates are Keycloak's built-in templates (DEC-40): unstyled, printing the realm display name (the company name) only; sent through the realm SMTP settings (sender name and reply-to), only to local-account deployments",
+      "Keycloak templates are Keycloak's built-in templates (DEC-40): unstyled, printing the realm display name (the company name) only; sent through the realm SMTP settings (sender name and reply-to), which provisioning owns and Branding never writes; only to local-account deployments",
       "The From address is the deployment MAIL_FROM (no-reply@genie.example); the tenant sets the display name and reply-to"
     ]
   },

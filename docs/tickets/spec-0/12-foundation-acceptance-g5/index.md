@@ -2,6 +2,8 @@
 
 Bead: `genie-ops-center-v2-1rd.12`. Status and claims live in Beads, not this document.
 
+Evidence: [integrated acceptance traceability, 2026-09-23](traceability.md).
+
 ## Governing context
 
 Read [Spec 0](../../../specs/00-monorepo-foundation.md), [technical plan](../../../tech-plans/00-monorepo-foundation.md), [ADR 0008](../../../adr/0008-foundation-integration-and-generated-registry.md), [execution contract](../README.md), repository AGENTS.md/CLAUDE.md, and applicable canonical contracts before editing. Follow the linked specification for exact requirements; this ticket does not weaken them.
@@ -28,6 +30,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 ## Acceptance and tests
 
 - Run full prescribed acceptance including clean build, generator disposable fixture, local cache matrices, migration concurrency, image smoke, Storybook component tests and both E2E viewports.
+- For AC-5 and AC-24, record S0-11's build-input exclusion evidence: the builder-stage prune and its folder check with the build log of kept and removed folders, the empty-selection and fixture-image builds that prune `placeholder`, the failing-import tests with their control, and the negative test for an unselected folder (`pg4`, 2026-09-23). A scan of built chunks for excluded module code is not expected evidence.
 - Check no empty/skipped target disguises success and evidence is tied to exact integrated revision/versions.
 - If actual registry-push acceptance has not been authorized/exercised, list it as outstanding and keep full G5 acceptance open; safe publish-order tests do not prove real push.
 
@@ -47,4 +50,14 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Collect integrated naming validation, import-boundary, generator, graph/cache, story and image proof alongside existing acceptance. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Foundation is not accepted merely because S0-01 through S0-03 are closed. Join every AC against the exact integrated revision, including ygn naming completion, canonical staged-hook behavior evidence for AC-2/R-5b/R-8, and 3yv real preset-consumption proof. Live checkout hook activation/proof (2o4) remains a separately authorized rollout, not an added G5 gate unless the owner explicitly requires it. Existing runner and disposable-dispatcher evidence must be assessed for the canonical behavior, not mislabeled as live activation. Deferred product/dependency decisions are not automatically blockers. Keep G5 open while required external push evidence or any mandatory test layer remains unproved.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

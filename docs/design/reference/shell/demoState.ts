@@ -25,18 +25,46 @@ export interface DemoNav {
   items: Record<string, string | null>
   /** Module id to `tenant_module.enabled`, for the modules the preview switched. */
   enabled: Record<string, boolean>
+  /**
+   * Module id to "its reintroduction review was completed". A returned module needs that review once.
+   * Afterwards it is an ordinary module, so switching it off and on again is the ordinary one-step
+   * flow and never asks for a second review. Enablement alone cannot carry this, because an ordinary
+   * switched-off module and a module still awaiting its review both read `enabled: false`.
+   */
+  activated: Record<string, boolean>
+  /**
+   * Assignment ids the preview revoked on the Access screen. The reintroduction review of a
+   * returned module reads its retained assignments from the same ids, so removing one in Access and
+   * reopening the review shows a shorter list and a lower restore count. The product reads both
+   * lists from `role_assignment`; the preview keeps this record because each screen is a fresh page
+   * load.
+   */
+  revokedGrants: string[]
+  /**
+   * Module id to the values Tenant settings saved, so a reopened activation review shows the
+   * configuration the administrator just wrote. Saving settings never writes `enabled`, so this
+   * record never carries enablement.
+   */
+  moduleConfig: Record<string, Record<string, string | number | boolean | string[]>>
 }
 
 const KEY = 'genie.demo.nav'
 const EVENT = 'genie-demo-nav'
-const EMPTY: DemoNav = { categories: null, items: {}, enabled: {} }
+const EMPTY: DemoNav = { categories: null, items: {}, enabled: {}, activated: {}, revokedGrants: [], moduleConfig: {} }
 
 export function readDemoNav(): DemoNav {
   try {
     const raw = window.localStorage.getItem(KEY)
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<DemoNav>
-    return { categories: parsed.categories ?? null, items: parsed.items ?? {}, enabled: parsed.enabled ?? {} }
+    return {
+      categories: parsed.categories ?? null,
+      items: parsed.items ?? {},
+      enabled: parsed.enabled ?? {},
+      activated: parsed.activated ?? {},
+      revokedGrants: parsed.revokedGrants ?? [],
+      moduleConfig: parsed.moduleConfig ?? {},
+    }
   } catch {
     return EMPTY
   }

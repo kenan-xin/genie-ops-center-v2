@@ -1,6 +1,14 @@
 # Amendments the centralized category assignment needs
 
-Date: 2026-09-18. Author: design owner. Status: raised, not applied.
+Date: 2026-09-18. Author: design owner. **Status on 2026-09-19: accepted and applied in v2.**
+
+The accepted text is `docs/architecture/module-contract.md` in v2, under "Category assignment
+boundary", and that file is the authority. This one is kept as the record of what was asked for and
+why. Where the two differ, the accepted text wins. The accepted boundary adds points this file did
+not ask for: several rows report per-row outcomes with retry rather than one cross-module
+transaction, a disabled compiled module keeps its record placement while contributing no editable
+record rows, and placement never grants access. `product/sections/audit-and-tenant-settings/spec.md`
+follows the accepted text.
 
 The design adds one Assign items table to the Categories page: one row per module with a workspace entry, one row per record an enabled module contributes, each with a category dropdown. The rule that does not change is `DEC-51`: `category` is a core table, `solution_category` stays a solutions module table, and core reads no module table. This file lists what the platform must add for the screen to be buildable. Nothing under `/home/kenan/work/genie-ops-center-v2` was edited.
 

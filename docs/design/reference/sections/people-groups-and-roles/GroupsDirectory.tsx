@@ -24,7 +24,7 @@ export default function GroupsDirectoryPreview() {
       scopeRecords={data.scopeRecords as ScopeRecord[]}
       initialGroupId={params.get('group') ?? params.get('open')}
       initialDialog={dialog === 'delete' || dialog === 'archive' || dialog === 'clear' ? dialog : undefined}
-      guard={(action) => guardReason({ people, roles, roleAssignments }, data.currentUserId, action)}
+      guard={(action) => guardReason({ people, roles, roleAssignments, groups }, data.currentUserId, action)}
       onCreateLocalGroup={(name, description) => setGroups((l) => [...l, { id: `grp_${Date.now()}`, name, description, source: 'local', externalId: null, memberCount: 0, syncedAt: null, stale: false, lastSeenAt: null, archived: false }])}
       onUpdateLocalGroup={(id, name, description) => setGroups((l) => l.map((g) => (g.id === id ? { ...g, name, description } : g)))}
       onAddToLocalGroup={(pid, gid) => { setPeople((l) => l.map((x) => (x.id === pid ? { ...x, groupIds: [...x.groupIds, gid] } : x))); setGroups((l) => l.map((g) => (g.id === gid ? { ...g, memberCount: g.memberCount + 1 } : g))) }}

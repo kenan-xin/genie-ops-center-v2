@@ -1,0 +1,226 @@
+import {
+  KEYCLOAK_ISSUER_MISMATCH,
+  type AuthDiscoveryCause,
+  type AuthMember,
+  type TenantContext,
+} from "@genie/core";
+
+/**
+ * The context's auth member, or a failure. The application profile requires the authentication
+ * values, so the bootstrap always builds the member; a caller that reaches this without one is a
+ * wiring defect, not a missing configuration, and fails loudly rather than answering anonymously.
+ */
+export function requireAuth(tenant: TenantContext): AuthMember {
+  if (tenant.auth === undefined) {
+    throw new Error(
+      "The tenant context has no auth member. The application profile must build one."
+    );
+  }
+
+  return tenant.auth;
+}
+
+/** The sign-in page a refusal or a signed-out browser lands on (R-17a). */
+export const SIGN_IN_PATH = "/sign-in";
+
+/** The path the identity provider returns the browser to, which then lands the person (R-36). */
+export const AUTH_COMPLETE_PATH = "/auth/complete";
+
+/**
+ * The named cause the sign-in endpoint refuses with while the realm's discovery document does not
+ * answer (R-54d). It is stable so the sign-in page maps it to a banner and a test can assert it.
+ */
+export const KEYCLOAK_UNAVAILABLE = "keycloak_unavailable";
+
+export { KEYCLOAK_ISSUER_MISMATCH };
+
+/**
+ * The `?error=` value for a discovery state that is not ready (R-54d). An unreachable document and
+ * an issuer the document names but that is not `KEYCLOAK_URL` are different causes: the first is
+ * "try again shortly", the second is a misconfigured stack, and sign-in names both.
+ */
+export function discoverySignInCause(cause: AuthDiscoveryCause): SignInCause {
+  return cause === "issuer_mismatch"
+    ? KEYCLOAK_ISSUER_MISMATCH
+    : KEYCLOAK_UNAVAILABLE;
+}
+
+/**
+ * The Better Auth endpoints the `/api/auth/` catch-all serves, by path and method. Every other
+ * path answers 404, so an endpoint Better Auth adds or enables is closed until a ticket opens it
+ * here (B1, B2 of the S2-04 review): `/get-access-token`, `/refresh-token` and `/account-info`
+ * would hand stored realm tokens back (R-7), and `/link-social` or `/unlink-account` would change
+ * which identity reaches an account. A later ticket that needs another endpoint adds it to this
+ * list in its own change, with a test.
+ *
+ * `/sign-out` is absent on purpose: the app's own `/api/auth/sign-out` route shadows it (R-17).
+ */
+const AUTH_ROUTES = new Map([
+  ["/callback/keycloak", ["GET", "POST"]],
+  ["/sign-in/social", ["POST"]],
+  ["/sign-in/email", ["POST"]],
+  ["/get-session", ["GET"]],
+  // S2-09, R-62 to R-66: the break-glass door's forced password change and its authenticator
+  // enrollment and code step. The member's hooks refuse a non-break-glass session on
+  // `/change-password` and `/two-factor/enable` (R-63), and the R1 session guard refuses a
+  // break-glass session from a realm callback, so opening these three adds no second employee
+  // sign-in path (R-6).
+  ["/change-password", ["POST"]],
+  ["/two-factor/enable", ["POST"]],
+  ["/two-factor/disable", ["POST"]],
+  ["/two-factor/verify-totp", ["POST"]],
+]);
+
+/** The path Better Auth is mounted under (D2-5). */
+const AUTH_BASE_PATH = "/api/auth";
+
+/**
+ * The Better Auth path of a request, read from the raw URL. Better Auth routes on the undecoded
+ * pathname, so the allowlist reads that same value: a percent-encoded path never matches an entry
+ * by decoding to one, and Better Auth cannot route it to an endpoint the list closed.
+ */
+export function authPath(requestUrl: string): string {
+  const { pathname } = new URL(requestUrl);
+
+  return pathname.startsWith(`${AUTH_BASE_PATH}/`)
+    ? pathname.slice(AUTH_BASE_PATH.length)
+    : pathname;
+}
+
+/** What the allowlist reads from a request body: a JSON object or not, and an `idToken` field. */
+export type AuthRequestBody =
+  | { readonly kind: "object"; readonly carriesIdToken: boolean }
+  | { readonly kind: "other" };
+
+/** Reads a POST body from a clone, so Better Auth still reads the original. */
+export async function readAuthRequestBody(
+  request: Request
+): Promise<AuthRequestBody> {
+  if (request.method !== "POST") return { kind: "other" };
+
+  const value: unknown = await request
+    .clone()
+    .json()
+    .catch(() => undefined);
+
+  if (
+    value === null ||
+    value === undefined ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    return { kind: "other" };
+  }
+
+  // SAFETY: the checks above leave a plain JSON object, whose own keys are what is read here.
+  return {
+    kind: "object",
+    carriesIdToken: Object.hasOwn(value as object, "idToken"),
+  };
+}
+
+/**
+ * True when the catch-all may hand the request to Better Auth. `/sign-in/social` is served only
+ * without an `idToken` field, because an id token sign-in is a second path with no PKCE, no state
+ * and no nonce (R-6: "no second sign-in path for employees exists").
+ */
+export function authRouteAllowed(input: {
+  readonly method: string;
+  readonly path: string;
+  readonly body: AuthRequestBody;
+}): boolean {
+  if (AUTH_ROUTES.get(input.path)?.includes(input.method) !== true)
+    return false;
+
+  if (input.path !== "/sign-in/social") return true;
+
+  return input.body.kind === "object" && !input.body.carriesIdToken;
+}
+
+/** The five causes of the sign-in page states (R-17a), plus the realm-unavailable ones (R-54d). */
+export type SignInCause =
+  | "keycloak_unavailable"
+  | typeof KEYCLOAK_ISSUER_MISMATCH
+  | "not_registered"
+  | "access_disabled"
+  | "session_expired"
+  | "session_missing"
+  | typeof SIGNED_OUT;
+
+/**
+ * The signed-out state of R-17a. The realm returns it as the `state` parameter of its
+ * end-session redirect to `PUBLIC_URL`, the one post-logout address the realm registers, and the
+ * home page forwards it to the sign-in page.
+ */
+export const SIGNED_OUT = "signed_out";
+
+/** The sign-in page in its signed-out state. */
+export const SIGNED_OUT_PATH = `${SIGN_IN_PATH}?error=${SIGNED_OUT}`;
+
+/**
+ * The sign-in page state for one `?error=` value. The page's own causes map to themselves, and
+ * each Better Auth callback refusal maps to the state a person can act on: a refused link or
+ * sign-up reads as not registered, and a broken flow (a lost state, a bad code) reads as "sign in
+ * to continue". An unknown value shows the default state, and nothing is reflected.
+ */
+export function signInCause(
+  error: string | undefined
+): SignInCause | undefined {
+  switch (error) {
+    case "keycloak_unavailable":
+    case "keycloak_issuer_mismatch":
+    case "not_registered":
+    case "access_disabled":
+    case "session_expired":
+    case "session_missing":
+    case "signed_out":
+      return error;
+    case "signup_disabled":
+    case "account_not_linked":
+    case "unable_to_link_account":
+    case "email_does_not_match":
+    case "account_already_linked_to_different_user":
+    case "email_not_found":
+    case "email_not_verified":
+    case "break_glass_not_linkable":
+      return "not_registered";
+    case "state_mismatch":
+    case "please_restart_the_process":
+    case "no_code":
+    case "invalid_code":
+    case "oauth_provider_not_found":
+    case "issuer_missing":
+    case "issuer_mismatch":
+    case "nonce_binding_missing":
+    case "unable_to_get_user_info":
+    case "no_callback_url":
+    case "internal_server_error":
+      return "session_missing";
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Where sign-out sends the browser (R-17). In managed mode the realm's end-session URL ends the
+ * realm session too, and carries `state=signed_out`, which the realm hands back on its redirect
+ * to `PUBLIC_URL`. When there is no end-session URL the browser goes straight to the signed-out
+ * sign-in page. In client-only mode the realm session is the company's and serves its other
+ * applications, so only the Genie Ops Center session ends and the browser goes to the same page
+ * (R-17a).
+ */
+export function signOutDestination(input: {
+  readonly realmMode: "managed" | "customer";
+  readonly providerLogoutUrl: string | undefined;
+  readonly publicUrl: string;
+}): string {
+  if (input.realmMode === "managed" && input.providerLogoutUrl !== undefined) {
+    const url = new URL(input.providerLogoutUrl);
+
+    url.searchParams.set("state", SIGNED_OUT);
+
+    return url.toString();
+  }
+
+  return new URL(SIGNED_OUT_PATH, input.publicUrl).toString();
+}

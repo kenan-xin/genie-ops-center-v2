@@ -2,7 +2,7 @@ Confidence: 8.1/10
 
 Business scenario: [CF-MA-01](../flows/module-access-upgrades.md) describes configuring a newly delivered module before explicit activation. R-84a must support this journey; the flow is not evidence that the delivered design already includes the pre-enable state.
 Reasoning: Every platform document and every design file that serves this section was read, and each requirement below is traced to a roadmap item, a decision id, a data-shape column, a design heading, or a row of the cross-section call table in `README.md`. The integration pass closed the three document drifts this draft had found and settled the font list, the landing-route fallback, the hub entry placement, the idle-timeout seam, and the optional `configSchema`; the decisions of 2026-09-18 settled the email gallery and the realm capability column, so no open question remains. A cross-specification review found that the first draft had carried no migration requirement at all, which is now R-86a, and that finding keeps the score modest. Nothing is built, so the per-request token layer, the one navigation tree, and the contrast checks are proven only on paper, and five of the eleven work items land after Section 2 and consume a seam that does not exist yet.
-Status: Draft — awaiting user approval
+Status: Approved by the product owner for ticket breakdown, 2026-10-19, after the branding cut (three Branding tabs), the organization-only theme, and the OPEN-9 seed decisions of the same day.
 
 ## Goal and scope
 
@@ -94,7 +94,7 @@ R-15. The dark theme must keep the fixed starting points pinned in `../design/de
 
 R-16. The emitted variables must be carried on the document root in a style element; the minimal CSP does not require a nonce (`../core/roadmap.md`, Section 0 item 11, `DEC-31`). A route that renders the shell or the sign-in page is request-bound because it reads branding, and the implementation must accept that rather than cache the markup across tenants.
 
-R-17. Resolving the theme must not flash the wrong theme before hydration. The resolved theme is written on the document root by the server when it is known, and the client corrects it before paint when the person's preference is `system`.
+R-17. Resolving the theme must not flash the wrong theme before hydration. The resolved theme is written on the document root by the server when it is known, and the client corrects it before paint when the organization's default theme is `system`. A person has no theme preference (R-60).
 
 R-18. A branding change must show on the next page load in a process whose branding reader cache has expired, within the 10 second window of `DEC-46`. Nothing invalidates the cache on save, and no process restarts.
 
@@ -154,7 +154,7 @@ R-42. The standard security headers set once in the app extend to the workspace 
 
 ### Branding pages (item 5)
 
-R-43. The admin portal must carry a Branding page behind `core:branding:manage` with the seven tabs of `../core/roadmap.md`, Section 3 item 5: Identity, Colors and theme, Typography, Sign-in page, Email, Links, Locale. Every tab edits one browser-side draft and shows a live preview of the setting where it lands (`../design/sections/branding/spec.md`, "Overview").
+R-43. The admin portal must carry a Branding page behind `core:branding:manage` with three tabs: Identity, Colors and theme, and Sign-in page (`../core/roadmap.md`, Section 3 item 5). Every tab edits one browser-side draft and shows a live preview of the setting where it lands (`../design/sections/branding/spec.md`, "Overview"). The Typography, Email, Links, and Locale values come from `branding.seed.json` through `genie-ops setup` (`../architecture/branding-seed.md`) and are not editable in the app until their tabs are reopened (owner decision 2026-10-19, see "Deferred").
 
 R-44. One Publish must write the whole draft to `tenant_branding` in one transaction and write one `audit_event` row naming the changed fields. Discard drops the draft. Unpublished changes are guarded by the browser's own unload prompt and by no in-app leave dialog (`../design/sections/branding/spec.md`, "User Flows").
 
@@ -164,15 +164,17 @@ R-46. The Colors and theme tab must check six named contrast pairs and show one 
 
 R-47. The Colors and theme tab must show no tint strip, because `DEC-47` derives no ramp. It must show the computed foreground swatch and, under the dark pill, the derived value the shell uses on dark surfaces.
 
-R-48. The Typography tab must offer the font from the approved list of R-11, the three font size presets with a sample sentence at the chosen size, and the light-surface text color with two contrast pills at 4.5:1, against white and against the subtle surface, each with the same fix action. Publish is blocked while either fails. The tab must state that the size preset sets the root size and that the text color applies to light surfaces only (`../design/sections/branding/spec.md`, "User Flows").
+Amendment 2026-09-21: initial branding follows the [approved seed requirements](../architecture/branding-seed.md), including required customer identity/locale/time zone, deferred application-email configuration, standard appearance defaults and notice validation. Its open questions are not implementation defaults. Earlier column inventories do not require every column to be authored.
+
+R-48. Deferred with the Typography tab (owner decision 2026-10-19); the seed sets these values. When the tab is reopened: the Typography tab must offer the font from the approved list of R-11, the three font size presets with a sample sentence at the chosen size, and the light-surface text color with two contrast pills at 4.5:1, against white and against the subtle surface, each with the same fix action. Publish is blocked while either fails. The tab must state that the size preset sets the root size and that the text color applies to light surfaces only (`../design/sections/branding/spec.md`, "User Flows").
 
 R-49. Image uploads on the Identity and Sign-in page tabs must go through the core `FileStorage` service in one request, accept the declared types, and respect the deployment limit from `FILE_MAX_BYTES` (`DEC-20`, `DEC-44`, `../architecture/environment-contract.md`, "Files"). An uploaded SVG is sanitized in core before the bytes are stored. The branding row stores the `file.id` in the matching column of `../architecture/data-shape.md`, "Branding". An image is shown to members, in the preview, and in emails only when its `scan_status` is `clean` or `skipped`.
 
 R-50. The Scanning and Infected states must be designed and unreachable in this release. `file.scan_status` stays `skipped` until a scanner exists, and the implementation must not fake a state (`DEC-20`, `../design/sections/branding/spec.md`, "UI Requirements").
 
-R-51. The Email tab must edit sender display name, reply-to, and footer text only. The sender address is the deployment's `MAIL_FROM` and is not editable (`../architecture/environment-contract.md`, "Mail"). The tab must state that for a local-account deployment the sender name and reply-to also apply to the realm SMTP settings, and that the three credential emails are Keycloak's built-in templates carrying the realm display name only (`DEC-40`).
+R-51. Deferred with the Email tab (owner decision 2026-10-19); the seed sets these values. When the tab is reopened: the Email tab must edit sender display name, reply-to, and footer text only. The sender address is the deployment's `MAIL_FROM` and is not editable (`../architecture/environment-contract.md`, "Mail"). The tab must state that for a local-account deployment the sender name and reply-to also apply to the realm SMTP settings, and that the three credential emails are Keycloak's built-in templates carrying the realm display name only (`DEC-40`).
 
-R-52. The Locale tab must offer language, time zone, date format, and number format, and the language select must be disabled while one language is available, with the note the design gives (`DEC-13`, `../design/sections/branding/spec.md`, "UI Requirements"). There is no currency field.
+R-52. Deferred with the Locale tab (owner decision 2026-10-19); the seed sets these values. When the tab is reopened: the Locale tab must offer language, time zone, date format, and number format, and the language select must be disabled while one language is available, with the note the design gives (`DEC-13`, `../design/sections/branding/spec.md`, "UI Requirements"). There is no currency field.
 
 R-53. The Branding page must be designed and built mobile first. Below 768 pixels Discard and Publish move into a sticky bottom bar, the tab strip scrolls with the active tab in view, and the preview collapses behind a toggle (`DEC-25`, `../design/sections/branding/spec.md`, "UI Requirements").
 
@@ -192,9 +194,9 @@ R-59. The template set must be the six Genie templates of `../design/sections/em
 
 ### Personal overrides (item 7)
 
-R-60. The account page must carry a Preferences block with language, time zone, and theme. Each control saves on change to `user_preference`, confirms with a toast, and offers a reset to the tenant default. The language control is hidden while one language is available (`../core/roadmap.md`, Section 3 item 7, `../architecture/data-shape.md`, "Branding", `../design/sections/account-and-inbox/spec.md`, "UI Requirements").
+R-60. The account page must carry a Preferences block with language and time zone. Theme is not a personal setting: it belongs to the organization and comes from `tenant_branding` only (owner decision 2026-10-19). Each control saves on change to `user_preference`, confirms with a toast, and offers a reset to the tenant default. The language control is hidden while one language is available (`../core/roadmap.md`, Section 3 item 7, `../architecture/data-shape.md`, "Branding", `../design/sections/account-and-inbox/spec.md`, "UI Requirements").
 
-R-61. The shell must resolve locale and theme from `user_preference` first and from `tenant_branding` second. A null column means the tenant default (`../architecture/data-shape.md`, `user_preference`).
+R-61. The shell must resolve language and time zone from `user_preference` first and from `tenant_branding` second, and theme from `tenant_branding` only. A null column means the tenant default (`../architecture/data-shape.md`, `user_preference`).
 
 R-62. The break-glass account page variant must show no Preferences block and no roles block (`DEC-24`, `../design/sections/account-and-inbox/spec.md`, "UI Requirements").
 
@@ -278,7 +280,7 @@ R-92. Every screen in this section must be designed and built mobile first, with
 
 R-93. A screen the person may not open must be hidden from navigation, and its route must refuse on the server. The route is not unmounted, and no screen renders a denied state of its own (`DEC-39`, `README.md` in this folder, "Cross-section calls made in the drafting round", Permission-gated route row, `../design/sections/audit-and-tenant-settings/types.ts`, `AuditAndTenantSettingsProps`). The refusal is the one `can()` seam, answered by the per-request loader of `DEC-48`.
 
-R-94. Server state on every screen of this section must live in TanStack Query through tRPC, complex client state in zustand, and trivial local state in `useState` (`../core/tech-stack.md`, "Web application"). The Branding draft is complex client state.
+R-94. Server state on every screen of this section must live in TanStack Query through oRPC, complex client state in zustand, and trivial local state in `useState` (`../core/tech-stack.md`, "Web application"). The Branding draft is complex client state.
 
 R-95. No screen in this section may check a permission outside `can()` or filter a list outside `scopesFor()` (`DEC-39`). The shell renders navigation from `can()` answered by the one per-request loader, so a tree of a dozen entries costs one assignment read (`DEC-48`).
 
@@ -298,11 +300,11 @@ AC-4 (item 4, proves R-27 to R-42). An end-to-end test signs in and lands on the
 
 AC-4a (shell CSP scope, proves R-42). Extend AC-4's header check with provider-call instrumentation and exact minimal-policy assertions (no default/script/style directives or nonce sources). Verify branding styles, pre-hydration theme initialization and hydration without nonce wiring: ordinary shell documents retain the standard headers and `frame-src 'none'`, with zero frame-origin provider calls or origin-record queries, including prefetch/RSC requests. Following a shell link to the placeholder iframe-viewer fixture performs a full document navigation, invokes only its owning provider, installs the viewer policy, and visibly loads locally controlled permitted frame content. The fixture's load event alone is not proof. Section 4 repeats this with its real viewer and adds chat/stream zero-call checks; the Section 0 non-viewer response coverage remains in force.
 
-AC-5 (item 5, proves R-43 to R-53). An end-to-end test opens Branding, edits a field on each of the seven tabs, sees the preview change and the unpublished indicator count rise, presses Publish, confirms, and finds one `audit_event` row naming the changed fields and one updated `tenant_branding` row. A color that fails any of the six named pairs blocks Publish and offers a fix that passes. A text color that fails either typography pair blocks Publish. A logo upload stores a `file` row and shows the image. No Keycloak admin call is made during the publish.
+AC-5 (item 5, proves R-43 to R-53). An end-to-end test opens Branding, edits a field on each of the three tabs, sees the preview change and the unpublished indicator count rise, presses Publish, confirms, and finds one `audit_event` row naming the changed fields and one updated `tenant_branding` row. A color that fails any of the six named pairs blocks Publish and offers a fix that passes. A logo upload stores a `file` row and shows the image. No Keycloak admin call is made during the publish.
 
 AC-6 (item 6, proves R-54 to R-59). An end-to-end test publishes a branding change and then asserts the new company name, logo, and primary color on the sign-in page and in a rendered email. A unit test renders each of the six templates against two branding fixtures and asserts that every color, name, link, and footer follows branding with no template change, that the plain-text part carries the same content in reading order, and that the stored `primary_foreground` is used unchanged.
 
-AC-7 (item 7, proves R-60 to R-62). An end-to-end test sets a theme and a time zone on the account page, reloads, and sees the shell honour them. Resetting one control to the tenant default clears the column in `user_preference` and the shell falls back to `tenant_branding`. The break-glass account page variant shows no Preferences block.
+AC-7 (item 7, proves R-60 to R-62). An end-to-end test sets a time zone on the account page, reloads, and sees the shell honour it, and finds no theme control on the account page. Resetting one control to the tenant default clears the column in `user_preference` and the shell falls back to `tenant_branding`. The break-glass account page variant shows no Preferences block.
 
 AC-8 (item 8, proves R-63 and R-64). Each design round that serves this section has a dated review record under `../design/history/` naming the section, the reviewer, the findings, and their resolution, before its screens are built.
 
@@ -350,6 +352,7 @@ Static. The arbitrary pixel text size check of R-4. The oxlint import direction 
 
 ## Deferred
 
+- The Typography, Email, Links, and Locale branding tabs. Owner decision 2026-10-19 (simplification audit): the first release ships the Identity, Colors and theme, and Sign-in page tabs, and the other values come from `branding.seed.json`. Reopens when a customer asks to edit them in the app; R-48, R-51, and R-52 keep the tab requirements, and the Links values follow the seed through the support link of R-32 and the sign-in page.
 - The inbox screen and the unread pill. Designed in `../design/sections/account-and-inbox/spec.md`. Deferred by `DEC-21` to Section 5 item 8. Reopens when the first module needs the inbox. The shell keeps the entry and the pill hidden rather than removing them.
 - A core page named Dashboard and a landing-slot contract point. Refused by `DEC-49`. Reopens when a second widget exists and has requirements. The guard that keeps the path open is the landing-route flag on a navigation entry, which a later Dashboard retargets without touching a module.
 - A second tenant brand color. Refused by `DEC-47`. Reopens when a surface needs one, as `secondary_color` with a named surface and its own contrast pair. The guard is that the token layer is emitted from `tenant_branding` alone through one `applyBranding` step.

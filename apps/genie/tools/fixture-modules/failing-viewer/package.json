@@ -1,0 +1,18 @@
+{
+  "name": "@genie/module-failing-viewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*"
+  },
+  "genie": {
+    "module": {
+      "id": "failing-viewer",
+      "entrypoint": "src/index.ts"
+    }
+  }
+}

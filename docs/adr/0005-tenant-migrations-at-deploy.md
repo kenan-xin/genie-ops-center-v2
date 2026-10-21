@@ -1,5 +1,5 @@
 ---
-status: superseded in part by ADR 0007 on 2026-09-17. Migrate before serving, the advisory lock, expand-then-contract, and the idempotent migrator still hold. Suspending one tenant does not; a deployment has one customer, and a failed migration keeps the container unhealthy while the previous version serves.
+status: superseded in part by ADR 0007 on 2026-09-17. Migrate before serving, the advisory lock, expand-then-contract, and the idempotent migrator still hold. Suspending one tenant does not; a deployment has one customer, and a failed migration keeps the container unhealthy while the previous version serves. Amended 2026-10-20 by `DEC-9` and `DEC-33` in `../core/decision-log.md`. The previous version does not keep serving, because the stack has one application container. An upgrade is a short planned maintenance window, a failed migration rolls back its transaction, and the operator restarts the previous image by a documented step.
 date: 2026-09-16
 ---
 

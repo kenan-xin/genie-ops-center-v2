@@ -123,14 +123,27 @@ export interface PendingChange {
   kind: 'grant' | 'revoke'
   recipientId: string
   moduleId: string
-  level: LevelId
+  /** `custom` marks a change made with a role picked directly, which no level owns. */
+  level: LevelId | 'custom'
+  /** Set when `level` is `custom`: the role the secondary path picked. */
+  roleId?: string
   /** Null means the whole-tenant grant. */
   scopeId: string | null
+  /** The record type behind `scopeId`, when the secondary path supplies one. */
+  scopeType?: string | null
   /** What the row says in the pending list, for example "Claims Triage Assistant". */
   label: string
   /** Set on a revoke that undoes an existing row. */
   grantId?: string
 }
+
+/**
+ * What the save procedure answers. The server holds the last-active-administrator rule and the
+ * self-protection rule, so it can refuse a batch the screen believed was allowed, for example when
+ * somebody else removed the other administrator while this screen was open. A refusal keeps the
+ * pending list, so nothing an administrator selected is thrown away.
+ */
+export type SaveResult = { ok: true } | { ok: false; reason: string }
 
 /** What the Overview loads results for. Nothing loads before one is chosen. */
 export type OverviewSubject =
@@ -158,7 +171,11 @@ export interface EffectiveAccessRow {
   level: LevelId | 'custom'
   /** "Direct assignment" for the subject themselves, otherwise "via <group name>". */
   source: string
-  /** Another path that reaches the same target for this subject, or null. */
+  /**
+   * Another path that reaches the same target for the same effective person, or null. Two unrelated
+   * holders of one record are never each other's alternate path, so a module or record lookup only
+   * sets this when one holder carries both rows.
+   */
   alsoThrough: string | null
   addedBy: string
   addedAt: string
@@ -175,10 +192,11 @@ export interface AccessProps {
   grants: Grant[]
   /** Roles offered by the secondary path, which assigns one role directly. */
   customRoles: { id: string; name: string; description: string; kind: 'system' | 'custom'; moduleId: string | null; tenantWideOnly: boolean }[]
-  /** Save the pending list as one batch. */
-  onSave?: (changes: PendingChange[]) => void
-  /** Assign one role directly, the secondary path. */
-  onAssignRole?: (input: { roleId: string; principalType: PrincipalType; principalId: string; scopeType: string | null; scopeId: string | null }) => void
+  /**
+   * Save the pending list as one batch, through the one assignment procedure. The secondary path,
+   * "Assign a role directly", stages its request into this same list, so there is one writer.
+   */
+  onSave?: (changes: PendingChange[]) => SaveResult
   /** Open another admin screen, for example the audit log or a group. */
   onNavigate?: (href: string) => void
 }

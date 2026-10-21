@@ -1,5 +1,7 @@
 # S0-02 — Prove minimal Storybook and component-test compatibility (G1)
 
+Accepted integration is recorded in [integrated-acceptance.md](integrated-acceptance.md). Consult Beads for current status; earlier planning holds below do not reopen satisfied gates.
+
 Bead: `genie-ops-center-v2-1rd.2`. Status and claims live in Beads, not this document.
 
 ## Governing context
@@ -19,6 +21,8 @@ Owned surface: apps/storybook; representative packages/ui and placeholder presen
 Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfile/manifests/Nx configuration and shared exports require the documented single-writer handoff even between logically independent tickets. Do not change another ticket's interfaces silently.
 
 ## Scope
+
+For the initial overlapping dependency change, follow [S0-03's accepted planning decisions](../03-module-contracts-and-build-safe-schemas/index.md#accepted-planning-decisions--2026-09-20): agree common pins, let S0-03 prepare the minimal contract dependencies, and consume their separately approved integrated revision before writing Storybook dependency/configuration changes. This does not transfer Storybook ownership or require the whole S0-03 ticket to finish. Record the shared-file handoff in both beads; the S0-01 start gate is unchanged.
 
 - One development-only app-classified Storybook host using Next.js/Vite, official Nx serve/build inference and exactly one explicit Vitest-addon component-test owner; no legacy duplicate runner.
 - Install required Docs, a11y and MCP tooling with aligned pins. Verify current official MCP instructions before the requested npx storybook add command; review generated edits and keep local agent endpoint private.
@@ -47,4 +51,18 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Proposed rework: after S0-01 acceptance and S0-03 ownership transfer, reconcile story/placeholder paths and recheck the staged compatibility patch; rerun affected G1 evidence. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The sequence was subsequently authorized. Follow the current acceptance/continuation record linked above; retain the shared-file protocol and outstanding consumer work.
+
+## Historical implementation plan
+
+The superseded `plan.md` was removed from the active documentation to avoid executing stale instructions. Its exact contents remain in Git at `4f0dbac:docs/tickets/spec-0/02-storybook-compatibility-g1/plan.md`. Use this ticket, its linked current contracts and the owning agent's current correction handoff for further work. Historical evidence and active adoption artifacts are retained.
+
+## Develop audit, 2026-09-21
+
+G1 is accepted at ae00f6b. Preserve official @nx/storybook inference, one Vitest-addon runner, accepted pins and compatibility bridges, ^default inputs, Docs/a11y/MCP and loopback defaults. Full selection/confidentiality proof and 2cg remain S0-10; do not repeat installation as new work.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

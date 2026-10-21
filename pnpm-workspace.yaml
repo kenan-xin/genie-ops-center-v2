@@ -1,0 +1,84 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/modules/*"
+  - "tools/*"
+  - "customers/*/app"
+
+# pnpm 12 reads only auth and registry settings from .npmrc. Everything else
+# lives here: https://pnpm.io/settings
+saveExact: true
+
+strictPeerDependencies: true
+autoInstallPeers: false
+
+packageExtensions:
+  "vite-tsconfig-paths@5.1.4":
+    dependencies:
+      typescript: "5.9.3"
+  # vitest lists jsdom as an optional peer. A workspace package that installs jsdom for its
+  # own use (core, for SVG sanitizing) otherwise gives vitest two peer resolutions, with and
+  # without jsdom, whose duplicated types clash under `exactOptionalPropertyTypes`. Giving
+  # every vitest the peer keeps one build across the workspace. The "vitest@4.1.11" key is
+  # pinned, so bump it in the same change as any vitest bump, or this extension stops applying.
+  "vitest@4.1.11":
+    dependencies:
+      jsdom: "30.1.2"
+
+# One pg for the whole graph. drizzle-orm takes pg as an optional peer, and pnpm satisfies it
+# from whatever pg the graph holds. pg-boss depends on pg by range, so a second pg version
+# beside core's lets each importer that links drizzle-orm get a different peer set, and their
+# duplicated types fail typecheck in a freshly generated module. The catalog is the one place
+# the version lives: core reads it with `catalog:`, and the override forces every transitive
+# pg, pg-boss's included, onto it. Bump pg here, never in a package.json.
+#
+# One exact version for every @orpc/* package (ADR 0011, decision 2). A later 2.x move bumps it
+# here, in one line per package.
+catalog:
+  "@orpc/client": "1.15.5"
+  "@orpc/contract": "1.15.5"
+  "@orpc/openapi": "1.15.5"
+  "@orpc/server": "1.15.5"
+  "@orpc/zod": "1.15.5"
+  pg: "8.23.1"
+
+overrides:
+  pg: "catalog:"
+
+# Supply-chain guard. Refuse any version published less than one day ago,
+# because a malicious release is usually pulled from the registry within the
+# hour. The 1440 default is non-strict, so a too-fresh pin would silently fall
+# back to an older version. Setting the value explicitly turns strict mode on,
+# and the install fails instead. Every exception is one auditable line below.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+
+# An install script runs arbitrary code at install time. Name each package that
+# needs one. Never use dangerouslyAllowAllBuilds.
+allowBuilds:
+  nx: true
+  lefthook: true
+  # Vite's dependency. Its install script links the platform binary, and pnpm
+  # fails the install with ERR_PNPM_IGNORED_BUILDS when the script is ignored.
+  esbuild: true
+  # Three transitive dependencies of testcontainers, denied rather than run.
+  # Evidence and the read of each script: docs/tickets/spec-0/04-context-migrator-and-placeholder/dependency-evidence.md
+  # ssh2 1.17.0 `node install.js` builds its own optional sshcrypto binding, and
+  # lib/protocol/crypto.js requires that binding inside a try with an empty catch.
+  ssh2: false
+  # cpu-features 0.0.10 `node buildcheck.js > buildcheck.gypi && node-gyp rebuild`
+  # builds a native addon that ssh2 requires inside a try with an empty catch.
+  cpu-features: false
+  # protobufjs 7.6.6 `node scripts/postinstall` only prints a version-scheme
+  # warning for dependents. It generates nothing the package needs.
+  protobufjs: false
+  # Two dependencies of next-intl, denied rather than run. Both scripts are
+  # prebuild selectors: they compile from source only when the platform package
+  # is absent, and both platform packages are installed here
+  # (@parcel/watcher-linux-x64-glibc 2.6.0, @swc/core-linux-x64-gnu 1.16.2).
+  # @parcel/watcher 2.6.0 `node scripts/build-from-source.js` is the fallback to
+  # `node-gyp rebuild`; the prebuild is present, so the script is a no-op.
+  # @swc/core 1.16.2 `node postinstall.js` only resolves the same prebuilt
+  # binary its optional dependencies already carry.
+  "@parcel/watcher": false
+  "@swc/core": false

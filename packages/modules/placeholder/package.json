@@ -1,0 +1,44 @@
+{
+  "name": "@genie/module-placeholder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts",
+    "./presentation": "./src/presentation/index.ts",
+    "./testing": "./testing/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --config ../../../oxlint.config.ts src testing tools",
+    "test": "vitest run",
+    "test:integration": "node tools/run-required-tests.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "@genie/ui": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "react": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "@storybook/nextjs-vite": "10.6.1",
+    "@types/react": "19.3.0",
+    "oxlint": "1.83.0",
+    "storybook": "10.6.1",
+    "vitest": "4.1.11"
+  },
+  "genie": {
+    "module": {
+      "id": "placeholder",
+      "entrypoint": "src/index.ts"
+    }
+  },
+  "nx": {
+    "tags": [
+      "module"
+    ]
+  }
+}

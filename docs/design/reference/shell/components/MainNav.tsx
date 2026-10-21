@@ -45,7 +45,7 @@ interface MainNavProps {
 
 export function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+    <div className="px-3 pb-1.5 pt-5 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">
       {children}
     </div>
   )
@@ -57,7 +57,7 @@ const navRow = 'text-sm lg:h-10'
 const treeRow = 'text-sm lg:h-8'
 // A category is a heading, not a destination, so it is smaller and heavier than the
 // entries under it. The entries keep the readable size, because they are what you click.
-const catRow = 'text-[13px] lg:h-8'
+const catRow = 'text-sm lg:h-8'
 // Every row is medium and the selected one semibold, as the section navigator does.
 // The label sits in a fixed flex-1 box and 500 to 600 changes its advance by at most
 // 1px on a 62px label, so selecting a row never moves the text.
@@ -67,7 +67,7 @@ const rowIdle =
 const rowChild =
   'font-medium text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
 const rowCategory = 'font-semibold text-gray-900 hover:bg-gray-200/60 dark:text-gray-100 dark:hover:bg-gray-800'
-const rowActive = 'bg-white font-semibold text-blue-700 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-400 dark:ring-gray-700'
+const rowActive = 'bg-white font-semibold text-blue-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-400 dark:ring-gray-700'
 
 function go(onNavigate: ((href: string) => void) | undefined, href: string) {
   return (e: React.MouseEvent) => {

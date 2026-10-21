@@ -1,0 +1,104 @@
+{
+  "variables": [
+    {
+      "name": "AUTH_TRUSTED_PROXIES",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "BETTER_AUTH_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "DATABASE_URL",
+      "required": true,
+      "secret": true
+    },
+    {
+      "name": "FILE_MAX_BYTES",
+      "required": false,
+      "secret": false,
+      "default": 15728640
+    },
+    {
+      "name": "FILE_STORAGE_ADAPTER",
+      "required": false,
+      "secret": false,
+      "default": "postgres"
+    },
+    {
+      "name": "GENIE_CHAT_API_ALLOWED_ORIGINS",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_ADMIN_CLIENT_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_ID",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_CLIENT_SECRET",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "KEYCLOAK_REALM",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "KEYCLOAK_URL",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "LOCK_TIMEOUT_MS",
+      "required": false,
+      "secret": false,
+      "default": 120000
+    },
+    {
+      "name": "LOG_LEVEL",
+      "required": false,
+      "secret": false,
+      "default": "info"
+    },
+    {
+      "name": "MAIL_FROM",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "MAIL_PROVIDER",
+      "required": false,
+      "secret": false
+    },
+    {
+      "name": "PORT",
+      "required": false,
+      "secret": false,
+      "default": 3000
+    },
+    {
+      "name": "PUBLIC_URL",
+      "required": true,
+      "secret": false
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "required": false,
+      "secret": true
+    },
+    {
+      "name": "SMTP_URL",
+      "required": false,
+      "secret": true
+    }
+  ]
+}

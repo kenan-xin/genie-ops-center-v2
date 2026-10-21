@@ -12,7 +12,7 @@ Traceability: R-20, R-24–R-28, R-38/R-39; AC-4/AC-6/AC-9/AC-10; plan G3 databa
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
 Owned surface: Core migrator hardening and database test fixtures; app isolation test assertions/reporting. No app build graph or generator-template changes.
 
@@ -23,7 +23,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 - Extend the retained migrator from G2 with full multi-process and failure recovery matrix; no alternate test-only runner.
 - Assert one backend session owns fixed advisory lock across all history transactions and ledger operations; preserve fixed key and configured timeout.
 - Ensure failed/unhealthy startup never serves; later rerun applies missing work only. Preserve completed-history forward-only semantics.
-- Make skipped/missing app two-context isolation test detectable as failure for final CI wiring.
+- Retain and extend G2's required-execution guard for app two-context isolation through final CI wiring. The G2 required-execution guard is integrated and accepted. Preserve its mandatory-case enforcement while extending this ticket's matrix.
 
 ## Acceptance and tests
 
@@ -48,4 +48,14 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Resolve module migration paths through inventory and preserve history/locking identity. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Extend the integrated S0-04 migrator and S0-05 image/isolation harness. Do not rebuild the unit cleanup state machine. Add real multi-process contention, connection loss, timeout, cleanup uncertainty and forward-only rerun cases; retain failure on missing/skipped isolation collection. Current-baseline reconciliation, 2026-09-22: G2's required-execution guard is integrated and accepted. Preserve its enforcement and consume the accepted server-only F2 packaging repair. This remains after G2 because startup failure and composed app isolation are in scope.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

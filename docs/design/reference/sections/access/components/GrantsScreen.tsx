@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Building2, ChevronDown, Info, Search, Settings2, UserRound, UsersRound } from 'lucide-react'
 import type { AccessProps, BroaderGrant, CatalogItem, LevelId, PendingChange, Recipient } from '@/../product/sections/access/types'
 import { btnGhost, btnPrimary, btnSecondary, focusRing, linkClass, useDelayed } from './helpers'
-import { Avatar, BottomBar, Card, ConfirmDialog, HelpNote, Pill, Select, Toast } from './ui'
+import { Avatar, BottomBar, Card, ConfirmDialog, HelpNote, Pill, Select, Toast, WarningNote } from './ui'
 import { TransferList } from './TransferList'
 import { AdvancedAccess } from './AdvancedAccess'
 
@@ -32,6 +32,11 @@ export function GrantsScreen(p: GrantsScreenProps) {
   // these grants. A press pins it either way until the recipient changes.
   const [broadOpen, setBroadOpen] = useState<boolean | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  // The record a link arrived with, for example one solution followed from its configure sheet. It
+  // outlives choosing a recipient, because choosing who receives access is the step this screen
+  // asks for, and having to find the solution again afterwards is not.
+  const [context, setContext] = useState<string | null>(p.initial?.recordId ?? null)
   const picker = useRef<HTMLDivElement>(null)
 
   const recipient = p.recipients.find((r) => r.id === recipientId) ?? null
@@ -163,7 +168,11 @@ export function GrantsScreen(p: GrantsScreenProps) {
   })
 
   const [saving, save] = useDelayed(() => {
-    p.onSave?.(changes())
+    // The server decides. A refusal keeps the pending list, so a rule the screen could not see, for
+    // example the other administrator removed since this page loaded, loses no work.
+    const result = p.onSave?.(changes()) ?? { ok: false as const, reason: 'This preview has no save procedure connected, so nothing was written.' }
+    if (!result.ok) return setRefusal(result.reason)
+    setRefusal(null)
     setToast(`Saved. ${pendingCount === 1 ? 'One change' : `${pendingCount} changes`} written to the audit log.`)
   })
   // A removal that leaves another path open is confirmed first, so the result never reads as a full revoke.
@@ -195,13 +204,17 @@ export function GrantsScreen(p: GrantsScreenProps) {
       role="radio"
       aria-checked={kind === k}
       onClick={() => kind !== k && guarded(() => { setKind(k); setRecipientId(null); setQ('') })}
-      className={`h-8 rounded-lg px-3.5 text-sm font-medium motion-safe:transition-colors ${focusRing} ${kind === k ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
+      className={`h-8 rounded-lg px-3.5 text-sm font-medium motion-safe:transition-colors ${focusRing} ${kind === k ? 'bg-white text-gray-900 ring-1 ring-gray-200 dark:bg-gray-950 dark:text-gray-100 dark:ring-gray-700' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
     >
       {label}
     </button>
   )
 
   const shown = catalog.filter((c) => filter === 'all' || c.kind === filter)
+  const contextRecord = context ? p.records.find((r) => r.id === context) ?? null : null
+  // A catalogue row can be narrowed to here. A record of a module that owns records is edited in
+  // Advanced access, which the same link already prefilled with its module and level.
+  const contextInCatalog = Boolean(contextRecord && catalog.some((c) => c.id === contextRecord.id))
   const everySolutionOn = solutionModule ? work.broad.includes(`all:${solutionModule.id}`) : false
   const broadHeld = work.broad.length
   const broadPanelOpen = broadOpen ?? savedBroader.length > 0
@@ -266,6 +279,24 @@ export function GrantsScreen(p: GrantsScreenProps) {
         </button>
       </div>
 
+      {/* The record a link arrived with stays on screen from before a recipient is chosen until
+          after one is, because choosing the recipient is the step this screen asks for and finding
+          the solution again is not. */}
+      {contextRecord ? (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:bg-gray-950/60 dark:text-gray-300" role="status">
+          <Info className="mt-px size-4 shrink-0 text-gray-500" strokeWidth={1.75} aria-hidden />
+          <span className="min-w-0 flex-1">
+            You came here for <span className="font-semibold text-gray-800 dark:text-gray-200">{contextRecord.label}</span>.{' '}
+            {recipient
+              ? contextInCatalog ? 'Both lists below start narrowed to it.' : 'It is one record of a module that owns records, so Advanced access edits it, already set to that module and level.'
+              : 'Choose who receives it, and it is still here afterwards.'}
+          </span>
+          {contextInCatalog
+            ? <button type="button" className={linkClass} onClick={() => setContext(null)}>Show everything</button>
+            : <button type="button" className={linkClass} onClick={() => setAdvanced(true)}>Open Advanced access</button>}
+        </p>
+      ) : null}
+
       {!recipient ? (
         <Card>
           <div className="flex flex-col items-start gap-2 px-5 py-10 sm:px-6">
@@ -305,6 +336,8 @@ export function GrantsScreen(p: GrantsScreenProps) {
                 </p>
               ) : null}
               <TransferList
+                key={contextInCatalog ? contextRecord!.id : 'all'}
+                initialQuery={contextInCatalog ? contextRecord!.label : undefined}
                 items={shown.map((c) => ({
                   id: c.id,
                   label: c.label,
@@ -395,6 +428,7 @@ export function GrantsScreen(p: GrantsScreenProps) {
 
       {pendingCount > 0 ? (
         <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6 dark:border-gray-800 dark:bg-gray-950/95">
+          {refusal ? <WarningNote role="alert" className="w-full">{refusal} Your changes are still here.</WarningNote> : null}
           <p role="status" className="min-w-0 text-sm font-medium">
             {pendingCount === 1 ? 'One change' : `${pendingCount} changes`} not saved
             <span className="ml-2 text-xs font-normal text-gray-600 dark:text-gray-400">{added.length + broadAdded.length} to add, {removed.length + broadRemoved.length} to remove</span>
@@ -420,8 +454,12 @@ export function GrantsScreen(p: GrantsScreenProps) {
         grants={p.grants}
         customRoles={p.customRoles}
         currentUserId={p.currentUserId}
-        onSave={(list) => { p.onSave?.(list); setToast('Saved. Written to the audit log.') }}
-        onAssignRole={(input) => { p.onAssignRole?.(input); setToast('Saved. Written to the audit log.') }}
+        recipients={p.recipients}
+        onSave={(list) => {
+          const result = p.onSave?.(list) ?? { ok: false as const, reason: 'This preview has no save procedure connected, so nothing was written.' }
+          if (result.ok) setToast('Saved. Written to the audit log.')
+          return result
+        }}
         initial={{ moduleId: p.initial?.moduleId, level: p.initial?.level }}
       />
 

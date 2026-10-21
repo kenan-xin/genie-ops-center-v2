@@ -1,0 +1,27 @@
+# The tracked .githooks/ dispatchers run Beads, then `lefthook run`. Without
+# this, every run tries to sync hooks into the custom core.hooksPath, prints a
+# warning box that suggests `lefthook install --force`, and that command
+# overwrites the dispatchers (.githooks/README.md).
+no_auto_install: true
+
+pre-commit:
+  parallel: false
+  jobs:
+    - name: format
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json}"
+      # oxfmt ignores docs/**, so a commit whose staged files are all ignored
+      # leaves it no target; that is success, not an error (genie-ops-center-v2-sdm).
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs}"
+      # oxlint.config.ts ignores paths such as .claude/helpers/** and
+      # apps/genie/src/modules.ts, so a commit staging only those leaves no target.
+      run: pnpm exec oxlint --config oxlint.config.ts --no-error-on-unmatched-pattern {staged_files}
+    - name: typecheck
+      glob: "*.{ts,tsx,mts,cts}"
+      # tsc checks whole projects, so Nx picks the projects the staged files
+      # belong to and reuses its cache. It reads the working tree, not the index.
+      # printf and sed join the files with commas, without a trailing one. A
+      # space-separated --files value made Nx pass files on to tsc (TS5112).
+      run: pnpm exec nx affected -t typecheck --outputStyle=static --files="$(printf '%s,' {staged_files} | sed 's/,$//')"

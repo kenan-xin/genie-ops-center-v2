@@ -10,7 +10,7 @@ Traceability: R-19–R-23a, R-32/R-33/R-35/R-36/R-36a, R-40, R-46–R-50; AC-4/A
 
 ## Dependencies and worktree ownership
 
-Hard prerequisites: [S0-04](../04-context-migrator-and-placeholder/index.md).
+Hard prerequisites: [S0-04](../04-context-migrator-and-placeholder/index.md) and `genie-ops-center-v2-5ph`. Deliver child `yt2` within S0-05 before closure.
 
 Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
 
@@ -21,7 +21,7 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 ## Scope
 
 - Implement app-owned generate-registry using data-only tooling; generated gitignored modules.ts sole writer and selected-declaration identity/type validation; selected declarations import safely, unselected never evaluated. Typecheck/build depend on generation with declared selection inputs.
-- Retain one minimal production Dockerfile/entrypoint: secret/service-free build, applicable env validation before connection, one app context, migrations complete before any listening/health. Native-first hook is a candidate to prove, not an assumed mechanism.
+- Retain one minimal production Dockerfile/entrypoint: secret/service-free build, applicable env validation before connection, one app context, migrations complete before any request-bound handling and before any successful health response. Deliver this image in the bootstrap slice, so packaging and startup are verified before transports and UI are finished. The framework bootstrap hook is the selected mechanism after the recorded verification experiment, and selection is not acceptance.
 - Wire real page, tRPC, health and placeholder viewer paths through the same initialized context. Compose the app-owned two-real-database isolation test using module factories. Render simple unfiltered navigation, no Section 3 shell.
 - Emit all five security headers on every specified response class with one final CSP. Ordinary baseline exactly base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'. Viewer alone replaces frame-src through trusted route mapping and owning provider; full document navigation.
 - Add ordinary HTTP and standard tRPC error adapters using shared catalogue; data.appCode/data.requestId and safe message preserve protocol codes. Integrate English messages for every introduced user-facing string.
@@ -29,9 +29,10 @@ Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfil
 
 ## Acceptance and tests
 
-- AC-26: clean uncached build without deployment env/services; malformed runtime config exits before DB/listener; delayed/failed migrations block listening; concurrent page/tRPC/viewer requests reuse one context/pool across real framework bundles; same image uses second runtime config.
+- F2 owner decision, 2026-09-22: migration SQL remains server-only. Verify absence from publicly served assets and browser bundles, denial of previously exposed URLs, and correct real-database migration application and source/ledger hashes from the same built image. Preserve selected-module exclusion and existing module/startup contracts; public DDL is not an accepted exception.
+- AC-26: clean uncached build without deployment env/services; malformed runtime config exits nonzero without any DB connection, inside the total failure budget, including when cleanup or log flushing does not settle; delayed/failed migrations block every successful health response and all request-bound handling; concurrent page/tRPC/viewer requests reuse one context/pool across real framework bundles; same image uses second runtime config. Early socket binding is permitted, readiness is a successful designated health response, and a client timeout does not cancel a queued request.
 - Mandatory two-context isolation test executes against two real databases. Phone/desktop placeholder main path and axe baseline execute.
-- AC-25/R-50: ordinary/API/tRPC-error/health/redirect itself/404/JS/CSS/public asset headers, zero origin-provider calls outside viewer including prefetch/RSC. Exactly one CSP, no default/script/style directives/nonces.
+- AC-25/R-50: ordinary/API/tRPC-error/health/application-redirect itself/404/JS/CSS/public asset headers, zero origin-provider calls outside viewer including prefetch/RSC. Exactly one CSP, no default/script/style directives/nonces. Set `skipTrailingSlashRedirect` and prove both spellings of a route carry the correct policy. Framework repeated-slash and backslash normalization redirects are the narrow approved exception: assert 308, a same-origin relative Location, the normalized destination URL as body, no application or provider execution, and full headers on the destination response. A non-route path under the viewer prefix carries the deny baseline, because the viewer mapping is exact and never a prefix.
 - Controlled frame visibly loads only permitted viewer origin. Deny ordinary iframe, unlisted viewer origin, framing the app, object and foreign base URL; failed/invalid provider keeps deny policy; hydration/styles still work.
 - Standard tRPC client decodes safe correlated errors; raw causes/stacks/upstream/database text never reach either transport.
 
@@ -43,6 +44,14 @@ No custom server, extra context/pool, internal HTTP workaround, strict nonce CSP
 
 All tickets exclude Sections 1–5 runtime features, design imports, unresolved later product decisions, remote cache, strict script/style nonces and unapproved infrastructure expansion unless explicitly named in the approved Spec 0 scope.
 
+## Composition verification, 2026-09-21
+
+The native composition question was settled by experiment and the owner approved two amendments. See [the spike report](native-composition-spike.md), R-19b, R-47, R-48, R-50, AC-25, AC-26 and ADR 0008. The selected composition is the framework bootstrap hook guarded to the Node runtime, a process-global application context published only after successful migrations, universal baseline headers from the header configuration, a viewer-only policy override on an exact route mapping in the proxy file, application redirects emitted from the proxy, and clean standalone output.
+
+The build must never enable `experimental.testProxy` and the runtime must never set `NEXT_PRIVATE_TEST_PROXY`. Both load an unsupported test-mode path whose asset the framework deliberately excludes from standalone output. No file tracing workaround is retained. Browser-side request interception in end-to-end tests is a separate mechanism and stays available for the controlled iframe fixture.
+
+Mechanism selection is not acceptance. G2 stays open until the actual built image passes the amended acceptance matrix, including real database and browser proof.
+
 ## Gate and stop conditions
 
 G2 BLOCKER: no downstream runtime-dependent ticket starts before integrated passing evidence. Stop if native integration needs custom server, extra pool, internal HTTP or substantial synchronization. Separate migration process alone is not context-reuse proof.
@@ -51,4 +60,14 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Generate registry/app imports from validated inventory packageName/packageRoot/entrypoint, preserving ID-based runtime behavior. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+Develop has only an app skeleton: no production Next build/start, registry target, context composition, image or transport/header harness. Consume accepted S0-03 contracts and integrated S0-04 runtime. Entrypoint hardening (5ph) is a pre-G2 prerequisite. CSP provider failure logging (yt2) is an owned child delivered inside this ticket, not a separate prerequisite session. Preserve the pure CSP helper and denied policy; prove redacted correlated logging through the actual viewer path. Include by-name placeholder imports and actual TSX/page mounting; Node resolution alone is insufficient. The first real Tailwind consumer supplies preset-consumption proof (3yv), using actual compile behavior, not object-shape assertions.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

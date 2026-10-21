@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { HelpCircle, Loader2, X } from 'lucide-react'
 import type { ScanStatus } from '@/../product/sections/branding/types'
-import { btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing } from './helpers'
+import { btnDanger, btnGhost, btnPrimary, btnSecondary, focusRing, useModalFocus } from './helpers'
 
 /* Shared building blocks: rounded cards, semantic pills, the confirm dialog. */
+
 
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${className}`}>{children}</section>
@@ -37,8 +38,9 @@ export function HelpNote({ label, children, align = 'left' }: { label: string; c
       >
         <HelpCircle className="size-4" strokeWidth={1.75} aria-hidden />{label}
       </button>
+      {/* Phones pin the panel to the viewport gutters instead of the button, so it cannot be clipped wherever the trigger sits (tokens.md: a dialog goes full width under 768px). */}
       {open ? (
-        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'right-0 max-sm:left-0 max-sm:right-auto' : 'left-0'}`}>
+        <div id={`${id}-panel`} role="group" aria-label={label} className={`absolute top-full z-30 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-4 text-left shadow-lg max-sm:fixed max-sm:inset-x-4 max-sm:bottom-[calc(7rem+env(safe-area-inset-bottom))] max-sm:top-auto max-sm:w-auto max-sm:max-w-none dark:border-gray-700 dark:bg-gray-900 ${align === 'right' ? 'sm:right-0' : 'sm:left-0'}`}>
           <div className="flex flex-col gap-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300">{children}</div>
           <button type="button" onClick={() => setOpen(false)} className={`mt-3 rounded text-xs font-semibold text-blue-700 hover:underline dark:text-blue-400 ${focusRing}`}>Close</button>
         </div>
@@ -118,17 +120,12 @@ export interface ConfirmDialogProps {
 /** 480px on desktop, full width with a bottom action bar on phones. Cancel is focused first. */
 export function ConfirmDialog({ open, title, description, confirmLabel, confirmDisabled, confirmTitle, cancelLabel = 'Cancel', danger, role = 'alertdialog', onConfirm, onClose, children, loading }: ConfirmDialogProps) {
   const id = useId()
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useModalFocus(open, onClose)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <button type="button" aria-label={cancelLabel} onClick={onClose} className="absolute inset-0 bg-gray-900/30 backdrop-blur-[1px]" />
-      <div role={role} aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
+      <button type="button" tabIndex={-1} aria-hidden onClick={onClose} className="absolute inset-0 bg-gray-900/30 backdrop-blur-[1px]" />
+      <div ref={panel} role={role} aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 sm:max-w-[480px] sm:rounded-xl dark:border-gray-700 dark:bg-gray-900">
         <div className="px-5 pt-5 sm:px-6">
           <h2 id={`${id}-title`} className="text-lg font-bold tracking-tight">{title}</h2>
           <p id={`${id}-body`} className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">{description}</p>

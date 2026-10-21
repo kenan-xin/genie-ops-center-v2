@@ -7,7 +7,7 @@
       "authenticatorEnrolledAt": "Break-glass only: when the current authenticator app was enrolled.",
       "group": "A group the person belongs to, from the directory or created locally by an administrator.",
       "session": "An active browser session of the person. One is the current one.",
-      "preference": "The person's overrides of the tenant defaults for language, time zone, and theme, with the tenant defaults alongside.",
+      "preference": "The person's overrides of the tenant defaults for language and time zone, with the tenant defaults alongside.",
       "roleGrant": "A role the person holds, with the scope it applies to.",
       "notification": "An inbox item written by a module event. Read when readAt is set.",
       "idleTimeout": "The idle-timeout state that drives the countdown modal.",
@@ -58,8 +58,7 @@
   "preference": {
     "locale": null,
     "timeZone": "Asia/Singapore",
-    "theme": "dark",
-    "tenantDefaults": { "locale": "en", "timeZone": "Asia/Singapore", "theme": "system" },
+    "tenantDefaults": { "locale": "en", "timeZone": "Asia/Singapore" },
     "availableLocales": [{ "code": "en", "label": "English" }],
     "availableTimeZones": ["Asia/Singapore", "Asia/Kuala_Lumpur", "Asia/Jakarta", "Asia/Bangkok", "Asia/Manila", "Asia/Tokyo", "Australia/Sydney", "Europe/London", "UTC"]
   },

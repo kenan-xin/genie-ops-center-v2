@@ -1,0 +1,590 @@
+import { userInfo } from "node:os";
+import { dirname, join } from "node:path";
+import { parseArgs } from "node:util";
+
+import { z } from "zod";
+
+import {
+  type EnvironmentSource,
+  validateEnvironment,
+} from "../../lib/environment/index.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
+import {
+  type TenantContext,
+  createTenantContext,
+} from "../../lib/tenant-context/index.ts";
+import { causeChain } from "../../utils/error-cause.ts";
+import { addAdministrator } from "../administrators/index.ts";
+import { writeAuditEvent } from "../audit/index.ts";
+import { rotateBreakGlass } from "../break-glass/index.ts";
+import {
+  assertIdpUrl,
+  DEFAULT_EMAIL_ATTRIBUTE,
+  DEFAULT_FIRST_NAME_ATTRIBUTE,
+  DEFAULT_GROUPS_CLAIM,
+  DEFAULT_LAST_NAME_ATTRIBUTE,
+  idpSet,
+  type IdpProtocol,
+} from "../identity-provider/index.ts";
+import { assertKeycloakAddress } from "../keycloak/address-guard.ts";
+import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
+import {
+  type LineSinks,
+  createLogger,
+  jsonLineSinks,
+  redact,
+} from "../logging/index.ts";
+import {
+  type MigrationHistory,
+  type MigrationLog,
+  migrationPlan,
+  runMigrations,
+} from "../migrator/index.ts";
+import { setModuleEnabled } from "../module-management/index.ts";
+import { runRetire } from "../retirement/index.ts";
+import { runSetup } from "../setup/index.ts";
+
+/**
+ * What one `genie-ops` run reads and writes. The source is the process environment, the modules
+ * are the ones the image compiled, the histories are the module histories only, and the two
+ * sinks are the command's own stdout and stderr.
+ */
+export type GenieOpsOptions = {
+  /** The environment the tenant context is built from, validated before anything connects. */
+  readonly source: EnvironmentSource;
+  /**
+   * The modules the image compiled. The runner derives the ids from these once and passes that
+   * one list to the context, the migrator run and the module commands, so nothing holds a second
+   * copy and the readers cannot disagree (D-12).
+   */
+  readonly compiledModules: readonly Module[];
+  /** The module histories only; core's history is prepended by the run (R-25). */
+  readonly histories: readonly MigrationHistory[];
+  /** Where ordinary progress and the audit fallback go. */
+  readonly output: (line: string) => void;
+  /** Where a failing run's cause and a parse refusal go. */
+  readonly errorOutput: (line: string) => void;
+  /**
+   * Test-only seam for the identity-command list below. The image never passes it, so production
+   * always uses the fixed, empty list until an identity command adds itself.
+   */
+  readonly identityCommands?: readonly GenieOpsCommandName[];
+};
+
+/** Every subcommand the runner can dispatch, by the name the audit row records. */
+export type GenieOpsCommandName =
+  | "migrate"
+  | "setup"
+  | "module-enable"
+  | "module-disable"
+  | "retire"
+  | "break-glass-rotate"
+  | "idp-set"
+  | "admin-add";
+
+/**
+ * The commands that run the R-54c address guard before doing their work. The list is explicit and
+ * does not depend on which authentication values the operator's shell happens to carry: a command
+ * that talks to Keycloak adds its name here, and its validation profile must require `KEYCLOAK_URL`
+ * so that a missing value refuses rather than skips the comparison. `idp set` is the command that
+ * talks to Keycloak. `migrate`, `setup`, `module`, `retire`, `admin add` and `break-glass rotate`
+ * are exempt: they either reconcile the recorded values or write only the application database.
+ */
+export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = ["idp-set"];
+
+/** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
+ * command bound to the parsed option values. */
+type ParsedCommand = {
+  readonly name: GenieOpsCommandName;
+  readonly args: readonly string[];
+  readonly run: (
+    context: TenantContext,
+    options: GenieOpsOptions
+  ) => Promise<void>;
+};
+
+/**
+ * The one generic refusal for every parse failure. It names the accepted commands and never
+ * echoes the rejected value: `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL` carries the value, and a
+ * value can be a secret an operator pasted by mistake (D-4, R-66).
+ */
+const PARSE_REFUSAL =
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate, genie-ops idp set --protocol oidc|saml --alias <alias> ..., genie-ops admin add <email>";
+
+/** `redact` answers the same string for a string, which is what every sink here writes. */
+function safe(text: string): string {
+  // SAFETY: a string in is a string out; the union return is `redact`'s json surface.
+  return redact(text) as string;
+}
+
+/**
+ * The operating-system user the audit row records (R-64). A UID with no passwd entry — an
+ * arbitrary `docker run --user <uid>`, which a customer-hosted deployment can use — makes
+ * `userInfo()` throw, and that throw must not escape the audited path, or the run writes no row
+ * and leaks its pool. The fallback names the numeric UID instead, so exactly one row is still
+ * written. The lookup is a parameter so a test can drive the failure without mocking a module.
+ */
+export function osUserName(
+  read: () => { username: string } = userInfo
+): string {
+  try {
+    return read().username;
+  } catch {
+    const uid = process.getuid?.();
+
+    return uid === undefined ? "uid:unknown" : `uid:${uid}`;
+  }
+}
+
+/**
+ * Parses one subcommand with node's own `parseArgs`, dispatching on the first positional (D-4).
+ * Every failure — an unknown command, an unexpected positional, an unknown option, a missing
+ * required option — becomes the one generic refusal, so no rejected value reaches the output.
+ */
+function parseCommand(
+  command: string | undefined,
+  rest: readonly string[],
+  compiledModules: readonly Module[]
+): ParsedCommand {
+  // D-12: the ids derive once here from the one list, and reach the migrator run and the module
+  // commands unchanged; setup receives the modules themselves so its `roles` step can seed them.
+  const compiledModuleIds = compiledModules.map((module) => module.identity.id);
+
+  switch (command) {
+    case "migrate": {
+      // `migrate` takes no arguments in this section. Strict mode with positionals disallowed
+      // rejects both an unexpected positional and an unknown option, and the refusal above is
+      // what a caller sees for either.
+      parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: false,
+      });
+
+      return {
+        name: "migrate",
+        args: [],
+        run: (context, options) =>
+          runMigrate(context, options, compiledModuleIds),
+      };
+    }
+
+    case "setup": {
+      const { values } = parseArgs({
+        args: [...rest],
+        options: {
+          "tenant-config": { type: "string" },
+          "branding-seed": { type: "string" },
+        },
+        strict: true,
+        allowPositionals: false,
+      });
+
+      const tenantConfig = values["tenant-config"];
+      const brandingSeed = values["branding-seed"];
+
+      if (tenantConfig === undefined || brandingSeed === undefined) {
+        throw new Error("setup needs --tenant-config and --branding-seed");
+      }
+
+      return {
+        name: "setup",
+        args: [tenantConfig, brandingSeed],
+        run: (context, options) =>
+          runSetup(
+            context,
+            {
+              tenantConfig,
+              brandingSeed,
+              realmOverrides: join(
+                dirname(tenantConfig),
+                "realm.overrides.json"
+              ),
+            },
+            {
+              compiledModules,
+              histories: options.histories,
+              source: options.source,
+              output: options.output,
+              errorOutput: options.errorOutput,
+            },
+            commandLog(options)
+          ),
+      };
+    }
+
+    case "module": {
+      // `enable|disable <module-id>` takes exactly two positionals and no options. Strict mode
+      // rejects an unknown option; the length and value checks reject anything else, and every
+      // failure is the one generic refusal, so the rejected value never reaches the output.
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, moduleId, ...extra] = positionals;
+
+      if (
+        moduleId === undefined ||
+        extra.length > 0 ||
+        (subcommand !== "enable" && subcommand !== "disable")
+      ) {
+        throw new Error("unknown module subcommand");
+      }
+
+      const enabled = subcommand === "enable";
+
+      return {
+        name: enabled ? "module-enable" : "module-disable",
+        args: [moduleId],
+        run: async (context, options) => {
+          await setModuleEnabled(
+            context,
+            options.compiledModules,
+            moduleId,
+            enabled
+          );
+        },
+      };
+    }
+
+    case "retire": {
+      const { values } = parseArgs({
+        args: [...rest],
+        options: { confirm: { type: "boolean" } },
+        strict: true,
+        allowPositionals: false,
+      });
+
+      const confirm = values.confirm === true;
+
+      return {
+        name: "retire",
+        args: confirm ? ["--confirm"] : [],
+        run: (context, options) => runRetire(context, confirm, options.output),
+      };
+    }
+
+    case "idp": {
+      const { values, positionals } = parseArgs({
+        args: [...rest],
+        options: {
+          "protocol": { type: "string" },
+          "alias": { type: "string" },
+          "issuer-url": { type: "string" },
+          "metadata-url": { type: "string" },
+          "client-id": { type: "string" },
+          "entity-id": { type: "string" },
+          "groups-claim": { type: "string" },
+          "email-attribute": { type: "string" },
+          "first-name-attribute": { type: "string" },
+          "last-name-attribute": { type: "string" },
+          "allow-http": { type: "boolean" },
+        },
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, ...extra] = positionals;
+
+      if (subcommand !== "set" || extra.length > 0) {
+        throw new Error("unknown idp subcommand");
+      }
+
+      const protocol = values.protocol;
+
+      if (protocol !== "oidc" && protocol !== "saml") {
+        throw new Error("idp set needs --protocol oidc or saml");
+      }
+
+      // The realm step fixes the brokered provider's alias, so the command accepts no other.
+      const alias = values.alias ?? BROKER_IDP_ALIAS;
+      const groupsClaim = values["groups-claim"] ?? DEFAULT_GROUPS_CLAIM;
+
+      if (alias !== BROKER_IDP_ALIAS) {
+        throw new Error(
+          `idp set writes the provider under the fixed alias "${BROKER_IDP_ALIAS}"`
+        );
+      }
+
+      const identity: IdpProtocol = protocol;
+      const allowHttp = values["allow-http"] === true;
+
+      // R-58/R-66: the issuer or metadata URL is parsed and checked here, before any context or
+      // audit row, so a URL that carries a username or password never reaches `audit_event`. HTTPS
+      // is required unless `--allow-http` is passed. The provider's client secret is read from
+      // `IDP_CLIENT_SECRET` in the command environment, so it is never an argument at all.
+      let url: string;
+
+      if (identity === "oidc") {
+        if (
+          values["issuer-url"] === undefined ||
+          values["client-id"] === undefined
+        ) {
+          throw new Error(
+            "idp set --protocol oidc needs --issuer-url and --client-id"
+          );
+        }
+
+        url = assertIdpUrl(values["issuer-url"], allowHttp);
+      } else {
+        if (
+          values["metadata-url"] === undefined ||
+          values["entity-id"] === undefined
+        ) {
+          throw new Error(
+            "idp set --protocol saml needs --metadata-url and --entity-id"
+          );
+        }
+
+        url = assertIdpUrl(values["metadata-url"], allowHttp);
+      }
+
+      const audited = [
+        "set",
+        identity,
+        alias,
+        url,
+        groupsClaim,
+        ...(allowHttp ? ["--allow-http"] : []),
+      ];
+
+      return {
+        name: "idp-set",
+        args: audited,
+        run: (context, options) =>
+          idpSet(context, {
+            source: options.source,
+            protocol: identity,
+            alias,
+            issuerUrl: identity === "oidc" ? url : undefined,
+            metadataUrl: identity === "saml" ? url : undefined,
+            clientId: values["client-id"],
+            entityId: values["entity-id"],
+            groupsClaim,
+            emailAttribute:
+              values["email-attribute"] ?? DEFAULT_EMAIL_ATTRIBUTE,
+            firstNameAttribute:
+              values["first-name-attribute"] ?? DEFAULT_FIRST_NAME_ATTRIBUTE,
+            lastNameAttribute:
+              values["last-name-attribute"] ?? DEFAULT_LAST_NAME_ATTRIBUTE,
+            output: options.output,
+          }),
+      };
+    }
+
+    case "admin": {
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, email, ...extra] = positionals;
+
+      if (subcommand !== "add" || email === undefined || extra.length > 0) {
+        throw new Error("unknown admin subcommand");
+      }
+
+      // The audit row and the `user` row must name the same address, so the normalized value is
+      // what the runner records (R-61).
+      const address = email.trim().toLowerCase();
+
+      if (!z.email().safeParse(address).success) {
+        throw new Error("admin add needs an email address");
+      }
+
+      return {
+        name: "admin-add",
+        args: [address],
+        run: (context, options) =>
+          addAdministrator(context, address, { output: options.output }),
+      };
+    }
+
+    case "break-glass": {
+      // `break-glass rotate` takes exactly one positional and no options. Any other shape is the
+      // one generic refusal above, so a rejected value never reaches the output.
+      const { positionals } = parseArgs({
+        args: [...rest],
+        options: {},
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [subcommand, ...extra] = positionals;
+
+      if (subcommand !== "rotate" || extra.length > 0) {
+        throw new Error("unknown break-glass subcommand");
+      }
+
+      return {
+        name: "break-glass-rotate",
+        args: [],
+        run: (context, options) =>
+          rotateBreakGlass(context, { output: options.output }),
+      };
+    }
+
+    default:
+      throw new Error("unknown command");
+  }
+}
+
+/**
+ * The migrator's event stream, adapted to the command's two sinks (R-10, R-45). The pending
+ * count reaches the operator as its own line; a cleanup failure keeps its cause, because this
+ * log is the only place that cause reaches anyone (R-45).
+ */
+function commandLog(options: GenieOpsOptions): MigrationLog {
+  return (event) => {
+    if (event.event === "migration-cleanup-failed") {
+      options.errorOutput(
+        safe(
+          `${event.event}: ${causeChain(event.error instanceof Error ? event.error : undefined)}`
+        )
+      );
+
+      return;
+    }
+
+    if (event.event === "migration-pending") {
+      options.output(safe(`migration-pending ${event.count ?? 0}`));
+
+      return;
+    }
+
+    const line = `${event.event}${event.history === undefined ? "" : ` ${event.history}`}`;
+
+    options.output(safe(line));
+  };
+}
+
+/** Runs `migrate` through the migrator run of R-9, with the one compiled list (D-12). */
+async function runMigrate(
+  context: TenantContext,
+  options: GenieOpsOptions,
+  compiledModuleIds: readonly string[]
+): Promise<void> {
+  await runMigrations({
+    env: context.env,
+    pool: context.db.$client,
+    histories: migrationPlan(options.histories),
+    compiledModuleIds,
+    log: commandLog(options),
+  });
+}
+
+/**
+ * The one `genie-ops` runner (R-63). It parses the command with node's `parseArgs`, builds the
+ * tenant context from the validated environment, runs the command and writes the one audit row
+ * around it (R-64). A parse failure happens before the context exists, so it logs the generic
+ * refusal and writes no row (D-4); a command that fails writes one row with a failing outcome
+ * (R-65) and the run exits nonzero with the cause on the output (R-76).
+ *
+ * The command never builds its own connection: the runner owns the one context and closes its
+ * pool when the run ends (DEC-34).
+ */
+export async function runGenieOps(
+  argv: readonly string[],
+  options: GenieOpsOptions
+): Promise<number> {
+  const [command, ...rest] = argv;
+
+  // D-12: the one caller-supplied module list, derived once here and passed unchanged to the
+  // context, the migrator run and the module commands, so nothing can hold a second copy.
+  const compiledModuleIds = options.compiledModules.map(
+    (module) => module.identity.id
+  );
+
+  let parsed: ParsedCommand;
+
+  try {
+    parsed = parseCommand(command, rest, options.compiledModules);
+  } catch {
+    // D-4: no context, no audit row, and never the rejected value.
+    options.errorOutput(PARSE_REFUSAL);
+
+    return 1;
+  }
+
+  let context: TenantContext;
+  // Plain text until the environment is valid: before that there is no tenant id to carry.
+  let io: LineSinks = options;
+
+  try {
+    // Validate before the logger exists and before anything connects (R-25). The factory
+    // validates again internally; this first pass is what gives the logger its level and keeps
+    // an invalid `LOG_LEVEL` from reaching pino as a crash.
+    const env = validateEnvironment(options.source);
+
+    // From here every line is a tenant-bound JSON line, like the application's (R-75).
+    io = jsonLineSinks(env, options);
+
+    context = createTenantContext(
+      options.source,
+      createLogger(env),
+      compiledModuleIds,
+      "genie-ops"
+    );
+  } catch (caught) {
+    // The environment is validated before anything connects, so a bad one is a refusal, not a
+    // failed run: there is no context to audit through, so the cause reaches the output (R-25).
+    io.errorOutput(
+      safe(
+        `genie-ops: ${causeChain(caught instanceof Error ? caught : undefined)}`
+      )
+    );
+
+    return 1;
+  }
+
+  try {
+    // The operating-system user is read inside the audited path, so a UID with no passwd entry
+    // still leaves exactly one row (R-64).
+    const metadata = { osUser: osUserName(), args: parsed.args };
+
+    // R-54c: only a named identity command runs the address guard, so the decision is the
+    // command's own and never depends on which authentication values the environment happens to
+    // carry. See `IDENTITY_COMMANDS`.
+    const identityCommands = options.identityCommands ?? IDENTITY_COMMANDS;
+
+    if (identityCommands.includes(parsed.name)) {
+      await assertKeycloakAddress({ context, source: options.source });
+    }
+
+    await parsed.run(context, { ...options, ...io });
+
+    await writeAuditEvent(context, {
+      action: `ops:${parsed.name}`,
+      metadata: { ...metadata, outcome: "success" },
+      output: io.output,
+    });
+
+    io.output(`ops:${parsed.name} success`);
+
+    return 0;
+  } catch (caught) {
+    const metadata = { osUser: osUserName(), args: parsed.args };
+
+    io.errorOutput(
+      safe(
+        `genie-ops: ${causeChain(caught instanceof Error ? caught : undefined)}`
+      )
+    );
+
+    await writeAuditEvent(context, {
+      action: `ops:${parsed.name}`,
+      metadata: { ...metadata, outcome: "failure" },
+      output: io.output,
+    });
+
+    return 1;
+  } finally {
+    await context.db.$client.end();
+  }
+}

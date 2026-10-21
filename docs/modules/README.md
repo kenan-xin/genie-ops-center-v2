@@ -5,8 +5,19 @@ A module is a business capability that plugs into the core through the module co
 | Module | Kind | Status | Folder |
 | --- | --- | --- | --- |
 | Solutions | Platform module, every tenant | Core roadmap Section 4 | `solutions/` |
-| Contracts | Customer module, first customer | Deferred on customer discovery | `contracts/` |
-| Approvals | Customer module, first customer | Deferred on customer discovery | `approvals/` |
+| Approvals | Customer module, first customer, with the agreement register (contracts merged in on 2026-10-20, ADR 0012) | Deferred on customer discovery | `approvals/` |
+| Slides | Planned capability module | Planned, no specification yet | none yet |
+| Analytics | Planned capability module | Planned, deferred on the dataset seam (`OPEN-11` in `../core/vision.md`) | none yet |
+
+## Planned modules
+
+A planned module has no folder until its specification starts. These notes record the intent and the constraints that are already known.
+
+Slides: a person chats with an agent to create and edit a presentation, applies the deployment's branding, presents it, and exports it to PowerPoint. A deck is a structured document of slides and typed elements, never a raw HTML string, so that the PowerPoint export keeps the layout. The agent edits a deck through checked patch operations that refuse an edit made on an outdated version. Brand colors and fonts come from the tenant branding. Exported files are saved through `FileStorage`.
+
+Analytics: a person builds their own dashboards of panels, filters, and charts, by chat or by hand. A panel reads a named dataset that a module publishes, never free SQL, so every number passes `can()` and `scopesFor()` for that person and no module reads another module's tables. Each dataset carries a description for the agent: what it measures, its fields, and its caveats. The module waits until core offers that dataset seam (`OPEN-11`).
+
+Both modules use the core agent runtime of `DEC-29` and know no other module. Research on an open-source example of both, with what can be reused, is kept with the planning notes and not in this repository.
 
 ## What a module folder holds
 

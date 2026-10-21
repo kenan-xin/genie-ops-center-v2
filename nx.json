@@ -1,0 +1,125 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "neverConnectToCloud": true,
+  "defaultBase": "develop",
+  "parallel": 4,
+  "plugins": [
+    {
+      "plugin": "@nx/storybook/plugin",
+      "options": {
+        "serveStorybookTargetName": "storybook",
+        "buildStorybookTargetName": "build-storybook",
+        "testStorybookTargetName": "test-storybook",
+        "staticStorybookTargetName": "static-storybook"
+      }
+    }
+  ],
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.ts",
+      "!{projectRoot}/**/*.test.tsx",
+      "!{projectRoot}/**/*.stories.*",
+      "!{projectRoot}/vitest.config.ts",
+      "!{projectRoot}/e2e/**"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/oxlint.config.ts",
+      "{workspaceRoot}/oxfmt.config.ts",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/tsconfig.base.json"
+    ],
+    "storybookOwners": [
+      "{workspaceRoot}/packages/ui/src/**/*",
+      "{workspaceRoot}/packages/core/src/**/*",
+      "{workspaceRoot}/packages/modules/*/src/**/*",
+      "{workspaceRoot}/packages/modules/*/package.json",
+      "{workspaceRoot}/packages/modules/*/tsconfig.json",
+      "{workspaceRoot}/packages/config/src/**/*",
+      "{workspaceRoot}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)",
+      "{workspaceRoot}/apps/genie/src/styles/**/*",
+      "{workspaceRoot}/apps/genie/tailwind.config.ts"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    },
+    "test": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
+    "test:integration": {
+      "cache": false
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
+    "typecheck": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
+    "storybook": {
+      "cache": false
+    },
+    "build-storybook": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^default",
+        "storybookOwners",
+        { "runtime": "node tools/generators/src/selection/print.ts" }
+      ],
+      "outputs": ["{projectRoot}/storybook-static"]
+    },
+    "test-storybook": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        "storybookOwners",
+        { "runtime": "node tools/generators/src/selection/print.ts" }
+      ]
+    },
+    "validate": {
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/**/*",
+        "{workspaceRoot}/tools/generators/**/*",
+        "{workspaceRoot}/nx.json",
+        "{workspaceRoot}/pnpm-workspace.yaml",
+        "{workspaceRoot}/pnpm-lock.yaml",
+        "{workspaceRoot}/**/package.json",
+        "{workspaceRoot}/**/project.json",
+        "{workspaceRoot}/**/tsconfig*.json",
+        "{workspaceRoot}/apps/*/README.md",
+        "{workspaceRoot}/packages/*/README.md",
+        "{workspaceRoot}/packages/modules/*/README.md",
+        "{workspaceRoot}/tools/*/README.md",
+        "{workspaceRoot}/customers/*/app/README.md",
+        "{workspaceRoot}/CLAUDE.md",
+        "{workspaceRoot}/AGENTS.md",
+        "{workspaceRoot}/docs/specs/*.md",
+        "{workspaceRoot}/docs/architecture/*.md",
+        "{workspaceRoot}/docs/core/*.md",
+        "{workspaceRoot}/docs/runbooks/*.md",
+        "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
+        "{workspaceRoot}/**/.gitignore",
+        "{workspaceRoot}/**/.nxignore",
+        "{workspaceRoot}/apps/genie/tools/**/*",
+        "{workspaceRoot}/packages/modules/**/*",
+        "{workspaceRoot}/.github/**",
+        "{workspaceRoot}/scripts/**",
+        "{workspaceRoot}/deploy/**/*",
+        "{workspaceRoot}/.dockerignore"
+      ]
+    }
+  }
+}

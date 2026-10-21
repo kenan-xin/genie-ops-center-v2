@@ -1,0 +1,5 @@
+# Gitignored files that `wt step copy-ignored` carries into new worktrees.
+# A path must be gitignored AND listed here to travel; anything else stays
+# worktree-local. `.env.example` is tracked, so it never matches anyway.
+.env
+.env.*

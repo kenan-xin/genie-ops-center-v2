@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "testing/**/*.ts",
+    "tools/**/*.ts",
+    "e2e/**/*.ts",
+    "next.config.ts",
+    "tailwind.config.ts",
+    "playwright.config.ts",
+    "playwright.setup-gate.config.ts",
+    "vitest.config.ts",
+    "vitest.integration.config.ts"
+  ]
+}

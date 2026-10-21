@@ -22,7 +22,7 @@ The core mailer with React Email sends every email Genie Ops Center initiates: i
 
 ## Consequences
 
-- Sign-out ends both sessions: Genie's, then Keycloak's through the realm's logout endpoint. Otherwise the next sign-in is silent.
+- Sign-out ends both sessions: Genie's, then Keycloak's through the realm's logout endpoint. Otherwise the next sign-in is silent. Amended 2026-09-27 by ADR 0010: in client-only mode, where the realm is the customer's company realm, sign-out ends the Genie Ops Center session only, so the person stays signed in to the company's other apps.
 - Credential emails for local-account tenants use Keycloak's built-in email templates, unchanged. The only branding they carry is the realm display name, which provisioning sets to the company name, and the sender name and reply-to in the realm's SMTP settings. Nothing else from branding reaches the realm. Brokered tenants never receive these emails (amended 2026-09-17, `DEC-40`).
 - One template system exists in Genie Ops Center, React Email. No Keycloak theme is built or deployed. The Keycloak email context is a fixed attribute map, so a branded theme needs either realm localization overrides written through the admin API or a custom Java `EmailTemplateProvider`. Both stay possible later without changing this split.
 - The realm's SMTP settings are part of the local-accounts realm template variant and use the tenant's sender name and reply-to.

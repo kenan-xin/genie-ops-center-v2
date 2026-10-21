@@ -1,0 +1,62 @@
+# The smallest deployment R-40 asks for: the image and its database. It is a
+# disposable local stack: the database is created and destroyed by the browser
+# run and is never reachable off-host, so the fixed `genie`/`genie` credential
+# below is a throwaway for that stack, not a secret. Production credentials are
+# generated per deployment by the customer stack (Section 1), which replaces
+# this file.
+services:
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: genie
+      POSTGRES_PASSWORD: genie
+      POSTGRES_DB: genie
+    # Probe TCP on loopback: the official image's temporary init server answers a
+    # socket `pg_isready` while the real server has not started, so a socket probe
+    # reports healthy too early and the app can start against a database that is
+    # not yet accepting connections. Only the real server binds TCP (Spec 2 R-54,
+    # the same probe the generated stack uses).
+    healthcheck:
+      test:
+        ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "genie"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: ${GENIE_IMAGE:-genie-s005:test}
+    depends_on:
+      database:
+        condition: service_healthy
+    # The identity stand-ins run as their own compose stack and publish a fixed host port. The app
+    # reaches Keycloak at the one browser-visible address, `host.docker.internal`, through this
+    # alias (Spec 2 R-54c/d); the Playwright projects map the same name to 127.0.0.1.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: postgres://genie:genie@database:5432/genie
+      PUBLIC_URL: ${PUBLIC_URL:-http://127.0.0.1:3400}
+      PORT: "3400"
+      # The Section 2 application profile requires the authentication values. These are test
+      # throwaways like the database credential above; `KEYCLOAK_URL` is the stand-in Keycloak's
+      # one browser-visible address, overridable by the test harness.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-test-better-auth-secret-at-least-32-characters}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://host.docker.internal:15080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-genie}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-genie-ops-center}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-e2e-ops-center-secret}
+      # The genie-admin service client secret, so Add person creates a local-account realm user
+      # and triggers the realm's set-password email (R-40). A blank value stays unset.
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+      # The mail sink. The app sends invitations and role emails to the Mailpit stand-in over
+      # host.docker.internal, the same mapping it uses for Keycloak. A blank value stays unset, so
+      # a stack with no mailer still starts (R-45).
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SMTP_URL: ${SMTP_URL:-}
+      # The compose file passes the active profiles to the app as STACK_PROFILES, the same as the
+      # generated template, so the R-54c guard reads a real value. This stack runs no Keycloak of
+      # its own, so the value is empty until an operator sets COMPOSE_PROFILES.
+      STACK_PROFILES: ${COMPOSE_PROFILES:-}
+    ports:
+      - "${GENIE_HOST_PORT:-3400}:3400"

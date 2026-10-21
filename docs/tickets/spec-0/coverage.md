@@ -1,6 +1,6 @@
 # Spec 0 requirement and acceptance ownership
 
-Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this routing map. All owners are tickets in the [index](README.md). Every row is future required work, not proof of completion.
+Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this routing map. All owners are tickets in the [index](README.md). Rows assign obligations, not live status or completion proof. The [2026-09-21 audit](audit-2026-09-21.md) separates accepted work from remaining implementation and evidence.
 
 ## Requirements
 
@@ -40,7 +40,7 @@ Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this rou
 | AC-2, AC-2a | S0-01 | S0-03 schemas / S0-08 generated destination / S0-12 |
 | AC-3 | S0-03 contract / S0-04 router | S0-05 / S0-12 |
 | AC-4 | S0-05 two-context | S0-07 no-skip / S0-11 CI / S0-12 |
-| AC-5 | S0-06 | S0-11 / S0-12 |
+| AC-5 | S0-06 registry / S0-11 builder-stage prune and check | S0-11 / S0-12 |
 | AC-6 | S0-04 / S0-07 | S0-12 |
 | AC-7 | S0-08 | S0-10 story discovery / S0-12 |
 | AC-8 | S0-11 | S0-12; real external push needs separate authority |
@@ -55,7 +55,7 @@ Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this rou
 | AC-20 | S0-03 / S0-04 / S0-05 | S0-08 conformance / S0-12 |
 | AC-21, AC-22 | S0-11 | S0-12 |
 | AC-23 | S0-03 / S0-05 / S0-08 | S0-12 |
-| AC-24 | S0-06 | S0-11 image / S0-12 |
+| AC-24 | S0-06 cache matrix / S0-11 builder-stage prune and check (`pg4`) | S0-11 image / S0-12 |
 | AC-25, AC-26 | S0-05 | S0-12 recheck after integration |
 | AC-27 | S0-02 G1 / S0-08 generation / S0-10 completion | S0-11 / S0-12 |
 | AC-28 | S0-10 | S0-11 runtime exclusion / S0-12 |
@@ -63,3 +63,15 @@ Scope authority is [Spec 0](../../specs/00-monorepo-foundation.md), not this rou
 
 No deferred Section 1 worker, deployment tables, entitlement readers, setup or lifecycle service is pulled forward to make an acceptance test easier. Generated modules prove denial under the unchanged stub; only placeholder proves authorized runtime success.
 
+
+## Auxiliary acceptance ownership, audited 2026-09-21
+
+| Bead | Owner and boundary |
+| --- | --- |
+| 5ph | Independent data-only entrypoint repair before S0-05; S0-06 consumes it |
+| 2tc | S0-04 lane verifies Testcontainers/Postgres access; Docker info alone is insufficient |
+| yt2 | S0-05 child: redacted viewer-provider failure logging with deny policy |
+| 2cg | S0-10 child after S0-06: unset/empty identity and artifact-content proof |
+| 3yv | First real Tailwind consumer in S0-05; G5 verifies consumption evidence |
+| ygn | Remaining S0-08 generator naming proof; G5 verifies aggregate evidence |
+| 2o4 | Separately authorized live checkout activation/proof, not an added G5 gate. G5 verifies canonical staged-hook behavior evidence; live activation is required only if explicitly added by the owner |

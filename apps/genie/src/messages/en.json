@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "Genie Ops Center",
+    "navigationHeading": "Modules",
+    "noModules": "No modules are compiled into this deployment."
+  },
+  "viewer": {
+    "heading": "Placeholder viewer",
+    "frameTitle": "Embedded placeholder content"
+  },
+  "access": {
+    "denied": "You may not view this page."
+  },
+  "account": {
+    "wholeTenant": "Whole tenant"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "action": "Sign in with your company account",
+    "errors": {
+      "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
+      "keycloakIssuerMismatch": "The identity provider is not the one this deployment was set up with. Contact your administrator.",
+      "notRegistered": "This account is not registered for this service.",
+      "accessDisabled": "Access for this account is disabled.",
+      "sessionExpired": "You were signed out after {minutes} minutes of inactivity. Sign in again.",
+      "sessionMissing": "Sign in to continue.",
+      "signedOut": "You are signed out.",
+      "signedOutClientOnly": "You are signed out of {productName}. Your company sign-in stays active."
+    }
+  }
+}

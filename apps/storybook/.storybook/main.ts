@@ -1,0 +1,53 @@
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { sharedStorybookConfig } from "@genie/config/storybook";
+import { readModuleInventory, resolveModuleSelection } from "@genie/generators";
+import type { StorybookConfig } from "@storybook/nextjs-vite";
+import tailwindcss from "@tailwindcss/vite";
+import { mergeConfig } from "vite";
+
+import { moduleTailwindSources } from "./module-tailwind-sources.ts";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+const workspaceRoot = join(here, "../../..");
+
+const FROM_HOST = "../../..";
+
+// Selection is resolved here, before story collection, so an excluded module is
+// never globbed and then hidden. MODULE_INCLUDE unset means every available
+// module. An empty string means none.
+const selection = resolveModuleSelection({
+  moduleInclude: process.env.MODULE_INCLUDE,
+  inventory: readModuleInventory(workspaceRoot),
+  workspaceRoot,
+});
+
+const moduleRoots = selection.entries.map((entry) => entry.packageRoot);
+
+const shared = sharedStorybookConfig({ moduleRoots });
+
+const config: StorybookConfig = {
+  framework: shared.framework,
+  stories: [
+    ...shared.stories,
+    `${FROM_HOST}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)`,
+  ],
+  addons: [...shared.addons],
+  // Storybook does not read the application's PostCSS setup, so the preview
+  // compiles the product stylesheet with Tailwind's own Vite plugin.
+  viteFinal: (viteConfig) =>
+    mergeConfig(viteConfig, {
+      plugins: [
+        moduleTailwindSources({
+          stylesheet: join(here, "preview.css"),
+          workspaceRoot,
+          moduleRoots,
+        }),
+        tailwindcss(),
+      ],
+    }),
+};
+
+export default config;

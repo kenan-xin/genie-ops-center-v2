@@ -1,0 +1,176 @@
+{
+  "name": "@genie/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.ts",
+    "build-image": "node tools/build-image.ts",
+    "build-fixture-image": "node tools/build-fixture-image.ts",
+    "generate-registry": "node tools/generate-registry.ts",
+    "generate-openapi": "node tools/generate-openapi.ts",
+    "check-openapi": "node tools/generate-openapi.ts --check",
+    "start": "node tools/start-standalone.mjs",
+    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.entra.config.ts playwright.fixture.config.ts playwright.setup-gate.config.ts postcss.config.mjs tailwind.config.ts vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
+    "test": "vitest run",
+    "test:integration": "node tools/run-required-tests.ts",
+    "test:e2e": "cd ../.. && playwright test --config apps/genie/playwright.config.ts",
+    "test:e2e:setup-gate": "cd ../.. && playwright test --config apps/genie/playwright.setup-gate.config.ts",
+    "test:e2e:entra": "cd ../.. && playwright test --config apps/genie/playwright.entra.config.ts",
+    "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
+    "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
+    "test:e2e:generated": "node ../../tools/generators/scripts/prove-generated-module.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "@genie/module-placeholder": "workspace:*",
+    "@genie/ui": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/server": "catalog:",
+    "@tanstack/react-query": "5.104.1",
+    "next": "16.4.0",
+    "next-intl": "4.14.9",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@genie/config": "workspace:*",
+    "@genie/generators": "workspace:*",
+    "@orpc/openapi": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@tanstack/react-devtools": "0.10.12",
+    "@tanstack/react-form": "1.33.5",
+    "@tanstack/react-form-devtools": "0.2.34",
+    "@tanstack/react-pacer": "0.23.0",
+    "@tanstack/react-pacer-devtools": "0.8.0",
+    "@tanstack/react-query-devtools": "5.104.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "oxlint": "1.83.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vitest": "4.1.11"
+  },
+  "nx": {
+    "tags": [
+      "app"
+    ],
+    "targets": {
+      "generate-registry": {
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/src/modules.ts"
+        ]
+      },
+      "generate-openapi": {
+        "cache": false
+      },
+      "check-openapi": {
+        "cache": false
+      },
+      "build": {
+        "dependsOn": [
+          "generate-registry",
+          "^build"
+        ],
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/.next",
+          "!{projectRoot}/.next/cache"
+        ]
+      },
+      "build-image": {
+        "cache": false,
+        "dependsOn": [
+          "build"
+        ]
+      },
+      "typecheck": {
+        "dependsOn": [
+          "generate-registry",
+          "^build"
+        ],
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "generate-registry"
+        ],
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "runtime": "node tools/generators/src/selection/print.ts"
+          }
+        ]
+      },
+      "test:integration": {
+        "dependsOn": [
+          "build",
+          "build-image",
+          "test:e2e:fixture",
+          "test:e2e:dev",
+          "test:e2e:setup-gate"
+        ]
+      },
+      "build-fixture-image": {
+        "cache": false
+      },
+      "test:e2e": {
+        "cache": false,
+        "dependsOn": [
+          "build-image"
+        ]
+      },
+      "test:e2e:dev": {
+        "cache": false
+      },
+      "test:e2e:fixture": {
+        "cache": false,
+        "dependsOn": [
+          "build-fixture-image"
+        ]
+      },
+      "test:e2e:setup-gate": {
+        "cache": false,
+        "dependsOn": [
+          "build-image"
+        ]
+      },
+      "test:e2e:generated": {
+        "cache": false
+      },
+      "test:e2e:entra": {
+        "cache": false,
+        "dependsOn": [
+          "build-image"
+        ]
+      }
+    }
+  }
+}

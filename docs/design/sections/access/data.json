@@ -1,5 +1,6 @@
 {
   "_meta": {
+    "retained": "ra_old_audit is a kept assignment the ordinary controls cannot reach: the Solutions module no longer offers an audit level, and the role behind it is not in the role list either. It proves that a retained assignment stays open to inspection and removal whatever recorded it, and that the fallback list is not keyed on level == custom.",
     "note": "One tenant, Meridian Health. The ids match the people, groups, roles, and solutions of the other sections, so a prefilled link from Modules, People, Groups, Roles, or a solution lands on the same records here."
   },
   "currentUserId": "usr_priya",
@@ -19,7 +20,12 @@
     { "id": "usr_hiro", "type": "user", "name": "Hiroshi Sato", "detail": "hiroshi.sato@meridianhealth.example", "status": "disabled", "groupIds": ["grp_legacy"] },
     { "id": "usr_amara", "type": "user", "name": "Amara Osei", "detail": "amara.osei@meridianhealth.example", "status": "active", "groupIds": ["grp_claims", "grp_pilot"] },
     { "id": "usr_marcus", "type": "user", "name": "Marcus Lee", "detail": "marcus.lee@meridianhealth.example", "status": "pending", "groupIds": [] },
-    { "id": "usr_leila", "type": "user", "name": "Leila Haddad", "detail": "leila.haddad@meridianhealth.example", "status": "active", "groupIds": ["grp_admins", "grp_clinops"] }
+    { "id": "usr_leila", "type": "user", "name": "Leila Haddad", "detail": "leila.haddad@meridianhealth.example", "status": "active", "groupIds": ["grp_admins", "grp_clinops"] },
+    { "id": "grp_biomed", "type": "group", "name": "Biomedical engineering", "detail": "Directory group · 23 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_facilities", "type": "group", "name": "Facilities", "detail": "Directory group · 9 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_procurement", "type": "group", "name": "Procurement", "detail": "Directory group · 14 members", "source": "idp", "archived": false, "stale": false },
+    { "id": "grp_ward7", "type": "group", "name": "Ward 7 pilot", "detail": "Directory group · archived in July", "source": "idp", "archived": true, "stale": false },
+    { "id": "usr_mei", "type": "user", "name": "Mei Lin Tan", "detail": "mei.tan@meridianhealth.example", "status": "active", "groupIds": ["grp_biomed"] }
   ],
   "modules": [
     {
@@ -75,6 +81,17 @@
       "levels": [
         { "id": "use", "label": "Use", "description": "Open the module and work on the requests it shows.", "permissionKey": "approvals:use", "roleId": "role_approvals_user", "roleName": "Approvals user", "recordScoped": false }
       ]
+    },
+    {
+      "id": "assets",
+      "name": "Asset register",
+      "description": "Tracks owned equipment and its service history. It returned to this deployment after it was removed, so it is switched off until its retained access is reviewed on Modules.",
+      "enabled": false,
+      "recordType": { "type": "asset", "label": "asset group", "pluralLabel": "asset groups" },
+      "levels": [
+        { "id": "use", "label": "Use", "description": "Read the asset groups this grant names.", "permissionKey": "assets:use", "roleId": "role_assets_user", "roleName": "Asset register user", "recordScoped": true },
+        { "id": "admin", "label": "Administer", "description": "Every asset group and the register settings.", "permissionKey": "assets:admin", "roleId": "role_assets_admin", "roleName": "Asset register administrator", "recordScoped": false }
+      ]
     }
   ],
   "records": [
@@ -85,6 +102,8 @@
     { "id": "sol_invoice", "type": "solution", "moduleId": "solutions", "label": "Vendor Invoice Checker", "detail": "Embedded · Ready" },
     { "id": "sol_general", "type": "solution", "moduleId": "solutions", "label": "General Assistant", "detail": "Chat · Draft" },
     { "id": "agr_northwind", "type": "contract", "moduleId": "contracts", "label": "Northwind Labs master services contract", "detail": "Renews 1 Mar 2027" },
+    { "id": "asset_theatre", "type": "asset", "moduleId": "assets", "label": "Theatre equipment", "detail": "114 items · Level 3" },
+    { "id": "asset_imaging", "type": "asset", "moduleId": "assets", "label": "Imaging equipment", "detail": "58 items · Radiology" },
     { "id": "agr_harbour", "type": "contract", "moduleId": "contracts", "label": "Harbour Imaging supply contract", "detail": "Renews 14 Nov 2026" }
   ],
   "grants": [
@@ -103,7 +122,13 @@
     { "id": "ra_13", "recipientId": "usr_amara", "recipientType": "user", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_claims", "createdBy": "Priya Nair", "createdAt": "2026-09-10T02:15:00Z" },
     { "id": "ra_16", "recipientId": "usr_marcus", "recipientType": "user", "moduleId": "solutions", "level": "use", "roleId": "role_chat_user", "roleName": "Solutions user", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Priya Nair", "createdAt": "2026-09-15T01:30:00Z" },
     { "id": "ra_15", "recipientId": "grp_pilot", "recipientType": "group", "moduleId": "requests", "level": "use", "roleId": "role_requests_user", "roleName": "Service requests user", "scopeType": null, "scopeId": null, "createdBy": "Leila Haddad", "createdAt": "2026-09-12T04:20:00Z" },
-    { "id": "ra_14", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "solutions", "level": "custom", "roleId": "role_legal", "roleName": "Legal reviewer", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Leila Haddad", "createdAt": "2026-09-14T06:30:00Z" }
+    { "id": "ra_14", "recipientId": "grp_clinops", "recipientType": "group", "moduleId": "solutions", "level": "custom", "roleId": "role_legal", "roleName": "Legal reviewer", "scopeType": "solution", "scopeId": "sol_policy", "createdBy": "Leila Haddad", "createdAt": "2026-09-14T06:30:00Z" },
+    { "id": "ra_assets_biomed", "recipientId": "grp_biomed", "recipientType": "group", "moduleId": "assets", "level": "use", "roleId": "role_assets_user", "roleName": "Asset register user", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-03-04T02:00:00Z" },
+    { "id": "ra_assets_facilities", "recipientId": "grp_facilities", "recipientType": "group", "moduleId": "assets", "level": "admin", "roleId": "role_assets_admin", "roleName": "Asset register administrator", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-03-04T02:01:00Z" },
+    { "id": "ra_assets_mei", "recipientId": "usr_mei", "recipientType": "user", "moduleId": "assets", "level": "use", "roleId": "role_assets_user", "roleName": "Asset register user", "scopeType": "asset", "scopeId": "asset_theatre", "createdBy": "Leila Haddad", "createdAt": "2026-04-22T03:30:00Z" },
+    { "id": "ra_assets_pilot", "recipientId": "grp_ward7", "recipientType": "group", "moduleId": "assets", "level": "use", "roleId": "role_assets_user", "roleName": "Asset register user", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-02-11T08:00:00Z" },
+    { "id": "ra_old_audit", "recipientId": "grp_old", "recipientType": "group", "moduleId": "solutions", "level": "audit", "roleId": "role_solutions_auditor", "roleName": "Solutions auditor", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2025-11-04T02:00:00Z" },
+    { "id": "ra_assets_disposal", "recipientId": "grp_procurement", "recipientType": "group", "moduleId": "assets", "level": "custom", "roleId": "role_assets_disposal", "roleName": "Asset disposal approver", "scopeType": null, "scopeId": null, "createdBy": "Priya Nair", "createdAt": "2026-02-11T08:05:00Z" }
   ],
   "customRoles": [
     { "id": "role_people_ops", "name": "People operations", "description": "Manages people and groups, without branding or settings.", "kind": "custom", "moduleId": null, "tenantWideOnly": true },
@@ -113,6 +138,9 @@
     { "id": "role_requests_user", "name": "Service requests user", "description": "Opens the Service requests module.", "kind": "system", "moduleId": "requests", "tenantWideOnly": false },
     { "id": "role_contracts_reader", "name": "Contracts reader", "description": "Opens the contracts it is granted.", "kind": "system", "moduleId": "contracts", "tenantWideOnly": false },
     { "id": "role_auditor", "name": "Auditor", "description": "Reads the audit log.", "kind": "system", "moduleId": "core", "tenantWideOnly": true },
-    { "id": "role_admin", "name": "Tenant administrator", "description": "Every core administration screen.", "kind": "system", "moduleId": "core", "tenantWideOnly": true }
+    { "id": "role_admin", "name": "Tenant administrator", "description": "Every core administration screen.", "kind": "system", "moduleId": "core", "tenantWideOnly": true },
+    { "id": "role_assets_user", "name": "Asset register user", "description": "Reads the asset groups it is granted.", "kind": "system", "moduleId": "assets", "tenantWideOnly": false },
+    { "id": "role_assets_admin", "name": "Asset register administrator", "description": "Administers every asset group and the register settings.", "kind": "system", "moduleId": "assets", "tenantWideOnly": true },
+    { "id": "role_assets_disposal", "name": "Asset disposal approver", "description": "A custom role from before the module was removed. The module no longer declares its key.", "kind": "custom", "moduleId": "assets", "tenantWideOnly": true }
   ]
 }

@@ -12,13 +12,15 @@ Traceability: R-29–R-31, R-39, R-41d, R-56; AC-7/AC-23/AC-27/AC-29 generated c
 
 Hard prerequisites: [S0-05](../05-production-startup-and-csp-g2/index.md).
 
-Start only after prerequisites are integrated, validated and closed in the shared Beads database. Create one branch/worktree from that integrated baseline and atomically claim this bead; a sibling worktree finishing code is not sufficient.
+Start only after prerequisites are integrated, validated and closed in the shared Beads database. Reuse the task-assigned dedicated worktree, including an Orca-created one; only when outside a task worktree, create one with wt from current local develop. Verify ownership and the integrated baseline before atomically claiming this bead; stop on another task's worktree or conflicting changes. A sibling worktree finishing code is not sufficient.
 
-Owned surface: tools/generators module:new and tenant:new implementations/templates and disposable generator fixtures; no resolver implementation ownership.
+Owned surface: tools/generators module-new and tenant-new implementations/templates and disposable generator fixtures; no resolver implementation ownership.
 
 Parallel eligibility is in the [wave/dependency map](../README.md). Root lockfile/manifests/Nx configuration and shared exports require the documented single-writer handoff even between logically independent tickets. Do not change another ticket's interfaces silently.
 
 ## Scope
+
+Generate the migration contract accepted at integrated G2, including the owner's F2 packaging disposition. The integrated G2 contract uses a deferred migrations function and the standard app's verified server-only packaging. Follow the reconciled module-authoring documentation; no eager-array or public-SQL convention is accepted. Reuse the final accepted app/test seams; do not invent a template-only packaging workaround.
 
 - Scaffold module package with every declaration point, module tag, three-folder layout/READMEs, own schema/history/ledger/factories and ctx.tenant procedure/job signatures.
 - Use empty typed CSP provider and category/settings declaration coverage matching canonical contracts; no module runtime extension or new permission grants.
@@ -49,4 +51,14 @@ Also stop on major dependency/architecture changes, new services, extra tenant p
 
 ## Completion handoff
 
-Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Do not merge, push, publish or run Dolt remote sync without authorization. Repository policy also requires explicit authority for commits. If review-ready but not integrated, keep the bead open/in progress with that note. Only the integration owner closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+Report changed paths, commands and real outcomes, red/green evidence, unverified checks, prerequisite revision and proposed integration action in the bead. Use explicit ticket-specific authority for commits and local integration; do not request an already-granted action again. Routine Beads sync is allowed. Code push/publication and hook activation still require explicit authority. If review-ready but not integrated, keep the bead open/in progress with that note. Only the authorized integration owner, including a delegated implementer where explicitly granted, closes it after required evidence and integrated-revision checks pass. Preserve any gate failures as blockers; do not release dependent work early.
+
+## Naming revision, 2026-09-20
+
+Follow [the module naming revision](../../../tech-plans/module-naming-revision.md) and its canonical layout reference. Keep the <id> folder and generate @genie/module-<id> package names with unprefixed IDs; pass shared validation including hand-edited-manifest rejection. This addendum supersedes older naming/path instructions in implementation plans, without rewriting their historical evidence. The naming convention and rework sequence are approved; follow current prerequisite acceptance and ticket-specific execution authority. Later consumer proof remains required.
+
+## Develop audit, 2026-09-21
+
+No module:new or tenant:new implementation exists on develop. Reuse core tenant/branding schemas and integrated placeholder/history/factory/app test conventions. Preserve omission-only branding until 1rd.3.3 is decided; do not invent null defaults, setup foreground derivation or shared font ownership. Emit seven tenant files and @genie/module-<id> at packages/modules/<id>. Generated modules prove denial under the unchanged stub. Supply ygn generator evidence without claiming downstream image/Storybook acceptance.
+
+See the [whole-ticket audit](../audit-2026-09-21.md) for evidence and auxiliary dependencies. This update starts no implementation and closes no acceptance gate.

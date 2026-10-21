@@ -1,0 +1,32 @@
+{
+  "name": "@genie/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "@storybook/nextjs-vite": "10.6.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "oxlint": "1.83.0",
+    "storybook": "10.6.1",
+    "vitest": "4.1.11"
+  },
+  "nx": {
+    "tags": [
+      "ui"
+    ]
+  }
+}

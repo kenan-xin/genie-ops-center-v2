@@ -1,20 +1,10 @@
 [
  {
-  "name": "grants-catalog",
-  "url": "/sections/access/screen-designs/AccessGrants/fullscreen?recipient=grp_claims",
-  "out": "product/sections/access"
- },
- {
   "name": "grants-catalog-mobile",
   "url": "/sections/access/screen-designs/AccessGrants/fullscreen?recipient=grp_claims",
   "out": "product/sections/access",
   "viewport": "phone",
   "fullPage": true
- },
- {
-  "name": "overview-person",
-  "url": "/sections/access/screen-designs/AccessOverview/fullscreen?recipient=usr_amara",
-  "out": "product/sections/access"
  },
  {
   "name": "overview-person-mobile",
@@ -77,49 +67,6 @@
   "out": "product/sections/audit-and-tenant-settings"
  },
  {
-  "name": "audit-log-mobile",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/AuditLog/fullscreen",
-  "out": "product/sections/audit-and-tenant-settings",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
-  "name": "categories",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/CategoriesPage/fullscreen?reset=1",
-  "out": "product/sections/audit-and-tenant-settings"
- },
- {
-  "name": "categories-mobile",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/CategoriesPage/fullscreen?reset=1",
-  "out": "product/sections/audit-and-tenant-settings",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
-  "name": "modules",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/ModulesPage/fullscreen?reset=1",
-  "out": "product/sections/audit-and-tenant-settings"
- },
- {
-  "name": "modules-mobile",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/ModulesPage/fullscreen?reset=1",
-  "out": "product/sections/audit-and-tenant-settings",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
-  "name": "tenant-settings",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/TenantSettings/fullscreen",
-  "out": "product/sections/audit-and-tenant-settings"
- },
- {
-  "name": "tenant-settings-mobile",
-  "url": "/sections/audit-and-tenant-settings/screen-designs/TenantSettings/fullscreen",
-  "out": "product/sections/audit-and-tenant-settings",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
   "name": "branding-identity",
   "url": "/sections/branding/screen-designs/BrandingPage/fullscreen",
   "out": "product/sections/branding"
@@ -149,23 +96,9 @@
   "out": "product/sections/people-groups-and-roles"
  },
  {
-  "name": "groups-directory-mobile",
-  "url": "/sections/people-groups-and-roles/screen-designs/GroupsDirectory/fullscreen",
-  "out": "product/sections/people-groups-and-roles",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
   "name": "people-directory",
   "url": "/sections/people-groups-and-roles/screen-designs/PeopleDirectory/fullscreen",
   "out": "product/sections/people-groups-and-roles"
- },
- {
-  "name": "people-directory-mobile",
-  "url": "/sections/people-groups-and-roles/screen-designs/PeopleDirectory/fullscreen",
-  "out": "product/sections/people-groups-and-roles",
-  "viewport": "phone",
-  "fullPage": true
  },
  {
   "name": "role-detail",
@@ -175,18 +108,6 @@
  {
   "name": "role-detail-mobile",
   "url": "/sections/people-groups-and-roles/screen-designs/RoleDetail/fullscreen",
-  "out": "product/sections/people-groups-and-roles",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
-  "name": "roles-directory",
-  "url": "/sections/people-groups-and-roles/screen-designs/RolesDirectory/fullscreen",
-  "out": "product/sections/people-groups-and-roles"
- },
- {
-  "name": "roles-directory-mobile",
-  "url": "/sections/people-groups-and-roles/screen-designs/RolesDirectory/fullscreen",
   "out": "product/sections/people-groups-and-roles",
   "viewport": "phone",
   "fullPage": true
@@ -245,13 +166,6 @@
   "out": "product/sections/solutions"
  },
  {
-  "name": "admin-solutions-mobile",
-  "url": "/sections/solutions/screen-designs/AdminSolutions/fullscreen",
-  "out": "product/sections/solutions",
-  "viewport": "phone",
-  "fullPage": true
- },
- {
   "name": "chat-themes",
   "url": "/sections/solutions/screen-designs/ChatThemes/fullscreen",
   "out": "product/sections/solutions"
@@ -291,13 +205,6 @@
   "name": "solutions-hub",
   "url": "/sections/solutions/screen-designs/SolutionsHub/fullscreen",
   "out": "product/sections/solutions"
- },
- {
-  "name": "solutions-hub-mobile",
-  "url": "/sections/solutions/screen-designs/SolutionsHub/fullscreen",
-  "out": "product/sections/solutions",
-  "viewport": "phone",
-  "fullPage": true
  },
  {
   "name": "shell-desktop-admin",

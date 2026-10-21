@@ -77,7 +77,7 @@ function RadioRow<T extends string>({ label, value, options, onChange, title, co
   return (
     <div ref={ref} role="radiogroup" aria-label={label} onKeyDown={onKeyDown} className="inline-flex h-10 w-fit items-center rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
       {options.map((o) => (
-        <button key={o} type="button" role="radio" aria-checked={value === o} tabIndex={value === o ? 0 : -1} title={title?.(o)} onClick={() => onChange(o)} className={`h-8 rounded-lg font-medium capitalize ${compact ? 'px-2.5 text-xs' : 'px-3.5 text-sm'} ${focusRing} ${value === o ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}`}>{o}</button>
+        <button key={o} type="button" role="radio" aria-checked={value === o} tabIndex={value === o ? 0 : -1} title={title?.(o)} onClick={() => onChange(o)} className={`h-8 rounded-lg font-medium capitalize ${compact ? 'px-2.5 text-xs' : 'px-3.5 text-sm'} ${focusRing} ${value === o ? 'bg-white text-gray-900 ring-1 ring-gray-200 dark:bg-gray-950 dark:text-gray-100 dark:ring-gray-700' : 'text-gray-600 dark:text-gray-400'}`}>{o}</button>
       ))}
     </div>
   )
@@ -104,11 +104,11 @@ function SizeStrip({ image, sizes }: { image: BrandingImage; sizes: number[] }) 
       {sizes.map((s) => (
         <span key={s} className="flex flex-col items-center gap-1.5">
           <span className="flex items-center justify-center" style={{ height: max }}>
-            <span className="overflow-hidden rounded-sm" style={{ width: s, height: s }}>
+            <span className="overflow-hidden rounded-md" style={{ width: s, height: s }}>
               {image.url ? <img src={image.url} alt="" width={s} height={s} className="size-full object-contain" /> : <ImagePlaceholder size={s} />}
             </span>
           </span>
-          <span className="text-[11px] font-medium leading-none tabular-nums text-gray-500 dark:text-gray-400">{s}<span className="sr-only"> pixels</span></span>
+          <span className="text-xs font-medium leading-none tabular-nums text-gray-500 dark:text-gray-400">{s}<span className="sr-only"> pixels</span></span>
         </span>
       ))}
     </div>
@@ -123,7 +123,7 @@ function DropZone({ kind, label, image, recommended, types, maxBytes, changed, u
   if (upload?.state === 'uploading') {
     return (
       <Field label={label} changed={changed}>
-        <div className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3.5 dark:border-gray-800">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="min-w-0 truncate font-medium">{upload.fileName}</span>
             <Pill tone="gray"><RefreshCw className="size-4 motion-safe:animate-spin" strokeWidth={2} aria-hidden />Uploading</Pill>
@@ -157,7 +157,7 @@ function DropZone({ kind, label, image, recommended, types, maxBytes, changed, u
   return (
     <Field label={label} changed={changed} htmlFor={id}>
       {image ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+        <div className="flex flex-wrap items-center gap-3">
           {sizes ? (
             <SizeStrip image={image} sizes={sizes} />
           ) : (
@@ -165,7 +165,8 @@ function DropZone({ kind, label, image, recommended, types, maxBytes, changed, u
               {image.url ? <img src={image.url} alt="" className="max-h-full max-w-full object-contain" /> : <ImagePlaceholder size={20} />}
             </span>
           )}
-          <div className="min-w-[160px] flex-1">
+          {/* The group stays packed to the left. With no box around the slot, an action pinned to the far card edge reads as belonging to nothing. */}
+          <div className="min-w-[160px] max-w-sm">
             <div className="flex flex-wrap items-center gap-1.5 text-sm font-medium"><span className="break-all">{image.fileName}</span><ScanPill status={image.scanStatus} /></div>
             <div className="text-xs text-gray-600 dark:text-gray-400">{image.width} × {image.height} px · {(image.sizeBytes / 1024).toFixed(0)} KB · {relativeTime(image.uploadedAt)}</div>
             {image.scanStatus === 'pending' ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">Not shown to members until the scan finishes.</div> : null}
@@ -272,7 +273,7 @@ function ColorRow({ label, value, changed, targets, onChange, onFix }: { label: 
   const fg = foregroundFor(value)
   const dark = darkVariant(value)
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+    <div className="flex flex-col gap-4">
       {/* The decision leads: the swatch, then the two shades the shell derives from it. The report below is its consequence. */}
       <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div className="flex flex-col gap-1.5">
@@ -400,7 +401,7 @@ export function BrandingPage(p: BrandingProps) {
     return (
       <p id={id} className={`text-xs text-amber-800 dark:text-amber-300 ${extra}`}>
         Publish is blocked: {failingTab === 'typography' ? 'the text color fails its contrast check' : 'the primary color fails a contrast check'}.{' '}
-        <button type="button" onClick={() => goToTab(failingTab ?? 'colors')} className={`rounded-sm font-semibold underline underline-offset-2 ${focusRing}`}>Fix it on the {TAB_TITLE[failingTab ?? 'colors']} tab</button>
+        <button type="button" onClick={() => goToTab(failingTab ?? 'colors')} className={`rounded font-semibold underline underline-offset-2 ${focusRing}`}>Fix it on the {TAB_TITLE[failingTab ?? 'colors']} tab</button>
       </p>
     )
   }
@@ -544,7 +545,7 @@ export function BrandingPage(p: BrandingProps) {
                   <Field label="Reply-to address" changed={changed.includes('emailReplyTo')} htmlFor="b-reply"><input id="b-reply" type="email" value={draft.emailReplyTo} onChange={(e) => set('emailReplyTo', e.target.value)} className={inputClass} /></Field>
                 </div>
                 <Field label="Footer text" changed={changed.includes('emailFooterText')} htmlFor="b-footer" hint="Legal entity, address, and why the person receives the email. Genie emails only."><textarea id="b-footer" rows={3} value={draft.emailFooterText} onChange={(e) => set('emailFooterText', e.target.value)} className={`${inputClass} h-auto py-2`} /></Field>
-                <p className="rounded-lg bg-gray-50 px-3.5 py-3 text-xs text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">For a local-accounts tenant the sender name and reply-to also apply to the realm's SMTP settings. The credential emails (set password, reset password, verify email) are Keycloak's built-in templates and print the realm display name only. Nothing else from branding reaches them.</p>
+                <p className="rounded-lg bg-gray-50 px-3.5 py-3 text-xs text-gray-700 dark:bg-gray-950/60 dark:text-gray-300">These values reach the emails Genie sends. The credential emails (set password, reset password, verify email) are Keycloak's built-in templates: they print the realm display name only and go out under the realm sender your operator set at provisioning. Publish writes no realm data, so nothing on this tab changes how those emails are sent.</p>
               </>
             ) : null}
 
@@ -574,12 +575,13 @@ export function BrandingPage(p: BrandingProps) {
         </Card>
 
         <div id="branding-preview" className={`2xl:sticky 2xl:top-0 2xl:self-start ${showPreview ? '' : 'hidden md:block'}`}>
-          <Card>
+          {/* The card is the preview's only frame. Each preview fills it and owns its own padding, so no second border sits inside this one. */}
+          <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div className="flex items-center gap-2"><span className="text-sm font-semibold">Preview</span>{dirty ? <Pill tone="gray">Draft</Pill> : null}<span className="text-xs text-gray-600 dark:text-gray-400">{active.caption}</span></div>
               <RadioRow label="Preview theme" value={previewTheme} options={['light', 'dark'] as const} onChange={setPreviewTheme} compact />
             </div>
-            <div className="border-t border-gray-100 p-4 dark:border-gray-800">
+            <div className="border-t border-gray-100 dark:border-gray-800">
               {tab === 'identity' || tab === 'colors' || tab === 'typography' ? <ShellPreview b={draft} mark={mark} theme={previewTheme} fontStack={fontStack(draft.fontFamily)} showContrast={tab === 'colors'} targets={p.contrastTargets} /> : null}
               {tab === 'signin' ? <SignInPreview b={draft} mark={mark} theme={previewTheme} fontStack={fontStack(draft.fontFamily)} /> : null}
               {tab === 'email' ? <EmailPreview b={draft} mark={mark} /> : null}

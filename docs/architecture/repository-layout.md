@@ -13,7 +13,8 @@ genie-ops-center/
       src/app/(auth)/               Sign-in, break-glass, tenant pages.
       src/app/(workspace)/          Member routes. Thin files that render module pages.
       src/app/(admin)/              Admin routes. Thin files that render core and module admin pages.
-      src/app/api/                  Better Auth handler, tRPC, chat stream, health, /api/m/<module>/ endpoints.
+      src/app/api/                  Better Auth handler, oRPC at /api/rpc, chat stream, health, /api/m/<module>/ endpoints.
+      src/rpc/                      oRPC handler options, error interceptor, and the browser client (ADR 0011).
       src/context.ts                Builds the one TenantContext at startup from the environment (DEC-34).
       src/modules.ts                Module registry. Generated at build time from MODULE_INCLUDE;
                                     imports only the included modules (DEC-33). Gitignored, never committed or
@@ -30,14 +31,14 @@ genie-ops-center/
       src/utils/                    Small stateless helpers, one file per topic, named by the topic.
       src/services/<name>/          Mailer, files, events, jobs, auth, and every other unit that does
                                     work for the application.
-      migrations/                   The core drizzle-kit history.
+      drizzle/                      The core drizzle-kit history.
       testing/                      Core-table factories and generic database, migration, and tenant-context
                                     helpers. No module imports; composed tests and seed belong to the app.
     ui/                             Design-system primitives and tokens.
     config/                         Tagged config: shared tsconfig, oxlint, oxfmt, Tailwind, Vitest and Storybook presets.
                                     No internal project imports; consumed by configuration files, not runtime.
     modules/
-      solutions/               Platform module, every tenant.
+      solutions/                    Platform module, every tenant.
       agreements/                   Built for the first customer. Entitled to that tenant only, for now.
       approvals/                    Built for the first customer. Deferred on discovery.
       document-extraction/          A generic module, when the team is ready to design one.
@@ -45,8 +46,9 @@ genie-ops-center/
         src/index.ts                The module definition: id, schema, router, permissions, roles,
                                     record types, navigation, pages, config schema, events, jobs.
         src/schema.ts               Drizzle tables.
-        migrations/                 This module's own drizzle-kit history and migrations table (DEC-33).
-        src/router.ts               tRPC procedures, every one behind can().
+        drizzle/                    This module's own drizzle-kit history and migrations table (DEC-33).
+        src/contract.ts             The module's oRPC contract (zod + @genie/core/rpc), published as ./contract (ADR 0011).
+        src/router.ts               oRPC procedures, every one behind can().
         src/permissions.ts          Permission keys and default roles.
         src/config.ts               zod schema for per-tenant module settings.
         src/pages/                  Workspace and admin page components.
@@ -58,9 +60,12 @@ genie-ops-center/
         e2e/                        At least one Playwright main-path test.
         README.md                   Points to docs/modules/<capability>/.
   tools/
-    generators/                     Tagged tooling: Nx local plugin, module:new and tenant:new.
+    generators/                     Tagged tooling: Nx local plugin, module-new and tenant-new.
                                     Uses config and exposed build-safe core schemas/types only; generated
                                     modules/apps follow their destination tags and import rules.
+    workspace-validation/           Tagged tooling: the repository-wide workspace checks, run by the
+                                    `validate` target. A leaf with no dependents, so a document it
+                                    reads invalidates the checks without marking an app affected.
   scripts/
     build-customer-image.sh         docker build with the customer's include list, then push (DEC-33).
     seed.ts                         Interactive local seed: slug, modules, first administrator.
@@ -70,7 +75,7 @@ genie-ops-center/
                                     supplied, object storage, delivery path, image version, recovery requests.
                                     Values no code reads (DEC-35). From the template in docs/runbooks/.
       deploy/
-        tenant.yaml                 Modules, onboarding mode, local_accounts, first administrators,
+        tenant.yaml                 Modules, onboarding mode, local_accounts, realm mode, first administrators,
                                     break-glass email. Input to the generator and to genie-ops setup.
                                     Every field is read by one of them; nothing here is a note, nothing
                                     here repeats .env, and nothing here is branding (DEC-35, DEC-36).
@@ -79,19 +84,20 @@ genie-ops-center/
         modules.txt                 The module include list for this customer's image, one id per line,
                                     written by the generator from tenant.yaml (DEC-33).
         realm.overrides.json        Deltas on the realm template for this customer.
-        branding.seed.json          Initial branding, exactly the tenant_branding columns, including the
-                                    company name and the product display name. Replaced by the admin
+        branding.seed.json          Initial authored branding; required values and omission rules follow
+                                    architecture/branding-seed.md (DEC-35). Replaced by the admin
                                     portal after go-live. Validated by the strict schema in
-                                    packages/core/src/lib/tenant-config/; carries a $schema key (DEC-35).
-        compose.yaml                Generated from deploy/stack/. Committed; holds no secret.
+                                    packages/core/src/lib/tenant-config/ after the loader removes its
+                                    $schema editor key (DEC-35).
+        compose.yaml                Generated by the tenant generator. Committed; holds no secret.
         .env.example                Generated from the environment contract. The real .env is never committed.
         values.yaml                 Helm values, written by the generator and used only when the customer runs Kubernetes.
       app/                          Only when this customer needs an entirely different experience
                                     (level 8): an Nx app composing core, ui, and modules.
   deploy/
     Dockerfile                      The one image build. MODULE_INCLUDE is a build argument (DEC-33).
-    stack/                          The stack template: compose file with the app, the worker, and
-                                    Keycloak; Helm values; .env.example. Copied into customers/<slug>/.
+    stack/                          End-to-end test stacks only. The customer stack template lives in
+                                    the tenant generator (DEC-33, amended 2026-09-23).
     keycloak/
       realm-template.json           Brokered variant.
       realm-template.local.json     Local-accounts variant, with SMTP settings. No email theme (DEC-40).
@@ -106,6 +112,14 @@ Every folder that the tree above names holds a `README.md` that says in a few li
 
 A customer folder holds two kinds of thing and no third: the customer's deployment configuration, and, when they need one, the custom application that composes core and modules for them. It never holds a module. A module is a capability, lives under `packages/modules/<capability>`, and is given to a customer by adding it to their include list, so it can be given to a second customer without moving. The slug in `customers/<slug>` names the image and the stack and will usually be recognizably the customer's; that is acceptable in this folder and in deployment configuration, and not acceptable in `packages/`, `apps/genie`, or `docs/`.
 
+## Module package naming
+
+Owner decision, 2026-09-20: each module is an independent package named `@genie/module-<capability>` in `packages/modules/<capability>/`. The folder basename matches the unprefixed module ID; the package name adds `@genie/module-`. The prefix groups module imports for IDE discoverability, although actual suggestions depend on IDE indexing and available dependencies. No folder rename is required. This supersedes the earlier same-day proposal to repeat `module-` in folder names. For example, `packages/modules/contract-data/` declares `@genie/module-contract-data`; its module ID remains `contract-data`. The `module-` prefix is not part of IDs, permission namespaces or customer include-list entries. Documentation remains under `docs/modules/<capability>/`.
+
+`@genie/modules/<capability>` is a legal import specifier for a subpath of an umbrella package named `@genie/modules`; this architecture does not define that package. No umbrella or alias mapping is required by the chosen convention. This singular `module-` decision supersedes the earlier plural `modules-` proposal.
+
+Implementation reconciliation is tracked by `genie-ops-center-v2-ygn`, including the naming-enforcement gap `genie-ops-center-v2-1rd.1.4`. Discovery, generators, fixture manifests, active path references and import-boundary tests must agree with this contract. This documentation update does not claim that those code changes or validation have occurred. Existing defensive plural/slash restrictions and historical evidence remain intact; singular package roots and public subpaths require equivalent enforcement.
+
 ## How a customer's requirement is met
 
 UI stories are colocated with their owning component, not moved into the composition host. The development-only Storybook app aggregates browser-safe stories without relaxing package import rules. Discovery, module selection, Nx dependencies, and customer-artifact confidentiality follow [Storybook and UI development](ui-development.md). Capability modules created for a tenant use the same story convention as every other module.
@@ -117,7 +131,7 @@ Work down this list and stop at the first level that satisfies the requirement. 
 3. Entitlements. Which modules the customer has: the include list decides what is compiled into their image, and `tenant_module.enabled` switches a compiled module off without a rebuild. No code.
 4. Module configuration. A module declares a zod schema for its per-tenant settings, stored in `tenant_module.config` and edited on the Tenant Settings page. A module that two customers use with different rules exposes those rules here: thresholds, default values, which optional fields show, which steps an approval chain has. No code for the second customer.
 5. Integrations. A module that connects to a customer system reads a `tenant_integration` record: the customer's file share, document system, or bucket. Configuration and a secret reference, no code.
-6. A new module. When the requirement is a capability that does not exist, `nx g @genie/module:new <capability>` scaffolds it under `packages/modules/`, named by what it does. It is entitled to the customer who asked. It becomes generic by entitlement, not by moving.
+6. A new module. When the requirement is a capability that does not exist, `nx g @genie/generators:module-new <capability>` scaffolds it under `packages/modules/`, named by what it does. It is entitled to the customer who asked. It becomes generic by entitlement, not by moving.
 7. Hosting. Every customer has its own deployment from its own image (ADR 0007). The choice here is where it runs and who operates it: on Genie's servers, in the customer's infrastructure with Genie operating it, or in the customer's infrastructure with the customer operating it (`DEC-33`). Other customers' modules are absent from the image, code and schema alike, and the customer never receives source.
 8. A custom application. When the customer needs an experience the standard shell cannot express: a different navigation model, a purpose-built landing experience, a kiosk or embedded surface, or a portal that combines modules in its own way. An app is created under `customers/<slug>/app/` in the same monorepo. It composes `packages/core` (tenant routing, auth, authz, services, routers) and `packages/ui` (primitives and shell parts) with the modules it wants, and ships as that customer's image. It is still owned by Genie Ops Center, still tested in the same CI against the same core, and still forbidden from containing business logic: what it owns is composition, layout, and screens. The cost is maintaining that app's screens as core evolves, and only that customer pays it.
 

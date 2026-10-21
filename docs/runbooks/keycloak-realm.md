@@ -25,9 +25,9 @@ Two templates live in the repository under `deploy/keycloak/`.
 | `realm-template.json` | Brokered | The customer has an identity provider. |
 | `realm-template.local.json` | Local accounts | `local_accounts` is true in `tenant.yaml` (`DEC-10`, `DEC-36`). |
 
-One customer delta file sits beside them, in `customers/<slug>/deploy/realm.overrides.json`. It holds only the values that differ for that customer. Keep it small. A value that the template already sets correctly must not be repeated there.
+One customer delta file sits beside them, in `customers/<slug>/deploy/realm.overrides.json`. It holds only the values that differ for that customer. Keep it small. A value that the template already sets correctly must not be repeated there. The override may set only these top-level keys, and a key outside the list refuses the realm step by name (Spec 2 D2-3): `ssoSessionIdleTimeout`, `ssoSessionMaxLifespan`, `accessTokenLifespan`, `passwordPolicy`, `loginTheme`, `internationalizationEnabled`, `supportedLocales` and `defaultLocale`. The clients, the `users` service account, the identity providers and their mappers, the authentication flows, brute-force settings, the email theme, the display name, the SMTP server, and every secret are fixed by the template and core, and cannot be overridden.
 
-Planned. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it, and applies the result. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
+Keycloak. `genie-ops setup` reads `local_accounts` from `tenant.yaml`, picks the variant, merges `realm.overrides.json` over it (objects merge key by key, a list in the override replaces the whole list), fills the values core owns (the client secrets, the redirect URIs from `PUBLIC_URL` and, when set, `genie_studio_url`, the display name, the SMTP settings), and applies the result in one `POST /admin/realms`. The realm name is derived from the customer slug by the tenant generator, so it is not a field in any configuration file (`DEC-35`). The realm display name is set to the company name from `branding.seed.json` (`DEC-40`). No other branding value is ever written to the realm.
 
 ## What the realm template guarantees
 
@@ -44,13 +44,29 @@ The template exists so that every realm is identical on the points that matter. 
 The `genie-ops-center` client carries these values.
 
 - Redirect URI: `PUBLIC_URL/api/auth/callback/keycloak`. This is the Better Auth `genericOAuth` callback path and it is fixed (`../core/tech-stack.md`).
-- Post-logout redirect URI: `PUBLIC_URL`. Sign-out ends the application session and then the realm session (`DEC-11`).
+- Post-logout redirect URI: `PUBLIC_URL`. Sign-out ends the application session and then the realm session (`DEC-11`). In client-only mode it ends the application session only (ADR 0010).
 - Web origin: `PUBLIC_URL`.
 - PKCE challenge method: `S256`.
 
 Keycloak. The client setting named "PKCE method" takes `S256`, `plain`, or blank. Blank means that Keycloak accepts PKCE but does not require it. `S256` means that Keycloak requires PKCE with SHA-256 for that client. Set `S256`, because an authorization code stolen without the verifier is then useless.
 
 Keycloak. Post-logout redirect URIs are a client attribute, and the values are joined with `##` when several are set. From Keycloak 26.6 the `secure-client-uris` client policy executor requires HTTPS on post-logout redirect URIs, so a plain HTTP address fails validation under that policy.
+
+The `genie-studio` client carries these values when `tenant.yaml` sets `genie_studio_url`.
+
+- Redirect URI: `<genie_studio_url>/api/v1/auth/oidc/callback`. genie-studio completes the OIDC code exchange on its own backend callback, so this is a different path from the Ops Center callback; genie-core reads it as `OIDC_REDIRECT_URI`.
+- Post-logout redirect URI: `<genie_studio_url>/*`, so genie-core's configured `OIDC_POST_LOGOUT_REDIRECT_URI`, which sits under that origin, is accepted.
+- No web origin. genie-core exchanges the code server-side, so the browser needs no CORS to the token endpoint.
+
+Keycloak. `genie_studio_url` is optional. An unset value leaves the `genie-studio` client with no redirect URIs and no post-logout redirect, exactly as a realm made before the field existed. A set value must be an https origin, or an http origin on loopback (`localhost`, `127.0.0.1`, `[::1]`), with no userinfo, path, query or fragment, no wildcard host and no port 0; the tenant schema refuses anything else, and the realm step reduces it to its origin — lower-case host, no default port, no trailing slash. The realm step writes the client at creation, and on a rerun while the step is not done it adds the missing redirect and post-logout values and keeps every value the client already carries. A rerun adds each value once and prints which values it added, or that none was missing.
+
+A realm whose `realm` step is already `done` is never reopened by an edit to `genie_studio_url`, because a done step does not rerun. Setup reads `setup_step` for that decision; it has no reset flag. To make the realm step run again, clear its row and the `clients` row in the deployment's database, for example with `psql` against the `DATABASE_URL` in `.env`:
+
+```
+psql "$DATABASE_URL" -c "delete from setup_step where step in ('realm', 'clients')"
+```
+
+Then run `docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD app genie-ops setup`. Clearing `realm` makes it repair the client; clearing `clients` as well makes Check 4 below re-run its proof, because a `done` clients step prints nothing.
 
 The application never inspects the request hostname. `PUBLIC_URL` is the one address the realm points at (`DEC-19`).
 
@@ -64,22 +80,22 @@ Keycloak. The set-password email is sent by `PUT /admin/realms/{realm}/users/{id
 
 Keycloak. Updating the realm itself, which includes the display name and the SMTP settings, requires `manage-realm`, not `manage-users`. Writing an identity provider requires `manage-identity-providers`.
 
-The role set is settled (`docs/specs/README.md`, "Cross-section calls made in the drafting round"). The `genie-admin` service account holds exactly `manage-users`, `view-users`, `query-users`, `view-clients`, and `manage-identity-providers`, and nothing more. `manage-users` covers the local-account work and erasure. `view-clients` lets the `clients` step of `genie-ops setup` verify the three clients. `manage-identity-providers` covers `genie-ops idp set`. `manage-realm` and `manage-clients` are not held, because the three clients, their secrets, their redirect URIs, the realm display name, and the SMTP settings are all written at realm creation with the one-run bootstrap credential (`DEC-37`, `DEC-40`); the `clients` step only verifies them. Make sure at the first provisioning that no command fails for a missing role with this set (to confirm at first provisioning).
+The role set is settled (`docs/specs/README.md`, "Cross-section calls made in the drafting round"). The `genie-admin` service account holds exactly `manage-users`, `view-users`, `query-users`, and `manage-identity-providers`, and nothing more. `manage-users` covers the local-account work and erasure. `manage-identity-providers` covers `genie-ops idp set`. `manage-realm`, `manage-clients` and `view-clients` are not held: the three clients, their secrets, their redirect URIs, the realm display name, and the SMTP settings are all written at realm creation with the one-run bootstrap credential (`DEC-37`, `DEC-40`), and `view-clients` is refused because it reads every client secret in the realm, including `genie-studio`'s, which belongs to the other product. So the `clients` step of `genie-ops setup` proves the three clients exist through the public authorization endpoint and the `genie-admin` token exchange rather than the admin client list (Specification 02 R-54). It reads no error wording, so it holds in every realm locale; a disabled client counts as present, and the operator meets it at that product's own sign-in. Make sure at the first provisioning that no command fails for a missing role with this set (to confirm at first provisioning).
 
 ### The `groups` claim
 
-Genie Ops Center reads one claim and nothing else: `groups` (`../architecture/access-model.md`). The template puts the protocol mapper that produces it on the client scope that the `genie-ops-center` client uses.
+Genie Ops Center reads the `groups` list and the boolean `genie_groups` marker (`../architecture/access-model.md`). Both realm templates put the list mapper on `genie-ops-center` and a Hardcoded Claim mapper on both `genie-ops-center` and `genie-studio`. The marker mapper has claim name `genie_groups`, claim value `true`, JSON type `boolean`, and emits into the id token, access token, and userinfo. Keycloak omits an empty multivalued list, so a sign-in with the marker but no `groups` claim means zero groups. If both claims are absent, Genie keeps existing directory memberships and writes `auth:groups_claim_absent` instead of assuming the person left every group.
 
 Keycloak. Two different mappers can produce that claim, and they read different sources.
 
 - The Group Membership protocol mapper reads the person's group memberships inside the realm. Its `full.path` property defaults to `true`, which emits `/Finance-Managers` rather than `Finance-Managers`.
 - The User Attribute protocol mapper reads a user attribute and writes it into a claim. It must be multivalued for a list of group names.
 
-Keycloak. A brokered person has no realm group membership by default. The identity provider mapper imports the provider's claim or attribute into a user attribute, and the User Attribute protocol mapper then emits it as `groups`. A local account and an LDAP-federated account do have realm group memberships, so the Group Membership mapper serves them.
+Keycloak. A brokered person has no realm group membership by default. The identity provider mapper imports the provider's claim or attribute into a user attribute, and the User Attribute protocol mapper then emits it as `groups`. A local account does have realm group memberships, so the Group Membership mapper serves it (an LDAP-federated account would too, once LDAP federation is reopened).
 
 The claim carries bare group names, never paths (`docs/specs/README.md`, "Cross-section calls made in the drafting round"). Set `full.path` to `false` on the Group Membership mapper. Let the identity provider mappers import the names exactly as the provider sends them. Genie Ops Center matches a `group` row on that plain name (`../architecture/access-model.md`). Make sure at the first provisioning that the emitted claim carries no leading slash (to confirm at first provisioning).
 
-One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. LDAP federation creates real realm groups, so it uses the Group Membership mapper as well.
+One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. LDAP federation, when reopened, creates real realm groups, so it would use the Group Membership mapper as well.
 
 ### Shared realm settings
 
@@ -115,10 +131,12 @@ Keep the access token lifespan short, because nothing in Genie Ops Center reads 
 - The identity provider redirector is the default authenticator of the browser flow, so a person never sees a Keycloak password form.
 - No local registration, no forgot-password link, and no realm password policy, because the realm holds no employee password.
 - The User Attribute protocol mapper for `groups`.
+- The browser flow's Identity Provider Redirector has its "Default Identity Provider" set to the fixed alias `company-login`.
+- The first-broker-login flow's "Review Profile" step is off, so a brokered person cannot type an email or username of their own before the account is created. The identity provider is the only source of the profile, and pre-added rows match on the email it sends; a provider that sends no email still fails later, because the application refuses a token with no email, so the provider must send one.
 
 Keycloak. The redirector is the `identity-provider-redirector` execution in the browser flow. Set its "Default Identity Provider" configuration to the provider alias. If Keycloak does not find that alias, it shows the login form instead. The same authenticator processes the `kc_idp_hint` query parameter, and a client can override the default with it.
 
-The template ships the redirector execution with no alias, because the provider does not exist until `genie-ops idp set` runs. The command writes the alias.
+The `realm` step sets the default alias to `company-login` when it creates the realm, with the bootstrap credential, and sets the same two flow values again on a realm that already exists, so a rerun after a failed flow write repairs them. `genie-ops idp set` then writes the provider under that same fixed alias (Spec 2 R-58). Before `idp set` has run, the alias names no provider and the realm shows its own form; after it, sign-in is sent to the provider. The command never writes the flow itself, because writing the flow needs `manage-realm` and `genie-admin` deliberately does not hold it. A realm created before the `realm` step set these values gets them on the next `genie-ops setup` run.
 
 ### The local-accounts variant
 
@@ -139,7 +157,7 @@ The three credential emails of a local-accounts realm are Keycloak's built-in te
 
 ## Apply the template
 
-Planned. `genie-ops setup` creates the realm and everything in it. The operator does not create a realm by hand. The full procedure, including the database and the stack, is in `deployment.md`. Only the realm steps are repeated here.
+Planned. In managed mode, `genie-ops setup` creates the realm and everything in it. Client-only mode is in the client-file section. The operator does not create a realm by hand. The full procedure, including the database and the stack, is in `deployment.md`. Only the realm steps are repeated here.
 
 1. Make sure that `KEYCLOAK_URL` in `.env` points at the Keycloak server that holds this realm.
 2. Make sure that `KEYCLOAK_REALM` in `.env` matches the realm name that the tenant generator derived from the slug.
@@ -148,20 +166,44 @@ Planned. `genie-ops setup` creates the realm and everything in it. The operator 
 5. Run setup with that credential in the environment of the command only.
 
    ```sh
-   docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD='...' app genie-ops setup
+   read -rs KEYCLOAK_BOOTSTRAP_PASSWORD && export KEYCLOAK_BOOTSTRAP_PASSWORD
+   docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD app genie-ops setup
    ```
+
+   `read -rs` puts the password into your shell's environment without typing it on the command line, so it is not in the command's arguments and not in your shell history; `-e KEYCLOAK_BOOTSTRAP_PASSWORD` passes the name, not the value.
 
 6. Make sure that the two bootstrap variables are absent from `.env` afterwards (`DEC-37`).
 
 Warning. If the bootstrap credential is written into `.env`, then every later reader of that file holds rights over every realm on that server. Pass it in the command environment only.
 
+One address. `KEYCLOAK_URL` is the address the browser and the application both use (Specification 02 R-54c/d). The compose file sets the bundled Keycloak's `KC_HOSTNAME` from it, so Keycloak's issuer and every redirect use that address and never a request host; the app service requires the same value and fetches `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration` from it, comparing the document's `issuer` to `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}` exactly. The app container must therefore resolve and reach that public address — through public DNS, or a host mapping to the reverse proxy — and it must never be given an internal compose alias, whose issuer would not match and which the browser could not follow. The generated `.env.example` lists `KEYCLOAK_URL` as required for the app service.
+
 Keycloak. A realm is created with `POST /admin/realms` carrying the whole realm representation, which creates the clients and mappers in the same call. `POST /admin/realms/{realm}/partialImport` applies a file to a realm that already exists, with `ifResourceExists` set to `FAIL`, `SKIP`, or `OVERWRITE`. The first is the path for a fresh realm and the second is the path for a repair.
 
 Setup is resumable through `setup_step` (`../architecture/data-shape.md`). A rerun after the realm step needs no bootstrap credential. The identity provider is not a setup step, because `genie-ops idp set` runs afterwards and a local-accounts deployment never runs it (`DEC-36`).
 
+## Client files (client-only mode)
+
+Planned. In client-only mode (`realm: customer` in `tenant.yaml`, ADR 0010), Genie Ops Center and genie-studio are clients in the customer's existing realm. Setup creates no realm and no client, and no `genie-admin` client exists. The customer's IT imports two client files from `deploy/keycloak/` (Specification 02 R-54a): `genie-ops-center.client.json` and `genie-studio.client.json`. Each file carries a placeholder host (`replace-with-your-public-url.invalid`, and `replace-with-your-genie-studio-url.invalid` for genie-studio) where that deployment's URL goes.
+
+1. Give the customer's IT the two files. The files carry no secret.
+2. Make sure that each client requires PKCE (`pkce.code.challenge.method` is `S256` in the file).
+3. Replace the placeholder host in `genie-ops-center.client.json` with this deployment's `PUBLIC_URL`, so the redirect URI becomes `PUBLIC_URL/api/auth/callback/keycloak` and the post-logout redirect and web origin become `PUBLIC_URL`. Replace the genie-studio file's placeholder with the genie-studio address, so its redirect URI becomes `<genie_studio_url>/api/v1/auth/oidc/callback` and its post-logout redirect becomes `<genie_studio_url>/*`, the same values the realm template fills.
+4. Make sure that each client carries its own `groups` and `genie_groups` protocol mappers, so the mappers change nothing else in the realm: the Group Membership mapper with `full.path` false, or the User Attribute mapper when the customer's realm keeps the person's groups in a user attribute. The claim name is `groups`, in the id token and the access token. The `genie_groups` Hardcoded Claim mapper emits boolean `genie_groups: true`; it is required, because Keycloak omits an empty `groups` claim and the marker is what makes a missing claim mean zero groups (`DEC-41`).
+5. Ask the customer's IT to restrict the `groups` claim to the groups meant for Genie Ops Center. Otherwise the claim carries every realm group the person holds, and the groups sync creates a group for each (`DEC-41`).
+6. Ask the customer's IT to return the `genie-ops-center` client secret. Put it in `.env` as `KEYCLOAK_CLIENT_SECRET`. If they renamed the client, set `KEYCLOAK_CLIENT_ID` to the new id.
+
+The realm-level guarantees of the template become the customer's duties, because Genie holds no rights in their realm:
+
+- A short realm session, so that offboarding at the company login takes effect soon.
+- Brute-force protection on the realm.
+- The forward to their company login, if the realm brokers one.
+
+Warning. Sign-out in client-only mode ends the Genie Ops Center session only. The realm session belongs to the company, so the next sign-in is silent while it lasts.
+
 ## Add the customer's identity provider
 
-Planned. `genie-ops idp set` writes the provider into the realm, sets it as the default of the identity provider redirector, and creates the mapper that fills the `groups` claim. The protocol and the credentials are arguments. Nothing about the provider is stored in `customers/<slug>/` (`DEC-36`).
+`genie-ops idp set` writes the provider into the realm under the fixed alias `company-login` and creates the mappers that fill the `groups` claim (and, for SAML, the email and name). The realm step already set that alias as the browser flow's default redirector (see "The brokered variant"), so the provider the command writes is the one sign-in is sent to; the command never writes the flow, because that needs `manage-realm` and `genie-admin` does not hold it. The protocol, the issuer or metadata URL and the client id are arguments; the OIDC client secret comes from `IDP_CLIENT_SECRET` in the environment of that one command, never as an argument, so it stays out of the process arguments and the shell history. Nothing about the provider is stored in `customers/<slug>/` (`DEC-36`).
 
 Run the command on the host.
 
@@ -171,29 +213,27 @@ docker compose exec app genie-ops idp set --protocol oidc ...
 
 ### OpenID Connect
 
-Arguments: the issuer or the discovery URL, the client id, the client secret, and the name of the claim that carries groups.
+Arguments: `--protocol oidc`, `--issuer-url` (the issuer or the discovery URL), `--client-id`, and optionally `--groups-claim` (default `groups`). The client secret is not an argument: set `IDP_CLIENT_SECRET` in the environment of that one command, for example `docker compose exec -e IDP_CLIENT_SECRET='...' app genie-ops idp set --protocol oidc ...`, so it stays out of the process arguments and the shell history.
 
-Planned. The command creates an identity provider of kind `oidc` and one identity provider mapper of kind Attribute Importer, which copies the named claim into the user attribute that the `groups` protocol mapper reads.
+The command lets Keycloak fetch the provider's discovery document, creates an identity provider of kind `oidc`, and creates one identity provider mapper of kind Attribute Importer, which copies the named claim into the user attribute that the `groups` protocol mapper reads. It refuses an issuer URL that carries a username or password, or plain HTTP outside development.
 
-Keycloak. An identity provider mapper has a sync mode. `force` updates the user at every sign-in. `import` writes only at the first sign-in. Use `force`, because group membership changes and must follow the provider at every sign-in.
+Keycloak. An identity provider mapper has a sync mode. `force` updates the user at every sign-in. `import` writes only at the first sign-in. The command sets `force`, because group membership changes must follow the provider at every sign-in and a sign-in whose claim is empty must clear the attribute, so the offboarding rule of `DEC-41` fires.
 
 Keycloak. A JSON claim may be addressed with dots for nesting and brackets for an array index, for example `contact.address[0].country`.
 
 ### SAML 2.0
 
-Arguments: the metadata URL or the metadata file, and the name of the attribute that carries groups.
+Arguments: `--protocol saml`, `--metadata-url`, `--entity-id` (the service-provider entity ID the customer's provider expects), and optionally `--groups-claim` (default `groups`) and `--email-attribute`, `--first-name-attribute`, `--last-name-attribute` (defaults `email`, `firstName`, `lastName`). It refuses a metadata URL that carries a username or password, or plain HTTP outside development.
 
-Planned. The command creates an identity provider of kind `saml` and one Attribute Importer mapper for the named attribute, with the same sync mode rule as above.
+The command lets Keycloak fetch the provider's metadata, creates an identity provider of kind `saml`, and creates Attribute Importer mappers for the group attribute and for the person's email and name, with the same `force` sync mode as above. A SAML assertion carries no email unless the provider sends it, and the application refuses a token with no email, so the customer must send an email attribute and name its claim. Without it the sign-in fails after the provider has authenticated the person.
 
 ### LDAP or Active Directory
 
-Arguments: the connection URL, the bind credential, the users distinguished name, and the groups distinguished name.
+Deferred. `genie-ops idp set` accepts only `oidc` and `saml`, and refuses any other protocol. LDAP federation lands when a customer asks (Spec 2, Deferred, "LDAP federation in `idp set`"). The pieces it needs, for the record, are a user-federation component with its own group mapper and the right to write it; writing a user federation is refused without `manage-realm`, so that work must choose between the bootstrap credential for that one command and granting `genie-admin` `manage-realm`. The `group-ldap-mapper` component imports directory groups as realm groups, and because a federated person then holds real realm groups, the `groups` claim would come from the Group Membership protocol mapper, not the User Attribute mapper this command configures for OIDC and SAML.
 
-Keycloak. LDAP is user federation, not identity brokering. It is a component on the realm, not an entry under the identity provider endpoints. A federated person signs in on the realm's own login form with their directory password, so the identity provider redirector plays no part.
+### Repairing the flow values
 
-Keycloak. The `group-ldap-mapper` component imports directory groups as realm groups. Its mode decides where membership lives. `LDAP_ONLY` keeps membership in the directory. `IMPORT` copies it into the Keycloak database at import. `READ_ONLY` merges both and refuses a write.
-
-Because a federated person holds real realm groups, the `groups` claim comes from the Group Membership protocol mapper, the same one the local-accounts variant uses. A realm that federates LDAP therefore needs that mapper even though it is not a local-accounts realm (to confirm at first provisioning).
+The `realm` step sets the redirector's default alias and turns off the profile review when it creates a realm, and it sets them again on a realm that already exists. Both writes are idempotent, so a rerun of a `realm` step that is not `done` — for example after a Keycloak restart between the create and the writes — repairs them. There is no manual step. If a rerun still leaves sign-in on the realm's own form, check that the realm's `realm` step is `done` and that `KEYCLOAK_BOOTSTRAP_USER` and `KEYCLOAK_BOOTSTRAP_PASSWORD` were passed for that run, because the flow write needs the bootstrap credential.
 
 ### What the customer configures on their side
 
@@ -202,9 +242,9 @@ Because a federated person holds real realm groups, the `groups` claim comes fro
 3. Restrict the application assignment to the people who must have access.
 4. Emit only the groups that are assigned to the application, never every group of the person.
 
-Step 3 is a requirement before a customer switches onboarding to `jit`, because the provider is then the only gate (`DEC-7`).
+Step 3 is a requirement before a customer switches onboarding to `jit`. In `jit`, Genie Ops Center admits a new person only when their `groups` claim holds a group mapped to one of its roles (`DEC-7` as amended 2026-09-27), so the provider's assignment and those mappings are the two gates. Map the groups before the switch.
 
-Warning. If the provider emits every group of a person, then the claim can exceed the provider's limit and arrive absent. Microsoft Entra ID omits the `groups` claim for a person in more than 200 groups, and for more than 150 in SAML. Genie Ops Center then keeps that person's previous memberships and writes the audit event `auth:groups_claim_absent` (`DEC-41`). Microsoft Entra ID is one example. The same rule is applied to any provider with a limit.
+Warning. If the provider emits every group of a person, then the claim can exceed the provider's limit and arrive absent. Microsoft Entra ID omits the `groups` claim for a person in more than 200 groups, and for more than 150 in SAML. Genie Ops Center then keeps that person's previous memberships and writes the audit event `auth:groups_claim_absent` (`DEC-41`). Microsoft Entra ID is one example. The same rule is applied to any provider with a limit. Under `jit`, a new person whose claim arrives absent is refused; pre-add them in People.
 
 ## Verify after setup
 
@@ -213,11 +253,12 @@ Perform these checks in order. Each one has a single clear answer.
 1. Make sure that the realm exists on the Keycloak server and carries the company name as its display name.
 2. Make sure that the clients `genie-ops-center`, `genie-studio`, and `genie-admin` exist in the realm.
 3. Make sure that the redirect URI of `genie-ops-center` is `PUBLIC_URL/api/auth/callback/keycloak`.
-4. Make sure that the PKCE method of `genie-ops-center` is `S256`.
-5. Make sure that the service account of `genie-admin` holds its roles on the `realm-management` client of this realm and on no other realm.
-6. Make sure that brute force protection is on and that its numbers are not zero.
-7. Make sure that the group `Genie Administrators` exists in Genie Ops Center with the role `Tenant administrator` (`../architecture/access-model.md`).
-8. Make sure that setup printed the break-glass password once and that it went into the correct secret store (`DEC-24`).
+4. When `tenant.yaml` sets `genie_studio_url`, make sure that the redirect URI of `genie-studio` is `<genie_studio_url>/api/v1/auth/oidc/callback` and its post-logout redirect is `<genie_studio_url>/*`. The `clients` step proves that redirect through the public authorization endpoint, the same way it proves `genie-ops-center`'s; read its output only when it actually ran in this setup, because a `done` `clients` step is skipped and prints nothing (clear its row as above to re-run the proof).
+5. Make sure that the PKCE method of `genie-ops-center` is `S256`.
+6. Make sure that the service account of `genie-admin` holds its roles on the `realm-management` client of this realm and on no other realm.
+7. Make sure that brute force protection is on and that its numbers are not zero.
+8. Make sure that the group `Genie Administrators` exists in Genie Ops Center with the role `Tenant administrator` (`../architecture/access-model.md`).
+9. Make sure that setup printed the break-glass password once and that it went into the correct secret store (`DEC-24`).
 
 ## Verify after `idp set`
 
@@ -262,7 +303,7 @@ A provider that publishes a metadata URL is easier to repair than one that hands
 
 ### Export the realm as a restore shortcut
 
-The realm is recreated by setup from the template plus `realm.overrides.json`, so it needs no backup. An export still shortens a restore, because it carries the state after `idp set`.
+The realm is not recreated by setup. A restored application database marks the realm steps done, and setup never reruns a done step. Back up the Keycloak database with the application database and restore them together (`deployment.md`, "Backups", `DEC-31` as amended 2026-10-20). An export is an extra copy of the state after `idp set`, not a replacement for that backup.
 
 1. Export the realm from the Keycloak admin console after setup and after every `idp set`.
 2. Store the export beside the customer's runbook, never in the repository.
@@ -281,7 +322,20 @@ These are obligations of the Keycloak server, not of the realm. They belong to w
 | Run more than one node. | One node is a single point of failure for every sign-in. |
 | Monitor the server. | A sign-in outage must not be reported by the customer first. |
 
+#### Hardening checklist (Spec 2 AC-14)
+
+The operator who hosts the Keycloak server completes this checklist on each real deployment. Each item names the check that proves it.
+
+1. Bootstrap administrator replaced. Sign in to the `master` realm as a named administrator. Make sure that the temporary bootstrap administrator no longer exists and that the console shows no temporary-administrator banner.
+2. External database, backed up. Make sure that `KC_DB` names an external Postgres and not the embedded H2 database. Make sure that a backup of that database ran in the last 24 hours, and that one restore was tested.
+3. More than one node. Make sure that at least two Keycloak nodes serve `KEYCLOAK_URL`, and that a sign-in still completes with one node stopped.
+4. Monitoring. Make sure that an alert fires when the realm's discovery document, `KEYCLOAK_URL/realms/<realm>/.well-known/openid-configuration`, does not answer, and that the alert reaches the operator.
+
+Confirmation status: not confirmed. No operator completed this checklist on a real deployment yet. When an operator completes it, record the date, the deployment, and the operator's name below this line. Spec 2 AC-14 stays open until that record exists.
+
 Keycloak. `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` create a temporary administrator in the `master` realm at the first start, when the `master` realm does not exist yet. The console marks the account as temporary with a banner. From Keycloak 26.4 the welcome page creates a regular administrator instead, but the environment and command-line path still creates a temporary one.
+
+The generated stack passes `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` from `.env`, blank by default, and unsets a blank value, so production starts without a bootstrap administrator. The operator creates the temporary administrator once with `docker compose run --rm keycloak bootstrap-admin user` on the first deploy (`deployment.md`, "Set up a new customer", step 6). The generated-stack smoke test sets the two in its own transient `.env` to create the administrator its `genie-ops setup` signs in with.
 
 Those two variable names belong to the Keycloak server. They are not `KEYCLOAK_BOOTSTRAP_USER` and `KEYCLOAK_BOOTSTRAP_PASSWORD`, which `genie-ops setup` reads for one run (`DEC-37`). Do not confuse the pairs.
 
@@ -292,7 +346,7 @@ Those two variable names belong to the Keycloak server. They are not `KEYCLOAK_B
 | Problem | What to do |
 | --- | --- |
 | Nobody can sign in, because the provider is down or misconfigured. | Sign in with the break-glass account at `PUBLIC_URL/admin/login`, then repair the provider with `genie-ops idp set` on the host. |
-| The realm is broken or was deleted. | Run `genie-ops setup` again, then run `genie-ops idp set` again. |
+| The realm is broken or was deleted. | Restore the Keycloak database from the backup set of the same run as the application database (`deployment.md`, "Backups"). Clearing the `realm` and `clients` rows of `setup_step` and running setup again is a last resort when no Keycloak backup exists. It loses local accounts, second factors, and the federated identity links, and `genie-ops idp set` must then run again. |
 | The last administrator left the company. | Run `genie-ops admin add <email>` on the host, on the customer's written request (`DEC-23`). |
 
 Use the break-glass account only for the rows that name it, and sign out as soon as the fix is done. Every action in that session bypasses the permission checks (`DEC-15`).
@@ -301,7 +355,7 @@ Use the break-glass account only for the rows that name it, and sign out as soon
 
 | Not supported | Why | What to do instead |
 | --- | --- | --- |
-| Setup against an existing realm that holds its own users and clients. | Every template guarantee becomes a manual check (`DEC-36`). | Create a fresh realm on the customer's Keycloak server and broker their existing provider from it. |
+| Setup that edits an existing realm's settings, users, or other clients. | Setup never holds administrator rights in a realm Genie does not own (ADR 0010). | Use the fresh realm (the default), or client-only mode, where the customer imports the two client files Genie ships and keeps the realm duties that ADR 0010 lists. |
 | A second identity provider in one realm. | Not described until a customer needs it (`../architecture/access-model.md`). | Record the request and settle it with a decision first. |
 | Branding written into the realm. | One template system only (`DEC-40`). | The realm display name is the only branded value, and it equals the company name. |
 | A custom Keycloak email theme. | No theme is built or deployed (`DEC-40`). | Local-account credential emails stay on Keycloak's built-in templates. |
@@ -311,11 +365,11 @@ Use the break-glass account only for the rows that name it, and sign out as soon
 
 Every line here must be confirmed at the first provisioning against a running Keycloak 26 server, and this file corrected.
 
-1. That the settled role set for `genie-admin`, `manage-users`, `view-users`, `query-users`, `view-clients`, and `manage-identity-providers`, carries every planned command, and that no command needs `manage-realm` or `manage-clients` once the clients, the display name, and the SMTP settings are written at realm creation.
+1. That the settled role set for `genie-admin`, `manage-users`, `view-users`, `query-users`, and `manage-identity-providers`, carries every planned command, and that no command needs `manage-realm`, `manage-clients` or `view-clients` once the clients, the display name, and the SMTP settings are written at realm creation. The `clients` step proves the three clients without `view-clients`, through the public authorization endpoint; `manage-users` is proven when Add person lands.
 2. That the `groups` claim arrives as bare names with `full.path` set to `false`, on a brokered realm and on a local-accounts realm alike.
 3. The exact broker endpoint path that a customer registers, `KEYCLOAK_URL/realms/<realm>/broker/<alias>/endpoint`.
 4. The Trust Email setting on the identity provider, and whether the brokered variant needs it when the realm does not verify email at all.
 5. The correct `sslRequired` value behind a reverse proxy that terminates TLS, together with the Keycloak proxy headers setting.
-6. Whether one realm can carry both the User Attribute mapper and the Group Membership mapper on the same claim name without a conflict, which an LDAP realm would need if it also brokers a provider.
-7. The exact merge behavior of `realm.overrides.json` over a template, which is a Genie Ops Center design point and not a Keycloak feature.
+6. Whether one realm can carry both the User Attribute mapper and the Group Membership mapper on the same claim name without a conflict, which an LDAP realm would need if it also brokers a provider. Moot until LDAP federation is reopened.
+7. Settled (Spec 2 D2-3): `realm.overrides.json` merges over the template with es-toolkit `mergeWith` — objects merge key by key, a list replaces the whole list — and is then checked against the allow-list named in "Where the realm templates live". A key outside the list refuses the step.
 8. Whether the application idle window and the realm SSO idle timeout can be equal without a race at the boundary.

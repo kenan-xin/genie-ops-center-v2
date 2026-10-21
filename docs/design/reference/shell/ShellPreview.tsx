@@ -30,17 +30,18 @@ const workspaceNav = [
 ]
 
 const adminNav = [
-  { label: 'People', href: '/admin/people', isActive: true, icon: Users, section: 'Core' },
-  { label: 'Groups', href: '/admin/groups', icon: UsersRound, section: 'Core' },
-  { label: 'Roles', href: '/admin/roles', icon: ShieldCheck, section: 'Core' },
-  { label: 'Branding', href: '/admin/branding', icon: Palette, section: 'Core' },
-  { label: 'Audit log', href: '/admin/audit', icon: ScrollText, section: 'Core' },
-  { label: 'Settings', href: '/admin/settings', icon: Settings, section: 'Core' },
-  { label: 'Modules', href: '/admin/modules', icon: Blocks, section: 'Core' },
-  { label: 'Categories', href: '/admin/categories', icon: Tags, section: 'Core' },
+  { label: 'People', href: '/admin/people', isActive: true, icon: Users, section: 'People and access' },
+  { label: 'Groups', href: '/admin/groups', icon: UsersRound, section: 'People and access' },
+  { label: 'Roles', href: '/admin/roles', icon: ShieldCheck, section: 'People and access' },
+  // Access is core administration, so it stays reachable when the solutions module is switched off.
+  { label: 'Access', href: '/admin/access', icon: KeyRound, section: 'People and access' },
+  { label: 'Branding', href: '/admin/branding', icon: Palette, section: 'Tenant' },
+  { label: 'Settings', href: '/admin/settings', icon: Settings, section: 'Tenant' },
+  { label: 'Audit log', href: '/admin/audit', icon: ScrollText, section: 'Tenant' },
+  { label: 'Modules', href: '/admin/modules', icon: Blocks, section: 'Catalog' },
+  { label: 'Categories', href: '/admin/categories', icon: Tags, section: 'Catalog' },
   { label: 'Solutions', href: '/admin/solutions/solutions', icon: LayoutGrid, section: 'Solutions' },
   { label: 'Chat themes', href: '/admin/solutions/themes', icon: SwatchBook, section: 'Solutions' },
-  { label: 'Access', href: '/admin/solutions/access', icon: KeyRound, section: 'Solutions' },
 ]
 
 // Core category rows (DEC-51). Entries reference them by id.

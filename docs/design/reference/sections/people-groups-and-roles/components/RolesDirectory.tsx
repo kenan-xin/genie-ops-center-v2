@@ -38,11 +38,14 @@ export function RolesDirectory({ roles, roleAssignments, modules, onOpenRole, on
   return (
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Search and its help travel together: a 4px gap binds the icon to the field it explains. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-md">
         <SearchField value={q} onChange={setQ} placeholder="Search roles" />
-        <HelpNote label="How roles work">
+        <HelpNote label="How roles work" iconOnly>
           <p>A role is a bundle of permissions. A system role is read-only, and you can copy one into a custom role and edit the copy. A custom role is editable here.</p>
           <p>This page defines roles. Giving a role to a person or a group happens in Access, where one assignment can cover the whole tenant or one record.</p>
         </HelpNote>
+        </div>
         <div className="hidden sm:ml-auto md:block">{newRole}</div>
       </div>
       <Card className="overflow-hidden">

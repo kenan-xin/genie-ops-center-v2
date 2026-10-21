@@ -24,8 +24,8 @@ ok('assign: a module row is present', await rowSelect('Solutions').isVisible())
 ok('assign: a solution row is present', await rowSelect('Claims Triage Assistant').isVisible())
 ok('assign: the module row says it moves alone', (await page.locator('table').getByText('Moves this entry only. Its 9 solutions').count()) > 0)
 ok('assign: a module with no workspace entry is absent', await rowSelect('Reporting exports').count() === 0)
-// Uncategorized today: the Solutions hub, Service requests, Approvals, and General Assistant.
-ok('assign: the uncategorized count shows', (await page.getByText('4 uncategorized').count()) > 0, await page.getByText(/uncategorized/).first().innerText())
+// Uncategorized today: the Solutions hub, Service requests, Approvals, Asset register, and General Assistant.
+ok('assign: the uncategorized count shows', (await page.getByText('5 uncategorized').count()) > 0, await page.getByText(/uncategorized/).first().innerText())
 
 // 2. assign one solution, and see it on the other two screens
 await rowSelect('Policy Q&A').selectOption('cat_hr')

@@ -5,7 +5,7 @@ import type { EmailSampleValues, EmailTemplate } from '@/../product/sections/ema
 import emailData from '@/../product/sections/email-templates/data.json'
 import { EmailBody, MailClientFrame } from '@/sections/email-templates/components'
 import { tokenContext } from '@/sections/email-templates/components/helpers'
-import { FONT_SIZES, checkPrimaryPairs, darkVariant, emailTenantFromDraft, foregroundFor } from './helpers'
+import { FONT_SIZES, checkPrimaryPairs, darkVariant, emailTenantFromDraft, foregroundFor, useModalFocus } from './helpers'
 
 type Theme = 'light' | 'dark'
 
@@ -31,7 +31,7 @@ export function Mark({ b, mark, size = 28 }: { b: Branding; mark: BrandingImage 
 }
 
 /** Scales a 1280 by 800 desktop frame to the width of its container, so the preview reads like the real product at a glance. */
-function ScaledFrame({ children, width = 1280, height = 800 }: { children: React.ReactNode; width?: number; height?: number }) {
+function ScaledFrame({ children, width = 1280, height = 800, framed }: { children: React.ReactNode; width?: number; height?: number; framed?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(0)
   useEffect(() => {
@@ -43,7 +43,7 @@ function ScaledFrame({ children, width = 1280, height = 800 }: { children: React
   }, [])
   const scale = w ? w / width : 0
   return (
-    <div ref={ref} className="w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800" style={{ height: Math.round(height * scale) || undefined }}>
+    <div ref={ref} className={`w-full overflow-hidden ${framed ? 'rounded-lg border border-gray-200 dark:border-gray-800' : ''}`} style={{ height: Math.round(height * scale) || undefined }}>
       <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left' }}>{children}</div>
     </div>
   )
@@ -61,12 +61,7 @@ const SAMPLE_SOLUTIONS = [
 /** The full 1280px desktop shell, scaled to fit the preview panel, with Enlarge for a larger copy. Only the active nav row, count pills, the primary button, and the focus ring take the tenant primary; chrome stays neutral. */
 export function ShellPreview({ b, mark, theme, fontStack, showContrast, targets }: { b: Branding; mark: BrandingImage | null; theme: Theme; fontStack: string; showContrast: boolean; targets: ContrastTargets }) {
   const [expanded, setExpanded] = useState(false)
-  useEffect(() => {
-    if (!expanded) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setExpanded(false)
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [expanded])
+  const enlarged = useModalFocus(expanded, () => setExpanded(false))
   const s = surf(theme, b.textColor)
   /* A solid fill keeps the raw color in both themes (tokens: no derived shade); only text and the ring take the dark variant. */
   const primary = theme === 'dark' ? darkVariant(b.primaryColor) : b.primaryColor
@@ -138,16 +133,16 @@ export function ShellPreview({ b, mark, theme, fontStack, showContrast, targets 
     )
   }
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <ScaledFrame>{frame}</ScaledFrame>
-      <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs" style={{ color: '#6b7280' }}>
+      <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-gray-100 px-4 py-2 text-xs dark:border-gray-800" style={{ color: '#6b7280' }}>
         <span className="flex items-center gap-2">{showContrast ? chip('Primary', b.primaryColor) : null}<button type="button" onClick={() => setExpanded(true)} className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"><Maximize2 className="size-3.5" strokeWidth={2} aria-hidden />Enlarge</button></span>
       </div>
       {expanded ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 md:p-8" onClick={() => setExpanded(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Shell preview, enlarged" className="w-full max-w-[1240px] rounded-xl bg-white p-3 shadow-2xl dark:bg-gray-900" onClick={(e) => e.stopPropagation()}>
+          <div ref={enlarged} role="dialog" aria-modal="true" aria-label="Shell preview, enlarged" className="w-full max-w-[1240px] rounded-xl bg-white p-3 shadow-2xl dark:bg-gray-900" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between px-1"><span className="text-sm font-semibold">Shell preview</span><button type="button" aria-label="Close" onClick={() => setExpanded(false)} className="flex size-9 items-center justify-center rounded-lg text-gray-500 outline-none hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"><X className="size-4" strokeWidth={1.75} /></button></div>
-            <ScaledFrame>{frame}</ScaledFrame>
+            <ScaledFrame framed>{frame}</ScaledFrame>
           </div>
         </div>
       ) : null}
@@ -158,7 +153,7 @@ export function ShellPreview({ b, mark, theme, fontStack, showContrast, targets 
 export function SignInPreview({ b, mark, theme, fontStack }: { b: Branding; mark: BrandingImage | null; theme: Theme; fontStack: string }) {
   const s = surf(theme, b.textColor)
   return (
-    <div className="flex flex-col items-center rounded-lg border px-4 py-6" style={{ backgroundColor: theme === 'dark' ? '#030712' : b.loginBackgroundColor, borderColor: s.line, color: s.text, fontFamily: fontStack, fontSize: FONT_SIZES[b.fontSize] }}>
+    <div className="flex flex-col items-center px-4 py-6" style={{ backgroundColor: theme === 'dark' ? '#030712' : b.loginBackgroundColor, color: s.text, fontFamily: fontStack, fontSize: FONT_SIZES[b.fontSize] }}>
       <Mark b={b} mark={mark} size={36} />
       <div className="mt-2 font-bold">{b.companyName}</div>
       <div className="text-xs" style={{ color: s.muted }}>{b.productName}</div>
@@ -188,7 +183,7 @@ export function EmailPreview({ b, mark }: { b: Branding; mark: BrandingImage | n
   // ponytail: the email body is owned by email-templates and sets its own size and color classes; override them from here rather than thread two more props through.
   return (
     <div className="text-sm [&_.text-base]:text-[length:1em] [&_.text-gray-800]:text-[color:inherit]" style={{ fontSize: FONT_SIZES[b.fontSize], color: b.textColor }}>
-      <MailClientFrame template={INVITATION} ctx={ctx}>
+      <MailClientFrame template={INVITATION} ctx={ctx} flush>
         <EmailBody template={INVITATION} ctx={ctx} width={360} />
       </MailClientFrame>
     </div>
@@ -199,8 +194,8 @@ export function FooterPreview({ b, theme }: { b: Branding; theme: Theme }) {
   const s = surf(theme, b.textColor)
   const items = [b.supportUrl ? 'Support' : b.supportEmail, b.termsUrl ? 'Terms of use' : null, b.privacyUrl ? 'Privacy policy' : null].filter(Boolean) as string[]
   return (
-    <div className="rounded-lg border text-xs" style={{ borderColor: s.line, backgroundColor: s.page, color: s.text }}>
-      <div className="h-24 rounded-t-lg" style={{ backgroundColor: s.panel }} />
+    <div className="text-xs" style={{ backgroundColor: s.page, color: s.text }}>
+      <div className="h-24" style={{ backgroundColor: s.panel }} />
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3" style={{ borderColor: s.line }}>
         <span style={{ color: s.muted }}>© 2026 {b.companyName}</span>
         <div className="flex flex-wrap gap-4">{items.map((i) => <span key={i} className="font-medium" style={{ color: b.primaryColor }}>{i}</span>)}{items.length === 0 ? <span style={{ color: s.muted }}>No links set</span> : null}</div>
@@ -220,7 +215,7 @@ export function LocalePreview({ b, theme }: { b: Branding; theme: Theme }) {
   const num = b.numberFormat === '1.234.567,89' ? '1.234.567,89' : b.numberFormat === '1 234 567,89' ? '1 234 567,89' : '1,234,567.89'
   const rows: Array<[string, string]> = [['Language', b.defaultLocale === 'en' ? 'English' : b.defaultLocale], ['Time zone', b.defaultTimeZone.replace('_', ' ')], ['Today', date], ['Time now', `${get('hour')}:${get('minute')}`], ['Number', num]]
   return (
-    <div className="rounded-lg border p-4 text-sm" style={{ borderColor: s.line, backgroundColor: s.page, color: s.text }}>
+    <div className="p-4 text-sm" style={{ backgroundColor: s.page, color: s.text }}>
       <dl className="grid grid-cols-[110px_1fr] gap-y-2">{rows.map(([k, v]) => <div key={k} className="contents"><dt style={{ color: s.muted }}>{k}</dt><dd className="font-mono">{v}</dd></div>)}</dl>
       <p className="mt-3 text-xs" style={{ color: s.muted }}>People can override language and time zone for themselves on their account page.</p>
     </div>

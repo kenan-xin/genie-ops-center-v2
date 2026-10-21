@@ -1,5 +1,4 @@
 export type GroupSource = 'idp' | 'local'
-export type ThemeChoice = 'light' | 'dark' | 'system'
 
 export interface AccountUser {
   id: string
@@ -37,8 +36,7 @@ export interface LocaleOption {
 export interface Preference {
   locale: string | null
   timeZone: string | null
-  theme: ThemeChoice | null
-  tenantDefaults: { locale: string; timeZone: string; theme: ThemeChoice }
+  tenantDefaults: { locale: string; timeZone: string }
   availableLocales: LocaleOption[]
   /** From the tenant's locale options. */
   availableTimeZones: string[]

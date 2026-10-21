@@ -1,0 +1,80 @@
+{
+  "name": "@genie/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./errors": "./src/lib/errors/index.ts",
+    "./features/account": "./src/features/account/index.ts",
+    "./features/audit": "./src/features/audit/index.ts",
+    "./features/break-glass": "./src/features/break-glass/index.ts",
+    "./features/groups": "./src/features/groups/index.ts",
+    "./features/people": "./src/features/people/index.ts",
+    "./features/roles": "./src/features/roles/index.ts",
+    "./logging": "./src/services/logging/index.ts",
+    "./rpc": "./src/lib/rpc/index.ts",
+    "./security": "./src/lib/content-security-policy/index.ts",
+    "./testing": "./testing/index.ts",
+    "./testing/stage-workspace": "./testing/stage-workspace.ts",
+    "./testing/required-tests-runner": "./testing/required-tests-runner.ts",
+    "./testing/required-tests-validator": "./testing/required-tests-validator.ts",
+    "./contracts": "./contracts/index.ts",
+    "./tenant-config": "./src/lib/tenant-config/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts src contracts testing tools",
+    "schemas": "node tools/emit-schemas.ts",
+    "test": "vitest run",
+    "test:integration": "node tools/run-required-tests.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json"
+  },
+  "dependencies": {
+    "@genie/ui": "workspace:*",
+    "@orpc/contract": "catalog:",
+    "@orpc/server": "catalog:",
+    "@react-email/components": "1.0.12",
+    "@tanstack/react-pacer": "0.23.0",
+    "better-auth": "1.7.6",
+    "dompurify": "3.4.16",
+    "drizzle-orm": "0.45.2",
+    "es-toolkit": "1.52.0",
+    "jsdom": "30.1.2",
+    "nodemailer": "7.0.13",
+    "pg": "catalog:",
+    "pg-boss": "12.33.5",
+    "pino": "10.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "resend": "6.32.1",
+    "uuid": "14.0.2",
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "@storybook/nextjs-vite": "10.6.1",
+    "@testcontainers/postgresql": "12.2.0",
+    "@types/jsdom": "30.0.0",
+    "@types/nodemailer": "7.0.12",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "oxlint": "1.83.0",
+    "storybook": "10.6.1",
+    "testcontainers": "12.2.0",
+    "vitest": "4.1.11"
+  },
+  "nx": {
+    "tags": [
+      "core"
+    ],
+    "targets": {
+      "schemas": {
+        "cache": false,
+        "outputs": [
+          "{workspaceRoot}/deploy/schemas"
+        ]
+      }
+    }
+  }
+}

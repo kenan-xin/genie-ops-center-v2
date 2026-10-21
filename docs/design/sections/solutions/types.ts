@@ -207,10 +207,13 @@ export interface ChatSolutionsProps {
   onRetrySend?: (solutionId: string) => void
   /** Member toggles Focus mode (hides shell navigation). */
   onToggleFocus?: (focused: boolean) => void
-  /** Administrator opens the assignment form with role and scope preselected. */
-  onAddAccess?: (solutionId: string) => void
-  /** Administrator asks to remove a direct grant. Opens the core role assignment form with that assignment preselected; the core form performs the removal (DEC-39, DEC-50). */
-  onRemoveAccess?: (grantId: string) => void
+  /**
+   * Administrator opens central Access for this solution. Navigation only: the link carries the
+   * module, the level, and the record, and core Access owns every assignment write (`DEC-39`).
+   * There is no add or remove callback here, because a second write path would miss the shared
+   * safeguards, the module gating, the audit entry, and the notifications.
+   */
+  onManageAccess?: (solutionId: string) => void
   /** Administrator creates a theme, starting from the tenant branding colors. */
   onCreateTheme?: (input: ChatThemeInput) => void
   /** Administrator saves a theme. */

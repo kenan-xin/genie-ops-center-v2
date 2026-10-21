@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "src/lib/story-seam/**/*.ts",
+    "src/lib/rpc/index.ts",
+    "src/**/*.tsx",
+    "contracts/**/*.tsx",
+    "testing/**/*.tsx"
+  ]
+}

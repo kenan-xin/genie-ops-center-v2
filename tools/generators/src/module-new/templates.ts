@@ -1,0 +1,1317 @@
+import { createHash } from "node:crypto";
+
+import type { ModuleNames } from "./render.ts";
+
+type Template = (names: ModuleNames) => string;
+
+/** What a rendered JSON file may hold. */
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly JsonValue[]
+  | JsonDocument;
+
+type JsonDocument = { readonly [key: string]: JsonValue };
+
+function json(value: JsonDocument): string {
+  return `${JSON.stringify(value, undefined, 2)}\n`;
+}
+
+/**
+ * drizzle-kit stamps each snapshot with a fresh identifier. The generator has no
+ * such freedom: the same id must render the same bytes, so the identifier is
+ * derived from the module id instead of drawn at random.
+ */
+function snapshotId(id: string): string {
+  const digest = createHash("sha256").update(id, "utf8").digest("hex");
+
+  return [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    `4${digest.slice(13, 16)}`,
+    `8${digest.slice(17, 20)}`,
+    digest.slice(20, 32),
+  ].join("-");
+}
+
+/** The one migration the generator writes. A later change adds the next tag. */
+const FIRST_TAG = "0000_initial";
+
+const manifest: Template = (names) =>
+  json({
+    name: names.packageName,
+    version: "0.0.0",
+    private: true,
+    type: "module",
+    exports: {
+      ".": "./src/index.ts",
+      "./contract": "./src/contract.ts",
+      "./presentation": "./src/presentation/index.ts",
+      "./testing": "./testing/index.ts",
+    },
+    scripts: {
+      "lint": "oxlint --config ../../../oxlint.config.ts src testing tools",
+      "test": "vitest run",
+      "test:integration": "node tools/run-required-tests.ts",
+      "typecheck": "tsc --noEmit",
+    },
+    dependencies: {
+      "@genie/core": "workspace:*",
+      "@genie/ui": "workspace:*",
+      "drizzle-orm": "0.45.2",
+      "react": "19.3.0",
+      "zod": "4.6.5",
+    },
+    devDependencies: {
+      "@genie/config": "workspace:*",
+      "@storybook/nextjs-vite": "10.6.1",
+      "@types/react": "19.3.0",
+      "oxlint": "1.83.0",
+      "storybook": "10.6.1",
+      "vitest": "4.1.11",
+    },
+    genie: { module: { id: names.id, entrypoint: "src/index.ts" } },
+    nx: { tags: ["module"] },
+  });
+
+const tsconfig: Template = () =>
+  json({
+    extends: "../../../tsconfig.base.json",
+    compilerOptions: {
+      jsx: "react-jsx",
+      lib: ["ES2024", "DOM", "DOM.Iterable"],
+    },
+    include: [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "testing/**/*.ts",
+      "tools/**/*.ts",
+      "vitest.config.ts",
+      "vitest.integration.config.ts",
+    ],
+  });
+
+const unitConfig: Template = () =>
+  `import { unitTestPreset } from "@genie/config/vitest/unit";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig(unitTestPreset);
+`;
+
+const integrationConfig: Template = () =>
+  `import { defineConfig } from "vitest/config";
+
+/**
+ * The module's real-database tests. They live under \`testing/\`, which the unit preset
+ * excludes on purpose, so they need this configuration to be discovered at all. Every test
+ * here takes a disposable Postgres with the real migration histories applied; none mocks the
+ * database (R-38).
+ */
+export default defineConfig({
+  test: {
+    name: "integration",
+    environment: "node",
+    include: ["testing/**/*.integration.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
+    passWithNoTests: false,
+    testTimeout: 120000,
+    hookTimeout: 120000,
+  },
+});
+`;
+
+const drizzleConfig: Template = (names) =>
+  `import { defineConfig } from "drizzle-kit";
+
+/**
+ * The migration history of this module. drizzle-kit writes the SQL file and the journal;
+ * neither is edited by hand. The history and its table belong to the module alone (R-24).
+ */
+export default defineConfig({
+  dialect: "postgresql",
+  schema: "./src/schema.ts",
+  out: "./drizzle",
+  migrations: { table: "${names.migrationsTable}" },
+});
+`;
+
+const firstMigration: Template = (names) =>
+  `CREATE TABLE "${names.table}" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"label" text NOT NULL,
+	"category_id" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+`;
+
+const journal: Template = () =>
+  json({
+    version: "7",
+    dialect: "postgresql",
+    entries: [
+      {
+        idx: 0,
+        version: "7",
+        // Fixed, so the same id renders the same bytes. drizzle-kit writes the
+        // real timestamp on the next generated migration.
+        when: 0,
+        tag: FIRST_TAG,
+        breakpoints: true,
+      },
+    ],
+  });
+
+const snapshot: Template = (names) =>
+  json({
+    id: snapshotId(names.id),
+    prevId: "00000000-0000-0000-0000-000000000000",
+    version: "7",
+    dialect: "postgresql",
+    tables: {
+      [`public.${names.table}`]: {
+        name: names.table,
+        schema: "",
+        columns: {
+          id: {
+            name: "id",
+            type: "uuid",
+            primaryKey: true,
+            notNull: true,
+            default: "gen_random_uuid()",
+          },
+          label: {
+            name: "label",
+            type: "text",
+            primaryKey: false,
+            notNull: true,
+          },
+          category_id: {
+            name: "category_id",
+            type: "text",
+            primaryKey: false,
+            notNull: false,
+          },
+          created_at: {
+            name: "created_at",
+            type: "timestamp with time zone",
+            primaryKey: false,
+            notNull: true,
+            default: "now()",
+          },
+          updated_at: {
+            name: "updated_at",
+            type: "timestamp with time zone",
+            primaryKey: false,
+            notNull: true,
+            default: "now()",
+          },
+        },
+        indexes: {},
+        foreignKeys: {},
+        compositePrimaryKeys: {},
+        uniqueConstraints: {},
+        policies: {},
+        checkConstraints: {},
+        isRLSEnabled: false,
+      },
+    },
+    enums: {},
+    schemas: {},
+    sequences: {},
+    roles: {},
+    policies: {},
+    views: {},
+    _meta: { columns: {}, schemas: {}, tables: {} },
+  });
+
+const schema: Template = (names) =>
+  `import { migrationsFromJournal } from "@genie/core";
+import { sql } from "drizzle-orm";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+import journal from "../drizzle/meta/_journal.json" with { type: "json" };
+
+/**
+ * The module's own table. A primary key is a UUID and an edited table carries both timestamps
+ * (data-shape rules 4 and 5). The table belongs to this module: core never reads it, and it
+ * exists only in an image that includes this module (DEC-33).
+ */
+export const ${names.camel}Record = pgTable("${names.table}", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql\`gen_random_uuid()\`),
+  label: text("label").notNull(),
+  /** The core category this record sits under, or null for none (DEC-51). */
+  categoryId: text("category_id"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** The module's own migration history table (R-24). */
+export const MIGRATIONS_TABLE = "${names.migrationsTable}";
+
+/**
+ * Every SQL file the journal above names, one \`new URL\` each. This spelling is what puts the
+ * SQL in the image: a production bundler follows a file reference written this way, emits the
+ * file beside the server and rewrites the URL to the emitted copy, while a folder path is
+ * followed by nothing and copied by nothing. A new migration adds its line here in the same
+ * change that generates it, and \`migrationsFromJournal\` refuses to start if it does not.
+ */
+const MIGRATION_FILES = {
+  "${FIRST_TAG}": new URL("../drizzle/${FIRST_TAG}.sql", import.meta.url),
+};
+
+/**
+ * This module's migration history, in journal order (R-24).
+ *
+ * A thunk, not an array: the SQL read is deferred to the first call, because a page's SSR
+ * compilation resolves the same SQL URL to a public asset path \`readFileSync\` cannot open, and
+ * a module-scope read would fail that compilation. The \`new URL\` declarations above stay at
+ * module scope on purpose: that spelling is what the bundler traces to copy the SQL into the
+ * image, so this thunk defers only the read, never the URL declarations. Called once per
+ * history at bootstrap.
+ */
+export const MIGRATIONS = () => migrationsFromJournal(journal, MIGRATION_FILES);
+`;
+
+const contract: Template = (names) =>
+  `import { oc } from "@genie/core/rpc";
+import { z } from "zod";
+
+/** One ${names.displayName} record as the read answers it. */
+const ${names.camel}RecordOutput = z.object({
+  id: z.string(),
+  label: z.string(),
+  categoryId: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+/**
+ * The module's API, published as \`${names.packageName}/contract\` (ADR 0011). It imports only zod
+ * and the browser-safe \`@genie/core/rpc\`, so the browser client types its calls from this file
+ * without pulling any server code. Every procedure declares its route, and every path starts with
+ * the module id: reads use GET, creation POST, field changes PATCH, removal DELETE, and an action
+ * POST \`/${names.id}/{id}/<action>\`.
+ */
+export const ${names.camel}Contract = {
+  read: oc
+    .route({ method: "GET", path: "/${names.id}/records" })
+    .output(z.array(${names.camel}RecordOutput)),
+};
+
+export type ${names.pascal}Contract = typeof ${names.camel}Contract;
+`;
+
+const router: Template = (names) =>
+  `import { AppError, CORE_ERRORS, implementModule, scopesFor } from "@genie/core";
+import { inArray, sql } from "drizzle-orm";
+
+import { ${names.camel}Contract } from "./contract.ts";
+import { ${names.camel}Record } from "./schema.ts";
+
+const os = implementModule("${names.id}", ${names.camel}Contract);
+
+/**
+ * The module's router, built by core from the contract and mounted under the module id when the
+ * module is enabled. The list read asks \`scopesFor()\` first and reads only the records the
+ * person's grants cover, only through \`context.tenant.db\` (DEC-34, DEC-39): a tenant-wide grant
+ * reads every row, a record-scoped grant reads the records it names, and no grant is refused
+ * before any read. The \`implementModule\` base refuses the call with \`module-disabled\` when
+ * the entitlement is off, before any handler runs.
+ */
+export const ${names.camel}Router = os.router({
+  read: os.read.handler(async ({ context }) => {
+    const scopes = await scopesFor(context.caller, "${names.id}:read");
+
+    if (scopes.kind === "none") {
+      throw new AppError(CORE_ERRORS.forbidden);
+    }
+
+    const rows = context.tenant.db.select().from(${names.camel}Record);
+
+    if (scopes.kind === "all") return rows;
+
+    const ids = scopes.scopes
+      .filter((scope) => scope.type === "${names.id}-record")
+      .map((scope) => scope.id);
+
+    // Compared as text, so a scope id that is not a uuid matches nothing instead of failing.
+    return rows.where(inArray(sql\`\${${names.camel}Record.id}::text\`, ids));
+  }),
+});
+
+export type ${names.pascal}Router = typeof ${names.camel}Router;
+`;
+
+const declaration: Template = (names) =>
+  `import { can, type Module, scopesFor } from "@genie/core";
+import { eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+
+import {
+  ${names.pascal}AdminPage,
+  ${names.pascal}WorkspacePage,
+} from "./presentation/module-pages.tsx";
+import { ${names.camel}Contract } from "./contract.ts";
+import { ${names.camel}Router } from "./router.ts";
+import {
+  MIGRATIONS,
+  MIGRATIONS_TABLE,
+  ${names.camel}Record,
+} from "./schema.ts";
+
+/**
+ * The module's configuration, shown in central Settings behind \`core:settings:manage\`. Five
+ * field kinds are allowed and no more (DEC-28).
+ */
+const configurationSchema = z.object({
+  title: z.string().default("${names.displayName}"),
+  pageSize: z.number().int().min(1).max(100).default(20),
+});
+
+const home = {
+  id: "${names.id}-home",
+  label: "${names.displayName}",
+  path: "/m/${names.id}",
+  surface: "workspace",
+  requiredPermission: "${names.id}:use",
+} as const;
+
+const settings = {
+  id: "${names.id}-settings",
+  label: "${names.displayName} settings",
+  path: "/admin/m/${names.id}",
+  surface: "admin",
+  requiredPermission: "${names.id}:admin",
+} as const;
+
+/**
+ * Every point of the module contract this module declares. Nothing outside the contract is
+ * reachable from here: the router reads through \`ctx.tenant\`, every check goes through
+ * \`can()\`, and no other module is imported.
+ */
+export const ${names.camel}Module = {
+  identity: {
+    id: "${names.id}",
+    displayName: "${names.displayName}",
+    version: "0.0.0",
+  },
+
+  schema: {
+    tables: { ${names.camel}Record },
+    // The declaration, not its result: the SQL read is deferred to bootstrap.
+    migrations: MIGRATIONS,
+    migrationsTable: MIGRATIONS_TABLE,
+  },
+
+  contract: ${names.camel}Contract,
+
+  router: ${names.camel}Router,
+
+  permissions: [
+    { key: "${names.id}:read", label: "Read ${names.displayName} records" },
+    { key: "${names.id}:use", label: "Use the ${names.displayName} workspace" },
+    { key: "${names.id}:admin", label: "Administer the ${names.displayName} module" },
+  ],
+
+  recordTypes: [
+    {
+      type: "${names.id}-record",
+      resolve: async (_ctx, id: string) => ({
+        label: \`${names.displayName} record \${id}\`,
+        path: \`/m/${names.id}/\${id}\`,
+      }),
+    },
+  ],
+
+  defaultRoles: [
+    { name: "${names.displayName} user", permissions: ["${names.id}:use"] },
+  ],
+
+  navigation: {
+    pinned: [home],
+    entries: [home, settings],
+  },
+
+  pages: {
+    workspace: { home: ${names.pascal}WorkspacePage },
+    admin: { settings: ${names.pascal}AdminPage },
+  },
+
+  /**
+   * The optional category contribution. Core owns the page and the category rows; this module
+   * owns the reads and the writes against its own table, and checks its own permission on each
+   * one (module contract, Category assignment boundary). Placement never grants access.
+   */
+  categoryAssignment: {
+    listAssignable: async (ctx) => {
+      const scopes = await scopesFor(ctx.caller, "${names.id}:admin");
+
+      if (scopes.kind === "none") return [];
+
+      const query = ctx.tenant.db.select().from(${names.camel}Record);
+
+      // Only the records the admin grant covers, so a record-scoped grant lists its own records.
+      const rows =
+        scopes.kind === "all"
+          ? await query
+          : await query.where(
+              inArray(
+                sql\`\${${names.camel}Record.id}::text\`,
+                scopes.scopes.flatMap((scope) =>
+                  scope.type === "${names.id}-record" ? [scope.id] : []
+                )
+              )
+            );
+
+      // An unplaced record omits the key rather than carrying an explicit
+      // undefined, which the contract's optional property does not accept.
+      return rows.map((row) =>
+        row.categoryId === null
+          ? { id: row.id, label: row.label }
+          : { id: row.id, label: row.label, categoryId: row.categoryId }
+      );
+    },
+
+    assign: async (ctx, recordId: string, categoryId: string) => {
+      if (
+        !(await can(ctx.caller, "${names.id}:admin", {
+          type: "${names.id}-record",
+          id: recordId,
+        }))
+      ) {
+        throw new Error("forbidden");
+      }
+
+      await ctx.tenant.db
+        .update(${names.camel}Record)
+        .set({ categoryId, updatedAt: new Date() })
+        .where(eq(${names.camel}Record.id, recordId));
+    },
+
+    clear: async (ctx, recordId: string) => {
+      if (
+        !(await can(ctx.caller, "${names.id}:admin", {
+          type: "${names.id}-record",
+          id: recordId,
+        }))
+      ) {
+        throw new Error("forbidden");
+      }
+
+      await ctx.tenant.db
+        .update(${names.camel}Record)
+        .set({ categoryId: null, updatedAt: new Date() })
+        .where(eq(${names.camel}Record.id, recordId));
+    },
+  },
+
+  configuration: {
+    schema: configurationSchema,
+    section: { id: "${names.id}", title: "${names.displayName}" },
+    fields: {
+      title: { id: "title", title: "Title" },
+      pageSize: { id: "pageSize", title: "Page size" },
+    },
+  },
+
+  events: [],
+
+  capabilities: [],
+
+  jobs: [],
+
+  inboundEndpoints: [],
+
+  integrationKinds: [],
+
+  /**
+   * Typed and empty: this module frames nothing, so it contributes no origin and the policy
+   * stays denied (R-15b). A module that needs frames computes its origins here from its own
+   * records, through the supplied tenant context.
+   */
+  contentSecurityPolicy: {
+    frameOrigins: async () => [],
+  },
+
+  tests: { presets: ["unit", "integration", "e2e"] },
+} satisfies Module;
+`;
+
+const declarationTest: Template = (names) =>
+  `import { type NavigationEntry, validateModule } from "@genie/core";
+import { describe, expect, it } from "vitest";
+
+import { ${names.camel}Module } from "./module.ts";
+
+describe("the ${names.id} module declaration", () => {
+  it("satisfies every rule the contract validator checks", () => {
+    expect(validateModule(${names.camel}Module)).toEqual([]);
+  });
+
+  it("declares its own three permission keys and no other module's", () => {
+    expect(${names.camel}Module.permissions.map((entry) => entry.key)).toEqual([
+      "${names.id}:read",
+      "${names.id}:use",
+      "${names.id}:admin",
+    ]);
+  });
+
+  it("requires its use key on every workspace entry (DEC-50)", () => {
+    const workspace = ${names.camel}Module.navigation.entries.filter(
+      (entry) => entry.surface === "workspace"
+    );
+
+    expect(workspace.length).toBeGreaterThan(0);
+
+    for (const entry of workspace) {
+      expect(entry.requiredPermission).toBe("${names.id}:use");
+    }
+  });
+
+  it("claims no landing route, so an include list stays valid (DEC-49)", () => {
+    // Read through the contract's own type: the declaration is narrower than it,
+    // and a literal that never carries the flag has no property to read.
+    const entries: readonly NavigationEntry[] =
+      ${names.camel}Module.navigation.entries;
+
+    for (const entry of entries) {
+      expect(entry.landing).toBeUndefined();
+    }
+  });
+
+  it("contributes no frame origin until it frames something", async () => {
+    expect(
+      await ${names.camel}Module.contentSecurityPolicy.frameOrigins()
+    ).toEqual([]);
+  });
+
+  it("hands core a migration declaration it has not read yet", () => {
+    expect(${names.camel}Module.schema.migrations).toBeInstanceOf(Function);
+    expect(${names.camel}Module.schema.migrationsTable).toBe(
+      "${names.migrationsTable}"
+    );
+  });
+
+  it("reads its own SQL when core calls the declaration", () => {
+    // Calling it proves the static URLs resolve to real files, which is what the
+    // deferred read defers. Nothing reads them at import time.
+    const history = ${names.camel}Module.schema.migrations();
+
+    expect(history).toHaveLength(1);
+    expect(history[0]?.sql.join("")).toContain("${names.table}");
+  });
+});
+`;
+
+const accessTest: Template = (names) =>
+  `import { can, createRequestPrincipal } from "@genie/core";
+import { describe, expect, it } from "vitest";
+
+/**
+ * The authorization half of this module's denial proof, against the real seam.
+ *
+ * \`can()\` is the only permission check there is (DEC-39). A caller who holds no key is refused
+ * every key of this module, and the application's page loader asks the same question before it
+ * mounts a page of this module. The granted path is proved with real role assignments against a
+ * real database in \`testing/router.integration.test.ts\`, never with a stand-in answer here.
+ */
+const identity = { userId: "u1", groups: [], authenticated: true };
+
+describe("the ${names.id} access decision", () => {
+  it("refuses a caller who holds no key at all", async () => {
+    const caller = createRequestPrincipal(identity, () =>
+      Promise.resolve({ keys: new Set(), scopes: new Map() })
+    );
+
+    expect(await can(caller, "${names.id}:use")).toBe(false);
+    expect(await can(caller, "${names.id}:read")).toBe(false);
+    expect(await can(caller, "${names.id}:admin")).toBe(false);
+  });
+});
+`;
+
+const index: Template = (names) =>
+  `/**
+ * The module-facing declaration. The application imports this and nothing else: the registry
+ * mounts the router, the navigation and the pages from the one object below.
+ *
+ * A client or a story imports \`${names.packageName}/presentation\` instead, which carries the
+ * components without the router, the schema or their server dependencies.
+ */
+
+export { ${names.camel}Module } from "./module.ts";
+
+export {
+  ${names.camel}Contract,
+  type ${names.pascal}Contract,
+} from "./contract.ts";
+
+export { ${names.camel}Router, type ${names.pascal}Router } from "./router.ts";
+
+export { MIGRATIONS, MIGRATIONS_TABLE, ${names.camel}Record } from "./schema.ts";
+`;
+
+const fixtures: Template = (names) =>
+  `/**
+ * Deterministic English fixtures for the presentation stories.
+ *
+ * They exist so a story renders without a database, a network call, or a tenant. They are not
+ * seed data and they never reach a runtime path.
+ */
+export type ${names.pascal}RecordView = {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+};
+
+export const ${names.camel}Records: readonly ${names.pascal}RecordView[] = [
+  {
+    id: "11111111-1111-4111-8111-111111111111",
+    label: "First record",
+    detail: "A fixture row. It proves layout, not persistence.",
+  },
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    label: "Second record",
+    detail: "A second fixture row, so the empty state differs from the list.",
+  },
+];
+`;
+
+const workspacePage: Template = (names) =>
+  `import { Disclosure } from "@genie/ui";
+
+import type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
+
+export type WorkspacePageProps = {
+  readonly records: readonly ${names.pascal}RecordView[];
+};
+
+/**
+ * The workspace page. It renders records and nothing else: the app mounts it behind the
+ * entry's \`requiredPermission\` through the one authorization seam, so this component runs
+ * only for a person who may see it, and a refused person gets the app's denied response
+ * instead. A second check here would be a second seam (DEC-39), and a refusal rendered here
+ * would say what the denied response deliberately does not.
+ */
+export function WorkspacePage(props: WorkspacePageProps) {
+  return (
+    <main>
+      {/* The name is a string literal, not JSX text: text decodes a named HTML
+          entity, so a name such as \`R&copy; Ops\` would render as \`R© Ops\`. */}
+      <h1>{"${names.displayName}"}</h1>
+      {props.records.length === 0 ? (
+        <p>No records yet.</p>
+      ) : (
+        <ul>
+          {props.records.map((record) => (
+            <li key={record.id}>
+              <Disclosure summary={record.label}>{record.detail}</Disclosure>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
+`;
+
+const adminPage: Template = (names) =>
+  `export type AdminPageProps = {
+  /** How many records the workspace holds, read by the page that renders this. */
+  readonly recordCount: number;
+};
+
+/**
+ * The module's admin page. It is reached behind \`${names.id}:admin\`, the key that enabling the
+ * entitlement appends to \`Tenant administrator\` (DEC-23).
+ */
+export function AdminPage(props: AdminPageProps) {
+  return (
+    <main>
+      {/* Each name is a string literal, not JSX text: text decodes a named HTML
+          entity, so a name such as \`R&copy; Ops\` would render as \`R© Ops\`. */}
+      <h1>{"${names.displayName} settings"}</h1>
+      <p data-testid="${names.id}-record-count">
+        This deployment holds {props.recordCount} {"${names.displayName}"} records.
+      </p>
+    </main>
+  );
+}
+`;
+
+const modulePages: Template = (names) =>
+  `import { AdminPage } from "./admin-page.tsx";
+import { WorkspacePage } from "./workspace-page.tsx";
+
+/**
+ * What the module registers under \`pages\`. Core mounts a page with no props, so each entry
+ * here is the component the app renders. The read that fills these from \`ctx.tenant\` arrives
+ * with the shell, so each entry renders its empty state for now. The components stay in their
+ * own files, with their stories and their tests.
+ *
+ * Neither entry asks whether the person may be here. The app's page loader already asked, with
+ * the entry's \`requiredPermission\`, and renders its own denied response instead of this
+ * component when the answer is no, which \`src/access.test.ts\` proves against the real seam.
+ */
+export function ${names.pascal}WorkspacePage() {
+  return <WorkspacePage records={[]} />;
+}
+
+export function ${names.pascal}AdminPage() {
+  return <AdminPage recordCount={0} />;
+}
+`;
+
+const presentationIndex: Template = (names) =>
+  `/**
+ * The client surface. A story, a component test and, later, the shell import from here, so
+ * none of them pulls the router, the schema or their server dependencies into a browser.
+ */
+
+export { AdminPage, type AdminPageProps } from "./admin-page.tsx";
+
+export { WorkspacePage, type WorkspacePageProps } from "./workspace-page.tsx";
+
+export type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
+`;
+
+const workspaceStories: Template = (names) =>
+  `import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect } from "storybook/test";
+
+import { ${names.camel}Records } from "./__fixtures__/records.ts";
+import { WorkspacePage } from "./workspace-page.tsx";
+
+const meta = {
+  title: "Modules/${names.displayName}/Workspace page",
+  component: WorkspacePage,
+  tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "The ${names.displayName} workspace page, rendered from fixtures. It proves presentation only; authorization is proved by the router tests.",
+      },
+    },
+  },
+  args: { records: ${names.camel}Records },
+} satisfies Meta<typeof WorkspacePage>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+// Every screen is proved at both viewports (DEC-25). "desktop" and "mobile1" are
+// keys of the built-in minimal viewports, so no host configuration is needed.
+export const Desktop: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("First record")).toBeInTheDocument();
+    await expect(canvas.getByText("Second record")).toBeInTheDocument();
+  },
+};
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("First record")).toBeInTheDocument();
+  },
+};
+
+export const Empty: Story = {
+  args: { records: [] },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("No records yet.")).toBeInTheDocument();
+  },
+};
+
+// A refused person never reaches this component: the app's page loader answers
+// \`can()\` first and renders its own denied response instead. So no story here shows a
+// refusal, and none may, because that response is the app's and says nothing about
+// what it would have shown. \`src/access.test.ts\` proves the seam refuses every key this
+// module owns, and the router test proves the refusal on the server. The denial seen in
+// a browser at both viewports is the app route's end-to-end proof.
+`;
+
+const adminStories: Template = (names) =>
+  `import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect } from "storybook/test";
+
+import { AdminPage } from "./admin-page.tsx";
+
+const meta = {
+  title: "Modules/${names.displayName}/Admin page",
+  component: AdminPage,
+  tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "The ${names.displayName} admin page. Reaching it requires \`${names.id}:admin\`; the story renders the page itself, not the check.",
+      },
+    },
+  },
+  args: { recordCount: 2 },
+} satisfies Meta<typeof AdminPage>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Desktop: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "${names.displayName} settings" })
+    ).toBeInTheDocument();
+  },
+};
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    // Anchored to the sentence's start, so the number this asserts is the
+    // rendered count, not any digit a display name happens to carry.
+    await expect(
+      canvas.getByTestId("${names.id}-record-count")
+    ).toHaveTextContent(/^This deployment holds 2 /);
+  },
+};
+`;
+
+const factories: Template = (names) =>
+  `import type { TenantContext } from "@genie/core";
+
+import { ${names.camel}Record } from "../src/schema.ts";
+
+export type ${names.pascal}RecordRow = typeof ${names.camel}Record.$inferSelect;
+
+/**
+ * Inserts one real row and answers it. The module owns the factories for its own tables, and
+ * core never imports this file (R-39). It writes through the tenant context, so a test proves
+ * the same path the product uses.
+ */
+export async function insert${names.pascal}Record(
+  tenant: TenantContext,
+  values: { readonly label?: string } = {}
+): Promise<${names.pascal}RecordRow> {
+  const [row] = await tenant.db
+    .insert(${names.camel}Record)
+    .values({ label: values.label ?? "A ${names.displayName} record" })
+    .returning();
+
+  if (row === undefined) {
+    throw new Error("the insert returned no row");
+  }
+
+  return row;
+}
+`;
+
+const testingIndex: Template = (names) =>
+  `/**
+ * The module's test-only seam. A test of another package imports the factory for this module's
+ * table from here; the app-facing entry points never carry it (R-39 keeps the factories
+ * module-owned, and nothing in a browser or a customer runtime imports them).
+ */
+
+export {
+  type ${names.pascal}RecordRow,
+  insert${names.pascal}Record,
+} from "./factories.ts";
+`;
+
+const integrationTest: Template = (names) =>
+  `import {
+  callProcedure,
+  principalFor,
+  type ModuleRequestContext,
+} from "@genie/core";
+import {
+  enableModules,
+  insertPersonWith,
+  startDisposableDeployment,
+} from "@genie/core/testing";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { ${names.camel}Module } from "../src/module.ts";
+import { ${names.camel}Router } from "../src/router.ts";
+import { insert${names.pascal}Record } from "./factories.ts";
+
+/**
+ * This module against a real Postgres, with the real histories applied. No part of the database
+ * is mocked (R-38).
+ *
+ * The deployment starts with the module disabled, so the setup enables it: the read procedure's
+ * \`implementModule\` gate refuses a disabled module with \`module-disabled\` before \`can()\`
+ * runs, and the cases below prove the authorization, not the entitlement refusal. Every caller is
+ * a real person whose keys come from a real role assignment, read by the real evaluator; nothing
+ * fakes a permission answer and no principal bypasses the loader.
+ */
+let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
+
+beforeAll(async () => {
+  deployment = await startDisposableDeployment([${names.camel}Module]);
+  await enableModules(deployment.context, ["${names.id}"]);
+}, 120000);
+
+afterAll(async () => {
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await deployment?.stop();
+});
+
+/** One request for a real person, or an anonymous one, through the real loader. */
+function contextFor(userId: string | undefined) {
+  return {
+    tenant: deployment.context,
+    caller: principalFor({
+      tenant: deployment.context,
+      modules: [${names.camel}Module],
+      userId,
+      authenticated: userId !== undefined,
+    }),
+  } satisfies ModuleRequestContext;
+}
+
+describe("the ${names.id} schema against a real database", () => {
+  it("applies its own migration and holds a real row", async () => {
+    const row = await insert${names.pascal}Record(deployment.context, {
+      label: "A real row",
+    });
+
+    expect(row.id.length).toBeGreaterThan(0);
+    expect(row.label).toBe("A real row");
+    expect(row.categoryId).toBeNull();
+  });
+
+  it("records its history in its own ledger, apart from core's", async () => {
+    const ledgers = await deployment.context.db.$client.query<{
+      tablename: string;
+    }>(
+      \`select tablename from pg_tables
+       where tablename in ('__drizzle_migrations', '${names.migrationsTable}')\`
+    );
+
+    expect(ledgers.rows.map((entry) => entry.tablename).toSorted()).toEqual([
+      "__drizzle_migrations",
+      "${names.migrationsTable}",
+    ]);
+  });
+});
+
+describe("the ${names.id} read procedure", () => {
+  it("answers the rows to a person holding ${names.id}:read through a role", async () => {
+    const row = await insert${names.pascal}Record(deployment.context, {
+      label: "A readable row",
+    });
+
+    const { userId } = await insertPersonWith(deployment.context, [
+      "${names.id}:read",
+    ]);
+
+    const rows = await callProcedure(${names.camel}Router, contextFor(userId)).read();
+
+    expect(rows.map((entry) => entry.id)).toContain(row.id);
+  });
+
+  it("answers only the named record to a person with a record-scoped read grant", async () => {
+    const named = await insert${names.pascal}Record(deployment.context, {
+      label: "The named row",
+    });
+
+    const other = await insert${names.pascal}Record(deployment.context, {
+      label: "Another row",
+    });
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["${names.id}:read"],
+      { type: "${names.id}-record", id: named.id }
+    );
+
+    const rows = await callProcedure(${names.camel}Router, contextFor(userId)).read();
+
+    expect(rows.map((entry) => entry.id)).toEqual([named.id]);
+    expect(rows.map((entry) => entry.id)).not.toContain(other.id);
+  });
+
+  it("refuses a person holding another key of this module, and returns no row", async () => {
+    await insert${names.pascal}Record(deployment.context, {
+      label: "A protected row",
+    });
+
+    const { userId } = await insertPersonWith(deployment.context, [
+      "${names.id}:use",
+    ]);
+
+    const caller = callProcedure(${names.camel}Router, contextFor(userId));
+
+    await expect(caller.read()).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const caller = callProcedure(${names.camel}Router, contextFor(undefined));
+
+    // No valid session is refused as unauthenticated before any permission or read (Spec 2 R-14).
+    await expect(caller.read()).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+  });
+});
+`;
+
+const requiredTestsGuard: Template = (names) =>
+  `import type { RequiredCase } from "@genie/core/testing/required-tests-validator";
+
+/**
+ * The ${names.id} module's integration manifest.
+ *
+ * The manifest is fixed in code and has no invocation flag: a run either proves
+ * these cases or fails. The validator and its case shape are core's, shared
+ * through \`@genie/core/testing/required-tests-validator\`, so this module keeps
+ * only the manifest that is its own. Each entry is derived from a named
+ * acceptance clause: the router and schema proof against a real database, and
+ * the module's own migration ledger (R-24, R-38).
+ */
+export * from "@genie/core/testing/required-tests-validator";
+
+export const REQUIRED_TESTS: readonly RequiredCase[] = [
+  {
+    file: "testing/router.integration.test.ts",
+    reason:
+      "R-24 and R-38 require the ${names.id} router and schema proof to run against a real database",
+    cases: [
+      "the ${names.id} schema against a real database applies its own migration and holds a real row",
+      "the ${names.id} schema against a real database records its history in its own ledger, apart from core's",
+      "the ${names.id} read procedure answers the rows to a person holding ${names.id}:read through a role",
+      "the ${names.id} read procedure answers only the named record to a person with a record-scoped read grant",
+      "the ${names.id} read procedure refuses a person holding another key of this module, and returns no row",
+      "the ${names.id} read procedure refuses an anonymous caller",
+    ],
+  },
+];
+`;
+
+const runRequiredTests: Template = (names) =>
+  `import { resolve } from "node:path";
+
+import { runRequiredTests } from "@genie/core/testing/required-tests-runner";
+
+import { REQUIRED_TESTS } from "../testing/required-tests-guard.ts";
+
+/**
+ * The ${names.id} module integration entrypoint. All of the behaviour lives in
+ * core's shared runner; this file names only what is the module's: the manifest,
+ * the config, the report-directory prefix, and the vitest binary next to this
+ * checkout.
+ */
+process.exit(
+  await runRequiredTests({
+    manifest: REQUIRED_TESTS,
+    config: "vitest.integration.config.ts",
+    reportPrefix: "genie-module-${names.id}-required-",
+    vitestPath: resolve(import.meta.dirname, "../node_modules/.bin/vitest"),
+    forwardArgs: process.argv.slice(2),
+  })
+);
+`;
+
+const toolsReadme: Template = (names) =>
+  `# ${names.root}/tools
+
+The module's test-time entrypoints.
+
+## What belongs here
+
+The integration entrypoint, \`run-required-tests.ts\`: it runs this module's
+real-database suite through core's shared runner and fails the run when a
+mandatory case did not execute.
+
+## What must not go here
+
+Runtime code the module ships, a database client, an import of another module,
+and any customer-specific content.
+
+## What it imports
+
+\`@genie/core\`'s shared test runner and this module's own guard manifest, never
+another module.
+`;
+
+const packageReadme: Template = (names) =>
+  `# ${names.root}
+
+The ${names.displayName} capability module.
+
+## What belongs here
+
+The module declaration and everything it names: the \`${names.table}\` schema with its own
+migration history, the contract and the router behind \`can()\`, the permission keys, the navigation, the
+configuration schema, the frame-origin provider, the page components with their fixtures and
+stories, and the factories for its own tables under \`testing/\`.
+
+Three entry points, so a browser never loads the server graph. \`${names.packageName}\` is the
+module-facing declaration the application mounts. \`${names.packageName}/contract\` is the API the
+browser client types its calls from. \`${names.packageName}/presentation\` is the client surface a
+story and the shell render.
+
+## What must not go here
+
+A runtime registry import, a database client, a deployment environment read, an import of
+another module, and any customer-specific content. Nothing here may be imported by core or by
+another module.
+
+## What it imports
+
+\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\` and \`drizzle-orm\`, never \`@orpc/*\`. A module sits
+above core and the user-interface package and below the app, so nothing here imports an app, a
+customer folder, or a sibling module.
+`;
+
+const srcReadme: Template = () =>
+  `# src
+
+The module's source. \`index.ts\` is the module-facing surface the application imports, and
+\`presentation/index.ts\` is the client surface a story and the shell import.
+
+## What belongs here
+
+The module declaration, its schema, its contract (\`contract.ts\`, published as the \`./contract\`
+export), its router, and the three folders the repository convention
+names, created only when they hold something: \`lib/\` for a mini-package with its own API,
+\`services/\` for work the application does, and \`utils/\` for a small generic stateless helper.
+\`presentation/\` holds the components and their fixtures.
+
+## What must not go here
+
+A permission evaluation of its own: every check goes through core's \`can()\`. A read of the
+deployment environment or of the runtime registry. A database driver: the router reads through
+\`context.tenant.db\`, which core owns. An import of \`@orpc/*\`: the contract uses \`oc\` from
+\`@genie/core/rpc\`, and core's \`implementModule\` builds the router. A factory for this
+module's tables, which lives in \`testing/\`.
+
+## What it imports
+
+\`@genie/core\`, \`@genie/ui\`, \`react\`, \`zod\`, \`drizzle-orm\`, and its own files. \`contract.ts\`
+imports only \`zod\` and \`@genie/core/rpc\`. Never another module, never an app, never a customer
+folder, never a database driver.
+`;
+
+const presentationReadme: Template = () =>
+  `# src/presentation
+
+What the module renders.
+
+## What belongs here
+
+Components, their stories, and their fixtures. A component takes its data as props, so it
+renders in a story with no database, no network call, and no tenant. The stories are the
+specification: they document the component on its Docs page and they are the browser behavior
+tests the Storybook host runs.
+
+## What must not go here
+
+Data fetching, a query client, a permission check, and any import of the runtime registry or
+the deployment environment. A component that cannot render from props alone does not belong in
+this folder.
+
+## What it imports
+
+\`@genie/ui\`, \`react\`, and its own fixtures. The story file also imports the Storybook types.
+`;
+
+const fixturesReadme: Template = () =>
+  `# src/presentation/\\_\\_fixtures\\_\\_
+
+The browser-safe sample data the stories render.
+
+## What belongs here
+
+Plain deterministic data and the view types that describe it. A fixture is a literal value,
+written in English, stable across runs, so a story renders the same thing every time and a
+failure names a real change.
+
+## What must not go here
+
+Seed data, a factory that talks to a database, a schema import, a server type, and anything
+that runs at application runtime. A fixture exists for a story and never reaches a runtime
+path.
+
+## What it imports
+
+Nothing. A fixture is data.
+`;
+
+const testingReadme: Template = (names) =>
+  `# ${names.root}/testing
+
+The module's own test helpers.
+
+## What belongs here
+
+Factories for this module's tables, and the real-database integration tests of its router and
+its schema. A module owns the factories for its own tables; core holds none of them (R-39).
+
+## What must not go here
+
+A unit test, which lives beside its source under \`src/\`. A core table factory. A database
+mock: every test here takes a disposable Postgres with the real migration histories applied. A
+faked permission answer or a test-only principal: a granted caller holds a real role assignment
+and is read by the real evaluator.
+
+## What it imports
+
+The module's own source, the core test helpers, and \`@genie/core\`.
+`;
+
+/**
+ * Every file the module generator writes, keyed by its path inside the module package
+ * (R-30). The three-folder layout, a README in every folder it creates, and the module's own
+ * drizzle-kit history are all here, so the rendered set is readable in one place.
+ */
+export const MODULE_TEMPLATES = {
+  "package.json": manifest,
+  "tsconfig.json": tsconfig,
+  "vitest.config.ts": unitConfig,
+  "vitest.integration.config.ts": integrationConfig,
+  "drizzle.config.ts": drizzleConfig,
+  "README.md": packageReadme,
+  [`drizzle/${FIRST_TAG}.sql`]: firstMigration,
+  "drizzle/meta/_journal.json": journal,
+  // drizzle-kit names a snapshot after the entry index, not after the tag.
+  "drizzle/meta/0000_snapshot.json": snapshot,
+  "src/README.md": srcReadme,
+  "src/index.ts": index,
+  "src/module.ts": declaration,
+  "src/module.test.ts": declarationTest,
+  "src/access.test.ts": accessTest,
+  "src/contract.ts": contract,
+  "src/router.ts": router,
+  "src/schema.ts": schema,
+  "src/presentation/README.md": presentationReadme,
+  "src/presentation/index.ts": presentationIndex,
+  "src/presentation/module-pages.tsx": modulePages,
+  "src/presentation/workspace-page.tsx": workspacePage,
+  "src/presentation/workspace-page.stories.tsx": workspaceStories,
+  "src/presentation/admin-page.tsx": adminPage,
+  "src/presentation/admin-page.stories.tsx": adminStories,
+  "src/presentation/__fixtures__/README.md": fixturesReadme,
+  "src/presentation/__fixtures__/records.ts": fixtures,
+  "testing/README.md": testingReadme,
+  "testing/index.ts": testingIndex,
+  "testing/factories.ts": factories,
+  "testing/router.integration.test.ts": integrationTest,
+  "testing/required-tests-guard.ts": requiredTestsGuard,
+  "tools/README.md": toolsReadme,
+  "tools/run-required-tests.ts": runRequiredTests,
+} satisfies Readonly<Record<string, Template>>;

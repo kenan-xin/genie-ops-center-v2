@@ -6,6 +6,8 @@ export interface MailClientFrameProps {
   ctx: TokenContext
   /** Subject prefix, for example [Test]. */
   subjectPrefix?: string
+  /** The frame fills a card that already draws the border, so it drops its own. */
+  flush?: boolean
   children: React.ReactNode
 }
 
@@ -20,14 +22,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 /**
  * A neutral mail-client header (subject, from, reply-to, to, date, preview line) over a light canvas holding the email.
- * From is the tenant's display name at the deployment's MAIL_FROM address. For a Keycloak email the same sender name and reply-to
- * come from the realm SMTP settings. The client chrome follows the page theme, the email inside stays light.
+ * From is the tenant's display name at the deployment's MAIL_FROM address. A Keycloak email is sent by the realm instead, so its
+ * sender name and reply-to come from the realm SMTP settings, which provisioning owns and Branding never writes. The client chrome
+ * follows the page theme, the email inside stays light.
  */
-export function MailClientFrame({ template: t, ctx, subjectPrefix, children }: MailClientFrameProps) {
+export function MailClientFrame({ template: t, ctx, subjectPrefix, flush, children }: MailClientFrameProps) {
   const f = (s: string) => fill(s, ctx)
   const kc = t.sender === 'keycloak'
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div className={`overflow-hidden bg-white dark:bg-gray-900 ${flush ? '' : 'rounded-xl border border-gray-200 dark:border-gray-800'}`}>
       <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-base font-bold tracking-tight">{subjectPrefix ? `${subjectPrefix} ` : ''}{f(t.subject)}</h2>

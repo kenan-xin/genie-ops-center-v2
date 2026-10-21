@@ -51,7 +51,8 @@ ok('discard: the changed fields are listed by tab', /Identity:\s*Favicon/.test(d
 await dis.getByRole('button', { name: 'Cancel' }).click()
 await page.waitForTimeout(200)
 
-await page.getByRole('button', { name: 'Publish' }).first().click()
+// `exact` matters: without it the name matches the "How publishing works" help button, which comes first in the DOM.
+await page.getByRole('button', { name: 'Publish', exact: true }).first().click()
 await page.waitForTimeout(250)
 const pubText = await page.getByRole('alertdialog').innerText()
 ok('publish: the same grouped list appears', /Identity:\s*Favicon/.test(pubText) && /Email:\s*Footer text/.test(pubText))
