@@ -1,6 +1,7 @@
 [features]
 hooks = true
 
-[mcp_servers.nx-mcp]
+# Quoted on purpose: nx configure-ai-agents --check (Nx 23.3.0) matches this exact text.
+[mcp_servers."nx-mcp"]
 command = "npx"
 args = ["nx", "mcp"]
