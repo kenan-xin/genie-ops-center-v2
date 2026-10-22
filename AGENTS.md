@@ -10,6 +10,8 @@ Beads owns shared ticket status, claims, blockers and follow-up work. Task-local
 
 Every bead has a parent epic, open or closed. File a bead with `--parent <epic>`: section work under its section epic, tooling, CI, dependencies and flaky tests under the Maintenance epic, specs, decisions and design docs under the Planning epic, and later ideas and owner reminders under the Backlog epic. When no epic fits, create a new epic first and parent the bead to it. A backlog item gets status `deferred`, not `open` at P4, because the Beads board shows only `deferred` items under Backlog.
 
+Name epics in one pattern. A roadmap section epic is `Spec <n>: <roadmap section title in lower case>`, where `<n>` is the roadmap section number, also before `docs/specs/` holds that spec (for example `Spec 6: module platform (core seams for approvals)`). Never write `Section <n>:`. The standing epics are `Planning: ...`, `Maintenance: ...` and `Backlog: ...`. A one-off topic epic is `<Topic>: <goal>`.
+
 Keep `docs/tech-plans/` and `docs/tickets/` current. Every approved specification gets a technical plan `docs/tech-plans/<nn>-<slug>.md` before its tickets start, and its row in `docs/tech-plans/README.md` changes when its status changes. When the owner approves a ticket breakdown, write `docs/tickets/spec-<n>/README.md` (ticket, bead, dependencies, folded beads) and one `<nn>-<slug>/index.md` per ticket with its scope and acceptance, in the same change that records the approval. When a ticket's scope, dependencies or bead changes, update its file and the index. Beads still owns status and claims.
 
 ## Portable tooling
