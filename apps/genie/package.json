@@ -44,7 +44,7 @@
     "@orpc/zod": "catalog:",
     "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.3.3",
-    "@tanstack/react-devtools": "0.10.12",
+    "@tanstack/react-devtools": "0.10.13",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-form-devtools": "0.2.34",
     "@tanstack/react-pacer": "0.24.1",
