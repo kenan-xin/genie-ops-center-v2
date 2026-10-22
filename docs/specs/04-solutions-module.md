@@ -167,7 +167,7 @@ R-37a. Solutions implements the optional category contribution declared in Secti
 
 ### Received from Section 3 (2026-10-22)
 
-The owner moved three items here from Section 3 after the spec 03 critique (decisions F-6, F-22, and F-26 in `epics/4ed26496-66e3-401d-b817-4126538afdba/artifacts/spec-03-critique-decisions/index.md`). They widen the boundary above, which says Section 4 adds one core capability. This note records the scope. The requirements are written when this section is next revised.
+The owner moved three items here from Section 3 after the spec 03 critique (decisions F-6, F-22, and F-26 in [Section 3, "Revision of 2026-10-22"](03-shell-branding-and-design-system.md#revision-of-2026-10-22)). They widen the boundary above, which says Section 4 adds one core capability. This note records the scope. The requirements are written when this section is next revised.
 
 - Per-request record navigation entries (F-6, Section 3 R-29). Section 3 renders static module entries only and removes `categoryId` from static entries. This section adds a per-request navigation hook to the module contract, so a module can return record entries resolved after `can()`. A record entry may carry a `categoryId`, and R-9 applies to it. The category an administrator picks on the Modules page always wins for a static entry.
 - Record-level category assignment (F-22, Section 3 R-91a and the record cases of Section 3 AC-19). Section 3 keeps category create, rename, reorder, delete, and whole-module placement. This section adds record rows from module providers to the Categories transfer list, with the per-row rechecks, outcomes, and retry that the Category assignment boundary of `../architecture/module-contract.md` requires. R-37a is its first provider.

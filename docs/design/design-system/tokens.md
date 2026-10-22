@@ -17,7 +17,7 @@ Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding
 
 On phones display and title step down one size (`text-xl lg:text-2xl`, `text-lg lg:text-xl`). Arbitrary pixel sizes (`text-[13.5px]`, `text-[11px]`, any `text-[Npx]`) are forbidden in every component; `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
 
-The tenant font size preset (set by the branding seed until the Branding Typography tab reopens) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. The tenant text color fills `--foreground` on light surfaces only; the dark theme keeps gray-100.
+The tenant font size preset (set by the branding seed until the Branding Typography tab reopens) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. `--foreground` is fixed in both themes: gray-900 in light and gray-100 in dark. A tenant text color for light surfaces is deferred with the Typography tab (owner decision 2026-10-22).
 
 ## Control heights
 
@@ -57,12 +57,12 @@ The tenant primary color fills solid surfaces and the focus ring, and nothing el
 
 Dark theme brand text and ring, one fixed token (owner decision 2026-10-22). In the dark theme the brand as text or icon and the focus ring use one fixed light color, `--brand-on-dark`, blue-400 (#60a5fa). It is not derived from the tenant color, and nothing computes it. Blue-600 as text fails in dark: it measures 3.90:1 on gray-950, below AA at `text-sm`. Blue-400 measures 7.92:1 on gray-950 and 6.98:1 on gray-900. A component that shows brand text writes `text-primary dark:text-brand-on-dark`. A solid brand fill keeps `--primary` with the stored `--primary-foreground` in both themes, blue-600 with white text by default. Blue is the only action and information color in the samples. Status is semantic: emerald success, red danger, amber warning, gray neutral. Text never lighter than gray-500 (gray-400 in dark). Dark theme mirrors: gray-100 body, gray-300 secondary, gray-400 labels, surfaces gray-950 and gray-900.
 
-The export carries these roles as the shadcn variables the platform code already uses (owner decision 2026-10-22). Only `--primary` and `--primary-foreground` are tenant colors. The tenant text color also fills `--foreground`, on light surfaces only, as a typography value. Every other value is fixed.
+The export carries these roles as the shadcn variables the platform code already uses (owner decision 2026-10-22). Only `--primary` and `--primary-foreground` are tenant colors. Every other value is fixed, `--foreground` included. A tenant text color for light surfaces returns with the Typography tab.
 
 | Variable | Light | Dark |
 |---|---|---|
 | `--background` | white | gray-950 |
-| `--foreground` | gray-900, or the tenant text color | gray-100 |
+| `--foreground` | gray-900 | gray-100 |
 | `--card` | white | gray-900 |
 | `--muted` | gray-50 | gray-900 |
 | `--muted-foreground` | gray-600 | gray-400 |
