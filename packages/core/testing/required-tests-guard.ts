@@ -328,7 +328,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker settles an abandoned handler job and ignores its late result",
       "the core pg-boss worker uses WORKER_HEARTBEAT_PATH when set and the default path otherwise",
       "the core pg-boss worker writes to a unique default heartbeat path on a clean startup",
-      "the core pg-boss worker pins pg-boss to version 12.33.5",
+      "the core pg-boss worker pins pg-boss to version 12.38.0",
     ],
   },
   {

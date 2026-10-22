@@ -1161,12 +1161,12 @@ describe("the core pg-boss worker", () => {
     ).toBe(true);
   });
 
-  it("pins pg-boss to version 12.33.5", async () => {
+  it("pins pg-boss to version 12.38.0", async () => {
     const packageJson = await import("../package.json", {
       with: { type: "json" },
     });
 
-    expect(packageJson.default.dependencies["pg-boss"]).toBe("12.33.5");
+    expect(packageJson.default.dependencies["pg-boss"]).toBe("12.38.0");
   });
 });
 

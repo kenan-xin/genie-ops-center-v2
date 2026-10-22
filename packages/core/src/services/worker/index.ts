@@ -171,7 +171,7 @@ async function reportDeadLetterMove(
  * handler already completed answers `affected: 0`, and only a real move earns the R-57 line.
  */
 function failedOne(result: CommandResponse): boolean {
-  // SAFETY: pg-boss 12.33.5's `fail` returns `{ jobs, requested, affected }` (manager.js
+  // SAFETY: pg-boss 12.38.0's `fail` returns `{ jobs, requested, affected }` (manager.js
   // `mapCommandResponse`), while its declaration types CommandResponse as an empty interface.
   return ((result as { readonly affected?: number }).affected ?? 0) > 0;
 }
