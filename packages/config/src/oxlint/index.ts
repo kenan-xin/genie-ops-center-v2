@@ -121,6 +121,12 @@ export const sharedOxlintConfig: OxlintConfig = {
     // Agent-tool shims the graft CLI regenerates on each update, so hand
     // repairs would only drift from the generator output.
     ".claude/helpers/**",
+    // Agent skills installed from upstream. The install-anti-slop skill ships its
+    // own copy of the rule source as assets, which the vendored copy below
+    // already covers, so linting the assets would only double the findings.
+    ".claude/skills/**",
+    ".agents/skills/**",
+    ".opencode/skills/**",
     // Screen-design sketches kept as a visual reference, never built on
     // (docs/design/reference/README.md). No project lints them, so the
     // pre-commit hook must not either, or a one-line copy edit fails on

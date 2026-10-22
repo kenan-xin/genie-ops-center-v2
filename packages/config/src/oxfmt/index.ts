@@ -32,6 +32,7 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     ".claude/**",
     ".cursor/**",
     ".agents/**",
+    ".opencode/**",
     ".impeccable/**",
     ".supercov/**",
     "graft/**",
