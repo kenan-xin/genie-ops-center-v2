@@ -90,7 +90,22 @@ describe("the validate target's inputs", () => {
   // stays a real input — the exact coverage the checks had when they lived there —
   // so a helper change still invalidates the cache instead of replaying a stale
   // validate result.
-  it("keeps the generators package the checks read as an input", () => {
-    expect(validateInputs()).toContain("{workspaceRoot}/tools/generators/**/*");
+  //
+  // The other checks read files outside any project the same way: the
+  // clean-checkout registry check shells out to the app generator, the
+  // module-has-tests and README checks read module packages, the CI checks read
+  // the workflows, and the release supply-chain checks read the Dockerfile and
+  // the build-context ignore file (genie-ops-center-v2-sl1).
+  it("keeps every non-doc file the checks read as an input", () => {
+    for (const input of [
+      "{workspaceRoot}/tools/generators/**/*",
+      "{workspaceRoot}/apps/genie/tools/**/*",
+      "{workspaceRoot}/packages/modules/**/*",
+      "{workspaceRoot}/.github/**",
+      "{workspaceRoot}/deploy/**/*",
+      "{workspaceRoot}/.dockerignore",
+    ]) {
+      expect(validateInputs()).toContain(input);
+    }
   });
 });

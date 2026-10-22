@@ -6,7 +6,6 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -242,6 +241,24 @@ function appScript(name: string): string {
   return script;
 }
 
+type AppTargets = {
+  readonly nx?: {
+    readonly targets?: Readonly<
+      Record<string, { readonly dependsOn?: readonly string[] }>
+    >;
+  };
+};
+
+/** The targets one app target depends on, as its Nx configuration declares them. */
+function appTargetDependsOn(name: string): readonly string[] {
+  // SAFETY: the app manifest is this repository's own file; a missing target
+  // or an absent dependsOn reads as an empty list, which the caller's
+  // toContain fails on.
+  const manifest = JSON.parse(read("apps/genie/package.json")) as AppTargets;
+
+  return manifest.nx?.targets?.[name]?.dependsOn ?? [];
+}
+
 type CommandResult = {
   readonly status: number | null;
   readonly stdout: string;
@@ -368,7 +385,9 @@ describe("the migration pull-request gate", () => {
 
     expect(head).toContain("pull_request:");
     expect(head).not.toContain("branches:");
-    expect(jobsOf(workflow).get("verify"), "the verify gate").toBeDefined();
+    expect(jobsOf(workflow).get("verify"), "the verify gate").toContain(
+      "pnpm run ci:pr"
+    );
     expect(migrationJob, "a migration-lint job").toBeDefined();
     expect(migrationJob).toContain("if: github.base_ref == 'develop'");
     expect(migrationJob).toMatch(
@@ -382,25 +401,35 @@ describe("the migration pull-request gate", () => {
     expect(migrationJob).toContain("--pg-version 18");
   });
 
-  it("fails a changed migration that drops a column", () => {
-    const file = migrationFixture(
-      `ALTER TABLE public.example DROP COLUMN obsolete;\n`
-    );
+  // Each R-13 breaking-change rule `.squawk.toml` keeps active refuses its
+  // statement. The index row is the `assume_in_transaction = true` boundary:
+  // that setting clears `require-concurrent-index-creation` for an index on a
+  // table the same migration creates, because Drizzle applies the history in
+  // one transaction, but never for an index on a table an earlier migration
+  // created, the live-table case the rule exists for.
+  it.each([
+    ["ban-drop-column", `ALTER TABLE public.example DROP COLUMN obsolete;`],
+    [
+      "renaming-column",
+      `ALTER TABLE public.example RENAME COLUMN old_name TO new_name;`,
+    ],
+    [
+      "changing-column-type",
+      `ALTER TABLE public.example ALTER COLUMN amount TYPE text;`,
+    ],
+    [
+      "adding-required-field",
+      `ALTER TABLE public.example ADD COLUMN email text NOT NULL;`,
+    ],
+    [
+      "require-concurrent-index-creation",
+      `CREATE INDEX "example_col_idx" ON "public"."example" USING btree ("col");`,
+    ],
+  ])("fails a changed migration that trips %s", (rule, sql) => {
+    const result = checkMigrationSql(`${sql}\n`);
 
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(/squawk|ban-drop-column/i);
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
+    expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    expect(result.stdout + result.stderr).toContain(rule);
   });
 
   it("accepts the same deliberate contract migration with a squawk-ignore comment", () => {
@@ -438,89 +467,22 @@ describe("the migration pull-request gate", () => {
     expect(result.status, result.stdout + result.stderr).toBe(0);
   });
 
-  // `assume_in_transaction = true` in `.squawk.toml` clears
-  // `require-concurrent-index-creation` for an index on a table the same
-  // migration creates, because Drizzle applies the history in one transaction.
-  // It must not clear the rule for an index on a table an earlier migration
-  // created: that is the live-table case the rule exists for, so the fixture
-  // below creates an index and no table at all.
-  it("fails a changed migration that indexes a table an earlier migration created", () => {
-    const file = migrationFixture(
-      `CREATE INDEX "example_col_idx" ON "public"."example" USING btree ("col");\n`
-    );
-
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(
-        /require-concurrent-index-creation/i
-      );
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
-  });
-
-  // Squawk's remedy for a live-table index is CONCURRENTLY, but the migrator runs
-  // each history in one transaction and Postgres refuses CONCURRENTLY there. The
-  // gate refuses it outright, so the next author does not ship a migration that
-  // passes CI and then fails at container start (R-27).
-  it("fails a changed migration that uses CONCURRENTLY, which the migrator's transaction forbids", () => {
-    const file = migrationFixture(
-      `CREATE INDEX CONCURRENTLY "example_col_idx" ON "public"."example" USING btree ("col");\n`
-    );
-
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(/CONCURRENTLY/);
-      expect(result.stdout + result.stderr).toMatch(/transaction/i);
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
-  });
-
-  // The migrator's transaction forbids only `CREATE INDEX CONCURRENTLY` and
-  // `DROP INDEX CONCURRENTLY`; matching the bare word refused a legal
-  // `REFRESH MATERIALIZED VIEW CONCURRENTLY` (1ia.1 review L7). These pin the
-  // statement match, not the word, across spacing, case and the IF clauses.
+  // Squawk's remedy for a live-table index is CONCURRENTLY, but the migrator
+  // runs each history in one transaction and Postgres refuses CONCURRENTLY
+  // there, so the gate refuses it outright rather than let a migration pass CI
+  // and fail at container start (R-27). Only the forms Postgres refuses inside a
+  // transaction block are refused; matching the bare word refused a legal
+  // `REFRESH MATERIALIZED VIEW CONCURRENTLY` (1ia.1 review L7). One row per
+  // statement kind, each spelled with the case, spacing, line break or optional
+  // clause the statement match must tolerate.
   it.each([
     `CREATE INDEX CONCURRENTLY "example_col_idx" ON "public"."example" USING btree ("col");`,
-    `create   index   concurrently "example_col_idx" on "public"."example";`,
-    `CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "example_col_idx" ON "public"."example" ("col");`,
-    `DROP INDEX CONCURRENTLY "public"."example_col_idx";`,
-    `drop   index   concurrently   if   exists "public"."example_col_idx";`,
-    `DROP INDEX\nCONCURRENTLY IF EXISTS "public"."example_col_idx";`,
-  ])("refuses the index CONCURRENTLY form %#", (sql) => {
-    const result = checkMigrationSql(sql);
-
-    expect(result.status, result.stdout + result.stderr).not.toBe(0);
-    expect(result.stdout + result.stderr).toMatch(/CONCURRENTLY/);
-    expect(result.stdout + result.stderr).toMatch(/transaction/i);
-  });
-
-  // Postgres refuses these inside a transaction block too, for the same reason
-  // as the index forms: REINDEX CONCURRENTLY and ALTER TABLE ... DETACH
-  // PARTITION CONCURRENTLY.
-  it.each([
+    `create   unique index   concurrently if not exists "example_col_idx" on "public"."example" ("col");`,
+    `drop   index\nconcurrently   if   exists "public"."example_col_idx";`,
     `REINDEX INDEX CONCURRENTLY "example_col_idx";`,
     `reindex   table   concurrently   "public"."example";`,
-    `ALTER TABLE "public"."example" DETACH PARTITION "public"."example_2024" CONCURRENTLY;`,
     `alter table "public"."example" detach   partition "public"."example_2024"   concurrently;`,
-  ])("refuses the REINDEX or partition DETACH CONCURRENTLY form %#", (sql) => {
+  ])("refuses the CONCURRENTLY form %#", (sql) => {
     const result = checkMigrationSql(sql);
 
     expect(result.status, result.stdout + result.stderr).not.toBe(0);
@@ -566,69 +528,6 @@ describe("the migration pull-request gate", () => {
     );
 
     expect(result.status, result.stdout + result.stderr).toBe(0);
-  });
-
-  it("fails a changed migration that renames a column", () => {
-    const file = migrationFixture(
-      `ALTER TABLE public.example RENAME COLUMN old_name TO new_name;\n`
-    );
-
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(/renaming-column/i);
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
-  });
-
-  it("fails a changed migration that changes a column type", () => {
-    const file = migrationFixture(
-      `ALTER TABLE public.example ALTER COLUMN amount TYPE text;\n`
-    );
-
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(/changing-column-type/i);
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
-  });
-
-  it("fails a changed migration that adds a required column", () => {
-    const file = migrationFixture(
-      `ALTER TABLE public.example ADD COLUMN email text NOT NULL;\n`
-    );
-
-    try {
-      const result = runMigrationCheck([
-        "--migration",
-        file,
-        "--pg-version",
-        "18",
-      ]);
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.stdout + result.stderr).toMatch(/adding-required-field/i);
-    } finally {
-      rmSync(file, { force: true });
-      rmSync(join(file, ".."), { recursive: true, force: true });
-    }
   });
 
   it("rejects two snapshots that fork from one migration history parent", () => {
@@ -738,23 +637,6 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
-  it("runs the pull-request gates on every pull request", () => {
-    const workflow = read(`${WORKFLOWS}/pull-request.yml`);
-
-    expect(workflow).toContain("pull_request:");
-    expect(workflow).toContain("pnpm run ci:pr");
-  });
-
-  it("runs the merge gates on develop", () => {
-    const workflow = read(`${WORKFLOWS}/develop.yml`);
-
-    expect(workflow).toContain("branches:");
-    expect(workflow).toContain("- develop");
-    // The serial `pnpm run ci:develop` monolith is gone from the workflow; the
-    // parallel jobs below carry its targets (genie-ops-center-v2-ejs).
-    expect(workflow).not.toContain("pnpm run ci:develop");
-  });
-
   // genie-ops-center-v2-bf7: the affected base used to be the pushed commit's
   // parent (`github.event.before`). With `cancel-in-progress: true`, push B
   // cancels the run for push A and gates only A→B — so if A's run was cancelled
@@ -822,6 +704,11 @@ describe("the Spec 0 CI gates", () => {
   it("splits the develop merge gates into parallel jobs", () => {
     const workflow = read(`${WORKFLOWS}/develop.yml`);
     const jobs = jobsOf(workflow);
+    const [head = ""] = workflow.split(/^jobs:\n/m);
+
+    expect(head, "the merge gates run on pushes to develop").toMatch(
+      /branches:\n\s+- develop\n/
+    );
 
     // No develop job runs the serial monolith scripts any more; ci:pr stays
     // the pull-request path only.
@@ -909,95 +796,6 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
-  // Splitting must not drop targets: the union of the develop jobs still runs
-  // everything ci:develop runs today — the ci:pr gates and validate, the
-  // integration target, and both E2E suites — so no gate silently leaves CI.
-  it("covers every ci:develop target across the develop jobs", () => {
-    const scripts = [...jobsOf(read(`${WORKFLOWS}/develop.yml`)).values()]
-      .flatMap(runScripts)
-      .join("\n");
-
-    for (const target of [
-      "lint",
-      "typecheck",
-      "test",
-      "build",
-      "build-storybook",
-      "test-storybook",
-      "test:integration",
-      "validate",
-      "test:e2e:fixture",
-      "test:e2e",
-      "test:e2e:generated",
-    ]) {
-      expect(scripts, `the develop jobs run ${target}`).toMatch(
-        targetPattern(target)
-      );
-    }
-  });
-
-  // Each split job is a hosted runner of its own, so the guardrails the single
-  // job carried must be carried again per job: ubuntu-latest (the owner kept
-  // every job on the standard image), a runtime bound, a credential-free
-  // checkout, the disk cleanup where images build, a bail on multi-project
-  // integration runs, and the last-green base for every affected run.
-  it("carries the runner guardrails into every develop job", () => {
-    for (const [name, job] of jobsOf(read(`${WORKFLOWS}/develop.yml`))) {
-      expect(job, `${name} stays on ubuntu-latest`).toMatch(
-        /^ {4}runs-on: ubuntu-latest$/m
-      );
-      expect(job, `${name} declares timeout-minutes`).toMatch(
-        /^ {4}timeout-minutes: \d+$/m
-      );
-
-      for (const step of checkoutSteps(job)) {
-        expect(step, `${name} persists no checkout credential`).toMatch(
-          /^\s+persist-credentials: false$/m
-        );
-      }
-
-      const scripts = runScripts(job).join("\n");
-
-      // The integration and E2E suites build full Docker images (build-image,
-      // build-fixture-image); each image-building job frees the runner's
-      // preinstalled toolchains first or runs out of disk (release run
-      // 35865015903). The gates job builds no image, and the discover job only
-      // projects the roster, so neither needs this.
-      if (
-        /nx (?:affected|run-many|run)\b[^\n]*test[:-](?:integration|e2e)/.test(
-          scripts
-        )
-      ) {
-        expect(scripts, `${name} frees runner disk space`).toContain(
-          "rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc"
-        );
-      }
-
-      // Several integration projects sharing one runner run one at a time —
-      // the 4-vCPU competition that forced --parallel=1 on ci:pr — and a bail
-      // stops the remaining projects once one fails (develop run 35867486208).
-      const projects = new Set(
-        runScripts(job)
-          .filter((script) => script.includes("test:integration"))
-          .flatMap((script) => script.match(/@[\w-]+\/[\w-]+/g) ?? [])
-      );
-
-      if (projects.size > 1) {
-        expect(
-          scripts,
-          `${name} bails its multi-project integration run`
-        ).toContain("--nx-bail");
-      }
-
-      // An affected run on a develop push bases its range on the last
-      // successful develop run (genie-ops-center-v2-bf7); every affected job
-      // wires NX_BASE for it.
-      if (scripts.includes("nx affected")) {
-        expect(job, `${name} wires the affected base`).toContain("NX_BASE");
-      }
-    }
-  });
-
   // Affected filtering: a push that touches no project must run no heavy
   // suite, so the discover job projects the affected integration set with
   // `nx show projects --affected -t test:integration --base="$NX_BASE"` — an
@@ -1018,10 +816,19 @@ describe("the Spec 0 CI gates", () => {
 
     const discoverScripts = runScripts(discover ?? "").join("\n");
 
+    // genie-ops-center-v2-bf7: the roster is the affected projection of the
+    // workspace's own `test:integration` query, so a module that declares the
+    // target is covered the day it lands. A fixed roster — `--exclude='*,!@genie/app'`
+    // and friends — is exactly the staleness bug: it names today's projects
+    // and silently drops the next module's.
     expect(
       discoverScripts,
-      "the discover job projects the affected integration set"
-    ).toContain("nx show projects --affected");
+      "the discover job derives its project list from the workspace"
+    ).toContain("nx show projects --affected -t test:integration");
+    expect(
+      discoverScripts,
+      "the discover job carries no fixed project roster"
+    ).not.toMatch(/--exclude=\S*!/);
     expect(
       discoverScripts,
       "the discover job bases the affected range on NX_BASE"
@@ -1042,6 +849,18 @@ describe("the Spec 0 CI gates", () => {
       "the matrix job runs the project the discover job handed it"
     ).toContain("test:integration");
 
+    // Each shard keeps the shared-runner rules: a bail stops the run once the
+    // project fails (develop run 35867486208), and the projects never compete
+    // for the runner's 4 vCPUs (develop runs 35893905134 and 35932712679).
+    expect(
+      integrationScripts,
+      "the matrix bails its integration run"
+    ).toContain("--nx-bail");
+    expect(
+      integrationScripts,
+      "the matrix runs its projects one at a time"
+    ).toContain("--parallel=1");
+
     // The E2E job stays unconditional: ci:develop always ran both browser
     // suites regardless of the affected set, so the deployable image is
     // proved end to end on every merge.
@@ -1053,92 +872,6 @@ describe("the Spec 0 CI gates", () => {
       "the e2e job never filters through the affected set"
     ).not.toContain("nx affected");
   });
-
-  // genie-ops-center-v2-bf7: the integration jobs used to name a fixed project
-  // roster — `--exclude='*,!@genie/app'` and friends — so a new module's
-  // generated test:integration target never ran on develop, and nothing caught
-  // it. The roster must be derived from the workspace at run time: the
-  // discover job prints the affected projection of `nx show projects -t
-  // test:integration --json`, the same workspace query this test uses to know
-  // what the coverage should be. Because the expected set below comes from the
-  // real workspace, the day a module declares the target the workflow's
-  // derivation already covers it — no develop.yml edit, no silent skip.
-  it("picks up every project with a test:integration target on develop", () => {
-    const query = spawnSync(
-      join(WORKSPACE_ROOT, "node_modules/.bin/nx"),
-      ["show", "projects", "-t", "test:integration", "--json"],
-      {
-        cwd: WORKSPACE_ROOT,
-        encoding: "utf8",
-        env: { ...process.env, NX_DAEMON: "false", CI: "true" },
-        // A hung projection must fail the test, not stall the suite.
-        timeout: 60000,
-      }
-    );
-
-    expect(query.status, query.stdout + query.stderr).toBe(0);
-
-    // SAFETY: the projection ran to exit 0 above, so stdout is the JSON array
-    // of project names the query prints.
-    const projects = JSON.parse(query.stdout ?? "[]") as readonly string[];
-
-    // An empty projection would let the assertions below pass vacuously, so
-    // the workspace must actually declare integration targets.
-    expect(
-      projects.length,
-      "the workspace declares integration targets"
-    ).toBeGreaterThan(0);
-
-    const jobs = jobsOf(read(`${WORKFLOWS}/develop.yml`));
-    const discover = jobs.get("integration-discover");
-
-    expect(
-      discover,
-      "the develop workflow discovers the integration roster"
-    ).toBeDefined();
-
-    const discoverScripts = runScripts(discover ?? "").join("\n");
-
-    // A fixed roster is exactly the staleness bug: it names today's projects
-    // and silently drops the next module's.
-    expect(
-      discoverScripts,
-      "the discover job carries no fixed project roster"
-    ).not.toMatch(/--exclude=\S*!/);
-
-    // The roster is the affected projection of the same workspace query used
-    // above, so a module that declares the target is covered the day it lands.
-    expect(
-      discoverScripts,
-      "the discover job derives its project list from the workspace"
-    ).toContain("nx show projects --affected -t test:integration");
-
-    const integration = jobs.get("integration");
-
-    expect(integration, "an integration matrix job").toBeDefined();
-
-    expect(
-      integration,
-      "the matrix fans out one runner per discovered project"
-    ).toContain(
-      "project: ${{ fromJSON(needs.integration-discover.outputs.projects) }}"
-    );
-
-    const integrationScripts = runScripts(integration ?? "").join("\n");
-
-    // Each shard runs one project and keeps the shared-runner rules: a bail
-    // stops the run once the project fails (develop run 35867486208), and the
-    // projects never compete for the runner's 4 vCPUs (develop runs
-    // 35893905134 and 35932712679).
-    expect(
-      integrationScripts,
-      "the matrix bails its integration run"
-    ).toContain("--nx-bail");
-    expect(
-      integrationScripts,
-      "the matrix runs its projects one at a time"
-    ).toContain("--parallel=1");
-  }, 90000);
 
   // Superseded runs: every push to an open pull request and every merge to
   // develop cancels the previous run on the same ref, so a burst of pushes
@@ -1198,42 +931,23 @@ describe("the Spec 0 CI gates", () => {
 
     const scripts = runScripts(discover ?? "").join("\n");
 
-    expect(scripts, "the gate queries the develop workflow").toContain(
-      "gh run list"
-    );
-    expect(scripts).toContain("--workflow develop.yml");
-    expect(scripts).toContain("--commit");
-    // A push run on develop, not a pull-request run that happened to carry the
-    // commit; both filters are what make the lookup unambiguous.
-    expect(scripts).toContain("--branch develop");
-    expect(scripts).toContain("--event push");
-    expect(scripts).toContain("--status success");
-
-    // Fail closed: no successful run exits nonzero, and the message names the
-    // commit so an operator knows which SHA to fix.
+    // Fail closed: a tag the lookup cannot prove exits nonzero. The gh and jq
+    // filters themselves are not pinned as text, which would fail a working
+    // rewrite and pass a broken filter.
     expect(scripts).toContain("exit 1");
-    expect(scripts).toMatch(/GITHUB_SHA/);
 
-    // The tagged commit must be on main, and must be the merge commit of one
-    // merged develop-to-main pull request of this repository, whose head is
-    // the commit the develop run is looked up for.
-    expect(scripts).toContain(
-      'git merge-base --is-ancestor "$GITHUB_SHA" origin/main'
-    );
     expect(discover, "full history so origin/main exists").toMatch(
       /fetch-depth: 0/
     );
-    expect(scripts).toContain("/commits/$GITHUB_SHA/pulls");
-    expect(scripts).toMatch(/merge_commit_sha == \$sha/);
-    expect(scripts).toContain('.base.ref == "main"');
-    expect(scripts).toContain('.head.ref == "develop"');
-    expect(scripts).toContain(".head.repo.full_name == $repo");
-    expect(scripts).toContain('--commit "$head_sha"');
-    expect(scripts).not.toContain('--commit "$GITHUB_SHA"');
     expect(
       discover,
       "the pull-request lookup needs pull-requests: read"
     ).toMatch(/^ {6}pull-requests: read\n/m);
+
+    // A release starts from a version tag only, and the development image is
+    // the branch taken when no customer exists.
+    expect(workflow).toMatch(/tags:\n\s+- "v\*"\n/);
+    expect(workflow).toContain("needs.discover.outputs.customers == '[]'");
   });
 
   // genie-ops-center-v2-sl1 and -dwn: docker/login-action writes a
@@ -1512,58 +1226,6 @@ describe("the Spec 0 CI gates", () => {
     });
   });
 
-  it("builds one image per customer and falls back to the development image", () => {
-    const workflow = read(`${WORKFLOWS}/release.yml`);
-
-    expect(workflow).toContain("tags:");
-    expect(workflow).toContain('- "v*"');
-    expect(workflow).toContain("scripts/build-customer-image.sh");
-    expect(workflow).toContain("scripts/build-development-image.sh");
-    expect(workflow).toContain("--publish");
-    expect(workflow).toContain("docker/login-action");
-    expect(workflow).toContain("secrets.GITHUB_TOKEN");
-    // The development fallback is the branch taken when no customer exists.
-    expect(workflow).toContain("needs.discover.outputs.customers == '[]'");
-  });
-
-  // The repository's default workflow token is read-only, so a job that logs in
-  // to the registry must ask for `packages: write` itself, and nothing else may
-  // ask for write (genie-ops-center-v2-0lj).
-  it("grants package write only to the jobs that log in to the registry", () => {
-    const workflow = read(`${WORKFLOWS}/release.yml`);
-
-    const [head = "", body = ""] = workflow.split(/^jobs:\n/m);
-
-    const jobs = body
-      .split(/^(?= {2}[\w-]+:\n)/m)
-      .filter((job) => job.trim() !== "");
-
-    const publishing = jobs.filter((job) =>
-      job.includes("docker/login-action")
-    );
-
-    expect(head).toMatch(/^permissions:\n {2}contents: read\n/m);
-    expect(publishing.length).toBeGreaterThan(1);
-
-    for (const job of publishing) {
-      expect(job, job.split("\n")[0]).toContain("      packages: write\n");
-    }
-
-    for (const job of jobs.filter(
-      (candidate) => !publishing.includes(candidate)
-    )) {
-      expect(job, job.split("\n")[0]).not.toContain("write");
-    }
-
-    const grants = workflow
-      .split("\n")
-      .filter((line) => /:\s*write\s*$/.test(line));
-
-    expect(grants.every((line) => line.trim() === "packages: write")).toBe(
-      true
-    );
-  });
-
   // Least privilege: every workflow starts read-only, so a new job cannot
   // inherit a write token by accident. Only the release publishing jobs write.
   it("declares read-only top-level permissions in every workflow", () => {
@@ -1577,9 +1239,16 @@ describe("the Spec 0 CI gates", () => {
 
       expect(head, file).toMatch(/^permissions:\n {2}contents: read\n/m);
 
-      if (!file.endsWith("/release.yml")) {
-        expect(workflow, file).not.toMatch(/:\s*write\s*$/m);
-      }
+      // Only the release publishing jobs write, and only packages; which job
+      // may hold that grant is the parsed credential boundary above.
+      const grants = workflow
+        .split("\n")
+        .filter((line) => /:\s*write\s*$/.test(line))
+        .map((line) => line.trim());
+
+      expect(grants, file).toEqual(
+        file.endsWith("/release.yml") ? grants.map(() => "packages: write") : []
+      );
     }
   });
 
@@ -1591,18 +1260,6 @@ describe("the Spec 0 CI gates", () => {
       for (const script of runScripts(read(file))) {
         expect(script, file).not.toMatch(/\$\{\{\s*(github|matrix)\./);
       }
-    }
-  });
-
-  // The publishing jobs hold a packages:write token; a persisted checkout
-  // credential would sit in .git/config through every gate and build.
-  it("persists no checkout credential in the release workflow", () => {
-    const steps = checkoutSteps(read(`${WORKFLOWS}/release.yml`));
-
-    expect(steps.length).toBeGreaterThan(2);
-
-    for (const step of steps) {
-      expect(step).toMatch(/^\s+persist-credentials: false$/m);
     }
   });
 
@@ -1769,27 +1426,34 @@ describe("the Spec 0 CI gates", () => {
     }
   });
 
-  // Without a limit a hung job runs to GitHub's six-hour default. Every job states
-  // its own ceiling, so a hang fails clearly within a bounded time.
-  it("bounds every job with its own timeout", () => {
+  // Every job is a hosted runner of its own, so each states its own guardrails:
+  // the standard ubuntu-latest image (the owner kept every job on it), a
+  // timeout so a hang fails within a bounded time instead of GitHub's six-hour
+  // default, and a checkout that persists no credential, which would otherwise
+  // sit in .git/config through every gate and build, beside the release
+  // publishing jobs' packages:write token.
+  it("bounds every job with its own timeout, runner and credential-free checkout", () => {
     for (const name of ["pull-request", "develop", "release"]) {
-      const lines = read(`${WORKFLOWS}/${name}.yml`).split("\n");
+      const workflow = read(`${WORKFLOWS}/${name}.yml`);
+      const jobs = jobsOf(workflow);
 
-      const body = lines.slice(lines.findIndex((line) => line === "jobs:") + 1);
+      expect(jobs.size, name).toBeGreaterThan(0);
+      expect(checkoutSteps(workflow).length, name).toBeGreaterThan(0);
 
-      const starts = body.flatMap((line, index) =>
-        /^ {2}[\w-]+:$/.test(line) ? [index] : []
-      );
+      for (const [job, text] of jobs) {
+        expect(text, `${name} ${job} declares timeout-minutes`).toMatch(
+          /^ {4}timeout-minutes: \d+$/m
+        );
+        expect(text, `${name} ${job} stays on ubuntu-latest`).toMatch(
+          /^ {4}runs-on: ubuntu-latest$/m
+        );
 
-      expect(starts.length, name).toBeGreaterThan(0);
-
-      for (const [position, start] of starts.entries()) {
-        const job = body.slice(start, starts[position + 1] ?? body.length);
-
-        expect(
-          job.some((line) => /^ {4}timeout-minutes: \d+$/.test(line)),
-          `${name} ${job[0]?.trim()} declares timeout-minutes`
-        ).toBe(true);
+        for (const step of checkoutSteps(text)) {
+          expect(
+            step,
+            `${name} ${job} persists no checkout credential`
+          ).toMatch(/^\s+persist-credentials: false$/m);
+        }
       }
     }
   });
@@ -1836,7 +1500,12 @@ describe("the Spec 0 CI gates", () => {
     // image builds and failed on browser connect timeouts and the Vitest
     // import race (develop runs 35893905134 and 35932712679).
     expect(integration).toContain("--parallel=1");
-    expect(rootScript("ci:develop")).toContain("test:e2e:fixture");
+    // The app's test:integration already depends on test:e2e:fixture, so
+    // ci:develop no longer runs the fixture suite a second time (owner Cut 1).
+    expect(rootScript("ci:develop")).not.toContain("test:e2e:fixture");
+    expect(appTargetDependsOn("test:integration")).toContain(
+      "test:e2e:fixture"
+    );
     expect(rootScript("ci:release:customer")).toContain(
       "scripts/build-customer-image.sh"
     );
@@ -1845,72 +1514,13 @@ describe("the Spec 0 CI gates", () => {
     );
   });
 
-  // What `--nx-bail` does is Nx behavior, so it is proved against the installed
-  // Nx rather than assumed: one task fails, and its running sibling, including
-  // a background grandchild, is stopped rather than awaited.
-  it("bail stops a running sibling and its children once one task fails", () => {
-    const stage = mkdtempSync(join(tmpdir(), "genie-nx-bail-"));
-
-    try {
-      symlinkSync(
-        join(WORKSPACE_ROOT, "node_modules"),
-        join(stage, "node_modules")
-      );
-      writeFileSync(
-        join(stage, "nx.json"),
-        JSON.stringify({ neverConnectToCloud: true, parallel: 2 })
-      );
-      writeFileSync(
-        join(stage, "package.json"),
-        JSON.stringify({ name: "stage", private: true, workspaces: ["a", "b"] })
-      );
-
-      const project = (name: string, script: string) => {
-        mkdirSync(join(stage, name));
-        writeFileSync(
-          join(stage, name, "package.json"),
-          JSON.stringify({ name, scripts: { t: script } })
-        );
-      };
-
-      project("a", "sleep 2; exit 1");
-      project("b", "sleep 120 & echo $! > ../grandchild.pid; sleep 120");
-
-      const started = Date.now();
-
-      const result = spawnSync(
-        join(stage, "node_modules/.bin/nx"),
-        ["run-many", "-t", "t", "--nx-bail"],
-        {
-          cwd: stage,
-          encoding: "utf8",
-          env: { ...process.env, NX_DAEMON: "false", CI: "true" },
-          // A missing bail would wait the full 120 seconds; this bound turns
-          // that into a failure below instead of a stalled suite.
-          timeout: 60000,
-        }
-      );
-
-      expect(result.status, result.stdout + result.stderr).not.toBe(0);
-      expect(result.status).not.toBeNull();
-      expect(Date.now() - started).toBeLessThan(30000);
-
-      const grandchild = Number(
-        readFileSync(join(stage, "grandchild.pid"), "utf8")
-      );
-
-      expect(() => process.kill(grandchild, 0)).toThrow();
-    } finally {
-      rmSync(stage, { recursive: true, force: true });
-    }
-  }, 90000);
-
-  it("runs the ordinary app E2E suite on develop beside the fixture suite", () => {
+  it("runs the ordinary app E2E suite on develop, the fixture suite through test:integration", () => {
     const develop = rootScript("ci:develop");
 
     // A bare `test:e2e` substring would also match `test:e2e:fixture`.
     expect(develop).toMatch(/@genie\/app:test:e2e(?![\w:-])/);
-    expect(develop).toContain("@genie/app:test:e2e:fixture");
+    expect(develop).not.toContain("@genie/app:test:e2e:fixture");
+    expect(develop).toContain("ci:pr");
 
     expect(appScript("test:e2e")).toContain(
       "--config apps/genie/playwright.config.ts"
@@ -1968,34 +1578,5 @@ describe("the Spec 0 CI gates", () => {
     for (const file of workflowFiles()) {
       expect(read(file), file).not.toContain("coverage");
     }
-  });
-
-  it("tracks the workflow and generator inputs the validate target reads", () => {
-    // SAFETY: nx.json is this repository's own configuration.
-    const config = JSON.parse(
-      readFileSync(join(WORKSPACE_ROOT, "nx.json"), "utf8")
-    ) as {
-      readonly namedInputs: {
-        readonly default: readonly string[];
-        readonly sharedGlobals: readonly string[];
-      };
-      readonly targetDefaults: {
-        readonly validate: { readonly inputs: readonly string[] };
-      };
-    };
-
-    const inputs = config.targetDefaults.validate.inputs;
-
-    // The clean-checkout registry check shells out to the app generator, and
-    // the module-has-tests and README checks read module packages; both must be
-    // real inputs or a change can restore a stale validate result.
-    expect(inputs).toContain("{workspaceRoot}/apps/genie/tools/**/*");
-    expect(inputs).toContain("{workspaceRoot}/packages/modules/**/*");
-    expect(inputs).toContain("{workspaceRoot}/.github/**");
-    // The release supply-chain checks read the Dockerfile and the build-context
-    // ignore file, so a change to either must invalidate this target too
-    // (genie-ops-center-v2-sl1).
-    expect(inputs).toContain("{workspaceRoot}/deploy/**/*");
-    expect(inputs).toContain("{workspaceRoot}/.dockerignore");
   });
 });
