@@ -35,7 +35,11 @@ const reservedEntrypointOverride: OxlintOverride = {
  * with no JSX simply produces no findings.
  */
 const shadcnDesignSystemRules: OxlintOverride["rules"] = {
-  "shadcn/no-restyle": "error",
+  // Layout may place a component; heights stay closed (R-5, tokens.md "Control heights").
+  "shadcn/no-restyle": [
+    "error",
+    { allow: ["layout"], deny: ["h-*", "min-h-*", "max-h-*", "size-*"] },
+  ],
   "shadcn/no-raw-colors": "error",
   "shadcn/no-arbitrary-values": "error",
   "shadcn/no-inline-styles": "error",
@@ -90,6 +94,27 @@ const shadcnBrandingStyleException: OxlintOverride = {
 };
 
 /**
+ * Fixed status tones (tokens.md "Forms": field error red-700; "Color roles": status is semantic)
+ * have no role, so these files may name a palette color: the pills, the field error and the toast icons.
+ */
+const shadcnFixedToneException: OxlintOverride = {
+  files: [
+    "packages/ui/src/components/badge.tsx",
+    "packages/ui/src/components/field.tsx",
+    "packages/ui/src/parts/toast.tsx",
+  ],
+  rules: {
+    "shadcn/no-raw-colors": "off",
+  },
+};
+
+/** `@genie/ui` is the owner that `design-system/single-owner` protects, so it may declare the parts. */
+const designSystemOwnerOverride: OxlintOverride = {
+  files: ["packages/ui/**"],
+  rules: { "design-system/single-owner": "off" },
+};
+
+/**
  * The one Oxlint configuration for this repository.
  *
  * The vendored anti-slop plugin lives at `packages/config/oxlint/anti-slop/`
@@ -141,6 +166,10 @@ export const sharedOxlintConfig: OxlintConfig = {
       specifier: "./packages/config/oxlint/boundaries/index.ts",
     },
     {
+      name: "design-system",
+      specifier: "./packages/config/oxlint/design-system/index.ts",
+    },
+    {
       name: "shadcn",
       specifier: "@shadcn/lint",
     },
@@ -163,6 +192,7 @@ export const sharedOxlintConfig: OxlintConfig = {
   rules: {
     "oxc/no-accumulating-spread": "error",
     "boundaries/no-relative-package-escape": "error",
+    "design-system/single-owner": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reduce-accumulator-copy": "error",
     "anti-slop/no-chained-type-assertions": "error",
@@ -188,5 +218,7 @@ export const sharedOxlintConfig: OxlintConfig = {
     shadcnProductOverride,
     shadcnNonProductOverride,
     shadcnBrandingStyleException,
+    shadcnFixedToneException,
+    designSystemOwnerOverride,
   ],
 };

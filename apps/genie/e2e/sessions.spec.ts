@@ -130,6 +130,9 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 
   dialog.getByRole("button", { name: "Sign out" }).click();
 
+  await expect(
+    page.getByRole("status").filter({ hasText: "That session was signed out." })
+  ).toBeVisible();
   await expect
     .poll(() => sessionRowCount(other), { timeout: 10_000 })
     .toBe("0");
@@ -151,6 +154,11 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 
   dialog.getByRole("button", { name: "Sign out" }).click();
 
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Every other session was signed out." })
+  ).toBeVisible();
   await expect
     .poll(() => sessionRowCount(third), { timeout: 10_000 })
     .toBe("0");

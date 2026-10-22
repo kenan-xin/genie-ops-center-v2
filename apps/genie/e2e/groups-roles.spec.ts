@@ -5,6 +5,7 @@ import {
   e2eGroupsRolesGroup,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -61,21 +62,25 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   expect(addResponse.status()).toBe(200);
 
-  await expect(page.getByText(GROUP_LABEL, { exact: true })).toBeVisible();
-  await expect(page.getByText("Not seen yet").first()).toBeVisible();
+  // The table and the phone card list both hold the row, and only one of them shows.
+  await expect(
+    page.getByText(GROUP_LABEL, { exact: true }).filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Not seen yet").filter({ visible: true }).first()
+  ).toBeVisible();
 
   // Map the group to a role through the screen's own assign step (R-24b), not SQL.
-  await page
+  const groupRow = page
     .getByRole("button", { name: new RegExp(GROUP_LABEL) })
-    .first()
-    .click();
+    .first();
+
+  await groupRow.click();
 
   const inspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
-  await inspector
-    .getByLabel("Role to assign")
-    .selectOption({ label: "E2E reader" });
+  await chooseOption(page, "Role to assign", "E2E reader");
 
   const [assignResponse] = await Promise.all([
     page.waitForResponse((response) =>
@@ -96,6 +101,10 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   expect(assigned).toBe("1");
 
   await inspector.getByRole("button", { name: "Close" }).click();
+
+  // The sheet closes rather than unmounting, so focus returns to the row's open button (R-22).
+  await expect(inspector).toBeHidden();
+  await expect(groupRow).toBeFocused();
 
   // A jit person whose token carries the group is admitted and holds the role through it.
   const admittedEmail = e2eGroupsRolesEmail("admitted", project);

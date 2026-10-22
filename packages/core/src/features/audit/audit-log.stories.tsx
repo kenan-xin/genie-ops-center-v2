@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   FIXTURE_EVENTS,
@@ -161,16 +161,23 @@ export const LoadingNextPage: Story = {
 export const Filtering: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /^Filters/ }));
-    await userEvent.selectOptions(canvas.getByLabelText("Actor"), "system");
+    await userEvent.click(canvas.getByRole("combobox", { name: "Actor" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "System" })
+    );
 
     // The chip is the visible result of the filter change.
     await expect(
       canvas.getByRole("button", { name: "System" })
     ).toBeInTheDocument();
+    // The trigger shows the label, not the stored value.
+    await expect(
+      canvas.getByRole("combobox", { name: "Actor" })
+    ).toHaveTextContent("System");
 
-    await userEvent.selectOptions(
-      canvas.getByLabelText("Action"),
-      "auth:sign_in"
+    await userEvent.click(canvas.getByRole("combobox", { name: "Action" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "auth:sign_in" })
     );
 
     await expect(
@@ -234,13 +241,15 @@ export const LoadMore: Story = {
 };
 
 export const DetailSheetOpensAnAuthorizedTarget: Story = {
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const { first } = rowButtons(canvasElement);
 
     onOpenAuditTarget.mockClear();
     await userEvent.click(first);
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Audit event" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Audit event" })
+    );
 
     await expect(dialog.getByText("Summary")).toBeInTheDocument();
 
@@ -251,12 +260,14 @@ export const DetailSheetOpensAnAuthorizedTarget: Story = {
 };
 
 export const DetailSheetShowsNoLinkForAnExistingTarget: Story = {
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const { second } = rowButtons(canvasElement);
 
     await userEvent.click(second);
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Audit event" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Audit event" })
+    );
 
     await expect(dialog.getByText("No link")).toBeInTheDocument();
     await expect(
@@ -266,12 +277,14 @@ export const DetailSheetShowsNoLinkForAnExistingTarget: Story = {
 };
 
 export const DetailSheetShowsARemovedTarget: Story = {
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const { third } = rowButtons(canvasElement);
 
     await userEvent.click(third);
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Audit event" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Audit event" })
+    );
 
     await expect(dialog.getByText("Removed")).toBeInTheDocument();
     await expect(dialog.getByText(/anonymized id/)).toBeInTheDocument();
@@ -279,16 +292,34 @@ export const DetailSheetShowsARemovedTarget: Story = {
 };
 
 export const DetailSheetCopiesTheEventId: Story = {
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const { first } = rowButtons(canvasElement);
 
     onCopyEventId.mockClear();
     await userEvent.click(first);
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Audit event" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Audit event" })
+    );
 
     await userEvent.click(dialog.getByRole("button", { name: /Copy/ }));
 
     expect(onCopyEventId).toHaveBeenCalledWith("ev-openable");
+  },
+};
+
+export const DetailSheetClosesOnEscape: Story = {
+  play: async ({ canvasElement }) => {
+    const { first } = rowButtons(canvasElement);
+
+    await userEvent.click(first);
+    await screen.findByRole("dialog", { name: "Audit event" });
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Audit event" })
+      ).not.toBeInTheDocument()
+    );
   },
 };

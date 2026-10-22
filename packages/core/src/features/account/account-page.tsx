@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Button, ConfirmDialog, focusRing } from "@genie/ui";
+import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
-import { btnSecondary, focusRing } from "../audit/helpers.ts";
 import type {
   AccountGroup,
   AccountPageProps,
@@ -17,8 +17,6 @@ import type {
  * Every write on this page is a sign-out, and both sign-outs open the shared confirm dialog
  * before the callback fires. The Roles and access block edits nothing: its note says who to ask.
  */
-
-const btnDanger = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-destructive px-3 text-sm font-semibold motion-safe:transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -44,9 +42,7 @@ function Block(props: {
   return (
     <section className="flex flex-col gap-3">
       <header>
-        <h2 className="font-heading text-lg font-bold text-foreground">
-          {props.title}
-        </h2>
+        <h2 className="text-lg font-bold text-foreground">{props.title}</h2>
         <p className="text-sm text-muted-foreground">{props.description}</p>
       </header>
       {props.children}
@@ -103,7 +99,7 @@ function ProfileBlock(props: {
           </p>
           {props.accountManagementUrl === null ? null : (
             <a
-              className={`w-fit text-sm font-medium text-primary hover:underline ${focusRing}`}
+              className={`w-fit text-sm font-medium text-primary dark:text-brand-on-dark hover:underline ${focusRing}`}
               href={props.accountManagementUrl}
               target="_blank"
               rel="noreferrer"
@@ -114,55 +110,6 @@ function ProfileBlock(props: {
         </div>
       </div>
     </Block>
-  );
-}
-
-/** The shared confirm dialog both sign-outs open: Cancel focused, danger confirm (R-18). */
-function ConfirmSignOutDialog(props: {
-  readonly title: string;
-  readonly consequence: string;
-  readonly confirmLabel: string;
-  readonly onConfirm: () => void;
-  readonly onCancel: () => void;
-}) {
-  const cancel = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    cancel.current?.focus();
-  }, []);
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="account-confirm-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-    >
-      <div className="w-full max-w-md rounded-xl border border-border bg-white p-5 shadow-lg dark:bg-card">
-        <h3
-          id="account-confirm-title"
-          className="text-base font-semibold text-foreground"
-        >
-          {props.title}
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {props.consequence}
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            ref={cancel}
-            type="button"
-            className={btnSecondary}
-            onClick={props.onCancel}
-          >
-            Cancel
-          </button>
-          <button type="button" className={btnDanger} onClick={props.onConfirm}>
-            {props.confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -205,13 +152,13 @@ function SessionRows(props: {
             {session.isCurrent ? (
               currentChip()
             ) : (
-              <button
-                type="button"
-                className={`${btnSecondary} h-8`}
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => props.onAskRevoke(session)}
               >
                 Sign out
-              </button>
+              </Button>
             )}
           </td>
         </tr>
@@ -234,13 +181,11 @@ function SessionsBlock(props: {
       description="Where you are signed in, and how to end a session you do not recognize."
     >
       {others.length === 0 ? null : (
-        <button
-          type="button"
-          className={`${btnSecondary} w-fit`}
-          onClick={props.onAskRevokeOthers}
-        >
-          Sign out all other sessions
-        </button>
+        <div>
+          <Button variant="secondary" onClick={props.onAskRevokeOthers}>
+            Sign out all other sessions
+          </Button>
+        </div>
       )}
 
       {/* The phone card list; the desktop table joins at the md breakpoint. */}
@@ -258,13 +203,13 @@ function SessionsBlock(props: {
               {session.isCurrent ? (
                 currentChip()
               ) : (
-                <button
-                  type="button"
-                  className={`${btnSecondary} h-8`}
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => props.onAskRevoke(session)}
                 >
                   Sign out
-                </button>
+                </Button>
               )}
             </span>
             <span className="text-sm text-muted-foreground">
@@ -355,14 +300,31 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
     | null
   >(null);
 
+  // Kept after close, so that the title does not blank while the dialog fades out.
+  const [last, setLast] = useState(pending);
+
+  if (pending !== null && pending !== last) setLast(pending);
+
+  const title =
+    last === null
+      ? ""
+      : last.kind === "one"
+        ? `Sign out ${last.session.device}?`
+        : `Sign out ${last.count} other ${
+            last.count === 1 ? "session" : "sessions"
+          }?`;
+
+  const description =
+    last?.kind === "one"
+      ? "That device will have to sign in again to reach this service."
+      : "Every other device will have to sign in again to reach this service.";
+
   return (
     <main
       className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
       data-testid="account-page"
     >
-      <h1 className="font-heading text-2xl font-bold text-foreground">
-        Account
-      </h1>
+      <h1 className="text-2xl font-bold text-foreground">Account</h1>
 
       <ProfileBlock
         profile={props.profile}
@@ -385,31 +347,21 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
 
       <RolesBlock roleGrants={props.roleGrants} />
 
-      {pending === null ? null : (
-        <ConfirmSignOutDialog
-          title={
-            pending.kind === "one"
-              ? `Sign out ${pending.session.device}?`
-              : `Sign out ${pending.count} other ${
-                  pending.count === 1 ? "session" : "sessions"
-                }?`
-          }
-          consequence={
-            pending.kind === "one"
-              ? "That device will have to sign in again to reach this service."
-              : "Every other device will have to sign in again to reach this service."
-          }
-          confirmLabel="Sign out"
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            if (pending.kind === "one")
-              props.onRevokeSession?.(pending.session.id);
-            else props.onRevokeOtherSessions?.();
+      <ConfirmDialog
+        open={pending !== null}
+        title={title}
+        description={description}
+        confirmLabel="Sign out"
+        danger
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          if (pending?.kind === "one")
+            props.onRevokeSession?.(pending.session.id);
+          else props.onRevokeOtherSessions?.();
 
-            setPending(null);
-          }}
-        />
-      )}
+          setPending(null);
+        }}
+      />
     </main>
   );
 }

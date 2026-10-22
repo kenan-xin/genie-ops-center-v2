@@ -74,7 +74,18 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
     )
     .toBe("pending");
 
-  await expect(page.getByText(`E2E Added ${project}`)).toBeVisible();
+  // A save that fully succeeded is reported by a toast (PD-13).
+  // Exact, so that the partial-success notice "Person added; the email was not sent" fails it.
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ has: page.getByText("Person added", { exact: true }) })
+  ).toBeVisible();
+
+  // The table and the phone card list both hold the row, and only one of them shows.
+  await expect(
+    page.getByText(`E2E Added ${project}`).filter({ visible: true })
+  ).toBeVisible();
 
   // R-40a: one `invitation-brokered` email, with a sign-in link built from PUBLIC_URL.
   const mail = await waitForMessageTo(personEmail);
@@ -124,10 +135,11 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   // Self-protection: the signed-in administrator's own row cannot disable itself (R-38).
   await page.getByLabel("Search people").fill(adminEmail);
 
-  await page
+  const selfRow = page
     .getByRole("button", { name: new RegExp(adminEmail.replace(".", "\\.")) })
-    .first()
-    .click();
+    .first();
+
+  await selfRow.click();
 
   const self = page.getByRole("dialog", { name: "E2E Person" });
 
@@ -137,6 +149,10 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   ).toBeVisible();
 
   await self.getByRole("button", { name: "Close" }).click();
+
+  // The sheet closes rather than unmounting, so focus returns to the row's open button (R-22).
+  await expect(self).toBeHidden();
+  await expect(selfRow).toBeFocused();
 
   // The break-glass account never appears in People (R-39).
   await page.getByLabel("Search people").fill(e2eBreakGlassEmail(project));

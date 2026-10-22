@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   FIXTURE_ACCOUNT_PAGE,
@@ -101,7 +101,6 @@ export const Default: Story = {
 
 export const RevokeOneSession: Story = {
   play: async ({ canvasElement, step }) => {
-    const canvas = within(canvasElement);
     const table = sessionTable(canvasElement);
 
     const phoneRow = table.getByRole("row", {
@@ -113,7 +112,7 @@ export const RevokeOneSession: Story = {
         within(phoneRow).getByRole("button", { name: "Sign out" })
       );
 
-      const dialog = within(await canvas.findByRole("dialog"));
+      const dialog = within(await screen.findByRole("dialog"));
 
       // The title names the device; the consequence is one sentence.
       await expect(dialog.getByText(/Pixel 7 \(Android\)/)).toBeInTheDocument();
@@ -125,7 +124,9 @@ export const RevokeOneSession: Story = {
 
       await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
 
-      await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      );
     });
 
     await step("confirm signs the session out", async () => {
@@ -135,13 +136,38 @@ export const RevokeOneSession: Story = {
         within(phoneRow).getByRole("button", { name: "Sign out" })
       );
 
-      const dialog = within(await canvas.findByRole("dialog"));
+      const dialog = within(await screen.findByRole("dialog"));
 
       await userEvent.click(dialog.getByRole("button", { name: "Sign out" }));
 
       await expect(onRevokeSession).toHaveBeenCalledWith("s-phone");
-      await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      );
     });
+  },
+};
+
+export const EscapeCancelsAndReturnsFocus: Story = {
+  play: async ({ canvasElement }) => {
+    const row = sessionTable(canvasElement).getByRole("row", {
+      name: /Pixel 7 \(Android\)/,
+    });
+
+    const opener = within(row).getByRole("button", { name: "Sign out" });
+
+    onRevokeSession.mockClear();
+    await userEvent.click(opener);
+    await screen.findByRole("dialog");
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    );
+
+    await waitFor(() => expect(opener).toHaveFocus());
+    await expect(onRevokeSession).not.toHaveBeenCalled();
   },
 };
 
@@ -153,7 +179,7 @@ export const SignOutEverywhere: Story = {
       canvas.getByRole("button", { name: "Sign out all other sessions" })
     );
 
-    const dialog = within(await canvas.findByRole("dialog"));
+    const dialog = within(await screen.findByRole("dialog"));
 
     // The title names the count.
     await expect(dialog.getByText(/2 other sessions/)).toBeInTheDocument();
@@ -161,7 +187,9 @@ export const SignOutEverywhere: Story = {
     await userEvent.click(dialog.getByRole("button", { name: "Sign out" }));
 
     await expect(onRevokeOtherSessions).toHaveBeenCalledTimes(1);
-    await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    );
   },
 };
 

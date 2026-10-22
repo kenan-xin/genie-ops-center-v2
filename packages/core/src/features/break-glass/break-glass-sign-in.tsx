@@ -1,4 +1,4 @@
-import { focusRing } from "@genie/ui";
+import { Button, Field, FieldLabel, Input, focusRing } from "@genie/ui";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
 
@@ -65,11 +65,6 @@ export type BreakGlassSignInProps = {
   /** The member sign-in route the link points at (S1). Defaults to `/sign-in`. */
   readonly memberSignInHref?: string;
 };
-
-const inputClass = `h-11 w-full rounded-lg border border-input bg-background px-3.5 text-base text-foreground placeholder:text-muted-foreground ${focusRing}`;
-const labelClass = "text-sm font-semibold text-foreground";
-const primaryClass = `flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
-const linkClass = `inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-primary hover:underline ${focusRing}`;
 
 /** The three finder squares of the placeholder pattern, at the fixed 21x21 positions. */
 function isFinderCell(row: number, column: number): boolean {
@@ -203,31 +198,32 @@ function PasswordField(props: {
 }): JSX.Element {
   const [show, setShow] = useState(false);
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={props.id} className={labelClass}>
-        {props.label}
-      </label>
-      <div className="relative">
-        <input
+    <Field>
+      <FieldLabel htmlFor={props.id}>{props.label}</FieldLabel>
+      <div className="flex items-center gap-1">
+        <Input
           id={props.id}
+          size="lg"
           type={show ? "text" : "password"}
           autoComplete={props.autoComplete}
           value={props.value}
           disabled={props.disabled === true}
           onChange={(event) => props.onChange(event.target.value)}
-          className={`${inputClass} pr-11 disabled:cursor-not-allowed disabled:opacity-50`}
+          className="flex-1"
         />
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setShow((value) => !value)}
           aria-label={show ? "Hide password" : "Show password"}
           aria-pressed={show}
-          className={`absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground ${focusRing}`}
+          className="shrink-0"
         >
           <Icon path={show ? EYE_OFF_PATH : EYE_PATH} />
-        </button>
+        </Button>
       </div>
-    </div>
+    </Field>
   );
 }
 
@@ -257,7 +253,7 @@ function CodeInput(props: {
 
   return (
     <fieldset className="m-0 min-w-0 border-0 p-0">
-      <legend className={`${labelClass} mb-1.5 block w-full text-center`}>
+      <legend className="mb-1.5 block w-full text-center text-sm font-semibold text-foreground">
         Authentication code
       </legend>
       <div className="flex items-center justify-center gap-2">
@@ -471,15 +467,16 @@ export function BreakGlassPasswordForm(props: {
           Passwords do not match.
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
-        className={primaryClass}
+        size="lg"
+        className="w-full"
         disabled={
           disabled || !current || !rulesMet || !confirmOk || props.pending
         }
       >
         Set password and continue
-      </button>
+      </Button>
       <p className="text-center text-xs text-muted-foreground">
         Until enrollment is complete, every other page brings you back here.
       </p>
@@ -586,19 +583,17 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
               disabled={props.tooManyAttempts === true}
               className="contents"
             >
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="bg-email" className={labelClass}>
-                  Email
-                </label>
-                <input
+              <Field>
+                <FieldLabel htmlFor="bg-email">Email</FieldLabel>
+                <Input
                   id="bg-email"
+                  size="lg"
                   type="email"
                   autoComplete="username"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className={inputClass}
                 />
-              </div>
+              </Field>
               <PasswordField
                 id="bg-password"
                 label="Password"
@@ -606,15 +601,16 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                 autoComplete="current-password"
                 onChange={setPassword}
               />
-              <button
+              <Button
                 type="submit"
-                className={primaryClass}
+                size="lg"
+                className="w-full"
                 disabled={
                   email === "" || password === "" || props.pending === true
                 }
               >
                 Sign in
-              </button>
+              </Button>
             </fieldset>
           </form>
         ) : null}
@@ -634,21 +630,22 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
               onChange={setCode}
               autoFocus
             />
-            <button
+            <Button
               type="submit"
-              className={primaryClass}
+              size="lg"
+              className="w-full"
               disabled={code.length !== 6 || props.pending === true}
             >
               Verify
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="link"
               onClick={() => props.onUseDifferentAccount?.()}
-              className={linkClass}
             >
               <Icon path={LEFT_PATH} />
               Use a different account
-            </button>
+            </Button>
           </form>
         ) : null}
 
@@ -691,9 +688,10 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   disabled={props.tooManyAttempts === true}
                   onChange={setEnrollPassword}
                 />
-                <button
+                <Button
                   type="submit"
-                  className={primaryClass}
+                  size="lg"
+                  className="w-full"
                   disabled={
                     enrollPassword === "" ||
                     props.pending === true ||
@@ -701,7 +699,7 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   }
                 >
                   Start enrollment
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -720,8 +718,10 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                       >
                         {props.enrollment.manualKey}
                       </code>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         aria-label={copied ? "Key copied" : "Copy key"}
                         onClick={() => {
                           void navigator.clipboard?.writeText(
@@ -730,14 +730,13 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                           setCopied(true);
                           setTimeout(() => setCopied(false), 1500);
                         }}
-                        className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-background ${focusRing}`}
                       >
                         {copied ? (
                           <Icon path={CHECK_PATH} />
                         ) : (
                           <Icon path={COPY_PATH} />
                         )}
-                      </button>
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Issuer {props.enrollment.issuer}
@@ -750,13 +749,14 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   onChange={setEnrollCode}
                   autoFocus={Boolean(props.error)}
                 />
-                <button
+                <Button
                   type="submit"
-                  className={primaryClass}
+                  size="lg"
+                  className="w-full"
                   disabled={enrollCode.length !== 6 || props.pending === true}
                 >
                   Confirm and open the console
-                </button>
+                </Button>
               </>
             )}
             <p className="text-center text-xs text-muted-foreground">

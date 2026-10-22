@@ -6,6 +6,7 @@ import {
   type PeopleSettings,
   type PeopleViewer,
 } from "@genie/core/features/people";
+import { toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -94,7 +95,7 @@ export function PeopleRoute(props: {
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
   // committed add whose email did not go out is a partial success: the dialog closes and a status
-  // notice points at Resend (N1).
+  // notice points at Resend (N1). Only a full success gets the toast (PD-13).
   const addPerson = (input: NewPersonInput): Promise<void> => {
     setError(undefined);
     setNotice(undefined);
@@ -110,6 +111,8 @@ export function PeopleRoute(props: {
           result.emailSent === false
         ) {
           setNotice("Person added; the email was not sent. Use Resend.");
+        } else {
+          toast({ tone: "success", title: "Person added" });
         }
       });
   };
@@ -134,7 +137,11 @@ export function PeopleRoute(props: {
       details={
         detail.data === undefined ? {} : { [detail.data.id]: detail.data }
       }
-      onSelectPerson={setSelectedId}
+      // A close keeps the last detail, so the sheet closes through `open` and returns focus (R-22).
+      // Opening another person switches the key, and the screen shows nothing until it loads.
+      onSelectPerson={(personId) => {
+        if (personId !== null) setSelectedId(personId);
+      }}
       onAddPerson={addPerson}
       onDisablePerson={(personId) =>
         run(() => rpc.people.disable({ personId }))

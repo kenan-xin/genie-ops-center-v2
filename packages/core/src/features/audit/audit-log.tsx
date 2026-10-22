@@ -1,32 +1,36 @@
 "use client";
 
+import {
+  Button,
+  CountPill,
+  Field,
+  FieldLabel,
+  focusRing,
+  Input,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@genie/ui";
 import { useId, useState } from "react";
 import type { JSX, ReactNode } from "react";
 
 import { AuditEventSheet } from "./audit-event-sheet.tsx";
 import {
-  btnSecondary,
   countActiveFilters,
-  filterLabel,
-  focusRing,
   fmtDateTime,
   fmtExact,
   humanize,
-  inputClass,
   initials,
   actionGroup,
   RANGE_LABEL,
   RANGE_ORDER,
   relativeTime,
 } from "./helpers.ts";
-import {
-  ChevronDownIcon,
-  CloseIcon,
-  FiltersIcon,
-  HelpIcon,
-  SearchIcon,
-  SystemIcon,
-} from "./icons.tsx";
+import { CloseIcon, FiltersIcon, HelpIcon, SystemIcon } from "./icons.tsx";
 import {
   EMPTY_AUDIT_FILTERS,
   type AuditActor,
@@ -84,24 +88,42 @@ function ActionPill(props: {
   );
 }
 
-function Select(props: {
-  readonly ariaLabel: string;
+type FilterItem = { readonly value: string; readonly label: string };
+
+function optionNodes(items: readonly FilterItem[]): JSX.Element[] {
+  return items.map((item) => (
+    <SelectItem key={item.value} value={item.value}>
+      {item.label}
+    </SelectItem>
+  ));
+}
+
+/** One labelled filter select; `items` makes the trigger show the label, not the stored value. */
+function FilterSelect(props: {
+  readonly label: string;
   readonly value: string;
+  readonly items: readonly FilterItem[];
   readonly onChange: (value: string) => void;
-  readonly children: ReactNode;
+  readonly children?: ReactNode;
 }): JSX.Element {
+  const id = useId();
+
   return (
-    <span className="relative block w-full">
-      <select
-        aria-label={props.ariaLabel}
+    <Field>
+      <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
+      <Select
+        items={props.items}
         value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-        className={`h-10 w-full appearance-none rounded-lg border border-input bg-white dark:bg-card pl-3 pr-9 text-sm text-foreground dark:border-input text-foreground ${focusRing}`}
+        onValueChange={(value) => props.onChange(value ?? props.value)}
       >
-        {props.children}
-      </select>
-      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-    </span>
+        <SelectTrigger id={id}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {props.children ?? optionNodes(props.items)}
+        </SelectContent>
+      </Select>
+    </Field>
   );
 }
 
@@ -113,23 +135,23 @@ function HelpNote(): JSX.Element {
 
   return (
     <span className="relative inline-flex shrink-0">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         aria-label={label}
         title={label}
         onClick={() => setOpen((value) => !value)}
-        className={`inline-flex h-11 w-11 items-center justify-center rounded-lg text-primary hover:bg-accent text-primary ${focusRing}`}
       >
         <HelpIcon className="size-5" />
-      </button>
+      </Button>
       {open ? (
         <div
           id={`${id}-panel`}
           role="group"
           aria-label={label}
-          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-white dark:bg-card p-4 text-left text-xs leading-relaxed text-foreground shadow-lg bg-card text-foreground"
+          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-card p-4 text-left text-xs leading-relaxed text-foreground shadow-lg"
         >
           <p>
             An event is never edited and never deleted. It keeps the words that
@@ -145,13 +167,11 @@ function HelpNote(): JSX.Element {
             A person an operator erased appears under an anonymized name. Their
             earlier events stay where they are.
           </p>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className={`mt-3 rounded text-xs font-semibold text-primary hover:underline text-primary ${focusRing}`}
-          >
-            Close
-          </button>
+          <div className="mt-3">
+            <Button variant="link" size="sm" onClick={() => setOpen(false)}>
+              Close
+            </Button>
+          </div>
         </div>
       ) : null}
     </span>
@@ -224,22 +244,27 @@ function FilterChips(props: {
           key={chip.label}
           type="button"
           onClick={() => props.onChange(chip.next)}
-          className={`inline-flex h-8 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1.5 text-xs font-medium text-foreground hover:bg-muted text-foreground ${focusRing}`}
+          className={`inline-flex h-8 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1.5 text-xs font-medium text-foreground hover:bg-muted ${focusRing}`}
         >
           {chip.label}
           <CloseIcon className="size-4" />
         </button>
       ))}
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="sm"
         onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
-        className={`h-8 rounded-lg px-1.5 text-xs font-medium text-muted-foreground underline-offset-2 hover:underline text-muted-foreground ${focusRing}`}
       >
         Clear all
-      </button>
+      </Button>
     </div>
   );
 }
+
+const RANGE_ITEMS: readonly FilterItem[] = RANGE_ORDER.map((range) => ({
+  value: range,
+  label: RANGE_LABEL[range],
+}));
 
 function FilterPanel(props: {
   readonly filters: AuditFilters;
@@ -255,89 +280,84 @@ function FilterPanel(props: {
     groups.set(group, [...(groups.get(group) ?? []), action]);
   }
 
+  const actorItems: FilterItem[] = [
+    { value: "all", label: "All actors" },
+    { value: "system", label: "System" },
+    ...props.filterOptions.actors.map((actor) => ({
+      value: actor.id,
+      label: actor.name,
+    })),
+  ];
+
+  const actionItems: FilterItem[] = [
+    { value: "all", label: "All actions" },
+    ...props.filterOptions.actions.map((action) => ({
+      value: action,
+      label: action,
+    })),
+  ];
+
+  const targetItems: FilterItem[] = [
+    { value: "all", label: "All targets" },
+    ...props.filterOptions.targetTypes.map((type) => ({
+      value: type,
+      label: humanize(type),
+    })),
+  ];
+
   return (
     <div role="group" aria-label="Filters" className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1.5">
-        <span className={filterLabel}>Actor</span>
-        <Select
-          ariaLabel="Actor"
-          value={filters.actorId}
-          onChange={(value) => props.onChange({ ...filters, actorId: value })}
-        >
-          <option value="all">All actors</option>
-          <option value="system">System</option>
-          {props.filterOptions.actors.map((actor) => (
-            <option key={actor.id} value={actor.id}>
-              {actor.name}
-            </option>
-          ))}
-        </Select>
-      </label>
+      <FilterSelect
+        label="Actor"
+        value={filters.actorId}
+        items={actorItems}
+        onChange={(value) => props.onChange({ ...filters, actorId: value })}
+      />
 
-      <label className="flex flex-col gap-1.5">
-        <span className={filterLabel}>Action</span>
-        <Select
-          ariaLabel="Action"
-          value={filters.action}
-          onChange={(value) => props.onChange({ ...filters, action: value })}
-        >
-          <option value="all">All actions</option>
-          {[...groups.entries()].map(([group, actions]) => (
-            <optgroup key={group} label={humanize(group)}>
-              {actions.map((action) => (
-                <option key={action} value={action}>
-                  {action}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
-      </label>
+      <FilterSelect
+        label="Action"
+        value={filters.action}
+        items={actionItems}
+        onChange={(value) => props.onChange({ ...filters, action: value })}
+      >
+        <SelectItem value="all">All actions</SelectItem>
+        {[...groups.entries()].map(([group, actions]) => (
+          <SelectGroup key={group}>
+            <SelectLabel>{humanize(group)}</SelectLabel>
+            {actions.map((action) => (
+              <SelectItem key={action} value={action}>
+                {action}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </FilterSelect>
 
-      <label className="flex flex-col gap-1.5">
-        <span className={filterLabel}>Target type</span>
-        <Select
-          ariaLabel="Target type"
-          value={filters.targetType}
-          onChange={(value) =>
-            props.onChange({ ...filters, targetType: value })
-          }
-        >
-          <option value="all">All targets</option>
-          {props.filterOptions.targetTypes.map((type) => (
-            <option key={type} value={type}>
-              {humanize(type)}
-            </option>
-          ))}
-        </Select>
-      </label>
+      <FilterSelect
+        label="Target type"
+        value={filters.targetType}
+        items={targetItems}
+        onChange={(value) => props.onChange({ ...filters, targetType: value })}
+      />
 
-      <label className="flex flex-col gap-1.5">
-        <span className={filterLabel}>Date range</span>
-        <Select
-          ariaLabel="Date range"
-          value={filters.range}
-          onChange={(value) =>
-            props.onChange({
-              ...filters,
-              // SAFETY: this select's only options are the RANGE_LABEL keys, so the value is one.
-              range: value as DateRangePreset,
-              from: null,
-              to: null,
-            })
-          }
-        >
-          {RANGE_ORDER.map((range) => (
-            <option key={range} value={range}>
-              {RANGE_LABEL[range]}
-            </option>
-          ))}
-        </Select>
-      </label>
+      <FilterSelect
+        label="Date range"
+        value={filters.range}
+        items={RANGE_ITEMS}
+        onChange={(value) =>
+          props.onChange({
+            ...filters,
+            // SAFETY: this select's only options are the RANGE_LABEL keys, so the value is one.
+            range: value as DateRangePreset,
+            from: null,
+            to: null,
+          })
+        }
+      />
 
       {filters.range === "custom" ? (
         <div className="flex items-center gap-2">
-          <input
+          <Input
             type="date"
             aria-label="From"
             value={filters.from ?? ""}
@@ -345,10 +365,9 @@ function FilterPanel(props: {
             onChange={(event) =>
               props.onChange({ ...filters, from: event.target.value || null })
             }
-            className={inputClass}
           />
           <span className="shrink-0 text-xs text-muted-foreground">to</span>
-          <input
+          <Input
             type="date"
             aria-label="To"
             value={filters.to ?? ""}
@@ -356,12 +375,11 @@ function FilterPanel(props: {
             onChange={(event) =>
               props.onChange({ ...filters, to: event.target.value || null })
             }
-            className={inputClass}
           />
         </div>
       ) : null}
 
-      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground text-foreground">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
         <input
           type="checkbox"
           checked={filters.operatorOnly}
@@ -387,49 +405,40 @@ function FilterButton(props: {
 
   return (
     <span className="relative inline-flex shrink-0">
-      <button
-        type="button"
+      <Button
+        variant="secondary"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         onClick={() => setOpen((value) => !value)}
-        className={`${btnSecondary} ${
-          props.count > 0 ? "border-primary text-primary" : ""
-        }`}
       >
         <FiltersIcon className="size-4" />
         Filters
-        {props.count > 0 ? (
-          <span className="rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-white">
-            {props.count}
-          </span>
-        ) : null}
-      </button>
+        {props.count > 0 ? <CountPill>{props.count}</CountPill> : null}
+      </Button>
       {open ? (
         <div
           id={`${id}-panel`}
-          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-white dark:bg-card p-4 text-left shadow-lg bg-card"
+          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-card p-4 text-left shadow-lg"
         >
           <FilterPanel
             filters={props.filters}
             filterOptions={props.filterOptions}
             onChange={props.onChange}
           />
-          {props.count > 0 ? (
-            <button
-              type="button"
-              onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
-              className={`mt-3 rounded text-xs font-semibold text-primary hover:underline text-primary ${focusRing}`}
-            >
-              Clear filters
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className={`mt-3 ml-3 rounded text-xs font-semibold text-muted-foreground hover:underline text-muted-foreground ${focusRing}`}
-          >
-            Close
-          </button>
+          <div className="mt-3 flex items-center gap-3">
+            {props.count > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
+              >
+                Clear filters
+              </Button>
+            ) : null}
+            <Button variant="link" size="sm" onClick={() => setOpen(false)}>
+              Close
+            </Button>
+          </div>
         </div>
       ) : null}
     </span>
@@ -472,18 +481,15 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-1 md:max-w-md">
-          <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-input bg-white dark:bg-card px-3 text-sm focus-within:ring-2 focus-within:ring-ring dark:border-input ">
-            <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              value={props.filters.query}
-              onChange={(event) =>
-                change({ ...props.filters, query: event.target.value })
-              }
-              aria-label="Search summary or target"
-              placeholder="Search summary or target"
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-            />
-          </label>
+          <Input
+            value={props.filters.query}
+            onChange={(event) =>
+              change({ ...props.filters, query: event.target.value })
+            }
+            aria-label="Search summary or target"
+            placeholder="Search summary or target"
+            className="min-w-48 flex-1"
+          />
           <HelpNote />
         </div>
         <FilterButton
@@ -500,20 +506,21 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
         onChange={change}
       />
 
-      <section className="overflow-hidden rounded-xl border border-border bg-white dark:bg-card bg-card">
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
         {props.events.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold">No events match</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Widen the date range or remove a filter.
             </p>
-            <button
-              type="button"
-              className={`${btnSecondary} mt-4`}
-              onClick={() => change(EMPTY_AUDIT_FILTERS)}
-            >
-              Clear filters
-            </button>
+            <div className="mt-4">
+              <Button
+                variant="secondary"
+                onClick={() => change(EMPTY_AUDIT_FILTERS)}
+              >
+                Clear filters
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -655,15 +662,14 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                 </span>
               )}
               {props.hasMore && props.refreshing !== true ? (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   disabled={props.loading}
                   aria-busy={props.loading === true}
-                  className={btnSecondary}
                   onClick={() => props.onLoadMoreAuditEvents?.()}
                 >
                   Load more
-                </button>
+                </Button>
               ) : null}
             </div>
           </>

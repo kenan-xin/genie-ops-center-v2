@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   FIXTURE_CATALOGUE,
@@ -55,11 +55,32 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Tenant administrator")).toBeInTheDocument();
-    await expect(canvas.getByText("Invoice approver")).toBeInTheDocument();
-    await expect(canvas.getByText("System · core")).toBeInTheDocument();
-    await expect(canvas.getByText("Custom")).toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "Roles" }));
+
+    await expect(table.getByText("Tenant administrator")).toBeInTheDocument();
+    await expect(table.getByText("Invoice approver")).toBeInTheDocument();
+    await expect(table.getByText("System · core")).toBeInTheDocument();
+    await expect(table.getByText("Custom")).toBeInTheDocument();
   },
+};
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ args, canvas }) => {
+    const list = within(canvas.getByRole("list", { name: "Roles" }));
+
+    await expect(canvas.queryByRole("table")).toBeNull();
+
+    await userEvent.click(
+      list.getByRole("button", { name: /Tenant administrator/ })
+    );
+
+    expect(args.onSelectRole).toHaveBeenCalledWith("r-tenant-admin");
+  },
+};
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
 };
 
 export const SystemRoleIsReadOnlyAndCopyable: Story = {
@@ -92,7 +113,9 @@ export const CopyPrefillsTheKeysAndCreatesACustomRole: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /Copy role/ }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Copy role" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Copy role" })
+    );
 
     await expect(dialog.getByLabelText("Role name")).toHaveValue(
       "Tenant administrator copy"
@@ -151,8 +174,15 @@ export const DeleteCustomRoleConfirms: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /Delete role/ }));
 
-    const confirm = within(
-      canvas.getByRole("dialog", { name: "Delete Invoice approver?" })
+    const confirmDialog = await screen.findByRole("dialog", {
+      name: "Delete Invoice approver?",
+    });
+
+    const confirm = within(confirmDialog);
+
+    // Cancel holds the focus, and the confirm is the danger action.
+    await waitFor(() =>
+      expect(confirm.getByRole("button", { name: "Cancel" })).toHaveFocus()
     );
 
     await expect(
@@ -171,7 +201,9 @@ export const NewRoleForm: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /New role/ }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "New role" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New role" })
+    );
 
     await userEvent.type(dialog.getByLabelText("Role name"), "Support agent");
     // The picker offers the declared catalogue, so a new role can actually carry a permission.
@@ -198,7 +230,9 @@ export const EditRoleDispatchesUpdate: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /Edit role/ }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Edit role" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Edit role" })
+    );
 
     await userEvent.clear(dialog.getByLabelText("Role name"));
     await userEvent.type(

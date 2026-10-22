@@ -1,3 +1,4 @@
+import { focusRing } from "@genie/ui";
 import type { JSX } from "react";
 /* oxlint-disable anti-slop/require-readable-spacing -- dense presentational markup keeps related lines together. */
 
@@ -103,7 +104,7 @@ export function LimitedSessionPage(
                 event.preventDefault();
                 props.onContinueSetup();
               }}
-              className="flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={`flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 ${focusRing}`}
             >
               Continue setup
             </a>

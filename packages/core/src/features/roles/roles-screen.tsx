@@ -1,6 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  Button,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldLabel,
+  HelpDisclosure,
+  Input,
+  LabelPill,
+  StatusPill,
+} from "@genie/ui";
+import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -11,17 +27,6 @@ import {
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
-import {
-  btnDanger,
-  btnGhost,
-  btnPrimary,
-  btnSecondary,
-  ConfirmDialog,
-  Field,
-  HelpDisclosure,
-  inputClass,
-  Pill,
-} from "../admin/ui.tsx";
 import type {
   Role,
   RoleDetail,
@@ -49,9 +54,11 @@ type FormState = {
 /**
  * The role form: name, description, and a permission picker grouped by module with a checkbox per
  * key and a select-all per module. It is used for New role, Edit and Copy (prefilled), so a system
- * role is never edited in place (R-33).
+ * role is never edited in place (R-33). The dialog stays mounted; its body mounts on each open, so
+ * the fields start from the form state every time.
  */
 function RoleFormDialog(props: {
+  readonly open: boolean;
   readonly state: FormState;
   /** The declared catalogue the picker offers, grouped by module (R-33). */
   readonly catalogue: readonly RolePermissionGroup[];
@@ -60,6 +67,44 @@ function RoleFormDialog(props: {
   readonly onCancel: () => void;
   readonly onSubmit: (input: RoleInput) => void;
 }) {
+  const title =
+    props.state.mode === "edit"
+      ? "Edit role"
+      : props.state.mode === "copy"
+        ? "New role from copy"
+        : "New role";
+
+  return (
+    <Dialog
+      open={props.open}
+      onOpenChange={(next) => {
+        if (!next) props.onCancel();
+      }}
+    >
+      {/* A copy keeps its dialog name "Copy role"; the heading reads "New role from copy". */}
+      <DialogContent
+        {...(props.state.mode === "copy"
+          ? { "aria-label": "Copy role", "aria-labelledby": undefined }
+          : {})}
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <RoleFormBody {...props} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RoleFormBody(props: {
+  readonly state: FormState;
+  readonly catalogue: readonly RolePermissionGroup[];
+  readonly unavailableKeys: readonly UnavailableKey[];
+  readonly onCancel: () => void;
+  readonly onSubmit: (input: RoleInput) => void;
+}) {
+  const nameId = useId();
+  const descriptionId = useId();
   const [name, setName] = useState(props.state.name);
   const [description, setDescription] = useState(props.state.description);
 
@@ -86,132 +131,107 @@ function RoleFormDialog(props: {
   const canSubmit = name.trim() !== "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={
-          props.state.mode === "edit"
-            ? "Edit role"
-            : props.state.mode === "copy"
-              ? "Copy role"
-              : "New role"
-        }
-        className="max-h-screen w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-card"
-      >
-        <h2 className="text-lg font-semibold text-foreground">
-          {props.state.mode === "edit"
-            ? "Edit role"
-            : props.state.mode === "copy"
-              ? "New role from copy"
-              : "New role"}
-        </h2>
+    <>
+      <div className="space-y-3">
+        <Field>
+          <FieldLabel htmlFor={nameId}>Name</FieldLabel>
+          <Input
+            id={nameId}
+            aria-label="Role name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
+          <Input
+            id={descriptionId}
+            aria-label="Role description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </Field>
 
-        <div className="mt-3 space-y-3">
-          <Field label="Name">
-            <input
-              className={inputClass}
-              aria-label="Role name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-          <Field label="Description">
-            <input
-              className={inputClass}
-              aria-label="Role description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </Field>
-
-          {unavailable.length > 0 ? (
-            <fieldset className="rounded-lg border border-border p-3">
-              <legend className="text-sm font-semibold text-foreground">
-                Unavailable keys
-              </legend>
-              {unavailable.map((entry) => (
-                <div key={entry.key} className="flex items-center gap-2">
-                  <WarningIcon className="size-4 text-destructive" />
-                  <code className="text-xs text-foreground">{entry.key}</code>
-                  <span className="text-xs text-muted-foreground">
-                    {unavailableReasonLabel(entry.reason)}
-                  </span>
-                  <button
-                    type="button"
-                    className={btnGhost}
-                    onClick={() => removeUnavailable(entry.key)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </fieldset>
-          ) : null}
-
-          {props.catalogue.map((group) => (
-            <fieldset
-              key={group.moduleId}
-              className="rounded-lg border border-input p-3"
-            >
-              <legend className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                {group.moduleName}
-                <Pill tone={group.entitled ? "success" : "neutral"}>
-                  {group.entitled ? "Entitled" : "Not entitled"}
-                </Pill>
-              </legend>
-              {group.keys.map((entry) => (
-                <label
-                  key={entry.key}
-                  className="mt-1 flex items-center gap-2 text-sm text-foreground"
+        {unavailable.length > 0 ? (
+          <fieldset className="rounded-lg border border-border p-3">
+            <legend className="text-sm font-semibold text-foreground">
+              Unavailable keys
+            </legend>
+            {unavailable.map((entry) => (
+              <div key={entry.key} className="flex items-center gap-2">
+                <WarningIcon className="size-4 text-destructive" />
+                <code className="text-xs text-foreground">{entry.key}</code>
+                <span className="text-xs text-muted-foreground">
+                  {unavailableReasonLabel(entry.reason)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeUnavailable(entry.key)}
                 >
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(entry.key)}
-                    onChange={() => toggle(entry.key)}
-                  />
-                  {entry.label}
-                </label>
-              ))}
-            </fieldset>
-          ))}
-        </div>
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={props.onCancel}
+        {props.catalogue.map((group) => (
+          <fieldset
+            key={group.moduleId}
+            className="rounded-lg border border-input p-3"
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
-            disabled={!canSubmit}
-            onClick={() =>
-              props.onSubmit({
-                name: name.trim(),
-                description: description.trim(),
-                permissions: picked,
-              })
-            }
-          >
-            {props.state.mode === "edit" ? "Save role" : "Create role"}
-          </button>
-        </div>
+            <legend className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              {group.moduleName}
+              <StatusPill tone={group.entitled ? "success" : "neutral"}>
+                {group.entitled ? "Entitled" : "Not entitled"}
+              </StatusPill>
+            </legend>
+            {group.keys.map((entry) => (
+              <label
+                key={entry.key}
+                className="mt-1 flex items-center gap-2 text-sm text-foreground"
+              >
+                <input
+                  type="checkbox"
+                  checked={picked.includes(entry.key)}
+                  onChange={() => toggle(entry.key)}
+                />
+                {entry.label}
+              </label>
+            ))}
+          </fieldset>
+        ))}
       </div>
-    </div>
+
+      <DialogFooter>
+        <Button variant="secondary" onClick={props.onCancel}>
+          Cancel
+        </Button>
+        <Button
+          disabled={!canSubmit}
+          onClick={() =>
+            props.onSubmit({
+              name: name.trim(),
+              description: description.trim(),
+              permissions: picked,
+            })
+          }
+        >
+          {props.state.mode === "edit" ? "Save role" : "Create role"}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 
 function kindPill(role: Role) {
   return role.kind === "system" ? (
-    <Pill tone="neutral">
+    <LabelPill>
       System{role.moduleId === null ? "" : ` · ${role.moduleId}`}
-    </Pill>
+    </LabelPill>
   ) : (
-    <Pill tone="info">Custom</Pill>
+    <LabelPill>Custom</LabelPill>
   );
 }
 
@@ -230,9 +250,9 @@ function RoleDetailView(props: {
 
   return (
     <div>
-      <button type="button" className={btnGhost} onClick={props.onBack}>
+      <Button variant="ghost" size="sm" onClick={props.onBack}>
         ← Roles
-      </button>
+      </Button>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <h2 className="text-xl font-semibold text-foreground">{detail.name}</h2>
         {kindPill(detail)}
@@ -245,25 +265,17 @@ function RoleDetailView(props: {
 
       <div className="mt-3 flex flex-wrap gap-2">
         {detail.kind === "system" ? (
-          <button type="button" className={btnSecondary} onClick={props.onCopy}>
+          <Button variant="secondary" onClick={props.onCopy}>
             <CopyIcon /> Copy role
-          </button>
+          </Button>
         ) : (
           <>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={props.onEdit}
-            >
+            <Button variant="secondary" onClick={props.onEdit}>
               <PencilIcon /> Edit role
-            </button>
-            <button
-              type="button"
-              className={btnDanger}
-              onClick={() => setConfirmDelete(true)}
-            >
+            </Button>
+            <Button variant="danger" onClick={() => setConfirmDelete(true)}>
               <TrashIcon /> Delete role
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -280,9 +292,9 @@ function RoleDetailView(props: {
             <span className="text-sm font-semibold text-foreground">
               {group.moduleName}
             </span>
-            <Pill tone={group.entitled ? "success" : "neutral"}>
+            <StatusPill tone={group.entitled ? "success" : "neutral"}>
               {group.entitled ? "Entitled" : "Not entitled"}
-            </Pill>
+            </StatusPill>
           </div>
           <ul className="mt-1">
             {group.keys.map((entry) => (
@@ -301,13 +313,13 @@ function RoleDetailView(props: {
                       )}
                     </span>
                     {detail.kind === "custom" ? (
-                      <button
-                        type="button"
-                        className={btnGhost}
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => props.onRemoveUnavailable(entry.key)}
                       >
                         Remove
-                      </button>
+                      </Button>
                     ) : null}
                   </>
                 ) : null}
@@ -342,28 +354,26 @@ function RoleDetailView(props: {
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        className={`${btnSecondary} mt-2`}
-        onClick={props.onOpenInAccess}
-      >
-        <ShieldIcon /> Manage in Access
-      </button>
+      <div className="mt-2">
+        <Button variant="secondary" onClick={props.onOpenInAccess}>
+          <ShieldIcon /> Manage in Access
+        </Button>
+      </div>
 
-      {confirmDelete ? (
-        <ConfirmDialog
-          title={`Delete ${detail.name}?`}
-          consequence={`Its ${detail.assignmentCount} assignment${
-            detail.assignmentCount === 1 ? "" : "s"
-          } go with it.`}
-          confirmLabel="Delete role"
-          onConfirm={() => {
-            setConfirmDelete(false);
-            props.onDelete();
-          }}
-          onCancel={() => setConfirmDelete(false)}
-        />
-      ) : null}
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${detail.name}?`}
+        description={`Its ${detail.assignmentCount} assignment${
+          detail.assignmentCount === 1 ? "" : "s"
+        } go with it.`}
+        confirmLabel="Delete role"
+        danger
+        onConfirm={() => {
+          setConfirmDelete(false);
+          props.onDelete();
+        }}
+        onClose={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
@@ -376,7 +386,22 @@ function RoleDetailView(props: {
  */
 export function RolesScreen(props: RolesScreenProps) {
   const [query, setQuery] = useState("");
-  const [form, setForm] = useState<FormState | null>(null);
+
+  // The form keeps its last state while closed, so its title does not blank during the exit.
+  const [form, setForm] = useState<FormState>({
+    mode: "create",
+    name: "",
+    description: "",
+    permissions: [],
+  });
+
+  const [formOpen, setFormOpen] = useState(false);
+  const searchId = useId();
+
+  const openForm = (next: FormState) => {
+    setForm(next);
+    setFormOpen(true);
+  };
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -388,20 +413,45 @@ export function RolesScreen(props: RolesScreenProps) {
     );
   }, [props.roles, query]);
 
+  const formDialog = (
+    <RoleFormDialog
+      open={formOpen}
+      state={form}
+      catalogue={props.catalogue}
+      unavailableKeys={
+        props.selectedRoleId === null
+          ? []
+          : (props.detail?.unavailableKeys ?? [])
+      }
+      onCancel={() => setFormOpen(false)}
+      onSubmit={(input) => {
+        setFormOpen(false);
+
+        // An edit updates the selected role by id; a create or a copy makes a new row.
+        if (form.mode === "edit" && form.roleId !== undefined) {
+          props.onUpdateRole?.(form.roleId, input);
+        } else {
+          props.onCreateRole?.(input);
+        }
+      }}
+    />
+  );
+
   if (props.selectedRoleId !== null) {
     if (props.detail === undefined) {
       return (
         <div>
-          <button
-            type="button"
-            className={btnGhost}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => props.onSelectRole(null)}
           >
             ← Roles
-          </button>
+          </Button>
           <p role="status" className="mt-3 text-sm text-muted-foreground">
             Loading role…
           </p>
+          {formDialog}
         </div>
       );
     }
@@ -412,7 +462,7 @@ export function RolesScreen(props: RolesScreenProps) {
           detail={props.detail}
           onBack={() => props.onSelectRole(null)}
           onEdit={() =>
-            setForm({
+            openForm({
               mode: "edit",
               roleId: props.detail!.id,
               name: props.detail!.name,
@@ -421,7 +471,7 @@ export function RolesScreen(props: RolesScreenProps) {
             })
           }
           onCopy={() =>
-            setForm({
+            openForm({
               mode: "copy",
               name: `${props.detail!.name} copy`,
               description: props.detail!.description,
@@ -440,25 +490,7 @@ export function RolesScreen(props: RolesScreenProps) {
             })
           }
         />
-
-        {form === null ? null : (
-          <RoleFormDialog
-            state={form}
-            catalogue={props.catalogue}
-            unavailableKeys={props.detail?.unavailableKeys ?? []}
-            onCancel={() => setForm(null)}
-            onSubmit={(input) => {
-              setForm(null);
-
-              // An edit updates the selected role by id; a create or a copy makes a new row.
-              if (form.mode === "edit" && form.roleId !== undefined) {
-                props.onUpdateRole?.(form.roleId, input);
-              } else {
-                props.onCreateRole?.(input);
-              }
-            }}
-          />
-        )}
+        {formDialog}
       </div>
     );
   }
@@ -466,26 +498,25 @@ export function RolesScreen(props: RolesScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <label className="relative block">
-            <span className="sr-only">Search roles</span>
-            <input
-              className={`${inputClass} w-72`}
-              aria-label="Search roles"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor={searchId} className="sr-only">
+            Search roles
           </label>
+          <Input
+            id={searchId}
+            className="w-72 max-w-full"
+            aria-label="Search roles"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <HelpDisclosure label="How roles work">
             A system role is read-only and copyable. A custom role is editable.
             Access gives a role to a person or a group.
           </HelpDisclosure>
         </div>
-        <button
-          type="button"
-          className={btnPrimary}
+        <Button
           onClick={() =>
-            setForm({
+            openForm({
               mode: "create",
               name: "",
               description: "",
@@ -494,7 +525,7 @@ export function RolesScreen(props: RolesScreenProps) {
           }
         >
           <PlusIcon /> New role
-        </button>
+        </Button>
       </div>
 
       {props.error === undefined ? null : (
@@ -510,55 +541,47 @@ export function RolesScreen(props: RolesScreenProps) {
       ) : filtered.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">No roles match.</p>
       ) : (
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs uppercase text-muted-foreground">
-              <th className="py-2">Role</th>
-              <th className="py-2">Kind</th>
-              <th className="py-2">Permissions</th>
-              <th className="py-2">Assignments</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-input">
-            {filtered.map((role) => (
-              <tr key={role.id}>
-                <td className="py-2">
-                  <button
-                    type="button"
-                    className={`${btnGhost} h-auto flex-col items-start text-left`}
-                    onClick={() => props.onSelectRole(role.id)}
-                  >
-                    <span className="font-semibold text-foreground">
-                      {role.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
+        <div className="mt-4">
+          <DataTable
+            label="Roles"
+            rows={filtered}
+            rowKey={(role) => role.id}
+            rowLabel={(role) => role.name}
+            onOpenRow={(role) => props.onSelectRole(role.id)}
+            columns={[
+              {
+                id: "role",
+                header: "Role",
+                cell: (role) => (
+                  <span className="flex flex-col items-start">
+                    <span>{role.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
                       {role.description}
                     </span>
-                  </button>
-                </td>
-                <td className="py-2">{kindPill(role)}</td>
-                <td className="py-2 text-foreground">
-                  {role.permissions.length}
-                </td>
-                <td className="py-2 text-foreground">{role.assignmentCount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </span>
+                ),
+              },
+              { id: "kind", header: "Kind", cell: kindPill },
+              {
+                id: "permissions",
+                header: "Permissions",
+                cell: (role) => role.permissions.length,
+              },
+              {
+                id: "assignments",
+                header: "Assignments",
+                cell: (role) => role.assignmentCount,
+              },
+            ]}
+            facts={(role) => [
+              kindPill(role),
+              `${role.permissions.length} permissions · ${role.assignmentCount} assignments`,
+            ]}
+          />
+        </div>
       )}
 
-      {form === null ? null : (
-        <RoleFormDialog
-          state={form}
-          catalogue={props.catalogue}
-          unavailableKeys={[]}
-          onCancel={() => setForm(null)}
-          onSubmit={(input) => {
-            setForm(null);
-            props.onCreateRole?.(input);
-          }}
-        />
-      )}
+      {formDialog}
     </div>
   );
 }

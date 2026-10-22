@@ -5,6 +5,7 @@ import {
   readCookie,
   sessionCookieName,
 } from "@genie/core";
+import { Toaster } from "@genie/ui";
 import defaultFontHref from "@genie/ui/fonts/plus-jakarta-sans-latin-wght-normal.woff2?url";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -198,6 +199,7 @@ export default async function RootLayout({
             )}
           </QueryProvider>
         </NextIntlClientProvider>
+        <Toaster />
         {diagnostics === undefined ? null : (
           <DevtoolsMount {...deploymentDiagnostics(diagnostics)} />
         )}

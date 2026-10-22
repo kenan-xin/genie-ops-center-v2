@@ -28,6 +28,10 @@ const ENROLLED_STEPS = breakGlassSteps({
   mustEnrollAuthenticator: false,
 });
 
+/** A person's tap target: the rendered height, since a primitive may own a hit area too. */
+const heightOf = (element: HTMLElement) =>
+  element.getBoundingClientRect().height;
+
 const meta = {
   title: "Core/Break-glass sign-in",
   component: BreakGlassSignIn,
@@ -85,6 +89,36 @@ export const Credentials: Story = {
   },
 };
 
+export const PasswordReveal: Story = {
+  args: { step: "credentials" },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const password = canvas.getByLabelText("Password");
+    const toggle = canvas.getByRole("button", { name: "Show password" });
+
+    // Phone-sized fields: every control of the card is at least 44 px tall (R-62).
+    await expect(
+      heightOf(canvas.getByLabelText("Email"))
+    ).toBeGreaterThanOrEqual(44);
+    await expect(heightOf(password)).toBeGreaterThanOrEqual(44);
+    await expect(
+      heightOf(canvas.getByRole("button", { name: "Sign in" }))
+    ).toBeGreaterThanOrEqual(44);
+    await expect(heightOf(toggle)).toBeGreaterThanOrEqual(44);
+
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(password).toHaveAttribute("type", "password");
+
+    await userEvent.click(toggle);
+
+    await expect(
+      canvas.getByRole("button", { name: "Hide password" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(password).toHaveAttribute("type", "text");
+  },
+};
+
 export const RateLimited: Story = {
   args: { step: "credentials", tooManyAttempts: true, retryAfterMinutes: 12 },
   play: async ({ canvasElement }) => {
@@ -122,6 +156,11 @@ export const AuthenticatorCode: Story = {
       canvas.getByRole("button", { name: "Use a different account" })
     );
     await expect(onUseDifferentAccount).toHaveBeenCalled();
+
+    // The return link is a real tap target, not a line of text.
+    await expect(
+      heightOf(canvas.getByRole("button", { name: "Use a different account" }))
+    ).toBeGreaterThanOrEqual(40);
   },
 };
 
@@ -175,6 +214,10 @@ export const Enrollment: Story = {
     await expect(canvas.getByTestId("enrollment-manual-key")).toHaveTextContent(
       "JBSW Y3DP EHPK 3PXP"
     );
+
+    await expect(
+      heightOf(canvas.getByRole("button", { name: "Copy key" }))
+    ).toBeGreaterThanOrEqual(40);
 
     onConfirmEnrollment.mockClear();
 

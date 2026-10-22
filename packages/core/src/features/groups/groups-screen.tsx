@@ -1,6 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  Button,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  focusRing,
+  HelpDisclosure,
+  Input,
+  LabelPill,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  StatusPill,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@genie/ui";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -9,24 +41,10 @@ import {
   LocalIcon,
   PencilIcon,
   PlusIcon,
-  SearchIcon,
   ShieldIcon,
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
-import {
-  btnDanger,
-  btnGhost,
-  btnPrimary,
-  btnSecondary,
-  ConfirmDialog,
-  Field,
-  HelpDisclosure,
-  inputClass,
-  Pill,
-  SlideOver,
-  wideColumn,
-} from "../admin/ui.tsx";
 import {
   groupLabel,
   type Group,
@@ -54,30 +72,30 @@ function fmtDateTime(
 
 function sourcePill(group: Group) {
   return group.source === "idp" ? (
-    <Pill tone="info">
+    <LabelPill>
       <DirectoryIcon className="mr-1 size-3" /> Directory
-    </Pill>
+    </LabelPill>
   ) : (
-    <Pill tone="neutral">
+    <LabelPill>
       <LocalIcon className="mr-1 size-3" /> Local
-    </Pill>
+    </LabelPill>
   );
 }
 
 /** The state badge a directory group carries: Not seen yet, stale, or hidden when fresh. */
 function syncBadge(group: Group, viewer: GroupsViewer) {
-  if (group.archived) return <Pill tone="neutral">Archived</Pill>;
+  if (group.archived) return <StatusPill tone="neutral">Archived</StatusPill>;
 
   if (group.source !== "idp") return null;
 
   if (group.lastSeenAt === null)
-    return <Pill tone="neutral">Not seen yet</Pill>;
+    return <StatusPill tone="neutral">Not seen yet</StatusPill>;
 
   if (group.stale) {
     return (
-      <Pill tone="warning">
+      <StatusPill tone="warning">
         <WarningIcon className="mr-1 size-3" /> Stale
-      </Pill>
+      </StatusPill>
     );
   }
 
@@ -91,8 +109,11 @@ function syncBadge(group: Group, viewer: GroupsViewer) {
 const LAST_ADMIN_REASON = "This would leave no active tenant administrator";
 
 /** The group inspector: header, access card, stale banner, tabs, and the action bar. */
-export function GroupInspector(props: GroupInspectorProps) {
+export function GroupInspector(
+  props: GroupInspectorProps & { readonly open?: boolean }
+) {
   const { group, viewer } = props;
+  const open = props.open ?? true;
   const [tab, setTab] = useState<"members" | "roles">("members");
   const [editing, setEditing] = useState<null | "label" | "local">(null);
 
@@ -103,8 +124,25 @@ export function GroupInspector(props: GroupInspectorProps) {
   const [labelDraft, setLabelDraft] = useState(group.displayLabel ?? "");
   const [nameDraft, setNameDraft] = useState(group.name);
   const [descriptionDraft, setDescriptionDraft] = useState(group.description);
-  const [selectedMembers, setSelectedMembers] = useState<readonly string[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [roleToAssign, setRoleToAssign] = useState("");
+  const labelId = useId();
+  const nameId = useId();
+  const descriptionId = useId();
+  const addMembersId = useId();
+  const roleAssignId = useId();
+
+  // The sheet stays mounted, so each open starts from the group's own values.
+  useEffect(() => {
+    setTab("members");
+    setEditing(null);
+    setConfirm(null);
+    setLabelDraft(group.displayLabel ?? "");
+    setNameDraft(group.name);
+    setDescriptionDraft(group.description);
+    setSelectedMembers([]);
+    setRoleToAssign("");
+  }, [open, group.id]);
 
   const blocked = props.lastAdministrator;
 
@@ -112,404 +150,401 @@ export function GroupInspector(props: GroupInspectorProps) {
     (person) => !props.members.some((member) => member.id === person.id)
   );
 
+  const memberItems = selectable.map((person) => ({
+    value: person.id,
+    label: `${person.name} (${person.email})`,
+  }));
+
+  const roleItems = props.roles.map((role) => ({
+    value: role.id,
+    label: role.name,
+  }));
+
   return (
-    <SlideOver title={groupLabel(group)} onClose={props.onClose}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-foreground">
-          {groupLabel(group)}
-        </span>
-        {sourcePill(group)}
-        {group.lastSeenAt === null && group.source === "idp" ? (
-          <Pill tone="neutral">Not seen yet</Pill>
-        ) : null}
-      </div>
-      {group.description === "" ? null : (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {group.description}
-        </p>
-      )}
-      <p className="mt-1 text-xs text-muted-foreground">
-        {group.source === "idp"
-          ? `Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
-              group.lastSeenAt,
-              viewer.timeZone,
-              "never"
-            )}`
-          : "Local group · membership is managed here"}
-      </p>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) props.onClose();
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{groupLabel(group)}</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              {sourcePill(group)}
+              {group.lastSeenAt === null && group.source === "idp" ? (
+                <StatusPill tone="neutral">Not seen yet</StatusPill>
+              ) : null}
+            </div>
+            {group.description === "" ? null : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {group.description}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground wrap-anywhere">
+              {group.source === "idp"
+                ? `Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
+                    group.lastSeenAt,
+                    viewer.timeZone,
+                    "never"
+                  )}`
+                : "Local group · membership is managed here"}
+            </p>
+          </div>
 
-      {group.stale ? (
-        <div className="mt-3 rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
-          This group no longer arrives in the sign-in token. Archive it to stop
-          its grants.
-        </div>
-      ) : null}
+          {group.stale ? (
+            <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
+              This group no longer arrives in the sign-in token. Archive it to
+              stop its grants.
+            </div>
+          ) : null}
 
-      <div className="mt-3 rounded-xl border border-input p-3">
-        <p className="text-sm font-semibold text-foreground">
-          Access is managed in one place
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {group.assignmentCount} grant{group.assignmentCount === 1 ? "" : "s"}{" "}
-          reach this group today.
-        </p>
-        {props.onOpenInAccess === undefined ? null : (
-          <button
-            type="button"
-            className={`${btnSecondary} mt-2`}
-            onClick={props.onOpenInAccess}
+          <div className="rounded-xl border border-input p-3">
+            <p className="text-sm font-semibold text-foreground">
+              Access is managed in one place
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {group.assignmentCount} grant
+              {group.assignmentCount === 1 ? "" : "s"} reach this group today.
+            </p>
+            {props.onOpenInAccess === undefined ? null : (
+              <div className="mt-2">
+                <Button variant="secondary" onClick={props.onOpenInAccess}>
+                  <ShieldIcon /> Open in Access
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Tabs
+            value={tab}
+            onValueChange={(value) =>
+              setTab(value === "roles" ? "roles" : "members")
+            }
           >
-            <ShieldIcon /> Open in Access
-          </button>
-        )}
-      </div>
+            <TabsList aria-label="Group detail">
+              <TabsTrigger value="members">
+                Members ({props.members.length})
+              </TabsTrigger>
+              <TabsTrigger value="roles">
+                Roles ({props.assignments.length})
+              </TabsTrigger>
+            </TabsList>
 
-      <div className="mt-3" role="tablist" aria-label="Group detail">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "members"}
-          className={btnGhost}
-          onClick={() => setTab("members")}
-        >
-          Members ({props.members.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "roles"}
-          className={btnGhost}
-          onClick={() => setTab("roles")}
-        >
-          Roles ({props.assignments.length})
-        </button>
-      </div>
+            <TabsContent value="members">
+              {group.source === "local" ? (
+                <>
+                  <ul className="divide-y divide-input">
+                    {props.members.map((member) => (
+                      <li
+                        key={member.id}
+                        className="flex items-center justify-between gap-2 py-2"
+                      >
+                        <span className="min-w-0 text-sm text-foreground wrap-anywhere">
+                          {member.name}{" "}
+                          <span className="text-muted-foreground">
+                            {member.email}
+                          </span>
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={blocked}
+                          title={blocked ? LAST_ADMIN_REASON : undefined}
+                          onClick={() => props.onRemoveMembers([member.id])}
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  {selectable.length > 0 ? (
+                    <div className="mt-3 flex flex-col gap-2">
+                      <Field>
+                        <FieldLabel htmlFor={addMembersId}>
+                          Add to group
+                        </FieldLabel>
+                        <Select
+                          multiple
+                          items={memberItems}
+                          value={selectedMembers}
+                          onValueChange={setSelectedMembers}
+                        >
+                          <SelectTrigger id={addMembersId}>
+                            <SelectValue placeholder="Choose people" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {memberItems.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <div>
+                        <Button
+                          variant="secondary"
+                          disabled={selectedMembers.length === 0}
+                          onClick={() => {
+                            props.onAddMembers(selectedMembers);
+                            setSelectedMembers([]);
+                          }}
+                        >
+                          Add {selectedMembers.length || ""}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {/* Remove all stays visible while the group has members, even when every
+                      eligible person is already a member and the picker is hidden. */}
+                  {props.members.length === 0 ? null : (
+                    <div className="mt-3">
+                      <Button
+                        variant="ghost"
+                        disabled={blocked}
+                        title={blocked ? LAST_ADMIN_REASON : undefined}
+                        onClick={() => setConfirm("remove")}
+                      >
+                        Remove all
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <ul className="divide-y divide-input">
+                  {props.members.map((member) => (
+                    <li key={member.id} className="py-2">
+                      <span className="text-sm text-foreground">
+                        {member.name}
+                      </span>{" "}
+                      {member.syncedAt === null ? null : (
+                        <span className="text-xs text-muted-foreground">
+                          synced{" "}
+                          {fmtDateTime(member.syncedAt, viewer.timeZone, "")}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
 
-      {tab === "members" ? (
-        <div className="mt-2">
-          {group.source === "local" ? (
-            <>
+            <TabsContent value="roles">
               <ul className="divide-y divide-input">
-                {props.members.map((member) => (
+                {props.assignments.map((assignment) => (
                   <li
-                    key={member.id}
-                    className="flex items-center justify-between py-2"
+                    key={assignment.id}
+                    className="flex items-center justify-between gap-2 py-2 text-sm text-foreground"
                   >
-                    <span className="text-sm text-foreground">
-                      {member.name}{" "}
-                      <span className="text-muted-foreground">
-                        {member.email}
-                      </span>
+                    <span className="min-w-0 wrap-anywhere">
+                      {assignment.roleName}
+                      {assignment.scopeType === null ? null : (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {assignment.scopeType} {assignment.scopeId}
+                        </span>
+                      )}
                     </span>
-                    <button
-                      type="button"
-                      className={btnGhost}
-                      disabled={blocked}
-                      title={blocked ? LAST_ADMIN_REASON : undefined}
-                      onClick={() => props.onRemoveMembers([member.id])}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => props.onUnassignRole(assignment.id)}
                     >
                       Remove
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
-              {selectable.length > 0 ? (
-                <div className="mt-3">
-                  <label className={focusLabel}>
-                    <span className="mb-1 block text-xs font-semibold text-foreground">
-                      Add to group
-                    </span>
-                    <select
-                      multiple
-                      className={`${inputClass} h-28`}
-                      aria-label="Add to group"
-                      value={[...selectedMembers]}
-                      onChange={(event) =>
-                        setSelectedMembers(
-                          [...event.target.selectedOptions].map(
-                            (option) => option.value
-                          )
-                        )
-                      }
-                    >
-                      {selectable.map((person) => (
-                        <option key={person.id} value={person.id}>
-                          {person.name} ({person.email})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className={`${btnSecondary} mt-2`}
-                    disabled={selectedMembers.length === 0}
+
+              {/* R-24b: a pre-added directory group can be given a role before any sign-in. */}
+              {props.roles.length === 0 ? null : (
+                <div className="mt-3 flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Field>
+                      <FieldLabel htmlFor={roleAssignId}>
+                        Give this group a role
+                      </FieldLabel>
+                      <Select
+                        items={roleItems}
+                        value={roleToAssign === "" ? null : roleToAssign}
+                        onValueChange={(value) => setRoleToAssign(value ?? "")}
+                      >
+                        <SelectTrigger
+                          id={roleAssignId}
+                          aria-label="Role to assign"
+                        >
+                          <SelectValue placeholder="Choose a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roleItems.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                  <Button
+                    disabled={roleToAssign === ""}
                     onClick={() => {
-                      props.onAddMembers(selectedMembers);
-                      setSelectedMembers([]);
+                      props.onAssignRole(roleToAssign);
+                      setRoleToAssign("");
                     }}
                   >
-                    Add {selectedMembers.length || ""}
-                  </button>
+                    Assign role
+                  </Button>
                 </div>
-              ) : null}
-              {/* Remove all stays visible while the group has members, even when every eligible
-                  person is already a member and the picker is hidden. */}
-              {props.members.length === 0 ? null : (
-                <button
-                  type="button"
-                  className={`${btnGhost} mt-3`}
+              )}
+            </TabsContent>
+          </Tabs>
+
+          <HelpDisclosure label="How group access works">
+            A role assigned to this group reaches every member while the group
+            is not archived. Archiving keeps the assignments and stops them
+            granting.
+          </HelpDisclosure>
+
+          {editing === "label" ? (
+            <div className="rounded-lg border border-input p-3">
+              <Field>
+                <FieldLabel htmlFor={labelId}>Display label</FieldLabel>
+                <Input
+                  id={labelId}
+                  value={labelDraft}
+                  onChange={(event) => setLabelDraft(event.target.value)}
+                />
+              </Field>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  onClick={() => {
+                    props.onEditLabel(
+                      labelDraft.trim() === "" ? null : labelDraft
+                    );
+                    setEditing(null);
+                  }}
+                >
+                  Save label
+                </Button>
+                <Button variant="secondary" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {editing === "local" ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-input p-3">
+              <Field>
+                <FieldLabel htmlFor={nameId}>Name</FieldLabel>
+                <Input
+                  id={nameId}
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
+                <Input
+                  id={descriptionId}
+                  value={descriptionDraft}
+                  onChange={(event) => setDescriptionDraft(event.target.value)}
+                />
+              </Field>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    props.onEditLocal(nameDraft, descriptionDraft);
+                    setEditing(null);
+                  }}
+                >
+                  Save
+                </Button>
+                <Button variant="secondary" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {blocked && (group.source === "idp" || group.source === "local") ? (
+            <p className="text-sm text-foreground">{LAST_ADMIN_REASON}</p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 border-t border-input pt-3">
+            {group.archived ? (
+              props.onRestore === undefined ? null : (
+                <Button variant="secondary" onClick={props.onRestore}>
+                  Restore group
+                </Button>
+              )
+            ) : group.source === "local" ? (
+              <>
+                <Button variant="secondary" onClick={() => setEditing("local")}>
+                  <PencilIcon /> Edit name and description
+                </Button>
+                <Button
+                  variant="danger"
                   disabled={blocked}
                   title={blocked ? LAST_ADMIN_REASON : undefined}
-                  onClick={() => setConfirm("remove")}
+                  onClick={() => setConfirm("delete")}
                 >
-                  Remove all
-                </button>
-              )}
-            </>
-          ) : (
-            <ul className="divide-y divide-input">
-              {props.members.map((member) => (
-                <li key={member.id} className="py-2">
-                  <span className="text-sm text-foreground">{member.name}</span>{" "}
-                  {member.syncedAt === null ? null : (
-                    <span className="text-xs text-muted-foreground">
-                      synced {fmtDateTime(member.syncedAt, viewer.timeZone, "")}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <div className="mt-2">
-          <ul className="divide-y divide-input">
-            {props.assignments.map((assignment) => (
-              <li
-                key={assignment.id}
-                className="flex items-center justify-between py-2 text-sm text-foreground"
-              >
-                <span>
-                  {assignment.roleName}
-                  {assignment.scopeType === null ? null : (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {assignment.scopeType} {assignment.scopeId}
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  className={btnGhost}
-                  onClick={() => props.onUnassignRole(assignment.id)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          {/* R-24b: a pre-added directory group can be given a role before any sign-in. */}
-          {props.roles.length === 0 ? null : (
-            <div className="mt-3 flex items-end gap-2">
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-foreground">
-                  Give this group a role
-                </span>
-                <select
-                  className={inputClass}
-                  aria-label="Role to assign"
-                  value={roleToAssign}
-                  onChange={(event) => setRoleToAssign(event.target.value)}
-                >
-                  <option value="">Choose a role</option>
-                  {props.roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className={btnPrimary}
-                disabled={roleToAssign === ""}
-                onClick={() => {
-                  props.onAssignRole(roleToAssign);
-                  setRoleToAssign("");
-                }}
-              >
-                Assign role
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <HelpDisclosure label="How group access works">
-        A role assigned to this group reaches every member while the group is
-        not archived. Archiving keeps the assignments and stops them granting.
-      </HelpDisclosure>
-
-      {editing === "label" ? (
-        <div className="mt-3 rounded-lg border border-input p-3">
-          <Field label="Display label">
-            <input
-              className={inputClass}
-              aria-label="Display label"
-              value={labelDraft}
-              onChange={(event) => setLabelDraft(event.target.value)}
-            />
-          </Field>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className={btnPrimary}
-              onClick={() => {
-                props.onEditLabel(labelDraft.trim() === "" ? null : labelDraft);
-                setEditing(null);
-              }}
-            >
-              Save label
-            </button>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => setEditing(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {editing === "local" ? (
-        <div className="mt-3 rounded-lg border border-input p-3">
-          <Field label="Name">
-            <input
-              className={inputClass}
-              aria-label="Name"
-              value={nameDraft}
-              onChange={(event) => setNameDraft(event.target.value)}
-            />
-          </Field>
-          <Field label="Description">
-            <input
-              className={inputClass}
-              aria-label="Description"
-              value={descriptionDraft}
-              onChange={(event) => setDescriptionDraft(event.target.value)}
-            />
-          </Field>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className={btnPrimary}
-              onClick={() => {
-                props.onEditLocal(nameDraft, descriptionDraft);
-                setEditing(null);
-              }}
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => setEditing(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {blocked && (group.source === "idp" || group.source === "local") ? (
-        <p className="mt-3 text-sm text-foreground">{LAST_ADMIN_REASON}</p>
-      ) : null}
-
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-input pt-3">
-        {group.archived ? (
-          props.onRestore === undefined ? null : (
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={props.onRestore}
-            >
-              Restore group
-            </button>
-          )
-        ) : group.source === "local" ? (
-          <>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => setEditing("local")}
-            >
-              <PencilIcon /> Edit name and description
-            </button>
-            <button
-              type="button"
-              className={btnDanger}
-              disabled={blocked}
-              title={blocked ? LAST_ADMIN_REASON : undefined}
-              onClick={() => setConfirm("delete")}
-            >
-              <TrashIcon /> Delete group
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => setEditing("label")}
-            >
-              <PencilIcon /> Edit label
-            </button>
-            {group.lastSeenAt === null ? (
-              <button
-                type="button"
-                className={btnDanger}
-                disabled={blocked}
-                title={blocked ? LAST_ADMIN_REASON : undefined}
-                onClick={() => setConfirm("delete")}
-              >
-                <TrashIcon /> Delete group
-              </button>
+                  <TrashIcon /> Delete group
+                </Button>
+              </>
             ) : (
-              <button
-                type="button"
-                className={btnDanger}
-                disabled={blocked}
-                title={blocked ? LAST_ADMIN_REASON : undefined}
-                onClick={() => setConfirm("archive")}
-              >
-                <ArchiveIcon /> Archive group
-              </button>
+              <>
+                <Button variant="secondary" onClick={() => setEditing("label")}>
+                  <PencilIcon /> Edit label
+                </Button>
+                {group.lastSeenAt === null ? (
+                  <Button
+                    variant="danger"
+                    disabled={blocked}
+                    title={blocked ? LAST_ADMIN_REASON : undefined}
+                    onClick={() => setConfirm("delete")}
+                  >
+                    <TrashIcon /> Delete group
+                  </Button>
+                ) : (
+                  <Button
+                    variant="danger"
+                    disabled={blocked}
+                    title={blocked ? LAST_ADMIN_REASON : undefined}
+                    onClick={() => setConfirm("archive")}
+                  >
+                    <ArchiveIcon /> Archive group
+                  </Button>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
 
-      {confirm === "archive" ? (
+        {/* Inside the sheet's content, so that one Escape closes only the confirm (PD-8). */}
         <ConfirmDialog
+          open={confirm === "archive"}
           title={`Archive ${groupLabel(group)}?`}
-          consequence={`Its ${group.assignmentCount} assignment${
+          description={`Its ${group.assignmentCount} assignment${
             group.assignmentCount === 1 ? "" : "s"
           } stop granting while it is archived. The rows are kept and restore brings them back.`}
           confirmLabel="Archive group"
+          danger
           onConfirm={() => {
             setConfirm(null);
             props.onArchive();
           }}
-          onCancel={() => setConfirm(null)}
+          onClose={() => setConfirm(null)}
         />
-      ) : null}
 
-      {confirm === "delete" ? (
         <ConfirmDialog
+          open={confirm === "delete"}
           title={`Delete ${groupLabel(group)}?`}
-          consequence={
+          description={
             group.source === "local"
               ? `${props.members.length} member${
                   props.members.length === 1 ? "" : "s"
@@ -519,31 +554,30 @@ export function GroupInspector(props: GroupInspectorProps) {
               : "It has not been seen in a sign-in, so it can be deleted. Its assignments go with it."
           }
           confirmLabel="Delete group"
+          danger
           onConfirm={() => {
             setConfirm(null);
             props.onDelete();
           }}
-          onCancel={() => setConfirm(null)}
+          onClose={() => setConfirm(null)}
         />
-      ) : null}
 
-      {confirm === "remove" ? (
         <ConfirmDialog
+          open={confirm === "remove"}
           title="Remove all members?"
-          consequence="They leave this group. Their direct roles and other group memberships still give access; this does not remove them."
+          description="They leave this group. Their direct roles and other group memberships still give access; this does not remove them."
           confirmLabel="Remove all"
+          danger
           onConfirm={() => {
             setConfirm(null);
             props.onRemoveAllMembers();
           }}
-          onCancel={() => setConfirm(null)}
+          onClose={() => setConfirm(null)}
         />
-      ) : null}
-    </SlideOver>
+      </SheetContent>
+    </Sheet>
   );
 }
-
-const focusLabel = "block";
 
 /**
  * The Groups directory (R-24, R-24b, R-24c, R-25). It reads and writes only through callbacks,
@@ -553,11 +587,15 @@ const focusLabel = "block";
 export function GroupsScreen(props: GroupsScreenProps) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // The inspector stays mounted while it closes, so its exit and its focus return run.
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [dialog, setDialog] = useState<null | "directory" | "local">(null);
   const [externalId, setExternalId] = useState("");
   const [labelDraft, setLabelDraft] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const searchId = useId();
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -577,18 +615,15 @@ export function GroupsScreen(props: GroupsScreenProps) {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
-          <label className="relative block min-w-0 flex-1 sm:flex-none">
-            <span className="sr-only">Search groups</span>
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <SearchIcon />
-            </span>
-            <input
-              className={`${inputClass} pl-9 sm:w-72`}
-              aria-label="Search groups"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+          <label htmlFor={searchId} className="sr-only">
+            Search groups
           </label>
+          <Input
+            id={searchId}
+            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <HelpDisclosure label="Directory and local groups">
             A directory group&apos;s value and members come from the identity
             provider; only its label is editable here. A group not seen yet can
@@ -596,9 +631,10 @@ export function GroupsScreen(props: GroupsScreenProps) {
           </HelpDisclosure>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex items-center gap-2 text-sm text-foreground">
+          <label className="inline-flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
             <input
               type="checkbox"
+              className={`size-4 ${focusRing}`}
               checked={props.includeArchived}
               onChange={(event) =>
                 props.onChangeIncludeArchived(event.target.checked)
@@ -606,20 +642,12 @@ export function GroupsScreen(props: GroupsScreenProps) {
             />
             Show archived
           </label>
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={() => setDialog("directory")}
-          >
+          <Button variant="secondary" onClick={() => setDialog("directory")}>
             <DirectoryIcon /> Add directory group
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
-            onClick={() => setDialog("local")}
-          >
+          </Button>
+          <Button onClick={() => setDialog("local")}>
             <PlusIcon /> New local group
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -634,140 +662,123 @@ export function GroupsScreen(props: GroupsScreenProps) {
           Loading groups…
         </p>
       ) : filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          No groups match.{" "}
-          <button
-            type="button"
-            className={btnGhost}
-            onClick={() => {
-              setQuery("");
+        <EmptyState
+          title="No groups match"
+          description="Clear the search and the archived filter to see every group."
+          action={
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => {
+                setQuery("");
 
-              if (props.includeArchived) props.onChangeIncludeArchived(false);
-            }}
-          >
-            Clear filters
-          </button>
-        </p>
+                if (props.includeArchived) props.onChangeIncludeArchived(false);
+              }}
+            >
+              Clear filters
+            </Button>
+          }
+        />
       ) : (
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs uppercase text-muted-foreground">
-              <th className="py-2">Group</th>
-              <th className="py-2">Source</th>
-              <th className={`py-2 ${wideColumn}`}>Members</th>
-              <th className={`py-2 ${wideColumn}`}>Roles</th>
-              <th className="py-2">Last sync</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-input">
-            {filtered.map((group) => (
-              <tr key={group.id}>
-                <td className="py-2">
-                  <button
-                    type="button"
-                    className={`${btnGhost} h-auto flex-col items-start text-left`}
-                    onClick={() => {
-                      setSelectedId(group.id);
-                      props.onSelectGroup?.(group.id);
-                    }}
-                  >
-                    <span className="font-semibold text-foreground wrap-anywhere">
-                      {groupLabel(group)}
-                    </span>
-                    <span className="text-xs text-muted-foreground wrap-anywhere">
+        <div className="mt-4">
+          <DataTable
+            label="Groups"
+            rows={filtered}
+            rowKey={(group) => group.id}
+            rowLabel={groupLabel}
+            onOpenRow={(group) => {
+              setSelectedId(group.id);
+              setInspectorOpen(true);
+              props.onSelectGroup?.(group.id);
+            }}
+            columns={[
+              {
+                id: "group",
+                header: "Group",
+                cell: (group) => (
+                  <span className="flex flex-col items-start">
+                    <span>{groupLabel(group)}</span>
+                    <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
                       {group.description}
                     </span>
-                  </button>
-                </td>
-                <td className="py-2">{sourcePill(group)}</td>
-                <td className={`py-2 text-foreground ${wideColumn}`}>
-                  {group.memberCount}
-                </td>
-                <td className={`py-2 text-foreground ${wideColumn}`}>
-                  {group.assignmentCount}
-                </td>
-                <td className="py-2">{syncBadge(group, props.viewer)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </span>
+                ),
+              },
+              { id: "source", header: "Source", cell: sourcePill },
+              {
+                id: "members",
+                header: "Members",
+                cell: (group) => group.memberCount,
+              },
+              {
+                id: "roles",
+                header: "Roles",
+                cell: (group) => group.assignmentCount,
+              },
+            ]}
+            status={(group) => syncBadge(group, props.viewer)}
+            facts={(group) => [
+              sourcePill(group),
+              `${group.memberCount} members · ${group.assignmentCount} roles`,
+            ]}
+          />
+        </div>
       )}
 
-      {dialog === "directory" ? (
-        <ConfirmDialogShell
-          title="Add directory group"
-          onCancel={() => setDialog(null)}
-          onSubmit={() => {
-            props.onAddDirectoryGroup?.(
-              externalId.trim(),
-              labelDraft.trim() === "" ? undefined : labelDraft.trim()
-            );
-            setDialog(null);
-            setExternalId("");
-            setLabelDraft("");
-          }}
-          submitLabel="Add group"
-          submitDisabled={externalId.trim() === ""}
-        >
-          <Field
-            label="Claim value"
-            hint="The exact string the provider puts in the groups claim, for example an Entra group object ID."
-          >
-            <input
-              className={inputClass}
-              aria-label="Claim value"
-              value={externalId}
-              onChange={(event) => setExternalId(event.target.value)}
-            />
-          </Field>
-          <Field
-            label="Display label"
-            hint="Optional. Shown in lists in place of the value."
-          >
-            <input
-              className={inputClass}
-              aria-label="Display label"
-              value={labelDraft}
-              onChange={(event) => setLabelDraft(event.target.value)}
-            />
-          </Field>
-        </ConfirmDialogShell>
-      ) : null}
+      <GroupFormDialog
+        open={dialog === "directory"}
+        title="Add directory group"
+        submitLabel="Add group"
+        submitDisabled={externalId.trim() === ""}
+        onCancel={() => setDialog(null)}
+        onSubmit={() => {
+          props.onAddDirectoryGroup?.(
+            externalId.trim(),
+            labelDraft.trim() === "" ? undefined : labelDraft.trim()
+          );
+          setDialog(null);
+          setExternalId("");
+          setLabelDraft("");
+        }}
+      >
+        <TextField
+          label="Claim value"
+          hint="The exact string the provider puts in the groups claim, for example an Entra group object ID."
+          value={externalId}
+          onChange={setExternalId}
+        />
+        <TextField
+          label="Display label"
+          hint="Optional. Shown in lists in place of the value."
+          value={labelDraft}
+          onChange={setLabelDraft}
+        />
+      </GroupFormDialog>
 
-      {dialog === "local" ? (
-        <ConfirmDialogShell
-          title="New local group"
-          onCancel={() => setDialog(null)}
-          onSubmit={() => {
-            props.onCreateLocalGroup?.(name.trim(), description.trim());
-            setDialog(null);
-            setName("");
-            setDescription("");
-          }}
-          submitLabel="Create group"
-          submitDisabled={name.trim() === ""}
-        >
-          <Field label="Name">
-            <input
-              className={inputClass}
-              aria-label="Name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-          <Field label="Description">
-            <input
-              className={inputClass}
-              aria-label="Description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </Field>
-        </ConfirmDialogShell>
-      ) : null}
+      <GroupFormDialog
+        open={dialog === "local"}
+        title="New local group"
+        submitLabel="Create group"
+        submitDisabled={name.trim() === ""}
+        onCancel={() => setDialog(null)}
+        onSubmit={() => {
+          props.onCreateLocalGroup?.(name.trim(), description.trim());
+          setDialog(null);
+          setName("");
+          setDescription("");
+        }}
+      >
+        <TextField label="Name" value={name} onChange={setName} />
+        <TextField
+          label="Description"
+          value={description}
+          onChange={setDescription}
+        />
+      </GroupFormDialog>
 
       {selected === undefined ? null : (
         <GroupInspector
+          open={inspectorOpen}
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
           assignments={props.details?.[selected.id]?.assignments ?? []}
@@ -778,7 +789,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
             selected.id
           )}
           onClose={() => {
-            setSelectedId(null);
+            setInspectorOpen(false);
             props.onSelectGroup?.(null);
           }}
           onArchive={() => props.onArchiveGroup?.(selected.id)}
@@ -816,43 +827,63 @@ export function GroupsScreen(props: GroupsScreenProps) {
   );
 }
 
-/** A dialog with a form body and a submit; `ConfirmDialog`'s sibling for the two add forms. */
-function ConfirmDialogShell(props: {
+/** One labelled text field, with an optional hint the input is described by. */
+function TextField(props: {
+  readonly label: string;
+  readonly hint?: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+}) {
+  const id = useId();
+  const hintId = useId();
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
+      <Input
+        id={id}
+        aria-describedby={props.hint === undefined ? undefined : hintId}
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+      {props.hint === undefined ? null : (
+        <FieldDescription id={hintId}>{props.hint}</FieldDescription>
+      )}
+    </Field>
+  );
+}
+
+/** A dialog with a form body and a submit, for the two add forms. */
+function GroupFormDialog(props: {
+  readonly open: boolean;
   readonly title: string;
   readonly submitLabel: string;
-  readonly submitDisabled?: boolean;
+  readonly submitDisabled: boolean;
   readonly onCancel: () => void;
   readonly onSubmit: () => void;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={props.title}
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-card"
-      >
-        <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
-        <div className="mt-3 space-y-3">{props.children}</div>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={props.onCancel}
-          >
+    <Dialog
+      open={props.open}
+      onOpenChange={(next) => {
+        if (!next) props.onCancel();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{props.title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">{props.children}</div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={props.onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
-            disabled={props.submitDisabled ?? false}
-            onClick={props.onSubmit}
-          >
+          </Button>
+          <Button disabled={props.submitDisabled} onClick={props.onSubmit}>
             {props.submitLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

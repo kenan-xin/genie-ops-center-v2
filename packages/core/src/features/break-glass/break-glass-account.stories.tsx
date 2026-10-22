@@ -116,6 +116,11 @@ export const Reenroll: Story = {
     onStartReenroll.mockClear();
 
     await userEvent.click(canvas.getByRole("button", { name: "Re-enroll" }));
+    // The field keeps its 256 px width against the Field's own child rule.
+    await expect(
+      canvas.getByLabelText("Confirm your password").getBoundingClientRect()
+        .width
+    ).toBe(256);
     await userEvent.type(
       canvas.getByLabelText("Confirm your password"),
       "Abcdefghij1!xy"

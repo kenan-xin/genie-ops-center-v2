@@ -134,9 +134,17 @@ The shadcn.io components page holds 80 items. These are the ones that match an a
 | AI chat | AI Elements (Vercel) | [github.com/vercel/ai-elements](https://github.com/vercel/ai-elements) | Radix | Apache-2.0 | Deprecated at the end of November 2026. |
 | AI chat | assistant-ui | [github.com/assistant-ui/assistant-ui](https://github.com/assistant-ui/assistant-ui) | Own primitives, `asChild` style | MIT | Chat runtime and thread UI. |
 | AI chat | prompt-kit | [github.com/ibelick/prompt-kit](https://github.com/ibelick/prompt-kit) | Unconfirmed | MIT | Chat building blocks. |
-| Notifications | Sonner (official) | [shadcn/ui](https://ui.shadcn.com) | None | MIT | The shadcn toast. The old `toast` item is deprecated. Check it against Spec 3 R-24. |
+| Notifications | Sonner (official) | [shadcn/ui](https://ui.shadcn.com) | None | MIT | The shadcn toast. The old `toast` item is deprecated. Checked 2026-10-23: no role on a toast. `packages/ui` renders each toast as a `role="status"` card through `toast.custom`. |
 
 The shadcn.io components page has no toast entry. Sonner comes from the official registry.
+
+## Written here
+
+Parts that no source supplies. Each row names what was read and why it was not taken.
+
+| Part | Sources read | Why written here |
+| --- | --- | --- |
+| DataTable (Spec 3 R-23) | Dice UI data table, ReUI data grid, tablecn | None renders a phone card list, and each brings TanStack Table and virtualization that no screen needs yet. It builds on the registry `table` and `dropdown-menu` items. |
 
 ## Templates for reference
 

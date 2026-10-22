@@ -23,6 +23,7 @@ import {
   inviteBaseUrl,
   queryBrokerDatabase,
 } from "./support/brokered.ts";
+import { chooseOption } from "./support/choose-option.ts";
 import { rpcPost } from "./support/rpc.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
@@ -150,9 +151,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   const group = page.getByRole("dialog", { name: grantGroup });
 
   await group.getByRole("tab", { name: /^Roles/ }).click();
-  await group
-    .getByLabel("Role to assign")
-    .selectOption({ label: "S2-13 reader" });
+  await chooseOption(page, "Role to assign", "S2-13 reader");
 
   const [assigned] = await Promise.all([
     page.waitForResponse((response) =>

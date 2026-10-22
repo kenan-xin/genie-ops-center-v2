@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   FIXTURE_ASSIGNMENTS,
@@ -77,13 +77,52 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Finance managers")).toBeInTheDocument();
-    await expect(canvas.getAllByText("Not seen yet").length).toBeGreaterThan(0);
-    await expect(canvas.getAllByText("Stale").length).toBeGreaterThan(0);
-    await expect(canvas.getByText("Operations")).toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "Groups" }));
+
+    await expect(table.getByText("Finance managers")).toBeInTheDocument();
+    await expect(table.getByText("Not seen yet")).toBeInTheDocument();
+    await expect(table.getByText("Stale")).toBeInTheDocument();
+    await expect(table.getByText("Operations")).toBeInTheDocument();
 
     // The archived group stays behind the Show archived toggle.
     await expect(canvas.queryByText("Ex-contractors")).not.toBeInTheDocument();
+  },
+};
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = within(canvas.getByRole("list", { name: "Groups" }));
+
+    await expect(canvas.queryByRole("table")).toBeNull();
+    // A long unbroken value must not push the page sideways.
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
+
+    await userEvent.click(
+      list.getByRole("button", { name: /Finance managers/ })
+    );
+
+    await expect(
+      await screen.findByRole("dialog", { name: "Finance managers" })
+    ).toBeInTheDocument();
+  },
+};
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+  play: async ({ canvas }) => {
+    // Open the inspector, so that the a11y addon measures the sheet in the dark theme too.
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Finance managers/ })
+    );
+
+    const inspector = await screen.findByRole("dialog", {
+      name: "Finance managers",
+    });
+
+    await waitFor(() => expect(inspector).toBeVisible());
   },
 };
 
@@ -93,8 +132,10 @@ export const ShowArchived: Story = {
     groups: [...FIXTURE_GROUPS, fixtureArchived()],
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Ex-contractors")).toBeInTheDocument();
-    await expect(canvas.getByText("Archived")).toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "Groups" }));
+
+    await expect(table.getByText("Ex-contractors")).toBeInTheDocument();
+    await expect(table.getByText("Archived")).toBeInTheDocument();
   },
 };
 
@@ -123,7 +164,7 @@ export const AddDirectoryGroup: Story = {
     );
 
     const dialog = within(
-      canvas.getByRole("dialog", { name: "Add directory group" })
+      await screen.findByRole("dialog", { name: "Add directory group" })
     );
 
     await userEvent.type(
@@ -150,7 +191,7 @@ export const LabelShowsAndValueStaysInTheInspector: Story = {
     );
 
     const inspector = within(
-      canvas.getByRole("dialog", { name: "Finance managers" })
+      await screen.findByRole("dialog", { name: "Finance managers" })
     );
 
     // The label names the header; the raw value stays visible (R-24c).
@@ -164,7 +205,9 @@ export const NotSeenGroupOffersDeleteNotArchive: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /^Sales/ }));
 
-    const inspector = within(canvas.getByRole("dialog", { name: "Sales" }));
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Sales" })
+    );
 
     await expect(
       inspector.getByRole("button", { name: "Delete group" })
@@ -184,12 +227,12 @@ export const ArchiveConfirmNamesTheAssignmentCount: Story = {
     );
     await userEvent.click(
       within(
-        canvas.getByRole("dialog", { name: "Finance managers" })
+        await screen.findByRole("dialog", { name: "Finance managers" })
       ).getByRole("button", { name: "Archive group" })
     );
 
     const confirm = within(
-      canvas.getByRole("dialog", { name: "Archive Finance managers?" })
+      await screen.findByRole("dialog", { name: "Archive Finance managers?" })
     );
 
     await expect(
@@ -212,7 +255,7 @@ export const LastAdministratorBlocksArchiveWithTheReason: Story = {
     );
 
     const inspector = within(
-      canvas.getByRole("dialog", { name: "Finance managers" })
+      await screen.findByRole("dialog", { name: "Finance managers" })
     );
 
     const archive = inspector.getByRole("button", { name: "Archive group" });
@@ -230,14 +273,13 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
     await userEvent.click(
-      within(canvas.getByRole("dialog", { name: "Operations" })).getByRole(
-        "button",
-        { name: "Delete group" }
-      )
+      within(
+        await screen.findByRole("dialog", { name: "Operations" })
+      ).getByRole("button", { name: "Delete group" })
     );
 
     const confirm = within(
-      canvas.getByRole("dialog", { name: "Delete Operations?" })
+      await screen.findByRole("dialog", { name: "Delete Operations?" })
     );
 
     await expect(
@@ -265,12 +307,16 @@ export const AssignsARoleToAPreAddedGroup: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /^Sales/ }));
 
-    const inspector = within(canvas.getByRole("dialog", { name: "Sales" }));
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Sales" })
+    );
 
     await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
-    await userEvent.selectOptions(
-      inspector.getByLabelText("Role to assign"),
-      "r-2"
+    await userEvent.click(
+      inspector.getByRole("combobox", { name: "Role to assign" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Auditor" })
     );
     await userEvent.click(
       inspector.getByRole("button", { name: "Assign role" })
@@ -292,7 +338,7 @@ export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
 
     const inspector = within(
-      canvas.getByRole("dialog", { name: "Operations" })
+      await screen.findByRole("dialog", { name: "Operations" })
     );
 
     // Every eligible person is already a member, so the picker is hidden, but Remove all stays.
@@ -302,5 +348,86 @@ export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
     await expect(
       inspector.queryByLabelText("Add to group")
     ).not.toBeInTheDocument();
+  },
+};
+
+export const ArchiveFromTheInspector: Story = {
+  play: async ({ canvas }) => {
+    onArchiveGroup.mockClear();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Finance managers/ })
+    );
+
+    const inspector = await screen.findByRole("dialog", {
+      name: "Finance managers",
+    });
+
+    await userEvent.click(
+      within(inspector).getByRole("button", { name: "Archive group" })
+    );
+    await screen.findByRole("dialog", { name: "Archive Finance managers?" });
+
+    // One Escape closes only the confirm dialog, and focus returns to the control in the sheet.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Archive Finance managers?" })
+      ).not.toBeInTheDocument()
+    );
+    await expect(
+      screen.getByRole("dialog", { name: "Finance managers" })
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(inspector).getByRole("button", { name: "Archive group" })
+      ).toHaveFocus()
+    );
+    await expect(onArchiveGroup).not.toHaveBeenCalled();
+
+    // The next Escape closes the sheet.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    );
+  },
+};
+
+export const AddsEveryPickedPerson: Story = {
+  args: {
+    groups: [FIXTURE_LOCAL],
+    people: [
+      ...FIXTURE_PEOPLE,
+      { id: "p-3", name: "Alan Turing", email: "alan@example.invalid" },
+    ],
+    details: {
+      [FIXTURE_LOCAL.id]: { members: [FIXTURE_MEMBERS[0]!], assignments: [] },
+    },
+    onAddMembers: fn(),
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    await userEvent.click(
+      inspector.getByRole("combobox", { name: "Add to group" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "Grace Hopper (grace@example.invalid)",
+      })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "Alan Turing (alan@example.invalid)",
+      })
+    );
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(inspector.getByRole("button", { name: "Add 2" }));
+
+    expect(args.onAddMembers).toHaveBeenCalledWith("g-local", ["p-2", "p-3"]);
   },
 };

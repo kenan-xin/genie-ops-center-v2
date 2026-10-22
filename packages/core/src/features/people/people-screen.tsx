@@ -1,27 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
 import {
-  PlusIcon,
-  SearchIcon,
-  ShieldIcon,
-  TrashIcon,
-} from "../admin/icons.tsx";
-import {
-  btnDanger,
-  btnGhost,
-  btnPrimary,
-  btnSecondary,
+  Button,
   ConfirmDialog,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
   Field,
+  FieldLabel,
+  focusRing,
   HelpDisclosure,
-  inputClass,
-  Pill,
-  SlideOver,
-  wideColumn,
-  type PillTone,
-} from "../admin/ui.tsx";
+  Input,
+  LabelPill,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  StatusPill,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type DataTableAction,
+} from "@genie/ui";
+import { useEffect, useId, useMemo, useState } from "react";
+
+import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
 import type {
   AccountType,
   AssignableRole,
@@ -56,11 +69,11 @@ function fmtDateTime(
   });
 }
 
-const STATUS_TONE: Record<PersonStatus, PillTone> = {
+const STATUS_TONE = {
   active: "success",
   pending: "neutral",
   disabled: "danger",
-};
+} as const satisfies Record<PersonStatus, string>;
 
 const STATUS_LABEL: Record<PersonStatus, string> = {
   active: "Active",
@@ -68,8 +81,46 @@ const STATUS_LABEL: Record<PersonStatus, string> = {
   disabled: "Disabled",
 };
 
+const SORT_ITEMS = [
+  { value: "name", label: "Name" },
+  { value: "status", label: "Status" },
+  { value: "lastSignIn", label: "Last sign-in" },
+] as const;
+
+type SortKey = (typeof SORT_ITEMS)[number]["value"];
+
+const STATUS_FILTER_ITEMS = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "pending", label: "Pending" },
+  { value: "disabled", label: "Disabled" },
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTER_ITEMS)[number]["value"];
+
+const TABS = ["profile", "groups", "roles", "sessions"] as const;
+
+type ConfirmKind = "disable" | "remove";
+
 function statusPill(status: PersonStatus) {
-  return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
+  return (
+    <StatusPill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</StatusPill>
+  );
+}
+
+function groupPills(person: Person) {
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {person.groups.slice(0, 2).map((group) => (
+        <LabelPill key={group.id}>{group.label}</LabelPill>
+      ))}
+      {person.groups.length > 2 ? (
+        <span className="text-xs text-muted-foreground">
+          +{person.groups.length - 2}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function initials(name: string): string {
@@ -85,87 +136,44 @@ function accountTypeLabel(accountType: AccountType): string {
   return accountType === "local" ? "Local password" : "Identity provider";
 }
 
-/**
- * The row overflow menu: Disable or Re-enable, then Remove. Each is disabled with the server's
- * own reason when the action is self-targeting or would leave no active administrator (R-38).
- */
-function RowMenu(props: {
-  readonly person: Person;
-  readonly self: boolean;
-  readonly lastAdministrator: boolean;
-  readonly blockedReason: string | undefined;
-  readonly onDisable: () => void;
-  readonly onEnable: () => void;
-  readonly onRemove: () => void;
+/** The Disable and Remove confirms, each always rendered and opened by `confirm`. */
+function PersonConfirms(props: {
+  readonly name: string;
+  readonly confirm: ConfirmKind | null;
+  readonly onConfirm: (kind: ConfirmKind) => void;
+  readonly onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        className={btnGhost}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Actions for ${props.person.email}`}
-        onClick={() => setOpen((value) => !value)}
-      >
-        Actions
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          aria-label={`Actions for ${props.person.email}`}
-          className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-input bg-white p-1 shadow-lg dark:bg-card"
-        >
-          {props.person.status === "disabled" ? (
-            <button
-              type="button"
-              role="menuitem"
-              className={`${btnGhost} w-full justify-start`}
-              onClick={() => {
-                setOpen(false);
-                props.onEnable();
-              }}
-            >
-              Re-enable
-            </button>
-          ) : (
-            <button
-              type="button"
-              role="menuitem"
-              className={`${btnGhost} w-full justify-start`}
-              disabled={props.self || props.lastAdministrator}
-              title={props.blockedReason}
-              onClick={() => {
-                setOpen(false);
-                props.onDisable();
-              }}
-            >
-              Disable
-            </button>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            className={`${btnGhost} w-full justify-start text-destructive`}
-            disabled={props.self || props.lastAdministrator}
-            title={props.blockedReason}
-            onClick={() => {
-              setOpen(false);
-              props.onRemove();
-            }}
-          >
-            Remove
-          </button>
-        </div>
-      ) : null}
-    </div>
+    <>
+      <ConfirmDialog
+        open={props.confirm === "disable"}
+        title={`Disable ${props.name}?`}
+        description="They can no longer sign in but keep their history and their roles."
+        confirmLabel="Disable"
+        danger
+        onConfirm={() => props.onConfirm("disable")}
+        onClose={props.onClose}
+      />
+      <ConfirmDialog
+        open={props.confirm === "remove"}
+        title={`Remove ${props.name}?`}
+        description="Every session ends, they are banned from signing in again, and their group memberships and direct roles go. Their name, email and audit trail stay."
+        confirmLabel="Remove person"
+        danger
+        onConfirm={() => props.onConfirm("remove")}
+        onClose={props.onClose}
+      />
+    </>
   );
 }
 
-/** The person inspector: header, Profile, Groups, Roles and Sessions tabs (R-37). */
+/**
+ * The person inspector: header, Profile, Groups, Roles and Sessions tabs (R-37). Disable and
+ * Remove confirm inside the sheet, so that one Escape closes only the confirm (PD-8);
+ * `onDisable` and `onRemove` fire once confirmed.
+ */
 export function PersonInspector(props: {
+  readonly open?: boolean;
   readonly person: PersonDetail;
   readonly viewer: PeopleViewer;
   readonly self: boolean;
@@ -181,10 +189,15 @@ export function PersonInspector(props: {
   readonly onManageAccess?: (() => void) | undefined;
 }) {
   const { person, viewer } = props;
+  const open = props.open ?? true;
+  const [tab, setTab] = useState<(typeof TABS)[number]>("profile");
+  const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
 
-  const [tab, setTab] = useState<"profile" | "groups" | "roles" | "sessions">(
-    "profile"
-  );
+  // The sheet stays mounted, so each open starts on the profile with no confirm.
+  useEffect(() => {
+    setTab("profile");
+    setConfirm(null);
+  }, [open, person.id]);
 
   const blocked = props.self || props.lastAdministrator;
 
@@ -197,251 +210,276 @@ export function PersonInspector(props: {
     person.status === "pending" && person.accountType === "brokered";
 
   return (
-    <SlideOver title={person.name} onClose={props.onClose}>
-      <div className="flex flex-wrap items-center gap-2">
-        {statusPill(person.status)}
-        <span className="text-xs text-muted-foreground">{person.email}</span>
-      </div>
-
-      <div className="mt-3" role="tablist" aria-label="Person detail">
-        {(
-          [
-            ["profile", "Profile"],
-            ["groups", `Groups (${person.groups.length})`],
-            ["roles", `Roles (${person.assignments.length})`],
-            ["sessions", `Sessions (${person.sessions.length})`],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            className={btnGhost}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "profile" ? (
-        <div className="mt-2">
-          <dl className="divide-y divide-input text-sm">
-            <ProfileRow label="Name" value={person.name} />
-            <ProfileRow label="Email" value={person.email} />
-            <ProfileRow
-              label="Account type"
-              value={accountTypeLabel(person.accountType)}
-            />
-            <ProfileRow label="Identity source" value={person.identitySource} />
-            <ProfileRow
-              label="First sign-in"
-              value={fmtDateTime(
-                person.firstSignInAt,
-                viewer.timeZone,
-                "Never"
-              )}
-            />
-            <ProfileRow
-              label="Last sign-in"
-              value={fmtDateTime(person.lastSignInAt, viewer.timeZone, "Never")}
-            />
-            <ProfileRow
-              label="Onboarding"
-              value={person.onboarding === "jit" ? "JIT" : "Invited"}
-            />
-          </dl>
-
-          {pendingLocal ? (
-            <div className="mt-3 rounded-lg border border-input p-3">
-              <p className="text-sm text-foreground">
-                A separate email sets this person&apos;s password.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Last sent{" "}
-                {fmtDateTime(
-                  person.setPasswordSentAt,
-                  viewer.timeZone,
-                  "never"
-                )}
-              </p>
-              <button
-                type="button"
-                className={`${btnSecondary} mt-2`}
-                onClick={props.onResendSetPassword}
-              >
-                Resend set-password email
-              </button>
-            </div>
-          ) : null}
-
-          {pendingBrokered ? (
-            <div className="mt-3 rounded-lg border border-input p-3">
-              <p className="text-xs text-muted-foreground">
-                Last sent{" "}
-                {fmtDateTime(person.invitationSentAt, viewer.timeZone, "never")}
-              </p>
-              <button
-                type="button"
-                className={`${btnSecondary} mt-2`}
-                onClick={props.onResendInvitation}
-              >
-                Resend invitation
-              </button>
-            </div>
-          ) : null}
-
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-input pt-3">
-            {person.status === "disabled" ? (
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={props.onEnable}
-              >
-                Re-enable
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={btnSecondary}
-                disabled={blocked}
-                title={blocked ? blockedReason : undefined}
-                onClick={props.onDisable}
-              >
-                Disable
-              </button>
-            )}
-            <button
-              type="button"
-              className={btnDanger}
-              disabled={blocked}
-              title={blocked ? blockedReason : undefined}
-              onClick={props.onRemove}
-            >
-              <TrashIcon /> Remove
-            </button>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) props.onClose();
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{person.name}</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {statusPill(person.status)}
+            <span className="text-xs text-muted-foreground wrap-anywhere">
+              {person.email}
+            </span>
           </div>
 
-          {blocked ? (
-            <p className="mt-2 text-sm text-foreground">{blockedReason}</p>
-          ) : null}
-        </div>
-      ) : null}
+          <Tabs
+            value={tab}
+            onValueChange={(value) =>
+              setTab(TABS.find((key) => key === value) ?? "profile")
+            }
+          >
+            <TabsList aria-label="Person detail">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="groups">
+                Groups ({person.groups.length})
+              </TabsTrigger>
+              <TabsTrigger value="roles">
+                Roles ({person.assignments.length})
+              </TabsTrigger>
+              <TabsTrigger value="sessions">
+                Sessions ({person.sessions.length})
+              </TabsTrigger>
+            </TabsList>
 
-      {tab === "groups" ? (
-        <div className="mt-2">
-          <ul className="divide-y divide-input">
-            {person.groups.map((group) => (
-              <li key={group.id} className="py-2 text-sm text-foreground">
-                <span className="font-medium">{group.label}</span>{" "}
-                <span className="text-xs text-muted-foreground">
-                  {group.source === "idp" ? "Directory" : "Local"}
-                  {group.syncedAt === null
-                    ? ""
-                    : ` · synced ${fmtDateTime(group.syncedAt, viewer.timeZone, "")}`}
-                </span>
-              </li>
-            ))}
-            {person.groups.length === 0 ? (
-              <li className="py-2 text-sm text-muted-foreground">
-                This person is in no group.
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      ) : null}
+            <TabsContent value="profile">
+              <dl className="divide-y divide-input text-sm">
+                <ProfileRow label="Name" value={person.name} />
+                <ProfileRow label="Email" value={person.email} />
+                <ProfileRow
+                  label="Account type"
+                  value={accountTypeLabel(person.accountType)}
+                />
+                <ProfileRow
+                  label="Identity source"
+                  value={person.identitySource}
+                />
+                <ProfileRow
+                  label="First sign-in"
+                  value={fmtDateTime(
+                    person.firstSignInAt,
+                    viewer.timeZone,
+                    "Never"
+                  )}
+                />
+                <ProfileRow
+                  label="Last sign-in"
+                  value={fmtDateTime(
+                    person.lastSignInAt,
+                    viewer.timeZone,
+                    "Never"
+                  )}
+                />
+                <ProfileRow
+                  label="Onboarding"
+                  value={person.onboarding === "jit" ? "JIT" : "Invited"}
+                />
+              </dl>
 
-      {tab === "roles" ? (
-        <div className="mt-2">
-          <ul className="divide-y divide-input">
-            {person.assignments.map((assignment) => (
-              <li key={assignment.id} className="py-2 text-sm text-foreground">
-                <span className="font-medium">{assignment.roleName}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  ·{" "}
-                  {assignment.source === "direct"
-                    ? "Direct"
-                    : `via ${assignment.groupName ?? "a group"}`}
-                  {assignment.scopeType === null
-                    ? ""
-                    : ` · ${assignment.scopeType} ${assignment.scopeId}`}
-                </span>
-              </li>
-            ))}
-            {person.assignments.length === 0 ? (
-              <li className="py-2 text-sm text-muted-foreground">
-                This person holds no role yet.
-              </li>
-            ) : null}
-          </ul>
-          {props.onManageAccess === undefined ? null : (
-            <button
-              type="button"
-              className={`${btnSecondary} mt-3`}
-              onClick={props.onManageAccess}
-            >
-              <ShieldIcon /> Manage in Access
-            </button>
-          )}
-          <HelpDisclosure label="How this adds up">
-            A role held directly is this person&apos;s. A role held through a
-            group changes for every member of that group.
-          </HelpDisclosure>
-        </div>
-      ) : null}
+              {pendingLocal ? (
+                <div className="mt-3 rounded-lg border border-input p-3">
+                  <p className="text-sm text-foreground">
+                    A separate email sets this person&apos;s password.
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Last sent{" "}
+                    {fmtDateTime(
+                      person.setPasswordSentAt,
+                      viewer.timeZone,
+                      "never"
+                    )}
+                  </p>
+                  <div className="mt-2">
+                    <Button
+                      variant="secondary"
+                      onClick={props.onResendSetPassword}
+                    >
+                      Resend set-password email
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
-      {tab === "sessions" ? (
-        <div className="mt-2">
-          <ul className="divide-y divide-input">
-            {person.sessions.map((session) => (
-              <li
-                key={session.id}
-                className="flex items-center justify-between py-2 text-sm text-foreground"
-              >
-                <span>
-                  {session.device} · {session.browser}
-                  <span className="block text-xs text-muted-foreground">
-                    {session.ipAddress} · last active{" "}
-                    {fmtDateTime(session.lastActiveAt, viewer.timeZone, "")}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className={btnGhost}
-                  onClick={() => props.onRevokeSession(session.id)}
+              {pendingBrokered ? (
+                <div className="mt-3 rounded-lg border border-input p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Last sent{" "}
+                    {fmtDateTime(
+                      person.invitationSentAt,
+                      viewer.timeZone,
+                      "never"
+                    )}
+                  </p>
+                  <div className="mt-2">
+                    <Button
+                      variant="secondary"
+                      onClick={props.onResendInvitation}
+                    >
+                      Resend invitation
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-input pt-3">
+                {person.status === "disabled" ? (
+                  <Button variant="secondary" onClick={props.onEnable}>
+                    Re-enable
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    disabled={blocked}
+                    title={blocked ? blockedReason : undefined}
+                    onClick={() => setConfirm("disable")}
+                  >
+                    Disable
+                  </Button>
+                )}
+                <Button
+                  variant="danger"
+                  disabled={blocked}
+                  title={blocked ? blockedReason : undefined}
+                  onClick={() => setConfirm("remove")}
                 >
-                  Sign out
-                </button>
-              </li>
-            ))}
-            {person.sessions.length === 0 ? (
-              <li className="py-2 text-sm text-muted-foreground">
-                This person has no open session.
-              </li>
-            ) : null}
-          </ul>
-          {person.sessions.length === 0 ? null : (
-            <button
-              type="button"
-              className={`${btnGhost} mt-3`}
-              onClick={props.onRevokeAllSessions}
-            >
-              Sign out all
-            </button>
-          )}
+                  <TrashIcon /> Remove
+                </Button>
+              </div>
+
+              {blocked ? (
+                <p className="mt-2 text-sm text-foreground">{blockedReason}</p>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="groups">
+              <ul className="divide-y divide-input">
+                {person.groups.map((group) => (
+                  <li key={group.id} className="py-2 text-sm text-foreground">
+                    <span className="font-medium">{group.label}</span>{" "}
+                    <span className="text-xs text-muted-foreground">
+                      {group.source === "idp" ? "Directory" : "Local"}
+                      {group.syncedAt === null
+                        ? ""
+                        : ` · synced ${fmtDateTime(group.syncedAt, viewer.timeZone, "")}`}
+                    </span>
+                  </li>
+                ))}
+                {person.groups.length === 0 ? (
+                  <li className="py-2 text-sm text-muted-foreground">
+                    This person is in no group.
+                  </li>
+                ) : null}
+              </ul>
+            </TabsContent>
+
+            <TabsContent value="roles">
+              <ul className="divide-y divide-input">
+                {person.assignments.map((assignment) => (
+                  <li
+                    key={assignment.id}
+                    className="py-2 text-sm text-foreground"
+                  >
+                    <span className="font-medium">{assignment.roleName}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ·{" "}
+                      {assignment.source === "direct"
+                        ? "Direct"
+                        : `via ${assignment.groupName ?? "a group"}`}
+                      {assignment.scopeType === null
+                        ? ""
+                        : ` · ${assignment.scopeType} ${assignment.scopeId}`}
+                    </span>
+                  </li>
+                ))}
+                {person.assignments.length === 0 ? (
+                  <li className="py-2 text-sm text-muted-foreground">
+                    This person holds no role yet.
+                  </li>
+                ) : null}
+              </ul>
+              {props.onManageAccess === undefined ? null : (
+                <div className="mt-3">
+                  <Button variant="secondary" onClick={props.onManageAccess}>
+                    <ShieldIcon /> Manage in Access
+                  </Button>
+                </div>
+              )}
+              <HelpDisclosure label="How this adds up">
+                A role held directly is this person&apos;s. A role held through
+                a group changes for every member of that group.
+              </HelpDisclosure>
+            </TabsContent>
+
+            <TabsContent value="sessions">
+              <ul className="divide-y divide-input">
+                {person.sessions.map((session) => (
+                  <li
+                    key={session.id}
+                    className="flex items-center justify-between gap-2 py-2 text-sm text-foreground"
+                  >
+                    <span className="min-w-0 wrap-anywhere">
+                      {session.device} · {session.browser}
+                      <span className="block text-xs text-muted-foreground">
+                        {session.ipAddress} · last active{" "}
+                        {fmtDateTime(session.lastActiveAt, viewer.timeZone, "")}
+                      </span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => props.onRevokeSession(session.id)}
+                    >
+                      Sign out
+                    </Button>
+                  </li>
+                ))}
+                {person.sessions.length === 0 ? (
+                  <li className="py-2 text-sm text-muted-foreground">
+                    This person has no open session.
+                  </li>
+                ) : null}
+              </ul>
+              {person.sessions.length === 0 ? null : (
+                <div className="mt-3">
+                  <Button variant="ghost" onClick={props.onRevokeAllSessions}>
+                    Sign out all
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
-      ) : null}
-    </SlideOver>
+
+        {/* Inside the sheet's content, so that one Escape closes only the confirm (PD-8). */}
+        <PersonConfirms
+          name={person.name}
+          confirm={confirm}
+          onConfirm={(kind) => {
+            setConfirm(null);
+
+            if (kind === "disable") props.onDisable();
+            else props.onRemove();
+          }}
+          onClose={() => setConfirm(null)}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
 
 function ProfileRow(props: { readonly label: string; readonly value: string }) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between gap-2 py-2">
       <dt className="text-muted-foreground">{props.label}</dt>
-      <dd className="text-foreground">{props.value}</dd>
+      <dd className="min-w-0 text-right text-foreground wrap-anywhere">
+        {props.value}
+      </dd>
     </div>
   );
 }
@@ -453,16 +491,23 @@ function ProfileRow(props: { readonly label: string; readonly value: string }) {
  */
 export function PeopleScreen(props: PeopleScreenProps) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"name" | "status" | "lastSignIn">("name");
+  const [sort, setSort] = useState<SortKey>("name");
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | PersonStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // The inspector stays mounted while it closes, so its exit and its focus return run.
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addSubmitting, setAddSubmitting] = useState(false);
+  const searchId = useId();
+  const statusId = useId();
+  const groupId = useId();
 
+  // The row menu's confirm. Closing clears only the kind, so the title holds during the exit.
   const [confirm, setConfirm] = useState<{
-    readonly kind: "disable" | "remove";
+    readonly kind: ConfirmKind | null;
     readonly person: Person;
   } | null>(null);
 
@@ -490,6 +535,11 @@ export function PeopleScreen(props: PeopleScreenProps) {
 
     return [...seen.entries()].map(([id, label]) => ({ id, label }));
   }, [props.people]);
+
+  const groupItems = [
+    { value: "all", label: "All" },
+    ...groupOptions.map((group) => ({ value: group.id, label: group.label })),
+  ];
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -540,24 +590,54 @@ export function PeopleScreen(props: PeopleScreenProps) {
     setGroupFilter("all");
   };
 
+  const rowActions = (person: Person): readonly DataTableAction[] => {
+    const refusal =
+      person.id === props.viewer.id
+        ? SELF_REASON
+        : props.lastAdministratorPersonIds.includes(person.id)
+          ? LAST_ADMIN_REASON
+          : undefined;
+
+    const refused = refusal === undefined ? {} : { refusal };
+
+    return [
+      person.status === "disabled"
+        ? {
+            label: "Re-enable",
+            onSelect: () => props.onEnablePerson?.(person.id),
+          }
+        : {
+            label: "Disable",
+            onSelect: () => setConfirm({ kind: "disable", person }),
+            ...refused,
+          },
+      {
+        label: "Remove",
+        danger: true,
+        onSelect: () => setConfirm({ kind: "remove", person }),
+        ...refused,
+      },
+    ];
+  };
+
+  const lastSignIn = (person: Person) =>
+    fmtDateTime(person.lastSignInAt, props.viewer.timeZone, "—");
+
   const selected = props.details?.[selectedId ?? ""];
 
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
-          <label className="relative block min-w-0 flex-1 sm:flex-none">
-            <span className="sr-only">Search people</span>
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <SearchIcon />
-            </span>
-            <input
-              className={`${inputClass} pl-9 sm:w-72`}
-              aria-label="Search people"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+          <label htmlFor={searchId} className="sr-only">
+            Search people
           </label>
+          <Input
+            id={searchId}
+            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <HelpDisclosure label="Pending, disabled, removed">
             Pending ends at first sign-in. Disable keeps history; Remove ends
             sessions and bans. Replacing a name with an anonymous one is an
@@ -565,75 +645,92 @@ export function PeopleScreen(props: PeopleScreenProps) {
           </HelpDisclosure>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-sm text-foreground">
-            <span className="mr-2">Sort</span>
-            <select
-              className={inputClass}
-              aria-label="Sort people"
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-foreground">Sort</span>
+            <Select
+              items={SORT_ITEMS}
               value={sort}
-              onChange={(event) => {
-                // SAFETY: the options below offer exactly these three sort keys.
-                setSort(event.target.value as typeof sort);
-              }}
+              onValueChange={(value) =>
+                setSort(
+                  SORT_ITEMS.find((item) => item.value === value)?.value ??
+                    "name"
+                )
+              }
             >
-              <option value="name">Name</option>
-              <option value="status">Status</option>
-              <option value="lastSignIn">Last sign-in</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            className={btnSecondary}
+              <SelectTrigger aria-label="Sort people" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="secondary"
             aria-expanded={showFilters}
             onClick={() => setShowFilters((value) => !value)}
           >
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
-            onClick={() => setAdding(true)}
-          >
+          </Button>
+          <Button onClick={() => setAdding(true)}>
             <PlusIcon /> Add person
-          </button>
+          </Button>
         </div>
       </div>
 
       {showFilters ? (
         <div className="mt-2 flex flex-wrap gap-3 rounded-lg border border-input p-3">
-          <label className="text-sm text-foreground">
-            <span className="mb-1 block text-xs font-semibold">Status</span>
-            <select
-              className={inputClass}
-              aria-label="Filter by status"
-              value={statusFilter}
-              onChange={(event) => {
-                // SAFETY: the options below offer exactly these status keys.
-                setStatusFilter(event.target.value as typeof statusFilter);
-              }}
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="pending">Pending</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </label>
-          <label className="text-sm text-foreground">
-            <span className="mb-1 block text-xs font-semibold">Group</span>
-            <select
-              className={inputClass}
-              aria-label="Filter by group"
-              value={groupFilter}
-              onChange={(event) => setGroupFilter(event.target.value)}
-            >
-              <option value="all">All</option>
-              {groupOptions.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="w-44">
+            <Field>
+              <FieldLabel htmlFor={statusId}>Status</FieldLabel>
+              <Select
+                items={STATUS_FILTER_ITEMS}
+                value={statusFilter}
+                onValueChange={(value) =>
+                  setStatusFilter(
+                    STATUS_FILTER_ITEMS.find((item) => item.value === value)
+                      ?.value ?? "all"
+                  )
+                }
+              >
+                <SelectTrigger id={statusId} aria-label="Filter by status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTER_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <div className="w-44">
+            <Field>
+              <FieldLabel htmlFor={groupId}>Group</FieldLabel>
+              <Select
+                items={groupItems}
+                value={groupFilter}
+                onValueChange={(value) => setGroupFilter(value ?? "all")}
+              >
+                <SelectTrigger id={groupId} aria-label="Filter by group">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {groupItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
         </div>
       ) : null}
 
@@ -654,9 +751,9 @@ export function PeopleScreen(props: PeopleScreenProps) {
               onRemove={() => setGroupFilter("all")}
             />
           )}
-          <button type="button" className={btnGhost} onClick={clearFilters}>
+          <Button variant="link" size="sm" onClick={clearFilters}>
             Clear all
-          </button>
+          </Button>
         </div>
       )}
 
@@ -677,123 +774,84 @@ export function PeopleScreen(props: PeopleScreenProps) {
           Loading people…
         </p>
       ) : filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          No people match.{" "}
-          <button
-            type="button"
-            className={btnGhost}
-            onClick={() => {
-              setQuery("");
-              clearFilters();
-            }}
-          >
-            Clear filters
-          </button>
-        </p>
+        <EmptyState
+          title="No people match"
+          description="Clear the search and the filters to see everyone."
+          action={
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => {
+                setQuery("");
+                clearFilters();
+              }}
+            >
+              Clear filters
+            </Button>
+          }
+        />
       ) : (
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs uppercase text-muted-foreground">
-              <th className="py-2">Person</th>
-              <th className="py-2">Status</th>
-              <th className={`py-2 ${wideColumn}`}>Groups</th>
-              <th className={`py-2 ${wideColumn}`}>Roles</th>
-              <th className={`py-2 ${wideColumn}`}>Last sign-in</th>
-              <th className="py-2">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-input">
-            {filtered.map((person) => {
-              const self = person.id === props.viewer.id;
-
-              const lastAdministrator =
-                props.lastAdministratorPersonIds.includes(person.id);
-
-              const blockedReason = self ? SELF_REASON : LAST_ADMIN_REASON;
-
-              return (
-                <tr key={person.id}>
-                  <td className="py-2">
-                    <button
-                      type="button"
-                      className={`${btnGhost} h-auto flex-col items-start text-left`}
-                      onClick={() => {
-                        setSelectedId(person.id);
-                        props.onSelectPerson?.(person.id);
-                      }}
-                    >
-                      <span className="font-semibold text-foreground">
-                        {initials(person.name)}
-                      </span>
-                      <span className="wrap-anywhere">{person.name}</span>
-                      <span className="text-xs text-muted-foreground wrap-anywhere">
-                        {person.email}
-                      </span>
-                    </button>
-                  </td>
-                  <td className="py-2">{statusPill(person.status)}</td>
-                  <td className={`py-2 ${wideColumn}`}>
-                    <span className="flex flex-wrap items-center gap-1">
-                      {person.groups.slice(0, 2).map((group) => (
-                        <Pill key={group.id} tone="info">
-                          {group.label}
-                        </Pill>
-                      ))}
-                      {person.groups.length > 2 ? (
-                        <span className="text-xs text-muted-foreground">
-                          +{person.groups.length - 2}
-                        </span>
-                      ) : null}
+        <div className="mt-4">
+          <DataTable
+            label="People"
+            rows={filtered}
+            rowKey={(person) => person.id}
+            rowLabel={(person) => person.email}
+            onOpenRow={(person) => {
+              setSelectedId(person.id);
+              setInspectorOpen(true);
+              props.onSelectPerson?.(person.id);
+            }}
+            columns={[
+              {
+                id: "person",
+                header: "Person",
+                cell: (person) => (
+                  <span className="flex flex-col items-start">
+                    <span className="font-semibold">
+                      {initials(person.name)}
                     </span>
-                  </td>
-                  <td className={`py-2 text-foreground ${wideColumn}`}>
-                    {person.roleCount}
-                  </td>
-                  <td className={`py-2 text-muted-foreground ${wideColumn}`}>
-                    {fmtDateTime(
-                      person.lastSignInAt,
-                      props.viewer.timeZone,
-                      "—"
-                    )}
-                  </td>
-                  <td className="py-2 text-right">
-                    <RowMenu
-                      person={person}
-                      self={self}
-                      lastAdministrator={lastAdministrator}
-                      blockedReason={
-                        self || lastAdministrator ? blockedReason : undefined
-                      }
-                      onDisable={() => setConfirm({ kind: "disable", person })}
-                      onEnable={() => props.onEnablePerson?.(person.id)}
-                      onRemove={() => setConfirm({ kind: "remove", person })}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    <span>{person.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
+                      {person.email}
+                    </span>
+                  </span>
+                ),
+              },
+              { id: "groups", header: "Groups", cell: groupPills },
+              {
+                id: "roles",
+                header: "Roles",
+                cell: (person) => person.roleCount,
+              },
+              { id: "lastSignIn", header: "Last sign-in", cell: lastSignIn },
+            ]}
+            status={(person) => statusPill(person.status)}
+            facts={(person) => [
+              groupPills(person),
+              `${person.roleCount} roles · last sign-in ${lastSignIn(person)}`,
+            ]}
+            actions={rowActions}
+          />
+        </div>
       )}
 
-      {adding ? (
-        <AddPersonDialog
-          settings={props.settings}
-          roles={props.roles}
-          canAssignRoles={props.canAssignRoles}
-          error={props.error}
-          submitting={addSubmitting}
-          onCancel={() => setAdding(false)}
-          onSubmit={(input) => {
-            void submitAdd(input);
-          }}
-        />
-      ) : null}
+      <AddPersonDialog
+        open={adding}
+        settings={props.settings}
+        roles={props.roles}
+        canAssignRoles={props.canAssignRoles}
+        error={props.error}
+        submitting={addSubmitting}
+        onCancel={() => setAdding(false)}
+        onSubmit={(input) => {
+          void submitAdd(input);
+        }}
+      />
 
       {selected === undefined ? null : (
         <PersonInspector
+          open={inspectorOpen}
           person={selected}
           viewer={props.viewer}
           self={selected.id === props.viewer.id}
@@ -801,12 +859,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
             selected.id
           )}
           onClose={() => {
-            setSelectedId(null);
+            setInspectorOpen(false);
             props.onSelectPerson?.(null);
           }}
-          onDisable={() => setConfirm({ kind: "disable", person: selected })}
+          onDisable={() => props.onDisablePerson?.(selected.id)}
           onEnable={() => props.onEnablePerson?.(selected.id)}
-          onRemove={() => setConfirm({ kind: "remove", person: selected })}
+          onRemove={() => props.onRemovePerson?.(selected.id)}
           onResendSetPassword={() => props.onResendSetPassword?.(selected.id)}
           onResendInvitation={() => props.onResendInvitation?.(selected.id)}
           onRevokeSession={(sessionId) =>
@@ -821,34 +879,23 @@ export function PeopleScreen(props: PeopleScreenProps) {
         />
       )}
 
-      {confirm === null ? null : (
-        <ConfirmDialog
-          title={
-            confirm.kind === "disable"
-              ? `Disable ${confirm.person.name}?`
-              : `Remove ${confirm.person.name}?`
-          }
-          consequence={
-            confirm.kind === "disable"
-              ? "They can no longer sign in but keep their history and their roles."
-              : "Every session ends, they are banned from signing in again, and their group memberships and direct roles go. Their name, email and audit trail stay."
-          }
-          confirmLabel={
-            confirm.kind === "disable" ? "Disable" : "Remove person"
-          }
-          onConfirm={() => {
-            const request = confirm;
-            setConfirm(null);
+      <PersonConfirms
+        name={confirm?.person.name ?? ""}
+        confirm={confirm?.kind ?? null}
+        onConfirm={(kind) => {
+          if (confirm === null) return;
 
-            if (request.kind === "disable") {
-              props.onDisablePerson?.(request.person.id);
-            } else {
-              props.onRemovePerson?.(request.person.id);
-            }
-          }}
-          onCancel={() => setConfirm(null)}
-        />
-      )}
+          setConfirm({ ...confirm, kind: null });
+
+          if (kind === "disable") props.onDisablePerson?.(confirm.person.id);
+          else props.onRemovePerson?.(confirm.person.id);
+        }}
+        onClose={() =>
+          setConfirm((current) =>
+            current === null ? null : { ...current, kind: null }
+          )
+        }
+      />
     </div>
   );
 }
@@ -862,7 +909,7 @@ function FilterChip(props: {
       {props.label}
       <button
         type="button"
-        className={btnGhost}
+        className={`inline-flex min-h-11 items-center rounded-full px-2 font-medium underline lg:min-h-0 ${focusRing}`}
         aria-label={`Remove filter ${props.label}`}
         onClick={props.onRemove}
       >
@@ -874,6 +921,7 @@ function FilterChip(props: {
 
 /** The Add person dialog (R-40, R-40a, design: email, display name, roles, notes). */
 export function AddPersonDialog(props: {
+  readonly open?: boolean;
   readonly settings: PeopleScreenProps["settings"];
   readonly roles: readonly AssignableRole[];
   /** False hides the role picker for a holder of `core:people:manage` alone (DEC-39). */
@@ -884,11 +932,26 @@ export function AddPersonDialog(props: {
   readonly onCancel: () => void;
   readonly onSubmit: (input: NewPersonInput) => void;
 }) {
+  const open = props.open ?? true;
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [roleIds, setRoleIds] = useState<readonly string[]>([]);
+  const [roleIds, setRoleIds] = useState<string[]>([]);
   const [accountType, setAccountType] = useState<AccountType>("brokered");
   const [sendInvitation, setSendInvitation] = useState(true);
+  const emailId = useId();
+  const nameId = useId();
+  const rolesId = useId();
+
+  // The dialog stays mounted, so each open starts from an empty form.
+  useEffect(() => {
+    if (!open) return;
+
+    setEmail("");
+    setName("");
+    setRoleIds([]);
+    setAccountType("brokered");
+    setSendInvitation(true);
+  }, [open]);
 
   const localAvailable = props.settings.localAccountsEnabled;
 
@@ -896,129 +959,127 @@ export function AddPersonDialog(props: {
 
   const brokered = !localAvailable || accountType === "brokered";
 
+  const roleItems = props.roles.map((role) => ({
+    value: role.id,
+    label: role.name,
+  }));
+
   return (
-    // On a phone the dialog is a bottom sheet whose body scrolls and whose footer stays put, so
-    // the primary action is reachable on a short viewport (DEC-25). On a wider screen it is a
-    // centered card capped to the viewport.
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add person"
-        className="flex max-h-screen w-full max-w-md flex-col rounded-t-xl bg-white shadow-xl sm:rounded-xl dark:bg-card"
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <h2 className="text-lg font-semibold text-foreground">Add person</h2>
-          <div className="mt-3 space-y-3">
-            <Field label="Email">
-              <input
-                className={inputClass}
-                aria-label="Email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </Field>
-            <Field label="Display name">
-              <input
-                className={inputClass}
-                aria-label="Display name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </Field>
-            {canAssignRoles ? (
-              <Field label="Roles">
-                <select
-                  multiple
-                  className={`${inputClass} h-28`}
-                  aria-label="Roles"
-                  value={[...roleIds]}
-                  onChange={(event) =>
-                    setRoleIds(
-                      [...event.target.selectedOptions].map(
-                        (option) => option.value
-                      )
-                    )
-                  }
-                >
-                  {props.roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) props.onCancel();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add person</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <Field>
+            <FieldLabel htmlFor={emailId}>Email</FieldLabel>
+            <Input
+              id={emailId}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={nameId}>Display name</FieldLabel>
+            <Input
+              id={nameId}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </Field>
+          {canAssignRoles ? (
+            <Field>
+              <FieldLabel htmlFor={rolesId}>Roles</FieldLabel>
+              <Select
+                multiple
+                items={roleItems}
+                value={roleIds}
+                onValueChange={setRoleIds}
+              >
+                <SelectTrigger id={rolesId}>
+                  <SelectValue placeholder="Choose roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
                   ))}
-                </select>
-              </Field>
-            ) : null}
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
 
-            {localAvailable ? (
-              <fieldset>
-                <legend className="mb-1 text-xs font-semibold text-foreground">
-                  Account type
-                </legend>
-                <label className="mr-4 inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="account-type"
-                    value="brokered"
-                    checked={accountType === "brokered"}
-                    onChange={() => setAccountType("brokered")}
-                  />
-                  Identity provider
-                </label>
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="account-type"
-                    value="local"
-                    checked={accountType === "local"}
-                    onChange={() => setAccountType("local")}
-                  />
-                  Local password
-                </label>
-              </fieldset>
-            ) : null}
-
-            {localAvailable && accountType === "local" ? (
-              <p className="text-sm text-muted-foreground">
-                A separate email sets this person&apos;s password.
-              </p>
-            ) : null}
-
-            {brokered ? (
-              <label className="flex items-center gap-2 text-sm text-foreground">
+          {localAvailable ? (
+            <fieldset>
+              <legend className="mb-1 text-xs font-semibold text-foreground">
+                Account type
+              </legend>
+              <label className="mr-4 inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
                 <input
-                  type="checkbox"
-                  checked={sendInvitation}
-                  onChange={(event) => setSendInvitation(event.target.checked)}
+                  type="radio"
+                  name="account-type"
+                  value="brokered"
+                  className={`size-4 ${focusRing}`}
+                  checked={accountType === "brokered"}
+                  onChange={() => setAccountType("brokered")}
                 />
-                Send invitation email
+                Identity provider
               </label>
-            ) : null}
+              <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
+                <input
+                  type="radio"
+                  name="account-type"
+                  value="local"
+                  className={`size-4 ${focusRing}`}
+                  checked={accountType === "local"}
+                  onChange={() => setAccountType("local")}
+                />
+                Local password
+              </label>
+            </fieldset>
+          ) : null}
 
+          {localAvailable && accountType === "local" ? (
             <p className="text-sm text-muted-foreground">
-              {props.settings.onboardingMode === "jit"
-                ? "People in a group mapped to a role can also sign in without being added here."
-                : "Pending until first sign-in."}
+              A separate email sets this person&apos;s password.
             </p>
+          ) : null}
 
-            {props.error === undefined ? null : (
-              <p role="alert" className="text-sm font-medium text-destructive">
-                {props.error}
-              </p>
-            )}
-          </div>
+          {brokered ? (
+            <label className="flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
+              <input
+                type="checkbox"
+                className={`size-4 ${focusRing}`}
+                checked={sendInvitation}
+                onChange={(event) => setSendInvitation(event.target.checked)}
+              />
+              Send invitation email
+            </label>
+          ) : null}
+
+          <p className="text-sm text-muted-foreground">
+            {props.settings.onboardingMode === "jit"
+              ? "People in a group mapped to a role can also sign in without being added here."
+              : "Pending until first sign-in."}
+          </p>
+
+          {props.error === undefined ? null : (
+            <p role="alert" className="text-sm font-medium text-destructive">
+              {props.error}
+            </p>
+          )}
         </div>
-        <div className="flex justify-end gap-2 border-t border-input p-5">
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={props.onCancel}
-          >
+        <DialogFooter>
+          <Button variant="secondary" onClick={props.onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
+          </Button>
+          <Button
             disabled={email.trim() === "" || props.submitting === true}
             onClick={() =>
               props.onSubmit({
@@ -1031,9 +1092,9 @@ export function AddPersonDialog(props: {
             }
           >
             Add person
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

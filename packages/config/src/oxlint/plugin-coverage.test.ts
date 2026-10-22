@@ -13,6 +13,8 @@ const CONFIG_ROOT = join(import.meta.dirname, "../..");
 const PLUGIN_FILES = [
   "oxlint/boundaries/index.ts",
   "oxlint/boundaries/rules/no-relative-package-escape.ts",
+  "oxlint/design-system/index.ts",
+  "oxlint/design-system/rules/single-owner.ts",
 ];
 
 describe("the boundary plugin compiler coverage", () => {

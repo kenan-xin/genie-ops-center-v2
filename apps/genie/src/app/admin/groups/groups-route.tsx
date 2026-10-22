@@ -70,7 +70,10 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       lastAdministratorGroupIds={
         detail.data?.lastAdministrator === true ? [selected] : []
       }
-      onSelectGroup={setSelectedId}
+      // A close keeps the last detail, so the sheet keeps its members and roles while it closes.
+      onSelectGroup={(groupId) => {
+        if (groupId !== null) setSelectedId(groupId);
+      }}
       details={
         detail.data === undefined
           ? {}

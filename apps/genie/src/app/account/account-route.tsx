@@ -2,6 +2,7 @@
 
 import { AccountPage } from "@genie/core/features/account";
 import type { AccountSession } from "@genie/core/features/account";
+import { toast } from "@genie/ui";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
@@ -49,8 +50,6 @@ export function AccountRoute(props: {
 
   const [sessions, setSessions] = useState(props.sessions);
 
-  const [notice, setNotice] = useState<string | null>(null);
-
   async function revokeOne(sessionId: string): Promise<void> {
     const response = await postSession("/api/session/revoke", { sessionId });
 
@@ -58,17 +57,19 @@ export function AccountRoute(props: {
       setSessions((current) =>
         current.filter((session) => session.id !== sessionId)
       );
-      setNotice("That session was signed out.");
+      toast({ tone: "success", title: "That session was signed out." });
       router.refresh();
 
       return;
     }
 
-    setNotice(
-      response.status === 401
-        ? "Your own session expired. Sign in again."
-        : "That session could not be signed out. Try again."
-    );
+    toast({
+      tone: "error",
+      title:
+        response.status === 401
+          ? "Your own session expired. Sign in again."
+          : "That session could not be signed out. Try again.",
+    });
 
     if (response.status === 401) {
       window.location.assign("/sign-in?error=session_expired");
@@ -82,17 +83,19 @@ export function AccountRoute(props: {
 
     if (response.ok) {
       setSessions((current) => current.filter((session) => session.isCurrent));
-      setNotice("Every other session was signed out.");
+      toast({ tone: "success", title: "Every other session was signed out." });
       router.refresh();
 
       return;
     }
 
-    setNotice(
-      response.status === 401
-        ? "Your own session expired. Sign in again."
-        : "The other sessions could not be signed out. Try again."
-    );
+    toast({
+      tone: "error",
+      title:
+        response.status === 401
+          ? "Your own session expired. Sign in again."
+          : "The other sessions could not be signed out. Try again.",
+    });
 
     if (response.status === 401) {
       window.location.assign("/sign-in?error=session_expired");
@@ -101,11 +104,6 @@ export function AccountRoute(props: {
 
   return (
     <>
-      {notice === null ? null : (
-        <p role="status" className="text-sm text-muted-foreground">
-          {notice}
-        </p>
-      )}
       <AccountPage
         profile={props.profile}
         groups={props.groups}

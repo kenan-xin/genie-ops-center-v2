@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -186,6 +187,14 @@ test("a signed-in reader filters, pages and opens the audit log (AC-16)", async 
   );
 
   await signInThroughKeycloak(page, { email });
+
+  // Every e2e reader is "E2E Person"; the actor list names each one, so give this reader a name
+  // that picks exactly one option.
+  const actorName = `Audit reader ${randomUUID().slice(0, 8)}`;
+
+  await queryDatabase(
+    `update "user" set name = '${actorName}' where id = '${actorId}'`
+  );
   await page.goto("/admin/audit");
 
   const search = page.getByLabel("Search summary or target");
@@ -210,11 +219,9 @@ test("a signed-in reader filters, pages and opens the audit log (AC-16)", async 
   await page.getByRole("button", { name: /^Filters/ }).click();
 
   // Action.
-  await page
-    .getByLabel("Action", { exact: true })
-    .selectOption("core:role_created");
+  await chooseOption(page, "Action", "core:role_created");
   await expect(showing(page, 2, 2)).toBeVisible();
-  await page.getByLabel("Action", { exact: true }).selectOption("all");
+  await chooseOption(page, "Action", "All actions");
 
   // The operator filter: null actor and an `ops:` action (R-68).
   await page.getByRole("checkbox", { name: "Operator rows only" }).check();
@@ -222,26 +229,24 @@ test("a signed-in reader filters, pages and opens the audit log (AC-16)", async 
   await page.getByRole("checkbox", { name: "Operator rows only" }).uncheck();
 
   // Actor, by the reader's own id, and the system actor of the operator rows.
-  await page.getByLabel("Actor", { exact: true }).selectOption(actorId ?? "");
+  await chooseOption(page, "Actor", actorName);
   await expect(showing(page, 50, 58)).toBeVisible();
-  await page.getByLabel("Actor", { exact: true }).selectOption("system");
+  await chooseOption(page, "Actor", "System");
   await expect(showing(page, 3, 3)).toBeVisible();
-  await page.getByLabel("Actor", { exact: true }).selectOption("all");
+  await chooseOption(page, "Actor", "All actors");
 
   // Target type.
-  await page
-    .getByLabel("Target type", { exact: true })
-    .selectOption("placeholder-record");
+  await chooseOption(page, "Target type", "Placeholder record");
   await expect(showing(page, 1, 1)).toBeVisible();
-  await page.getByLabel("Target type", { exact: true }).selectOption("all");
+  await chooseOption(page, "Target type", "All targets");
 
   // Date range: a custom window around the row older than the default 30 days.
-  await page.getByLabel("Date range", { exact: true }).selectOption("custom");
+  await chooseOption(page, "Date range", "Custom range");
   await page.getByLabel("From", { exact: true }).fill(day(45));
   await page.getByLabel("To", { exact: true }).fill(day(35));
   await expect(showing(page, 1, 1)).toBeVisible();
   await expect(page.getByText(`${marker} old`).first()).toBeAttached();
-  await page.getByLabel("Date range", { exact: true }).selectOption("30d");
+  await chooseOption(page, "Date range", "Last 30 days");
   // The unfiltered query is cached with both pages, so only the total is fixed here.
   await expect(page.getByText(/^Showing \d+ of 61$/)).toBeVisible();
 

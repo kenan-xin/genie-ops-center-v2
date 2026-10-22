@@ -1,4 +1,4 @@
-import { focusRing } from "@genie/ui";
+import { Button, Field, FieldLabel, Input, focusRing } from "@genie/ui";
 import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
@@ -57,9 +57,7 @@ function Block(props: {
   return (
     <section className="flex flex-col gap-3">
       <header>
-        <h2 className="font-heading text-lg font-bold text-foreground">
-          {props.title}
-        </h2>
+        <h2 className="text-lg font-bold text-foreground">{props.title}</h2>
         <p className="text-sm text-muted-foreground">{props.description}</p>
       </header>
       {props.children}
@@ -81,13 +79,14 @@ function SessionsBlock(props: {
       description="Where this account is signed in, and how to end a session."
     >
       {others.length === 0 ? null : (
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={() => props.onRevokeOtherSessions?.()}
-          className={`h-10 w-fit rounded-lg border border-input px-3 text-sm font-semibold text-foreground hover:bg-muted ${focusRing}`}
+          className="w-fit"
         >
           Sign out all other sessions
-        </button>
+        </Button>
       )}
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border bg-card">
         {props.sessions.map((session) => (
@@ -105,13 +104,14 @@ function SessionsBlock(props: {
                   THIS DEVICE
                 </span>
               ) : (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => props.onRevokeSession?.(session.id)}
-                  className={`h-8 rounded-lg border border-input px-2.5 text-sm font-semibold hover:bg-muted ${focusRing}`}
                 >
                   Sign out
-                </button>
+                </Button>
               )}
             </div>
             <span className="text-sm text-muted-foreground">
@@ -154,10 +154,8 @@ function EnrollmentPanel(props: {
         </p>
       )}
       <div className="flex items-end gap-2">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="reenroll-code" className="text-sm font-semibold">
-            Code from the app
-          </label>
+        <Field className="w-40">
+          <FieldLabel htmlFor="reenroll-code">Code from the app</FieldLabel>
           <input
             id="reenroll-code"
             inputMode="numeric"
@@ -165,17 +163,17 @@ function EnrollmentPanel(props: {
             maxLength={6}
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-            className={`h-11 w-40 rounded-lg border border-input bg-background px-3 font-mono text-lg tracking-widest ${focusRing}`}
+            className={`h-11 rounded-lg border border-input bg-background px-3 font-mono text-lg tracking-widest ${focusRing}`}
           />
-        </div>
-        <button
+        </Field>
+        <Button
           type="button"
+          size="lg"
           onClick={() => props.onConfirm(code)}
           disabled={code.length !== 6 || props.pending}
-          className={`h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
         >
           Confirm
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -213,31 +211,29 @@ function AuthenticatorBlock(props: {
             <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes} />
           ) : null}
           <div className="flex items-end gap-2">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reenroll-password"
-                className="text-sm font-semibold"
-              >
+            <Field className="w-64">
+              <FieldLabel htmlFor="reenroll-password">
                 Confirm your password
-              </label>
-              <input
+              </FieldLabel>
+              <Input
+                size="lg"
                 id="reenroll-password"
                 type="password"
                 autoComplete="current-password"
                 value={password}
                 disabled={props.rateLimited}
                 onChange={(event) => setPassword(event.target.value)}
-                className={`h-11 w-64 rounded-lg border border-input bg-background px-3 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
               />
-            </div>
-            <button
+            </Field>
+            <Button
               type="button"
+              variant="secondary"
+              size="lg"
               onClick={() => props.onStartReenroll?.(password)}
               disabled={password === "" || props.pending || props.rateLimited}
-              className={`h-11 rounded-lg border border-input px-4 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
             >
               Start re-enroll
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -251,13 +247,14 @@ function AuthenticatorBlock(props: {
               . Re-enrolling replaces the current app.
             </span>
           </span>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => setReenrolling(true)}
-            className={`h-10 shrink-0 rounded-lg border border-input px-3 text-sm font-semibold hover:bg-muted ${focusRing}`}
+            className="shrink-0"
           >
             Re-enroll
-          </button>
+          </Button>
         </div>
       )}
     </Block>
@@ -270,9 +267,7 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
       data-testid="break-glass-account"
       className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
     >
-      <h1 className="font-heading text-2xl font-bold text-foreground">
-        Account
-      </h1>
+      <h1 className="text-2xl font-bold text-foreground">Account</h1>
 
       <Block
         title="Profile"

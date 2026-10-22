@@ -86,7 +86,10 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
     )
     .toBe("pending:true");
 
-  await expect(page.getByText(personName)).toBeVisible();
+  // The table and the phone card list both hold the row, and only one of them shows.
+  await expect(
+    page.getByText(personName).filter({ visible: true })
+  ).toBeVisible();
 
   // Resend set-password is rate limited to three per hour per target person (R-19, R-41). Open the
   // person and press it three times: each is allowed and sends a fresh realm email.

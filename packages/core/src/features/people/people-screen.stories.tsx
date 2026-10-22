@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   FIXTURE_DETAILS,
@@ -11,7 +11,7 @@ import {
   FIXTURE_SOLE_ADMIN_PERSON_ID,
   FIXTURE_VIEWER,
 } from "./__fixtures__/people.ts";
-import { PeopleScreen } from "./people-screen.tsx";
+import { PeopleScreen, SELF_REASON } from "./people-screen.tsx";
 import type { PeopleScreenProps } from "./types.ts";
 
 const onAddPerson = fn();
@@ -67,14 +67,157 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Ada Admin")).toBeInTheDocument();
-    await expect(canvas.getByText("Leo Local")).toBeInTheDocument();
-    await expect(canvas.getByText("Bea Brokered")).toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    await expect(table.getByText("Ada Admin")).toBeInTheDocument();
+    await expect(table.getByText("Leo Local")).toBeInTheDocument();
+    await expect(table.getByText("Bea Brokered")).toBeInTheDocument();
 
     // The three statuses render as pills.
-    await expect(canvas.getAllByText("Active").length).toBeGreaterThan(0);
-    await expect(canvas.getAllByText("Pending").length).toBe(2);
-    await expect(canvas.getByText("Disabled")).toBeInTheDocument();
+    await expect(table.getAllByText("Active").length).toBeGreaterThan(0);
+    await expect(table.getAllByText("Pending").length).toBe(2);
+    await expect(table.getByText("Disabled")).toBeInTheDocument();
+  },
+};
+
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = within(canvas.getByRole("list", { name: "People" }));
+
+    await expect(canvas.queryByRole("table")).toBeNull();
+    // The toolbar and a long email must not push the page sideways.
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
+    await expect(
+      list.getByRole("button", { name: "Actions for ada@example.com" })
+    ).toBeInTheDocument();
+
+    await userEvent.click(list.getByRole("button", { name: /Leo Local/ }));
+
+    await expect(
+      await screen.findByRole("dialog", { name: "Leo Local" })
+    ).toBeInTheDocument();
+  },
+};
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+  play: async ({ canvas }) => {
+    // Open the inspector, so that the a11y addon measures the sheet in the dark theme too.
+    await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
+
+    const inspector = await screen.findByRole("dialog", { name: "Ada Admin" });
+
+    await waitFor(() => expect(inspector).toBeVisible());
+  },
+};
+
+export const RowMenuNamesTheRefusal: Story = {
+  play: async ({ canvas }) => {
+    onRemovePerson.mockClear();
+
+    // The viewer's own row keeps Disable and Remove, refused with the server's reason (R-38).
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for ada@example.com" })
+    );
+
+    for (const name of ["Disable", "Remove"]) {
+      // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
+      const item = await screen.findByRole("menuitem", { name });
+
+      // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
+      await expect(item).toHaveAttribute("aria-disabled", "true");
+      // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
+      await expect(item).toHaveAttribute("title", SELF_REASON);
+    }
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+    );
+
+    // Another row's Remove confirms at screen level before it fires.
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for dan@example.com" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Re-enable" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for dan@example.com" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove" })
+    );
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: "Remove Dan Disabled?" })
+    );
+
+    await userEvent.click(
+      confirm.getByRole("button", { name: "Remove person" })
+    );
+
+    expect(onEnablePerson).toHaveBeenCalledWith("u-dan");
+    expect(onRemovePerson).toHaveBeenCalledWith("u-dan");
+  },
+};
+
+export const DisableFromTheInspector: Story = {
+  play: async ({ canvas }) => {
+    onDisablePerson.mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: /Bea Brokered/ }));
+
+    const inspector = await screen.findByRole("dialog", {
+      name: "Bea Brokered",
+    });
+
+    await userEvent.click(
+      within(inspector).getByRole("button", { name: "Disable" })
+    );
+    await screen.findByRole("dialog", { name: "Disable Bea Brokered?" });
+
+    // One Escape closes only the confirm dialog, and focus returns to the control in the sheet.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Disable Bea Brokered?" })
+      ).not.toBeInTheDocument()
+    );
+    await expect(
+      screen.getByRole("dialog", { name: "Bea Brokered" })
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(inspector).getByRole("button", { name: "Disable" })
+      ).toHaveFocus()
+    );
+    await expect(onDisablePerson).not.toHaveBeenCalled();
+
+    // Confirming fires the write.
+    await userEvent.click(
+      within(inspector).getByRole("button", { name: "Disable" })
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Disable Bea Brokered?" })
+      ).getByRole("button", { name: "Disable" })
+    );
+    await expect(onDisablePerson).toHaveBeenCalledWith("u-bea");
+
+    // The next Escape closes the sheet.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Disable Bea Brokered?" })
+      ).not.toBeInTheDocument()
+    );
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    );
   },
 };
 
@@ -100,11 +243,21 @@ export const AddPersonSendsTheInvitationByDefault: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await userEvent.type(dialog.getByLabelText("Email"), "new@example.com");
     await userEvent.type(dialog.getByLabelText("Display name"), "New Person");
-    await userEvent.selectOptions(dialog.getByLabelText("Roles"), "r-reader");
+    await userEvent.click(dialog.getByRole("combobox", { name: "Roles" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "E2E reader" })
+    );
+    await userEvent.keyboard("{Escape}");
+    // The trigger names the picked role, not its id.
+    await expect(
+      dialog.getByRole("combobox", { name: "Roles" })
+    ).toHaveTextContent("E2E reader");
 
     // R-40a: the invitation checkbox is checked by default.
     const invitation = dialog.getByRole("checkbox", {
@@ -131,7 +284,9 @@ export const UncheckedInvitationSendsNoEmail: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await userEvent.type(dialog.getByLabelText("Email"), "quiet@example.com");
     await userEvent.click(
@@ -154,7 +309,9 @@ export const AddLocalAccountNotesTheSetPasswordEmail: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await userEvent.type(dialog.getByLabelText("Email"), "local@example.com");
     await userEvent.click(dialog.getByLabelText("Local password"));
@@ -184,7 +341,9 @@ export const JitModeNoteExplainsSelfAdmission: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await expect(
       dialog.getByText(
@@ -200,7 +359,9 @@ export const PendingLocalOffersResendSetPassword: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: /Leo Local/ }));
 
-    const inspector = within(canvas.getByRole("dialog", { name: "Leo Local" }));
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Leo Local" })
+    );
 
     await expect(
       inspector.getByText("A separate email sets this person's password.")
@@ -227,7 +388,7 @@ export const PendingBrokeredOffersResendInvitation: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /Bea Brokered/ }));
 
     const inspector = within(
-      canvas.getByRole("dialog", { name: "Bea Brokered" })
+      await screen.findByRole("dialog", { name: "Bea Brokered" })
     );
 
     await expect(
@@ -247,7 +408,9 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
 
-    const inspector = within(canvas.getByRole("dialog", { name: "Ada Admin" }));
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Ada Admin" })
+    );
 
     await expect(
       inspector.getByRole("button", { name: "Disable" })
@@ -268,13 +431,13 @@ export const RemoveConfirmsBeforeItFires: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /Dan Disabled/ }));
 
     const inspector = within(
-      canvas.getByRole("dialog", { name: "Dan Disabled" })
+      await screen.findByRole("dialog", { name: "Dan Disabled" })
     );
 
     await userEvent.click(inspector.getByRole("button", { name: /Remove/ }));
 
     const confirm = within(
-      canvas.getByRole("dialog", { name: "Remove Dan Disabled?" })
+      await screen.findByRole("dialog", { name: "Remove Dan Disabled?" })
     );
 
     await expect(confirm.getByText(/Every session ends/)).toBeInTheDocument();
@@ -290,14 +453,18 @@ export const RemoveConfirmsBeforeItFires: Story = {
 export const StatusFilterNarrowsTheList: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Filters" }));
-    await userEvent.selectOptions(
-      canvas.getByLabelText("Filter by status"),
-      "pending"
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Filter by status" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Pending" })
     );
 
-    await expect(canvas.getByText("Leo Local")).toBeInTheDocument();
-    await expect(canvas.getByText("Bea Brokered")).toBeInTheDocument();
-    await expect(canvas.queryByText("Ada Admin")).not.toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    await expect(table.getByText("Leo Local")).toBeInTheDocument();
+    await expect(table.getByText("Bea Brokered")).toBeInTheDocument();
+    await expect(table.queryByText("Ada Admin")).not.toBeInTheDocument();
 
     // The active filter renders as a removable chip with a Clear all.
     await expect(canvas.getByText("Status: Pending")).toBeInTheDocument();
@@ -306,7 +473,7 @@ export const StatusFilterNarrowsTheList: Story = {
       canvas.getByRole("button", { name: "Remove filter Status: Pending" })
     );
 
-    await expect(canvas.getByText("Ada Admin")).toBeInTheDocument();
+    await expect(table.getByText("Ada Admin")).toBeInTheDocument();
   },
 };
 
@@ -314,8 +481,10 @@ export const SearchNarrowsTheList: Story = {
   play: async ({ canvas }) => {
     await userEvent.type(canvas.getByLabelText("Search people"), "bea");
 
-    await expect(canvas.getByText("Bea Brokered")).toBeInTheDocument();
-    await expect(canvas.queryByText("Ada Admin")).not.toBeInTheDocument();
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    await expect(table.getByText("Bea Brokered")).toBeInTheDocument();
+    await expect(table.queryByText("Ada Admin")).not.toBeInTheDocument();
   },
 };
 
@@ -347,7 +516,9 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
@@ -359,7 +530,7 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
       "already exists"
     );
     await expect(
-      canvas.getByRole("dialog", { name: "Add person" })
+      screen.getByRole("dialog", { name: "Add person" })
     ).toBeInTheDocument();
     await expect(dialog.getByLabelText("Email")).toHaveValue("ada@example.com");
   },
@@ -373,7 +544,9 @@ export const AddPersonRateLimitedNamesTheWait: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await expect(dialog.getByRole("alert")).toHaveTextContent(
       "Try again in 5 minutes."
@@ -394,7 +567,9 @@ export const RolePickerHiddenWithoutTheRolesPermission: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
 
     await expect(dialog.queryByLabelText("Roles")).not.toBeInTheDocument();
   },

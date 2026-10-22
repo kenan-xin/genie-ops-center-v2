@@ -7,6 +7,10 @@ const LINT_TIMEOUT = 120_000;
 
 const DISCLOSURE = `import { Disclosure } from "@genie/ui";\n`;
 
+const BUTTON = `import { Button } from "@genie/ui";\n\n`;
+
+const CORE_SCREEN = "packages/core/src/features/__shadcn__/__shadcn__.tsx";
+
 describe.concurrent(
   "the @shadcn/lint design-system rules run through the shared lint target",
   { timeout: LINT_TIMEOUT },
@@ -15,6 +19,37 @@ describe.concurrent(
       const result = await lintAt(
         "packages/ui/src/__shadcn__/__shadcn__.tsx",
         `${DISCLOSURE}export const a = <Disclosure summary="x" className="p-4" />;\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toMatch(/no-restyle/);
+    });
+
+    it("lets a screen place a design-system component with layout classes", async () => {
+      const result = await lintAt(
+        CORE_SCREEN,
+        `${BUTTON}export const a = <Button className="mt-2 w-full md:w-auto" />;\n`
+      );
+
+      expect(result.failed).toBe(false);
+    });
+
+    it("refuses a height class on a design-system component (R-5)", async () => {
+      const result = await lintAt(
+        CORE_SCREEN,
+        `${BUTTON}export const a = <Button className="h-12" />;\n`
+      );
+
+      expect(result.failed).toBe(true);
+
+      expect(result.output).toMatch(/no-restyle/);
+    });
+
+    it("still refuses a color class on a design-system component", async () => {
+      const result = await lintAt(
+        CORE_SCREEN,
+        `${BUTTON}export const a = <Button className="bg-muted" />;\n`
       );
 
       expect(result.failed).toBe(true);
@@ -96,6 +131,25 @@ describe.concurrent(
         [
           ["apps/genie/src/app/layout.tsx"],
           { "shadcn/no-inline-styles": "off" },
+        ],
+      ]);
+    });
+
+    it("pins the fixed-tone exception to the status tone files and one rule", () => {
+      const exceptions = (sharedOxlintConfig.overrides ?? []).filter(
+        (entry) =>
+          entry.rules?.["shadcn/no-raw-colors"] === "off" &&
+          entry.files?.some((file) => file.startsWith("packages/ui/src/"))
+      );
+
+      expect(exceptions.map((entry) => [entry.files, entry.rules])).toEqual([
+        [
+          [
+            "packages/ui/src/components/badge.tsx",
+            "packages/ui/src/components/field.tsx",
+            "packages/ui/src/parts/toast.tsx",
+          ],
+          { "shadcn/no-raw-colors": "off" },
         ],
       ]);
     });
