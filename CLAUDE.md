@@ -62,7 +62,7 @@ Core documents describe the platform only. Anything specific to one module lives
 
 ## Dependencies
 
-- Do not hand-roll what a well-maintained library already does. Check the standard library first, then `docs/core/tech-stack.md`, then es-toolkit, then a library with active maintenance and a compatible license. Write a helper only when none of those fits.
+- Do not hand-roll what a well-maintained library already does (vision principle 10). We keep the code we write and maintain as small as possible. Before you write a helper, a component, a renderer or an engine, research what exists: the standard library, then `docs/core/tech-stack.md`, then [es-toolkit](https://es-toolkit.dev/), then a library with active maintenance and a compatible license. For UI, also [UI component sources](docs/architecture/ui-component-sources.md). Write your own code only when none fits, and name the libraries you considered and why each did not fit in the commit body.
 - A new dependency must be added to `docs/core/tech-stack.md` with a one-line reason, in the same change that introduces it.
 - Look up current documentation before writing code against a library. Assume memory of its API is outdated.
 
