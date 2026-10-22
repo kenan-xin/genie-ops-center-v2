@@ -2,7 +2,7 @@
 
 Spec: [Identity and access](../../specs/02-identity-and-access.md). Technical plan: [02-identity-and-access.md](../../tech-plans/02-identity-and-access.md). Beads epic: `genie-ops-center-v2-d8l5`. Beads owns live status, claims and blockers. This index records the ticket set and its scope, written from the beads on 2026-10-22.
 
-Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into these tickets. They are closed with a reason that names the new ticket, and their old titles keep the old numbers.
+Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into these tickets. They are closed with a reason that names the new ticket, and their old titles keep the old numbers. All 16 tickets are closed. Three follow-up beads stay deferred: `d8l5.22`, and the owner beads `d8l5.23` and `d8l5.24`.
 
 ## Tickets
 
