@@ -35,6 +35,11 @@ const identitySerializer: NonNullable<
   ChildLoggerOptions["serializers"]
 >[string] = (value) => value;
 
+/** A call site that needs a raw pino Logger, so a protected logger handed to it is a type error. */
+function takesRawLogger(raw: Logger): Logger {
+  return raw;
+}
+
 /**
  * Reaches the runtime guard the way a JavaScript caller would: it builds raw pino child options
  * and presents them to the protected child, which the static boundary already refuses.
@@ -260,14 +265,6 @@ describe("the logger", () => {
     expect(JSON.stringify(lines[0])).not.toContain("abc123");
   });
 
-  it("redacts a bare token pair in a message", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info("callback failed for token=abc123");
-
-    expect(JSON.stringify(lines[0])).not.toContain("abc123");
-  });
-
   // A message and its interpolated values reach the line through pino's own formatting, which
   // never passes the log formatter, so every case below is redacted before pino formats it.
   it("redacts a secret in an object interpolated into a message", () => {
@@ -337,19 +334,39 @@ describe("the logger", () => {
     expect(JSON.stringify(lines[0])).not.toContain("abc123");
   });
 
-  it("redacts an authorization header written into a message", () => {
-    const { lines, destination } = capture();
+  // An authorization header line loses its whole value, the scheme word included, whatever the
+  // scheme and its letter case; the header name stays so the line still says what was refused.
+  it.each([
+    [
+      "Bearer",
+      "rejected Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123",
+      "Authorization",
+    ],
+    [
+      "bearer",
+      "rejected authorization: bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123",
+      "authorization",
+    ],
+    [
+      "Digest",
+      'rejected Authorization: Digest username="genie", response=abc123',
+      "Authorization",
+    ],
+    ["Negotiate", "rejected Authorization: Negotiate abc123", "Authorization"],
+  ])(
+    "redacts a %s authorization header written into a message",
+    (scheme, message, header) => {
+      const { lines, destination } = capture();
 
-    createLogger(ENV, destination).info(
-      "rejected Authorization: Bearer abc.def.ghi"
-    );
+      createLogger(ENV, destination).info(message);
 
-    const written = JSON.stringify(lines[0]);
+      const written = JSON.stringify(lines[0]);
 
-    expect(written).not.toContain("abc.def.ghi");
-    expect(written).not.toContain("Bearer");
-    expect(written).toContain("Authorization");
-  });
+      expect(written).not.toContain("abc123");
+      expect(written).not.toContain(scheme);
+      expect(written).toContain(header);
+    }
+  );
 
   // A credential can reach a message without a header name or a `name=value` pair in front of
   // it: a call site writes `Bearer <token>` on its own, or quotes a header line. The scheme
@@ -366,34 +383,6 @@ describe("the logger", () => {
     expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(written).not.toContain("abc123");
     expect(written).toContain("[redacted]");
-  });
-
-  it("redacts a bearer credential in an authorization header line", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      "rejected Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123"
-    );
-
-    const written = JSON.stringify(lines[0]);
-
-    expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
-    expect(written).not.toContain("abc123");
-    expect(written).toContain("Authorization");
-  });
-
-  it("redacts a lowercase bearer credential in an authorization header line", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      "rejected authorization: bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123"
-    );
-
-    const written = JSON.stringify(lines[0]);
-
-    expect(written).not.toContain("eyJhbGciOiJIUzI1NiJ9");
-    expect(written).not.toContain("abc123");
-    expect(written).toContain("authorization");
   });
 
   it("leaves an ordinary sentence that uses the word bearer alone", () => {
@@ -869,7 +858,7 @@ describe("the logger", () => {
     const logger = createLogger(ENV, destination);
 
     // @ts-expect-error a protected logger is not assignable to a raw pino Logger.
-    const widened: Logger = logger;
+    takesRawLogger(logger);
 
     // @ts-expect-error the protected surface does not expose onChild.
     logger.onChild = (child: Logger) => {
@@ -889,8 +878,6 @@ describe("the logger", () => {
         raw.child({}, { serializers: { password: identitySerializer } });
       }
     );
-
-    expect(widened).toBeDefined();
   });
 
   it("redacts a credential written in a child message prefix", () => {
@@ -940,33 +927,6 @@ describe("the logger", () => {
     expect(bindings.password).toBe("hunter2");
   });
 
-  it("redacts a digest authorization header written into a message", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      'rejected Authorization: Digest username="genie", response=abc123'
-    );
-
-    const written = JSON.stringify(lines[0]);
-
-    expect(written).not.toContain("abc123");
-    expect(written).not.toContain("Digest");
-    expect(written).toContain("Authorization");
-  });
-
-  it("redacts a negotiate authorization header written into a message", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      "rejected Authorization: Negotiate abc123"
-    );
-
-    const written = JSON.stringify(lines[0]);
-
-    expect(written).not.toContain("abc123");
-    expect(written).not.toContain("Negotiate");
-  });
-
   it("redacts an access_token query parameter in a logged link", () => {
     const { lines, destination } = capture();
 
@@ -977,32 +937,23 @@ describe("the logger", () => {
     expect(JSON.stringify(lines[0])).not.toContain("abc123");
   });
 
-  it("redacts a client_secret query parameter in a logged link", () => {
+  // A secret name ahead of `=` is redacted in a message whether it is a bare pair or a query
+  // parameter of a link, and the name is matched case-insensitively like a structured field.
+  it.each([
+    ["a bare token pair", "callback failed for token=abc123"],
+    ["a bare access_token pair", "callback failed for access_token=abc123"],
+    [
+      "a client_secret query parameter",
+      "callback https://upstream.example.com/token?client_secret=abc123 failed",
+    ],
+    [
+      "a query name in mixed case",
+      "https://upstream.example.com/token?Access_Token=abc123",
+    ],
+  ])("redacts %s in a message", (_label, message) => {
     const { lines, destination } = capture();
 
-    createLogger(ENV, destination).warn(
-      "callback https://upstream.example.com/token?client_secret=abc123 failed"
-    );
-
-    expect(JSON.stringify(lines[0])).not.toContain("abc123");
-  });
-
-  it("classifies a query name case-insensitively like a structured field", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      "https://upstream.example.com/token?Access_Token=abc123"
-    );
-
-    expect(JSON.stringify(lines[0])).not.toContain("abc123");
-  });
-
-  it("redacts a bare access_token pair in a message", () => {
-    const { lines, destination } = capture();
-
-    createLogger(ENV, destination).info(
-      "callback failed for access_token=abc123"
-    );
+    createLogger(ENV, destination).info(message);
 
     expect(JSON.stringify(lines[0])).not.toContain("abc123");
   });

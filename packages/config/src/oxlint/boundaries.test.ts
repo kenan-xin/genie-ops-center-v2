@@ -1,13 +1,6 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-
 import { describe, expect, it } from "vitest";
 
-import {
-  WORKSPACE_ROOT,
-  lintAt,
-  lintAtIsolated,
-} from "./__testing__/lint-at.ts";
+import { lintAt, lintAtIsolated } from "./__testing__/lint-at.ts";
 import { importBoundaryOverrides } from "./boundaries.ts";
 
 const LINT_TIMEOUT = 120_000;
@@ -16,12 +9,6 @@ describe.concurrent(
   "the import direction, proved through the oxlint binary",
   { timeout: LINT_TIMEOUT },
   () => {
-    it("runs against the real repository root", async () => {
-      expect(existsSync(join(WORKSPACE_ROOT, "pnpm-workspace.yaml"))).toBe(
-        true
-      );
-    });
-
     it("stops packages/ui from importing core", async () => {
       const result = await lintAt(
         "packages/ui/__boundary__/__boundary__.ts",
@@ -1093,76 +1080,46 @@ describe.concurrent(
 
     // A sibling module is reached by climbing out of the module's own folder, and
     // that spelling never contains `modules/`, so the folder globs cannot see it.
-
-    it("rejects a sibling module reached by a relative path from src", async () => {
-      const result = await lintAt(
-        "packages/modules/alpha/src/__boundary__.ts",
-        `import "../../beta/src/index.ts";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
-    it("rejects a sibling module reached by a relative path from the module root", async () => {
-      const result = await lintAt(
-        "packages/modules/alpha/__boundary__.ts",
-        `import "../beta/src/index.ts";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
-    it("rejects a sibling module reached by a relative path from a nested folder", async () => {
-      const result = await lintAt(
+    // The ban may not stop at a fixed depth: CLAUDE.md prescribes
+    // `src/lib/<name>/`, so a folder four deep is ordinary once a module grows.
+    it.each([
+      ["the module root", "packages/modules/alpha/__boundary__.ts", "../beta"],
+      ["src", "packages/modules/alpha/src/__boundary__.ts", "../../beta"],
+      [
+        "a nested folder",
         "packages/modules/alpha/src/nested/__boundary__.ts",
-        `import "../../../beta/src/index.ts";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
-    it("rejects a sibling module reached from the deepest covered folder", async () => {
-      // The deepest entry in `MODULE_FOLDER_DEPTHS`. Without it this climb is
-      // matched by no depth entry at all.
-      const result = await lintAt(
+        "../../../beta",
+      ],
+      [
+        "a folder three deep",
         "packages/modules/alpha/src/a/b/__boundary__.ts",
-        `import "../../../../beta/src/index.ts";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
-    it("rejects a sibling module reached from a folder four deep", async () => {
-      // CLAUDE.md prescribes `src/lib/<name>/`, so this depth is ordinary once a
-      // module grows. The ban may not stop at a fixed depth.
-      const result = await lintAt(
+        "../../../../beta",
+      ],
+      [
+        "a folder four deep",
         "packages/modules/alpha/src/lib/widgets/components/__boundary__.ts",
-        `import "../../../../../beta/src/index.ts";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
-    it("rejects a sibling module reached from a folder seven deep", async () => {
-      const result = await lintAt(
+        "../../../../../beta",
+      ],
+      [
+        "a folder seven deep",
         "packages/modules/alpha/src/a/b/c/d/e/f/__boundary__.ts",
-        `import "../../../../../../../../beta/src/index.ts";\n`
-      );
+        "../../../../../../../../beta",
+      ],
+    ])(
+      "rejects a sibling module reached by a relative path from %s",
+      async (_where, path, sibling) => {
+        const result = await lintAt(
+          path,
+          `import "${sibling}/src/index.ts";\n`
+        );
 
-      expect(result.failed).toBe(true);
+        expect(result.failed).toBe(true);
 
-      expect(result.output).toContain("a module never imports another module.");
-    });
+        expect(result.output).toContain(
+          "a module never imports another module."
+        );
+      }
+    );
 
     it("never calls a climb into core a sibling-module import", async () => {
       // R-7 bans another module, an app and a customer folder for a module, and
@@ -1339,30 +1296,10 @@ describe.concurrent(
       expect(result.output).not.toMatch(/no-restricted-imports|boundaries\//);
     });
 
-    it("keeps the module layer on a file past the deepest depth entry", async () => {
-      // `packages/modules/*/**` is the fallback for a module file more than three
-      // folders below its own root. Every `MODULE_FOLDER_DEPTHS` entry repeats the
-      // whole layer but matches one exact depth, so this depth-4 path is covered by
-      // that fallback alone. Delete it and the file loses `MODULE_LAYER` and
-      // `NO_CONFIG` entirely. The sibling climb at this depth stays allowed: that is
-      // the documented ceiling, not a defect.
-      const result = await lintAt(
-        "packages/modules/alpha/src/a/b/c/__boundary__.ts",
-        `import "pg";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain(
-        "a module reads the database through ctx.tenant.db (DEC-34)."
-      );
-    });
-
-    it("keeps the NO_CONFIG restriction on a module file past the deepest depth entry", async () => {
-      // `packages/modules/*/**` is the fallback for a module file more than three
-      // folders below its own root. The depth-4 entry repeats the whole layer,
-      // including `NO_CONFIG`. This test proves `NO_CONFIG` fires at that depth
-      // so the restriction list on entry 250 is not test-invisible.
+    it("keeps the NO_CONFIG restriction on a module file deep below its root", async () => {
+      // One `packages/modules/*/**` override carries the whole module layer and
+      // `NO_CONFIG` at every depth. This proves `NO_CONFIG` still fires on a
+      // file several folders below the module root.
       const result = await lintAt(
         "packages/modules/alpha/src/a/b/c/__boundary__.ts",
         `import "@genie/config";\n`

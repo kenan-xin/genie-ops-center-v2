@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -113,10 +113,6 @@ function readProjectGraph(): ReadonlyMap<string, NxProject> {
 const projects = readProjectGraph();
 
 describe("repository hygiene", () => {
-  it("computes the real workspace root", () => {
-    expect(existsSync(join(WORKSPACE_ROOT, "pnpm-workspace.yaml"))).toBe(true);
-  });
-
   it("finds every workspace project", () => {
     expect(projects.size).toBeGreaterThan(0);
   });

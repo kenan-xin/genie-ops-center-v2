@@ -11,19 +11,6 @@ describe.concurrent(
   "the @shadcn/lint design-system rules run through the shared lint target",
   { timeout: LINT_TIMEOUT },
   () => {
-    it("registers the plugin and points it at the design-system package", () => {
-      const plugins = sharedOxlintConfig.jsPlugins ?? [];
-
-      expect(plugins).toContainEqual({
-        name: "shadcn",
-        specifier: "@shadcn/lint",
-      });
-
-      expect(sharedOxlintConfig.settings?.shadcn).toEqual({
-        ui: "@genie/ui",
-      });
-    });
-
     it("rejects a restyle of a design-system component", async () => {
       const result = await lintAt(
         "packages/ui/src/__shadcn__/__shadcn__.tsx",

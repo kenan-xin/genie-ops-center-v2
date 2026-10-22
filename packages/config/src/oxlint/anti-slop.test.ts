@@ -51,17 +51,16 @@ describe.concurrent(
       expect(result.failed).toBe(false);
     });
 
-    it("does not enable any Effect rule, because this repository has not adopted Effect", async () => {
+    it("enables no Effect rule or plugin, because this repository has not adopted Effect", () => {
       const ruleNames = Object.keys(sharedOxlintConfig.rules ?? {});
+
       expect(
         ruleNames.filter((name) => name.startsWith("anti-slop-effect/"))
       ).toEqual([]);
-    });
 
-    it("does not register the Effect plugin entry point", async () => {
-      const serialized = JSON.stringify(sharedOxlintConfig.jsPlugins ?? []);
-
-      expect(serialized.includes("effect")).toBe(false);
+      expect(JSON.stringify(sharedOxlintConfig.jsPlugins ?? [])).not.toContain(
+        "effect"
+      );
     });
   }
 );

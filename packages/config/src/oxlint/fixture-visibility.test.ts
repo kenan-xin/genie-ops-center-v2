@@ -11,7 +11,6 @@ import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { UNIT_TEST_EXCLUDE } from "../vitest/unit.ts";
 import {
   OXLINT_BASE_ARGS,
   WORKSPACE_ROOT,
@@ -241,16 +240,19 @@ const PROBE_TEST_SOURCE = `import { it } from "vitest";\n\nit("probe", () => {})
 
 /**
  * Holds one transient probe per path under the checkout at the same time for the
- * length of `read`, then removes them. One listing can then prove every marker
- * at once, where a listing per marker re-launched the whole vitest subprocess
- * for each.
+ * length of `read`, then removes them. One run of each tool can then prove every
+ * probe at once, where a run per probe re-launched the whole tool for each.
  */
-function withProbes<T>(paths: readonly string[], read: () => T): T {
+function withProbes<T>(
+  paths: readonly string[],
+  source: string,
+  read: () => T
+): T {
   const [path, ...rest] = paths;
 
   if (path === undefined) return read();
 
-  return withProbe(path, PROBE_TEST_SOURCE, () => withProbes(rest, read));
+  return withProbe(path, source, () => withProbes(rest, source, read));
 }
 
 /**
@@ -314,11 +316,13 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
 
       expect(probes.length).toBeGreaterThan(0);
 
-      for (const probe of probes) {
-        withProbe(probe, "export const probe = true;\n", () => {
-          expect(resolvedFiles(project)).not.toContain(probe);
-        });
-      }
+      withProbes(probes, "export const probe = true;\n", () => {
+        const files = resolvedFiles(project);
+
+        for (const probe of probes) {
+          expect(files).not.toContain(probe);
+        }
+      });
     }
   );
 
@@ -333,11 +337,13 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
 
       expect(probes.length).toBeGreaterThan(0);
 
-      for (const probe of probes) {
-        withProbe(probe, "export const probe = true;\n", () => {
-          expect(resolvedFiles(project, tsconfig)).not.toContain(probe);
-        });
-      }
+      withProbes(probes, "export const probe = true;\n", () => {
+        const files = resolvedFiles(project, tsconfig);
+
+        for (const probe of probes) {
+          expect(files).not.toContain(probe);
+        }
+      });
     }
   );
 
@@ -422,12 +428,7 @@ describe("lint fixtures and the lint that runs beside them", () => {
   // would import a file the suites already deleted. The shared preset excludes
   // the markers every suite uses, anywhere inside a path segment
   // (genie-ops-center-v2-7lj).
-  it("keeps the transient fixture markers out of the unit collection", () => {
-    for (const marker of COVERED_MARKERS) {
-      expect(UNIT_TEST_EXCLUDE).toContain(`**/*${marker}*`);
-    }
-  });
-
+  //
   // The load-bearing case, read from the real binary: a mid-basename,
   // test-shaped fixture is written for every covered marker at once, the project
   // is asked what it would collect, and each fixture must be absent while a
@@ -444,6 +445,7 @@ describe("lint fixtures and the lint that runs beside them", () => {
 
       withProbes(
         probes.map((probe) => `packages/core/${probe}`),
+        PROBE_TEST_SOURCE,
         () => {
           const listing = vitestList("packages/core");
 
@@ -493,20 +495,25 @@ describe("lint fixtures and the end-to-end collection that runs beside them", ()
   // test-shaped fixture under `apps/genie/e2e/`, the ordinary configuration's
   // `testDir`, so a `playwright test` run beside it would import a file the
   // suite already deleted (genie-ops-center-v2-hlu).
-  it.each(COVERED_MARKERS)(
-    "collects no %s fixture in the ordinary configuration",
-    (marker) => {
-      const probe = `probe-${process.pid}.${marker}.spec.ts`;
+  // One listing covers every marker, each probe written beside the others.
+  it(
+    "collects no marked fixture in the ordinary configuration",
+    () => {
+      const probes = COVERED_MARKERS.map(
+        (marker) => `probe-${process.pid}.${marker}.spec.ts`
+      );
 
-      withProbe(
-        `apps/genie/e2e/${probe}`,
+      withProbes(
+        probes.map((probe) => `apps/genie/e2e/${probe}`),
         `import { test } from "@playwright/test";\n\ntest("probe", () => {});\n`,
         () => {
           const listing = playwrightList();
 
-          expect(listing).not.toContain(probe);
+          for (const probe of probes) {
+            expect(listing).not.toContain(probe);
+          }
 
-          // A tracked spec beside the probe is still collected, so the absence
+          // A tracked spec beside the probes is still collected, so the absence
           // above is an exclusion and not an empty collection.
           expect(listing).toContain("security-headers.spec.ts");
         }
@@ -535,35 +542,34 @@ describe("lint fixtures and the formatter that runs beside them", () => {
   // carry it mid-basename (`vitest.__boundary__.config.ts`), and a
   // leading-marker-only ignore entry misses the second while a containment entry
   // covers both (genie-ops-center-v2-5hq).
-  it.each(COVERED_MARKERS)(
-    "keeps a %s fixture out of the format check",
-    (marker) => {
-      // Fresh, process-scoped paths: the boundary suite owns the fixed names
-      // (`packages/core/src/__boundary__.ts`, `packages/core/vitest.__boundary__.config.ts`),
-      // and reusing one here would race that suite's exclusive create under
-      // parallel collection. Each name still carries the marker under test.
-      const excluded = [
-        // Leading-marker and mid-basename, test-shaped, inside a package `src`:
-        // the shapes a suite writes there.
-        ...probeNames(marker).map((name) => `packages/core/src/${name}`),
-        // Config-shaped, at the package root: the shape the boundary suite uses
-        // to exercise the `*.config.ts` override globs.
-        `packages/core/vitest.${marker}probe-${process.pid}.config.ts`,
-      ];
+  //
+  // Every probe is written at once and one check walks past all of them.
+  it("keeps every marked fixture out of the format check", () => {
+    // Fresh, process-scoped paths: the boundary suite owns the fixed names
+    // (`packages/core/src/__boundary__.ts`, `packages/core/vitest.__boundary__.config.ts`),
+    // and reusing one here would race that suite's exclusive create under
+    // parallel collection. Each name still carries the marker under test.
+    const excluded = COVERED_MARKERS.flatMap((marker) => [
+      // Leading-marker and mid-basename, test-shaped, inside a package `src`:
+      // the shapes a suite writes there.
+      ...probeNames(marker).map((name) => `packages/core/src/${name}`),
+      // Config-shaped, at the package root: the shape the boundary suite uses
+      // to exercise the `*.config.ts` override globs.
+      `packages/core/vitest.${marker}probe-${process.pid}.config.ts`,
+    ]);
+
+    withProbes(excluded, UNTIDY_SOURCE, () => {
+      const report = formatReport(WORKSPACE_ROOT, ["packages/core"]);
 
       for (const path of excluded) {
-        withProbe(path, UNTIDY_SOURCE, () => {
-          const report = formatReport(WORKSPACE_ROOT, ["packages/core"]);
-
-          expect(report).not.toContain(path);
-
-          // The walk reached the tracked files beside the probe, so the absence
-          // above is an exclusion and not an empty selection.
-          expect(report).toContain("correct format");
-        });
+        expect(report).not.toContain(path);
       }
-    }
-  );
+
+      // The walk reached the tracked files beside the probes, so the absence
+      // above is an exclusion and not an empty selection.
+      expect(report).toContain("correct format");
+    });
+  });
 
   // The pair to the case above: the same body at a path no marker covers is
   // reported, so the case above proves the exclusion rather than proving the

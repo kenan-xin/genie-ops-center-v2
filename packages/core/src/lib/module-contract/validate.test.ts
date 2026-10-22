@@ -505,7 +505,9 @@ describe("validateModule", () => {
       ],
     };
 
-    expect(validateModule(broken)).not.toEqual([]);
+    expect(validateModule(broken)).toContain(
+      'Subscription to "fixture.record.created" sets serializeBy with durable false. serializeBy delivers durably.'
+    );
   });
 
   it("accepts one fast, one durable and one serialized subscription to the same event", () => {
@@ -685,15 +687,6 @@ describe("validateModule", () => {
     );
   });
 
-  it("accepts an admin entry that requires its own admin key", () => {
-    const admin = validModule.navigation.entries.find(
-      (entry) => entry.surface === "admin"
-    );
-
-    expect(admin?.requiredPermission).toBe("fixture:admin");
-    expect(validateModule(validModule)).toEqual([]);
-  });
-
   it("rejects a pinned list of seven", () => {
     const entry = firstWorkspaceEntry(validModule.navigation.entries);
 
@@ -811,10 +804,6 @@ describe("validateModule", () => {
     };
 
     expect(validateModule(broken).join(" ")).toContain("field kind");
-  });
-
-  it("accepts all five configuration field kinds", () => {
-    expect(validateModule(validModule)).toEqual([]);
   });
 
   it("accepts a record resolver that returns no path", () => {

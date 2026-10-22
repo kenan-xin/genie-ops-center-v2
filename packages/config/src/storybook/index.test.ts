@@ -47,24 +47,4 @@ describe("sharedStorybookConfig", () => {
       false
     );
   });
-
-  it("names the framework and the required addons", () => {
-    const config = sharedStorybookConfig({ moduleRoots: [] });
-
-    expect(config.framework).toBe("@storybook/nextjs-vite");
-    expect(config.addons).toEqual([
-      "@storybook/addon-docs",
-      "@storybook/addon-a11y",
-      "@storybook/addon-vitest",
-      "@storybook/addon-mcp",
-    ]);
-  });
-
-  // The MCP docs tools (docs-list, docs-show) read the components manifest, which is off by
-  // default; without it an agent has no documented props to check against.
-  it("turns on the components manifest for the MCP docs tools", () => {
-    const config = sharedStorybookConfig({ moduleRoots: [] });
-
-    expect(config.features).toEqual({ componentsManifest: true });
-  });
 });

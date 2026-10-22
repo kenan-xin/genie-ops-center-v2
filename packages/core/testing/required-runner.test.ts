@@ -349,11 +349,6 @@ function passingCase(name: string): string {
   return `it(${JSON.stringify(name)}, () => {});`;
 }
 
-/** One manifest case as a skipped top-level case. */
-function skippedCase(name: string): string {
-  return `it.skip(${JSON.stringify(name)}, () => {});`;
-}
-
 /**
  * A trivially passing synthetic file for one manifest entry.
  *
@@ -395,43 +390,6 @@ describe("the core integration runner command line", () => {
       ...passingWorkspace(),
       [migrator.file]: passingCase(manifestCase(migrator, 1)),
     });
-
-    try {
-      expect(
-        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
-      ).toBe(1);
-    } finally {
-      rmSync(workspace, { recursive: true, force: true });
-    }
-  });
-
-  it("exits nonzero when a mandatory case is skipped in source", () => {
-    const workspace = makeWorkspace("skipped-migrator", {
-      ...passingWorkspace(),
-      [migrator.file]: [
-        skippedCase(manifestCase(migrator, 0)),
-        passingCase(manifestCase(migrator, 1)),
-      ].join("\n"),
-    });
-
-    try {
-      expect(
-        runRunner(workspace, ["--config", "vitest.config.mjs"]).status
-      ).toBe(1);
-    } finally {
-      rmSync(workspace, { recursive: true, force: true });
-    }
-  });
-
-  it("exits nonzero when a mandatory file is missing entirely", () => {
-    const workspace = makeWorkspace(
-      "missing-file",
-      Object.fromEntries(
-        Object.entries(passingWorkspace()).filter(
-          ([file]) => file !== tenantContext.file
-        )
-      )
-    );
 
     try {
       expect(

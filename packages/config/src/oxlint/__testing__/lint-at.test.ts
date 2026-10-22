@@ -5,7 +5,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -38,17 +37,6 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
-
-/**
- * The temporary roots this process left behind. Scoped by process id, because a
- * parallel worker running the boundary suite creates roots of its own, and an
- * unscoped count would swing between the reading before and the one after.
- */
-function strayRoots(): string[] {
-  return readdirSync(tmpdir()).filter((entry) =>
-    entry.startsWith(ISOLATED_ROOT_PREFIX)
-  );
-}
 
 /** Writes a file that the invocation under test did not create. */
 function place(relativePath: string, content: string): string {
@@ -221,22 +209,6 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
     expect(readFileSync(absolute, "utf8")).toBe(before);
   });
 
-  it("removes its temporary root and leaves the checkout's anchors in place", async () => {
-    const before = strayRoots();
-
-    await lintAtIsolated(OWNED, SOURCE);
-
-    expect(strayRoots()).toEqual(before);
-
-    // The anchors are symlinks into the checkout. A recursive removal that
-    // followed one would take the real tree, so this is the guard on that.
-    expect(existsSync(join(WORKSPACE_ROOT, "oxlint.config.ts"))).toBe(true);
-    expect(
-      existsSync(join(WORKSPACE_ROOT, "packages/config/package.json"))
-    ).toBe(true);
-    expect(existsSync(join(WORKSPACE_ROOT, "node_modules"))).toBe(true);
-  });
-
   // A guard that compares the raw first segment is bypassed by every spelling
   // below, and each one resolves through an anchor symlink into the checkout.
   const UNDER_AN_ANCHOR = [
@@ -254,35 +226,15 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
       expect(() => lintAtIsolated(candidate, SOURCE)).toThrow(
         "symlinked anchor"
       );
+
+      expect(
+        existsSync(join(WORKSPACE_ROOT, "packages/config/__written__.ts"))
+      ).toBe(false);
+      expect(
+        existsSync(join(WORKSPACE_ROOT, "node_modules/__written__.ts"))
+      ).toBe(false);
     }
   );
-
-  it("sees a root named with the prefix the harness creates roots under", () => {
-    // Paired with the case below: together they fix what the count means. Without
-    // this one, a filter that matched nothing at all would look like clean-up.
-    const mine = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
-
-    try {
-      expect(strayRoots()).toContain(basename(mine));
-    } finally {
-      rmSync(mine, { recursive: true, force: true });
-    }
-  });
-
-  it("ignores a root belonging to another process, so a parallel worker cannot skew it", () => {
-    // The boundary suite runs in its own worker and makes six roots of its own.
-    // An unscoped prefix would count them, and the before-and-after comparison
-    // would then swing on another worker's timing rather than on cleanup.
-    const foreign = join(tmpdir(), `oxlint-boundary-${process.pid + 1}-abc123`);
-
-    mkdirSync(foreign);
-
-    try {
-      expect(strayRoots()).not.toContain(basename(foreign));
-    } finally {
-      rmSync(foreign, { recursive: true, force: true });
-    }
-  });
 
   it("refuses an absolute path, which no root can contain", () => {
     expect(() =>
@@ -291,19 +243,6 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
         SOURCE
       )
     ).toThrow("must be relative");
-  });
-
-  it("leaves no file in the checkout after the refusals", () => {
-    for (const candidate of UNDER_AN_ANCHOR) {
-      expect(() => lintAtIsolated(candidate, SOURCE)).toThrow();
-    }
-
-    expect(
-      existsSync(join(WORKSPACE_ROOT, "packages/config/__written__.ts"))
-    ).toBe(false);
-    expect(
-      existsSync(join(WORKSPACE_ROOT, "node_modules/__written__.ts"))
-    ).toBe(false);
   });
 });
 
@@ -436,9 +375,17 @@ describe("the anchor cleanup", () => {
       expect(basename(seen.root).startsWith(ISOLATED_ROOT_PREFIX)).toBe(true);
 
       // The helper removed the replaced directory with its file, and the whole
-      // root with it; the checkout anchor the link pointed at still stands.
+      // root with it; the checkout anchors still stand. A recursive removal that
+      // followed a link would take the real tree, so this is the guard on that.
       expect(existsSync(seen.root)).toBe(false);
-      expect(existsSync(join(WORKSPACE_ROOT, REPLACED_ANCHOR))).toBe(true);
+
+      for (const anchor of [
+        REPLACED_ANCHOR,
+        "oxlint.config.ts",
+        "packages/config/package.json",
+      ]) {
+        expect(existsSync(join(WORKSPACE_ROOT, anchor)), anchor).toBe(true);
+      }
     } finally {
       process.env.PATH = previousPath;
       delete process.env.ANCHOR;

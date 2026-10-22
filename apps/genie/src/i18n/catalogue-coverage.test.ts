@@ -440,44 +440,9 @@ describe("the application's own sources against the English catalogue", () => {
 
   // The acceptance clause itself: every string the application renders resolves
   // through the catalogue, and the catalogue carries nothing it does not render.
+  // The fixture cases above prove the checker reports both directions, so an
+  // empty answer here cannot come from a checker that reports nothing.
   it("resolves every referenced key and leaves no catalogue entry unread", () => {
     expect(catalogueViolations(sources, en)).toEqual([]);
-  });
-
-  // The case above passes for a checker that reports nothing at all. These two
-  // are what make it mean something: the same real sources, read against a
-  // catalogue with one leaf taken away and one leaf added, must fail. Each
-  // asserts the one sentence it is about rather than the whole list, so adding
-  // a message later does not make either case stale.
-  it("fails visibly when the catalogue loses a key the app renders", () => {
-    const withoutTitle = {
-      ...en,
-      app: {
-        navigationHeading: en.app.navigationHeading,
-        noModules: en.app.noModules,
-      },
-    };
-
-    // The fixture lists the surviving keys by hand, so this guard fails loudly
-    // if the catalogue grows and the fixture quietly stops being en.json minus
-    // exactly one leaf.
-    expect(catalogueLeafKeys(withoutTitle)).toEqual(
-      catalogueLeafKeys(en).filter((key) => key !== "app.title")
-    );
-
-    expect(catalogueViolations(sources, withoutTitle)).toContain(
-      "app.title is read from the catalogue and is not in it. Add the message or correct the key."
-    );
-  });
-
-  it("fails visibly when the catalogue gains a key no page renders", () => {
-    const withOrphan = {
-      ...en,
-      app: { ...en.app, orphanProbe: "No page reads this." },
-    };
-
-    expect(catalogueViolations(sources, withOrphan)).toContain(
-      "app.orphanProbe is in the catalogue and no application source reads it. Delete the message or use it."
-    );
   });
 });

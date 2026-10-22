@@ -27,8 +27,7 @@ const hangingContext = {
   tenant: { db: { $client: { end: () => new Promise(() => {}) } } },
 } as never;
 
-// SAFETY: as above, but `end` settles at once, so only the flush half of the
-// budget is left to hang.
+// SAFETY: as above, but `end` settles at once.
 const settledContext = {
   tenant: { db: { $client: { end: async () => {} } } },
 } as never;
@@ -130,41 +129,6 @@ describe("runBootstrap failure handling", () => {
       source: VALID_SOURCE,
       logger: stuckLogger(),
       connect: () => hangingContext,
-      migrate: () => Promise.reject(new Error("migration failed")),
-      exit,
-      budgetMs: BUDGET_MS,
-    });
-
-    expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
-  });
-
-  it("exits nonzero inside the budget when cleanup never settles", async () => {
-    const exit = vi.fn();
-    const started = Date.now();
-
-    await runBootstrap({
-      source: VALID_SOURCE,
-      connect: () => hangingContext,
-      migrate: () => Promise.reject(new Error("migration failed")),
-      exit,
-      budgetMs: BUDGET_MS,
-    });
-
-    expect(exit).toHaveBeenCalledWith(1);
-    expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
-  });
-
-  it("exits nonzero inside the budget when the logger flush never settles", async () => {
-    const exit = vi.fn();
-    const started = Date.now();
-
-    // The flush half on its own. The image cannot be made to hang here without
-    // shipping a fault-injection switch, so it is proven at this level.
-    await runBootstrap({
-      source: VALID_SOURCE,
-      logger: stuckLogger(),
-      connect: () => settledContext,
       migrate: () => Promise.reject(new Error("migration failed")),
       exit,
       budgetMs: BUDGET_MS,

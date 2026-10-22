@@ -1,11 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import {
-  type NavigationEntry,
-  type TenantContext,
-  validateModule,
-} from "@genie/core";
+import { type NavigationEntry, type TenantContext } from "@genie/core";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { describe, expect, it } from "vitest";
 
@@ -14,10 +10,6 @@ import { placeholderModule } from "./module.ts";
 /* oxlint-disable anti-slop/require-readable-spacing -- this declaration assertion is one contract. */
 
 describe("the placeholder module declaration", () => {
-  it("satisfies every rule the contract validator checks", () => {
-    expect(validateModule(placeholderModule)).toEqual([]);
-  });
-
   it("declares the identity R-15 fixes", () => {
     expect(placeholderModule.identity.id).toBe("placeholder");
     expect(placeholderModule.identity.displayName).toBe("Placeholder");

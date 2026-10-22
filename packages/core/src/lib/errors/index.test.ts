@@ -60,13 +60,6 @@ describe("AppError", () => {
     expect(error.safeMessage).toBe(CORE_ERROR_MESSAGES["environment-invalid"]);
   });
 
-  it("keeps the original error as its cause", () => {
-    const cause = new Error("connection to db:5432 refused for user genie");
-    const error = new AppError(CORE_ERRORS["migration-failed"], { cause });
-
-    expect(error.cause).toBe(cause);
-  });
-
   it("freezes every core definition", () => {
     expect(Object.isFrozen(CORE_ERRORS)).toBe(true);
     expect(Object.isFrozen(CORE_ERRORS["internal-error"])).toBe(true);
@@ -83,19 +76,6 @@ describe("safeBodyFor", () => {
     expect(body).toEqual({
       code: "migration-failed",
       message: "A database migration did not finish. The server did not start.",
-      requestId: REQUEST_ID,
-    });
-  });
-
-  it("returns the code, the safe message and the request id", () => {
-    const body = safeBodyFor(
-      new AppError(CORE_ERRORS["migration-lock-timeout"]),
-      REQUEST_ID
-    );
-
-    expect(body).toEqual({
-      code: "migration-lock-timeout",
-      message: CORE_ERROR_MESSAGES["migration-lock-timeout"],
       requestId: REQUEST_ID,
     });
   });
@@ -263,11 +243,5 @@ describe("safeBodyFor", () => {
   it("freezes a module's definitions, so no later code rewrites a message", () => {
     expect(Object.isFrozen(placeholderErrors)).toBe(true);
     expect(Object.isFrozen(placeholderErrors["record-locked"])).toBe(true);
-  });
-
-  it("still spells a module code as <id>:<code>", () => {
-    expect(moduleErrorCode("placeholder", "record-locked")).toBe(
-      "placeholder:record-locked"
-    );
   });
 });

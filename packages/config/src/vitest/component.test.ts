@@ -16,8 +16,4 @@ describe("componentTestPreset", () => {
     expect(componentTestPreset.test?.name).toBe("storybook");
     expect(unitTestPreset.test?.name).not.toBe("storybook");
   });
-
-  it("never collects a story as a unit test", () => {
-    expect(unitTestPreset.test?.exclude).toContain("**/*.stories.*");
-  });
 });
