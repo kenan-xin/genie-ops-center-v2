@@ -89,7 +89,7 @@ D-13. Added 2026-10-20 from the first-customer fit review. The product documents
 
 Product docs, 2026-10-21: no new answer, so the question stays open. The docs say "Identities come from Active Directory", that the administrator runs an AD sync, and that sign-in is only through the company SSO. They do not name Entra ID, ADFS, or another federation service. Source: PD-009, `sections/platform.md` line 10, `sections/features.md` line 49.
 
-Deferred until D-13 is answered: the identity-provider setup for this customer, and whether LDAP federation must be reopened.
+Answer from the owner, 2026-10-22, confirmed in a meeting with the customer: resolved. Phase 1 signs in with email and password only, through a realm with local accounts (`local_accounts: true`, `DEC-36`). Keycloak holds the password and sends the set-password email with its built-in templates (`DEC-40`), so the deployment needs a working SMTP setup for Keycloak. With no `groups` claim, access comes from local groups, and onboarding is `invite`. Phase 2 brokers Microsoft Entra ID. People keep their record because they link by email, so the phase 1 email of each person must equal the address that Entra will send. LDAP federation is not needed and stays deferred.
 
 Deferred until D-11 and D-12 are answered: the workflow engine, its approval steps, and the import of e-sign history.
 

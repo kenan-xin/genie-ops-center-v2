@@ -113,6 +113,7 @@ Explanation. For any grant, core can show the role assignment, the group or dire
 #### Relation rules for cases
 
 - `requester`, `assignee`, `past-actor`, and `viewer` are written when the case changes. A person who acted as themself gets a `past-actor` row with no end. That matches the product rule that "whoever acted as themself" keeps view.
+- A person whom a comment names as a recipient gets a `viewer` row with no end, written in the same transaction as the comment. No other relation is needed, and the recipient keeps sight of the case as the product rule requires (owner, 2026-10-22).
 - An `assignee` row names the person in charge of a step, never a backup or a delegate, and has no end. A person who is or was in charge of a step keeps sight of the case, also when the task was reassigned before anyone acted (PD-121, amended 2026-10-21).
 - Acting for someone never creates lasting visibility for the substitute. A delegate or backup gets a `delegate` row whose `valid_until` is the end of the delegation or absence. When a delegation ends early or a backup is removed, the module sets `valid_until` to now in the same transaction.
 - The person acted for gets an `acted-for` row with no end, written in the same transaction as the action. A department head on leave therefore keeps sight of a case that their backup approved for them, although the head never acted (amended 2026-10-21).
