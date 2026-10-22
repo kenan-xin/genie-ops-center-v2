@@ -3,15 +3,15 @@ name: Genie Ops Center
 description: The fixed base token layer of a tenant-brandable enterprise platform — calm utility, hairline surfaces, one tenant accent
 colors:
   primary: "#2563eb"
-  primary-ink: "#1d4ed8"
-  focus-blue: "#3b82f6"
-  focus-blue-dark: "#60a5fa"
+  primary-foreground: "#ffffff"
+  brand-on-dark: "#60a5fa"
   info-tint: "#eff6ff"
   page: "#ffffff"
   panel: "#f9fafb"
   tile: "#f3f4f6"
   hairline: "#e5e7eb"
   control-border: "#d1d5db"
+  input-border: "#6b7280"
   icon-muted: "#6b7280"
   text-secondary: "#4b5563"
   text-idle: "#374151"
@@ -78,7 +78,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "#ffffff"
+    textColor: "{colors.primary-foreground}"
     rounded: "{rounded.control}"
     height: "40px"
     padding: "0 14px"
@@ -127,13 +127,13 @@ components:
     typography: "{typography.mono}"
   nav-row-active:
     backgroundColor: "{colors.page}"
-    textColor: "{colors.primary-ink}"
+    textColor: "{colors.primary}"
     rounded: "{rounded.control}"
     height: "40px"
     typography: "{typography.secondary}"
   count-pill:
     backgroundColor: "{colors.primary}"
-    textColor: "#ffffff"
+    textColor: "{colors.primary-foreground}"
     rounded: "{rounded.pill}"
     padding: "1px 6px"
     typography: "{typography.caption}"
@@ -152,12 +152,12 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 **Key Characteristics:**
 
 - Mobile-first utility: phone layout is the base; tables become card lists under 768px, inspectors become sheets
-- One tenant accent, used sparingly: primary button, count pill, active nav row, focus ring — nothing else
+- One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus and overlays cast shadows
-- Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE)
+- Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
 - Thumb-first controls: one height scale (32/40/44px), 44px minimum touch targets under 1024px
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
-- WCAG 2.1 AA with measured contrast pinned in the token file (ring 3.68:1 on white, input border 4.89:1)
+- WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
 
 ## Colors
 
@@ -165,13 +165,18 @@ A quiet, near-neutral gray world in which the single accent is whatever the tena
 
 ### Primary
 
-- **Default primary** (#2563eb, blue-600): the default value of the tenant-fillable `--primary`. Fills solid surfaces only — the primary button and the count pill. A solid brand fill keeps this value with white text in both themes.
-- **Primary ink** (#1d4ed8, blue-700): brand as text and icon on light surfaces — the active navigation row's text and icon, and links.
-- **Focus blue** (#3b82f6, blue-500): the keyboard focus ring on light surfaces; opaque because it must hold 3:1 against the surface behind it (3.68:1 on white).
-- **Focus blue, dark** (#60a5fa, blue-400): the focus ring and brand-as-text in the dark theme (7.92:1 on gray-950). Blue-600 as text is forbidden in dark: it measures 3.90:1 on gray-950 and fails AA at `text-sm`.
-- **Informational tint** (#eff6ff, blue-50): informational notice blocks and selected or focused table rows — this tint carries state, not brand.
+- **Default primary** (#2563eb, blue-600): the default value of the tenant-fillable `--primary`. It fills the primary button and the count pill in both themes, with `--primary-foreground` text. On light surfaces it is also the brand text and icon (`text-primary`) and the focus ring, through `--ring`. The default ring measures 5.17:1 on white.
+- **Primary foreground** (#ffffff): the default of the stored tenant foreground. It is computed once on save and never recomputed by the page.
+- **Brand on dark** (#60a5fa, blue-400): one fixed light token, never derived from the tenant color. In the dark theme it is the brand text and icon (`dark:text-brand-on-dark`) and the focus ring. It measures 7.92:1 on gray-950. Blue-600 as text fails in dark at 3.90:1 on gray-950.
+- **Informational tint** (#eff6ff, blue-50): informational notice blocks and selected or focused table rows. This tint carries state, not brand.
 
-There is no secondary or tertiary accent. Blue is the only action and information color in the samples, and only `--primary` and `--primary-foreground` are computed from tenant input.
+There is no secondary or tertiary accent. Blue is the only action and information color in the samples, and only `--primary` and `--primary-foreground` are filled from tenant input.
+
+### Theme variables
+
+The code carries the color roles as the shadcn variables `--background`, `--foreground`, `--card`, `--muted`, `--muted-foreground`, `--border`, `--input`, `--ring`, `--primary`, `--primary-foreground`, and `--destructive`, plus the fixed `--brand-on-dark`. The app stylesheet maps each one in `@theme inline` to a Tailwind color of the same name. `--ring` is `var(--primary)` in light and `var(--brand-on-dark)` in dark. The light and dark value of every variable is listed in `docs/design/design-system/tokens.md`, "Color roles".
+
+The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *))`. So `dark:` follows the organization's theme, not the operating system. Theme belongs to the organization. A person has no theme preference.
 
 ### Neutral
 
@@ -179,7 +184,8 @@ There is no secondary or tertiary accent. Blue is the only action and informatio
 - **Panel** (#f9fafb, gray-50): the floating sidebar panel, table header rows, and row hover.
 - **Tile** (#f3f4f6, gray-100): person avatars and mono chip backgrounds — tinted surfaces that stand for identity stay fixed neutral gray.
 - **Hairline** (#e5e7eb, gray-200): card edges, row dividers, and other decorative hairlines; decoration, so 1.4.11 does not reach it. Dark mirror #1f2937 (gray-800).
-- **Control border** (#d1d5db, gray-300): input and secondary button borders — the boundary of a component, measured 4.89:1 on white for 1.4.11.
+- **Control border** (#d1d5db, gray-300): the secondary button border.
+- **Input border** (#6b7280, gray-500, the `--input` variable): the input border. It is the boundary of a component, so it must hold 3:1 under 1.4.11, and it measures 4.89:1 on white.
 - **Icon muted** (#6b7280, gray-500): icons, labels, and helper text — the lightest text ever gets (dark mirror: gray-400).
 - **Text secondary** (#4b5563, gray-600): helper text and table headers (dark mirror: gray-300).
 - **Text idle** (#374151, gray-700): body text on tinted surfaces, idle navigation rows, ghost buttons.
@@ -193,7 +199,7 @@ There is no secondary or tertiary accent. Blue is the only action and informatio
 
 ### Named Rules
 
-**The One Ink Rule.** The tenant color appears in exactly four places: the primary button, the count pill, the active navigation row's text and icon, and the focus ring. The sidebar panel and the page chrome never take it.
+**The One Ink Rule.** The tenant color appears in exactly four places: the primary button, the count pill, the active navigation row's text and icon, and the focus ring. In the dark theme the text, icon, and ring take the fixed brand-on-dark token instead. The sidebar panel and the page chrome never take it.
 
 **The No-Ramp Rule.** No tint ramp is derived from the tenant color. A hover or active state is the same color at reduced opacity — 90% on hover, 80% on press — never a derived shade. An identity or label surface (avatar, monogram tile, label pill) stays fixed neutral gray, so `packages/ui` needs no color-space computation.
 
@@ -205,7 +211,7 @@ There is no secondary or tertiary accent. Blue is the only action and informatio
 **Body Font:** Plus Jakarta Sans (system-ui fallback)
 **Label/Mono Font:** JetBrains Mono (ui-monospace fallback), for identifiers only: hex values, permission keys, ids, and chips such as THIS DEVICE
 
-**Character:** one humanist sans doing everything, quietly; the mono face appears only to stamp an identifier, never for prose. Both faces are self-hosted in the image — subset to latin and latin-ext, `font-display: swap`, preload the one weight the sign-in page paints first — because a regulated customer can refuse an outbound request from the sign-in page.
+**Character:** one humanist sans doing everything, quietly; the mono face appears only to stamp an identifier, never for prose. Both faces are self-hosted in the image — subset to latin and latin-ext, `font-display: swap`, preload the one weight the sign-in page paints first — because a regulated customer can refuse an outbound request from the sign-in page. Only these two faces ship for now. The other approved families (IBM Plex Sans, Manrope, Source Serif 4) return with the Branding Typography tab. `packages/ui` ships the `@font-face` rules through a CSS export, preloads only the default face, and keeps `--font-sans` as the per-request seam.
 
 ### Hierarchy
 
@@ -220,11 +226,11 @@ There is no secondary or tertiary accent. Blue is the only action and informatio
 
 **The No Arbitrary Pixels Rule.** The scale is the Tailwind type utilities and nothing else. Any `text-[13.5px]` or `text-[Npx]` is forbidden in every component — `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
 
-**The Root-Follows-the-Preset Rule.** The tenant font-size preset (Branding, Typography tab) sets the root font size to 14, 15, or 16px, and the rem-based scale follows the root without per-component changes. Control heights do not follow it: they are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact.
+**The Root-Follows-the-Preset Rule.** The tenant font-size preset (set by the branding seed until the Typography tab reopens) sets the root font size to 14, 15, or 16px, and the rem-based scale follows the root without per-component changes. Control heights do not follow it: they are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact.
 
 ## Layout
 
-Sidebar shell. On desktop (1024px and up) a 240px sidebar sits left as a floating rounded-xl gray-50 panel inset in the white page, with the tenant identity block at its top, navigation in the middle, and the user footer pinned to the bottom; the content area scrolls independently. A 54px header above the content is not a bar but the page's own head: page title and a one-line description on the left, search and actions on the right, no bell. On phones (under 768px, the base design) the sidebar becomes a drawer capped at 84vw (max 320px) over a dimmed scrim, and a page's primary action moves into a sticky bottom bar.
+Sidebar shell. On desktop (1024px and up) a 240px sidebar sits left as a floating rounded-xl gray-50 panel inset in the white page, with the tenant identity block at its top, navigation in the middle, and the user footer pinned to the bottom; the content area scrolls independently. A 54px header above the content is not a bar but the page's own head: page title and a one-line description on the left, a reserved search slot and the actions on the right. Section 3 ships no search box. From roadmap Section 6 a bell with an unread count sits in the header of both chromes and links to the Notifications page. It has no dropdown, and there is no navigation entry for notifications. On phones (under 768px, the base design) the sidebar becomes a drawer capped at 84vw (max 320px) over a dimmed scrim, and a page's primary action moves into a sticky bottom bar.
 
 Spacing rhythm: 4px base. Page gutters run 16px on phones, 24px on tablets, 32px on desktop (`px-4 md:px-6 lg:px-8`). Card padding is 20px, 24px on desktop. Table rows carry 12px vertical padding on desktop, 16px on phones.
 
@@ -258,7 +264,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 - **Shape:** 8px radius; heights 32px (sm) / 40px (md, the default) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
 - **Secondary:** white fill, gray-300 border, gray-800 text. **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
-- **Hover / Focus:** fill variants drop to 90% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque blue-500 ring at 2px offset.
+- **Hover / Focus:** fill variants drop to 90% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
 - **Disabled / Loading:** disabled is 50% opacity with `cursor-not-allowed` and no hover change; use `aria-disabled` instead of the `disabled` attribute when the control must stay focusable to explain why. Loading keeps the label and the width, replaces the leading icon with a spinner, sets `aria-busy="true"`, and ignores a second press. Any action that leaves the page or waits on the network uses the loading state (at least Publish, Save, Send test, the sign-in redirect).
 
 ### Chips
@@ -278,14 +284,14 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 ### Inputs / Fields
 
-- **Style:** 40px height, 8px radius, 1px gray-300 border (4.89:1 on white — the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
-- **Focus:** border shifts to blue-500 plus the shared ring.
+- **Style:** 40px height, 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
+- **Focus:** the border takes the `--ring` color, plus the shared ring.
 - **Labels / Helper / Error:** label above the control (semibold small gray-800), helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. Form-level error block carries `role="alert"`; informational notice block `role="status"`. A changed field carries a small blue dot on its label while unsaved; required fields are marked in the label.
 
 ### Navigation
 
 - **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px (touch), 40px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
-- **States:** idle gray-700 text with a gray-200/60 hover fill; active row is an 8px-rounded white row with a hairline ring and blue text and icon (`aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, blue when active.
+- **States:** idle gray-700 text with a gray-200/60 hover fill; active row is an 8px-rounded white row with a hairline ring and brand text and icon (`text-primary`, brand-on-dark in dark, `aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, brand-colored when active.
 - **Mobile treatment:** the hamburger opens the drawer (84vw, max 320px) over a dimmed scrim; route change or scrim tap closes it. Category collapse state persists per device, not per account.
 
 ### Tables and Card Lists
@@ -312,11 +318,15 @@ Skeleton blocks match the shape they replace and animate only when motion is all
 
 Lucide, 16px in text and pills, 20px in navigation and buttons, stroke 1.75. No emoji as icons.
 
+### Sign-in Page and Emails
+
+For now the sign-in page and the emails carry text and color branding only. They show the company name as text, never the logo, and the sign-in page has no background image. Image branding on these two surfaces returns with a public branding asset route. Emails stay light in both themes.
+
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** apply the one shared `focusRing` constant to every interactive element — 2px opaque blue-500 ring at 2px offset (blue-400 in dark) — and never write `outline: none` without it.
+- **Do** apply the one shared `focusRing` constant to every interactive element, a 2px opaque `ring-ring` at 2px offset (the tenant primary in light, the fixed brand-on-dark in dark), and never write `outline: none` without it.
 - **Do** keep every interactive row and icon button at least 44px tall under 1024px (`min-h-11 lg:min-h-0`); give 32px controls invisible padding to reach 44 by 44.
 - **Do** write every `transition-*` and `animate-*` utility under `motion-safe:` (or pair a `motion-reduce:` reset).
 - **Do** route every destructive path through the shared ConfirmDialog with Cancel focused by default.
@@ -329,5 +339,6 @@ Lucide, 16px in text and pills, 20px in navigation and buttons, stroke 1.75. No 
 - **Don't** use arbitrary text sizes (`text-[13.5px]`, any `text-[Npx]`) in any component.
 - **Don't** put a shadow on a resting surface; hairline borders separate, and shadows belong to menus and overlays.
 - **Don't** give a label pill a status color, and don't use emoji as icons — Lucide only, stroke 1.75.
-- **Don't** add a bell or notification button to the header; notifications surface only through the Inbox nav item and its count pill.
+- **Don't** add a notification navigation entry or a dropdown panel. The header bell, from roadmap Section 6, is the only entry to the Notifications page.
+- **Don't** derive a dark-theme brand color from the tenant color; dark brand text and the dark ring use the fixed brand-on-dark token.
 - **Don't** use near-black fills, sharp corners, or left-edge accent rules; the dark theme is gray-950 surfaces with hairline borders.

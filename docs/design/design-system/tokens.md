@@ -4,7 +4,7 @@ This file is the fixed token layer. The tenant's one brand color and its approve
 
 ## Type scale
 
-Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding` (`DEC-47`), for everything, JetBrains Mono for identifiers (hex values, permission keys, ids, chips such as THIS DEVICE). Both faces are self-hosted in the image, never loaded from a third-party font service, because a regulated customer can refuse an outbound request from the sign-in page. Subset to latin and latin-ext, `font-display: swap`, and preload the one weight the sign-in page paints first. The scale is the Tailwind type utilities and nothing else:
+Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding` (`DEC-47`), for everything, JetBrains Mono for identifiers (hex values, permission keys, ids, chips such as THIS DEVICE). Both faces are self-hosted in the image, never loaded from a third-party font service, because a regulated customer can refuse an outbound request from the sign-in page. Subset to latin and latin-ext, `font-display: swap`, and preload the one weight the sign-in page paints first. Only these two faces ship for now. The other keys of the approved list (IBM Plex Sans, Manrope, Source Serif 4) return with the Branding Typography tab (owner decision 2026-10-22). `packages/ui` ships the `@font-face` rules and the files through a CSS export, preloads only the default face, and keeps `--font-sans` as the per-request seam for the tenant font key. The scale is the Tailwind type utilities and nothing else:
 
 | Role | Class | Weight |
 |---|---|---|
@@ -17,7 +17,7 @@ Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding
 
 On phones display and title step down one size (`text-xl lg:text-2xl`, `text-lg lg:text-xl`). Arbitrary pixel sizes (`text-[13.5px]`, `text-[11px]`, any `text-[Npx]`) are forbidden in every component; `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
 
-The tenant font size preset (Branding, Typography tab) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. The tenant text color fills `--foreground` on light surfaces only; the dark theme keeps gray-100.
+The tenant font size preset (set by the branding seed until the Branding Typography tab reopens) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. The tenant text color fills `--foreground` on light surfaces only; the dark theme keeps gray-100.
 
 ## Control heights
 
@@ -41,24 +41,49 @@ Radius: menus 6px (`rounded-md`), controls, navigation rows, and informational o
 
 ## Focus ring
 
-2px solid ring in blue-500 with a 2px offset on every focusable control, including icon buttons, links, menu items, and close controls. Never `outline: none` without the ring. The ring is opaque because it is the keyboard focus indicator and must hold 3:1 against the surface behind it (WCAG 2.1 AA, 1.4.11). At 60% opacity it measured 2.11:1 on white and 2.06:1 on gray-50 and failed. Solid blue-500 measures 3.68:1 on white. A tenant color fills this ring on export, so the Branding contrast check covers the ring pair at 3:1. One shared constant, `focusRing`, holds the exact class string. In this design tree it lives in `src/shell/components/helpers.ts` (import from `@/shell/components/helpers`); the export step moves it to `packages/ui` in the platform repository, where every primitive lives:
+2px solid ring with a 2px offset on every focusable control, including icon buttons, links, menu items, and close controls. Never `outline: none` without the ring. The ring is opaque because it is the keyboard focus indicator and must hold 3:1 against the surface behind it (WCAG 2.1 AA, 1.4.11). At 60% opacity it measured 2.11:1 on white and 2.06:1 on gray-50 and failed.
 
-`outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950`
+The ring color is the `--ring` variable (owner decision 2026-10-22). In the light theme `--ring` is `var(--primary)`, so the tenant color fills it and the Branding contrast check covers the ring pair at 3:1 against white and gray-50. The default blue-600 measures 5.17:1 on white. In the dark theme `--ring` is the fixed `--brand-on-dark`, blue-400, which measures 7.92:1 on gray-950. It is never derived from the tenant color.
 
-Every interactive element appends it; no component writes its own ring classes.
+One shared constant, `focusRing`, holds the exact class string. In this design tree it lives in `src/shell/components/helpers.ts` (import from `@/shell/components/helpers`). The tree has no `--ring` variable, so its copy still writes blue-500 and blue-400 literally. The export step moves it to `packages/ui` in the platform repository, where every primitive lives, as this string:
+
+`outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`
+
+The string names no color, so it needs no `dark:` variant. Every interactive element appends it; no component writes its own ring classes.
 
 ## Color roles
 
-The tenant primary color fills solid surfaces and the focus ring, and nothing else. Those are the primary button and the count pill (`bg-blue-600`), the active navigation row's text and icon and the tenant letter tile (`text-blue-700`, `text-blue-600`), and the ring (`ring-blue-500`). In this tree `blue-600` is the default value of the shadcn `--primary` variable, which Branding fills per request, and the export maps those classes to `bg-primary`, `text-primary`, `text-primary-foreground`, and `ring-primary`. A tinted surface that stands for identity or a label stays a fixed neutral gray: the avatar and monogram tile, every label pill, and the chrome pills (Admin portal, Administrator). So no tint ramp is derived from the tenant color, and `packages/ui` needs no color-space computation and no per-step contrast check. A tint that carries state or meaning keeps its blue and is not brand: a selected or focused table row, and an informational notice block. The test is whether the tenant's color would be wrong there. Only `--primary` and `--primary-foreground` are computed. A hover or active state is the same color at reduced opacity, `bg-primary/90` on hover and `bg-primary/80` on press, never a derived shade, which is what keeps the no-ramp rule true for buttons. Pills and semantic tones keep their Tailwind values.
+The tenant primary color fills solid surfaces and the focus ring, and nothing else. Those are the primary button and the count pill (`bg-blue-600`), the active navigation row's text and icon and the tenant letter tile (`text-blue-700`, `text-blue-600`), and the ring (`ring-blue-500`). In this tree `blue-600` is the default value of the shadcn `--primary` variable, which Branding fills per request, and the export maps those classes to `bg-primary`, `text-primary`, `text-primary-foreground`, and `ring-ring`. A tinted surface that stands for identity or a label stays a fixed neutral gray: the avatar and monogram tile, every label pill, and the chrome pills (Admin portal, Administrator). So no tint ramp is derived from the tenant color, and `packages/ui` needs no color-space computation and no per-step contrast check. A tint that carries state or meaning keeps its blue and is not brand: a selected or focused table row, and an informational notice block. The test is whether the tenant's color would be wrong there. Only `--primary` and `--primary-foreground` are computed. A hover or active state is the same color at reduced opacity, `bg-primary/90` on hover and `bg-primary/80` on press, never a derived shade, which is what keeps the no-ramp rule true for buttons. Pills and semantic tones keep their Tailwind values.
 
-Dark theme primary defaults, pinned here because the tenant derivation needs a fixed starting point: the brand as text or icon is blue-400, not blue-600, because blue-600 measures 3.90:1 on gray-950 and fails AA at `text-sm` while blue-400 measures 7.92:1 on gray-950 and 6.98:1 on gray-900. The focus ring in dark is blue-400. A solid brand fill keeps blue-600 with white text. Blue is the only action and information color in the samples. Status is semantic: emerald success, red danger, amber warning, gray neutral. Text never lighter than gray-500 (gray-400 in dark). Dark theme mirrors: gray-100 body, gray-300 secondary, gray-400 labels, surfaces gray-950 and gray-900.
+Dark theme brand text and ring, one fixed token (owner decision 2026-10-22). In the dark theme the brand as text or icon and the focus ring use one fixed light color, `--brand-on-dark`, blue-400 (#60a5fa). It is not derived from the tenant color, and nothing computes it. Blue-600 as text fails in dark: it measures 3.90:1 on gray-950, below AA at `text-sm`. Blue-400 measures 7.92:1 on gray-950 and 6.98:1 on gray-900. A component that shows brand text writes `text-primary dark:text-brand-on-dark`. A solid brand fill keeps `--primary` with the stored `--primary-foreground` in both themes, blue-600 with white text by default. Blue is the only action and information color in the samples. Status is semantic: emerald success, red danger, amber warning, gray neutral. Text never lighter than gray-500 (gray-400 in dark). Dark theme mirrors: gray-100 body, gray-300 secondary, gray-400 labels, surfaces gray-950 and gray-900.
+
+The export carries these roles as the shadcn variables the platform code already uses (owner decision 2026-10-22). Only `--primary` and `--primary-foreground` are tenant colors. The tenant text color also fills `--foreground`, on light surfaces only, as a typography value. Every other value is fixed.
+
+| Variable | Light | Dark |
+|---|---|---|
+| `--background` | white | gray-950 |
+| `--foreground` | gray-900, or the tenant text color | gray-100 |
+| `--card` | white | gray-900 |
+| `--muted` | gray-50 | gray-900 |
+| `--muted-foreground` | gray-600 | gray-400 |
+| `--border` | gray-200 | gray-800 |
+| `--input` | gray-500 | gray-500 |
+| `--ring` | `var(--primary)` | `var(--brand-on-dark)` |
+| `--primary` | tenant color, default blue-600 | same as light |
+| `--primary-foreground` | stored tenant foreground, default white | same as light |
+| `--destructive` | red-600 | red-600 |
+| `--brand-on-dark` | blue-400 | blue-400 |
+
+The app stylesheet maps each variable to a Tailwind color of the same name in `@theme inline`, for example `--color-primary: var(--primary)`. That is what makes `bg-primary`, `ring-ring`, `border-input`, and `text-muted-foreground` resolve. `--brand-on-dark` is read only under the dark variant.
+
+The theme is a `data-theme` attribute on `<html>`. The server writes it from the organization's default theme, and the client corrects it before paint when that default is `system`. The app stylesheet declares `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *))`, so every `dark:` class follows the attribute and not the operating system setting. Theme belongs to the organization, and a person has no theme preference (owner decision 2026-10-19).
 
 ## Pills and chips
 
 - Status pill: tinted background, semibold small text. Active or Ready or Entitled emerald; Pending or Draft or Not entitled gray; Disabled or Down red; Maintenance or Stale amber.
 - Label pill: gray or blue, never a status color. Used for Admin portal, Notice, counts, type labels (Chat, Embedded), kind (System, Custom), source (Directory, Local).
 - Mono chip: `MonoChip` from `@/shell/components/MonoChip` in this tree, `packages/ui` after export. JetBrains Mono (`font-mono`), `text-xs` medium, uppercase, `tracking-wide`, gray-100 background and gray-700 text (dark: gray-800 and gray-300), full radius. For THIS DEVICE, WORKSPACE MEMBER, ADMINISTRATOR. Never a status or blue color.
-- Count pill: blue background, white text, in navigation for unread and grouped counts.
+- Count pill: the brand fill, `bg-primary` with `text-primary-foreground` (blue-600 and white by default), in navigation for unread and grouped counts.
 
 ## Tables and card lists
 

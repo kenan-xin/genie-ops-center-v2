@@ -211,6 +211,8 @@ R-26b. This section builds controlled removal and reintroduction (`../core/roadm
 
 R-26c. Reintroduction uses the same stable identity and compatible retained history, supported forward migrations, the disabled state, administrator review of retained grants, and explicit enablement. Revoked credentials need a separate reissue, and work never resumes silently. Permanent deletion of module data is a separate operator procedure that needs explicit authorization. It names the exact data and files, the retention, the exports and backups, the references, the retained audit, and whether it can be undone. This specification authorizes no deletion command and borrows no tenant-retirement timer.
 
+Received from Section 3 (2026-10-22). The owner moved Section 3 R-84b and AC-14a here after the spec 03 critique (decision F-23 in `epics/4ed26496-66e3-401d-b817-4126538afdba/artifacts/spec-03-critique-decisions/index.md`). They are the core admin review screens for a module that was removed and brought back (CF-MA-10 to CF-MA-11). Historical grants show that the module is not installed, without the module's code. A reintroduced module stays disabled and shows its retained configuration and grants for review before an explicit enable. They are built with controlled removal above (bead `6nm`), with phone and desktop end-to-end proof. Section 3 keeps R-84a, the disabled first arrival of a new module.
+
 ### Item 5: the cross-product step
 
 R-27. For a customer that runs both products, the new-customer runbook carries the genie-studio step (`DEC-8`, `../core/roadmap.md`, Section 2, item 9). The realm side belongs to `../runbooks/keycloak-realm.md`.

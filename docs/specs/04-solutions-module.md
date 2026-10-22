@@ -165,6 +165,14 @@ R-43. If the revalidation finds that the external API requires a key, the key is
 
 R-37a. Solutions implements the optional category contribution declared in Section 0 and consumed by Section 3's single Categories page. `listAssignable` returns only authorized solution descriptors; assignment/clear validates the core category and changes `solution_category` inside Solutions, requiring `solutions:admin`, tenant isolation and current enabled state, with module-owned audit. Core never reads/writes this table. The central page additionally requires `core:settings:manage`. Disabled/excluded modules contribute no editable solution rows; retained placement and missing-category behavior follow R-9/R-37. Assignment never grants solution access.
 
+### Received from Section 3 (2026-10-22)
+
+The owner moved three items here from Section 3 after the spec 03 critique (decisions F-6, F-22, and F-26 in `epics/4ed26496-66e3-401d-b817-4126538afdba/artifacts/spec-03-critique-decisions/index.md`). They widen the boundary above, which says Section 4 adds one core capability. This note records the scope. The requirements are written when this section is next revised.
+
+- Per-request record navigation entries (F-6, Section 3 R-29). Section 3 renders static module entries only and removes `categoryId` from static entries. This section adds a per-request navigation hook to the module contract, so a module can return record entries resolved after `can()`. A record entry may carry a `categoryId`, and R-9 applies to it. The category an administrator picks on the Modules page always wins for a static entry.
+- Record-level category assignment (F-22, Section 3 R-91a and the record cases of Section 3 AC-19). Section 3 keeps category create, rename, reorder, delete, and whole-module placement. This section adds record rows from module providers to the Categories transfer list, with the per-row rechecks, outcomes, and retry that the Category assignment boundary of `../architecture/module-contract.md` requires. R-37a is its first provider.
+- The focus-mode slot (F-26, Section 3 R-36). The shell slot that hides the sidebar and the header and gives a page the full width, with an exit control in the page header. The solutions viewer is its first consumer.
+
 ## Acceptance criteria
 
 AC-1 (roadmap item 1). With the module compiled in and enabled, an integration test proves the registry mounted it: its migration history is applied, its router answers under the module id, its permission keys appear in the role editor query, its default roles exist as system roles, and its navigation entries appear in the one tree under the categories that `tenant_module.category_id` and the entry `categoryId` values name. A repository test proves no file under `packages/core` or `apps/genie/src` other than the generated registry contains the module id. Proves R-1 to R-9.
