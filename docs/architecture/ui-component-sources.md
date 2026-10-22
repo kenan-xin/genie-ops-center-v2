@@ -40,7 +40,7 @@ The shadcn MCP server (`npx shadcn@latest mcp init --client claude`) searches ev
 
 These rules apply to every component that you take from a source on this page:
 
-- The license must permit use in a commercial product that is shipped to customers. MIT and Apache-2.0 are compatible. Do not take code under AGPL, a proprietary license, or a missing license. Ask the owner about MIT with the Commons Clause.
+- The license must permit use in a commercial product that is shipped to customers. MIT, Apache-2.0, and MIT with the Commons Clause are compatible (owner, 2026-10-22). The Commons Clause forbids selling the components themselves, and Ops Center does not do that. Do not take code under AGPL, a proprietary license, or a missing license.
 - A new npm dependency goes into `../core/tech-stack.md` with a one-line reason, in the same change that adds it.
 - The component uses only the tokens of `../design/design-system/tokens.md`. Remove raw colors, arbitrary values and inline styles. `@shadcn/lint` refuses them.
 - The component follows `ui-development.md`: a documented story, a failing behavior test first, then the code. Run the anti-slop scan and the axe check on its stories (Spec 3 R-63).
