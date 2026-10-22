@@ -85,9 +85,9 @@ flowchart TD
 
 The pure data-only resolver begins in S0-01 because G1 story discovery needs the same selection semantics. App-owned registry generation remains in the permanent pre-G2 slice; the full selection/cache matrix stays in S0-06/S0-10. No runtime module import moves into tooling.
 
-## Current state, 2026-09-23
+## Current state, 2026-09-24
 
-All twelve Spec 0 tickets are integrated into `develop` and closed in Beads. S0-12's [integrated acceptance traceability](12-foundation-acceptance-g5/traceability.md) records every acceptance criterion on the integrated revision. G5 stays open for one item: a real registry push from the release workflow, tracked in Beads under S0-12. The dispatch handoffs for these tickets were removed after closure; git history keeps them.
+All twelve Spec 0 tickets are integrated into `develop` and closed in Beads. S0-12's [integrated acceptance traceability](12-foundation-acceptance-g5/traceability.md) records every acceptance criterion on the integrated revision. G5 closed on 2026-09-24 after a real registry push from the release workflow (Bead `1rd.12.1`). Epic `1rd` is closed. The dispatch handoffs for these tickets were removed after closure; git history keeps them.
 
 CSP logging yt2 is a child of S0-05, and cache identity 2cg is a child of S0-10. Parent sessions deliver these before closure; children are not pre-start dependencies on their own parent implementation. 2cg still requires S0-06. The historical `2tc` database prerequisite is closed; the repair-union database proof is recorded with the integrated review.
 
