@@ -35,7 +35,7 @@ genie-ops-center/
       testing/                      Core-table factories and generic database, migration, and tenant-context
                                     helpers. No module imports; composed tests and seed belong to the app.
     ui/                             Design-system primitives and tokens.
-    config/                         Tagged config: shared tsconfig, oxlint, oxfmt, Tailwind, Vitest and Storybook presets.
+    config/                         Tagged config: shared tsconfig, oxlint, oxfmt, Vitest and Storybook presets.
                                     No internal project imports; consumed by configuration files, not runtime.
     modules/
       solutions/                    Platform module, every tenant.

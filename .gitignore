@@ -43,6 +43,7 @@ playwright-report/
 
 # Generated at build time from MODULE_INCLUDE. Never commit it (ADR 0008).
 apps/genie/src/modules.ts
+apps/genie/src/styles/module-sources.generated.css
 
 .env
 .env.*

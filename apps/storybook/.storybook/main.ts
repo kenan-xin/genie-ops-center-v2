@@ -2,7 +2,11 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { sharedStorybookConfig } from "@genie/config/storybook";
-import { readModuleInventory, resolveModuleSelection } from "@genie/generators";
+import {
+  moduleSourceLines,
+  readModuleInventory,
+  resolveModuleSelection,
+} from "@genie/generators";
 import type { StorybookConfig } from "@storybook/nextjs-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { mergeConfig } from "vite";
@@ -43,8 +47,7 @@ const config: StorybookConfig = {
       plugins: [
         moduleTailwindSources({
           stylesheet: join(here, "preview.css"),
-          workspaceRoot,
-          moduleRoots,
+          lines: moduleSourceLines(workspaceRoot, moduleRoots),
         }),
         tailwindcss(),
       ],

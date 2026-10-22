@@ -1,5 +1,3 @@
-import { join } from "node:path";
-
 import type { Plugin } from "vite";
 
 /**
@@ -9,25 +7,16 @@ import type { Plugin } from "vite";
  * their class names into the selection's static output. The selection is only
  * known when `main.ts` runs, so the lines are added to the stylesheet text
  * before Tailwind compiles it. Both plugins run in the `pre` stage, in array
- * order, so this one must come first.
+ * order, so this one must come first. `main.ts` builds the lines with
+ * `moduleSourceLines` from `@genie/generators`, the same function that writes
+ * the application's generated stylesheet, because only `main.ts` may import a
+ * generator.
  */
-export function moduleSourceLines(
-  workspaceRoot: string,
-  moduleRoots: readonly string[]
-): string {
-  return moduleRoots
-    .map(
-      (root) => `@source ${JSON.stringify(join(workspaceRoot, root, "src"))};\n`
-    )
-    .join("");
-}
-
 export function moduleTailwindSources(options: {
   readonly stylesheet: string;
-  readonly workspaceRoot: string;
-  readonly moduleRoots: readonly string[];
+  readonly lines: string;
 }): Plugin {
-  const lines = moduleSourceLines(options.workspaceRoot, options.moduleRoots);
+  const { lines } = options;
 
   return {
     name: "genie:module-tailwind-sources",

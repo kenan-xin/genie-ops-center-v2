@@ -10,8 +10,8 @@ function transform(
 ): string | undefined {
   const plugin = moduleTailwindSources({
     stylesheet: STYLESHEET,
-    workspaceRoot: "/repo",
-    moduleRoots,
+    // `main.ts` builds this text with `moduleSourceLines`, tested in tools/generators.
+    lines: moduleRoots.map((root) => `@source "/repo/${root}/src";\n`).join(""),
   });
 
   // SAFETY: the plugin declares `transform` as a plain function that returns

@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
   emitRegistryModule,
+  moduleSourceLines,
   readModuleInventory,
   resolveModuleSelection,
 } from "@genie/generators";
@@ -18,6 +19,10 @@ import {
 const CHECKOUT_ROOT = resolve(import.meta.dirname, "../../..");
 
 export const REGISTRY_PATH = "apps/genie/src/modules.ts";
+
+/** Imported by `globals.css`, so that Tailwind scans only the selected modules (D3-2). */
+export const MODULE_SOURCES_PATH =
+  "apps/genie/src/styles/module-sources.generated.css";
 
 /**
  * The build root, taken from `--root` or the checkout this script sits in.
@@ -47,7 +52,7 @@ export function rootFromArgv(
   return resolve(value);
 }
 
-/** Writes the registry for one selection inside one build root. */
+/** Writes the registry and the module Tailwind sources for one selection inside one build root. */
 export function generateRegistry(
   workspaceRoot: string,
   moduleInclude: string | undefined
@@ -63,6 +68,20 @@ export function generateRegistry(
   mkdirSync(dirname(target), { recursive: true });
 
   writeFileSync(target, emitRegistryModule(selection), "utf8");
+
+  const sources = resolve(workspaceRoot, MODULE_SOURCES_PATH);
+
+  mkdirSync(dirname(sources), { recursive: true });
+
+  // Paths relative to the stylesheet, so the file holds no checkout path.
+  writeFileSync(
+    sources,
+    `/* Generated from MODULE_INCLUDE. Do not edit and do not commit (D3-2). */\n${moduleSourceLines(
+      relative(dirname(sources), workspaceRoot),
+      selection.entries.map((entry) => entry.packageRoot)
+    )}`,
+    "utf8"
+  );
 
   return `generated ${target} for selection ${selection.source} [${selection.ids.join(", ")}]`;
 }

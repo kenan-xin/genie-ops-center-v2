@@ -4,12 +4,7 @@
 // target still checks every file through tsconfig.json.
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "next.config.ts",
-    "tailwind.config.ts"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "next.config.ts"],
   // This `exclude` replaces the inherited one, so it repeats the root's
   // transient-fixture markers (genie-ops-center-v2-64a, -5hq).
   "exclude": [

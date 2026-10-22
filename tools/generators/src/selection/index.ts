@@ -15,3 +15,5 @@ export type {
 export { resolveModuleSelection } from "./resolve.ts";
 
 export { emitRegistryModule } from "../registry/emit.ts";
+
+export { moduleSourceLines } from "../registry/tailwind-sources.ts";

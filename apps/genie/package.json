@@ -11,7 +11,7 @@
     "generate-openapi": "node tools/generate-openapi.ts",
     "check-openapi": "node tools/generate-openapi.ts --check",
     "start": "node tools/start-standalone.mjs",
-    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.entra.config.ts playwright.fixture.config.ts playwright.setup-gate.config.ts postcss.config.mjs tailwind.config.ts vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
+    "lint": "oxlint --config ../../oxlint.config.ts src testing tools e2e next.config.ts playwright.config.ts playwright.dev.config.ts playwright.entra.config.ts playwright.fixture.config.ts playwright.setup-gate.config.ts postcss.config.mjs vitest.config.ts vitest.integration.config.ts vitest.release-smoke.config.ts",
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
     "test:e2e": "cd ../.. && playwright test --config apps/genie/playwright.config.ts",
@@ -72,7 +72,8 @@
           }
         ],
         "outputs": [
-          "{projectRoot}/src/modules.ts"
+          "{projectRoot}/src/modules.ts",
+          "{projectRoot}/src/styles/module-sources.generated.css"
         ]
       },
       "generate-openapi": {

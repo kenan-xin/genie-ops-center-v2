@@ -12,7 +12,6 @@
     "tools/**/*.ts",
     "e2e/**/*.ts",
     "next.config.ts",
-    "tailwind.config.ts",
     "playwright.config.ts",
     "playwright.setup-gate.config.ts",
     "vitest.config.ts",

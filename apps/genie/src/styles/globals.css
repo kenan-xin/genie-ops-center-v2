@@ -1,2 +1,11 @@
-@import "tailwindcss";
-@config "../../tailwind.config.ts";
+/*
+ * Tailwind writes a rule only for a class it finds in a scanned file. Automatic
+ * detection is off, so this list is the whole scan: the shared UI, core, the
+ * app, and the selected modules that generate-registry writes (D3-2, R-19c).
+ */
+@import "tailwindcss" source(none);
+@import "./module-sources.generated.css";
+
+@source "../../../../packages/ui/src";
+@source "../../../../packages/core/src";
+@source "..";
