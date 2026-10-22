@@ -166,7 +166,8 @@ jobs:
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The runner has no browser; both suites launch the pinned Chromium.
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec nx run-many -t test:e2e:fixture -p @genie/app
+      # The fixture suite runs in the app's integration shard, because the app's
+      # test:integration depends on test:e2e:fixture, so this job does not repeat it.
       - run: pnpm exec nx run-many -t test:e2e -p @genie/app
       # The generated-module proof (R-30/AC-7): it generates a module, builds
       # the image carrying it and proves the denied route at both viewports.

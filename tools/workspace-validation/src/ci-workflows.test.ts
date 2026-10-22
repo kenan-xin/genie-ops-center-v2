@@ -774,16 +774,18 @@ describe("the Spec 0 CI gates", () => {
 
     expect(e2eJob, "a job runs the E2E suites").toBeDefined();
 
-    // The fixture stack precedes the ordinary suite, as ci:develop runs them.
+    // The fixture suite runs once, in the app's integration shard through the
+    // test:integration dependency, so the E2E job runs only the ordinary suite.
     const e2eScripts = runScripts(e2eJob?.[1] ?? "").join("\n");
-    const fixtureAt = e2eScripts.search(targetPattern("test:e2e:fixture"));
-    const ordinaryAt = e2eScripts.search(targetPattern("test:e2e"));
 
-    expect(fixtureAt, "the E2E job runs the fixture suite").toBeGreaterThan(-1);
     expect(
-      ordinaryAt,
-      "the E2E job runs the ordinary suite after the fixture"
-    ).toBeGreaterThan(fixtureAt);
+      e2eScripts.search(targetPattern("test:e2e")),
+      "the E2E job runs the ordinary suite"
+    ).toBeGreaterThan(-1);
+    expect(
+      e2eScripts.search(targetPattern("test:e2e:fixture")),
+      "the E2E job does not repeat the fixture suite"
+    ).toBe(-1);
 
     // Every heavy job waits for the gates, so a broken lint fails before any
     // image build spends runner time.
