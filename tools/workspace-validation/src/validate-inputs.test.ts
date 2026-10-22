@@ -101,6 +101,11 @@ describe("the validate target's inputs", () => {
       "{workspaceRoot}/tools/generators/**/*",
       "{workspaceRoot}/apps/genie/tools/**/*",
       "{workspaceRoot}/packages/modules/**/*",
+      // The token scan of Spec 3 R-4 reads every source file of these trees.
+      "{workspaceRoot}/packages/ui/**/*",
+      "{workspaceRoot}/packages/core/**/*",
+      "{workspaceRoot}/apps/**/*",
+      "{workspaceRoot}/customers/*/app/**/*",
       "{workspaceRoot}/.github/**",
       "{workspaceRoot}/deploy/**/*",
       "{workspaceRoot}/.dockerignore",

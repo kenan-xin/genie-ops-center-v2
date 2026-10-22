@@ -51,7 +51,7 @@ export const Phone: Story = {
 export const Dark: Story = {
   decorators: [
     (Story) => (
-      <div data-theme="dark">
+      <div data-theme="dark" className="bg-background text-foreground">
         <Story />
       </div>
     ),

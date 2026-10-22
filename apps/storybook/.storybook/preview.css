@@ -1,6 +1,6 @@
 /*
  * The product stylesheet, imported and never copied, so a story renders with
- * the same Tailwind rules, preset and tokens as the application.
+ * the same Tailwind rules and tokens as the application.
  */
 @import "../../genie/src/styles/globals.css";
 

@@ -68,7 +68,9 @@ async function seedTestSetup(): Promise<void> {
     "-d",
     "genie",
     "-c",
-    `insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now()`,
+    // The root layout reads branding on every set-up document, so the row `markSetupDone` writes
+    // must exist too.
+    `insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ('E2E', 'Genie', 'en', 'UTC') on conflict do nothing`,
   ]);
 }
 

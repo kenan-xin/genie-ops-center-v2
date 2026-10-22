@@ -1,6 +1,26 @@
+import { colorRoles } from "@genie/ui/tokens";
 import { describe, expect, it } from "vitest";
 
-import { foregroundFor } from "./foreground.ts";
+import { contrastRatio, foregroundFor } from "./foreground.ts";
+
+describe("contrastRatio", () => {
+  it("matches the ratios tokens.md measured, in either order", () => {
+    expect(contrastRatio("#2563eb", "#ffffff")).toBeCloseTo(5.17, 2);
+    expect(contrastRatio("#ffffff", "#2563eb")).toBeCloseTo(5.17, 2);
+    expect(contrastRatio("#60a5fa", "#030712")).toBeCloseTo(7.92, 2);
+  });
+
+  it("holds the fixed --brand-on-dark at 3:1 or more on every dark surface (AC-1, R-15)", () => {
+    for (const surface of ["background", "card", "muted"] as const) {
+      expect(
+        contrastRatio(
+          colorRoles.dark["brand-on-dark"],
+          colorRoles.dark[surface]
+        )
+      ).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
 
 describe("foregroundFor", () => {
   it("uses near-black text for a light primary color", () => {

@@ -1,14 +1,15 @@
+import { focusRing } from "@genie/ui";
+
 import type { AuditFilters } from "./types.ts";
 
 /** The one focus ring (design tokens): a 2px offset ring on every interactive element. */
-export const focusRing =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background";
+export { focusRing };
 
-export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-input bg-white px-3 text-sm font-semibold text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white text-foreground dark:hover:bg-foreground dark:disabled:hover:bg-gray-950 ${focusRing}`;
+export const btnSecondary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg border border-input bg-white dark:bg-card px-3 text-sm font-semibold text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white text-foreground dark:hover:bg-foreground dark:disabled:hover:bg-gray-950 ${focusRing}`;
 
 export const btnGhost = `inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-foreground motion-safe:transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent sm:h-8 text-foreground dark:hover:bg-foreground ${focusRing}`;
 
-export const inputClass = `h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground dark:border-input text-foreground ${focusRing}`;
+export const inputClass = `h-10 w-full rounded-lg border border-input bg-white dark:bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground dark:border-input text-foreground ${focusRing}`;
 
 /** The label inside the filter panel; caption size, because the panel carries its own title. */
 export const filterLabel = "text-xs font-semibold text-foreground";

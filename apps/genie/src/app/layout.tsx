@@ -1,9 +1,11 @@
 import {
+  brandingTokens,
   idleExpiry,
   isLimitedBreakGlass,
   readCookie,
   sessionCookieName,
 } from "@genie/core";
+import defaultFontHref from "@genie/ui/fonts/plus-jakarta-sans-latin-wght-normal.woff2?url";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
@@ -33,6 +35,13 @@ function limitedSessionExempt(pathname: string): boolean {
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
 }
+
+/**
+ * R-17: the organization's theme is `system`, so the device decides. This runs in <head>
+ * before the body paints, and it keeps following the device while the page is open.
+ */
+const FOLLOW_DEVICE_THEME =
+  '(()=>{const m=matchMedia("(prefers-color-scheme: dark)");const a=()=>{document.documentElement.dataset.theme=m.matches?"dark":"light"};a();m.addEventListener("change",a)})()';
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
@@ -69,6 +78,22 @@ export default async function RootLayout({
   // one read also decides the limited-session page below, and the page rendering in parallel
   // shares it, so a document pays for one session read and makes one idle decision.
   const context = readContext();
+
+  // R-12a, D3-5: a fresh deployment has no branding row and the reader throws on a missing row,
+  // so the not-set-up page and a process without a context emit the packages/ui defaults.
+  const branding =
+    setupRequired || context === undefined
+      ? undefined
+      : await context.tenant.branding.get();
+
+  const theme =
+    branding?.defaultTheme === "light" || branding?.defaultTheme === "dark"
+      ? branding.defaultTheme
+      : "system";
+
+  const rootDeclarations = Object.entries(brandingTokens(branding))
+    .map(([name, value]) => `${name}:${value}`)
+    .join(";");
 
   const cookieName =
     context === undefined
@@ -116,10 +141,10 @@ export default async function RootLayout({
     limitedSessionExempt(requestHeaders.get(PATHNAME_HEADER) ?? "")
       ? undefined
       : await (async () => {
-          const branding = await context.tenant.branding.get();
+          const limitedBranding = await context.tenant.branding.get();
 
           return {
-            productName: branding.productName,
+            productName: limitedBranding.productName,
             passwordChanged: !session.session.user.mustChangePassword,
             authenticatorEnrolled: session.session.user.twoFactorEnabled,
           };
@@ -140,7 +165,26 @@ export default async function RootLayout({
     process.env.NODE_ENV === "development" ? context : undefined;
 
   return (
-    <html lang={locale}>
+    // The theme script sets data-theme before hydration, so <html> carries suppressHydrationWarning.
+    <html
+      lang={locale}
+      data-theme={theme === "dark" ? "dark" : "light"}
+      suppressHydrationWarning
+    >
+      <head>
+        {theme === "system" ? (
+          <script dangerouslySetInnerHTML={{ __html: FOLLOW_DEVICE_THEME }} />
+        ) : null}
+        <style>{`:root{${rootDeclarations}}`}</style>
+        {/* Fonts are fetched in CORS mode, so a preload without crossOrigin is fetched twice. */}
+        <link
+          rel="preload"
+          href={defaultFontHref}
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>

@@ -4,10 +4,10 @@ The shared theme surface.
 
 ## What belongs here
 
-The Section 0 slice of the fixed token layer (`docs/design/design-system/tokens.md`)
-and the browser-safe `ThemeProvider` that applies it. The Storybook host wires
-the provider once as its decorator, so every story renders against the same
-light or dark surface, and a token change invalidates the host's build.
+The typed fixed token layer of `docs/design/design-system/tokens.md`, which
+`apps/genie/src/styles/globals.css` mirrors under a test (D3-3), the one focus
+ring, and the Storybook-only `ThemeProvider` decorator. The decorator sets
+`data-theme` on the story root, because a story has no `<html data-theme>`.
 
 ## What must not go here
 

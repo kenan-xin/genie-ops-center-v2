@@ -77,17 +77,26 @@ describe.concurrent(
       expect(result.output).toMatch(/require-static-classes/);
     });
 
-    it("pins the one accepted exception to one file and one rule", () => {
+    it("applies no-inline-styles to the ThemeProvider like every other product file", () => {
       const exceptions = (sharedOxlintConfig.overrides ?? []).filter(
         (entry) =>
           entry.rules?.["shadcn/no-inline-styles"] === "off" &&
           entry.files?.includes("packages/ui/src/theme/theme-provider.tsx")
       );
 
-      expect(exceptions).toHaveLength(1);
+      expect(exceptions).toHaveLength(0);
+    });
 
-      expect(exceptions[0]?.files).toEqual([
-        "packages/ui/src/theme/theme-provider.tsx",
+    it("pins the one accepted exception, the branding style element, to one file and one rule", () => {
+      const exceptions = (sharedOxlintConfig.overrides ?? []).filter((entry) =>
+        entry.files?.includes("apps/genie/src/app/layout.tsx")
+      );
+
+      expect(exceptions.map((entry) => [entry.files, entry.rules])).toEqual([
+        [
+          ["apps/genie/src/app/layout.tsx"],
+          { "shadcn/no-inline-styles": "off" },
+        ],
       ]);
     });
 

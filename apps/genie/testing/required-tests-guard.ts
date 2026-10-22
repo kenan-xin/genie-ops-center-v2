@@ -97,6 +97,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/font-build.test.ts",
+    reason:
+      "Spec 3 AC-1 requires the build to ship only the two self-hosted faces and no third-party font URL",
+    cases: [
+      "the production build and the fonts reads a real build, so an empty scan cannot pass",
+      "the production build and the fonts ships the latin and latin-ext files of the default face and the mono face, and no other font file",
+      "the production build and the fonts points every stylesheet url at a file inside the image",
+    ],
+  },
+  {
     file: "testing/image-matrix.integration.test.ts",
     cases: RELEASE_MATRIX_FULL_NAMES,
   },

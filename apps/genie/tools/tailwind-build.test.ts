@@ -55,6 +55,12 @@ beforeAll(async () => {
     dirname(createRequire(import.meta.url).resolve("tailwindcss/package.json")),
     join(root, "node_modules/tailwindcss")
   );
+  // `@import "@genie/ui/fonts.css"` resolves the same way, to the real package.
+  mkdirSync(join(root, "node_modules/@genie"));
+  symlinkSync(
+    resolve(import.meta.dirname, "../../../packages/ui"),
+    join(root, "node_modules/@genie/ui")
+  );
 
   for (const id of ["alpha", "beta"]) {
     const packageRoot = join(root, "packages/modules", id);

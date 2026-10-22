@@ -71,7 +71,7 @@ function ProfileBlock(props: {
       <div className="flex items-start gap-4">
         <span
           aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-base font-bold text-foreground"
         >
           {initialsOf(props.profile.name)}
         </span>
@@ -329,7 +329,7 @@ function RolesBlock(props: {
                 </span>
               </span>
               <span className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
                   {grant.scopeLabel}
                 </span>
                 <span className="text-muted-foreground">

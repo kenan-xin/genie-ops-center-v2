@@ -96,7 +96,7 @@ function Select(props: {
         aria-label={props.ariaLabel}
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
-        className={`h-10 w-full appearance-none rounded-lg border border-input bg-white pl-3 pr-9 text-sm text-foreground dark:border-input text-foreground ${focusRing}`}
+        className={`h-10 w-full appearance-none rounded-lg border border-input bg-white dark:bg-card pl-3 pr-9 text-sm text-foreground dark:border-input text-foreground ${focusRing}`}
       >
         {props.children}
       </select>
@@ -129,7 +129,7 @@ function HelpNote(): JSX.Element {
           id={`${id}-panel`}
           role="group"
           aria-label={label}
-          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-white p-4 text-left text-xs leading-relaxed text-foreground shadow-lg bg-card text-foreground"
+          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-white dark:bg-card p-4 text-left text-xs leading-relaxed text-foreground shadow-lg bg-card text-foreground"
         >
           <p>
             An event is never edited and never deleted. It keeps the words that
@@ -407,7 +407,7 @@ function FilterButton(props: {
       {open ? (
         <div
           id={`${id}-panel`}
-          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-white p-4 text-left shadow-lg bg-card"
+          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-white dark:bg-card p-4 text-left shadow-lg bg-card"
         >
           <FilterPanel
             filters={props.filters}
@@ -472,7 +472,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-1 md:max-w-md">
-          <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-input bg-white px-3 text-sm focus-within:ring-2 focus-within:ring-ring dark:border-input ">
+          <label className="flex h-10 min-h-10 min-w-48 flex-1 items-center gap-2 rounded-lg border border-input bg-white dark:bg-card px-3 text-sm focus-within:ring-2 focus-within:ring-ring dark:border-input ">
             <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
             <input
               value={props.filters.query}
@@ -500,7 +500,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
         onChange={change}
       />
 
-      <section className="overflow-hidden rounded-xl border border-border bg-white bg-card">
+      <section className="overflow-hidden rounded-xl border border-border bg-white dark:bg-card bg-card">
         {props.events.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold">No events match</p>

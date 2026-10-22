@@ -1,4 +1,5 @@
 import {
+  brandingTokens,
   callProcedure,
   principalFor,
   createLogger,
@@ -36,14 +37,23 @@ const AUTH_ENV = {
 
 const AUTH_PASSWORD = "break-glass-password-14";
 
-async function seedTenantReaders(tenant: TenantContext, minutes: number) {
+async function seedTenantReaders(
+  tenant: TenantContext,
+  minutes: number,
+  appearance: { readonly primary: string; readonly fontSize: string }
+) {
   await tenant.db.$client.query(
     "insert into tenant_settings (onboarding_mode, local_accounts_enabled, realm_supports_local_accounts, session_idle_minutes) values ('invite', false, false, $1)",
     [minutes]
   );
   await tenant.db.$client.query(
-    "insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ($1, $2, 'en', 'UTC')",
-    [`Company ${minutes}`, `Product ${minutes}`]
+    "insert into tenant_branding (company_name, product_name, default_locale, default_time_zone, primary_color, primary_foreground, font_size) values ($1, $2, 'en', 'UTC', $3, '#ffffff', $4)",
+    [
+      `Company ${minutes}`,
+      `Product ${minutes}`,
+      appearance.primary,
+      appearance.fontSize,
+    ]
   );
 }
 
@@ -145,8 +155,14 @@ function callerFor(
 describe("two tenant contexts in one process", () => {
   it("each TenantContext reader, file store and placeholder router returns only its own database's data", async () => {
     await Promise.all([
-      seedTenantReaders(first.context, 21),
-      seedTenantReaders(second.context, 42),
+      seedTenantReaders(first.context, 21, {
+        primary: "#0f766e",
+        fontSize: "compact",
+      }),
+      seedTenantReaders(second.context, 42, {
+        primary: "#6d28d9",
+        fontSize: "large",
+      }),
     ]);
 
     const firstFile = await withTransaction(first.context, (tx) =>
@@ -219,6 +235,15 @@ describe("two tenant contexts in one process", () => {
     expect(secondSettings.sessionIdleMinutes).toBe(42);
     expect(firstBranding.companyName).toBe("Company 21");
     expect(secondBranding.companyName).toBe("Company 42");
+    // AC-2: each deployment's emitted branding layer is its own.
+    expect(brandingTokens(firstBranding)).toMatchObject({
+      "--primary": "#0f766e",
+      "font-size": "14px",
+    });
+    expect(brandingTokens(secondBranding)).toMatchObject({
+      "--primary": "#6d28d9",
+      "font-size": "16px",
+    });
     // A file id from the other deployment is unknown here. A file store bound to a shared pool
     // would find it.
     await expect(

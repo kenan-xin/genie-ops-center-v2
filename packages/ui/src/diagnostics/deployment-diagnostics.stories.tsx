@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
 
 import { ThemeProvider } from "../theme/theme-provider.tsx";
-import { themeTokens } from "../theme/tokens.ts";
+import { colorRoles } from "../theme/tokens.ts";
 import { DeploymentDiagnostics } from "./deployment-diagnostics.tsx";
 
 /**
@@ -102,14 +102,14 @@ export const Dark: Story = {
 
     await expect(surface).toHaveAttribute("data-theme", "dark");
     await expect(surface).toHaveStyle({
-      backgroundColor: themeTokens.dark.surface,
-      color: themeTokens.dark.foreground,
+      backgroundColor: colorRoles.dark.background,
+      color: colorRoles.dark.foreground,
     });
     // The dark pair must not collapse to the light one, so a dark token that
     // becomes the light colour (the contrast regression this story catches)
     // fails here rather than passing on the attribute alone.
     await expect(surface).not.toHaveStyle({
-      backgroundColor: themeTokens.light.surface,
+      backgroundColor: colorRoles.light.background,
     });
   },
 };

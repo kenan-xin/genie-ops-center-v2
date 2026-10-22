@@ -1,3 +1,4 @@
+import { focusRing } from "@genie/ui";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
 
@@ -64,9 +65,6 @@ export type BreakGlassSignInProps = {
   /** The member sign-in route the link points at (S1). Defaults to `/sign-in`. */
   readonly memberSignInHref?: string;
 };
-
-const focusRing =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const inputClass = `h-11 w-full rounded-lg border border-input bg-background px-3.5 text-base text-foreground placeholder:text-muted-foreground ${focusRing}`;
 const labelClass = "text-sm font-semibold text-foreground";
@@ -166,7 +164,7 @@ function ErrorBlock({ message }: { readonly message: string }): JSX.Element {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+      className="flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3.5 py-3 text-sm text-foreground [&_svg]:text-destructive"
     >
       <Icon path={ALERT_PATH} />
       <span>{message}</span>
@@ -539,7 +537,7 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
       <div className="flex flex-col gap-6" data-testid="break-glass-sign-in">
         <header className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
               <Icon path={SHIELD_PATH} />
               Administrator
             </span>

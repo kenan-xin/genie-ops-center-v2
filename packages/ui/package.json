@@ -9,7 +9,10 @@
     "#lib/*": "./src/lib/*.ts"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./tokens": "./src/theme/tokens.ts",
+    "./fonts.css": "./src/fonts/fonts.css",
+    "./fonts/*": "./src/fonts/*"
   },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src",

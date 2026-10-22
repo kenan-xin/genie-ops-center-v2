@@ -19,6 +19,6 @@ export { ThemeProvider } from "./theme/theme-provider.tsx";
 
 export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
 
-export { themeTokens } from "./theme/tokens.ts";
+export { focusRing } from "./theme/tokens.ts";
 
-export type { ThemeName, ThemeToken } from "./theme/tokens.ts";
+export type { ThemeName } from "./theme/tokens.ts";

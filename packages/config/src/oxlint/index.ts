@@ -76,21 +76,14 @@ const shadcnNonProductOverride: OxlintOverride = {
 };
 
 /**
- * The one accepted exception to the design-system rules, and the reason it is
- * accepted. `ThemeProvider` is the story-only surface that paints the fixed
- * token pair from `packages/ui/src/theme/tokens.ts` onto a subtree, and it does
- * so with an inline `backgroundColor`/`color`. `shadcn/no-inline-styles` reports
- * both. The plugin's own remedy, a Tailwind class over a CSS custom property,
- * needs the CSS theme layer that Section 3 owns and that neither `packages/ui`
- * nor the Storybook host builds yet; today the host loads no stylesheet, so the
- * inline pair is the only thing that renders the surface, and the component's
- * stories assert the rendered pair (`theme-provider.stories.tsx`). The exception
- * is one exact file and one rule; every other file under `packages/ui/src` still
- * gets `no-inline-styles`. Revisit with the primitive catalogue and delete this
- * entry once the theme CSS layer lands.
+ * The one accepted exception to the design-system rules, and the reason it is accepted. The root
+ * layout writes the tenant branding layer per request in one `<style>` element (Spec 3 R-12,
+ * R-16, D3-5): four declarations on `:root`, unlayered so they beat the fixed defaults. A theme
+ * CSS file cannot hold them, because they differ per deployment and change at run time. The
+ * exception is one exact file and one rule.
  */
-const shadcnThemeProviderException: OxlintOverride = {
-  files: ["packages/ui/src/theme/theme-provider.tsx"],
+const shadcnBrandingStyleException: OxlintOverride = {
+  files: ["apps/genie/src/app/layout.tsx"],
   rules: {
     "shadcn/no-inline-styles": "off",
   },
@@ -194,6 +187,6 @@ export const sharedOxlintConfig: OxlintConfig = {
     ...importBoundaryOverrides,
     shadcnProductOverride,
     shadcnNonProductOverride,
-    shadcnThemeProviderException,
+    shadcnBrandingStyleException,
   ],
 };

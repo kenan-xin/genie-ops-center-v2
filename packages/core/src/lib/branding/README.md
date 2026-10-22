@@ -9,6 +9,10 @@ relative luminance. The `seed` step of `genie-ops setup` derives `tenant_brandin
 with it, and the Section 3 branding save reuses the same rule, so a stored foreground never drifts
 between the two.
 
+The WCAG `contrastRatio` beside it, and the `brandingTokens` emitter: the four declarations the root
+layout writes on `:root` per request (Spec 3 R-12 to R-14), with the `packages/ui` defaults when no
+branding row exists.
+
 ## What must not go here
 
 A database read, a tenant context, a React component, and a second palette. This is one pure
@@ -16,4 +20,4 @@ stateless rule, ported from the branding design reference.
 
 ## What it imports
 
-Nothing.
+`@genie/ui/tokens`, for the fixed defaults. Nothing else.

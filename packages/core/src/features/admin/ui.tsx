@@ -1,11 +1,11 @@
+import { focusRing } from "@genie/ui";
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 
 import { CloseIcon, HelpIcon } from "./icons.tsx";
 
 /** The one focus ring (design tokens). */
-export const focusRing =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background";
+export { focusRing };
 
 export const btnPrimary = `inline-flex h-10 items-center whitespace-nowrap gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground motion-safe:transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
@@ -28,10 +28,12 @@ export type PillTone = "neutral" | "success" | "warning" | "danger" | "info";
 
 const PILL_TONE: Record<PillTone, string> = {
   neutral: "bg-muted text-muted-foreground",
-  success: "bg-primary/10 text-primary",
+  // tokens.md: status and label pills keep fixed Tailwind tones and never take the tenant color.
+  success:
+    "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   warning: "bg-muted text-foreground",
-  danger: "bg-destructive/10 text-destructive",
-  info: "bg-primary/10 text-primary",
+  danger: "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  info: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 };
 
 export function Pill(props: {

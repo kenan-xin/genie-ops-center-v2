@@ -111,6 +111,9 @@ export const Default: Story = {
   },
 };
 
+// u4nq: the accessibility test of every story reads this dark surface.
+export const Dark: Story = { globals: { theme: "dark" } };
+
 export const Empty: Story = {
   args: {
     events: [],

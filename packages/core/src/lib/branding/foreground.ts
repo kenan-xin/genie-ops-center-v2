@@ -48,6 +48,16 @@ function luminance(hex: string): number {
   );
 }
 
+/** The WCAG contrast ratio of two hex colours, in either argument order. */
+export function contrastRatio(foreground: string, background: string): number {
+  const [darker, lighter] = [
+    luminance(foreground),
+    luminance(background),
+  ].toSorted((left, right) => left - right);
+
+  return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
+
 /**
  * The foreground for a primary background: near-black above the luminance threshold, white
  * below it. Stored as `primary_foreground` and never recomputed by an email.

@@ -107,6 +107,13 @@ export {
 
 export { CorrelationScope } from "./lib/correlation/index.ts";
 
+export { brandingTokens } from "./lib/branding/tokens.ts";
+
+export type {
+  BrandingTokens,
+  BrandingTokenSource,
+} from "./lib/branding/tokens.ts";
+
 export { registerModuleRuntime } from "./lib/module-contract/runtime.ts";
 
 export {

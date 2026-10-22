@@ -1,3 +1,4 @@
+import { focusRing } from "@genie/ui";
 import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
@@ -39,9 +40,6 @@ export type BreakGlassAccountProps = {
   readonly onRevokeSession?: ((sessionId: string) => void) | undefined;
   readonly onRevokeOtherSessions?: (() => void) | undefined;
 };
-
-const focusRing =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 function formatInstant(value: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en", {

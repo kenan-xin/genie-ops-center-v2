@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
   // packages the image builder stage prunes for a selection that excludes them
   // (pg4); the typecheck target still checks them through tsconfig.json.
   typescript: { tsconfigPath: "tsconfig.build.json" },
+  // The root layout imports the default face with `?url` to preload it (R-10). `asset` emits the
+  // same file that the font stylesheet references and returns its served URL. The query keeps the
+  // rule off the stylesheet's own url() references, which it would otherwise leave unrewritten.
+  turbopack: {
+    rules: { "*.woff2": { condition: { query: "?url" }, type: "asset" } },
+  },
   async headers() {
     // R-47 on every path. The viewer response replaces the policy in the proxy, and the setup
     // gate sets the same list on its own responses; one source in `@genie/core/security` keeps

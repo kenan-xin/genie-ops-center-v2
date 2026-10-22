@@ -5,7 +5,97 @@
  */
 @import "tailwindcss" source(none);
 @import "./module-sources.generated.css";
+@import "@genie/ui/fonts.css";
 
 @source "../../../../packages/ui/src";
 @source "../../../../packages/core/src";
 @source "..";
+
+/* R-17: every dark: class follows data-theme on <html>, never the operating system setting. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/*
+ * R-1: each color role becomes a Tailwind color of the same name. `inline` makes the
+ * utility read the variable itself, so the per-request branding style can change it.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-brand-on-dark: var(--brand-on-dark);
+}
+
+/*
+ * R-3, R-5 to R-7: type keeps Tailwind's rem scale, so the tenant root size moves it.
+ * Spacing, control heights and radius are fixed pixels at every root size preset.
+ */
+@theme {
+  --font-sans: var(--font-face-plus-jakarta-sans);
+  --font-mono: var(--font-face-jetbrains-mono);
+  --spacing: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/*
+ * The fixed layer of tokens.md, "Color roles". It sits in a cascade layer, so the
+ * unlayered per-request style of the root layout always wins (R-12, R-13).
+ */
+@layer base {
+  :root,
+  [data-theme="light"] {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #111827;
+    --card: #ffffff;
+    --muted: #f9fafb;
+    --muted-foreground: #4b5563;
+    --border: #e5e7eb;
+    --input: #6b7280;
+    --ring: var(--primary);
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --destructive: #dc2626;
+    --brand-on-dark: #60a5fa;
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --background: #030712;
+    --foreground: #f3f4f6;
+    --card: #111827;
+    --muted: #111827;
+    --muted-foreground: #9ca3af;
+    --border: #1f2937;
+    --ring: var(--brand-on-dark);
+  }
+
+  :root {
+    font-size: 15px;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  /* R-6: a bare `border` is the hairline, not Tailwind 4's currentColor. */
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+}

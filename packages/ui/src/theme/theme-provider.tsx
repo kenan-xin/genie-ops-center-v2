@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { themeTokens, type ThemeName } from "./tokens.ts";
+import type { ThemeName } from "./tokens.ts";
 
 export type ThemeProviderProps = {
   readonly theme: ThemeName;
@@ -10,21 +10,15 @@ export type ThemeProviderProps = {
 };
 
 /**
- * The browser-safe theme surface a story renders against.
+ * The Storybook-only theme decorator (D3-4).
  *
- * It carries no product feature. It applies the fixed token pair for one theme,
- * so the host's decorator and any story that composes it render on the same
- * surface. Because the host wires this once, every story proves the tokens it
- * reads.
+ * The application puts the theme on `<html data-theme>`. A story has no such
+ * document, so this sets `data-theme` on the story root instead: the fixed
+ * layer's variables and every `dark:` class then apply inside the story.
  */
 export function ThemeProvider(props: ThemeProviderProps) {
-  const token = themeTokens[props.theme];
-
   return (
-    <div
-      data-theme={props.theme}
-      style={{ backgroundColor: token.surface, color: token.foreground }}
-    >
+    <div data-theme={props.theme} className="bg-background text-foreground">
       {props.children}
     </div>
   );

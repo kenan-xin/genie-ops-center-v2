@@ -129,7 +129,7 @@ export function AuditEventSheet(
         role="dialog"
         aria-modal="true"
         aria-label="Audit event"
-        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-2xl sm:inset-y-3 sm:right-3 sm:w-120 sm:rounded-xl sm:border sm:border-border bg-card "
+        className="absolute inset-y-0 right-0 flex w-full flex-col bg-white dark:bg-card shadow-2xl sm:inset-y-3 sm:right-3 sm:w-120 sm:rounded-xl sm:border sm:border-border bg-card "
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5 ">
           <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-medium text-foreground text-foreground">
