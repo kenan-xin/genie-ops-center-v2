@@ -9,4 +9,4 @@ Bounded technical approaches supporting the numbered specifications. Specificati
 | [Spec 2: Identity and access](02-identity-and-access.md) | Drafted 2026-09-27 and reviewed; tickets under epic d8l5 implemented; S2-G3 passes 2026-10-06 except the AC-14 operator confirmation and the first green scheduled Entra run (owner beads d8l5.23, d8l5.24) |
 | [Spec 3: Shell, branding and design system](03-shell-branding-and-design-system.md) | Drafted 2026-10-22 after the breakdown approval; tickets under epic 6wz1 not started |
 
-Module naming amendment: [propagation and implemented-ticket rework](module-naming-revision.md), 2026-09-20. Naming is approved; code rework sequence is proposed.
+Module naming amendment: [propagation and implemented-ticket rework](module-naming-revision.md), 2026-09-20. Naming is approved, and the rework is implemented and integrated at `19bdf39` (bead `ygn`, closed 2026-09-22).
