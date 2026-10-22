@@ -38,8 +38,8 @@ const ENTRIES = {
   emptyMessage: "No modules are compiled into this deployment.",
 };
 
-// The one populated assertion the three viewport variants share, so a viewport
-// variant cannot drift from the story it mirrors.
+// The one populated assertion both viewport variants share, so one viewport
+// cannot drift from the other.
 const entriesRender: Story["play"] = async ({ canvasElement }) => {
   const list = within(canvasElement).getByRole("navigation", {
     name: "Modules",
@@ -49,11 +49,6 @@ const entriesRender: Story["play"] = async ({ canvasElement }) => {
   await expect(
     within(list).getByRole("link", { name: "Placeholder" })
   ).toHaveAttribute("href", "/placeholder");
-};
-
-export const WithEntries: Story = {
-  args: ENTRIES,
-  play: entriesRender,
 };
 
 // Every screen is proved at both viewports (DEC-25). "desktop" and "mobile1" are

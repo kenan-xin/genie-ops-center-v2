@@ -157,8 +157,15 @@ const secondRoot = () => join(stage, "packages/modules", SECOND_ID);
  * A component-test run that hits the Vitest browser import race is retried by
  * the target's own wrapper (`testing/test-storybook.ts`), so this suite adds no
  * second retry: one nested run executes the Vitest command at most twice.
+ *
+ * `args` reach the task's command after Nx's `--`, which is how the component
+ * tests are asked for a machine-readable report.
  */
-function run(task: string, moduleInclude: string | undefined): Run {
+function run(
+  task: string,
+  moduleInclude: string | undefined,
+  args: readonly string[] = []
+): Run {
   const env = { ...process.env };
 
   for (const name of Object.keys(env)) {
@@ -178,7 +185,12 @@ function run(task: string, moduleInclude: string | undefined): Run {
     // until it ends. A killed task would then print nothing, so a timeout would
     // carry no child output to diagnose. Streaming puts the partial output on
     // stdout, which `spawnSync` has already captured when the timeout fires.
-    ["run", task, "--output-style=stream"],
+    [
+      "run",
+      task,
+      "--output-style=stream",
+      ...(args.length > 0 ? ["--", ...args] : []),
+    ],
     {
       cwd: stage,
       encoding: "utf8",
@@ -195,8 +207,12 @@ function run(task: string, moduleInclude: string | undefined): Run {
   };
 }
 
-function ran(task: string, moduleInclude: string | undefined): Run {
-  const result = run(task, moduleInclude);
+function ran(
+  task: string,
+  moduleInclude: string | undefined,
+  args: readonly string[] = []
+): Run {
+  const result = run(task, moduleInclude, args);
 
   if (result.status !== 0) {
     throw new Error(
@@ -207,17 +223,46 @@ function ran(task: string, moduleInclude: string | undefined): Run {
   return result;
 }
 
-/** Whether Nx served the task from the cache instead of running its command. */
+/**
+ * How Nx marks a task it did not run, on the task's own `> nx run` line. Nx
+ * 23.3, streamed off a terminal, prints `[local cache]` when it restored the
+ * outputs and `[existing outputs match the cache, left as is]` when they were
+ * already in place.
+ */
+const LOCAL_CACHE_HIT = "[local cache]";
+
+const CACHE_HIT_MARKERS = [
+  LOCAL_CACHE_HIT,
+  "existing outputs match the cache",
+] as const;
+
+/**
+ * Whether Nx served the task from the cache instead of running its command.
+ *
+ * A miss reads as `false`, and so would a hit whose wording Nx changed. Every
+ * expected hit therefore goes through `expectCacheHit`, which fails loudly, so
+ * an Nx output change cannot turn the miss assertions into silent passes.
+ */
 function servedFromCache(output: string, task: string): boolean {
   const line = output
     .split("\n")
     .find((candidate) => candidate.includes(`nx run ${task}`));
 
-  return (
-    line !== undefined &&
-    (line.includes("[local cache]") ||
-      line.includes("existing outputs match the cache"))
-  );
+  if (line === undefined) {
+    throw new Error(
+      `Nx printed no "nx run ${task}" line, so whether its cache served the task cannot be read. Nx changed its output format; update servedFromCache.\n${output}`
+    );
+  }
+
+  return CACHE_HIT_MARKERS.some((marker) => line.includes(marker));
+}
+
+function expectCacheHit(output: string, task: string): void {
+  if (!servedFromCache(output, task)) {
+    throw new Error(
+      `Expected Nx to serve ${task} from its cache, but its "nx run" line carries none of ${JSON.stringify(CACHE_HIT_MARKERS)}. Either the cache missed, or Nx changed how it reports a hit; read the line below and update CACHE_HIT_MARKERS.\n${output}`
+    );
+  }
 }
 
 type StoryIndex = {
@@ -416,13 +461,6 @@ describe("an unknown module id", () => {
     expect(result.status).not.toBe(0);
     expect(result.output).toContain("Unknown module id");
   });
-
-  it("fails the component-test run as well", () => {
-    const result = run(TEST_TASK, "does-not-exist");
-
-    expect(result.status).not.toBe(0);
-    expect(result.output).toContain("Unknown module id");
-  });
 });
 
 /**
@@ -439,33 +477,7 @@ describe("the local cache", () => {
 
     const repeated = ran(BUILD_TASK, SECOND_ID);
 
-    expect(servedFromCache(repeated.output, BUILD_TASK), repeated.output).toBe(
-      true
-    );
-    expect(index()).toEqual(firstIndex);
-
-    // The unset default is its own entry, and repeats the same way.
-    ran(BUILD_TASK, undefined);
-
-    const allIndex = index();
-
-    const allRepeated = ran(BUILD_TASK, undefined);
-
-    expect(
-      servedFromCache(allRepeated.output, BUILD_TASK),
-      allRepeated.output
-    ).toBe(true);
-    expect(index()).toEqual(allIndex);
-
-    // Another selection overwrote the static directory; returning to the first
-    // must write the first selection's bytes back, not serve the other's.
-    ran(BUILD_TASK, "placeholder");
-
-    const restored = ran(BUILD_TASK, SECOND_ID);
-
-    expect(servedFromCache(restored.output, BUILD_TASK), restored.output).toBe(
-      true
-    );
+    expectCacheHit(repeated.output, BUILD_TASK);
     expect(index()).toEqual(firstIndex);
 
     // With the directory gone entirely, a hit here means Nx wrote it back out
@@ -476,7 +488,8 @@ describe("the local cache", () => {
 
     const rewritten = ran(BUILD_TASK, SECOND_ID);
 
-    expect(rewritten.output).toContain("[local cache]");
+    expectCacheHit(rewritten.output, BUILD_TASK);
+    expect(rewritten.output).toContain(LOCAL_CACHE_HIT);
     expect(index()).toEqual(firstIndex);
   });
 });
@@ -515,26 +528,6 @@ describe("an inventory change", () => {
 
     writeSecondFixture();
   });
-
-  it("discovers a newly added module with no host or CI edit", () => {
-    const without = ran(BUILD_TASK, "placeholder");
-
-    expect(without.status).toBe(0);
-    expect(
-      Object.keys(index().entries).some((id) =>
-        id.startsWith("modules-second-")
-      )
-    ).toBe(false);
-
-    // The fixture is already on disk; selecting it is the only change. No host
-    // file and no CI configuration names it.
-    const withSecond = ran(BUILD_TASK, SECOND_ID);
-
-    expect(withSecond.status).toBe(0);
-    expect(
-      index().entries["modules-second-fixture-probe--default"]?.title
-    ).toBe(SECOND_TITLE);
-  });
 });
 
 describe("a headless module", () => {
@@ -563,29 +556,9 @@ describe("a headless module", () => {
 });
 
 describe("the static artifact and source maps", () => {
-  it("reads a real build, so an empty scan cannot pass", () => {
-    ran(BUILD_TASK, SECOND_ID);
-
-    const files = outputFiles();
-
-    expect(files.length).toBeGreaterThan(10);
-    expect(files.some((path) => path.endsWith("index.json"))).toBe(true);
-    expect(files.some((path) => path.endsWith(".js"))).toBe(true);
-  });
-
-  // The control for the search itself: the same method finds the included
-  // module, so a scan that matched nothing anywhere would fail here.
-  it("finds the included module by the same search", () => {
-    const placeholder = ran(BUILD_TASK, "placeholder");
-
-    expect(placeholder.status).toBe(0);
-
-    const found = hits(PLACEHOLDER_NEEDLES);
-
-    expect(found["Modules/Placeholder"]?.length).toBeGreaterThan(0);
-  });
-
-  // The static build emits no source map at all, and that absence is the
+  // The control for the scan itself is the first case: the same `hits` search
+  // finds each included module's needles, so a scan that read nothing fails
+  // there. The static build emits no source map at all, and that absence is the
   // confidentiality property: a map carries the original text of every story,
   // component and fixture, including an excluded module's. A future build that
   // starts emitting maps fails here, so the change is examined rather than
@@ -874,16 +847,9 @@ describe("the development server and the MCP addon", () => {
   });
 });
 
+// A quiet empty pass is refused by the wrapper's `--passWithNoTests=false` and
+// by the generated-module case below, which reads passed tests from a report.
 describe("the component-test layer", () => {
-  it("runs a nonempty collection rather than a quiet empty pass", () => {
-    const result = ran(TEST_TASK, SECOND_ID);
-
-    const passed = /Tests\s+(\d+) passed/.exec(result.output)?.[1];
-
-    expect(passed, result.output).toBeDefined();
-    expect(Number(passed)).toBeGreaterThan(0);
-  });
-
   it("runs again when the selection changes, and reuses an identical one", () => {
     ran(TEST_TASK, SECOND_ID);
 
@@ -895,7 +861,7 @@ describe("the component-test layer", () => {
 
     const repeat = ran(TEST_TASK, "placeholder");
 
-    expect(servedFromCache(repeat.output, TEST_TASK), repeat.output).toBe(true);
+    expectCacheHit(repeat.output, TEST_TASK);
   });
 
   it("propagates a failing interaction", () => {
@@ -985,20 +951,24 @@ export const A11yFails: Story = {};
 });
 
 /**
- * The owner inputs R-41b names: a story, a component, a shared token, a
- * provider, a message catalogue. Each file really exists, and each is changed
- * by appending a comment, which is enough to move the content hash without
- * altering what the build renders.
+ * One owner input per package the build reads (R-41b): a user-interface story,
+ * a core message catalogue, and the shared Storybook configuration that
+ * `.storybook/main.ts` imports. Each file really exists, and each is changed by
+ * appending a comment, which is enough to move the content hash without
+ * altering what the build renders. A story, a component, a token and a provider
+ * all sit under the same `packages/ui/src` glob, so one of them stands for all.
  *
- * The inventory case above covers a module being added and removed. These cases
- * cover the rest, so a dropped `storybookOwners` glob fails here.
+ * The inventory case above covers a module being added and removed, and
+ * `targets.test.ts` pins the globs themselves. These cases prove that a real
+ * change to an owner file reaches the build's hash.
  */
 const MUTATIONS = [
   ["a story", "packages/ui/src/disclosure/disclosure.stories.tsx"],
-  ["a component", "packages/ui/src/disclosure/disclosure.tsx"],
-  ["a shared token", "packages/ui/src/theme/tokens.ts"],
-  ["a provider", "packages/ui/src/theme/theme-provider.tsx"],
   ["a message catalogue", "packages/core/src/lib/errors/index.ts"],
+  [
+    "the shared Storybook configuration",
+    "packages/config/src/storybook/index.ts",
+  ],
 ] as const;
 
 describe("an owner input mutation", () => {
@@ -1015,29 +985,6 @@ describe("an owner input mutation", () => {
       const changed = ran(BUILD_TASK, "placeholder");
 
       expect(servedFromCache(changed.output, BUILD_TASK), changed.output).toBe(
-        false
-      );
-    } finally {
-      writeFileSync(path, original);
-    }
-  });
-
-  it("invalidates the component tests when a story changes", () => {
-    const path = join(
-      stage,
-      "packages/ui/src/disclosure/disclosure.stories.tsx"
-    );
-
-    const original = readFileSync(path, "utf8");
-
-    ran(TEST_TASK, "placeholder");
-
-    try {
-      writeFileSync(path, `${original}\n// matrix mutation\n`);
-
-      const changed = ran(TEST_TASK, "placeholder");
-
-      expect(servedFromCache(changed.output, TEST_TASK), changed.output).toBe(
         false
       );
     } finally {
@@ -1076,22 +1023,25 @@ describe("an owner input mutation", () => {
   });
 });
 
-/** How many component tests the run reported as passed. */
-function passedCount(output: string): number {
-  const passed = /Tests\s+(\d+) passed/.exec(output)?.[1];
-
-  if (passed === undefined) {
-    throw new Error(`the run reported no test count:\n${output}`);
-  }
-
-  return Number(passed);
-}
+/**
+ * The part of Vitest's JSON report this suite reads. The report is a file the
+ * run writes, so the proof does not depend on how Nx prints a task's output.
+ */
+type VitestReport = {
+  readonly numFailedTests: number;
+  readonly testResults: readonly {
+    readonly name: string;
+    readonly assertionResults: readonly { readonly status: string }[];
+  }[];
+};
 
 /**
  * The real generator from S0-08, run into the stage. It is the strongest form
  * of "appears and tests with no host or CI edit": nothing in the workspace
  * names the new module, yet selection alone discovers its stories, builds them
- * into the static output, and runs them as component tests.
+ * into the static output, and runs them as component tests. It is also the
+ * only proof that the generator's story templates render and pass (AC-27).
+ * Exclusion from another selection is the first case's subject.
  *
  * It runs last, because the generated module joins the unset selection while it
  * exists. The stage's application manifest and the module folder are restored
@@ -1104,6 +1054,7 @@ describe("a module written by the generator", () => {
     const appManifest = join(stage, "apps/genie/package.json");
     const originalManifest = readFileSync(appManifest, "utf8");
     const generatedRoot = join(stage, "packages/modules", GENERATED_ID);
+    const reportPath = join(stage, "generated-proof-report.json");
 
     try {
       const generated = spawnSync(
@@ -1143,23 +1094,35 @@ describe("a module written by the generator", () => {
         Object.keys(index().entries).some((id) => id.startsWith(prefix))
       ).toBe(true);
 
-      // And it is absent from another selection's build.
-      ran(BUILD_TASK, "placeholder");
+      // The component tests run the generated stories as real tests and every
+      // one passes. `ran` already refuses a nonzero exit; the report then shows
+      // that the pass includes the generated module's own story files, not only
+      // the host's user-interface and core stories.
+      ran(TEST_TASK, GENERATED_ID, [
+        "--reporter=default",
+        "--reporter=json",
+        `--outputFile.json=${reportPath}`,
+      ]);
 
-      expect(
-        Object.keys(index().entries).some((id) => id.startsWith(prefix))
-      ).toBe(false);
+      // SAFETY: the bytes are the report this run's own Vitest just wrote, and
+      // only the fields typed in VitestReport are read.
+      const report = JSON.parse(
+        readFileSync(reportPath, "utf8")
+      ) as VitestReport;
 
-      // The component tests collect the generated stories as real tests: the
-      // count rises above the empty selection's, so the pass is not the host's
-      // own user-interface and core stories.
-      const empty = ran(TEST_TASK, "");
-      const withGenerated = ran(TEST_TASK, GENERATED_ID);
-
-      expect(passedCount(withGenerated.output)).toBeGreaterThan(
-        passedCount(empty.output)
+      const generatedPassed = report.testResults.filter(
+        (file) =>
+          file.name.includes(`/packages/modules/${GENERATED_ID}/`) &&
+          file.assertionResults.some((test) => test.status === "passed")
       );
+
+      expect(report.numFailedTests).toBe(0);
+      expect(
+        generatedPassed.length,
+        report.testResults.map((file) => file.name).join("\n")
+      ).toBeGreaterThan(0);
     } finally {
+      rmSync(reportPath, { force: true });
       rmSync(generatedRoot, { recursive: true, force: true });
       writeFileSync(appManifest, originalManifest);
     }

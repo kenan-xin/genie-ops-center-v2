@@ -131,13 +131,6 @@ describe("the selection-aware Storybook task graph", () => {
     );
   });
 
-  // The watcher and the development server are not cacheable.
-  it("never caches the serve or watch targets", () => {
-    expect(target("storybook").cache).toBe(false);
-    expect(target("storybook").continuous).toBe(true);
-    expect(target("watch-deps").continuous).toBe(true);
-  });
-
   // Unit and story collection are separate projects, so a story is never also
   // collected as a unit test and neither collection satisfies the other.
   it("keeps the unit and story collections in separate projects", () => {

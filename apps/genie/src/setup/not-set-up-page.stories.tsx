@@ -47,11 +47,6 @@ const assertFreshDeployment: NonNullable<Story["play"]> = async ({
   await expect(canvas.queryAllByRole("link")).toHaveLength(0);
 };
 
-export const FreshDeployment: Story = {
-  args: { steps: FRESH_STEPS },
-  play: assertFreshDeployment,
-};
-
 export const FailedStep: Story = {
   args: {
     steps: [

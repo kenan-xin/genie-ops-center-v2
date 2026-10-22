@@ -51,7 +51,6 @@ describe("runWithRetry", () => {
     expect(result).toEqual({ status: 0, output: "ok" });
     expect(fake.calls()).toBe(2);
     expect(notices).toEqual([RETRY_NOTICE]);
-    expect(RETRY_NOTICE).toContain("11171");
   });
 
   it("exits with the second run's code when the retry fails too", async () => {

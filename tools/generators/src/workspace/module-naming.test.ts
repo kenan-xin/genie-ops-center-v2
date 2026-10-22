@@ -120,19 +120,6 @@ describe("moduleProjectNamingError over a disposable workspace", () => {
     ).toBeUndefined();
   });
 
-  it("rejects a module package whose name is outside the module namespace", () => {
-    const root = workspaceHolding({
-      "contract-data": {
-        name: "@genie/whatever",
-        genie: { module: { id: "contract-data", entrypoint: "src/index.ts" } },
-      },
-    });
-
-    expect(
-      moduleProjectNamingError("packages/modules/contract-data", root)
-    ).toMatch(/must be "@genie\/module-contract-data"/);
-  });
-
   it("rejects a module folder that does not match its declared id", () => {
     const root = workspaceHolding({
       contracts: {

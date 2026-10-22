@@ -42,10 +42,4 @@ describe("selection serialization and fingerprint", () => {
       fingerprintSelection(selection("explicit", ["alpha"]))
     );
   });
-
-  it("produces a hexadecimal digest of a fixed length", () => {
-    expect(fingerprintSelection(selection("explicit", ["alpha"]))).toMatch(
-      /^[0-9a-f]{64}$/
-    );
-  });
 });

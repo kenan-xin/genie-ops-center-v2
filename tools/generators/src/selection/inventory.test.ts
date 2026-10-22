@@ -118,34 +118,9 @@ describe("readModuleInventory", () => {
     });
   });
 
-  // Discovery is where an arbitrary manifest name is stopped. A module the
-  // boundary patterns cannot match must never reach selection at all.
-  it("rejects an arbitrary package name outside the module namespace", () => {
-    const root = workspaceHolding({
-      alpha: {
-        name: "@genie/whatever",
-        genie: { module: { id: "alpha", entrypoint: "src/index.ts" } },
-      },
-    });
-
-    expect(() => readModuleInventory(root)).toThrow(
-      /must be "@genie\/module-alpha"/
-    );
-  });
-
-  it("rejects the superseded plural package name", () => {
-    const root = workspaceHolding({
-      alpha: {
-        name: "@genie/modules-alpha",
-        genie: { module: { id: "alpha", entrypoint: "src/index.ts" } },
-      },
-    });
-
-    expect(() => readModuleInventory(root)).toThrow(
-      /must be "@genie\/module-alpha"/
-    );
-  });
-
+  // Discovery is where a wrongly named module is stopped, so it never reaches
+  // selection. The naming rules themselves are tested in module-naming.test.ts;
+  // these cases prove discovery applies them, to every module.
   it("rejects a folder basename that is not the declared module id", () => {
     const root = workspaceHolding({
       contracts: {

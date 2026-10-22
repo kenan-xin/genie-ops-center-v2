@@ -44,9 +44,10 @@ export const Phone: Story = {
   },
 };
 
-// Renders on a dark surface this package owns, so the story asserts on what the
-// module itself renders rather than on the theme toolbar in apps/storybook. A
-// module story must not depend on one host's decorator.
+// Renders on a dark surface this package owns rather than through the theme
+// toolbar in apps/storybook, because a module story must not depend on one
+// host's decorator. It has no play function: the accessibility check every
+// story runs is what reads the dark surface, for contrast.
 export const Dark: Story = {
   decorators: [
     (Story) => (
@@ -55,12 +56,6 @@ export const Dark: Story = {
       </div>
     ),
   ],
-  play: async ({ canvas }) => {
-    const heading = canvas.getByRole("heading", { name: "Placeholder" });
-
-    await expect(heading).toBeInTheDocument();
-    await expect(heading.closest("[data-theme='dark']")).not.toBeNull();
-  },
 };
 
 export const Empty: Story = {

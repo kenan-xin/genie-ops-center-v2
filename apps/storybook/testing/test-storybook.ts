@@ -14,7 +14,8 @@ import { isBrowserImportRace, type Run } from "./nested-run.ts";
  * when the first run hit the upstream browser import race
  * (vitest-dev/vitest#11171, see `nested-run.ts`). Any other failure — a failed
  * story, a mixed failure, or a second race — stands and its exit code is the
- * wrapper's.
+ * wrapper's. Arguments given to the wrapper, such as a reporter, follow the
+ * fixed flags to Vitest.
  *
  * The target is the only retry point. The selection matrix runs this same
  * target in nested runs, so a retry there would let one run execute four times.
@@ -78,11 +79,11 @@ function tee(
  * exit code and its buffered output. Terminal control codes are stripped before
  * the buffer is returned, because CI colours the lines the predicate reads.
  */
-function runVitest(): Promise<Run> {
+function runVitest(extraArgs: readonly string[]): Promise<Run> {
   const binary = resolve(import.meta.dirname, "../node_modules/.bin/vitest");
 
   return new Promise((settle) => {
-    const child = spawn(binary, [...VITEST_ARGS], {
+    const child = spawn(binary, [...VITEST_ARGS, ...extraArgs], {
       stdio: ["inherit", "pipe", "pipe"],
     });
 
@@ -105,9 +106,14 @@ function runVitest(): Promise<Run> {
 }
 
 export async function main(): Promise<number> {
-  const result = await runWithRetry(runVitest, () => {
-    process.stderr.write(`${RETRY_NOTICE}\n`);
-  });
+  const extraArgs = process.argv.slice(2);
+
+  const result = await runWithRetry(
+    () => runVitest(extraArgs),
+    () => {
+      process.stderr.write(`${RETRY_NOTICE}\n`);
+    }
+  );
 
   return result.status;
 }

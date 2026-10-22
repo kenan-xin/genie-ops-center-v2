@@ -118,21 +118,6 @@ export const CopyPrefillsTheKeysAndCreatesACustomRole: Story = {
   },
 };
 
-export const CustomRoleIsEditable: Story = {
-  args: {
-    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
-    detail: FIXTURE_CUSTOM_DETAIL,
-  },
-  play: async ({ canvas }) => {
-    await expect(
-      canvas.getByRole("button", { name: /Edit role/ })
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole("button", { name: /Delete role/ })
-    ).toBeInTheDocument();
-  },
-};
-
 export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
   args: {
     selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,

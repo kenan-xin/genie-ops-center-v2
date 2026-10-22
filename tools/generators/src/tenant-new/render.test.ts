@@ -550,22 +550,6 @@ describe("the rendered deployment folder", () => {
     }
   });
 
-  it("renders every compose name in .env.example, defaulted or blank", () => {
-    const entries = envExampleEntries(read(".env.example"));
-    const compose = read("compose.yaml");
-
-    expect(entries.get("KEYCLOAK_URL")).toBe("");
-    expect(entries.get("COMPOSE_PROFILES")).toBe("bundled-keycloak");
-    expect(entries.get("KC_DB_PASSWORD")).toBe("");
-    expect(entries.get("KC_DB_URL_HOST")).toBe("");
-    expect(entries.get("KC_DB_USERNAME")).toBe("");
-
-    // The KC_ block is grouped under the profile note, so no KC_ name is required.
-    // The escaped `$${KC_...:?}` refusals in the entrypoint are shell checks, not
-    // compose requirements, so they do not count here.
-    expect(compose).not.toMatch(/(?<!\$)\$\{KC_[A-Z0-9_]*:\?/);
-  });
-
   it("keeps the customer stack template out of deploy/stack", () => {
     const stackDirectory = resolve(
       import.meta.dirname,

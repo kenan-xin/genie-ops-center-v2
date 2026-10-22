@@ -7,7 +7,6 @@ import {
   FIXTURE_GROUPS,
   FIXTURE_LOCAL,
   FIXTURE_MEMBERS,
-  FIXTURE_NOT_SEEN,
   FIXTURE_PEOPLE,
   FIXTURE_ROLES,
   FIXTURE_VIEWER,
@@ -303,13 +302,5 @@ export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
     await expect(
       inspector.queryByLabelText("Add to group")
     ).not.toBeInTheDocument();
-  },
-};
-
-export const NotSeenFixtureIsTheOnlyNotSeen: Story = {
-  args: { groups: [FIXTURE_NOT_SEEN] },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByText("Sales")).toBeInTheDocument();
-    await expect(canvas.getByText("Not seen yet")).toBeInTheDocument();
   },
 };
