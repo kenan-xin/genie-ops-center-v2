@@ -489,59 +489,59 @@ describe("the stored session address (AC-1, AC-5, R-4a, R-16)", () => {
   });
 });
 
-describe("the discovery retry and swap", () => {
-  type RealmStub = {
-    readonly start: () => Promise<{ readonly url: string }>;
-    readonly open: () => void;
-    readonly stop: () => Promise<void>;
-  };
+type RealmStub = {
+  readonly start: () => Promise<{ readonly url: string }>;
+  readonly open: () => void;
+  readonly stop: () => Promise<void>;
+};
 
-  /** A discovery document server that answers 503 until `open` is set. */
-  function realmStub(): RealmStub {
-    let open = false;
+/** A discovery document server that answers 503 until `open` is set. */
+function realmStub(): RealmStub {
+  let open = false;
 
-    const server = createServer((request, response) => {
-      if (!open) {
-        response.writeHead(503);
-        response.end();
+  const server = createServer((request, response) => {
+    if (!open) {
+      response.writeHead(503);
+      response.end();
 
-        return;
-      }
+      return;
+    }
 
-      const host = request.headers.host ?? "127.0.0.1";
-      const base = `http://${host}/realms/${REALM}`;
+    const host = request.headers.host ?? "127.0.0.1";
+    const base = `http://${host}/realms/${REALM}`;
 
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(
-        JSON.stringify({
-          issuer: base,
-          authorization_endpoint: `${base}/protocol/openid-connect/auth`,
-          token_endpoint: `${base}/protocol/openid-connect/token`,
-          jwks_uri: `${base}/protocol/openid-connect/certs`,
-        })
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify({
+        issuer: base,
+        authorization_endpoint: `${base}/protocol/openid-connect/auth`,
+        token_endpoint: `${base}/protocol/openid-connect/token`,
+        jwks_uri: `${base}/protocol/openid-connect/certs`,
+      })
+    );
+  });
+
+  return {
+    start: async () => {
+      await new Promise<void>((resolve) =>
+        server.listen(0, "127.0.0.1", resolve)
       );
-    });
 
-    return {
-      start: async () => {
-        await new Promise<void>((resolve) =>
-          server.listen(0, "127.0.0.1", resolve)
-        );
+      // SAFETY: the server is listening on a TCP port, so `address()` answers an AddressInfo;
+      // only a Unix-socket bind answers a string, which this stub never binds.
+      const { port } = server.address() as AddressInfo;
 
-        // SAFETY: the server is listening on a TCP port, so `address()` answers an AddressInfo;
-        // only a Unix-socket bind answers a string, which this stub never binds.
-        const { port } = server.address() as AddressInfo;
+      return { url: `http://127.0.0.1:${port}` };
+    },
+    open: () => {
+      open = true;
+    },
+    stop: () =>
+      new Promise<void>((resolve) => server.close(() => resolve(undefined))),
+  };
+}
 
-        return { url: `http://127.0.0.1:${port}` };
-      },
-      open: () => {
-        open = true;
-      },
-      stop: () =>
-        new Promise<void>((resolve) => server.close(() => resolve(undefined))),
-    };
-  }
-
+describe("the discovery retry and swap", () => {
   it("builds a fresh instance on the first good answer, so the provider comes back (R-54d)", async () => {
     const deployment = await startDisposableDeployment([], {
       env: AUTH_ENV,

@@ -175,6 +175,11 @@ afterEach(() => {
   }
 });
 
+const argOf = (calls: readonly Call[]) =>
+  calls
+    .find((call) => stepOf(call.command, call.args) === "build")
+    ?.args.find((arg) => arg.startsWith("MODULE_INCLUDE="));
+
 describe("the customer image release pipeline", () => {
   it("reads modules.txt, builds that exact selection, and pushes the smoke-tested identity", async () => {
     const root = repoWithModules("placeholder\n");
@@ -271,11 +276,6 @@ describe("the customer image release pipeline", () => {
 
     await runRelease(request(repoWithModules("placeholder\n")), first.runner);
     await runRelease(request(repoWithModules("other\n")), second.runner);
-
-    const argOf = (calls: readonly Call[]) =>
-      calls
-        .find((call) => stepOf(call.command, call.args) === "build")
-        ?.args.find((arg) => arg.startsWith("MODULE_INCLUDE="));
 
     expect(argOf(first.calls)).toBe("MODULE_INCLUDE=placeholder");
     expect(argOf(second.calls)).toBe("MODULE_INCLUDE=other");

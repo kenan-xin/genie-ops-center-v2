@@ -60,6 +60,16 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
+const run = (root: string, moduleInclude: string) =>
+  new Promise<number>((settle) => {
+    const child = spawnSync(process.execPath, [GENERATE, "--root", root], {
+      encoding: "utf8",
+      env: { ...process.env, MODULE_INCLUDE: moduleInclude },
+    });
+
+    settle(child.status ?? 1);
+  });
+
 describe("the build root the registry is generated into", () => {
   it("takes the root from --root", () => {
     const root = stagedRoot(["alpha"]);
@@ -91,16 +101,6 @@ describe("the build root the registry is generated into", () => {
   it("keeps two concurrent selections out of each other's registry", async () => {
     const one = stagedRoot(["alpha", "beta"]);
     const other = stagedRoot(["alpha", "beta"]);
-
-    const run = (root: string, moduleInclude: string) =>
-      new Promise<number>((settle) => {
-        const child = spawnSync(process.execPath, [GENERATE, "--root", root], {
-          encoding: "utf8",
-          env: { ...process.env, MODULE_INCLUDE: moduleInclude },
-        });
-
-        settle(child.status ?? 1);
-      });
 
     const [first, second] = await Promise.all([
       run(one, "alpha"),

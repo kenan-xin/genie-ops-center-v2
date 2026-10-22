@@ -96,41 +96,41 @@ describe("the placeholder integration guard", () => {
   });
 });
 
-describe("the placeholder manifest validator", () => {
-  function reportOf(
-    files: readonly {
-      readonly file: string;
-      readonly assertions: readonly {
-        readonly fullName: string;
-        readonly status?: string;
-      }[];
-    }[]
-  ): TestReport {
-    return {
-      testResults: files.map((file) => ({
-        name: resolve(PACKAGE_ROOT, file.file),
-        assertionResults: [...file.assertions],
+function reportOf(
+  files: readonly {
+    readonly file: string;
+    readonly assertions: readonly {
+      readonly fullName: string;
+      readonly status?: string;
+    }[];
+  }[]
+): TestReport {
+  return {
+    testResults: files.map((file) => ({
+      name: resolve(PACKAGE_ROOT, file.file),
+      assertionResults: [...file.assertions],
+    })),
+  };
+}
+
+/** Every manifest case, collected, executed and passed. */
+function healthyReport(): TestReport {
+  return reportOf(
+    REQUIRED_TESTS.map((entry) => ({
+      file: entry.file,
+      assertions: entry.cases.map((fullName) => ({
+        fullName,
+        status: "passed",
       })),
-    };
-  }
+    }))
+  );
+}
 
-  /** Every manifest case, collected, executed and passed. */
-  function healthyReport(): TestReport {
-    return reportOf(
-      REQUIRED_TESTS.map((entry) => ({
-        file: entry.file,
-        assertions: entry.cases.map((fullName) => ({
-          fullName,
-          status: "passed",
-        })),
-      }))
-    );
-  }
+function violationsFor(report: TestReport): string {
+  return requiredViolations(report, REQUIRED_TESTS, PACKAGE_ROOT).join(" ");
+}
 
-  function violationsFor(report: TestReport): string {
-    return requiredViolations(report, REQUIRED_TESTS, PACKAGE_ROOT).join(" ");
-  }
-
+describe("the placeholder manifest validator", () => {
   it("accepts a report that proves every mandatory case", () => {
     expect(violationsFor(healthyReport())).toBe("");
   });

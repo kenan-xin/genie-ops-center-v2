@@ -42,6 +42,18 @@ const SESSION_COOKIE = "__Host-genie-session";
 // The plugin cookie carries this instance's prefix (`createCookieGetter`, prefix `better-auth`).
 const TWO_FACTOR_COOKIE = "better-auth.two_factor";
 
+function cookiesOf(response: Response) {
+  const set = response.headers.getSetCookie();
+
+  const value = (name: string): string | undefined =>
+    set.find((entry) => entry.startsWith(`${name}=`))?.split(";")[0];
+
+  return {
+    session: value(SESSION_COOKIE),
+    twoFactor: value(TWO_FACTOR_COOKIE),
+  };
+}
+
 describe("the break-glass door flow against a real database", () => {
   let deployment: DisposableDeployment;
 
@@ -94,18 +106,6 @@ describe("the break-glass door flow against a real database", () => {
         body: JSON.stringify(body),
       })
     );
-  }
-
-  function cookiesOf(response: Response) {
-    const set = response.headers.getSetCookie();
-
-    const value = (name: string): string | undefined =>
-      set.find((entry) => entry.startsWith(`${name}=`))?.split(";")[0];
-
-    return {
-      session: value(SESSION_COOKIE),
-      twoFactor: value(TWO_FACTOR_COOKIE),
-    };
   }
 
   /** Enrolls a fresh break-glass account and answers its live session cookie. */

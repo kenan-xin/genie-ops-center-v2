@@ -103,6 +103,8 @@ function expectStandardHeaders(response: Response, label: string): void {
   }
 }
 
+const raceUrl = (path: string) => `http://127.0.0.1:${SLOW_READ_PORT}${path}`;
+
 describe("the setup gate", () => {
   it("reports degraded health with the standard security headers before setup", async () => {
     const health = await fetch(url("/api/health"));
@@ -361,9 +363,6 @@ describe("the setup gate", () => {
     let viewCreated = false;
     let tableUnavailable = false;
     let staleRead: Promise<Response> | undefined;
-
-    const raceUrl = (path: string) =>
-      `http://127.0.0.1:${SLOW_READ_PORT}${path}`;
 
     try {
       await enableModules(raceDeployment.context, ["placeholder"]);

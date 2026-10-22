@@ -431,6 +431,13 @@ afterAll(async () => {
   await stopDatabase?.();
 });
 
+const busFor = () =>
+  createEventBus({
+    jobQueue: context.jobQueue,
+    logger: silentLogger(),
+    tenant: () => context,
+  });
+
 describe("the typed event bus against Testcontainers Postgres", () => {
   it("does not deliver fast or durable work for an event in a rolled-back transaction", async () => {
     const marker = crypto.randomUUID();
@@ -954,12 +961,6 @@ describe("the typed event bus against Testcontainers Postgres", () => {
       version: 1,
       payload: z.object({ id: z.string() }),
     };
-    const busFor = () =>
-      createEventBus({
-        jobQueue: context.jobQueue,
-        logger: silentLogger(),
-        tenant: () => context,
-      });
 
     // Two unnamed durable subscriptions to one event fall back to one queue name.
     const unnamed = busFor();

@@ -68,7 +68,7 @@ const manifest: Template = (names) =>
       "@genie/config": "workspace:*",
       "@storybook/nextjs-vite": "10.6.3",
       "@types/react": "19.3.0",
-      "oxlint": "1.83.0",
+      "oxlint": "1.89.0",
       "storybook": "10.6.3",
       "vitest": "4.1.11",
     },

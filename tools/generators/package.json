@@ -18,7 +18,7 @@
     "@genie/config": "workspace:*",
     "@genie/core": "workspace:*",
     "@nx/devkit": "23.3.0",
-    "oxlint": "1.83.0",
+    "oxlint": "1.89.0",
     "vitest": "4.1.11"
   },
   "generators": "./generators.json",

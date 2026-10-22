@@ -142,20 +142,20 @@ describe("the scope match", () => {
   });
 });
 
+function counting() {
+  let reads = 0;
+
+  return {
+    reads: () => reads,
+    read: async () => {
+      reads += 1;
+
+      return grants({ "placeholder:read": "all" });
+    },
+  };
+}
+
 describe("the lazy loader", () => {
-  function counting() {
-    let reads = 0;
-
-    return {
-      reads: () => reads,
-      read: async () => {
-        reads += 1;
-
-        return grants({ "placeholder:read": "all" });
-      },
-    };
-  }
-
   it("reads once however many calls one execution makes, even concurrent ones", async () => {
     const reader = counting();
 

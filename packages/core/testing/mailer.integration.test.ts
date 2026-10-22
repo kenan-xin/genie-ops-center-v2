@@ -289,6 +289,76 @@ async function closeServer(server: Server): Promise<void> {
   });
 }
 
+async function assertSmtpFailureLinkIsNotLogged(
+  tokenizedLink: string,
+  token: string
+) {
+  const sink = await startSmtpSink({
+    dataFailureReply: `554 5.7.1 rejected link ${tokenizedLink}`,
+  });
+
+  cleanups.push(() => closeServer(sink.server));
+
+  await withNodeEnvironment("production", async () => {
+    // Each level gets a destination created before the context and the send.
+    // oxlint-disable no-await-in-loop
+    for (const logLevel of LOG_LEVELS) {
+      const captured = captureLoggerStream();
+
+      const { context, logger } = await mailerContext(
+        {
+          MAIL_PROVIDER: "smtp",
+          SMTP_URL: sink.url,
+          LOG_LEVEL: logLevel,
+        },
+        undefined,
+        captured
+      );
+
+      const mailer = mailerOf(context);
+
+      captured.proveCapture(logger);
+      captured.clear();
+
+      const { value, output } = await captureConsoleOutput(async () => {
+        try {
+          await mailer.send({
+            ...MAIL,
+            variables: {
+              ...MAIL.variables,
+              link: tokenizedLink,
+              invitationUrl: tokenizedLink,
+            },
+          });
+        } catch (error) {
+          return error;
+        }
+
+        return undefined;
+      });
+
+      expect(value).toMatchObject({ code: "mail-delivery-failed" });
+
+      const combined = `${captured.output()}${output}`;
+
+      // The thrown error is a safe catalogue error: it carries neither the link nor the reply.
+      expect(String(value)).not.toContain(tokenizedLink);
+      expect(String(value)).not.toContain(token);
+
+      // The log line is the leak surface, and it stays clean at every level.
+      expect(combined).not.toContain(tokenizedLink);
+      expect(combined).not.toContain(token);
+
+      // A mailer that logged nothing would pass the checks above, so pin the failure line at
+      // every level that emits an error (all but the two quiet ones).
+      if (logLevel !== "fatal" && logLevel !== "silent") {
+        expect(combined).toContain("mail-delivery-failed");
+      }
+    }
+    // oxlint-enable no-await-in-loop
+  });
+}
+
 describe("mailer adapters and tenant context", () => {
   it("selects SMTP and sends both parts from the branded MAIL_FROM through the SMTP sink", async () => {
     const sink = await startSmtpSink();
@@ -463,76 +533,6 @@ describe("mailer adapters and tenant context", () => {
   it("never logs an SMTP failure reply containing a path-token link at any level", async () => {
     await assertSmtpFailureLinkIsNotLogged(PATH_LINK, "path-token-secret");
   });
-
-  async function assertSmtpFailureLinkIsNotLogged(
-    tokenizedLink: string,
-    token: string
-  ) {
-    const sink = await startSmtpSink({
-      dataFailureReply: `554 5.7.1 rejected link ${tokenizedLink}`,
-    });
-
-    cleanups.push(() => closeServer(sink.server));
-
-    await withNodeEnvironment("production", async () => {
-      // Each level gets a destination created before the context and the send.
-      // oxlint-disable no-await-in-loop
-      for (const logLevel of LOG_LEVELS) {
-        const captured = captureLoggerStream();
-
-        const { context, logger } = await mailerContext(
-          {
-            MAIL_PROVIDER: "smtp",
-            SMTP_URL: sink.url,
-            LOG_LEVEL: logLevel,
-          },
-          undefined,
-          captured
-        );
-
-        const mailer = mailerOf(context);
-
-        captured.proveCapture(logger);
-        captured.clear();
-
-        const { value, output } = await captureConsoleOutput(async () => {
-          try {
-            await mailer.send({
-              ...MAIL,
-              variables: {
-                ...MAIL.variables,
-                link: tokenizedLink,
-                invitationUrl: tokenizedLink,
-              },
-            });
-          } catch (error) {
-            return error;
-          }
-
-          return undefined;
-        });
-
-        expect(value).toMatchObject({ code: "mail-delivery-failed" });
-
-        const combined = `${captured.output()}${output}`;
-
-        // The thrown error is a safe catalogue error: it carries neither the link nor the reply.
-        expect(String(value)).not.toContain(tokenizedLink);
-        expect(String(value)).not.toContain(token);
-
-        // The log line is the leak surface, and it stays clean at every level.
-        expect(combined).not.toContain(tokenizedLink);
-        expect(combined).not.toContain(token);
-
-        // A mailer that logged nothing would pass the checks above, so pin the failure line at
-        // every level that emits an error (all but the two quiet ones).
-        if (logLevel !== "fatal" && logLevel !== "silent") {
-          expect(combined).toContain("mail-delivery-failed");
-        }
-      }
-      // oxlint-enable no-await-in-loop
-    });
-  }
 
   it("quotes comma and address-like sender names as exactly one From address", async () => {
     const sink = await startSmtpSink();

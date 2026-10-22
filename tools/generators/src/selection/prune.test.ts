@@ -199,21 +199,21 @@ describe("pruneModuleFolders", () => {
   );
 });
 
+const runPrune = (root: string, moduleInclude: string | undefined) => {
+  const env = { ...process.env };
+
+  delete env.MODULE_INCLUDE;
+
+  if (moduleInclude !== undefined) env.MODULE_INCLUDE = moduleInclude;
+
+  return spawnSync(process.execPath, [SCRIPT], {
+    cwd: root,
+    env,
+    encoding: "utf8",
+  });
+};
+
 describe("the prune command the image builder stage runs", () => {
-  const runPrune = (root: string, moduleInclude: string | undefined) => {
-    const env = { ...process.env };
-
-    delete env.MODULE_INCLUDE;
-
-    if (moduleInclude !== undefined) env.MODULE_INCLUDE = moduleInclude;
-
-    return spawnSync(process.execPath, [SCRIPT], {
-      cwd: root,
-      env,
-      encoding: "utf8",
-    });
-  };
-
   it("prints the kept and removed folders the build log shows", () => {
     const root = workspace(["alpha", "beta"]);
 

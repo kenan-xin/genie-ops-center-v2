@@ -695,15 +695,15 @@ function installRealmStub(
   return counters;
 }
 
-describe("writes on the break-glass account and an erased row (R-39)", () => {
-  async function breakGlassId(): Promise<string> {
-    return insertCredentialPerson(deployment.context, {
-      email: `bg-write-${Date.now()}@example.invalid`,
-      password: "break-glass-password-14",
-      isBreakGlass: true,
-    });
-  }
+async function breakGlassId(): Promise<string> {
+  return insertCredentialPerson(deployment.context, {
+    email: `bg-write-${Date.now()}@example.invalid`,
+    password: "break-glass-password-14",
+    isBreakGlass: true,
+  });
+}
 
+describe("writes on the break-glass account and an erased row (R-39)", () => {
   it("refuses disable on the break-glass account and leaves it untouched", async () => {
     const actor = await manager();
     const personId = await breakGlassId();
