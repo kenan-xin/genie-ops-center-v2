@@ -8,6 +8,8 @@ Start in the session's assigned checkout. If it is already the task's dedicated 
 
 Beads owns shared ticket status, claims, blockers and follow-up work. Task-local execution checklists, concrete plans and recovery ledgers may support the chosen workflow; they do not replace Beads or authorize sibling-ticket work.
 
+Every bead has a parent epic, open or closed. File a bead with `--parent <epic>`: section work under its section epic, tooling, CI, dependencies and flaky tests under the Maintenance epic, specs, decisions and design docs under the Planning epic, and later ideas and owner reminders under the Backlog epic. When no epic fits, create a new epic first and parent the bead to it. A backlog item gets status `deferred`, not `open` at P4, because the Beads board shows only `deferred` items under Backlog.
+
 ## Portable tooling
 
 Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
