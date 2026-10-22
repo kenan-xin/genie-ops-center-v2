@@ -110,6 +110,14 @@ describe("the R-54c address comparison", () => {
         env({ keycloakUrl: "https://other.example.com" })
       )
     ).toEqual({ ok: true });
+
+    // The bundled-Keycloak refusal waits for setup too.
+    expect(
+      keycloakAddressResult(
+        { realmMode: "customer", keycloakUrlAtSetup: null },
+        env({ stackProfiles: BUNDLED_KEYCLOAK_PROFILE })
+      )
+    ).toEqual({ ok: true });
   });
 
   it("skips the URL comparison when the profile carries no KEYCLOAK_URL", () => {

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { group, groupMember, user } from "../src/schema.ts";
@@ -14,44 +14,45 @@ import {
   seedRoles,
 } from "../src/services/authorization/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
-import { insertUser, startDisposableDeployment } from "./index.ts";
+import {
+  type DisposableDeployment,
+  insertUser,
+  startDisposableDeployment,
+} from "./index.ts";
 
-const cleanups: Array<() => Promise<void>> = [];
-
-afterEach(async () => {
-  await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
-});
-
-type Fixture = {
-  readonly context: TenantContext;
-  readonly source: { DATABASE_URL: string; PUBLIC_URL: string };
-  readonly output: (line: string) => void;
-  readonly errorOutput: (line: string) => void;
-  readonly lines: string[];
+type AuditRow = {
+  actor_user_id: string | null;
+  action: string;
+  metadata: unknown;
 };
 
 /** A real Postgres with the `Genie Administrators` group the `roles` step seeds. */
-async function fixture(): Promise<Fixture> {
+async function administratorsDeployment(): Promise<DisposableDeployment> {
   const deployment = await startDisposableDeployment();
-
-  cleanups.push(deployment.stop);
 
   await seedRoles(deployment.context, []);
   await seedGenieAdministrators(deployment.context);
 
+  return deployment;
+}
+
+/** Runs `genie-ops admin add <address>` and returns its exit code and printed lines. */
+async function adminAdd(context: TenantContext, address: string) {
   const lines: string[] = [];
   const output = (line: string) => lines.push(line);
 
-  return {
-    context: deployment.context,
+  const code = await runGenieOps(["admin", "add", address], {
     source: {
-      DATABASE_URL: deployment.context.env.databaseUrl,
-      PUBLIC_URL: deployment.context.env.publicUrl,
+      DATABASE_URL: context.env.databaseUrl,
+      PUBLIC_URL: context.env.publicUrl,
     },
+    compiledModules: [],
+    histories: [],
     output,
     errorOutput: output,
-    lines,
-  };
+  });
+
+  return { code, text: lines.join("\n") };
 }
 
 async function administratorsGroup(context: TenantContext): Promise<string> {
@@ -66,40 +67,59 @@ async function administratorsGroup(context: TenantContext): Promise<string> {
   return row.id;
 }
 
-async function auditRows(
-  context: TenantContext
-): Promise<
-  Array<{ actor_user_id: string | null; action: string; metadata: unknown }>
-> {
-  const result = await context.db.$client.query<{
-    actor_user_id: string | null;
-    action: string;
-    metadata: unknown;
-  }>(
+async function auditRows(context: TenantContext): Promise<AuditRow[]> {
+  const result = await context.db.$client.query<AuditRow>(
     "select actor_user_id, action, metadata from audit_event order by occurred_at, id"
   );
 
   return result.rows;
 }
 
+/** The audit rows a block of work wrote, on a database other cases share. */
+async function auditRowsOf(
+  context: TenantContext,
+  work: () => Promise<void>
+): Promise<AuditRow[]> {
+  const before = (await auditRows(context)).length;
+
+  await work();
+
+  return (await auditRows(context)).slice(before);
+}
+
+async function membershipsOf(context: TenantContext, userId: string) {
+  return context.db
+    .select()
+    .from(groupMember)
+    .where(eq(groupMember.userId, userId));
+}
+
 /**
  * `genie-ops admin add` (R-59, AC-13): one write that pre-adds a pending person into
  * `Genie Administrators` or adds an existing person to it, no email, and exactly one
  * `ops:admin-add` audit row with the operating-system user and the non-secret argument.
+ *
+ * Every case but the missing-group one shares one deployment; each uses its own address.
  */
 describe("genie-ops admin add", () => {
-  it("pre-adds a pending person and writes exactly one audit row", async () => {
-    const { context, source, output, errorOutput } = await fixture();
+  let deployment: DisposableDeployment;
+  let context: TenantContext;
 
-    await expect(
-      runGenieOps(["admin", "add", "New.Admin@Example.INVALID"], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.toBe(0);
+  beforeAll(async () => {
+    deployment = await administratorsDeployment();
+    context = deployment.context;
+  }, 120000);
+
+  afterAll(async () => {
+    await deployment?.stop();
+  });
+
+  it("pre-adds a pending person and writes exactly one audit row", async () => {
+    const rows = await auditRowsOf(context, async () => {
+      await expect(
+        adminAdd(context, "New.Admin@Example.INVALID")
+      ).resolves.toMatchObject({ code: 0 });
+    });
 
     const [person] = await context.db
       .select()
@@ -113,20 +133,13 @@ describe("genie-ops admin add", () => {
       isBreakGlass: false,
     });
 
-    const groupId = await administratorsGroup(context);
-
-    const memberships = await context.db
-      .select()
-      .from(groupMember)
-      .where(eq(groupMember.userId, person?.id ?? ""));
+    const memberships = await membershipsOf(context, person?.id ?? "");
 
     expect(memberships).toHaveLength(1);
     expect(memberships[0]).toMatchObject({
-      groupId,
+      groupId: await administratorsGroup(context),
       source: "local",
     });
-
-    const rows = await auditRows(context);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -139,11 +152,9 @@ describe("genie-ops admin add", () => {
         outcome: "success",
       },
     });
-  }, 120000);
+  });
 
   it("adds an existing person to the group without a second user row", async () => {
-    const { context, source, output, errorOutput } = await fixture();
-
     const existingId = await insertUser(context, {
       name: "Existing",
       email: "existing@example.invalid",
@@ -151,23 +162,12 @@ describe("genie-ops admin add", () => {
     });
 
     await expect(
-      runGenieOps(["admin", "add", "Existing@Example.Invalid"], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.toBe(0);
+      adminAdd(context, "Existing@Example.Invalid")
+    ).resolves.toMatchObject({ code: 0 });
 
-    const groupId = await administratorsGroup(context);
-
-    await expect(
-      context.db
-        .select()
-        .from(groupMember)
-        .where(eq(groupMember.userId, existingId))
-    ).resolves.toMatchObject([{ groupId, source: "local" }]);
+    await expect(membershipsOf(context, existingId)).resolves.toMatchObject([
+      { groupId: await administratorsGroup(context), source: "local" },
+    ]);
 
     const people = await context.db
       .select({ id: user.id })
@@ -175,25 +175,17 @@ describe("genie-ops admin add", () => {
       .where(eq(user.email, "existing@example.invalid"));
 
     expect(people).toHaveLength(1);
-  }, 120000);
+  });
 
   it("is idempotent: a second run changes no membership and writes one more row", async () => {
-    const { context, source, output, errorOutput } = await fixture();
-
-    const options = {
-      source,
-      compiledModules: [],
-      histories: [],
-      output,
-      errorOutput,
-    };
-
-    await expect(
-      runGenieOps(["admin", "add", "twice@example.invalid"], options)
-    ).resolves.toBe(0);
-    await expect(
-      runGenieOps(["admin", "add", "twice@example.invalid"], options)
-    ).resolves.toBe(0);
+    const rows = await auditRowsOf(context, async () => {
+      await expect(
+        adminAdd(context, "twice@example.invalid")
+      ).resolves.toMatchObject({ code: 0 });
+      await expect(
+        adminAdd(context, "twice@example.invalid")
+      ).resolves.toMatchObject({ code: 0 });
+    });
 
     const [person] = await context.db
       .select({ id: user.id })
@@ -201,151 +193,82 @@ describe("genie-ops admin add", () => {
       .where(eq(user.email, "twice@example.invalid"));
 
     await expect(
-      context.db
-        .select()
-        .from(groupMember)
-        .where(eq(groupMember.userId, person?.id ?? ""))
+      membershipsOf(context, person?.id ?? "")
     ).resolves.toHaveLength(1);
+    expect(rows.filter((row) => row.action === "ops:admin-add")).toHaveLength(
+      2
+    );
+  });
 
-    const rows = await auditRows(context);
-    const adminRows = rows.filter((row) => row.action === "ops:admin-add");
+  it.each([
+    ["the break-glass account", { isBreakGlass: true }, ADMIN_ADD_BREAK_GLASS],
+    [
+      "a banned person, naming the way back",
+      { banned: true },
+      ADMIN_ADD_DISABLED,
+    ],
+    ["an erased person", { erasedAt: new Date() }, ADMIN_ADD_ERASED],
+  ] as const)(
+    "refuses %s with a named cause, no membership and a failing row",
+    async (who, flags, cause) => {
+      const email = `refused-${who.split(" ").at(-1)}@example.invalid`;
 
-    expect(adminRows).toHaveLength(2);
-  }, 120000);
+      const userId = await insertUser(context, {
+        email,
+        status: "active",
+        ...flags,
+      });
 
-  it("refuses when the administrators group is missing and writes a failing row", async () => {
-    const { context, source, output, errorOutput } = await fixture();
+      let text = "";
 
-    await context.db
-      .delete(group)
-      .where(eq(group.name, GENIE_ADMINISTRATORS_GROUP));
+      const rows = await auditRowsOf(context, async () => {
+        const result = await adminAdd(context, email);
 
-    await expect(
-      runGenieOps(["admin", "add", "late@example.invalid"], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.not.toBe(0);
+        expect(result.code).not.toBe(0);
+        text = result.text;
+      });
 
-    const rows = await auditRows(context);
-
-    expect(rows.at(-1)).toMatchObject({
-      action: "ops:admin-add",
-      metadata: { outcome: "failure" },
-    });
-  }, 120000);
-
-  it("refuses the break-glass account with a named cause and no membership", async () => {
-    const { context, source, output, errorOutput, lines } = await fixture();
-    const email = "break-glass@example.invalid";
-
-    const breakGlassId = await insertUser(context, {
-      email,
-      status: "active",
-      isBreakGlass: true,
-    });
-
-    await expect(
-      runGenieOps(["admin", "add", email], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.not.toBe(0);
-
-    expect(lines.join("\n")).toContain(ADMIN_ADD_BREAK_GLASS);
-    await expect(
-      context.db
-        .select()
-        .from(groupMember)
-        .where(eq(groupMember.userId, breakGlassId))
-    ).resolves.toHaveLength(0);
-    expect((await auditRows(context)).at(-1)).toMatchObject({
-      action: "ops:admin-add",
-      metadata: { outcome: "failure" },
-    });
-  }, 120000);
-
-  it("refuses a banned person with the way back named", async () => {
-    const { context, source, output, errorOutput, lines } = await fixture();
-    const email = "banned@example.invalid";
-
-    const bannedId = await insertUser(context, {
-      email,
-      status: "active",
-      banned: true,
-    });
-
-    await expect(
-      runGenieOps(["admin", "add", email], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.not.toBe(0);
-
-    expect(lines.join("\n")).toContain(ADMIN_ADD_DISABLED);
-    await expect(
-      context.db
-        .select()
-        .from(groupMember)
-        .where(eq(groupMember.userId, bannedId))
-    ).resolves.toHaveLength(0);
-  }, 120000);
-
-  it("refuses an erased person", async () => {
-    const { context, source, output, errorOutput, lines } = await fixture();
-    const email = "erased@example.invalid";
-
-    const erasedId = await insertUser(context, {
-      email,
-      status: "active",
-      erasedAt: new Date(),
-    });
-
-    await expect(
-      runGenieOps(["admin", "add", email], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.not.toBe(0);
-
-    expect(lines.join("\n")).toContain(ADMIN_ADD_ERASED);
-    await expect(
-      context.db
-        .select()
-        .from(groupMember)
-        .where(eq(groupMember.userId, erasedId))
-    ).resolves.toHaveLength(0);
-  }, 120000);
+      expect(text).toContain(cause);
+      await expect(membershipsOf(context, userId)).resolves.toHaveLength(0);
+      expect(rows.at(-1)).toMatchObject({
+        action: "ops:admin-add",
+        metadata: { outcome: "failure" },
+      });
+    }
+  );
 
   it("refuses an address that is not an email before any audit row", async () => {
-    const { context, source, output, errorOutput } = await fixture();
+    const rows = await auditRowsOf(context, async () => {
+      await expect(
+        adminAdd(context, "not-an-email")
+      ).resolves.not.toMatchObject({
+        code: 0,
+      });
+    });
 
-    await expect(
-      runGenieOps(["admin", "add", "not-an-email"], {
-        source,
-        compiledModules: [],
-        histories: [],
-        output,
-        errorOutput,
-      })
-    ).resolves.not.toBe(0);
-
-    const rows = (await auditRows(context)).filter(
-      (row) => row.action === "ops:admin-add"
+    expect(rows.filter((row) => row.action === "ops:admin-add")).toHaveLength(
+      0
     );
+  });
 
-    expect(rows).toHaveLength(0);
+  // Its own deployment, because it deletes the group every other case needs.
+  it("refuses when the administrators group is missing and writes a failing row", async () => {
+    const own = await administratorsDeployment();
+
+    try {
+      await own.context.db
+        .delete(group)
+        .where(eq(group.name, GENIE_ADMINISTRATORS_GROUP));
+
+      const result = await adminAdd(own.context, "late@example.invalid");
+
+      expect(result.code).not.toBe(0);
+      expect((await auditRows(own.context)).at(-1)).toMatchObject({
+        action: "ops:admin-add",
+        metadata: { outcome: "failure" },
+      });
+    } finally {
+      await own.stop();
+    }
   }, 120000);
 });

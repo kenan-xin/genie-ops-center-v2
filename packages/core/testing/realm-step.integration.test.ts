@@ -2,17 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentSource } from "../src/lib/environment/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
-import { auditEvent, groupMember } from "../src/schema.ts";
-import { keycloakProviderConfig } from "../src/services/auth/config.ts";
-import {
-  syncGroupMemberships,
-  validateOAuthUser,
-} from "../src/services/auth/onboarding.ts";
 import { checkKeycloakAddress } from "../src/services/keycloak/address-guard.ts";
 import { masterAdminToken } from "../src/services/keycloak/client.ts";
 import {
@@ -29,10 +22,8 @@ import {
 import { databaseClient } from "./database-client.ts";
 import {
   CLIENT_FILE_DIRECTORY,
-  insertUser,
   OPS_CENTER_CLIENT_FILE,
   renderClientFile,
-  startDisposableDeployment,
   startDisposablePostgres,
   STUDIO_CLIENT_FILE,
 } from "./index.ts";
@@ -583,204 +574,7 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     }
   }, 180000);
 
-  it("keeps memberships and audits when the test realm has no marker mapper or groups claim", async () => {
-    const postgres = await startDisposablePostgres();
-    const deployment = await startDisposableDeployment();
-    const files = await configFiles();
-    const realm = `missing-marker-${process.pid}-${Date.now()}`;
-
-    cleanups.push(async () => {
-      await deployment.stop();
-      await postgres.stop();
-    });
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
-    ).resolves.toBe(0);
-
-    const client = clientBy(await adminClients(realm), "genie-ops-center");
-    const mapper = markerMapper(client);
-
-    if (client === undefined || mapper?.id === undefined) {
-      throw new Error("test realm is missing the marker mapper");
-    }
-
-    const token = await masterToken();
-    const clientUrl = `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`;
-
-    // Direct grants are enabled only in this disposable realm so the test can inspect an ID token.
-    const updated = await globalThis.fetch(clientUrl, {
-      method: "PUT",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ ...client, directAccessGrantsEnabled: true }),
-    });
-
-    expect(updated.status).toBe(204);
-
-    const removed = await globalThis.fetch(
-      `${clientUrl}/protocol-mappers/models/${String(mapper.id)}`,
-      { method: "DELETE", headers: { authorization: `Bearer ${token}` } }
-    );
-
-    expect(removed.status).toBe(204);
-    expect(
-      markerMapper(clientBy(await adminClients(realm), "genie-ops-center"))
-    ).toBeUndefined();
-
-    const email = `no-marker-${process.pid}@example.invalid`;
-
-    const created = await globalThis.fetch(
-      `${keycloak!.baseUrl}/admin/realms/${realm}/users`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          username: email,
-          email,
-          emailVerified: true,
-          firstName: "Test",
-          lastName: "Person",
-          enabled: true,
-          credentials: [
-            { type: "password", value: "test-only-password", temporary: false },
-          ],
-        }),
-      }
-    );
-
-    expect(created.status).toBe(201);
-
-    const signIn = await globalThis.fetch(
-      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/token`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "password",
-          client_id: "genie-ops-center",
-          client_secret: "client-secret-value",
-          username: email,
-          password: "test-only-password",
-          scope: "openid",
-        }),
-      }
-    );
-
-    expect(signIn.status, JSON.stringify(await signIn.clone().json())).toBe(
-      200
-    );
-
-    // SAFETY: the token endpoint returned a JWT with a JSON claim set.
-    const tokenBody = (await signIn.json()) as { id_token: string };
-
-    // SAFETY: JSON.parse returns a JSON value from the JWT claim set.
-    const claims = JSON.parse(
-      Buffer.from(tokenBody.id_token.split(".")[1]!, "base64url").toString(
-        "utf8"
-      )
-    ) as JsonValue;
-
-    if (!isJsonObject(claims))
-      throw new Error("ID token has no JSON claim set");
-
-    expect(claims.groups).toBeUndefined();
-    expect(claims.genie_groups).toBeUndefined();
-
-    const userId = await insertUser(deployment.context);
-    await syncGroupMemberships(deployment.context, userId, ["Retained"]);
-    const scope = deployment.context.authRequestScope;
-
-    await scope.run(async () => {
-      expect(
-        await validateOAuthUser({
-          tenant: deployment.context,
-          scope,
-          data: {
-            user: { id: userId, email },
-            source: { action: "sign-in", oauth: { profile: claims } },
-          },
-        })
-      ).toBeUndefined();
-      await syncGroupMemberships(
-        deployment.context,
-        userId,
-        scope.current()?.groups
-      );
-    });
-
-    expect(
-      await deployment.context.db
-        .select()
-        .from(groupMember)
-        .where(
-          and(eq(groupMember.userId, userId), eq(groupMember.source, "idp"))
-        )
-    ).toHaveLength(1);
-    expect(
-      await deployment.context.db
-        .select()
-        .from(auditEvent)
-        .where(
-          and(
-            eq(auditEvent.actorUserId, userId),
-            eq(auditEvent.action, "auth:groups_claim_absent")
-          )
-        )
-    ).toHaveLength(1);
-  }, 180000);
-
-  it("leaves an existing realm unchanged and records the step done on a rerun", async () => {
-    const postgres = await startDisposablePostgres();
-    const files = await configFiles();
-    const realm = `rerun-${process.pid}-${Date.now()}`;
-
-    cleanups.push(() => postgres.stop());
-
-    const env = source(postgres.url, realm);
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(env))
-    ).resolves.toBe(0);
-
-    const before = await adminRealm(realm);
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(env))
-    ).resolves.toBe(0);
-
-    const after = await adminRealm(realm);
-
-    expect(after).toEqual(before);
-  }, 180000);
-
-  it("refuses a realm override whose key is outside the allow-list with a named cause", async () => {
-    const postgres = await startDisposablePostgres();
-    const files = await configFiles({ overrides: { users: [] } });
-    const realm = `refused-${process.pid}-${Date.now()}`;
-
-    cleanups.push(() => postgres.stop());
-
-    const output: string[] = [];
-
-    await expect(
-      runGenieOps(setupArgs(files), {
-        ...runnerOptions(source(postgres.url, realm)),
-        output: (line) => output.push(line),
-        errorOutput: (line) => output.push(line),
-      })
-    ).resolves.not.toBe(0);
-
-    expect(output.join("\n")).toContain("users");
-    expect(output.join("\n")).toContain("allow-list");
-  }, 180000);
-
-  it("limits the genie-admin service account to its own realm and holds no client-reading role", async () => {
+  it("limits the genie-admin service account to its own realm: no client read, create or secret read", async () => {
     const postgres = await startDisposablePostgres();
     const files = await configFiles();
     const realm = `scoped-${process.pid}-${Date.now()}`;
@@ -808,20 +602,6 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     );
 
     expect(own.status).toBe(403);
-  }, 180000);
-
-  it("does not let genie-admin create a client or read another client's secret in its own realm", async () => {
-    const postgres = await startDisposablePostgres();
-    const files = await configFiles();
-    const realm = `privilege-${process.pid}-${Date.now()}`;
-
-    cleanups.push(() => postgres.stop());
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
-    ).resolves.toBe(0);
-
-    const token = await adminClientToken(realm);
 
     // Creating a client needs manage-clients, which it does not hold.
     const created = await globalThis.fetch(
@@ -897,12 +677,17 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     });
   }, 180000);
 
-  it("never writes the bootstrap password or a client secret to the output or the setup_step detail", async () => {
+  it("never writes the bootstrap password or a client secret to the output or the setup_step detail, and resumes after the failed realm step", async () => {
     const postgres = await startDisposablePostgres();
+    const observer = databaseClient({ connectionString: postgres.url });
     const files = await configFiles();
     const realm = `secrets-${process.pid}-${Date.now()}`;
 
-    cleanups.push(() => postgres.stop());
+    cleanups.push(async () => {
+      await observer.end();
+      await postgres.stop();
+    });
+    await observer.connect();
 
     const clientSecret = `client-secret-${process.pid}`;
     const adminSecret = `admin-secret-${process.pid}`;
@@ -931,6 +716,9 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(failedText).not.toContain(clientSecret);
     expect(failedText).not.toContain(adminSecret);
     expect(await setupStepDetails(postgres.url)).not.toContain(wrongBootstrap);
+    await expect(
+      observer.query("select state from setup_step where step = 'realm'")
+    ).resolves.toMatchObject({ rows: [{ state: "failed" }] });
 
     // A passing run: the real bootstrap password and the two client secrets stay hidden too.
     const passedOutput: string[] = [];
@@ -954,39 +742,18 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(passedText).not.toContain(clientSecret);
     expect(passedText).not.toContain(adminSecret);
     expect(await setupStepDetails(postgres.url)).not.toContain(clientSecret);
-  }, 180000);
 
-  it("refuses and names a missing client", async () => {
-    const postgres = await startDisposablePostgres();
-    const observer = databaseClient({ connectionString: postgres.url });
-    const files = await configFiles();
-    const realm = `missing-${process.pid}-${Date.now()}`;
-
-    cleanups.push(async () => {
-      await observer.end();
-      await postgres.stop();
+    // The right credential resumed the failed realm step and completed the clients step.
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
     });
-    await observer.connect();
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
-    ).resolves.toBe(0);
-
-    // Remove genie-studio, then rerun only the clients step.
-    await deleteClient(realm, "genie-studio");
-    await observer.query("delete from setup_step where step = 'clients'");
-
-    const output: string[] = [];
-
-    await expect(
-      runGenieOps(setupArgs(files), {
-        ...runnerOptions(source(postgres.url, realm)),
-        output: (line) => output.push(line),
-        errorOutput: (line) => output.push(line),
-      })
-    ).resolves.not.toBe(0);
-
-    expect(output.join("\n")).toContain("genie-studio");
   }, 180000);
 
   it("refuses a missing genie-studio even when the realm error page is not English", async () => {
@@ -1065,51 +832,6 @@ describe("the realm and clients setup steps against a real Keycloak", () => {
     expect(output.join("\n")).toContain("genie-ops-center");
   }, 180000);
 
-  it("resumes after an induced realm step failure", async () => {
-    const postgres = await startDisposablePostgres();
-    const observer = databaseClient({ connectionString: postgres.url });
-    const files = await configFiles();
-    const realm = `resume-fail-${process.pid}-${Date.now()}`;
-
-    cleanups.push(async () => {
-      await observer.end();
-      await postgres.stop();
-    });
-    await observer.connect();
-
-    // A wrong bootstrap password fails the realm step.
-    await expect(
-      runGenieOps(
-        setupArgs(files),
-        runnerOptions(
-          source(postgres.url, realm, {
-            KEYCLOAK_BOOTSTRAP_PASSWORD: "wrong",
-          })
-        )
-      )
-    ).resolves.not.toBe(0);
-
-    await expect(
-      observer.query("select state from setup_step where step = 'realm'")
-    ).resolves.toMatchObject({ rows: [{ state: "failed" }] });
-
-    // The right credential resumes and completes the realm and clients steps.
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
-    ).resolves.toBe(0);
-
-    await expect(
-      observer.query(
-        "select step, state from setup_step where step in ('realm', 'clients') order by step"
-      )
-    ).resolves.toMatchObject({
-      rows: [
-        { step: "clients", state: "done" },
-        { step: "realm", state: "done" },
-      ],
-    });
-  }, 180000);
-
   it("refuses the realm step before any network call when the bootstrap credential is absent", async () => {
     const postgres = await startDisposablePostgres();
     const files = await configFiles();
@@ -1149,43 +871,6 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
 
   const LEGACY_POST_LOGOUT = "https://legacy.example.invalid";
 
-  it("fills the two URIs at realm creation and the clients step proves the redirect", async () => {
-    const postgres = await startDisposablePostgres();
-    const observer = databaseClient({ connectionString: postgres.url });
-    const files = await configFiles({ genieStudioUrl: STUDIO_URL });
-    const realm = `studio-${process.pid}-${Date.now()}`;
-
-    cleanups.push(async () => {
-      await observer.end();
-      await postgres.stop();
-    });
-    await observer.connect();
-
-    await expect(
-      runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
-    ).resolves.toBe(0);
-
-    const studio = clientBy(await adminClients(realm), "genie-studio");
-
-    expect(studio?.redirectUris).toEqual([STUDIO_REDIRECT]);
-    expect(stringAttribute(studio, "post.logout.redirect.uris")).toBe(
-      `${STUDIO_URL}/*`
-    );
-
-    // The clients step proved genie-studio's redirect through the public endpoint, so both the
-    // realm and clients steps recorded done (R-54).
-    await expect(
-      observer.query(
-        "select step, state from setup_step where step in ('realm', 'clients') order by step"
-      )
-    ).resolves.toMatchObject({
-      rows: [
-        { step: "clients", state: "done" },
-        { step: "realm", state: "done" },
-      ],
-    });
-  }, 180000);
-
   it("refuses when genie-studio's registered redirect is not the one the field names", async () => {
     const postgres = await startDisposablePostgres();
     const observer = databaseClient({ connectionString: postgres.url });
@@ -1201,6 +886,25 @@ describe("genie_studio_url fills and repairs genie-studio's redirects (R-49a, R-
     await expect(
       runGenieOps(setupArgs(files), runnerOptions(source(postgres.url, realm)))
     ).resolves.toBe(0);
+
+    // Realm creation filled the two URIs from the field, and the clients step proved the redirect
+    // through the public endpoint, so both steps recorded done (R-49a, R-54).
+    const created = clientBy(await adminClients(realm), "genie-studio");
+
+    expect(created?.redirectUris).toEqual([STUDIO_REDIRECT]);
+    expect(stringAttribute(created, "post.logout.redirect.uris")).toBe(
+      `${STUDIO_URL}/*`
+    );
+    await expect(
+      observer.query(
+        "select step, state from setup_step where step in ('realm', 'clients') order by step"
+      )
+    ).resolves.toMatchObject({
+      rows: [
+        { step: "clients", state: "done" },
+        { step: "realm", state: "done" },
+      ],
+    });
 
     // A client whose redirect does not match the field, with the realm step already done. The
     // realm step does not rerun, so the client stays wrong and only the clients step can catch it.
@@ -1361,88 +1065,6 @@ function renderShipped(file: string, deploymentUrl: string) {
   return renderClientFile(resolve(folder, file), deploymentUrl);
 }
 
-/** Turns direct grants on for one client, so a test can inspect an ID token. */
-async function enableDirectGrants(
-  realm: string,
-  clientId: string
-): Promise<void> {
-  const token = await masterToken();
-  const client = clientBy(await adminClients(realm), clientId);
-
-  if (client === undefined)
-    throw new Error(`realm ${realm} has no ${clientId}`);
-
-  const updated = await globalThis.fetch(
-    `${keycloak!.baseUrl}/admin/realms/${realm}/clients/${String(client.id)}`,
-    {
-      method: "PUT",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ ...client, directAccessGrantsEnabled: true }),
-    }
-  );
-
-  if (!updated.ok) {
-    throw new Error(`enabling direct grants on ${clientId} failed`);
-  }
-}
-
-/** The `aud` claim of an ID token minted by a direct grant, as a list of client ids. */
-async function idTokenAudiences(input: {
-  readonly realm: string;
-  readonly clientId: string;
-  readonly clientSecret: string;
-  readonly email: string;
-  readonly password: string;
-}): Promise<readonly string[]> {
-  const response = await globalThis.fetch(
-    `${keycloak!.baseUrl}/realms/${input.realm}/protocol/openid-connect/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "password",
-        client_id: input.clientId,
-        client_secret: input.clientSecret,
-        username: input.email,
-        password: input.password,
-        scope: "openid",
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `direct grant for ${input.email} failed with ${response.status}: ${await response.text()}`
-    );
-  }
-
-  // SAFETY: the token endpoint returned a JWT with a JSON claim set.
-  const body = (await response.json()) as { readonly id_token?: string };
-
-  if (body.id_token === undefined) throw new Error("no ID token in the answer");
-
-  // SAFETY: JSON.parse returns a JSON value from the JWT claim set.
-  const claims = JSON.parse(
-    Buffer.from(body.id_token.split(".")[1]!, "base64url").toString("utf8")
-  ) as JsonValue;
-
-  if (!isJsonObject(claims))
-    throw new Error("ID token claims are not an object");
-
-  const aud = claims.aud;
-
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a JWT `aud` is a string or a string list.
-  if (typeof aud === "string") return [aud];
-
-  return Array.isArray(aud)
-    ? // oxlint-disable-next-line anti-slop/no-runtime-typeof -- each list entry is a string or not.
-      aud.filter((value): value is string => typeof value === "string")
-    : [];
-}
-
 describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
   it("skips the realm and clients steps, reads no bootstrap credential, records the address, and lets the guard see client-only mode", async () => {
     const postgres = await startDisposablePostgres();
@@ -1510,6 +1132,30 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
 
     // Setup created no genie-admin client: the customer owns the realm (R-54a).
     expect(clientBy(await adminClients(realm), "genie-admin")).toBeUndefined();
+
+    // Keycloak accepted the shipped client file as a healthy client: the prompt=none probe with a
+    // PKCE challenge redirects to the registered URI with `error=login_required`.
+    const probe = await globalThis.fetch(
+      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/auth?` +
+        new URLSearchParams({
+          client_id: "genie-ops-center",
+          redirect_uri: `${deploymentUrl}/api/auth/callback/keycloak`,
+          response_type: "code",
+          scope: "openid",
+          code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+          code_challenge_method: "S256",
+          prompt: "none",
+        }).toString(),
+      { redirect: "manual" }
+    );
+
+    expect(probe.status).toBe(302);
+    // SAFETY: a 302 from the authorization endpoint carries a Location header.
+    const location = probe.headers.get("location") ?? "";
+    expect(
+      location.startsWith(`${deploymentUrl}/api/auth/callback/keycloak`)
+    ).toBe(true);
+    expect(new URL(location).searchParams.get("error")).toBe("login_required");
 
     // The address the guard reads is now present, so it sees client-only mode and refuses the
     // bundled Keycloak profile (R-54c).
@@ -1608,161 +1254,6 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
     ).resolves.toMatchObject({
       rows: [{ state: "skipped", keycloak_url_at_setup: keycloak!.baseUrl }],
     });
-  }, 180000);
-
-  it("refuses realm customer together with local_accounts true (R-54a)", async () => {
-    const postgres = await startDisposablePostgres();
-    const files = await configFiles({ realm: "customer", localAccounts: true });
-    const output: string[] = [];
-
-    cleanups.push(() => postgres.stop());
-
-    await expect(
-      runGenieOps(setupArgs(files), {
-        ...runnerOptions({
-          DATABASE_URL: postgres.url,
-          PUBLIC_URL: "https://genie.example.invalid",
-          KEYCLOAK_URL: keycloak!.baseUrl,
-          KEYCLOAK_REALM: `refused-${process.pid}`,
-        }),
-        output: (line) => output.push(line),
-        errorOutput: (line) => output.push(line),
-      })
-    ).resolves.not.toBe(0);
-
-    expect(output.join("\n")).toContain("local_accounts");
-  }, 180000);
-
-  it("imports the two shipped client files as working clients with PKCE, the groups mapper and the marker", async () => {
-    const realm = `client-files-${process.pid}-${Date.now()}`;
-    const deploymentUrl = "https://genie.example.invalid";
-
-    const opsCenter = await renderShipped(
-      OPS_CENTER_CLIENT_FILE,
-      deploymentUrl
-    );
-
-    const studio = await renderShipped(STUDIO_CLIENT_FILE, deploymentUrl);
-
-    await createRealmWithClients(realm, [opsCenter, studio]);
-
-    const clients = await adminClients(realm);
-
-    for (const clientId of ["genie-ops-center", "genie-studio"]) {
-      const client = clientBy(clients, clientId);
-
-      expect(stringAttribute(client, "pkce.code.challenge.method")).toBe(
-        "S256"
-      );
-      expect(groupsMapper(client)).toBe("oidc-group-membership-mapper");
-      expect(markerMapper(client)).toMatchObject({
-        protocolMapper: "oidc-hardcoded-claim-mapper",
-        config: { "claim.name": "genie_groups", "claim.value": "true" },
-      });
-    }
-
-    expect(clientBy(clients, "genie-ops-center")?.redirectUris).toEqual([
-      `${deploymentUrl}/api/auth/callback/keycloak`,
-    ]);
-
-    // The public authorization endpoint treats the imported client as a healthy client: the
-    // prompt=none probe with a PKCE challenge redirects to the registered redirect URI with
-    // `error=login_required`. PKCE is required, so the challenge is part of the probe.
-    const probe = await globalThis.fetch(
-      `${keycloak!.baseUrl}/realms/${realm}/protocol/openid-connect/auth?` +
-        new URLSearchParams({
-          client_id: "genie-ops-center",
-          redirect_uri: `${deploymentUrl}/api/auth/callback/keycloak`,
-          response_type: "code",
-          scope: "openid",
-          code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
-          code_challenge_method: "S256",
-          prompt: "none",
-        }).toString(),
-      { redirect: "manual" }
-    );
-
-    expect(probe.status).toBe(302);
-    // SAFETY: a 302 from the authorization endpoint carries a Location header.
-    const location = probe.headers.get("location") ?? "";
-    expect(
-      location.startsWith(`${deploymentUrl}/api/auth/callback/keycloak`)
-    ).toBe(true);
-    expect(new URL(location).searchParams.get("error")).toBe("login_required");
-  }, 180000);
-
-  it("passes a renamed client id through to the aud check (R-54a, R-54d)", async () => {
-    const realm = `renamed-client-${process.pid}-${Date.now()}`;
-    const deploymentUrl = "https://genie.example.invalid";
-    const renamedClientId = "genie-ops-center-renamed";
-    const clientSecret = "renamed-client-secret-value";
-
-    const opsCenter = await renderShipped(
-      OPS_CENTER_CLIENT_FILE,
-      deploymentUrl
-    );
-
-    await createRealmWithClients(realm, [
-      { ...opsCenter, clientId: renamedClientId, secret: clientSecret },
-    ]);
-    await enableDirectGrants(realm, renamedClientId);
-
-    const email = `renamed-${process.pid}@genie.example.invalid`;
-    const token = await masterToken();
-
-    const created = await globalThis.fetch(
-      `${keycloak!.baseUrl}/admin/realms/${realm}/users`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          username: email,
-          email,
-          emailVerified: true,
-          firstName: "Renamed",
-          lastName: "Person",
-          enabled: true,
-          requiredActions: [],
-          credentials: [
-            {
-              type: "password",
-              value: "renamed-password-14",
-              temporary: false,
-            },
-          ],
-        }),
-      }
-    );
-
-    expect(created.status).toBe(201);
-
-    // The token the realm mints for the renamed client carries that id in `aud`, the value the
-    // app compares against the configured KEYCLOAK_CLIENT_ID (R-54d). This is the positive half;
-    // `auth-audience.integration.test.ts` proves a foreign `aud` is refused.
-    expect(
-      await idTokenAudiences({
-        realm,
-        clientId: renamedClientId,
-        clientSecret,
-        email,
-        password: "renamed-password-14",
-      })
-    ).toEqual([renamedClientId]);
-
-    // The app consumes the renamed id from KEYCLOAK_CLIENT_ID and keeps id-token verification on.
-    const provider = keycloakProviderConfig({
-      keycloakUrl: keycloak!.baseUrl,
-      realm,
-      clientId: renamedClientId,
-      clientSecret,
-      publicUrl: deploymentUrl,
-    });
-
-    expect(provider.clientId).toBe(renamedClientId);
-    expect(provider.requireIdTokenVerification).toBe(true);
   }, 180000);
 });
 

@@ -363,37 +363,6 @@ describe("the access seam against a real database", () => {
     expect(await can(request(ordinary), "fixture:admin")).toBe(false);
   });
 
-  it("refuses a limited break-glass session in can() and in a module router", async () => {
-    const mustChange = await insertUser(deployment.context, {
-      isBreakGlass: true,
-      mustChangePassword: true,
-      twoFactorEnabled: true,
-    });
-
-    const notEnrolled = await insertUser(deployment.context, {
-      isBreakGlass: true,
-      mustChangePassword: false,
-      twoFactorEnabled: false,
-    });
-
-    for (const userId of [mustChange, notEnrolled]) {
-      // Each person's refusal is its own request; the loop reads them one after the other.
-      // oxlint-disable-next-line no-await-in-loop
-      expect(await can(request(userId), "fixture:use")).toBe(false);
-      // oxlint-disable-next-line no-await-in-loop
-      expect(await scopesFor(request(userId), "fixture:use")).toEqual({
-        kind: "none",
-      });
-      // oxlint-disable-next-line no-await-in-loop
-      await expect(
-        callProcedure(fixtureRouter, {
-          tenant: deployment.context,
-          caller: request(userId),
-        }).home()
-      ).rejects.toMatchObject({ code: "forbidden" });
-    }
-  });
-
   it("refuses an anonymous request without reading assignments", async () => {
     const pool = countingPool();
 

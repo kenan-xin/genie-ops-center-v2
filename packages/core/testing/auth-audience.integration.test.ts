@@ -12,6 +12,7 @@ import {
   tenantSettings,
   user,
 } from "../src/schema.ts";
+import { flushRefusalAudit } from "../src/services/auth/onboarding.ts";
 import type { DisposableDeployment } from "./index.ts";
 import {
   assignRole,
@@ -231,14 +232,21 @@ describe("the id-token audience check (R-54d, AC-12a)", () => {
       .map((value) => value.split(";")[0] ?? "")
       .join("; ");
 
-    return deployment.context.authRequestScope.run(() =>
-      auth.handler(
-        new Request(
-          `${PUBLIC_URL}/api/auth/callback/keycloak?code=test-code&state=${encodeURIComponent(state)}`,
-          { headers: { cookie } }
-        )
-      )
-    );
+    // As the app's auth route does: the handler, then the refusal audit flushed in the same scope.
+    const scope = deployment.context.authRequestScope;
+
+    return scope.run(async () => {
+      try {
+        return await auth.handler(
+          new Request(
+            `${PUBLIC_URL}/api/auth/callback/keycloak?code=test-code&state=${encodeURIComponent(state)}`,
+            { headers: { cookie } }
+          )
+        );
+      } finally {
+        await flushRefusalAudit(deployment.context, scope);
+      }
+    });
   }
 
   it("refuses an id token whose aud is another client", async () => {
@@ -309,7 +317,7 @@ describe("the id-token audience check (R-54d, AC-12a)", () => {
     };
   }
 
-  it("AC-2 R-9: a refused jit sign-in with no mapped group writes no user and no session row", async () => {
+  it("AC-2 R-9: a refused jit sign-in with no mapped group writes no user and no session row, and one refusal audit row", async () => {
     audience = CLIENT_ID;
     email = "unmapped@example.invalid";
     groups = ["Unmapped"];
@@ -327,6 +335,16 @@ describe("the id-token audience check (R-54d, AC-12a)", () => {
     expect(await deployment.context.db.select().from(session)).toHaveLength(
       sessionsBefore.length
     );
+
+    // The refusal names the address in exactly one audit row.
+    const refusals = await deployment.context.db
+      .select({ metadata: auditEvent.metadata })
+      .from(auditEvent)
+      .where(eq(auditEvent.action, "auth:sign_in_refused"));
+
+    expect(
+      refusals.filter((row) => JSON.stringify(row.metadata).includes(email))
+    ).toHaveLength(1);
   });
 
   it("AC-2 R-8 R-12: a person who already exists by email links the realm account without a second user row", async () => {

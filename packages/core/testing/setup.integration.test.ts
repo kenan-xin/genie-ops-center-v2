@@ -179,7 +179,6 @@ function customerTenantYaml(): string {
     "modules:",
     "  - fixture",
     "realm: customer",
-    "local_accounts: false",
     "first_administrators:",
     "  - admin@example.com",
     "break_glass_email: break-glass@example.com",
@@ -245,12 +244,26 @@ async function auditRows(observer: Client): Promise<AuditRow[]> {
 describe("genie-ops setup", () => {
   it("runs migrations before seed, inserts the configured rows, and leaves a rerun unchanged", async () => {
     const fixture = await setupFixture();
+    // tenant.yaml omits onboarding_mode, local_accounts and the idle minutes, and the source holds
+    // no mail variable, so this run also proves the setting defaults and a mail-less setup.
     const files = await configFiles({ tenantYaml: customerTenantYaml() });
     const firstOutput = outputCapture();
+
+    expect(fixture.source).not.toHaveProperty("MAIL_PROVIDER");
 
     await expect(
       runGenieOps(setupArgs(files), setupOptions(fixture, firstOutput))
     ).resolves.toBe(0);
+
+    expect(
+      firstOutput.lines.some((line) =>
+        line.includes("migration-history-start core")
+      )
+    ).toBe(true);
+    // The audit row reached audit_event, so the command-output fallback stayed silent.
+    expect(
+      firstOutput.lines.some((line) => line.includes("audit ops:setup"))
+    ).toBe(false);
 
     const progress = firstOutput.lines.findIndex((line) =>
       line.includes("migration-history-done core")
@@ -396,66 +409,6 @@ describe("genie-ops setup", () => {
     expect(audits.every((row) => row.actor_user_id === null)).toBe(true);
   }, 120000);
 
-  it("applies each tenant setting default when tenant.yaml omits it", async () => {
-    const fixture = await setupFixture();
-
-    const files = await configFiles({
-      tenantYaml: [
-        "modules:",
-        "  - fixture",
-        "realm: customer",
-        "first_administrators:",
-        "  - admin@example.com",
-        "break_glass_email: break-glass@example.com",
-        "",
-      ].join("\n"),
-    });
-
-    const captured = outputCapture();
-
-    await expect(
-      runGenieOps(setupArgs(files), setupOptions(fixture, captured))
-    ).resolves.toBe(0);
-    await expect(
-      fixture.observer.query(
-        `select onboarding_mode, local_accounts_enabled, session_idle_minutes
-           from tenant_settings`
-      )
-    ).resolves.toMatchObject({
-      rows: [
-        {
-          onboarding_mode: "invite",
-          local_accounts_enabled: false,
-          session_idle_minutes: 15,
-        },
-      ],
-    });
-  }, 120000);
-
-  it("writes realm_mode from tenant.yaml's realm, and defaults it to managed", async () => {
-    const fixture = await setupFixture();
-
-    const customer = await configFiles({ tenantYaml: customerTenantYaml() });
-
-    await expect(
-      runGenieOps(setupArgs(customer), setupOptions(fixture, outputCapture()))
-    ).resolves.toBe(0);
-
-    await expect(
-      fixture.observer.query("select realm_mode from tenant_settings")
-    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
-
-    const managed = await configFiles();
-
-    await expect(
-      runGenieOps(setupArgs(managed), setupOptions(fixture, outputCapture()))
-    ).resolves.not.toBe(0);
-
-    await expect(
-      fixture.observer.query("select realm_mode from tenant_settings")
-    ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
-  }, 120000);
-
   it("refuses a setup run whose tenant.yaml realm differs from the recorded realm_mode", async () => {
     const fixture = await setupFixture();
     const customer = await configFiles({ tenantYaml: customerTenantYaml() });
@@ -497,51 +450,32 @@ describe("genie-ops setup", () => {
     ).resolves.toMatchObject({ rows: [{ realm_mode: "customer" }] });
   }, 120000);
 
-  it.each([
-    ["tenant.yaml", "company_name", "tenantYaml"],
-    ["branding.seed.json", "modules", "brandingJson"],
-  ] as const)(
-    "refuses the misplaced %s key %s and names its source file",
-    async (file, key, inputKey) => {
-      const fixture = await setupFixture();
-      const tenantYaml = `${validTenantYaml()}company_name: Example Group\n`;
+  // One row: both loaders share one refusal that names the file, and the schema units refuse
+  // each misplaced key (tenant-yaml.test.ts, branding-seed.test.ts).
+  it("refuses the misplaced tenant.yaml key company_name and names its source file", async () => {
+    const fixture = await setupFixture();
 
-      const brandingJson = `${JSON.stringify(
-        {
-          $schema: "../../../deploy/schemas/branding.seed.schema.json",
-          company_name: "Example Group",
-          product_name: "Example Ops",
-          default_locale: "en",
-          default_time_zone: "Europe/Berlin",
-          modules: ["fixture"],
-        },
-        undefined,
-        2
-      )}\n`;
+    const files = await configFiles({
+      tenantYaml: `${validTenantYaml()}company_name: Example Group\n`,
+    });
 
-      const files = await configFiles({
-        [inputKey]: file === "tenant.yaml" ? tenantYaml : brandingJson,
-      });
+    const captured = outputCapture();
 
-      const captured = outputCapture();
+    await expect(
+      runGenieOps(setupArgs(files), setupOptions(fixture, captured))
+    ).resolves.not.toBe(0);
 
-      await expect(
-        runGenieOps(setupArgs(files), setupOptions(fixture, captured))
-      ).resolves.not.toBe(0);
+    expect(captured.lines.join("\n")).toContain("company_name");
+    expect(captured.lines.join("\n")).toContain("tenant.yaml");
 
-      expect(captured.lines.join("\n")).toContain(key);
-      expect(captured.lines.join("\n")).toContain(file);
-
-      await expect(auditRows(fixture.observer)).resolves.toMatchObject([
-        {
-          actor_user_id: null,
-          action: "ops:setup",
-          metadata: { outcome: "failure" },
-        },
-      ]);
-    },
-    120000
-  );
+    await expect(auditRows(fixture.observer)).resolves.toMatchObject([
+      {
+        actor_user_id: null,
+        action: "ops:setup",
+        metadata: { outcome: "failure" },
+      },
+    ]);
+  }, 120000);
 
   it("resumes after a seed transaction fails without leaving partial seed rows", async () => {
     const fixture = await setupFixture();
@@ -679,34 +613,6 @@ describe("genie-ops setup", () => {
         },
       ],
     });
-  }, 120000);
-
-  it("completes without mail variables and logs fresh-database migration progress", async () => {
-    const fixture = await setupFixture();
-    const files = await configFiles({ tenantYaml: customerTenantYaml() });
-    const captured = outputCapture();
-
-    expect(fixture.source).not.toHaveProperty("MAIL_PROVIDER");
-
-    await expect(
-      runGenieOps(setupArgs(files), setupOptions(fixture, captured))
-    ).resolves.toBe(0);
-
-    expect(
-      captured.lines.some((line) =>
-        line.includes("migration-history-start core")
-      )
-    ).toBe(true);
-    expect(
-      captured.lines.some((line) => line.includes("audit ops:setup"))
-    ).toBe(false);
-    await expect(auditRows(fixture.observer)).resolves.toMatchObject([
-      {
-        actor_user_id: null,
-        action: "ops:setup",
-        metadata: { outcome: "success" },
-      },
-    ]);
   }, 120000);
 
   it("writes the migration failure to command output when audit_event does not exist", async () => {

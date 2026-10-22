@@ -704,57 +704,30 @@ async function breakGlassId(): Promise<string> {
 }
 
 describe("writes on the break-glass account and an erased row (R-39)", () => {
-  it("refuses disable on the break-glass account and leaves it untouched", async () => {
-    const actor = await manager();
-    const personId = await breakGlassId();
+  it.each([
+    ["disable", disablePerson],
+    ["enable", enablePerson],
+    ["remove", removePerson],
+    ["resend set-password", resendSetPassword],
+    ["resend invitation", resendInvitation],
+  ] as const)(
+    "refuses %s on the break-glass account and leaves it untouched",
+    async (_writer, write) => {
+      const actor = await manager();
+      const personId = await breakGlassId();
 
-    await expect(
-      disablePerson(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "not-found" });
+      await expect(
+        write(deployment.context, { actorUserId: actor, personId })
+      ).rejects.toMatchObject({ code: "not-found" });
 
-    const [row] = await deployment.context.db
-      .select({ banned: user.banned })
-      .from(user)
-      .where(eq(user.id, personId));
+      const [row] = await deployment.context.db
+        .select({ banned: user.banned, status: user.status })
+        .from(user)
+        .where(eq(user.id, personId));
 
-    expect(row?.banned).toBeFalsy();
-  });
-
-  it("refuses enable on the break-glass account", async () => {
-    const actor = await manager();
-    const personId = await breakGlassId();
-
-    await expect(
-      enablePerson(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
-
-  it("refuses remove on the break-glass account", async () => {
-    const actor = await manager();
-    const personId = await breakGlassId();
-
-    await expect(
-      removePerson(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
-
-  it("refuses resend set-password on the break-glass account", async () => {
-    const actor = await manager();
-    const personId = await breakGlassId();
-
-    await expect(
-      resendSetPassword(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
-
-  it("refuses resend invitation on the break-glass account", async () => {
-    const actor = await manager();
-    const personId = await breakGlassId();
-
-    await expect(
-      resendInvitation(deployment.context, { actorUserId: actor, personId })
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
+      expect(row).toMatchObject({ banned: false, status: "active" });
+    }
+  );
 
   it("refuses remove on an erased row", async () => {
     const actor = await manager();

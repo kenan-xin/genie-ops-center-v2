@@ -177,32 +177,6 @@ describe("the session idle rule", () => {
     await deployment?.stop();
   });
 
-  it("refuses a session past the idle window and names the cause (R-14, R-17a)", async () => {
-    const auth = authOf(deployment);
-
-    await insertCredentialPerson(deployment.context, {
-      email: "idle-expired@example.com",
-      password: PASSWORD,
-    });
-
-    const { cookie, sessionId } = await signIn(
-      auth,
-      "idle-expired@example.com"
-    );
-
-    await ageSession(client, sessionId, IDLE_MINUTES);
-
-    const state = await auth.sessionState({ headers: new Headers({ cookie }) });
-
-    expect(state).toEqual({ status: "idle-expired" });
-    expect(
-      await auth.getSession({ headers: new Headers({ cookie }) })
-    ).toBeNull();
-    expect(
-      await auth.recordActivity({ headers: new Headers({ cookie }) })
-    ).toBeNull();
-  });
-
   it("answers idle-expired to every request of the browser, not only the first (genie-ops-center-v2-lqns)", async () => {
     const auth = authOf(deployment);
 
@@ -242,6 +216,9 @@ describe("the session idle rule", () => {
       Array.from({ length: 4 }, () => ({ status: "idle-expired" }))
     );
     expect(activity).toBeNull();
+    expect(
+      await auth.getSession({ headers: new Headers({ cookie }) })
+    ).toBeNull();
     expect(await countRows(client, sessionId)).toBe(1);
 
     // The kept row is invisible to Better Auth's own endpoints, so they treat the request as

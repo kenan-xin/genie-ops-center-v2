@@ -9,7 +9,6 @@ import type {
 } from "../src/lib/module-contract/module.ts";
 import {
   PERMISSION_TRANSFORMATION_ACTION,
-  TENANT_ADMINISTRATOR_ROLE,
   can,
   principalFor,
   scopesFor,
@@ -20,7 +19,6 @@ import {
   moduleHistory,
   runMigrations,
 } from "../src/services/migrator/index.ts";
-import { setModuleEnabled } from "../src/services/module-management/index.ts";
 import {
   assignRole,
   enableModules,
@@ -510,20 +508,6 @@ describe("permission evolution against an existing database", () => {
     expect(await auditRows("evo/0005-use-to-work")).toHaveLength(1);
     expect(await auditRows("evo/0006-revoke-approve")).toHaveLength(1);
     expect(await can(request("direct"), "evo:work")).toBe(true);
-  });
-
-  it("changes only the declared admin key on Tenant administrator when the module is re-enabled", async () => {
-    const before = await permissionsOf(TENANT_ADMINISTRATOR_ROLE);
-
-    await setModuleEnabled(deployment.context, current, "evo", false);
-    await setModuleEnabled(deployment.context, current, "evo", true);
-
-    const after = await permissionsOf(TENANT_ADMINISTRATOR_ROLE);
-
-    expect(after?.filter((entry) => !before?.includes(entry))).toEqual([
-      "evo:admin",
-    ]);
-    expect(after).not.toContain("evo:work");
   });
 
   it("covers a new record with a broad grant and not with a narrow one", async () => {

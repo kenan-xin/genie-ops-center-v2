@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import {
-  account,
   auditEvent,
   group,
   groupMember,
@@ -14,7 +13,6 @@ import {
   user,
 } from "../src/schema.ts";
 import {
-  flushRefusalAudit,
   syncGroupMemberships,
   validateOAuthUser,
 } from "../src/services/auth/onboarding.ts";
@@ -127,46 +125,6 @@ describe("OAuth onboarding and group sync against Postgres", () => {
     expect((await check(jit, "create-user", ["Mapped"])).result).toEqual({
       error: "not_registered",
     });
-  });
-
-  it("a refused jit admission leaves zero user and account rows and one audit row", async () => {
-    const scope = jit.context.authRequestScope;
-    const email = `${randomUUID()}@example.invalid`;
-    await scope.run(async () => {
-      expect(
-        await validateOAuthUser({
-          tenant: jit.context,
-          scope,
-          data: {
-            user: { email },
-            source: {
-              action: "create-user",
-              oauth: { profile: { groups: ["Unmapped"] } },
-            },
-          },
-        })
-      ).toEqual({ error: "not_registered" });
-      await flushRefusalAudit(jit.context, scope);
-    });
-    expect(
-      await jit.context.db.select().from(user).where(eq(user.email, email))
-    ).toHaveLength(0);
-    expect(
-      await jit.context.db
-        .select()
-        .from(account)
-        .where(eq(account.accountId, email))
-    ).toHaveLength(0);
-
-    const rows = await jit.context.db
-      .select()
-      .from(auditEvent)
-      .where(eq(auditEvent.action, "auth:sign_in_refused"));
-    // SAFETY: this test selects only auth:sign_in_refused rows written by flushRefusalAudit.
-
-    expect(
-      rows.filter((row) => (row.metadata as { email?: string }).email === email)
-    ).toHaveLength(1);
   });
 
   it("banned people are refused on both link-account and sign-in", async () => {

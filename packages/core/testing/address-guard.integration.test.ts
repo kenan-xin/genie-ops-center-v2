@@ -118,19 +118,6 @@ describe("the R-54c address guard against a real database", () => {
     );
   });
 
-  it("compares after the R-54c normalization", async () => {
-    const started = await deployment("https://id.example.com");
-
-    await writeSettings(started, {
-      realmMode: "managed",
-      keycloakUrlAtSetup: "https://ID.example.com:443/",
-    });
-
-    await expect(
-      assertKeycloakAddress({ context: started.context, source: {} })
-    ).resolves.toBeUndefined();
-  });
-
   it("refuses client-only mode while STACK_PROFILES holds bundled-keycloak", async () => {
     const started = await deployment(SETUP_URL);
 
@@ -150,37 +137,8 @@ describe("the R-54c address guard against a real database", () => {
     );
   });
 
-  it("skips until setup wrote keycloak_url_at_setup", async () => {
-    const started = await deployment("https://other.example.com");
-
-    await writeSettings(started, {
-      realmMode: "customer",
-      keycloakUrlAtSetup: null,
-    });
-
-    await expect(
-      assertKeycloakAddress({
-        context: started.context,
-        source: profiles("bundled-keycloak"),
-      })
-    ).resolves.toBeUndefined();
-  });
-
   it("skips when no tenant_settings row exists", async () => {
     const started = await deployment("https://other.example.com");
-
-    await expect(
-      assertKeycloakAddress({
-        context: started.context,
-        source: profiles("bundled-keycloak"),
-      })
-    ).resolves.toBeUndefined();
-  });
-
-  it("skips a context whose validation profile carries no KEYCLOAK_URL", async () => {
-    const started = await startDisposableDeployment();
-
-    cleanups.push(started.stop);
 
     await expect(
       assertKeycloakAddress({

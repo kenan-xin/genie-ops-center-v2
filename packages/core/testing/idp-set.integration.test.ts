@@ -177,11 +177,9 @@ type TenantFixture = {
   readonly options: Parameters<typeof runGenieOps>[1];
 };
 
-/** A real Postgres, a real realm from `genie-ops setup`, and the source the runner reads. */
-async function tenantFixture(slug: string): Promise<TenantFixture> {
-  const realm = `genie-${slug}`;
-
-  const bootstrapEnv = {
+/** The environment the runner reads for one realm. */
+function tenantEnvironment(realm: string) {
+  return {
     PUBLIC_URL,
     BETTER_AUTH_SECRET: "x".repeat(32),
     KEYCLOAK_URL: keycloak!.baseUrl,
@@ -194,7 +192,12 @@ async function tenantFixture(slug: string): Promise<TenantFixture> {
     // The provider secret travels in the command environment, never on argv (R-58).
     IDP_CLIENT_SECRET: PROVIDER_SECRET,
   };
+}
 
+/** A real Postgres, a real realm from `genie-ops setup`, and the source the runner reads. */
+async function tenantFixture(slug: string): Promise<TenantFixture> {
+  const realm = `genie-${slug}`;
+  const bootstrapEnv = tenantEnvironment(realm);
   const deployment = await startDisposableDeployment([], { env: bootstrapEnv });
   cleanups.push(deployment.stop);
 
@@ -543,16 +546,25 @@ describe("genie-ops idp set", () => {
   }, 200000);
 
   it("refuses in client-only mode with the named cause", async () => {
-    const fixture = await tenantFixture("client-only");
+    // No setup run and no realm: a migrated database whose settings row records client-only mode
+    // is all the guard reads (AC-12a).
+    const env = tenantEnvironment("genie-client-only");
+    const deployment = await startDisposableDeployment([], { env });
 
-    await fixture.context.db
-      .update(tenantSettings)
-      .set({ realmMode: "customer" });
+    cleanups.push(deployment.stop);
+    await deployment.context.db
+      .insert(tenantSettings)
+      .values({ realmMode: "customer" });
 
     const captured = lineCapture();
 
     await expect(
-      runGenieOps([...oidcArgs()], { ...fixture.options, ...captured })
+      runGenieOps([...oidcArgs()], {
+        source: { ...env, DATABASE_URL: deployment.context.env.databaseUrl },
+        compiledModules: [],
+        histories: [],
+        ...captured,
+      })
     ).resolves.not.toBe(0);
 
     expect(captured.lines.join("\n")).toContain("client-only mode");

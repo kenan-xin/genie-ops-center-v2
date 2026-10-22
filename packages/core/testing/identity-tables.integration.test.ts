@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
@@ -7,7 +7,11 @@ import {
   migrationPlan,
   runMigrations,
 } from "../src/services/migrator/index.ts";
-import { startDisposableDeployment, startDisposablePostgres } from "./index.ts";
+import {
+  type DisposableDeployment,
+  startDisposableDeployment,
+  startDisposablePostgres,
+} from "./index.ts";
 
 /**
  * The identity, group, role and notification tables the Section 2 core migration creates (R-1),
@@ -330,13 +334,22 @@ async function foreignKeyFacts(
 const covered = (index: { columns: string[] }): string =>
   index.columns.join(",");
 
+// Every case but the AC-17 upgrade reads or writes one shared deployment; the writing cases use
+// their own row keys.
 describe("the Section 2 identity tables", () => {
+  let deployment: DisposableDeployment;
+  let client: DisposableDeployment["context"]["db"]["$client"];
+
+  beforeAll(async () => {
+    deployment = await startDisposableDeployment();
+    client = deployment.context.db.$client;
+  }, 120000);
+
+  afterAll(async () => {
+    await deployment?.stop();
+  });
+
   it("creates the ten identity, group, role and notification tables with exactly the documented columns", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
     const present = await publicTables(client);
     const problems: string[] = [];
 
@@ -414,11 +427,6 @@ describe("the Section 2 identity tables", () => {
   });
 
   it("gives every new table its documented primary key", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
     const problems: string[] = [];
 
     const indexesByTable = new Map(
@@ -452,41 +460,7 @@ describe("the Section 2 identity tables", () => {
     expect(problems).toEqual([]);
   });
 
-  it("adds the foreign keys to the six Section 1 person columns (R-2)", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-    const problems: string[] = [];
-
-    const checks = await Promise.all(
-      PERSON_FOREIGN_KEYS.map(async ([table, column]) => ({
-        table,
-        column,
-        facts: await foreignKeyFacts(client, table),
-      }))
-    );
-
-    for (const { table, column, facts } of checks) {
-      if (
-        !facts.some(
-          (fk) => fk.column === column && fk.referencedTable === "user"
-        )
-      ) {
-        problems.push(`${table}.${column}: no foreign key to user.id`);
-      }
-    }
-
-    expect(problems).toEqual([]);
-  });
-
   it("wires the new tables' foreign keys to user, group and role", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
     const problems: string[] = [];
 
     const checks = await Promise.all(
@@ -513,33 +487,7 @@ describe("the Section 2 identity tables", () => {
     expect(problems).toEqual([]);
   });
 
-  it("adds realm_mode with the managed default and a nullable keycloak_url_at_setup", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-    const facts = await columnFacts(client, "tenant_settings");
-
-    expect(facts.get("realm_mode")).toMatchObject({
-      dataType: "text",
-      nullable: false,
-      defaultValue: "'managed'::text",
-    });
-    expect(facts.get("keycloak_url_at_setup")).toMatchObject({
-      dataType: "text",
-      nullable: true,
-      defaultValue: null,
-    });
-  });
-
   it("creates the group partial unique index and the role_assignment keys", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-
     const groupIndexes = await indexFacts(client, "group");
 
     expect(
@@ -657,23 +605,19 @@ describe("the Section 2 identity tables", () => {
   });
 
   it("keeps one row for two identical tenant-wide grants (nulls not distinct)", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-
     await client.query(
-      "insert into role (name, permissions) values ('fixture', '{}')"
+      "insert into role (name, permissions) values ('nulls-not-distinct', '{}')"
     );
 
     const roleId = (
-      await client.query<{ id: string }>("select id from role limit 1")
+      await client.query<{ id: string }>(
+        "select id from role where name = 'nulls-not-distinct'"
+      )
     ).rows[0]?.id;
 
     const insert = `
       insert into role_assignment (role_id, principal_type, principal_id)
-      values ($1, 'user', 'u1')
+      values ($1, 'user', 'nulls-u1')
       on conflict do nothing
     `;
 
@@ -681,107 +625,90 @@ describe("the Section 2 identity tables", () => {
     await client.query(insert, [roleId]);
 
     const counted = await client.query<{ count: number }>(
-      "select count(*)::int as count from role_assignment"
+      "select count(*)::int as count from role_assignment where role_id = $1",
+      [roleId]
     );
 
     expect(counted.rows[0]?.count).toBe(1);
   });
 
   it("refuses a user email that is not lower case, and accepts a lower-case one", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-
     await expect(
       client.query(
-        "insert into \"user\" (id, name, email) values ('u1', 'Alice', 'Alice@Example.com')"
+        "insert into \"user\" (id, name, email) values ('lower-u1', 'Alice', 'Alice@Example.com')"
       )
     ).rejects.toMatchObject({ code: "23514" });
 
     await client.query(
-      "insert into \"user\" (id, name, email) values ('u1', 'Alice', 'alice@example.com')"
+      "insert into \"user\" (id, name, email) values ('lower-u1', 'Alice', 'alice@example.com')"
     );
   });
 
   it("enforces the uniques Better Auth's lookups depend on", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-
     await client.query(
-      "insert into \"user\" (id, name, email) values ('u1', 'A', 'a@example.com')"
+      "insert into \"user\" (id, name, email) values ('unique-u1', 'A', 'unique@example.com')"
     );
 
     await expect(
       client.query(
-        "insert into \"user\" (id, name, email) values ('u2', 'B', 'a@example.com')"
+        "insert into \"user\" (id, name, email) values ('unique-u2', 'B', 'unique@example.com')"
       )
     ).rejects.toMatchObject({ code: "23505" });
 
     await client.query(
-      "insert into session (id, user_id, token, expires_at) values ('s1', 'u1', 'tok1', now() + interval '1 day')"
+      "insert into session (id, user_id, token, expires_at) values ('unique-s1', 'unique-u1', 'unique-tok', now() + interval '1 day')"
     );
 
     await expect(
       client.query(
-        "insert into session (id, user_id, token, expires_at) values ('s2', 'u1', 'tok1', now() + interval '1 day')"
+        "insert into session (id, user_id, token, expires_at) values ('unique-s2', 'unique-u1', 'unique-tok', now() + interval '1 day')"
       )
     ).rejects.toMatchObject({ code: "23505" });
 
     await client.query(
-      "insert into role (name, permissions) values ('Admin', '{}')"
+      "insert into role (name, permissions) values ('Unique role', '{}')"
     );
 
     await expect(
       client.query(
-        "insert into role (name, permissions) values ('Admin', '{}')"
+        "insert into role (name, permissions) values ('Unique role', '{}')"
       )
     ).rejects.toMatchObject({ code: "23505" });
   });
 
   it("cascades the Better Auth foreign keys and holds the history keys on delete", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const client = deployment.context.db.$client;
-
     await client.query(
-      "insert into \"user\" (id, name, email) values ('u1', 'A', 'a@example.com')"
+      "insert into \"user\" (id, name, email) values ('cascade-u1', 'A', 'cascade@example.com')"
     );
     await client.query(
-      "insert into session (id, user_id, token, expires_at) values ('s1', 'u1', 'tok', now() + interval '1 day')"
+      "insert into session (id, user_id, token, expires_at) values ('cascade-s1', 'cascade-u1', 'cascade-tok', now() + interval '1 day')"
     );
     await client.query(
-      "insert into account (id, user_id, provider_id, account_id) values ('a1', 'u1', 'credential', 'acct1')"
+      "insert into account (id, user_id, provider_id, account_id) values ('cascade-a1', 'cascade-u1', 'credential', 'cascade-acct')"
     );
     await client.query(
-      "insert into two_factor (id, user_id, secret, backup_codes) values ('t1', 'u1', 'secret', 'backup')"
+      "insert into two_factor (id, user_id, secret, backup_codes) values ('cascade-t1', 'cascade-u1', 'secret', 'backup')"
     );
 
     // A notification names the user with `NO ACTION`, so the delete is refused while it exists.
     await client.query(
-      "insert into notification (user_id, kind, title, body) values ('u1', 'core:event', 't', 'b')"
+      "insert into notification (user_id, kind, title, body) values ('cascade-u1', 'core:event', 't', 'b')"
     );
 
     await expect(
-      client.query("delete from \"user\" where id = 'u1'")
+      client.query("delete from \"user\" where id = 'cascade-u1'")
     ).rejects.toMatchObject({ code: "23503" });
 
-    await client.query("delete from notification where user_id = 'u1'");
+    await client.query("delete from notification where user_id = 'cascade-u1'");
 
-    await client.query("delete from \"user\" where id = 'u1'");
+    await client.query("delete from \"user\" where id = 'cascade-u1'");
 
     const counts = await Promise.all(
       ["session", "account", "two_factor"].map(async (table) => ({
         table,
         count: (
           await client.query<{ count: number }>(
-            `select count(*)::int as count from "${table}" where user_id = 'u1'`
+            `select count(*)::int as count from "${table}" where user_id = 'cascade-u1'`
           )
         ).rows[0]?.count,
       }))

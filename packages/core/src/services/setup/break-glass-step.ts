@@ -15,6 +15,70 @@ import { nameForEmail } from "./identity-rows.ts";
 /** Better Auth's own provider id for an email and password account (D2-5). */
 const CREDENTIAL_PROVIDER_ID = "credential";
 
+/** The person row the `break_glass` step finds at the configured address, if any. */
+export type ExistingBreakGlassPerson = {
+  readonly isBreakGlass: boolean | null;
+  readonly mustChangePassword: boolean | null;
+};
+
+/** One account row of that person. */
+export type ExistingAccount = {
+  readonly id: string;
+  readonly providerId: string;
+};
+
+/**
+ * What the step does with what it found: create the account, keep a delivered one, rotate an
+ * undelivered credential, or refuse with a named cause. Any refusal comes before a write.
+ */
+export type BreakGlassDecision =
+  | { readonly kind: "create" }
+  | { readonly kind: "keep" }
+  | { readonly kind: "rotate"; readonly credentialId: string }
+  | { readonly kind: "refuse"; readonly cause: string };
+
+/** The R-57 and R-62 branch rules of the `break_glass` step, read from the rows it found. */
+export function decideBreakGlass(
+  email: string,
+  existing: ExistingBreakGlassPerson | undefined,
+  accounts: readonly ExistingAccount[]
+): BreakGlassDecision {
+  if (existing === undefined) return { kind: "create" };
+
+  if (existing.isBreakGlass !== true) {
+    return {
+      kind: "refuse",
+      cause: `the break_glass step refuses to mark ${email} break-glass: the address already belongs to an ordinary person (R-57, R-62)`,
+    };
+  }
+
+  if (
+    accounts.some(({ providerId }) => providerId !== CREDENTIAL_PROVIDER_ID)
+  ) {
+    return {
+      kind: "refuse",
+      cause: `the break_glass step refuses ${email}: the break-glass account already has an identity-provider login, which would otherwise inherit the bypass (R-62)`,
+    };
+  }
+
+  const credential = accounts.find(
+    ({ providerId }) => providerId === CREDENTIAL_PROVIDER_ID
+  );
+
+  if (credential === undefined) {
+    return {
+      kind: "refuse",
+      cause: `the break_glass step refuses ${email}: the break-glass account has no credential login (R-57)`,
+    };
+  }
+
+  // The account already completed its forced password change, so the secret it holds was
+  // delivered and used. Its flags and credential stay as they are and nothing is printed.
+  if (existing.mustChangePassword !== true) return { kind: "keep" };
+
+  return { kind: "rotate", credentialId: credential.id };
+}
+
 /** What the `break_glass` step prints its one-time password through. */
 export type BreakGlassStepOptions = {
   readonly output: (line: string) => void;
@@ -66,40 +130,21 @@ export async function breakGlassStep(
       .where(eq(user.email, email))
       .limit(1);
 
-    if (existing !== undefined && existing.isBreakGlass !== true) {
-      throw new Error(
-        `the break_glass step refuses to mark ${email} break-glass: the address already belongs to an ordinary person (R-57, R-62)`
-      );
-    }
+    const accounts =
+      existing?.isBreakGlass === true
+        ? await tx
+            .select({ id: account.id, providerId: account.providerId })
+            .from(account)
+            .where(eq(account.userId, existing.id))
+        : [];
 
-    if (existing !== undefined) {
-      const accounts = await tx
-        .select({ id: account.id, providerId: account.providerId })
-        .from(account)
-        .where(eq(account.userId, existing.id));
+    const decision = decideBreakGlass(email, existing, accounts);
 
-      if (
-        accounts.some(({ providerId }) => providerId !== CREDENTIAL_PROVIDER_ID)
-      ) {
-        throw new Error(
-          `the break_glass step refuses ${email}: the break-glass account already has an identity-provider login, which would otherwise inherit the bypass (R-62)`
-        );
-      }
+    if (decision.kind === "refuse") throw new Error(decision.cause);
 
-      const credential = accounts.find(
-        ({ providerId }) => providerId === CREDENTIAL_PROVIDER_ID
-      );
+    if (decision.kind === "keep") return undefined;
 
-      if (credential === undefined) {
-        throw new Error(
-          `the break_glass step refuses ${email}: the break-glass account has no credential login (R-57)`
-        );
-      }
-
-      // The account already completed its forced password change, so the secret it holds was
-      // delivered and used. Its flags and credential stay as they are and nothing is printed.
-      if (existing.mustChangePassword !== true) return undefined;
-
+    if (decision.kind === "rotate") {
       const generated = generatePassword();
 
       if (!meetsPasswordRule(generated, email)) {
@@ -111,7 +156,7 @@ export async function breakGlassStep(
       await tx
         .update(account)
         .set({ password: await hashPassword(generated), updatedAt: sql`now()` })
-        .where(eq(account.id, credential.id));
+        .where(eq(account.id, decision.credentialId));
 
       return generated;
     }
