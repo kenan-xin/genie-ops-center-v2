@@ -73,11 +73,14 @@ function run(task: string, moduleInclude: string | undefined): Run {
   if (moduleInclude === undefined) delete env.MODULE_INCLUDE;
   else env.MODULE_INCLUDE = moduleInclude;
 
-  const result = spawnSync(join(stage, "node_modules/.bin/nx"), ["run", task], {
-    cwd: stage,
-    encoding: "utf8",
-    env,
-  });
+  // `--output-style=static` keeps the per-task `> nx run <task> [local cache]`
+  // line. From Nx 23.3 the default style prints only a run summary when its
+  // output is not a terminal, and the summary does not name the task.
+  const result = spawnSync(
+    join(stage, "node_modules/.bin/nx"),
+    ["run", task, "--output-style=static"],
+    { cwd: stage, encoding: "utf8", env }
+  );
 
   // Nx colorizes when its parent asks for colour, which it does when these
   // cases run inside `nx run @genie/app:test:integration`. The escape codes
