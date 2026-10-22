@@ -42,7 +42,11 @@ services:
           - genie-dev-app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/api/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -76,7 +80,11 @@ services:
     healthcheck:
       # The test refuses a file older than 180 s (three missed minutes). start_period covers the migrator lock wait, LOCK_TIMEOUT_MS (120 s by default),
       # plus one heartbeat interval.
-      test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(stat -c %Y \"$$WORKER_HEARTBEAT_PATH\") )) -lt 180"]
+      test:
+        [
+          "CMD-SHELL",
+          'test $$(( $$(date +%s) - $$(stat -c %Y "$$WORKER_HEARTBEAT_PATH") )) -lt 180',
+        ]
       interval: 30s
       timeout: 5s
       retries: 1
@@ -103,7 +111,13 @@ services:
     # profile on fails with a cause instead of restart-looping on an empty
     # variable; a blank KC_PROXY_TRUSTED_ADDRESSES is unset because Keycloak
     # rejects the empty string for that one.
-    entrypoint: ["/bin/bash", "-c", ": \"$${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}\"; : \"$${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}\"; : \"$${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}\"; : \"$${KC_HOSTNAME:?set KEYCLOAK_URL in .env}\"; [ -n \"$${KC_PROXY_TRUSTED_ADDRESSES:-}\" ] || unset KC_PROXY_TRUSTED_ADDRESSES; [ -n \"$${KC_BOOTSTRAP_ADMIN_USERNAME:-}\" ] || unset KC_BOOTSTRAP_ADMIN_USERNAME; [ -n \"$${KC_BOOTSTRAP_ADMIN_PASSWORD:-}\" ] || unset KC_BOOTSTRAP_ADMIN_PASSWORD; exec /opt/keycloak/bin/kc.sh \"$$@\"", "kc.sh"]
+    entrypoint:
+      [
+        "/bin/bash",
+        "-c",
+        ': "$${KC_DB_URL_HOST:?set KC_DB_URL_HOST in .env}"; : "$${KC_DB_USERNAME:?set KC_DB_USERNAME in .env}"; : "$${KC_DB_PASSWORD:?set KC_DB_PASSWORD in .env}"; : "$${KC_HOSTNAME:?set KEYCLOAK_URL in .env}"; [ -n "$${KC_PROXY_TRUSTED_ADDRESSES:-}" ] || unset KC_PROXY_TRUSTED_ADDRESSES; [ -n "$${KC_BOOTSTRAP_ADMIN_USERNAME:-}" ] || unset KC_BOOTSTRAP_ADMIN_USERNAME; [ -n "$${KC_BOOTSTRAP_ADMIN_PASSWORD:-}" ] || unset KC_BOOTSTRAP_ADMIN_PASSWORD; exec /opt/keycloak/bin/kc.sh "$$@"',
+        "kc.sh",
+      ]
     command: ["start", "--http-enabled=true", "--http-port=8080"]
     # Every KC_ value is defaulted rather than required, because compose
     # interpolates this service even when the profile is off. The entrypoint
@@ -141,7 +155,13 @@ services:
     # runs their own Keycloak removes the profile instead of listing this
     # service (Specification 02 R-54b).
     healthcheck:
-      test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000",
+        ]
       interval: 10s
       timeout: 5s
       retries: 6
