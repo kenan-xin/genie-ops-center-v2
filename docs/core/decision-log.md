@@ -154,6 +154,8 @@ Designed in: Section 3 and every module phase. Implemented: from Section 0 (test
 
 Amended 2026-10-20, one view-only exception (owner decision): the approvals module's workflow designer canvas is view-only at a phone viewport. A person can open a flow, zoom, pan, and tap a step to read its settings, and the screen says that editing needs a larger screen. Editing a flow is a desktop task done rarely by a few designers, and a drag-and-drop canvas on a phone costs a separate editing design. Every other approvals screen, including requests, tasks, and the register, stays fully usable on a phone. The end-to-end tests check the view-only behavior at the phone viewport and editing at the desktop viewport. This is the only exception; a new one needs its own amendment.
 
+Amended 2026-10-22, test viewports (owner decision): every end-to-end test that renders a screen runs at a phone viewport and a desktop viewport. A test that renders no screen (response headers, API refusals, redirects, plain HTTP) runs once, at the desktop viewport, and carries the Playwright tag `@no-screen`. The phone projects exclude that tag. Reason: about 38 of the 64 main tests asserted nothing that depends on the viewport, so the second run doubled their cost and caught no layout bug. The design rule above does not change: every screen is still designed mobile first and tested at both viewports. Revisit if a no-screen test starts to assert on rendered content, which makes it a screen test again, or if a phone-only server behavior appears (for example a user-agent rule).
+
 ## DEC-26. Embedded solutions are kept
 
 Solutions module decision. The full record is in `../modules/solutions/README.md` under Decisions. The number is reserved here so references stay valid.
