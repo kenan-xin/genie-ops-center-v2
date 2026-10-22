@@ -2,6 +2,26 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-10-22
+
+### Added, the Notifications page has an admin variant at `/admin/notifications`
+
+- Owner decision of 2026-10-22. In the admin portal the bell links to `/admin/notifications`, which renders the same Notifications list inside the admin chrome: admin sidebar, no sidebar item active, bell with `aria-current="page"`. The workspace bell still links to `/notifications`. The break-glass account lives only in the admin chrome, so it uses `/admin/notifications` too. This follows the `/account` and `/admin/account` rule, so the bell never moves a person out of the chrome they are in.
+- Design wiring: `routes.ts` maps `/admin/notifications` to the Notifications screen with `?chrome=admin`, and a route entry may now carry its own query. `ShellWrapper` draws the admin chrome for `?chrome=admin` or `?breakglass=1`, picks the bell href from the chrome, and keeps `?breakglass=1` when the break-glass sample opens its account or notifications page. The AppShell is unchanged.
+- Captures added: `notifications-admin`, `notifications-admin-dark`, `notifications-admin-mobile`, `notifications-admin-break-glass`. The inventory is 351 entries.
+- Files: `src/shell/components/{routes.ts,ShellWrapper.tsx}`, `src/shell/ShellPreview.tsx`, `product/shell/spec.md`, `product/sections/account-and-inbox/spec.md`, `scripts/capture/rest-account.json`.
+
+### Changed, the Inbox is the Notifications page and the header bell is its only entry point
+
+- Owner decision of 2026-10-22, final. The screen formerly called Inbox is the Notifications page: title "Notifications", route `/notifications` (was `/inbox`). Its content is unchanged: newest first, kind icon, title, two-line body preview, relative time, unread dot, bolder unread title, a header with the unread count and "Mark all as read", row click marks read and follows the link, load more at 25 rows, and the empty state. The empty state now reads "No notifications yet" and shows a bell icon.
+- The only entry point is a bell link with an unread count in the page header, in both chromes and at every viewport. Clicking it navigates to `/notifications`; there is no dropdown panel. Accessible name "Notifications, 3 unread", or "Notifications" at zero, and the count pill hides at zero. On the Notifications page no sidebar item is active and the bell shows the active-row pressed state with `aria-current="page"`. On phones it sits at the right edge of the top bar beside the menu control; measured at 375px with no horizontal overflow.
+- Removed: the sidebar and drawer Inbox item and the `?inbox=1` preview switch, and the shell spec rule "No bell in the header".
+- The AppShell takes the bell as a new `notifications` prop (`href`, `unreadCount`, `isCurrent`); omitting it shows no bell. Until the platform ships the page (platform roadmap Section 6 item 5, replacing the earlier "Section 5 item 8" reference), the product omits it. The design captures show the bell as the target design. `ShellPreview` takes `?unread=0` for the zero state.
+- Renamed: `src/sections/account-and-inbox/Inbox.tsx` and `components/Inbox.tsx` to `Notifications.tsx` (component `Notifications`, props `NotificationsProps`), the `emptyStates.inbox` key to `emptyStates.notifications`. The `Notification` fields that map to the core `notification` table are unchanged. The section folder and roadmap title stay "Account and Inbox", because Design OS derives the folder from the roadmap title.
+- Captures: `inbox*.png` replaced by `notifications`, `notifications-dark`, `notifications-mobile`, `notifications-empty`, `notifications-empty-mobile`. Two new entries, `shell-mobile-workspace-dark` and `shell-mobile-admin-dark`. Every other capture was regenerated, because every screen in the shell now shows the bell. The inventory is 347 entries.
+- Files: `src/shell/components/{AppShell,ShellWrapper,routes,index}.ts(x)`, `src/shell/ShellPreview.tsx`, `src/sections/account-and-inbox/{Notifications.tsx,components/Notifications.tsx,components/index.ts,components/ui.tsx}`, `product/shell/spec.md`, `product/sections/account-and-inbox/{spec.md,types.ts,data.json}`, `product/product-roadmap.md`, `scripts/capture/{radius,rest-account,rest-shell}.json`.
+
+
 ## 2026-09-19
 
 ### Changed, four pieces of accepted guidance are now carried by the design source

@@ -7,7 +7,9 @@
 const SCREEN: Record<string, string> = {
   '/': 'solutions/SolutionsHub',
   '/favorites': 'solutions/FavoritesPage',
-  '/inbox': 'account-and-inbox/Inbox',
+  '/notifications': 'account-and-inbox/Notifications',
+  // Same screen in the admin chrome. The query tells the preview wrapper which chrome to draw.
+  '/admin/notifications': 'account-and-inbox/Notifications?chrome=admin',
   '/account': 'account-and-inbox/AccountPage',
   '/admin': 'people-groups-and-roles/PeopleDirectory',
   '/admin/account': 'account-and-inbox/AccountPage',
@@ -45,8 +47,9 @@ export function previewRouteFor(href: string, fullscreen = false): string | null
     else if (MODULE_PREFIX.test(path)) screen = SCREEN['/admin/modules']
   }
   if (!screen) return null
-  const [section, name] = screen.split('/')
-  const qs = [extra, query].filter(Boolean).join('&')
+  const [screenPath, screenQuery = ''] = screen.split('?')
+  const [section, name] = screenPath.split('/')
+  const qs = [screenQuery, extra, query].filter(Boolean).join('&')
   return `/sections/${section}/screen-designs/${name}${fullscreen ? '/fullscreen' : ''}${qs ? `?${qs}` : ''}`
 }
 

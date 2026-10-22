@@ -1,9 +1,9 @@
 # Account and Inbox Specification
 
 ## Overview
-Delivered early: the platform defers the inbox screen (`DEC-21`, platform roadmap Section 5 item 8). The inbox design below stays as specified, the shell hides its navigation entry and unread pill until the platform schedules it, and the notification table and kinds already exist.
+Delivered early: the platform defers the Notifications page (`DEC-21`, platform roadmap Section 6 item 5). The design below stays as specified, the product shows no header bell until the platform schedules the page, and the notification table and kinds already exist. The design captures show the bell as the target design. Owner decision 2026-10-22: the page formerly called Inbox is the Notifications page at `/notifications`, and the header bell is its only entry point.
 
-The personal screens inside the shell. The account page shows the person's identity as synced from the company directory, their active sessions, their personal preferences, and a read-only summary of their roles. The inbox lists notifications newest first with read state. The idle-timeout modal and the Solutions hub empty state complete the section.
+The personal screens inside the shell. The account page shows the person's identity as synced from the company directory, their active sessions, their personal preferences, and a read-only summary of their roles. The Notifications page lists notifications newest first with read state. The idle-timeout modal and the Solutions hub empty state complete the section.
 
 ## User Flows
 - Person opens Account from the user footer menu and sees four blocks: Profile, Sessions, Preferences, Roles and access.
@@ -12,8 +12,9 @@ The personal screens inside the shell. The account page shows the person's ident
 - Break-glass administrator opens Account and sees a variant with Profile, Change password (current password required, the shared password rule and meter), Authenticator (re-enroll), and Sessions. No Preferences block and no Roles and access block.
 - Person changes language or time zone in Preferences. Theme is not personal: it belongs to the organization and comes from branding (owner decision 2026-10-19). Each control saves on change and confirms with a toast. "Use tenant default" resets one control.
 - Person reads the roles they hold and the scope of each in Roles and access. Nothing is editable here.
-- Person opens Inbox from the sidebar and sees notifications newest first, unread ones marked. They open one, which marks it read and goes to the linked record. "Mark all as read" clears the unread count in the sidebar.
-- Person with no notifications sees an empty inbox state.
+- Person clicks the bell in the header, in either chrome and at any viewport, and lands on the Notifications page at `/notifications`, which lists notifications newest first with unread ones marked. They open one, which marks it read and goes to the linked record. "Mark all as read" clears the unread count on the bell.
+- Administrator in the admin portal, including the break-glass account, clicks the bell and lands on the same Notifications page at `/admin/notifications`, inside the admin chrome, so the chrome does not change.
+- Person with no notifications sees the Notifications empty state.
 - Person idle for the tenant's timeout minus two minutes sees a countdown modal with two minutes left. Ordinary activity (pointer, keyboard, touch) before the warning extends the server session silently, throttled to half the idle window, so the modal appears only after real inactivity. "Stay signed in" extends the session. When the countdown reaches zero they are signed out and land on the sign-in page with the expired banner.
 - Person with no solution grants opens the Solutions hub and sees an empty state that says who to ask and shows the support contact.
 
@@ -25,8 +26,10 @@ The personal screens inside the shell. The account page shows the person's ident
 - Toasts: preference saves ("Time zone saved.") and the break-glass password change ("Password changed.") confirm with the shared toast: bottom center on phones, bottom right on desktop, 4 seconds, manual close.
 - Preferences block: up to two controls in a two-column form: language (select from the tenant's available list, hidden when only one language is available) and time zone (searchable select). No theme control. Each shows the tenant default as helper text and a "Use tenant default" link when overridden.
 - Roles and access block: list of roles, each with its permission count and scope (whole tenant, or a scoped record such as a solution name). Read-only, with a note to contact an administrator for changes.
-- Inbox: full-width list, newest first. Each row has a kind icon, title, body preview clamped to two lines, relative time, and an unread dot in the primary blue. Unread rows use a bolder title. Header has the unread count and "Mark all as read". Row click marks read and follows the link.
-- Inbox empty state: inbox icon, one heading, one sentence. Inbox load-more at 25 rows.
+- Notifications page: page title "Notifications", route `/notifications`, no sidebar item active (the header bell shows the current state). Full-width list, newest first. Each row has a kind icon, title, body preview clamped to two lines, relative time, and an unread dot in the primary blue. Unread rows use a bolder title. Header has the unread count and "Mark all as read". Row click marks read and follows the link.
+- Notifications empty state: bell icon, one heading ("No notifications yet"), one sentence. Load more at 25 rows.
+- Admin variant, rendered in the admin chrome at `/admin/notifications`: the same list, header, empty state, and load more, with the admin sidebar, no sidebar item active, and the bell carrying `aria-current="page"`. The admin portal bell links here; the workspace bell links to `/notifications`. The break-glass account lives only in the admin chrome, so it uses this variant.
+- Entry point: the header bell is the only way to the page. There is no sidebar or drawer item and no dropdown panel. The bell, its accessible name, and its count badge are specified in the shell spec.
 - Break-glass variant, rendered in the admin chrome at `/admin/account`: Profile (email, identity source "Genie (local password and authenticator)", description "Local administrator account. Password and authenticator are managed on this page."), Change password block (current, new, confirm, the first three rules shown as met or unmet, the provisioning-password rule neutral "Checked when you save", Save), Authenticator block (enrolled since, Re-enroll button that returns to the enrollment card), Sessions. No Preferences block and no Roles and access block.
 - Idle-timeout modal: dialog over a dimmed shell (480px centered on desktop, full width with a bottom action bar on phones), title "Still there?", a large mono countdown in minutes and seconds, body text, primary "Stay signed in" and secondary "Sign out now". Focus trapped, Escape does nothing.
 - Solutions hub empty state: centered block in the content area with the tenant letter tile, heading "No solutions yet", the line "Ask your administrator to grant you access to a solution.", and the support contact when branding provides one.

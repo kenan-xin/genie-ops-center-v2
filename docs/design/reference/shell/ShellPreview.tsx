@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   LayoutGrid,
   Star,
-  Inbox,
   Users,
   UsersRound,
   ShieldCheck,
@@ -25,8 +24,6 @@ const FONTS =
 const workspaceNav = [
   { label: 'Solutions', href: '/', isActive: true, icon: LayoutGrid },
   { label: 'Favorites', href: '/favorites', icon: Star },
-  // Inbox is deferred by the platform (DEC-21): hidden until scheduled. ?inbox=1 shows it.
-  ...(new URLSearchParams(window.location.search).get('inbox') === '1' ? [{ label: 'Inbox', href: '/inbox', icon: Inbox, badge: 3 }] : []),
 ]
 
 const adminNav = [
@@ -83,7 +80,11 @@ export default function ShellPreview() {
   const offline = params.get('offline') === '1'
   const loading = params.get('loading') === '1'
 
-  // Placeholder follows the chrome: solutions in the workspace, people on the admin landing page. No bell: notifications live in Inbox.
+  // The header bell is the target design, in both chromes. The product shows no bell until the platform
+  // ships the Notifications page (platform roadmap Section 6 item 5). ?unread=0 previews the zero state.
+  const unreadCount = Number(params.get('unread') ?? 3)
+
+  // Placeholder follows the chrome: solutions in the workspace, people on the admin landing page.
   const searchPlaceholder = admin ? 'Search people' : 'Search solutions'
   const headerActions = (
     <label className="hidden h-10 items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 text-sm text-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 sm:flex dark:border-gray-500 dark:bg-gray-900 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-950">
@@ -113,6 +114,7 @@ export default function ShellPreview() {
         offline={offline || undefined}
         loading={loading}
         headerActions={headerActions}
+        notifications={{ href: admin ? '/admin/notifications' : '/notifications', unreadCount }}
         supportHref="mailto:support@meridianhealth.example"
         onNavigate={onNavigate}
         onLogout={() => { console.log('Sign out: end Genie session'); console.log('Sign out: end realm session') }}

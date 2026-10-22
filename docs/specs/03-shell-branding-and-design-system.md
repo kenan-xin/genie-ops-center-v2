@@ -28,7 +28,7 @@ Excluded, with the owner named:
 - The audit reader screen. Section 2 item 12 builds it. Section 3 writes audit events that it reads.
 - `can()`, `scopesFor()`, `role`, `role_assignment`, and the group sync. Section 2 item 6 builds them. Section 3 consumes them.
 - The solutions hub, the solutions navigation entries, the pinned rail contents, chat themes, and the Access overview screen of the solutions admin. Section 4 and `../modules/solutions/README.md` own them.
-- The inbox screen and its unread pill. Deferred by `DEC-21` to Section 5 item 8. The shell hides the entry.
+- The Notifications page and the header bell with its unread count. Deferred by `DEC-21` to roadmap Section 6 item 5. The shell shows no bell until then.
 - A core page named Dashboard and a landing-slot contract point. Refused by `DEC-49`.
 - The `s3` file adapter, malware scanning, CSV export, and SIEM push.
 
@@ -146,7 +146,7 @@ R-38. Below 768 pixels the shell must show no sidebar. The header carries the te
 
 R-39. The shell must read branding for the tenant identity block, the logo or letter tile, the company name, the product name, and the footer links, through the branding reader on the tenant context (`DEC-34`, `DEC-46`).
 
-R-40. The shell must show no notification surface until the inbox screen is scheduled (`DEC-21`, `../design/shell/spec.md`, "Navigation Structure"). Amended 2026-10-20 (owner): when the inbox ships, its entry point is a bell with an unread count in the header of both chromes, not an Inbox navigation entry.
+R-40. The shell must show no notification surface until the Notifications page ships in roadmap Section 6 item 5 (`DEC-21`, `../design/shell/spec.md`, "Navigation Structure"). Amended 2026-10-20 and 2026-10-22 (owner): the page then opens only from a bell with an unread count in the header of both chromes, which links to `/notifications` in the workspace chrome and to `/admin/notifications` in the admin chrome. There is no navigation entry and no dropdown panel. The header layout of this section must leave room for the bell beside search and actions at a phone viewport.
 
 R-41. Every user-facing string in the shell and in every screen of this section must go through the `next-intl` message catalog installed in Section 0. No string is written inline (`DEC-13`, `../core/roadmap.md`, Section 0 item 9).
 
@@ -353,7 +353,7 @@ Static. The arbitrary pixel text size check of R-4. The oxlint import direction 
 ## Deferred
 
 - The Typography, Email, Links, and Locale branding tabs. Owner decision 2026-10-19 (simplification audit): the first release ships the Identity, Colors and theme, and Sign-in page tabs, and the other values come from `branding.seed.json`. Reopens when a customer asks to edit them in the app; R-48, R-51, and R-52 keep the tab requirements, and the Links values follow the seed through the support link of R-32 and the sign-in page.
-- The inbox screen and the unread pill. Designed in `../design/sections/account-and-inbox/spec.md`. Deferred by `DEC-21` to Section 5 item 8. Reopens when the first module needs the inbox. The shell keeps the entry and the pill hidden rather than removing them.
+- The Notifications page and the header bell. Designed in `../design/sections/account-and-inbox/spec.md` and `../design/shell/spec.md`. Deferred by `DEC-21` to roadmap Section 6 item 5. The shell header keeps room for the bell, and the bell is not rendered until then.
 - A core page named Dashboard and a landing-slot contract point. Refused by `DEC-49`. Reopens when a second widget exists and has requirements. The guard that keeps the path open is the landing-route flag on a navigation entry, which a later Dashboard retargets without touching a module.
 - A second tenant brand color. Refused by `DEC-47`. Reopens when a surface needs one, as `secondary_color` with a named surface and its own contrast pair. The guard is that the token layer is emitted from `tenant_branding` alone through one `applyBranding` step.
 - A tint ramp derived from the tenant color. Refused by the 2026-09-17 amendment of `DEC-47`. Reopens only with the second color above.

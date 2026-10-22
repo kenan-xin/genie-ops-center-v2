@@ -53,6 +53,7 @@ export interface RoleGrant {
   via: string | null
 }
 
+/** One row of the core `notification` table, listed on the Notifications page. */
 export interface Notification {
   id: string
   kind: string
@@ -105,7 +106,7 @@ export interface AccountAndInboxProps {
   notifications: Notification[]
   idleTimeout: IdleTimeout
   tenantSupport: TenantSupport
-  emptyStates: { inbox: EmptyStateCopy; noSolutions: EmptyStateCopy }
+  emptyStates: { notifications: EmptyStateCopy; noSolutions: EmptyStateCopy }
   /** Sign out one non-current session. */
   onRevokeSession?: (sessionId: string) => void
   /** Sign out every session except the current one. */

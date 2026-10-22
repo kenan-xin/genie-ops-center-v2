@@ -101,7 +101,7 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 
 ### Notifications
 
-`notification`: id, user_id, kind (text, `module:event`), title, body, link, read_at (nullable), created_at. Index on (user_id, read_at, created_at desc). Written by the same events that send email; the inbox screen comes later.
+`notification`: id, user_id, kind (text, `module:event`), title, body, link, read_at (nullable), created_at. Index on (user_id, read_at, created_at desc). Written by the same events that send email; the Notifications page reads it later (`DEC-21`).
 
 ### Audit
 

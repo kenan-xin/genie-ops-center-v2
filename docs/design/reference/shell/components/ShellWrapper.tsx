@@ -1,4 +1,4 @@
-import { LayoutGrid, Star, Inbox, Users, UsersRound, ShieldCheck, Palette, ScrollText, Settings, SwatchBook, Tags, KeyRound, Blocks } from 'lucide-react'
+import { LayoutGrid, Star, Users, UsersRound, ShieldCheck, Palette, ScrollText, Settings, SwatchBook, Tags, KeyRound, Blocks } from 'lucide-react'
 import { AppShell, type ShellMode } from './AppShell'
 import type { NavCategory, NavTree } from './MainNav'
 import { goTo, onInternalLinkClick } from './routes'
@@ -16,7 +16,8 @@ type PageMeta = { mode: ShellMode; title: string; description: string; active?: 
 
 const PAGES: Record<string, PageMeta> = {
   AccountPage: { mode: 'workspace', title: 'Account', description: 'Your profile, sessions, preferences, and access.' },
-  Inbox: { mode: 'workspace', title: 'Inbox', description: 'Access changes and solution updates.', active: '/inbox' },
+  // No sidebar item matches /notifications, so none is active; the header bell shows the current state.
+  Notifications: { mode: 'workspace', title: 'Notifications', description: 'Access changes and solution updates.', active: '/notifications' },
   IdleTimeoutModal: { mode: 'workspace', title: 'Solutions', description: 'Your solutions, grouped by category.', active: '/' },
   SolutionsEmptyState: { mode: 'workspace', title: 'Solutions', description: 'Your solutions, grouped by category.', active: '/' },
   PeopleDirectory: { mode: 'admin', title: 'People', description: 'Everyone who can sign in to this tenant.', active: '/admin/people' },
@@ -40,9 +41,11 @@ const PAGES: Record<string, PageMeta> = {
 const workspaceNav = (active?: string) => [
   { label: 'Solutions', href: '/', icon: LayoutGrid, isActive: active === '/' },
   { label: 'Favorites', href: '/favorites', icon: Star, isActive: active === '/favorites' },
-  // Inbox is deferred by the platform (DEC-21): hidden until scheduled. Shown only when the preview asks for it.
-  ...(new URLSearchParams(window.location.search).get('inbox') === '1' || active === '/inbox' ? [{ label: 'Inbox', href: '/inbox', icon: Inbox, badge: 3, isActive: active === '/inbox' }] : []),
 ]
+
+// The header bell is the target design. The product shows no bell until the platform ships the
+// Notifications page (platform roadmap Section 6 item 5).
+const unreadCount = accountData.notifications.filter((n) => !n.readAt).length
 
 const adminNav = (active?: string) =>
   [
@@ -89,9 +92,13 @@ export default function ShellWrapper({ children }: { children?: React.ReactNode 
   const screen = window.location.pathname.match(/screen-designs\/([^/]+)/)?.[1] ?? ''
   let page = PAGES[screen] ?? { mode: 'workspace', title: 'Solutions', description: '', active: '/' }
   const params = new URLSearchParams(window.location.search)
+  // Preview only: ?chrome=admin renders the Notifications page at /admin/notifications in the admin chrome.
+  if (screen === 'Notifications' && params.get('chrome') === 'admin') page = { ...page, mode: 'admin', active: '/admin/notifications' }
   // Preview only: ?breakglass=1 renders /admin/account in the admin chrome as the break-glass account (DEC-24).
-  const breakGlass = screen === 'AccountPage' && params.get('breakglass') === '1'
-  if (breakGlass) page = { ...page, mode: 'admin', description: 'Local administrator account: password, authenticator, and sessions.' }
+  // The break-glass account lives only in the admin chrome, so its Notifications page is the admin one too.
+  const breakGlass = (screen === 'AccountPage' || screen === 'Notifications') && params.get('breakglass') === '1'
+  if (breakGlass && screen === 'AccountPage') page = { ...page, mode: 'admin', description: 'Local administrator account: password, authenticator, and sessions.' }
+  if (breakGlass && screen === 'Notifications') page = { ...page, mode: 'admin', active: '/admin/notifications' }
   // Preview only: ?local=1 previews a local-accounts tenant, which puts Change password in the user menu.
   const changePasswordHref = screen === 'AccountPage' && !breakGlass && params.get('local') === '1' ? accountData.tenantSupport.accountManagementUrl : undefined
   if (screen === 'SolutionViewer') {
@@ -111,6 +118,10 @@ export default function ShellWrapper({ children }: { children?: React.ReactNode 
     page = { ...page, title, description, active: `/s/${slug}` }
   }
   const admin = page.mode === 'admin'
+  // The bell follows the chrome, so it never switches the person out of the admin portal.
+  const notificationsHref = admin ? '/admin/notifications' : '/notifications'
+  // Preview only: the break-glass sample keeps its identity on its own admin pages.
+  const navigate = (href: string) => goTo(breakGlass && (href === '/admin/account' || href === '/admin/notifications') ? `${href}?breakglass=1` : href)
   const focus = screen === 'SolutionViewer' && new URLSearchParams(window.location.search).get('focus') === '1'
 
   return (
@@ -125,11 +136,12 @@ export default function ShellWrapper({ children }: { children?: React.ReactNode 
         tenant={{ name: 'Meridian Health', productName: 'Genie Ops Center' }}
         user={breakGlass ? { name: accountData.breakGlassUser.name, role: 'Administrator' } : admin ? { name: 'Priya Nair', role: 'Administrator' } : { name: 'Alex Morgan', role: 'Workspace member' }}
         switchTarget={admin ? { label: 'Back to workspace', href: '/' } : { label: 'Administration', href: '/admin/people' }}
-        onNavigate={goTo}
+        onNavigate={navigate}
         onLogout={() => goTo('/signin')}
         changePasswordHref={changePasswordHref}
         pageTitle={page.title}
         pageDescription={page.description}
+        notifications={{ href: notificationsHref, unreadCount: screen === 'Notifications' && params.get('empty') === '1' ? 0 : unreadCount, isCurrent: page.active === notificationsHref }}
         supportHref="mailto:support@meridianhealth.example"
       >
         {/* Design tree only: routes an internal link inside a section component to its preview screen. */}

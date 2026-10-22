@@ -16,7 +16,7 @@ Boundary with Section 0. Section 0 owns the signatures of `can()` and `scopesFor
 
 Boundary with Section 3. Section 3 owns the token layers, the shell, the branding pages, the Tenant Settings page that edits the settings this section reads, and the Modules and Categories pages. Sign-in page branding belongs to Section 3 and is listed under Deferred.
 
-Out of scope: record-scope proof end to end (Section 4 item 2), the inbox screen (`DEC-21`), audit export and SIEM push (`DEC-16`), support impersonation (`DEC-15`), SCIM, and a second identity provider in one realm.
+Out of scope: record-scope proof end to end (Section 4 item 2), the Notifications page (`DEC-21`), audit export and SIEM push (`DEC-16`), support impersonation (`DEC-15`), SCIM, and a second identity provider in one realm.
 
 ## Sources
 
@@ -349,7 +349,7 @@ Manual checks where no automated layer fits: the Keycloak hardening checklist of
 - The shell, the navigation tree rendering, and the idle-timeout modal's presentation, which Section 3 item 4 owns. Section 2 owns the server side of the idle rule and the filter that decides what the tree may contain.
 - Editing onboarding mode, local accounts, and idle minutes. Section 2 reads all three through the settings reader. Section 3 item 10 delivers the Tenant Settings page that writes them.
 - The Modules and Categories pages and the core `category` table, which Section 3 item 11 owns (`DEC-50`, `DEC-51`).
-- The inbox screen. The `notification` table and its writers land here, the screen is later (`DEC-21`). Reopened when the first module needs the inbox.
+- The Notifications page and its header bell. The `notification` table and its writers land here, the page is roadmap Section 6 item 5 (`DEC-21`).
 - Record-scope proof end to end. The seam is built here, and Section 4 item 2 proves it on the solutions module (`DEC-39`).
 - Audit CSV export and SIEM push (`DEC-16`). Reopened when a customer names a SIEM or a retention period shorter than lifetime.
 - Support impersonation. The `session.impersonated_by` column already exists, so a later feature needs no migration (`DEC-15`).

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Menu, WifiOff, X } from 'lucide-react'
+import { Bell, Menu, WifiOff, X } from 'lucide-react'
 import { MainNav, type NavCategory, type NavTree, type NavigationItem } from './MainNav'
 import { UserMenu, type ShellUser } from './UserMenu'
 import { focusRing } from './helpers'
@@ -10,6 +10,15 @@ export interface ShellTenant {
   name: string
   logoUrl?: string
   productName?: string
+}
+
+export interface ShellNotifications {
+  /** The Notifications page, `/notifications`. */
+  href: string
+  /** Unread notifications. The count badge hides at zero. */
+  unreadCount: number
+  /** True on the Notifications page itself: the bell shows its pressed state and carries aria-current. */
+  isCurrent?: boolean
 }
 
 export interface AppShellProps {
@@ -31,6 +40,11 @@ export interface AppShellProps {
   pageDescription?: string
   /** Right side of the header on tablet and desktop: search, actions. Rendered in the sticky bottom bar on phones when `bottomBar` is not given. */
   headerActions?: React.ReactNode
+  /**
+   * The header bell, the only way to the Notifications page. Shown in both chromes at every viewport.
+   * Omit it to show no bell: the product hides it until the platform ships the page (platform roadmap Section 6 item 5).
+   */
+  notifications?: ShellNotifications
   /** Phone only: a sticky bottom bar for the page's primary action. */
   bottomBar?: React.ReactNode
   /** Focus mode (viewer): hides the sidebar and header so the page takes the full width. The page renders its own Exit focus control. */
@@ -46,7 +60,7 @@ export interface AppShellProps {
 }
 
 /*
- * Mobile first. The base layout is a 54px header (tenant mark, title, hamburger), the page,
+ * Mobile first. The base layout is a 54px header (hamburger, tenant mark, title, bell), the page,
  * and an optional sticky bottom bar. The hamburger opens a full-height drawer capped at 84vw.
  * From lg the drawer becomes a 240px sidebar panel and the header grows a description and actions.
  * Language: white page, soft gray panel, hairline borders, rounded rows, blue for actions and active.
@@ -60,6 +74,32 @@ function TenantMark({ tenant, size = 'md' }: { tenant?: ShellTenant; size?: 'sm'
     <span className={`flex shrink-0 items-center justify-center overflow-hidden border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${cls}`}>
       {tenant?.logoUrl ? <img src={tenant.logoUrl} alt="" className="size-[70%] object-contain" /> : <span aria-hidden className="font-extrabold text-blue-600 dark:text-blue-400">{name.slice(0, 1).toUpperCase()}</span>}
     </span>
+  )
+}
+
+function NotificationBell({ href, unreadCount, isCurrent, onNavigate }: ShellNotifications & { onNavigate?: (href: string) => void }) {
+  const label = unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
+  // 44px under lg (touch target), 40px on desktop to match the search field. The pressed state is the active nav row's.
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      title={label}
+      aria-current={isCurrent ? 'page' : undefined}
+      onClick={(e) => {
+        if (!onNavigate) return
+        e.preventDefault()
+        onNavigate(href)
+      }}
+      className={`relative -mr-2 flex size-11 shrink-0 items-center justify-center rounded-lg lg:mr-0 lg:size-10 ${isCurrent ? 'bg-white text-blue-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-400 dark:ring-gray-700' : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900 dark:active:bg-gray-800'} ${focusRing}`}
+    >
+      <Bell className="size-5" strokeWidth={1.75} aria-hidden />
+      {unreadCount > 0 ? (
+        <span aria-hidden className="absolute right-0.5 top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-blue-600 px-1 text-xs font-semibold leading-none tabular-nums text-white ring-2 ring-white dark:ring-gray-950">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      ) : null}
+    </a>
   )
 }
 
@@ -95,6 +135,7 @@ export function AppShell({
   pageTitle,
   pageDescription,
   headerActions,
+  notifications,
   bottomBar,
   focus = false,
   loading = false,
@@ -193,6 +234,8 @@ export function AppShell({
             {pageDescription ? <p className="mt-0.5 hidden truncate text-sm text-gray-600 lg:block dark:text-gray-400">{pageDescription}</p> : null}
           </div>
           {headerActions ? <div className="hidden shrink-0 items-center gap-2 md:flex">{headerActions}</div> : null}
+          {/* The bell stays in the header at every viewport, so it never moves to the phone bottom bar. */}
+          {notifications ? <NotificationBell {...notifications} onNavigate={onNavigate} /> : null}
         </header>
         )}
         <main className={`min-h-0 flex-1 overflow-auto ${focus ? 'p-0' : 'px-4 pb-4 pt-4 md:px-6 lg:px-8 lg:pb-2 lg:pt-1'}`}>{loading ? skeleton : children}</main>

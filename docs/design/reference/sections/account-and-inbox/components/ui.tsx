@@ -1,4 +1,4 @@
-/* Shared building blocks for the Account and Inbox screens. Rounded cards, hairline borders, blue actions. */
+/* Shared building blocks for the Account and Notifications screens. Rounded cards, hairline borders, blue actions. */
 import { useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'

@@ -24,4 +24,4 @@ They are also the only place several design decisions were implemented rather th
 - `scripts/` Upstream capture recipes and preview checks. Paths assume the original design repository, not this imported folder; run only in the design workspace when explicitly validating captures.
 - `provenance/` Upstream package manifest and pnpm lockfile, retained to explain preview dependencies. These are not v2 dependency requirements and must not be installed into the product. In particular, preview Radix/Vite/React Router choices do not replace v2's Base UI/Next.js contracts.
 
-See [current import provenance and review limitations](../imports/2026-09-19-latest.md). The imported snapshot is not a self-contained runnable app or a production implementation. The earlier import record remains historical only.
+See [current import provenance and review limitations](../imports/2026-09-19-latest.md), and the [2026-10-22 import](../imports/2026-10-22-notifications.md) for the Notifications page and the header bell. The imported snapshot is not a self-contained runnable app or a production implementation. The earlier import record remains historical only.

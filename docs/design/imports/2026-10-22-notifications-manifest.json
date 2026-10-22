@@ -1,0 +1,1717 @@
+{
+ "importedAt": "2026-10-22",
+ "source": "/home/kenan/work/genie-ops-center-design",
+ "target": "docs/design",
+ "sourceHead": "529dedb43bfec24b2cbb128f26dd8cbc6143f754 (plus uncommitted and untracked source)",
+ "guard": "docs/design/imports/2026-09-19-latest-manifest.json destinationHash",
+ "summary": {
+  "update": 246,
+  "add": 13,
+  "delete": 7,
+  "conflict": 14,
+  "unchanged": 229
+ },
+ "files": [
+  {
+   "source": "product/sections/access/grants-broader-help.png",
+   "destination": "sections/access/grants-broader-help.png",
+   "action": "updated",
+   "destinationHash": "8610670c476d12a09bdd22fdef1c21100f3acfbbff7a194604beb22198103391"
+  },
+  {
+   "source": "product/sections/access/grants-broader.png",
+   "destination": "sections/access/grants-broader.png",
+   "action": "updated",
+   "destinationHash": "642a2a4dcd66223be6639511c8abd39d39a4ba584c5816e6b4a7dc9114ba53c5"
+  },
+  {
+   "source": "product/sections/access/grants-catalog-mobile.png",
+   "destination": "sections/access/grants-catalog-mobile.png",
+   "action": "updated",
+   "destinationHash": "476cd41ef75057e356248fa9e5f7b22e4ba227540ca3d406b570b6b4c645e35c"
+  },
+  {
+   "source": "product/sections/access/grants-catalog.png",
+   "destination": "sections/access/grants-catalog.png",
+   "action": "updated",
+   "destinationHash": "f90b3cbb9986692c0c74839453686fa880b356d9227533f3e8af46b96daf64b3"
+  },
+  {
+   "source": "product/sections/access/grants-empty.png",
+   "destination": "sections/access/grants-empty.png",
+   "action": "updated",
+   "destinationHash": "f0d27a71ea7023ca17292e467589ab51a698f4bfc2a7008217883300c1ef4d2a"
+  },
+  {
+   "source": "product/sections/access/grants-filter.png",
+   "destination": "sections/access/grants-filter.png",
+   "action": "updated",
+   "destinationHash": "4d6258d00613d3eae8f386420676c0d71fc51b877d274ec3fd1e7e58f214986d"
+  },
+  {
+   "source": "product/sections/access/grants-help-dark.png",
+   "destination": "sections/access/grants-help-dark.png",
+   "action": "updated",
+   "destinationHash": "2283e0a3d18233cbad14ec48cb3fc8c8a0d072b23dacd51175a3bf1b598c593e"
+  },
+  {
+   "source": "product/sections/access/grants-help-mobile.png",
+   "destination": "sections/access/grants-help-mobile.png",
+   "action": "updated",
+   "destinationHash": "1fc26d1f19ac796de9d134010951d435420028b796e572f4338c62198d477587"
+  },
+  {
+   "source": "product/sections/access/grants-help.png",
+   "destination": "sections/access/grants-help.png",
+   "action": "updated",
+   "destinationHash": "5753ec0d976452e8fad7ff9c3b08dd7431843798e2fdf189de49165dc9456c19"
+  },
+  {
+   "source": "product/sections/access/grants-mobile.png",
+   "destination": "sections/access/grants-mobile.png",
+   "action": "updated",
+   "destinationHash": "fa5a3812a514f73a21f718e548af74a0951d023c6f7295c72ff09f37ee97d08b"
+  },
+  {
+   "source": "product/sections/access/grants-module-disabled-mobile.png",
+   "destination": "sections/access/grants-module-disabled-mobile.png",
+   "action": "updated",
+   "destinationHash": "7079c8ded0bace0af06bce297c35b703e1b7ac1e5447d44aa906db4d2350df24"
+  },
+  {
+   "source": "product/sections/access/grants-module-disabled-remove.png",
+   "destination": "sections/access/grants-module-disabled-remove.png",
+   "action": "updated",
+   "destinationHash": "9b68150bb2cbea5926acaf4221b75bcc11cfe66934f2a7eb128b57130cdefcbc"
+  },
+  {
+   "source": "product/sections/access/grants-module-disabled.png",
+   "destination": "sections/access/grants-module-disabled.png",
+   "action": "updated",
+   "destinationHash": "ca726f0a00d6d93dc4ab4c3d34f881c66804618e4c5da6d9b3629b9c242d6ee0"
+  },
+  {
+   "source": "product/sections/access/grants-pending.png",
+   "destination": "sections/access/grants-pending.png",
+   "action": "updated",
+   "destinationHash": "08398ff954c713eb8db62345409fd40899d85949737b288135ded00f131318c8"
+  },
+  {
+   "source": "product/sections/access/grants-person.png",
+   "destination": "sections/access/grants-person.png",
+   "action": "updated",
+   "destinationHash": "dbfe45739ec5027599c82dfc67e16c792465f6647fbcafdafb9e8065e7f837e8"
+  },
+  {
+   "source": "product/sections/access/grants-picker-open.png",
+   "destination": "sections/access/grants-picker-open.png",
+   "action": "updated",
+   "destinationHash": "6a400a67c851684f722d23a1032209314308ec55bbc1df73cac4ce83eef55de9"
+  },
+  {
+   "source": "product/sections/access/grants-remove-confirm.png",
+   "destination": "sections/access/grants-remove-confirm.png",
+   "action": "updated",
+   "destinationHash": "4c86e5bc1473acc7dd1c139008ccd133a92fae85e6cee2aa5dd99d5dccb63b14"
+  },
+  {
+   "source": "product/sections/access/grants-remove-consequence.png",
+   "destination": "sections/access/grants-remove-consequence.png",
+   "action": "updated",
+   "destinationHash": "e483809e31aebc7da360a2c7b4c78999aa6e3633703334a9b5af59b1856cde98"
+  },
+  {
+   "source": "product/sections/access/overview-dark.png",
+   "destination": "sections/access/overview-dark.png",
+   "action": "updated",
+   "destinationHash": "b7c9865cfe9b0d29c0d6e11f67de0c60aee73bb5e43b36db74dbd3653265865f"
+  },
+  {
+   "source": "product/sections/access/overview-empty.png",
+   "destination": "sections/access/overview-empty.png",
+   "action": "updated",
+   "destinationHash": "789806cbe679e6c107c6a27b426d8e059af726c63ba14c4a21bc915f2da1c411"
+  },
+  {
+   "source": "product/sections/access/overview-group.png",
+   "destination": "sections/access/overview-group.png",
+   "action": "updated",
+   "destinationHash": "ce43ff97f674b0d2858012a9690f6a544754cc78eb45ee6a969cc4a3aadf220f"
+  },
+  {
+   "source": "product/sections/access/overview-help.png",
+   "destination": "sections/access/overview-help.png",
+   "action": "updated",
+   "destinationHash": "92b682bbe7512cdf72a5ec7925e60e909d54a6d936b40981e1d843ade5a3311c"
+  },
+  {
+   "source": "product/sections/access/overview-inactive.png",
+   "destination": "sections/access/overview-inactive.png",
+   "action": "updated",
+   "destinationHash": "8d93cb6fd97fdc42e654ecff4bcca8317ffedbb9ae2db5a8ecf1680489f00978"
+  },
+  {
+   "source": "product/sections/access/overview-mobile.png",
+   "destination": "sections/access/overview-mobile.png",
+   "action": "updated",
+   "destinationHash": "1a8e5485534e2fc99dfcbe75762698523ca9ede91724113e552265a7792a3414"
+  },
+  {
+   "source": "product/sections/access/overview-module.png",
+   "destination": "sections/access/overview-module.png",
+   "action": "updated",
+   "destinationHash": "6804ff35d10c641c8bc15af56405e366b9cda8dda68d27841464279a6846c317"
+  },
+  {
+   "source": "product/sections/access/overview-person-mobile.png",
+   "destination": "sections/access/overview-person-mobile.png",
+   "action": "updated",
+   "destinationHash": "1a8e5485534e2fc99dfcbe75762698523ca9ede91724113e552265a7792a3414"
+  },
+  {
+   "source": "product/sections/access/overview-person.png",
+   "destination": "sections/access/overview-person.png",
+   "action": "updated",
+   "destinationHash": "9ad6cd936a87d82c4506c78ce5cd9199809bde4292bfd19ce9ba7f88381a15ad"
+  },
+  {
+   "source": "product/sections/access/overview-record.png",
+   "destination": "sections/access/overview-record.png",
+   "action": "updated",
+   "destinationHash": "f762656241e235a84bf75002bd80aae55b97c377281853013391a8b365fa9503"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-break-glass-dark.png",
+   "destination": "sections/account-and-inbox/account-page-break-glass-dark.png",
+   "action": "updated",
+   "destinationHash": "a6ad04caf022d19609d62e1ae823f743be948017138c0e15b5830b3feed79339"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-break-glass-mobile.png",
+   "destination": "sections/account-and-inbox/account-page-break-glass-mobile.png",
+   "action": "updated",
+   "destinationHash": "a99df9afb0d211f4d13b29fb77285f768c08e609c854c21f7c18b0320f9ca923"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-break-glass-password-saved.png",
+   "destination": "sections/account-and-inbox/account-page-break-glass-password-saved.png",
+   "action": "updated",
+   "destinationHash": "c9d52dcf7b73b58be7697a0c0026160138c7393c5ca924466cfb37c37d959a51"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-break-glass.png",
+   "destination": "sections/account-and-inbox/account-page-break-glass.png",
+   "action": "updated",
+   "destinationHash": "4c8446e54d88852aad9f750580d2e0df34ae9a0402a48d06be2e267a9293b767"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-confirm-sign-out-all-mobile.png",
+   "destination": "sections/account-and-inbox/account-page-confirm-sign-out-all-mobile.png",
+   "action": "updated",
+   "destinationHash": "d801fa29c57b7eda0e2fb445155a0a1c987ed1c9938c68d8e5f9c03ed6542996"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-confirm-sign-out-all.png",
+   "destination": "sections/account-and-inbox/account-page-confirm-sign-out-all.png",
+   "action": "updated",
+   "destinationHash": "b40beb34f677203dc453c21256ef5c1758dc34d5765e0f14b6da86ead2eaec63"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-dark.png",
+   "destination": "sections/account-and-inbox/account-page-dark.png",
+   "action": "updated",
+   "destinationHash": "3e66889d95ac07120e9462d4b81f54647f87f9b7d117268d4d9245469f854396"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-local-accounts.png",
+   "destination": "sections/account-and-inbox/account-page-local-accounts.png",
+   "action": "updated",
+   "destinationHash": "edb36d3a4324908094cb899c445931e2d6b240499176f44cc61ab83a18848f0b"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-mobile-sessions.png",
+   "destination": "sections/account-and-inbox/account-page-mobile-sessions.png",
+   "action": "updated",
+   "destinationHash": "6fa91d4c2314b1ed1760d1b95ecd4497c5f35634c4ea07c5f5090b422c73278e"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-mobile.png",
+   "destination": "sections/account-and-inbox/account-page-mobile.png",
+   "action": "updated",
+   "destinationHash": "c316ed899e2821a9d49de80b9394de5939a92ae86275687c7aca7f7d194150a0"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page-toast.png",
+   "destination": "sections/account-and-inbox/account-page-toast.png",
+   "action": "updated",
+   "destinationHash": "2891a4b31b7d07499eed3f5eadda58c14220f8db54f436d042305393cb822e44"
+  },
+  {
+   "source": "product/sections/account-and-inbox/account-page.png",
+   "destination": "sections/account-and-inbox/account-page.png",
+   "action": "updated",
+   "destinationHash": "abdf84287f8a23f1422435727e38ec94e38893fdeb89256e050b515782acd7da"
+  },
+  {
+   "source": "product/sections/account-and-inbox/idle-timeout-mobile.png",
+   "destination": "sections/account-and-inbox/idle-timeout-mobile.png",
+   "action": "updated",
+   "destinationHash": "0a08872f0342b2f93d3e4e24eb069cdb04978ffc30932cab94b7da43fa050115"
+  },
+  {
+   "source": "product/sections/account-and-inbox/idle-timeout-modal-dark.png",
+   "destination": "sections/account-and-inbox/idle-timeout-modal-dark.png",
+   "action": "updated",
+   "destinationHash": "60ed0f6ba510a8e5d3159dc2c9fdc5eb7b22f821b501c2c4a67a01280f68aceb"
+  },
+  {
+   "source": "product/sections/account-and-inbox/idle-timeout-modal-mobile.png",
+   "destination": "sections/account-and-inbox/idle-timeout-modal-mobile.png",
+   "action": "updated",
+   "destinationHash": "0a08872f0342b2f93d3e4e24eb069cdb04978ffc30932cab94b7da43fa050115"
+  },
+  {
+   "source": "product/sections/account-and-inbox/idle-timeout-modal.png",
+   "destination": "sections/account-and-inbox/idle-timeout-modal.png",
+   "action": "updated",
+   "destinationHash": "1073bc4fd7991ad5a0e7af1bfeac10f61f7070965630eedb3ce7905e0610d4a1"
+  },
+  {
+   "source": "product/sections/account-and-inbox/idle-timeout.png",
+   "destination": "sections/account-and-inbox/idle-timeout.png",
+   "action": "updated",
+   "destinationHash": "de34993945ac898193c251e8d3d27c1e9dab3ca32049da8e831fc27d5c8f4678"
+  },
+  {
+   "source": "product/sections/account-and-inbox/solutions-empty-mobile.png",
+   "destination": "sections/account-and-inbox/solutions-empty-mobile.png",
+   "action": "updated",
+   "destinationHash": "728bfab6bf15e31c7af385d08cf2d8ec120a1c8411ad9296f251456335869dbc"
+  },
+  {
+   "source": "product/sections/account-and-inbox/solutions-empty-state-dark.png",
+   "destination": "sections/account-and-inbox/solutions-empty-state-dark.png",
+   "action": "updated",
+   "destinationHash": "9b45dcb47e14184e01a6ca10345c2c09bcea1e786a633ca21e383d1fc3185eff"
+  },
+  {
+   "source": "product/sections/account-and-inbox/solutions-empty-state-mobile.png",
+   "destination": "sections/account-and-inbox/solutions-empty-state-mobile.png",
+   "action": "updated",
+   "destinationHash": "728bfab6bf15e31c7af385d08cf2d8ec120a1c8411ad9296f251456335869dbc"
+  },
+  {
+   "source": "product/sections/account-and-inbox/solutions-empty-state.png",
+   "destination": "sections/account-and-inbox/solutions-empty-state.png",
+   "action": "updated",
+   "destinationHash": "955fc0f18c40dc5c74f4010b8eb3e0cf2d6dc45976fcb083a391ad7797939c96"
+  },
+  {
+   "source": "product/sections/account-and-inbox/solutions-empty.png",
+   "destination": "sections/account-and-inbox/solutions-empty.png",
+   "action": "updated",
+   "destinationHash": "955fc0f18c40dc5c74f4010b8eb3e0cf2d6dc45976fcb083a391ad7797939c96"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-dark.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-dark.png",
+   "action": "updated",
+   "destinationHash": "f4c0f4d8d9c21e20439b362790841b5e062a4904e134002d4abc79716e32d163"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-empty-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-empty-mobile.png",
+   "action": "updated",
+   "destinationHash": "d7b21cd9bb1ff7ad772385cf42a0a6ecf9578936b335f2ad365cb29cd2f84286"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-empty.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-empty.png",
+   "action": "updated",
+   "destinationHash": "9fa58688af74f158c51c39bb4586284be68f072366c7c2234ec28864ae26097a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-filtered-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-filtered-mobile.png",
+   "action": "updated",
+   "destinationHash": "9c84e90293a550c8452f661de69ff0aa4c42437e80d9428241c46c84d41c737f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-filtered.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-filtered.png",
+   "action": "updated",
+   "destinationHash": "94a61c13e44b8b175bd78839f0036c933b434957c021392db540775c858d6436"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log-mobile.png",
+   "action": "updated",
+   "destinationHash": "2e4fe3b00c480a6bf52ea391f9aa350a82af0b8bac3fd7162a3103aaab14b22d"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/audit-log.png",
+   "destination": "sections/audit-and-tenant-settings/audit-log.png",
+   "action": "updated",
+   "destinationHash": "a70a0c90aa16a7aacdc2d8b4be04e2e975588719172e149781a84d439a5605a0"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-denied.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-denied.png",
+   "action": "updated",
+   "destinationHash": "d0a93b8de5a0bbf990b7251caf9780559628f374de8ba85a6fde21260ab954b8"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-failed.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-failed.png",
+   "action": "updated",
+   "destinationHash": "f0438e2d57c90487a41e834c80e585faa60a673fae6162686b9e9fa0477294e0"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-filtered.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-filtered.png",
+   "action": "updated",
+   "destinationHash": "5d9607f1e318f77a520deeeaf87d3949e7d7727f367675cd932518c0488a800c"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-mobile.png",
+   "action": "updated",
+   "destinationHash": "7e1deab5fadc20e86af611e8de650db11d68b48bdf9af6d61cbb2dddfbb58d7a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-module-off.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-module-off.png",
+   "action": "updated",
+   "destinationHash": "d3f42ae00cfbf7baba676d059cab7098b3631505b6f9978c5e40be884bcea41f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-assign-saved.png",
+   "destination": "sections/audit-and-tenant-settings/categories-assign-saved.png",
+   "action": "updated",
+   "destinationHash": "5d081c292554102c4adf363d90f32d9bae70211951ea38d47e1a26bec7b9f77c"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-dark.png",
+   "destination": "sections/audit-and-tenant-settings/categories-dark.png",
+   "action": "updated",
+   "destinationHash": "37e287d5b8580203a22cabec22d7f2cd34a4bc90040e50c291d89f080ab5325f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-delete-confirm.png",
+   "destination": "sections/audit-and-tenant-settings/categories-delete-confirm.png",
+   "action": "updated",
+   "destinationHash": "9b22626af66d799d61f0575c4beb95630cd72124abc89e6c2079061bc5f3621f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/categories-mobile.png",
+   "action": "updated",
+   "destinationHash": "7e1deab5fadc20e86af611e8de650db11d68b48bdf9af6d61cbb2dddfbb58d7a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/categories.png",
+   "destination": "sections/audit-and-tenant-settings/categories.png",
+   "action": "updated",
+   "destinationHash": "4842c8ef4b59d32be1ac2b12ec8fa0a1b97a1d4d64216334c2303af141ad458e"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-activated.png",
+   "destination": "sections/audit-and-tenant-settings/modules-activated.png",
+   "action": "updated",
+   "destinationHash": "0819ba0a0c255db475d36ae05e51333b78b4ae44aaee423f4c5aa575885107e7"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-dark.png",
+   "destination": "sections/audit-and-tenant-settings/modules-dark.png",
+   "action": "updated",
+   "destinationHash": "c5354a7989558d3e7901f13381b8f45cd7bb23a28c249030d21818f9164f8bd6"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-empty-access.png",
+   "destination": "sections/audit-and-tenant-settings/modules-empty-access.png",
+   "action": "updated",
+   "destinationHash": "bdcfc4d7769ffdbfd2f053bda133bdf7689f2751994e3db82b0d985aefa6528a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-help.png",
+   "destination": "sections/audit-and-tenant-settings/modules-help.png",
+   "action": "updated",
+   "destinationHash": "16974ea4715d76c739271c7f7277f00a5124cc4c3d1babcc78d0c01b856c0606"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/modules-mobile.png",
+   "action": "updated",
+   "destinationHash": "527776349e93b8d4c51ce21f3d7aa62caeac507b9ccaf7f681cbe7f25b203a81"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-review-confirmed.png",
+   "destination": "sections/audit-and-tenant-settings/modules-review-confirmed.png",
+   "action": "updated",
+   "destinationHash": "7efcc9dbe9c66f687e839f73331f756b0569c7dcdeeef95d78f166afc3f1c444"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules-switch-off-confirm.png",
+   "destination": "sections/audit-and-tenant-settings/modules-switch-off-confirm.png",
+   "action": "updated",
+   "destinationHash": "28cbd926d6783f7b3cb2b4770311a92260531cd753bd2b3d6c36a73232485b65"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/modules.png",
+   "destination": "sections/audit-and-tenant-settings/modules.png",
+   "action": "updated",
+   "destinationHash": "a188836f16761d3d32504c5ef99be41dd84c49deed4ad8d8a3739efc65433a02"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-accounts.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-accounts.png",
+   "action": "updated",
+   "destinationHash": "cd1935a85a4f10514c33c16ca849ded513cf698626f9827a68152de95bd33c3f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-brokered-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-brokered-mobile.png",
+   "action": "updated",
+   "destinationHash": "87e098e2d7fd39b9f2b8b5889ca04c70553912dcfebd38283e14f039bce37b6e"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-brokered.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-brokered.png",
+   "action": "updated",
+   "destinationHash": "316438a26e53d9fe1120a21ba5594ce6ed7e1c89a2828b9ec494ea8be6e336d4"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-dark.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-dark.png",
+   "action": "updated",
+   "destinationHash": "97afaa55ccbb26091e56853d7fd4d3e131e1a87da4e3e776ee2515924ae676a5"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-dirty.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-dirty.png",
+   "action": "updated",
+   "destinationHash": "3abb6265a100459265b2ffde05875e05a8b6a0c5a5d7a1c53155052813bb3910"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-mobile-detail.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-mobile-detail.png",
+   "action": "updated",
+   "destinationHash": "191617d6749d3a26bf1bd780863dc30ed6ba6b7ae665a47f9774da62ace89c37"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-mobile-dirty.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-mobile-dirty.png",
+   "action": "updated",
+   "destinationHash": "4d60b7198792cbc69b7ec719fda315cb5dd14ab0b3dc9156f4f540abe3c6c073"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-mobile-search.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-mobile-search.png",
+   "action": "updated",
+   "destinationHash": "4fe262ddcdb314e4f5e970da7874edd6d92bd685aa7bbaf4bd9242ad0265b107"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-mobile.png",
+   "action": "updated",
+   "destinationHash": "60da34fe0dd7d47d026fb82dc6c6e029eb5b361a853e0264b902864dc24d9ae1"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-module-disabled.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-module-disabled.png",
+   "action": "updated",
+   "destinationHash": "9cb01ef5365068c8bf375103970b1383fb52b3108758fb4b03446152dffc31cc"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-module-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-module-mobile.png",
+   "action": "updated",
+   "destinationHash": "9736745f51036063cf059192fc24ee6fe944c909f68ce2e2c6f4b9ad2d78f865"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-module.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-module.png",
+   "action": "updated",
+   "destinationHash": "18df0d526e0b0a19b226d9d09f4785d592217684dd97304cd84e173fd6225ae7"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-save-failed.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-save-failed.png",
+   "action": "updated",
+   "destinationHash": "4a309cf8d73cbf3574336958efe2c495056fb8423fd24f21704cb78020f168fc"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-search-empty.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-search-empty.png",
+   "action": "updated",
+   "destinationHash": "3191ef7cf5d4e0d748bc8228790b29b79806b74ad79b241a51e63b3050a7790a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-search-help.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-search-help.png",
+   "action": "updated",
+   "destinationHash": "6648a56e817889eb3edc0d8fd91c1aee70b5ce20087927f300bd430d81233f65"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-search-landed.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-search-landed.png",
+   "action": "updated",
+   "destinationHash": "14751ecb713cbc8b523f64031b13e4b1e3903589c2115547e65f8e672b73836a"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-search-typo.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-search-typo.png",
+   "action": "updated",
+   "destinationHash": "f95cf8b3e819f30f04486e76bd80c6ddc7338fa34a6b198a5ce2536e6a60d0d0"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-search.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-search.png",
+   "action": "updated",
+   "destinationHash": "ae8f256859e9eca713ddbca7ee51f3cba46fcccfe59dd364633486f9f96a6248"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-unsaved-confirm.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-unsaved-confirm.png",
+   "action": "updated",
+   "destinationHash": "e4f1d7cd2a96edc1625985d00632399eb84ebab5e111154a6986fb62057637e5"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-validation-mobile.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-validation-mobile.png",
+   "action": "updated",
+   "destinationHash": "caac4664a4137fca05d41e2dafd3d71742cd80aca27730cc7837ec54b3ee27e7"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings-validation.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings-validation.png",
+   "action": "updated",
+   "destinationHash": "7f5d9b383ed7eca559183a3611318323fb3dbdd63b3bb3be725cf5ab944dd04f"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/tenant-settings.png",
+   "destination": "sections/audit-and-tenant-settings/tenant-settings.png",
+   "action": "updated",
+   "destinationHash": "876c01cd22bf5e076024c28f68995b664642d94cc2451422cfe2714959a7c793"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-dark-preview.png",
+   "destination": "sections/branding/branding-colors-dark-preview.png",
+   "action": "updated",
+   "destinationHash": "4765ee74991762e35f10d83df016250704e64de8f9a615f42ca59e4327ee172c"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-dark.png",
+   "destination": "sections/branding/branding-colors-dark.png",
+   "action": "updated",
+   "destinationHash": "95bd12683443250e4d66d96abf8555c3f8cc6123f1d21a307358ed723a5d9031"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-failing-mobile.png",
+   "destination": "sections/branding/branding-colors-failing-mobile.png",
+   "action": "updated",
+   "destinationHash": "da00d39867b6fff582ad931faa79f6494e1be9ce212cfef987301c06195e082c"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-failing.png",
+   "destination": "sections/branding/branding-colors-failing.png",
+   "action": "updated",
+   "destinationHash": "e7c605b54044edea032c874e61853fbd89cb056ca4b0630b0254f94bae03cb73"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-fixed.png",
+   "destination": "sections/branding/branding-colors-fixed.png",
+   "action": "updated",
+   "destinationHash": "9363fa69503ca6f2ba1e300150675e3152007b3f6a1c431bedec2c559143b272"
+  },
+  {
+   "source": "product/sections/branding/branding-colors-mobile.png",
+   "destination": "sections/branding/branding-colors-mobile.png",
+   "action": "updated",
+   "destinationHash": "d9f454223fb5d3a798e3bc43910df68d5e63916c77453b34e25964021419ca81"
+  },
+  {
+   "source": "product/sections/branding/branding-colors.png",
+   "destination": "sections/branding/branding-colors.png",
+   "action": "updated",
+   "destinationHash": "a18030a0897ab895499f4a4e452c65a4da7cc83064d95d790019d5b17b8c29e3"
+  },
+  {
+   "source": "product/sections/branding/branding-discard-dialog-mobile.png",
+   "destination": "sections/branding/branding-discard-dialog-mobile.png",
+   "action": "updated",
+   "destinationHash": "74c98ba61082ac97483d20c7927ce1f69baa5c0cee72224c1174f20e1e2ca654"
+  },
+  {
+   "source": "product/sections/branding/branding-discard-dialog.png",
+   "destination": "sections/branding/branding-discard-dialog.png",
+   "action": "updated",
+   "destinationHash": "5863f8e6067089be7499738fb7dde6a5abcb70247fe2b9e7bdc9035a3349ba0a"
+  },
+  {
+   "source": "product/sections/branding/branding-email-dark-preview.png",
+   "destination": "sections/branding/branding-email-dark-preview.png",
+   "action": "updated",
+   "destinationHash": "39ae1fdf4d0fb8c2c3461048c05c5c4e35ae41a1cb4cea14d06b7873b80ae9cd"
+  },
+  {
+   "source": "product/sections/branding/branding-email-mobile.png",
+   "destination": "sections/branding/branding-email-mobile.png",
+   "action": "updated",
+   "destinationHash": "746045922081d845ccd76ae3aae11bb5475d5fcee60228d044e1c2912b0971b4"
+  },
+  {
+   "source": "product/sections/branding/branding-email.png",
+   "destination": "sections/branding/branding-email.png",
+   "action": "updated",
+   "destinationHash": "a1f985c5ed60bd2b5daf209d840de593a326b51599252ed80302ea0f7bb7c7c0"
+  },
+  {
+   "source": "product/sections/branding/branding-identity-dark.png",
+   "destination": "sections/branding/branding-identity-dark.png",
+   "action": "updated",
+   "destinationHash": "9d4d12663302c469c0c807678cfacacc37f7b47e4cbb57e160f807492ada3cdb"
+  },
+  {
+   "source": "product/sections/branding/branding-identity-mobile-preview.png",
+   "destination": "sections/branding/branding-identity-mobile-preview.png",
+   "action": "updated",
+   "destinationHash": "ee8bda87fbfd6d7884f6ffc1a6b044fc1b270216ed72ab3276c9f82749cab5e6"
+  },
+  {
+   "source": "product/sections/branding/branding-identity-mobile.png",
+   "destination": "sections/branding/branding-identity-mobile.png",
+   "action": "updated",
+   "destinationHash": "5c0ea76af6d86e6bb3fa1fcc271442d409dbb8e66c289786558e869ed6b7f4aa"
+  },
+  {
+   "source": "product/sections/branding/branding-identity.png",
+   "destination": "sections/branding/branding-identity.png",
+   "action": "updated",
+   "destinationHash": "b46aeab93a1757fe3c0643490f1cee8d0a38f5762a95cbd6e37ed19fa28a1dd8"
+  },
+  {
+   "source": "product/sections/branding/branding-links-mobile.png",
+   "destination": "sections/branding/branding-links-mobile.png",
+   "action": "updated",
+   "destinationHash": "0b55f2093c0a7378e949333819ac1cf5da51c3d71d8a2bf1c00bfabdc97d0f68"
+  },
+  {
+   "source": "product/sections/branding/branding-links.png",
+   "destination": "sections/branding/branding-links.png",
+   "action": "updated",
+   "destinationHash": "9443ead629d6355874db3cb5d69b7ece414abb60f556d404d4cb20b4a7ab7b78"
+  },
+  {
+   "source": "product/sections/branding/branding-locale-mobile.png",
+   "destination": "sections/branding/branding-locale-mobile.png",
+   "action": "updated",
+   "destinationHash": "3ef77678abfd691a5ffd6e28642cef842bad5d331e745b2ac91fc5d5b30d9bb6"
+  },
+  {
+   "source": "product/sections/branding/branding-locale.png",
+   "destination": "sections/branding/branding-locale.png",
+   "action": "updated",
+   "destinationHash": "1ee7f1657dbc3643b1d6506647bf0829afb3cdfc32f22e68e225351a09dc63de"
+  },
+  {
+   "source": "product/sections/branding/branding-previous-values-dark.png",
+   "destination": "sections/branding/branding-previous-values-dark.png",
+   "action": "updated",
+   "destinationHash": "4e2bddaec00201396d3f6116d7683def5170346f5140a30aedbfa50eecfe2928"
+  },
+  {
+   "source": "product/sections/branding/branding-previous-values-mobile.png",
+   "destination": "sections/branding/branding-previous-values-mobile.png",
+   "action": "updated",
+   "destinationHash": "9b931b1fa17d9024560c2c4b190d659a0ed3ac6a050b1f3cd9d5e655f520db0b"
+  },
+  {
+   "source": "product/sections/branding/branding-previous-values.png",
+   "destination": "sections/branding/branding-previous-values.png",
+   "action": "updated",
+   "destinationHash": "ebace76de62d041b0962bec31b700396eda649d52620c093dcf38bd0ee237210"
+  },
+  {
+   "source": "product/sections/branding/branding-publish-dialog-mobile.png",
+   "destination": "sections/branding/branding-publish-dialog-mobile.png",
+   "action": "updated",
+   "destinationHash": "4b553e89de3290f993542ff9ffb3fd02a352d11c8fdd312fde78fe1c912b2c6a"
+  },
+  {
+   "source": "product/sections/branding/branding-publish-dialog.png",
+   "destination": "sections/branding/branding-publish-dialog.png",
+   "action": "updated",
+   "destinationHash": "eeccc8123283a09fa5bc9a794706eac448572d823b77aee8867cc15c4bd93e74"
+  },
+  {
+   "source": "product/sections/branding/branding-shell-preview-enlarged.png",
+   "destination": "sections/branding/branding-shell-preview-enlarged.png",
+   "action": "updated",
+   "destinationHash": "9486c0f191dd81ea2e4241c48c0ae32d9956366ccadb4469ee1a3f98539b0986"
+  },
+  {
+   "source": "product/sections/branding/branding-signin-mobile.png",
+   "destination": "sections/branding/branding-signin-mobile.png",
+   "action": "updated",
+   "destinationHash": "bbd10cd6807833f33af06cd6962be912ff9ab628d46a6890150c3484329b9329"
+  },
+  {
+   "source": "product/sections/branding/branding-signin.png",
+   "destination": "sections/branding/branding-signin.png",
+   "action": "updated",
+   "destinationHash": "7ed7420e04868a027041b39582e830f5413a831a9212645c62264ee75508d68c"
+  },
+  {
+   "source": "product/sections/branding/branding-typography-failing.png",
+   "destination": "sections/branding/branding-typography-failing.png",
+   "action": "updated",
+   "destinationHash": "edc0370253d248f4bad3bc965bfb1cf6b353c992bc2c536bde6c0ea2c3b3a885"
+  },
+  {
+   "source": "product/sections/branding/branding-typography-fixed.png",
+   "destination": "sections/branding/branding-typography-fixed.png",
+   "action": "updated",
+   "destinationHash": "e673a18209e788599d65a169dde3797f870edf85517666a0b2a3084594d2b49e"
+  },
+  {
+   "source": "product/sections/branding/branding-typography-mobile.png",
+   "destination": "sections/branding/branding-typography-mobile.png",
+   "action": "updated",
+   "destinationHash": "8ef3096542ac4d0a7131d5cb36966f69dddfa49b0d6841f1279f9ebc90ccd976"
+  },
+  {
+   "source": "product/sections/branding/branding-typography.png",
+   "destination": "sections/branding/branding-typography.png",
+   "action": "updated",
+   "destinationHash": "ffc1e4934be6e72f495d1824aa7c76a6736de797f796cf5a10e8ff93868852da"
+  },
+  {
+   "source": "product/sections/branding/branding-upload-infected.png",
+   "destination": "sections/branding/branding-upload-infected.png",
+   "action": "updated",
+   "destinationHash": "9519be2f30907989ab7e9c2ba7269bcc047b9bdcbf311b6d57ba20f4f76ea7e1"
+  },
+  {
+   "source": "product/sections/branding/branding-upload-progress.png",
+   "destination": "sections/branding/branding-upload-progress.png",
+   "action": "updated",
+   "destinationHash": "8f989c75fef53eb284fb27f602f06413cd7a758832f9dab78d86fb521c47959c"
+  },
+  {
+   "source": "product/sections/email-templates/email-gallery-mobile-text.png",
+   "destination": "sections/email-templates/email-gallery-mobile-text.png",
+   "action": "updated",
+   "destinationHash": "b332aa8d5a7dae5966e78b7de112f370827e5423c7991c8a40b4beda166bed63"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/groups-directory-dark.png",
+   "destination": "sections/people-groups-and-roles/groups-directory-dark.png",
+   "action": "updated",
+   "destinationHash": "474ab940b33d93f1136703255d126e4c70b4ea50b47b4983a7d24a9bd2ef4962"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/groups-directory-mobile.png",
+   "destination": "sections/people-groups-and-roles/groups-directory-mobile.png",
+   "action": "updated",
+   "destinationHash": "dc40e974e47e8b1b0517d7784e7525b8072996e4ba2c23b0842503c3e60e2b11"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/groups-directory.png",
+   "destination": "sections/people-groups-and-roles/groups-directory.png",
+   "action": "updated",
+   "destinationHash": "1134a4dccc2d94cae457e4d8e5dbadf9ae02f2cb3c2225b5be441db3fb03e3d8"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-add-dialog-jit.png",
+   "destination": "sections/people-groups-and-roles/people-add-dialog-jit.png",
+   "action": "updated",
+   "destinationHash": "45b94480c8044ee97a6b34a964795caa01459fb42ccd419c7bd1ec9330d4c8f9"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-add-dialog-local.png",
+   "destination": "sections/people-groups-and-roles/people-add-dialog-local.png",
+   "action": "updated",
+   "destinationHash": "ffbec63c4dda70f06d9c922914254321e66092a8676eff686a02bd966bebbd1b"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-add-dialog-mobile.png",
+   "destination": "sections/people-groups-and-roles/people-add-dialog-mobile.png",
+   "action": "updated",
+   "destinationHash": "b1fd46e4233fa1f25558cb2da2d0803de84ac746e97ffefd8f0e4831f32f3168"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-add-dialog.png",
+   "destination": "sections/people-groups-and-roles/people-add-dialog.png",
+   "action": "updated",
+   "destinationHash": "5c516180d84a136541595bd341b4766f4c42f5b4eaf005a2d6e1ff578f9d6057"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-add-person-rate-limited.png",
+   "destination": "sections/people-groups-and-roles/people-add-person-rate-limited.png",
+   "action": "updated",
+   "destinationHash": "20a27000df10959356e0185f3b0dff1cd0966ea09e9d85e53a630c2ee41428a8"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-directory-dark.png",
+   "destination": "sections/people-groups-and-roles/people-directory-dark.png",
+   "action": "updated",
+   "destinationHash": "1da3d7f0330a3d5d0c354870dc64a156b45ddf568709bc1799bb2eea3f756d52"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-directory-mobile.png",
+   "destination": "sections/people-groups-and-roles/people-directory-mobile.png",
+   "action": "updated",
+   "destinationHash": "03124d7b808551c09f9f6580a49a02a3301df45043341937355bf23a625af6f9"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-directory.png",
+   "destination": "sections/people-groups-and-roles/people-directory.png",
+   "action": "updated",
+   "destinationHash": "403d883d8654a8096a2c2b665782b476516f02af55e921facdf2882d8dff7f82"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-inspector-groups.png",
+   "destination": "sections/people-groups-and-roles/people-inspector-groups.png",
+   "action": "updated",
+   "destinationHash": "5d3fc4b81438d807b1f0e23d4d377ca2a98a59271d468def2398452046b645ca"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-inspector-profile.png",
+   "destination": "sections/people-groups-and-roles/people-inspector-profile.png",
+   "action": "updated",
+   "destinationHash": "c535a9c6a9cfb5ba09bbcaaf4ccaed46324b1e9f8e56e17e6f9fa5505088725a"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-inspector-resend-set-password.png",
+   "destination": "sections/people-groups-and-roles/people-inspector-resend-set-password.png",
+   "action": "updated",
+   "destinationHash": "8c1b7f8509dc545101038b00f17476c9383281d9db3d4cb9061b3644505ab8f7"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-inspector-sessions.png",
+   "destination": "sections/people-groups-and-roles/people-inspector-sessions.png",
+   "action": "updated",
+   "destinationHash": "69afadfe96c0b6fe609e5faf25855f4131fc988e6d93a4e33d2076ba305da0fa"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-remove-confirm.png",
+   "destination": "sections/people-groups-and-roles/people-remove-confirm.png",
+   "action": "updated",
+   "destinationHash": "08dd3141d691a8f89366e163fa77a6bce54e2a1fcfbeb5ad82fe4e7a94cbd291"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-row-menu-guarded-mobile.png",
+   "destination": "sections/people-groups-and-roles/people-row-menu-guarded-mobile.png",
+   "action": "updated",
+   "destinationHash": "45d4479a41c270c8d5ce8d13f351f59f3799557abfb2504078feb9c286dc9867"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-row-menu-guarded.png",
+   "destination": "sections/people-groups-and-roles/people-row-menu-guarded.png",
+   "action": "updated",
+   "destinationHash": "e845bff0376b68eba928f01954c3aea37491e8e6e1123f829abfddf2af56d383"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/people-row-menu-last-admin.png",
+   "destination": "sections/people-groups-and-roles/people-row-menu-last-admin.png",
+   "action": "updated",
+   "destinationHash": "5eb380a431c219dd8d0674f9accc8b850b1f03861987b6b403bb0ad9b73d2697"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail-mobile.png",
+   "destination": "sections/people-groups-and-roles/role-detail-mobile.png",
+   "action": "updated",
+   "destinationHash": "61d573fbc3bde68fbd737a0ba37e591dc733a9902191f3bd684f99745c29585a"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail-not-entitled-mobile.png",
+   "destination": "sections/people-groups-and-roles/role-detail-not-entitled-mobile.png",
+   "action": "updated",
+   "destinationHash": "6611c40d0e3e45b198f4c3f765f340e0e228cb8edad50dea1d7a831df09324bc"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail-not-entitled.png",
+   "destination": "sections/people-groups-and-roles/role-detail-not-entitled.png",
+   "action": "updated",
+   "destinationHash": "5d6faf85c3f70b4248045bf0d6cf104e0b80d91cb96d6f2fbc25f724da271efe"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail-tenant-admin-mobile.png",
+   "destination": "sections/people-groups-and-roles/role-detail-tenant-admin-mobile.png",
+   "action": "updated",
+   "destinationHash": "e5a55c5c143781858eb3da38735ac22902dbf51a7a31f11d12175c9f864d267f"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail-tenant-admin.png",
+   "destination": "sections/people-groups-and-roles/role-detail-tenant-admin.png",
+   "action": "updated",
+   "destinationHash": "ea38c32b91ee61ebfb0d88c0870aeddf7de10417eebb5ae75b6126ad331174a4"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/role-detail.png",
+   "destination": "sections/people-groups-and-roles/role-detail.png",
+   "action": "updated",
+   "destinationHash": "250a6246f3650143d23dd3ccc7829141c5bfef449921db8818ff046938fa9550"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-delete-confirm.png",
+   "destination": "sections/people-groups-and-roles/roles-delete-confirm.png",
+   "action": "updated",
+   "destinationHash": "9962a6cfd3b3f3422dbdfb0a157046bbd8290268f1e4294170a52a9400928052"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-directory-dark.png",
+   "destination": "sections/people-groups-and-roles/roles-directory-dark.png",
+   "action": "updated",
+   "destinationHash": "c542e1eb2913bafada1236030d26b3a9430511e9ffc65d8d4aedf60a5de8d78a"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-directory-help.png",
+   "destination": "sections/people-groups-and-roles/roles-directory-help.png",
+   "action": "updated",
+   "destinationHash": "177d1bfb53c92305311a3112bc466578a39be27d58fc7c5aa24d8fc9f1ff4e59"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-directory-mobile.png",
+   "destination": "sections/people-groups-and-roles/roles-directory-mobile.png",
+   "action": "updated",
+   "destinationHash": "74cbc5baeca9ea624cc27089f3a3c513bd388df99a1d04f330656a8e7015064a"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-directory-row-menu.png",
+   "destination": "sections/people-groups-and-roles/roles-directory-row-menu.png",
+   "action": "updated",
+   "destinationHash": "1f5f4ac5608f6886f3dd6ab862af39340959f68186613813a59f5ab1d4da1cfc"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-directory.png",
+   "destination": "sections/people-groups-and-roles/roles-directory.png",
+   "action": "updated",
+   "destinationHash": "dc25cf9afd49f0f1c18529021d6183e9ee26ba602e4f9096bf97f76f66e0ba04"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-form-duplicate-name.png",
+   "destination": "sections/people-groups-and-roles/roles-form-duplicate-name.png",
+   "action": "updated",
+   "destinationHash": "7a5c77b70f79a7e378c9a478a08157996e54e6b97fd5b3cb71fdd1e532ae18fe"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-form-mobile.png",
+   "destination": "sections/people-groups-and-roles/roles-form-mobile.png",
+   "action": "updated",
+   "destinationHash": "f9edb2591436a53ed0e156bd9b58808a192750c9435efef8c944dfa78fe46aa1"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/roles-form.png",
+   "destination": "sections/people-groups-and-roles/roles-form.png",
+   "action": "updated",
+   "destinationHash": "2656c0da5dab7ec28978342ced091a41a7918d2de4b66b5ccba540666cf1170b"
+  },
+  {
+   "source": "product/sections/solutions/admin-configure-access.png",
+   "destination": "sections/solutions/admin-configure-access.png",
+   "action": "updated",
+   "destinationHash": "8f1bb45facaaaf89407c24fa54e31151391543b10fdd53bd0dc611a91424d77e"
+  },
+  {
+   "source": "product/sections/solutions/admin-configure-chat.png",
+   "destination": "sections/solutions/admin-configure-chat.png",
+   "action": "updated",
+   "destinationHash": "f0a4752a641b1e01de1b430ebfd2de056997972c1520b1475fb0134338313838"
+  },
+  {
+   "source": "product/sections/solutions/admin-configure-connection-disabled.png",
+   "destination": "sections/solutions/admin-configure-connection-disabled.png",
+   "action": "updated",
+   "destinationHash": "94679e7ebd0526ba1661d6b80b65165e8f7eda16f3445b02fd5e93266ffc1d82"
+  },
+  {
+   "source": "product/sections/solutions/admin-configure-embedded-status.png",
+   "destination": "sections/solutions/admin-configure-embedded-status.png",
+   "action": "updated",
+   "destinationHash": "0d4a7ed10513c8bd15efc9f78bf5dd0a635c66b04ccf7e2d1137b1ce71da8ac7"
+  },
+  {
+   "source": "product/sections/solutions/admin-configure-status.png",
+   "destination": "sections/solutions/admin-configure-status.png",
+   "action": "updated",
+   "destinationHash": "39db3381deed8ad92e5b7cbd9820cb9c7452401e51ee05c29f567129cef75771"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-dark.png",
+   "destination": "sections/solutions/admin-solutions-dark.png",
+   "action": "updated",
+   "destinationHash": "fb6c6fe233bb67845cffb5861eb2a86f9f5dea42e13d1cc9489861fdca9f9d52"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-delete-confirm.png",
+   "destination": "sections/solutions/admin-solutions-delete-confirm.png",
+   "action": "updated",
+   "destinationHash": "87a9ef48db48cccdf1d43511e64aaee53633da568c92b9c58c513685d8cd443c"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-mobile.png",
+   "destination": "sections/solutions/admin-solutions-mobile.png",
+   "action": "updated",
+   "destinationHash": "670616cb484cfc0bd843fe276e4f2431327f8e76f81b3591d7b5800a8b1bb8d7"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-register-disabled.png",
+   "destination": "sections/solutions/admin-solutions-register-disabled.png",
+   "action": "updated",
+   "destinationHash": "65a52642c40fe4905ea73784a1ccd3cee29948a90957848e280026bc01a5f916"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-register-embedded.png",
+   "destination": "sections/solutions/admin-solutions-register-embedded.png",
+   "action": "updated",
+   "destinationHash": "57b00700236332f0370b02d7f73ec3fdbc17c649f9e8fa66e93f21b9856bb466"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-register-mobile.png",
+   "destination": "sections/solutions/admin-solutions-register-mobile.png",
+   "action": "updated",
+   "destinationHash": "76b02b5a2d1cd70e95e601f4a130ba2ba4749f286e95d58d8b73994c5b8aa1c1"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-register.png",
+   "destination": "sections/solutions/admin-solutions-register.png",
+   "action": "updated",
+   "destinationHash": "a8dd93e33c8d1cd4f7579281c83f5a9d88e58bdb29cda120b7028f15c081100c"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions-row-menu.png",
+   "destination": "sections/solutions/admin-solutions-row-menu.png",
+   "action": "updated",
+   "destinationHash": "a4f069df44790bb4437c3eba5f7d8e74deb6fc183569775080dbeb559ccffea3"
+  },
+  {
+   "source": "product/sections/solutions/admin-solutions.png",
+   "destination": "sections/solutions/admin-solutions.png",
+   "action": "updated",
+   "destinationHash": "c8c9f0e1d2595ce821995e8e7ddb45d99d5007ea9c1d3d2933b6e821a2c6643a"
+  },
+  {
+   "source": "product/sections/solutions/chat-themes-dark.png",
+   "destination": "sections/solutions/chat-themes-dark.png",
+   "action": "updated",
+   "destinationHash": "74690f9aa5d37dee0da13ab1afce1a0af438cffb00b7741a6c9bf0904be79891"
+  },
+  {
+   "source": "product/sections/solutions/chat-themes-default.png",
+   "destination": "sections/solutions/chat-themes-default.png",
+   "action": "updated",
+   "destinationHash": "7d81e527be28172fe490645653cdc350694063bdaa24cc99c63174d7769f59d5"
+  },
+  {
+   "source": "product/sections/solutions/chat-themes-mobile.png",
+   "destination": "sections/solutions/chat-themes-mobile.png",
+   "action": "updated",
+   "destinationHash": "7f42ceda7b4d5a4d87f4436975d75f8f2618a9fe4328afe957b16d64b00cba20"
+  },
+  {
+   "source": "product/sections/solutions/chat-themes-phone-preview.png",
+   "destination": "sections/solutions/chat-themes-phone-preview.png",
+   "action": "updated",
+   "destinationHash": "6a463b02ebbe8fcef5d2336b9e4a904cecd974b5ee6d1d1816044158c8952750"
+  },
+  {
+   "source": "product/sections/solutions/chat-themes.png",
+   "destination": "sections/solutions/chat-themes.png",
+   "action": "updated",
+   "destinationHash": "7d81e527be28172fe490645653cdc350694063bdaa24cc99c63174d7769f59d5"
+  },
+  {
+   "source": "product/sections/solutions/dashboard-no-solutions.png",
+   "destination": "sections/solutions/dashboard-no-solutions.png",
+   "action": "updated",
+   "destinationHash": "955fc0f18c40dc5c74f4010b8eb3e0cf2d6dc45976fcb083a391ad7797939c96"
+  },
+  {
+   "source": "product/sections/solutions/favorites-page-dark.png",
+   "destination": "sections/solutions/favorites-page-dark.png",
+   "action": "updated",
+   "destinationHash": "b6005eb10ae866677a65267e6432c6860112feca71585f9d0e430ba845d62c71"
+  },
+  {
+   "source": "product/sections/solutions/favorites-page-empty.png",
+   "destination": "sections/solutions/favorites-page-empty.png",
+   "action": "updated",
+   "destinationHash": "072b5c13dbf84d508fde0e7b0696da18bd92ddb2005fe1df1dec3f01a995359e"
+  },
+  {
+   "source": "product/sections/solutions/favorites-page-mobile.png",
+   "destination": "sections/solutions/favorites-page-mobile.png",
+   "action": "updated",
+   "destinationHash": "94b527231ef6283751f7ed60c1a7d1a49c82d5d8b7902baf2c8ef6e00c962c34"
+  },
+  {
+   "source": "product/sections/solutions/favorites-page.png",
+   "destination": "sections/solutions/favorites-page.png",
+   "action": "updated",
+   "destinationHash": "4e1688249203f680a48d2dbef06afa6b7cb3584b52cc4505b1d8083502f6b78a"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-dark.png",
+   "destination": "sections/solutions/solution-viewer-dark.png",
+   "action": "updated",
+   "destinationHash": "b52c56c2203ce38a041c99c45661a0299c467b80c141b17333d5cad8815a6f5a"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-down.png",
+   "destination": "sections/solutions/solution-viewer-down.png",
+   "action": "updated",
+   "destinationHash": "457fdf21bd1d487d9484a52ee6bd764630a662b2d9906df2933ee7671b35c4a6"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-draft-preview.png",
+   "destination": "sections/solutions/solution-viewer-draft-preview.png",
+   "action": "updated",
+   "destinationHash": "ddd81e3a2c60b04ed41fad86b0ff6d1559e6db16249011954ab094ecc55d0e28"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded-down.png",
+   "destination": "sections/solutions/solution-viewer-embedded-down.png",
+   "action": "updated",
+   "destinationHash": "3fe7eb36a2309ea0c5bf470f83c834b66b1594ccc1eed435fbb05b60c6fcf72d"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded-failed.png",
+   "destination": "sections/solutions/solution-viewer-embedded-failed.png",
+   "action": "updated",
+   "destinationHash": "9d1191e9108a84861c5e713e027e4b07365418449c3bda9d6dd0b7101d945c60"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded-loading.png",
+   "destination": "sections/solutions/solution-viewer-embedded-loading.png",
+   "action": "updated",
+   "destinationHash": "790795e8a93a7888187cc8737dda86ee721cbb39033aa9b9fa1c981badf5b1bf"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded-maintenance.png",
+   "destination": "sections/solutions/solution-viewer-embedded-maintenance.png",
+   "action": "updated",
+   "destinationHash": "2305904fcba4b00757bbab8b3e60fae419a6e43063e7575ff3925d16bc034d61"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded-mobile.png",
+   "destination": "sections/solutions/solution-viewer-embedded-mobile.png",
+   "action": "updated",
+   "destinationHash": "f3d211adb7d30e7fa0530e6390745d6b1a9b7217d6f1c6fd9683aaebbe8ba175"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-embedded.png",
+   "destination": "sections/solutions/solution-viewer-embedded.png",
+   "action": "updated",
+   "destinationHash": "d1042ea508ce44678efef72865aac662d3b64aec9a4ce966ff113b7482e0b9ab"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-empty.png",
+   "destination": "sections/solutions/solution-viewer-empty.png",
+   "action": "updated",
+   "destinationHash": "0461aa0d21844b1e91d0b83038f17ce3159517cc3ad358fd69f9abddc8e89574"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-interrupted.png",
+   "destination": "sections/solutions/solution-viewer-interrupted.png",
+   "action": "updated",
+   "destinationHash": "069d9bcc64ff7ebf5854ced6b0a9d6ba429cafc9f042dc72dbce13b1825f8eec"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-maintenance.png",
+   "destination": "sections/solutions/solution-viewer-maintenance.png",
+   "action": "updated",
+   "destinationHash": "5424a6bbd1c065ce7bb4dcc090aa39c10f4325b5661715aac1d461d7e337fb21"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-mobile.png",
+   "destination": "sections/solutions/solution-viewer-mobile.png",
+   "action": "updated",
+   "destinationHash": "a423329ce89aa08df59cc539d92d53870f0766bce2b846563807d06f3b7ddf98"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-new-chat-confirm-mobile.png",
+   "destination": "sections/solutions/solution-viewer-new-chat-confirm-mobile.png",
+   "action": "updated",
+   "destinationHash": "219e06ca359a7642446006222e011f623929db8f62e7f06f96c7c723e684c6df"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-new-chat-confirm.png",
+   "destination": "sections/solutions/solution-viewer-new-chat-confirm.png",
+   "action": "updated",
+   "destinationHash": "7ac3b94b20e2e8e644bcc5b9ade59183ce7dcd13de7c31ea86f0a5e4fe814723"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-preview-ready.png",
+   "destination": "sections/solutions/solution-viewer-preview-ready.png",
+   "action": "updated",
+   "destinationHash": "739778dc00959d0b2492991d97f5b94b125497d0a2bd9aabe296f0c292091906"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-resumed.png",
+   "destination": "sections/solutions/solution-viewer-resumed.png",
+   "action": "updated",
+   "destinationHash": "311c8c7d297b5b7153a58df477b6da9efd107d3963c7683e755fc91580928327"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-send-error.png",
+   "destination": "sections/solutions/solution-viewer-send-error.png",
+   "action": "updated",
+   "destinationHash": "c90a041bea59b6f0bc45b96c2418893ba276f6422dcf958fee380906ec7305cc"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-streaming-mobile.png",
+   "destination": "sections/solutions/solution-viewer-streaming-mobile.png",
+   "action": "updated",
+   "destinationHash": "3f283df55450526ed0c6e41962a3f3198f2f3b8e61de316a9cf4a19de1168cd5"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-streaming.png",
+   "destination": "sections/solutions/solution-viewer-streaming.png",
+   "action": "updated",
+   "destinationHash": "1e5bef3669cd2dc65c0275ef9f7fc8ef0b21398cba7e279cfc11dbba7b389959"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer-vote-down.png",
+   "destination": "sections/solutions/solution-viewer-vote-down.png",
+   "action": "updated",
+   "destinationHash": "13d52c8a3955a988624428e075d2001dc4123625753a4c9838547c8c886965b1"
+  },
+  {
+   "source": "product/sections/solutions/solution-viewer.png",
+   "destination": "sections/solutions/solution-viewer.png",
+   "action": "updated",
+   "destinationHash": "c3d28726f49c56cf1e599fdc874e4b96e80b250bdb6053103be6be1d957106f6"
+  },
+  {
+   "source": "product/sections/solutions/solutions-hub-all-ready.png",
+   "destination": "sections/solutions/solutions-hub-all-ready.png",
+   "action": "updated",
+   "destinationHash": "1c08b53f45c098811062a826ed92c926cae5e2041fd6c666e16f9ff39e6a0a2a"
+  },
+  {
+   "source": "product/sections/solutions/solutions-hub-dark.png",
+   "destination": "sections/solutions/solutions-hub-dark.png",
+   "action": "updated",
+   "destinationHash": "394cd6b40669708b211db7ecda359edd82475f42fca1dbbdc08979e6cb05b071"
+  },
+  {
+   "source": "product/sections/solutions/solutions-hub-filter-empty.png",
+   "destination": "sections/solutions/solutions-hub-filter-empty.png",
+   "action": "updated",
+   "destinationHash": "c0845303f8d369918b59f40d175e0804d57ca0fb80869301f7ccdb83a271683c"
+  },
+  {
+   "source": "product/sections/solutions/solutions-hub-mobile.png",
+   "destination": "sections/solutions/solutions-hub-mobile.png",
+   "action": "updated",
+   "destinationHash": "b49feba1c4c9d17558f638d9d1af12a94afd1788604b0e4588b6f49893b82059"
+  },
+  {
+   "source": "product/sections/solutions/solutions-hub.png",
+   "destination": "sections/solutions/solutions-hub.png",
+   "action": "updated",
+   "destinationHash": "d2bb36b8f1dee378ae2f0b548ab63dd91c84837c9b97bfd610cd820979fb37a1"
+  },
+  {
+   "source": "product/shell/shell-desktop-admin-dark.png",
+   "destination": "shell/shell-desktop-admin-dark.png",
+   "action": "updated",
+   "destinationHash": "8157e2fd77a496ee9f2d8c71d8b458ab7fec534c1462548028103e8a2ee847f7"
+  },
+  {
+   "source": "product/shell/shell-desktop-admin-menu.png",
+   "destination": "shell/shell-desktop-admin-menu.png",
+   "action": "updated",
+   "destinationHash": "b3b1258310edb05d37ea25e1246393344788493e6fbac2443dae3bbc140291e4"
+  },
+  {
+   "source": "product/shell/shell-desktop-admin.png",
+   "destination": "shell/shell-desktop-admin.png",
+   "action": "updated",
+   "destinationHash": "b36410549796c2843d0c09e2517005950d29592ebdd87c3081a678239c005b1e"
+  },
+  {
+   "source": "product/shell/shell-desktop-loading.png",
+   "destination": "shell/shell-desktop-loading.png",
+   "action": "updated",
+   "destinationHash": "c7f96f456d503378dd1ffe5b3ef9f3d6bf1df5fc9a970de74ed404d6e32ad9e5"
+  },
+  {
+   "source": "product/shell/shell-desktop-member-menu-local.png",
+   "destination": "shell/shell-desktop-member-menu-local.png",
+   "action": "updated",
+   "destinationHash": "711d1153e43a6086c57d40f1f05e0c900830ed8e877935266e16b2530e72dfe2"
+  },
+  {
+   "source": "product/shell/shell-desktop-member-menu.png",
+   "destination": "shell/shell-desktop-member-menu.png",
+   "action": "updated",
+   "destinationHash": "c7aa1c381a490402cf10471f9cfd1020a6398ccfa866badb94f284567485ee93"
+  },
+  {
+   "source": "product/shell/shell-desktop-offline.png",
+   "destination": "shell/shell-desktop-offline.png",
+   "action": "updated",
+   "destinationHash": "f2537c3ca857da489eb0255753d8571230b577a1b458c86cf64c0862990cd3a1"
+  },
+  {
+   "source": "product/shell/shell-desktop-workspace-dark.png",
+   "destination": "shell/shell-desktop-workspace-dark.png",
+   "action": "updated",
+   "destinationHash": "368c76b2d34991dec263ac9b28215401538f692d14a858db2b10b4a7aa123855"
+  },
+  {
+   "source": "product/shell/shell-desktop-workspace.png",
+   "destination": "shell/shell-desktop-workspace.png",
+   "action": "updated",
+   "destinationHash": "7cdf7e85747ecccf90df70ef6ddfe0466e68ba4857133670191c102f7f575ea0"
+  },
+  {
+   "source": "product/shell/shell-mobile-admin-drawer-dark.png",
+   "destination": "shell/shell-mobile-admin-drawer-dark.png",
+   "action": "updated",
+   "destinationHash": "006f9f425af70dc4542e0e044dbb61a7057d46aa1317a6725b28067848553d00"
+  },
+  {
+   "source": "product/shell/shell-mobile-admin-drawer.png",
+   "destination": "shell/shell-mobile-admin-drawer.png",
+   "action": "updated",
+   "destinationHash": "fd39bd3f0713c388b34e0047d87b7544aefffee20986b0a97b709e8a0f403f65"
+  },
+  {
+   "source": "product/shell/shell-mobile-admin.png",
+   "destination": "shell/shell-mobile-admin.png",
+   "action": "updated",
+   "destinationHash": "f3b4aac156a9622fbf5e8ebcc3fc6bf8d5a4d8ccdacc2f430b80dc12e165f9f0"
+  },
+  {
+   "source": "product/shell/shell-mobile-loading.png",
+   "destination": "shell/shell-mobile-loading.png",
+   "action": "updated",
+   "destinationHash": "8a3c26b18637b1eb6a74deec21216044a5d6d2fd00082161f37988bb4c87c029"
+  },
+  {
+   "source": "product/shell/shell-mobile-offline.png",
+   "destination": "shell/shell-mobile-offline.png",
+   "action": "updated",
+   "destinationHash": "7cea8459d5c328c160ca7f18d85ffb6366368fa0cdb6044511de83b29ccb2598"
+  },
+  {
+   "source": "product/shell/shell-mobile-workspace-drawer-dark.png",
+   "destination": "shell/shell-mobile-workspace-drawer-dark.png",
+   "action": "updated",
+   "destinationHash": "d8fa058c179ee35e75a4b96a6934a28ec428a2c03b1cd92dff2970b48ac269e9"
+  },
+  {
+   "source": "product/shell/shell-mobile-workspace-drawer.png",
+   "destination": "shell/shell-mobile-workspace-drawer.png",
+   "action": "updated",
+   "destinationHash": "c34946fdcd8cc59e0c787560b07ed00a7df2d33e6279bc1837e16fbd8fb0c25f"
+  },
+  {
+   "source": "product/shell/shell-mobile-workspace.png",
+   "destination": "shell/shell-mobile-workspace.png",
+   "action": "updated",
+   "destinationHash": "fc8981da82489c5ccadbc8d623878af85915b975ffe2909bc3c84f2e3ac79669"
+  },
+  {
+   "source": "product/shell/shell-tablet-admin.png",
+   "destination": "shell/shell-tablet-admin.png",
+   "action": "updated",
+   "destinationHash": "cb7f964f02e9450e48375a51c2bbd05da0b79e06a5b1663a95a7193cd6a962c4"
+  },
+  {
+   "source": "product/shell/shell-tablet-workspace.png",
+   "destination": "shell/shell-tablet-workspace.png",
+   "action": "updated",
+   "destinationHash": "765190b561940e60fc59d90f5838067ad063519d1a684715cd8f8468456817f9"
+  },
+  {
+   "source": "src/sections/account-and-inbox/components/index.ts",
+   "destination": "reference/sections/account-and-inbox/components/index.ts",
+   "action": "updated",
+   "destinationHash": "509f663d760254145274a8bbc4ef7c42e467bbfb37ccb5ed571e5c13ac88a7d6"
+  },
+  {
+   "source": "src/sections/account-and-inbox/components/ui.tsx",
+   "destination": "reference/sections/account-and-inbox/components/ui.tsx",
+   "action": "updated",
+   "destinationHash": "747e667bdd12b2445119a0eafc3cca34423f0ed913964a8c636b542cae323c50"
+  },
+  {
+   "source": "src/shell/components/AppShell.tsx",
+   "destination": "reference/shell/components/AppShell.tsx",
+   "action": "updated",
+   "destinationHash": "35eb7958202c41aed9089588fb9bfb0168b2c6c0d4e6db2e6ae52921e5dd12f4"
+  },
+  {
+   "source": "src/shell/components/index.ts",
+   "destination": "reference/shell/components/index.ts",
+   "action": "updated",
+   "destinationHash": "80ccf345dc665c1e1238db79e3967c3d56ac49b726369e9d8c90fbf3debfd9d5"
+  },
+  {
+   "source": "src/shell/components/routes.ts",
+   "destination": "reference/shell/components/routes.ts",
+   "action": "updated",
+   "destinationHash": "51c0af5945127a2503a54fb7397e327b5ead79a6d16d63f790447c5230a49e20"
+  },
+  {
+   "source": "src/shell/components/ShellWrapper.tsx",
+   "destination": "reference/shell/components/ShellWrapper.tsx",
+   "action": "updated",
+   "destinationHash": "a883f5e33b94788bbce4904021db018c70fb88addbd89df2b1a0d59e84f4b6ae"
+  },
+  {
+   "source": "src/shell/ShellPreview.tsx",
+   "destination": "reference/shell/ShellPreview.tsx",
+   "action": "updated",
+   "destinationHash": "656bf89c2ba532dc0c28fbd197dc6f4030e8c060ffd920803bec9c103fa9dcb4"
+  },
+  {
+   "source": "scripts/capture/radius.json",
+   "destination": "reference/scripts/capture/radius.json",
+   "action": "updated",
+   "destinationHash": "46174903b4f97701607989e3a1ebda5825920ad5fe4440c43c2ba3ef32a2152c"
+  },
+  {
+   "source": "scripts/capture/rest-account.json",
+   "destination": "reference/scripts/capture/rest-account.json",
+   "action": "updated",
+   "destinationHash": "cdbfb4a6141b30238668e13651abdf8a7596d718f578e404dfc3513aabc6cdaa"
+  },
+  {
+   "source": "scripts/capture/rest-shell.json",
+   "destination": "reference/scripts/capture/rest-shell.json",
+   "action": "updated",
+   "destinationHash": "73e863afdf5914a5ad4986e7e50d76d907ae2b5943fd3d39f6191a869d01aef6"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-empty-mobile.png",
+   "destination": "sections/account-and-inbox/notifications-empty-mobile.png",
+   "action": "added",
+   "destinationHash": "296daedab50ca8951df3f2dd18c4bd0dbd23a6aeec35b1d043aed3bf36d4032e"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-empty.png",
+   "destination": "sections/account-and-inbox/notifications-empty.png",
+   "action": "added",
+   "destinationHash": "f117c6ebda887bc1db2c5012b5c08e1ffe50b86cce03f03d7d8f8a66e36fb1e9"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-admin-break-glass.png",
+   "destination": "sections/account-and-inbox/notifications-admin-break-glass.png",
+   "action": "added",
+   "destinationHash": "550f28da09b46e150078d72a7ef27cd09130fb6be4b6fda3f2dfd44cda2a9b0f"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-mobile.png",
+   "destination": "sections/account-and-inbox/notifications-mobile.png",
+   "action": "added",
+   "destinationHash": "b38ff8d224e64ab29896afa6e650256380c61cdf6d8c4861b0a317f668b7e682"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-admin.png",
+   "destination": "sections/account-and-inbox/notifications-admin.png",
+   "action": "added",
+   "destinationHash": "b328227c6793db049c2fbc35016a1731c6c858e9258f2b22441d39f841c2365c"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-admin-dark.png",
+   "destination": "sections/account-and-inbox/notifications-admin-dark.png",
+   "action": "added",
+   "destinationHash": "d551383e0861f0148aae3861e3e06bedd98127ba2a8ae393d506987e2a9d5ffd"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-dark.png",
+   "destination": "sections/account-and-inbox/notifications-dark.png",
+   "action": "added",
+   "destinationHash": "d3cc41279c7fe44d984a9023ffded41e12bef84e6c27290c7ab08b91ba85bf66"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications-admin-mobile.png",
+   "destination": "sections/account-and-inbox/notifications-admin-mobile.png",
+   "action": "added",
+   "destinationHash": "b38ff8d224e64ab29896afa6e650256380c61cdf6d8c4861b0a317f668b7e682"
+  },
+  {
+   "source": "product/sections/account-and-inbox/notifications.png",
+   "destination": "sections/account-and-inbox/notifications.png",
+   "action": "added",
+   "destinationHash": "881a79cc139a11a08a36357f8d85c2bb8c021af2f491e3380bc9daf9bf607813"
+  },
+  {
+   "source": "product/shell/shell-mobile-admin-dark.png",
+   "destination": "shell/shell-mobile-admin-dark.png",
+   "action": "added",
+   "destinationHash": "eb09f8c730db8eab77498070567f3121823a5148041a3a5e4cdd4ad0c1a2450f"
+  },
+  {
+   "source": "product/shell/shell-mobile-workspace-dark.png",
+   "destination": "shell/shell-mobile-workspace-dark.png",
+   "action": "added",
+   "destinationHash": "07d551e386cb13db520772b14bbfa151a5067e261edd7cc380b34fbe265fcc73"
+  },
+  {
+   "source": "src/sections/account-and-inbox/Notifications.tsx",
+   "destination": "reference/sections/account-and-inbox/Notifications.tsx",
+   "action": "added",
+   "destinationHash": "6d07ff8c9ce816692e20e6706e7f3321df4a9a83f6ac282cb283d4aefe73c320"
+  },
+  {
+   "source": "src/sections/account-and-inbox/components/Notifications.tsx",
+   "destination": "reference/sections/account-and-inbox/components/Notifications.tsx",
+   "action": "added",
+   "destinationHash": "d775a032c8fd09dc5983cc7fc5c7563c5fba80e56dbaef689164b72534e2e02d"
+  },
+  {
+   "source": "product/sections/account-and-inbox/inbox-dark.png",
+   "destination": "sections/account-and-inbox/inbox-dark.png",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "product/sections/account-and-inbox/inbox-empty-mobile.png",
+   "destination": "sections/account-and-inbox/inbox-empty-mobile.png",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "product/sections/account-and-inbox/inbox-empty.png",
+   "destination": "sections/account-and-inbox/inbox-empty.png",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "product/sections/account-and-inbox/inbox-mobile.png",
+   "destination": "sections/account-and-inbox/inbox-mobile.png",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "product/sections/account-and-inbox/inbox.png",
+   "destination": "sections/account-and-inbox/inbox.png",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "src/sections/account-and-inbox/components/Inbox.tsx",
+   "destination": "reference/sections/account-and-inbox/components/Inbox.tsx",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "src/sections/account-and-inbox/Inbox.tsx",
+   "destination": "reference/sections/account-and-inbox/Inbox.tsx",
+   "action": "deleted",
+   "destinationHash": null
+  },
+  {
+   "source": "product/sections/access/spec.md",
+   "destination": "sections/access/spec.md",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "4e2b4c2c4c6008bea278425498dbb860277389fce923e40ecc9cec2b6f38aa97"
+  },
+  {
+   "source": "product/sections/account-and-inbox/data.json",
+   "destination": "sections/account-and-inbox/data.json",
+   "action": "merged-by-hand",
+   "reason": "dest edited in v2; src changed",
+   "destinationHash": "8def815ddf9689823785cfe034b5fd7f2289746c6d6afb68129d8587f2060293"
+  },
+  {
+   "source": "product/sections/account-and-inbox/spec.md",
+   "destination": "sections/account-and-inbox/spec.md",
+   "action": "merged-by-hand",
+   "reason": "dest edited in v2; src changed",
+   "destinationHash": "0bbb0e67c311364271a939faae8aaa53cf2ced02ed3924057144877db9988f62"
+  },
+  {
+   "source": "product/sections/account-and-inbox/types.ts",
+   "destination": "sections/account-and-inbox/types.ts",
+   "action": "merged-by-hand",
+   "reason": "dest edited in v2; src changed",
+   "destinationHash": "836c1b6f419842f4f29d6c265caf02ed491be1d564ef7bfbf4089043868a08a6"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/spec.md",
+   "destination": "sections/audit-and-tenant-settings/spec.md",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "6f9c67d6e38bf4c301308b1370b24935736ab4e95b3fb58ae91eaee5271086f6"
+  },
+  {
+   "source": "product/sections/audit-and-tenant-settings/types.ts",
+   "destination": "sections/audit-and-tenant-settings/types.ts",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "307ef4c1983005a29e4ba344caf6780ffb39038c5fd7137e18db1ef23a1871ae"
+  },
+  {
+   "source": "product/sections/branding/spec.md",
+   "destination": "sections/branding/spec.md",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "21f01445bb6cd40cecb5035aeb9216f25c6b89370800a6f20e52a27b50bb00ba"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/spec.md",
+   "destination": "sections/people-groups-and-roles/spec.md",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "e802800df4c47cd287a7068586860e4cc28e9b574abab2242867f647e9860909"
+  },
+  {
+   "source": "product/sections/people-groups-and-roles/types.ts",
+   "destination": "sections/people-groups-and-roles/types.ts",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "9dcebb89104719e2e742a5b5cbdcd8959925ae64999b4df008bdba6912c2020d"
+  },
+  {
+   "source": "product/sections/sign-in-and-tenant-pages/spec.md",
+   "destination": "sections/sign-in-and-tenant-pages/spec.md",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "a819296b063a928c7b5baf1446cb1b2fbb62011e11451bb23de7c77f624f3bf1"
+  },
+  {
+   "source": "product/sections/sign-in-and-tenant-pages/types.ts",
+   "destination": "sections/sign-in-and-tenant-pages/types.ts",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "8a85ac295b35aa5956a5d86010889b4b6f17d842304af6b078a9fd65c406193a"
+  },
+  {
+   "source": "product/shell/spec.md",
+   "destination": "shell/spec.md",
+   "action": "merged-by-hand",
+   "reason": "dest edited in v2; src changed",
+   "destinationHash": "95aae1c6d7fb368144b955ec26a0a89326b7690ee2cfc25a5f80288947f3b85d"
+  },
+  {
+   "source": "src/sections/audit-and-tenant-settings/components/TenantSettingsPage.tsx",
+   "destination": "reference/sections/audit-and-tenant-settings/components/TenantSettingsPage.tsx",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "ad12bf1023f187f16df6f20387fc1b49f0218764d9c777da2a2c7b678f7169f0"
+  },
+  {
+   "source": "src/sections/people-groups-and-roles/components/AddPersonDialog.tsx",
+   "destination": "reference/sections/people-groups-and-roles/components/AddPersonDialog.tsx",
+   "action": "kept-v2-local-edit",
+   "reason": "dest edited in v2; src same",
+   "destinationHash": "93c05e0fe2929b448b189fb86d132d0f3e9849bcd8192a4a7d2b97c4300dc94b"
+  },
+  {
+   "source": "product/CHANGELOG.md",
+   "destination": "CHANGELOG.md",
+   "action": "merged-by-hand",
+   "reason": "v2 copy diverged; only the 2026-10-22 section inserted",
+   "destinationHash": "b9f6663170fbd5e763adb66e8fe063f0366b60f066ce6b7cc51d885faabc7de9"
+  }
+ ]
+}

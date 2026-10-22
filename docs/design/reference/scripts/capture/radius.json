@@ -38,13 +38,13 @@
   "fullPage": true
  },
  {
-  "name": "inbox",
-  "url": "/sections/account-and-inbox/screen-designs/Inbox/fullscreen",
+  "name": "notifications",
+  "url": "/sections/account-and-inbox/screen-designs/Notifications/fullscreen?shot=1",
   "out": "product/sections/account-and-inbox"
  },
  {
-  "name": "inbox-mobile",
-  "url": "/sections/account-and-inbox/screen-designs/Inbox/fullscreen",
+  "name": "notifications-mobile",
+  "url": "/sections/account-and-inbox/screen-designs/Notifications/fullscreen?shot=1",
   "out": "product/sections/account-and-inbox",
   "viewport": "phone",
   "fullPage": true

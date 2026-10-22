@@ -102,6 +102,8 @@ Amended 2026-10-05 (owner): the inbox is built on the core `notification` table,
 
 Amended 2026-10-20 (owner): the inbox opens from a bell with an unread count in the header of both chromes, at every viewport, and the Inbox navigation entry is withdrawn. The first customer's product design keeps a header bell, and one entry point is clearer than the same count in two places. Revisit if the phone header has no room for the bell beside search and actions.
 
+Amended 2026-10-22 (owner): the inbox screen is renamed the Notifications page, at `/notifications`. The header bell is a link to that page and its only entry point: no dropdown panel and no navigation entry. In the admin portal the bell links to `/admin/notifications`, the same list in the admin chrome, so an administrator stays in the portal. The break-glass account uses that variant. The page keeps the designed list, read state, "Mark all as read", and paging. A bell that opens a page called Inbox reads as two names for one thing, and a link to an already designed page needs no new panel design for desktop and phone. The page ships with roadmap Section 6 item 5. Revisit if people need to read notifications without leaving the current page, which reopens a dropdown panel on the same data.
+
 ## DEC-22. Ownership, repositories, and the new-customer workflow
 
 Question: when a new customer arrives, is a new repository scaffolded for them, and who owns customer-specific module code?

@@ -1,5 +1,5 @@
 export { AppShell } from './AppShell'
-export type { AppShellProps, ShellMode, ShellTenant } from './AppShell'
+export type { AppShellProps, ShellMode, ShellNotifications, ShellTenant } from './AppShell'
 export { MainNav } from './MainNav'
 export type { NavigationItem, NavEntry, NavTree, NavCategory } from './MainNav'
 export { UserMenu } from './UserMenu'

@@ -1,9 +1,9 @@
-import { Bell, CheckCheck, Inbox as InboxIcon, KeyRound, ShieldCheck, Sparkles, Wrench } from 'lucide-react'
+import { Bell, CheckCheck, KeyRound, ShieldCheck, Sparkles, Wrench } from 'lucide-react'
 import type { EmptyStateCopy, Notification } from '@/../product/sections/account-and-inbox/types'
 import { Card } from './ui'
 import { btnSecondary, focusRing, relativeTime } from './helpers'
 
-export interface InboxProps {
+export interface NotificationsProps {
   notifications: Notification[]
   emptyState: EmptyStateCopy
   /** True when more than the shown page exists. */
@@ -25,7 +25,8 @@ function KindIcon({ kind }: { kind: string }) {
   return <Bell className={cls} strokeWidth={1.75} aria-hidden />
 }
 
-export function Inbox({ notifications, emptyState, hasMore, onOpenNotification, onMarkAllRead, onLoadMoreNotifications }: InboxProps) {
+/** The Notifications page, reached only through the header bell. */
+export function Notifications({ notifications, emptyState, hasMore, onOpenNotification, onMarkAllRead, onLoadMoreNotifications }: NotificationsProps) {
   const unread = notifications.filter((n) => !n.readAt).length
 
   return (
@@ -45,7 +46,7 @@ export function Inbox({ notifications, emptyState, hasMore, onOpenNotification, 
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
             <span className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              <InboxIcon className="size-6" strokeWidth={1.75} aria-hidden />
+              <Bell className="size-6" strokeWidth={1.75} aria-hidden />
             </span>
             <h3 className="text-base font-semibold">{emptyState.heading}</h3>
             <p className="max-w-sm text-sm text-gray-600 dark:text-gray-400">{emptyState.body}</p>

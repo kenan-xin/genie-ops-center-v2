@@ -204,7 +204,7 @@ What the decision costs:
 ## Consequences
 
 - `docs/modules/contracts/` is folded into `docs/modules/approvals/` (done 2026-10-20): its discovery questions moved there with their ids and text, and the modules list shows one module.
-- Before the module ships, the platform also needs: module pages with nested routes and server data loading, composed on the oRPC module contracts of ADR 0011; the notification inbox and its module API (`DEC-21`); and the `s3` adapter in deployments whose documents require it.
+- Before the module ships, the platform also needs: module pages with nested routes and server data loading, composed on the oRPC module contracts of ADR 0011; the Notifications page, its header bell, and its module API (`DEC-21`); and the `s3` adapter in deployments whose documents require it.
 - The workflow form engine is module-local. `DEC-28` limits only the core configuration form. Accepting this record does not approve a form library. The form engine and its dependencies need their own decision, against the repository's TanStack Form and zod conventions.
 - The core outbound HTTP service resolves and sends secrets, so the module never sees one. A secret is an environment reference or, since `DEC-53` (2026-10-21), a key that an administrator types on the Connections page, stored by core as plain text.
 - Imported history (agreements from the old system) enters the register as entries with a source id and provenance, with no invented workflow history. The import is idempotent and keeps number continuity. The bulk file migration follows `DEC-20` and has its own procedure.

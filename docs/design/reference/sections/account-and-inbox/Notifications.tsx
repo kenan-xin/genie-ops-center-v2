@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import data from '@/../product/sections/account-and-inbox/data.json'
 import type { Notification } from '@/../product/sections/account-and-inbox/types'
-import { Inbox } from './components/Inbox'
+import { Notifications } from './components/Notifications'
 
-export default function InboxPreview() {
+export default function NotificationsPreview() {
   const [items, setItems] = useState(data.notifications as Notification[])
   const params = new URLSearchParams(window.location.search)
   const [empty, setEmpty] = useState(params.get('empty') === '1')
@@ -11,9 +11,9 @@ export default function InboxPreview() {
 
   return (
     <>
-      <Inbox
+      <Notifications
         notifications={empty ? [] : items}
-        emptyState={data.emptyStates.inbox}
+        emptyState={data.emptyStates.notifications}
         hasMore={!empty}
         onOpenNotification={(id) => {
           console.log('Open notification:', id)

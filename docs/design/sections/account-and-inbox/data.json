@@ -9,7 +9,7 @@
       "session": "An active browser session of the person. One is the current one.",
       "preference": "The person's overrides of the tenant defaults for language and time zone, with the tenant defaults alongside.",
       "roleGrant": "A role the person holds, with the scope it applies to.",
-      "notification": "An inbox item written by a module event. Read when readAt is set.",
+      "notification": "A notification written by a module event, listed on the Notifications page. Read when readAt is set.",
       "idleTimeout": "The idle-timeout state that drives the countdown modal.",
       "tenantSupport": "The tenant's support contact shown in empty states."
     },
@@ -90,7 +90,7 @@
     "grantedBy": "your tenant administrator"
   },
   "emptyStates": {
-    "inbox": { "heading": "Nothing in your inbox", "body": "Access changes and solution updates will show up here." },
+    "notifications": { "heading": "No notifications yet", "body": "Access changes and solution updates will show up here." },
     "noSolutions": { "heading": "No solutions yet", "body": "Ask your administrator to grant you access to a solution." }
   }
 }
