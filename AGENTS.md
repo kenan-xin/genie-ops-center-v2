@@ -10,6 +10,8 @@ Beads owns shared ticket status, claims, blockers and follow-up work. Task-local
 
 Every bead has a parent epic, open or closed. File a bead with `--parent <epic>`: section work under its section epic, tooling, CI, dependencies and flaky tests under the Maintenance epic, specs, decisions and design docs under the Planning epic, and later ideas and owner reminders under the Backlog epic. When no epic fits, create a new epic first and parent the bead to it. A backlog item gets status `deferred`, not `open` at P4, because the Beads board shows only `deferred` items under Backlog.
 
+Keep `docs/tickets/` current. When the owner approves a ticket breakdown, write `docs/tickets/spec-<n>/README.md` (ticket, bead, dependencies, folded beads) and one `<nn>-<slug>/index.md` per ticket with its scope and acceptance, in the same change that records the approval. When a ticket's scope, dependencies or bead changes, update its file and the index. Beads still owns status and claims.
+
 ## Portable tooling
 
 Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
