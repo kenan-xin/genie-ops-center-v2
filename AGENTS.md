@@ -27,6 +27,7 @@ Start Storybook with `nx run @genie/storybook:storybook` (it serves `http://127.
 - When working on UI components, use the `genie-storybook` MCP tools to read component documentation before you use or change a component.
 - Never invent component properties. Query `docs-list` for the documented components, then `docs-show` for the component you use, and use only the properties and examples it lists.
 - Before you write or edit a story, call `get-storybook-story-instructions`.
+- Before writing a new UI component, check `packages/ui` through these tools, then the official shadcn registry, then [UI component sources](docs/architecture/ui-component-sources.md). Reuse a library component when one fits. Write one only when none does.
 - Story names can differ from property names, so check every property against `docs-show`.
 - If a property is not documented, ask instead of guessing.
 - Check your work with `test-run` on the stories you touched.

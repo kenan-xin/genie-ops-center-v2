@@ -26,6 +26,8 @@ Async server components remain an integration boundary: expose and exercise the 
 
 ## Story-first TDD
 
+Before you write a new UI component, read [UI component sources](ui-component-sources.md) and reuse a library component when one fits.
+
 Before creating or changing UI, read the relevant approved specification, canonical design, and this workflow. Agree the public behavior/seam being tested; use accessible roles, labels, visible output, and public callbacks rather than private state or internal call counts.
 
 For each behavior, work in a vertical slice:
