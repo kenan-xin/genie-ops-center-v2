@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  EXCLUDED_MODULE_PATH_NEEDLE,
   MAX_SCANNED_FILE_BYTES,
   declaredBuildArguments,
-  devToolingNeedles,
   filesystemEntries,
   scanFiles,
   scanHistory,
@@ -98,10 +96,16 @@ describe("the image filesystem scanner", () => {
       },
     ];
 
-    const kinds = scanFiles(files, base).map((finding) => finding.kind);
+    const findings = scanFiles(files, base);
 
-    expect(kinds).toContain("excluded-module");
-    expect(kinds).toContain("migration-file");
+    // One finding per file: the installed package, the source folder and the
+    // ledger name in a chunk are each a needle of their own.
+    expect(
+      findings
+        .filter((finding) => finding.kind === "excluded-module")
+        .map((finding) => finding.path)
+    ).toEqual(files.map((file) => file.path));
+    expect(findings.map((finding) => finding.kind)).toContain("migration-file");
   });
 
   // pg4: bundler output does not preserve package origin, so a route string in a
@@ -198,6 +202,10 @@ describe("the image filesystem scanner", () => {
         content: "export {};",
       },
       {
+        path: "/app/node_modules/@genie/generators/src/index.ts",
+        content: "export {};",
+      },
+      {
         path: "/app/apps/genie/public/storybook-static/index.html",
         content: "<html></html>",
       },
@@ -209,7 +217,7 @@ describe("the image filesystem scanner", () => {
 
     const kinds = scanFiles(files, base).map((finding) => finding.kind);
 
-    expect(kinds.filter((kind) => kind === "dev-tooling").length).toBe(4);
+    expect(kinds.filter((kind) => kind === "dev-tooling").length).toBe(5);
   });
 
   it("does not flag a manifest that merely names a dev-only package", () => {
@@ -332,28 +340,6 @@ describe("the filesystem inventory parser", () => {
 });
 
 describe("the scanner's needles", () => {
-  it("names an excluded module by package, folder and ledger", () => {
-    const needle = EXCLUDED_MODULE_PATH_NEEDLE("solutions");
-
-    expect(needle).toContain("@genie/module-solutions");
-    expect(needle).toContain("packages/modules/solutions/");
-    expect(needle).toContain("__drizzle_migrations_solutions");
-    expect(needle).not.toContain("/m/solutions");
-  });
-
-  it("covers the development-only tooling families this project uses", () => {
-    const needles = devToolingNeedles().join("\n");
-
-    for (const tool of [
-      "storybook",
-      "@tanstack/react-devtools",
-      "@genie/generators",
-      "vitest",
-    ]) {
-      expect(needles).toContain(tool);
-    }
-  });
-
   it("keeps only high-signal content needles", () => {
     const needles = secretNeedles();
 

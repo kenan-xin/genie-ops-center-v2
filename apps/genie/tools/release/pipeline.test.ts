@@ -356,20 +356,10 @@ describe("the customer image release pipeline", () => {
       expect(outcome.ok).toBe(false);
       expect(has(calls, "publish")).toBe(false);
       expect(calls.some((call) => call.args.includes(SINK[1]))).toBe(false);
+      // Only the smoke runs after the build, so a smoke failure is the smoke's own.
+      expect(has(calls, "build")).toBe(step === "smoke");
     }
   );
-
-  it("does not publish when the candidate smoke fails", async () => {
-    const root = repoWithModules("placeholder\n");
-    const { calls, runner } = recordingRunner(["smoke"]);
-
-    const outcome = await runRelease(request(root), runner);
-
-    expect(outcome.ok).toBe(false);
-    expect(calls.some((call) => call.args[0] === "push")).toBe(false);
-    // It did build and smoke, so the failure is the smoke, not an earlier gate.
-    expect(has(calls, "build")).toBe(true);
-  });
 
   it("reports a bounded, redacted tail of a failed gate's captured output", async () => {
     const root = repoWithModules("placeholder\n");
@@ -678,6 +668,17 @@ describe("publishing the stable tag by digest", () => {
             call.args[0] === "buildx"
         )
     ).toBe(false);
+  });
+
+  it("pushes nothing when tagging the smoke-tested identity fails", async () => {
+    const root = repoWithModules("placeholder\n");
+    const { calls, runner } = registryRunner("tag");
+
+    const outcome = await runRelease(request(root), runner);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.failedStep).toBe("publish-candidate");
+    expect(calls.some((call) => call.args[0] === "push")).toBe(false);
   });
 
   it("creates no stable tag when the push of the temporary ref fails", async () => {

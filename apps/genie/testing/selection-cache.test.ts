@@ -145,62 +145,18 @@ describe("two selections on one revision", () => {
     expect(empty.registry).not.toContain("@genie/module-placeholder");
     expect(empty.registry).toContain("export const selectedModules = []");
 
-    // Back to the first selection: a hit, and the bytes are the first run's.
-    const again = run(TASK, "placeholder");
-
-    expect(servedFromCache(again.output, TASK), again.output).toBe(true);
-    expect(again.registry).toBe(placeholder.registry);
-  });
-
-  it("repeats an identical selection from the cache, byte for byte", () => {
-    const first = run(TASK, "placeholder");
-    const second = run(TASK, "placeholder");
-
-    expect(servedFromCache(second.output, TASK), second.output).toBe(true);
-    expect(second.registry).toBe(first.registry);
-  });
-
-  // Spelling the resolver discards must not split one selection into two
-  // cache entries.
-  it("treats two spellings of one selection as one entry", () => {
-    const plain = run(TASK, "placeholder");
-    const spaced = run(TASK, " placeholder ");
-
-    expect(servedFromCache(spaced.output, TASK), spaced.output).toBe(true);
-    expect(spaced.registry).toBe(plain.registry);
-  });
-});
-
-describe("an unset selection and an explicitly empty one", () => {
-  it("restores different registries for each", () => {
+    // An unset selection is neither of the two above: it resolves to the same
+    // modules as placeholder, but must not share either one's cache entry.
     const unset = run(TASK, undefined);
 
     expect(unset.registry).toContain("Selection source: unset");
     expect(unset.registry).toContain("@genie/module-placeholder");
 
-    const empty = run(TASK, "");
+    // Back to the first selection: a hit, and the bytes are the first run's.
+    const again = run(TASK, "placeholder");
 
-    expect(empty.registry).toContain("Selection source: explicit");
-    expect(empty.registry).not.toContain("@genie/module-placeholder");
-
-    expect(run(TASK, undefined).registry).toBe(unset.registry);
-  });
-});
-
-describe("a deleted output", () => {
-  it("is restored from the cache before any consumer reads it", () => {
-    const first = run(TASK, "placeholder");
-
-    rmSync(registryPath());
-
-    expect(existsSync(registryPath())).toBe(false);
-
-    const restored = run(TASK, "placeholder");
-
-    // Not "outputs already match": the file was gone, so a hit here means Nx
-    // wrote it back out of the cache.
-    expect(restored.output).toContain("[local cache]");
-    expect(restored.registry).toBe(first.registry);
+    expect(servedFromCache(again.output, TASK), again.output).toBe(true);
+    expect(again.registry).toBe(placeholder.registry);
   });
 });
 

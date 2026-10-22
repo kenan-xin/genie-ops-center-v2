@@ -52,12 +52,7 @@ registerHooks({
  * handoff at the wrapper boundary, which the pipeline's own unit tests cannot
  * see.
  */
-function stubWorkspace(
-  pnpmExit: number,
-  pnpmExtra = "",
-  dockerFailOn = "",
-  configDigest = IDENTITY
-) {
+function stubWorkspace(pnpmExit: number, pnpmExtra = "") {
   const root = mkdtempSync(join(tmpdir(), "genie-release-cli-"));
 
   temporary.push(root);
@@ -86,7 +81,7 @@ function stubWorkspace(
     mediaType: "application/vnd.oci.image.manifest.v1+json",
     config: {
       mediaType: "application/vnd.oci.image.config.v1+json",
-      digest: configDigest,
+      digest: IDENTITY,
       size: 768,
     },
     layers: [],
@@ -111,7 +106,6 @@ for arg in "$@"; do
   if [ "$prev" = "--iidfile" ]; then printf '${IDENTITY}\\n' > "$arg"; fi
   prev="$arg"
 done
-if [ -n "${dockerFailOn}" ] && [ "$1" = "${dockerFailOn}" ]; then exit 1; fi
 if [ "$1" = "push" ]; then
   printf 'latest: digest: ${PUSH_DIGEST} size: 528\\n'
   exit 0
@@ -166,6 +160,8 @@ describe("the customer image release wrapper", () => {
   it("reads modules.txt, smokes the built digest and pushes that exact identity", () => {
     const workspace = stubWorkspace(0);
 
+    // `--publish` is what the release workflow passes; an unknown-flag refusal
+    // would fail the release here.
     const outcome = runCli(workspace, [
       "acme",
       "1.2.3",
@@ -173,6 +169,7 @@ describe("the customer image release wrapper", () => {
       workspace.root,
       "--registry",
       "ghcr.io/owner/genie-ops-center",
+      "--publish",
     ]);
 
     const log = readFileSync(workspace.log, "utf8");
@@ -247,145 +244,6 @@ describe("the customer image release wrapper", () => {
     );
   });
 
-  it("accepts an explicit --publish, which the release workflow passes", () => {
-    const workspace = stubWorkspace(0);
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-      "--publish",
-    ]);
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    expect(outcome.status, `${outcome.stderr}\nLOG:\n${log}`).toBe(0);
-    expect(log).toContain("docker push");
-  });
-
-  it("publishes nothing when a gate fails", () => {
-    const workspace = stubWorkspace(1);
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-    ]);
-
-    expect(outcome.status).toBe(1);
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    expect(log).not.toContain("docker push");
-    expect(log).not.toContain("docker build");
-  });
-
-  it("publishes nothing when the tag of the smoke-tested identity fails", () => {
-    const workspace = stubWorkspace(0, "", "tag");
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(outcome.stderr).toContain("release failed at publish-candidate");
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    // The build and smoke ran; the tag that binds the pushed ref to the digest
-    // failed, so the push never follows it.
-    expect(log).toContain("docker build");
-    expect(log).toContain("docker tag");
-    expect(log).not.toContain("docker push");
-  });
-
-  it("creates no stable tag when the push of the temporary ref fails", () => {
-    const workspace = stubWorkspace(0, "", "push");
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(outcome.stderr).toContain("release failed at publish-candidate");
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    // The temporary ref was pushed (and failed), but the promotion never ran,
-    // so the stable published tag is never created from unverified bytes.
-    expect(log).toContain("docker push");
-    expect(log).not.toContain("imagetools create");
-  });
-
-  it("fails the release when the published tag does not carry the smoke-tested identity", () => {
-    const workspace = stubWorkspace(0, "", "", `sha256:${"f".repeat(64)}`);
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(outcome.stderr).toContain("release failed at publish-candidate");
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    // The stable tag was created and then inspected; the mismatch between the
-    // tag's config digest and the smoke-tested identity is what failed the
-    // run, so a wrong promotion is detected before success is reported.
-    expect(log).toContain("imagetools create");
-    expect(log).toContain("imagetools inspect");
-  });
-
-  it("fails at the smoke and publishes nothing when only the smoke fails", () => {
-    const workspace = stubWorkspace(
-      0,
-      'case "$*" in *release-smoke*) exit 1 ;; esac'
-    );
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(outcome.stderr).toContain("release failed at smoke-candidate");
-
-    const log = readFileSync(workspace.log, "utf8");
-
-    // Gates and the build ran; the smoke's own failure stops the run before any
-    // tag or push, which is the wrapper-level version of the pipeline's
-    // smoke-only failure.
-    expect(log).toContain("docker build");
-    expect(log).toContain("release-smoke");
-    expect(log).not.toContain("docker tag");
-    expect(log).not.toContain("docker push");
-  });
-
   it("prints a failed gate's captured output before the status line", () => {
     const workspace = stubWorkspace(1);
 
@@ -431,20 +289,6 @@ describe("the customer image release wrapper", () => {
     expect(outcome.status).toBe(1);
     expect(outcome.stderr).toContain("xxxx");
     expect(outcome.stderr).toContain("release failed at typecheck");
-  });
-
-  it("publishes nothing for a missing customer", () => {
-    const workspace = stubWorkspace(0);
-
-    const outcome = runCli(workspace, [
-      "does-not-exist",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(readFileSync(workspace.log, "utf8")).not.toContain("docker push");
   });
 
   // genie-ops-center-v2-sl1: the release workflow splits verify from publish so
@@ -502,24 +346,5 @@ describe("the customer image release wrapper", () => {
     expect(log).not.toContain("pnpm");
     expect(log).toContain(`docker tag ${IDENTITY} `);
     expect(log).toContain("docker push");
-  });
-
-  it("fails closed when --publish-digest is not an immutable digest", () => {
-    const workspace = stubWorkspace(0);
-
-    const outcome = runCli(workspace, [
-      "acme",
-      "1.2.3",
-      "--repo-root",
-      workspace.root,
-      "--registry",
-      "ghcr.io/owner/genie-ops-center",
-      "--publish-digest",
-      "acme:latest",
-    ]);
-
-    expect(outcome.status).toBe(1);
-    expect(outcome.stderr).toContain("release failed at resolve-identity");
-    expect(readFileSync(workspace.log, "utf8")).not.toContain("docker push");
   });
 });

@@ -6,13 +6,11 @@ import {
   startGeneratedStack,
   type GeneratedStack,
 } from "./generated-stack-process.ts";
-import { buildImageWith, removeImage, requireDocker } from "./image-process.ts";
-import { testImageTag } from "./image-tag.ts";
+import { requireDocker } from "./image-process.ts";
+import { sharedEmptyImage } from "./shared-empty-image.ts";
 import { scopedPort } from "./worktree-scope.ts";
 
 const SLUG = `smoke-${process.pid}-${Date.now()}`;
-
-const IMAGE_TAG = testImageTag("genie-s1-05-stack", "test");
 
 const NOT_SET_UP = "This deployment is not set up yet";
 
@@ -61,11 +59,13 @@ describe("the generated customer stack smoke", () => {
     await requireDocker();
     generated = await generateTenantDeploy(SLUG);
     expect(generated.moduleInclude).toBe("");
-    await buildImageWith(generated.moduleInclude, IMAGE_TAG);
+    // The generated selection is empty, so the image is the one empty-selection
+    // build the matrix and the prune proof share, not a second build of it.
+    const { tag: imageTag } = await sharedEmptyImage();
     // Only the names an operator fills by hand; everything else comes from .env.example.
     stack = await startGeneratedStack({
       slug: SLUG,
-      imageTag: IMAGE_TAG,
+      imageTag,
       compose: generated.compose,
       envExample: generated.envExample,
       tenantConfigPath: generated.tenantConfigPath,
@@ -102,7 +102,7 @@ describe("the generated customer stack smoke", () => {
   afterAll(async () => {
     await stack?.stop();
     await generated?.remove();
-    await removeImage(IMAGE_TAG);
+    // The shared empty image belongs to `sharedEmptyImage`, so it is left in place.
   });
 
   // AC-15: before setup the health endpoint answers degraded (also 200) and `/` is gated.

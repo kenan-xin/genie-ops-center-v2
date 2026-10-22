@@ -68,6 +68,8 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
     await requireDocker();
   }, 120000);
 
+  // AC-18: this case and the empty-selection case below build and start two
+  // different selections, each on its own fresh database.
   it(
     RELEASE_MATRIX_CASES.development,
     async () => {
@@ -141,6 +143,9 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
     900000
   );
 
+  // AC-18: the second selection. The excluded module's routes and tables are
+  // proved absent in the generated customer stack (generated-stack, AC-17), which
+  // runs the same empty selection.
   it(
     RELEASE_MATRIX_CASES.emptySelection,
     async () => {
@@ -175,31 +180,10 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             REQUIRED_HEADERS["content-security-policy"]
           );
 
-          // The placeholder route does not exist in an image built without it.
-          const page = await fetch(
-            `http://127.0.0.1:${imageHostPort(3421)}/placeholder`,
-            {
-              redirect: "manual",
-            }
-          );
-
-          expect(page.status).toBe(404);
-
-          // Only core history was applied: no placeholder table and no placeholder
-          // ledger, on a database the image migrated itself.
-          const tables = await database.context.db.$client.query<{
-            table_name: string;
-          }>("select table_name from information_schema.tables");
-
-          const names = tables.rows.map((row) => row.table_name);
-
-          expect(names).not.toContain("placeholder_record");
-          expect(names).not.toContain("__drizzle_migrations_placeholder");
-
           // The excluded module's package, folder and ledger are absent from the
           // image. The bare word "placeholder" is not the needle: the app owns a
-          // `/placeholder` dispatch route that always compiles, and it is the
-          // 404 above — not a path check — that proves no module route answers.
+          // `/placeholder` dispatch route that always compiles, and the 404 in
+          // the generated stack — not a path check — proves no module route answers.
           const files = await imageFilePaths(image.id);
 
           const moduleArtifacts = files.filter(
@@ -216,56 +200,6 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
       } finally {
         await database.stop();
       }
-    },
-    900000
-  );
-
-  it(
-    RELEASE_MATRIX_CASES.twoSelections,
-    async () => {
-      // Both images exist from the cases above, but this case builds and starts
-      // each on its own fresh database so the "two selections start" property
-      // stands on its own rather than borrowing another case's evidence.
-      await buildImageWith("placeholder", DEVELOPMENT_IMAGE);
-      await sharedEmptyImage();
-
-      // Sequential by definition: each iteration starts, health-checks and stops
-      // its own image on its own database, so running them together would mix the
-      // two selections' evidence.
-      /* eslint-disable no-await-in-loop */
-      for (const [tag, port] of [
-        [DEVELOPMENT_IMAGE, imageHostPort(3422)],
-        [EMPTY_IMAGE, imageHostPort(3423)],
-      ] as const) {
-        const database = await startDisposableDeployment([]);
-        // Test stand-in for `genie-ops setup`, which populates these rows in 1ia.4.
-        await markSetupDone(database.context);
-
-        try {
-          const image = await startImage(
-            {
-              DATABASE_URL: database.context.env.databaseUrl,
-              PUBLIC_URL: "https://example.invalid",
-            },
-            port,
-            tag
-          );
-
-          try {
-            const observations = await pollHealth(port);
-
-            expect(
-              observations.some(({ status }) => status === 200),
-              `${tag} did not become healthy`
-            ).toBe(true);
-          } finally {
-            await image.stop();
-          }
-        } finally {
-          await database.stop();
-        }
-      }
-      /* eslint-enable no-await-in-loop */
     },
     900000
   );

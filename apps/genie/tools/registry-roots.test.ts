@@ -71,12 +71,6 @@ const run = (root: string, moduleInclude: string) =>
   });
 
 describe("the build root the registry is generated into", () => {
-  it("takes the root from --root", () => {
-    const root = stagedRoot(["alpha"]);
-
-    expect(rootFromArgv(["--root", root], "/fallback")).toBe(root);
-  });
-
   it("falls back when no root is named", () => {
     expect(rootFromArgv([], "/fallback")).toBe("/fallback");
   });

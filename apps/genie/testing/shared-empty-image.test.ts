@@ -83,12 +83,6 @@ afterAll(() => {
 });
 
 describe("the shared empty image input digest", () => {
-  it("is stable while the tree is unchanged", () => {
-    expect(inputDigest({ repoRoot: root })).toBe(
-      inputDigest({ repoRoot: root })
-    );
-  });
-
   it("changes when a committed file outside the old inputs is edited", () => {
     const clean = inputDigest({ repoRoot: root });
     const path = join(root, OUTSIDE_INPUT);

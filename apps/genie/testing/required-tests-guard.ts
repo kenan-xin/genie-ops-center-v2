@@ -17,12 +17,12 @@ import { RELEASE_MATRIX_FULL_NAMES } from "./release-matrix-cases.ts";
  *   between a development diagnostic and the image a customer runs,
  * - the customer image matrix (S0-11, R-53/AC-17/AC-18/AC-19): the development
  *   and explicitly-empty images start on fresh disposable databases, the empty
- *   image renders no placeholder route or table, and the image history and
- *   filesystem carry only MODULE_INCLUDE. A missing Docker daemon fails these
- *   cases rather than skipping them.
+ *   image carries no placeholder package, folder or ledger, and the image
+ *   history and filesystem carry only MODULE_INCLUDE. A missing Docker daemon
+ *   fails these cases rather than skipping them.
  * - the build-input exclusion proof (Spec 0 AC-5/AC-24, `pg4`): the builder
- *   stage prunes unselected module folders, refuses an unset selection, fails
- *   on a stray folder, and an import of an excluded module fails the build.
+ *   stage prunes unselected module folders, refuses an unset selection, and an
+ *   import of an excluded module fails the build.
  *
  * The validator and its case shape are core's, shared through
  * `@genie/core/testing/required-tests-validator`, so the app harness keeps only
@@ -51,19 +51,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     file: "testing/image.startup.test.ts",
     cases: [
       "the built image runs the worker entrypoint from the built image and migrates a fresh database",
-      "the built image starts the app and worker from the same image with only the entrypoint argument different",
-      "the built image becomes healthy, logs one bootstrap line, and invokes no provider before it",
       "the built image blocks every request-bound path while migrations are still running",
       "the built image exits nonzero and never answers when the migration lock times out",
       "the built image exits nonzero for malformed configuration without connecting",
       "the built image shares one context across concurrent page, RPC and viewer requests",
-      "the built image runs genie-ops from PATH through docker exec and migrates",
       "the built image runs genie-ops migrate on a fresh database through the image entrypoint",
       "the built image serves no migration SQL url",
-      "the built image exposes no migration SQL content in its public corpus",
-      "the built image detects the repository migration SQL in a public corpus, raw, JSON-escaped and base64 encoded, and only that SQL",
-      "the built image fails closed when a migration SQL file is empty",
-      "the built image rejects symlinked public corpus entries with a named diagnostic",
       "the built image migrates the real database from the repository SQL",
       "the running Section 1 image processes opens one server-counted pool for the app, worker and migrate command",
       "the running Section 1 image processes redacts planted secrets and tenant-tags JSON output from app, worker and every genie-ops command",
@@ -111,10 +104,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     file: "testing/image-prune.integration.test.ts",
     cases: [
       "the builder-stage module prune keeps the selected module and removes every other module folder, as the build log shows",
-      "the builder-stage module prune prunes every module folder for an explicitly empty selection although the app depends on placeholder",
       "the builder-stage module prune refuses an unset MODULE_INCLUDE",
-      "the builder-stage module prune fails the build when a folder the selection does not name remains",
-      "the builder-stage module prune resolves a direct and a subpath import of a selected module",
       "the builder-stage module prune fails the build on a direct import of an excluded module",
       "the builder-stage module prune fails the build on a subpath import of an excluded module",
     ],

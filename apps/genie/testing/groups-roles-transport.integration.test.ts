@@ -15,27 +15,22 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServerRpcClient } from "../src/rpc/server-client.ts";
 import { TEST_AUTH_ENV } from "./auth-env.ts";
 import { imageHostPort } from "./image-ports.ts";
-import { rpcRefusalBody, rpcRequest } from "./rpc-request.ts";
 import { startBuiltApp } from "./start-built-app.ts";
 
 /**
- * The Groups and Roles transport proof (Spec 2 R-14, R-37), run against the built application:
- * the session gate answers an anonymous caller `unauthenticated` at 401 before any input parsing,
- * a signed-in caller without the key is refused `forbidden` at 403, and a role event emitted inside
- * an RPC request carries that request's correlation id into its handler (the l65 follow-up).
+ * The Groups and Roles transport proof, run against the built application: a role event emitted
+ * inside an RPC request carries that request's correlation id into its handler (the l65
+ * follow-up). The 401 and 403 transport mapping is proved in `rpc-unauthenticated`, and the
+ * routers' own refusals in core's `groups-roles` integration test.
  */
 
 const READ_PASSWORD = "groups-roles-password-14";
-
-const WITHOUT_PERMISSION_EMAIL = "groups-roles-member@example.com";
 
 const WITH_PERMISSION_EMAIL = "groups-roles-admin@example.com";
 
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 let server: Awaited<ReturnType<typeof startBuiltApp>>;
-
-let withoutPermissionId: string;
 
 let withPermissionId: string;
 
@@ -64,19 +59,6 @@ function adminClient(cookie: string) {
   }>({ url: `${baseUrl()}/api/rpc`, headers: { cookie } });
 }
 
-/** The RPC refusal's `appCode`, parsed at this boundary, or undefined for another shape. */
-async function readAppCode(response: Response): Promise<string | undefined> {
-  const parsed = rpcRefusalBody.safeParse(await response.json());
-
-  return parsed.success ? parsed.data.json.data.appCode : undefined;
-}
-
-const listGroups = (headers?: Record<string, string>) =>
-  rpcRequest(baseUrl(), "groups/list", { input: {}, headers });
-
-const listRoles = (headers?: Record<string, string>) =>
-  rpcRequest(baseUrl(), "roles/list", { headers });
-
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
 
@@ -84,13 +66,6 @@ beforeAll(async () => {
   // enabled (R-8, R-20).
   await markSetupDone(deployment.context);
   await enableModules(deployment.context, ["placeholder"]);
-
-  withoutPermissionId = await insertCredentialPerson(deployment.context, {
-    email: WITHOUT_PERMISSION_EMAIL,
-    password: READ_PASSWORD,
-    isBreakGlass: false,
-    permissions: ["placeholder:read"],
-  });
 
   withPermissionId = await insertCredentialPerson(deployment.context, {
     email: WITH_PERMISSION_EMAIL,
@@ -117,42 +92,6 @@ afterAll(async () => {
 });
 
 describe("the groups and roles transport", () => {
-  it("answers an anonymous caller unauthenticated at 401 before input parsing", async () => {
-    const response = await listGroups();
-
-    expect(response.status).toBe(401);
-    expect(await readAppCode(response)).toBe("unauthenticated");
-
-    // Roles refuses the same way, so neither router can be reached without a session.
-    const roles = await listRoles();
-
-    expect(roles.status).toBe(401);
-    expect(await readAppCode(roles)).toBe("unauthenticated");
-  });
-
-  it("answers a signed-in caller without the key forbidden at 403", async () => {
-    const cookie = await sessionFor(withoutPermissionId);
-
-    const groups = await listGroups({ cookie });
-
-    expect(groups.status).toBe(403);
-    expect(await readAppCode(groups)).toBe("forbidden");
-
-    const roles = await listRoles({ cookie });
-
-    expect(roles.status).toBe(403);
-    expect(await readAppCode(roles)).toBe("forbidden");
-  });
-
-  it("answers a signed-in caller holding the key", async () => {
-    const cookie = await sessionFor(withPermissionId);
-
-    const response = await listGroups({ cookie });
-
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain('"json"');
-  });
-
   it("carries the request's correlation id into the role event handler", async () => {
     const cookie = await sessionFor(withPermissionId);
     const client = adminClient(cookie);

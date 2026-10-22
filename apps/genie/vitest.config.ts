@@ -29,6 +29,8 @@ export default defineConfig({
       "testing/image-ports.test.ts",
       // The stand-in network sweep's name filter and in-use guard are pure.
       "testing/standin-network.test.ts",
+      // The public-corpus migration SQL scanner's controls run on a fixed corpus.
+      "testing/image-process.test.ts",
       // The Entra secret parser is pure; it must never echo the secret it refuses.
       "e2e/entra/tenant.test.ts",
     ],

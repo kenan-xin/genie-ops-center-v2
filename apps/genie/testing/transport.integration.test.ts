@@ -105,16 +105,6 @@ afterAll(async () => {
 });
 
 describe("both transports", () => {
-  it("the module transport reaches the procedure and answers its refusal", async () => {
-    const failure = await readFailure(placeholderClient());
-
-    // The positive control for this transport. The anonymous request holds no session, so the
-    // envelope answers `unauthenticated` at 401 (Spec 2 R-14); that app code proves the context
-    // reached the module's procedure rather than an unknown path, and a signed-in read follows.
-    expect(failure?.status).toBe(401);
-    expect(dataOf(failure)?.appCode).toBe("unauthenticated");
-  });
-
   it("the module transport reads the placeholder row for a signed-in person with a real grant", async () => {
     const email = "transport-reader@example.com";
     const password = "transport-reader-password-14";
@@ -148,12 +138,6 @@ describe("both transports", () => {
     expect(await read.text()).toContain(record.label);
   });
 
-  it("answers normally while the database is reachable", async () => {
-    const response = await fetch(`${baseUrl()}/api/status`);
-
-    expect(response.status).toBe(200);
-  });
-
   it("the ordinary route returns code, message and requestId with no leaked text", async () => {
     // A statement-level failure on the connection the application already holds.
     //
@@ -167,6 +151,11 @@ describe("both transports", () => {
     //
     // Renaming the object the route reads fails the next query immediately, on
     // whichever connection serves it, with no connection churn.
+    //
+    // Precondition: the route answers normally while the database is
+    // reachable, so the 500 below is the injection's doing.
+    expect((await fetch(`${baseUrl()}/api/status`)).status).toBe(200);
+
     const admin = await pool().connect();
 
     try {
@@ -259,7 +248,7 @@ describe("both transports", () => {
     const logBefore = server.logs().length;
 
     // The entitlement reader serves a filled value for 10 seconds (DEC-46), so
-    // the read fails once the value the refusal case filled has expired.
+    // the read fails once the value an earlier read filled has expired.
     await expect
       .poll(async () => (await readFailure(placeholderClient()))?.status, {
         timeout: 15000,

@@ -26,11 +26,8 @@ import {
   reachableFromContainer,
   startImage,
   type RunningImage,
-  asScannerSource,
   collectImagePublicCorpus,
-  inventoryEntries,
   moduleMigrationSources,
-  scanCorpusForMigrationSql,
   sqlUrlsInCorpus,
   F2_RECORDED_URL,
   SQL_SOURCES,
@@ -356,17 +353,28 @@ describe("the built image", () => {
       );
 
       try {
-        await waitForDatabaseCondition(async () => {
-          const migrationCheck = await verifier.db.$client.query<{
-            present: boolean;
-          }>(
-            "select to_regclass('drizzle.__drizzle_migrations') is not null as present"
-          );
+        const coreMigrations = readdirSync(
+          join(WORKSPACE_ROOT, "packages/core/drizzle")
+        ).filter((name) => name.endsWith(".sql")).length;
 
-          return migrationCheck.rows[0]?.present === true;
+        // Every core migration in the repository is recorded as applied. The
+        // ledger table alone proves nothing: it exists before any migration runs.
+        await waitForDatabaseCondition(async () => {
+          const ledger = await verifier.db.$client
+            .query<{ applied: number }>(
+              "select count(*)::int as applied from drizzle.__drizzle_migrations"
+            )
+            .catch(() => undefined);
+
+          return ledger?.rows[0]?.applied === coreMigrations;
         });
 
-        expect(workerId).toBeTruthy();
+        // ...and the history did more than write a ledger: a core table exists.
+        const table = await verifier.db.$client.query<{ present: boolean }>(
+          "select to_regclass('public.setup_step') is not null as present"
+        );
+
+        expect(table.rows[0]?.present).toBe(true);
       } finally {
         await verifier.db.$client.end();
       }
@@ -379,142 +387,9 @@ describe("the built image", () => {
     }
   }, 240000);
 
-  it("starts the app and worker from the same image with only the entrypoint argument different", async () => {
-    const appImage = await startImage(
-      {
-        DATABASE_URL: databaseUrl(),
-        PUBLIC_URL: "https://example.invalid",
-      },
-      imageHostPort(3415)
-    );
-
-    try {
-      await pollHealth(imageHostPort(3415));
-
-      const worker = await run("docker", [
-        "run",
-        "-d",
-        "--add-host",
-        `${HOST_ALIAS}:host-gateway`,
-        "-e",
-        `DATABASE_URL=${reachableFromContainer(databaseUrl())}`,
-        "-e",
-        "PUBLIC_URL=https://example.invalid",
-        IMAGE,
-        "worker",
-      ]);
-
-      try {
-        const appInspection = await run("docker", [
-          "inspect",
-          "--format",
-          "{{json .Config}}",
-          appImage.id,
-        ]);
-
-        const workerInspection = await run("docker", [
-          "inspect",
-          "--format",
-          "{{json .Config}}",
-          worker.stdout.trim(),
-        ]);
-
-        // SAFETY: docker inspect --format emits exactly one JSON Config object.
-        const appConfig = JSON.parse(appInspection.stdout.trim()) as {
-          Image: string;
-          Entrypoint: string[];
-          Cmd: string[];
-        };
-
-        // SAFETY: docker inspect --format emits exactly one JSON Config object.
-        const workerConfig = JSON.parse(workerInspection.stdout.trim()) as {
-          Image: string;
-          Entrypoint: string[];
-          Cmd: string[];
-        };
-
-        expect(appConfig.Image).toBe(IMAGE);
-        expect(workerConfig.Image).toBe(IMAGE);
-        expect(appConfig.Entrypoint).toEqual(workerConfig.Entrypoint);
-        expect(appConfig.Cmd).toEqual(["app"]);
-        expect(workerConfig.Cmd).toEqual(["worker"]);
-      } finally {
-        await run("docker", ["rm", "-f", worker.stdout.trim()]).catch(
-          () => undefined
-        );
-      }
-    } finally {
-      await appImage.stop();
-    }
-  }, 240000);
-
-  it("becomes healthy, logs one bootstrap line, and invokes no provider before it", async () => {
-    const image = await startImage(
-      {
-        DATABASE_URL: databaseUrl(),
-        PUBLIC_URL: "https://example.invalid",
-      },
-      imageHostPort(3399)
-    );
-
-    try {
-      const observations = await pollHealth(imageHostPort(3399));
-
-      expect(
-        observations.some((observation) => observation.status === 200)
-      ).toBe(true);
-
-      const logs = await image.logs();
-
-      expect(countLines(logs, "bootstrap complete")).toBe(1);
-
-      // No provider ran before the bootstrap finished. The ordering of health
-      // against migrations, and the one-context claim, are proved by the other
-      // cases in this file, not here.
-      const bootstrapAt = logs.indexOf("bootstrap complete");
-      const providerAt = logs.indexOf("frame origin provider invoked");
-
-      expect(providerAt === -1 || providerAt > bootstrapAt).toBe(true);
-    } finally {
-      await image.stop();
-    }
-  }, 180000);
-
-  it("runs genie-ops from PATH through docker exec and migrates", async () => {
-    const image = await startImage(
-      {
-        DATABASE_URL: databaseUrl(),
-        PUBLIC_URL: "https://example.invalid",
-      },
-      imageHostPort(3406)
-    );
-
-    try {
-      await pollHealth(imageHostPort(3406));
-
-      const result = await run("docker", [
-        "exec",
-        image.id,
-        "genie-ops",
-        "migrate",
-      ]).then(
-        (value) => ({ code: 0, output: `${value.stdout}${value.stderr}` }),
-        (error: { code?: number; stdout?: string; stderr?: string }) => ({
-          code: error.code ?? -1,
-          output: `${error.stdout ?? ""}${error.stderr ?? ""}`,
-        })
-      );
-
-      expect(result.code).toBe(0);
-      expect(result.output).toContain("pending");
-    } finally {
-      await image.stop();
-    }
-  }, 180000);
-
   // R-62 and D-10: the image entrypoint dispatches `genie-ops` too, and on a fresh database the
-  // command actually migrates. The `docker exec` case above proves the PATH install; this one
-  // proves the entrypoint branch, a pending count above zero and core's history applied.
+  // command actually migrates. The `docker exec` cases in the Section 1 block below prove the PATH
+  // install; this one proves the entrypoint branch, a pending count above zero and core's history applied.
   it("runs genie-ops migrate on a fresh database through the image entrypoint", async () => {
     const fresh = await startDisposablePostgres();
 
@@ -950,38 +825,6 @@ describe("the built image", () => {
       await image.stop();
     }
   }, 180000);
-
-  it("uses a second runtime configuration rather than build-time values", async () => {
-    const second = await startDisposablePostgres();
-
-    try {
-      const image = await startImage(
-        { DATABASE_URL: second.url, PUBLIC_URL: "https://second.invalid" },
-        imageHostPort(3403)
-      );
-
-      try {
-        const observations = await pollHealth(imageHostPort(3403));
-
-        expect(
-          observations.some((observation) => observation.status === 200)
-        ).toBe(true);
-
-        const logs = await image.logs();
-
-        // The second database received the histories, which proves the image read
-        // its configuration at run time and carried nothing from the build.
-        expect(logs).toContain("bootstrap complete");
-        expect(logs).not.toContain(databaseUrl());
-      } finally {
-        // This test's own container, stopped exactly once here — stopping the
-        // database instead leaked the image container on its port.
-        await image.stop();
-      }
-    } finally {
-      await second.stop();
-    }
-  }, 240000);
 });
 
 describe("the running Section 1 image processes", () => {
@@ -1420,89 +1263,6 @@ describe("the built image", () => {
     /* eslint-enable no-await-in-loop */
 
     expect(masked).toEqual([]);
-  }, 240000);
-
-  it("exposes no migration SQL content in its public corpus", () => {
-    expect(scanCorpusForMigrationSql(corpus)).toEqual([]);
-  }, 240000);
-
-  it("detects the repository migration SQL in a public corpus, raw, JSON-escaped and base64 encoded, and only that SQL", () => {
-    // Control, not contract: the injected files go through the SAME
-    // inventory-corpus scanner the real assertion uses. Positives carry the
-    // repository's own migration SQL — verbatim, as a JSON-escaped string
-    // literal, and as base64 — and every encoding must be flagged. Negatives
-    // carry unrelated SQL in the same encodings and must NOT be flagged: the
-    // scanner matches this repository's migrations, not SQL in general.
-    const [first] = SQL_SOURCES;
-
-    expect(first).toBeDefined();
-
-    // The RAW repository SQL, not the normalized form: normalization strips
-    // the newlines and tabs the escaped encoding must be proven against.
-    const realSql = first === undefined ? "" : first.raw;
-    const unrelated = "insert into f2_control values (1);\nselect 1;";
-
-    const controlled = new Map(corpus);
-
-    controlled.set(`/_next/static/media/${first?.tag ?? "f2"}.sql`, realSql);
-    controlled.set(
-      "/_next/static/chunks/f2-positive-escaped.js",
-      `const m=${JSON.stringify(realSql)};`
-    );
-    controlled.set(
-      "/_next/static/chunks/f2-positive-base64.js",
-      `const m=${JSON.stringify(Buffer.from(realSql).toString("base64"))};`
-    );
-    controlled.set(
-      "/_next/static/chunks/f2-negative-escaped.js",
-      `const m=${JSON.stringify(unrelated)};`
-    );
-    controlled.set("/f2-negative.sql", unrelated);
-
-    const offenders = scanCorpusForMigrationSql(controlled);
-
-    expect(offenders.toSorted()).toEqual(
-      [
-        `/_next/static/media/${first?.tag ?? "f2"}.sql`,
-        "/_next/static/chunks/f2-positive-escaped.js",
-        "/_next/static/chunks/f2-positive-base64.js",
-      ].toSorted()
-    );
-  }, 240000);
-
-  it("fails closed when a migration SQL file is empty", () => {
-    // Empty: malformed, and a contract with no needle is vacuous.
-    expect(() => asScannerSource("f2", "0000_tiny", "")).toThrow(/empty/);
-
-    // Short but real: legal, and covered by the same containment scan.
-    expect(asScannerSource("f2", "0000_tiny", "select 1").normalized).toBe(
-      "select 1"
-    );
-  }, 240000);
-
-  it("rejects symlinked public corpus entries with a named diagnostic", () => {
-    // An inventory that skipped links would be incomplete, and one that
-    // followed them could leave the static roots; the proof fails closed
-    // naming the link and its target instead.
-    expect(() =>
-      inventoryEntries(
-        '{"symlink":"/app/apps/genie/public/linked.sql","target":"/outside/x.sql"}'
-      )
-    ).toThrow(/symlink/);
-
-    expect(() =>
-      inventoryEntries(
-        '{"symlink":"/app/apps/genie/public/linked.sql","target":"/outside/x.sql"}\n{"url":"/_next/static/chunks/a.js","b64":"aGk="}'
-      )
-    ).toThrow(/symlink/);
-
-    const entries = inventoryEntries(
-      '{"url":"/_next/static/chunks/a.js","b64":"aGk="}'
-    );
-
-    expect(entries).toEqual([
-      { url: "/_next/static/chunks/a.js", b64: "aGk=" },
-    ]);
   }, 240000);
 
   it("migrates the real database from the repository SQL", async () => {

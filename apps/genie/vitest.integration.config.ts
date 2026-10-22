@@ -30,6 +30,12 @@ export default defineConfig({
       // Driven by the release wrappers with a candidate identity; it has its own
       // config and fails closed without `GENIE_SMOKE_IMAGE`.
       "testing/release-smoke.integration.test.ts",
+      // Pure logic the unit run (`vitest.config.ts`) already collects.
+      "testing/image-scan.test.ts",
+      "testing/shared-empty-image.test.ts",
+      "testing/image-ports.test.ts",
+      "testing/standin-network.test.ts",
+      "testing/image-process.test.ts",
     ],
     passWithNoTests: false,
     testTimeout: 240000,

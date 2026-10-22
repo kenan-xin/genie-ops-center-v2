@@ -1,19 +1,11 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  type DockerBuildResult,
-  dockerBuild,
-  removeImage,
-  requireDocker,
-} from "./image-process.ts";
+import { dockerBuild, removeImage, requireDocker } from "./image-process.ts";
 import { testImageTag } from "./image-tag.ts";
-import {
-  PRUNE_FIXTURE_MODULE,
-  sharedEmptyImage,
-} from "./shared-empty-image.ts";
+import { PRUNE_FIXTURE_MODULE } from "./shared-empty-image.ts";
 import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
 
 /**
@@ -27,10 +19,11 @@ import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
  * fail. The builder stage is discarded, so the prune's own log lines are how
  * these cases observe it.
  *
- * The two cases that succeed with placeholder share one build, and the empty
- * case shares the empty build with the image matrix, so a passing selection is
- * proved once. The fail-fast cases keep their own builds, because their whole
- * assertion is that their build does not succeed.
+ * One build succeeds: placeholder selected, carrying both imports, so it is the
+ * prune-lines proof and the import control at once. The empty selection's
+ * successful build is the image matrix's shared empty image, and the stray-folder
+ * rule is unit-tested in `prune.test.ts`. The fail-fast cases keep their own
+ * builds, because their whole assertion is that their build does not succeed.
  *
  * The import cases import placeholder, because it is the one module the app
  * lists as a fixed workspace dependency with a real lockfile importer. The
@@ -105,24 +98,6 @@ const build = (
 /** The end of a build log, where the failing step is. */
 const tail = (log: string) => log.slice(-6000);
 
-let placeholderBuild: Promise<DockerBuildResult> | undefined;
-
-/**
- * The one image the two placeholder-success cases share. It carries the imports
- * the positive control needs and the fixture module every case needs, and the
- * prune-lines case asserts the same build's log. The first caller builds it; the
- * second awaits the same promise.
- */
-function sharedPlaceholderBuild(): Promise<DockerBuildResult> {
-  placeholderBuild ??= build(
-    stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT)),
-    "placeholder",
-    testImageTag("genie-s011", "prune-control")
-  );
-
-  return placeholderBuild;
-}
-
 describe("the builder-stage module prune", () => {
   beforeAll(async () => {
     await requireDocker();
@@ -130,28 +105,24 @@ describe("the builder-stage module prune", () => {
 
   afterAll(async () => {
     // Only the stages and image tags this file created. A failed build leaves
-    // no tag, which removeImage ignores. The empty image is shared with the
-    // matrix and is owned by `sharedEmptyImage`, so it is left in place.
+    // no tag, which removeImage ignores.
     for (const root of stages) rmSync(root, { recursive: true, force: true });
 
     await Promise.all(tags.map(removeImage));
   }, 120000);
 
   it("keeps the selected module and removes every other module folder, as the build log shows", async () => {
-    const result = await sharedPlaceholderBuild();
+    // The build carries a direct and a subpath import of placeholder, so its
+    // success also proves both resolve when the module is selected.
+    const result = await build(
+      stage(importing(DIRECT_IMPORT, SUBPATH_IMPORT)),
+      "placeholder",
+      testImageTag("genie-s011", "prune-control")
+    );
 
     expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: placeholder"));
     expect(result.log).toMatch(pruneLine(`removed: ${EXTRA_MODULE}`));
-  }, 900000);
-
-  it("prunes every module folder for an explicitly empty selection although the app depends on placeholder", async () => {
-    const result = await sharedEmptyImage();
-
-    expect(result.log).toMatch(pruneLine("kept: (none)"));
-    expect(result.log).toMatch(
-      pruneLine(`removed: ${EXTRA_MODULE}, placeholder`)
-    );
   }, 900000);
 
   it("refuses an unset MODULE_INCLUDE", async () => {
@@ -165,35 +136,6 @@ describe("the builder-stage module prune", () => {
     expect(result.log).toMatch(/\[module-prune\] MODULE_INCLUDE is unset/);
   }, 900000);
 
-  it("fails the build when a folder the selection does not name remains", async () => {
-    const root = stage((staged) => {
-      mkdirSync(join(staged, "packages/modules/stray/src"), {
-        recursive: true,
-      });
-      writeFileSync(
-        join(staged, "packages/modules/stray/src/index.ts"),
-        "export {};\n"
-      );
-    });
-
-    const result = await build(
-      root,
-      "placeholder",
-      testImageTag("genie-s011", "prune-stray")
-    );
-
-    expect(result.ok, tail(result.log)).toBe(false);
-    expect(result.log).toMatch(
-      /\[module-prune\] packages\/modules holds stray, which the selection does not name/
-    );
-  }, 900000);
-
-  it("resolves a direct and a subpath import of a selected module", async () => {
-    const result = await sharedPlaceholderBuild();
-
-    expect(result.ok, tail(result.log)).toBe(true);
-  }, 900000);
-
   it("fails the build on a direct import of an excluded module", async () => {
     const root = stage(importing(DIRECT_IMPORT));
 
@@ -204,6 +146,8 @@ describe("the builder-stage module prune", () => {
     );
 
     expect(result.ok, tail(result.log)).toBe(false);
+    // An explicitly empty selection reaches the prune as empty, not as unset.
+    expect(result.log).toMatch(pruneLine("kept: (none)"));
     expect(result.log).toMatch(
       pruneLine(`removed: ${EXTRA_MODULE}, placeholder`)
     );

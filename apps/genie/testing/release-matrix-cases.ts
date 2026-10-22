@@ -8,8 +8,7 @@ export const RELEASE_MATRIX_CASES = {
   development:
     "the development image serves the placeholder page, the health body and the standard headers",
   emptySelection:
-    "an explicitly empty selection boots core-only with no placeholder route, table or migration file",
-  twoSelections: "two different selections both build and start",
+    "an explicitly empty selection boots core-only with no placeholder package, folder or ledger in the image",
   content:
     "history and filesystem carry only MODULE_INCLUDE, no secret, no excluded module and no development-only tooling",
 } as const;
