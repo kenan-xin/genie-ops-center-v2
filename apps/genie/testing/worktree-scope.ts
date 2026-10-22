@@ -57,7 +57,20 @@ function worktreePortOffset(): number {
   );
 }
 
-/** The fixed host port `base`, moved aside for this worktree. */
+/**
+ * The ports above 1023 on the Fetch standard's bad-port list. Node's `fetch` refuses them with
+ * "bad port", so a stack bound to one never answers a health poll.
+ */
+const FETCH_BLOCKED_PORTS = new Set([
+  1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666,
+  6667, 6668, 6669, 6679, 6697, 10080,
+]);
+
+/** The fixed host port `base`, moved aside for this worktree and past any port fetch refuses. */
 export function scopedPort(base: number): number {
-  return base + worktreePortOffset();
+  let port = base + worktreePortOffset();
+
+  while (FETCH_BLOCKED_PORTS.has(port)) port += 1;
+
+  return port;
 }

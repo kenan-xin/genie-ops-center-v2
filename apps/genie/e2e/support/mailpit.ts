@@ -20,6 +20,8 @@ type MailpitSummary = {
 
 export type MailpitMessage = {
   readonly ID: string;
+  readonly From: MailpitAddress;
+  readonly ReplyTo: readonly MailpitAddress[];
   readonly Subject: string;
   readonly HTML: string;
   readonly Text: string;

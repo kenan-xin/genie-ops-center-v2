@@ -17,6 +17,10 @@
   "signIn": {
     "title": "Sign in",
     "action": "Sign in with your company account",
+    "welcomeFallback": "Sign in with your {companyName} account to open your assigned solutions.",
+    "acknowledge": "I acknowledge these conditions.",
+    "terms": "Terms of use",
+    "privacy": "Privacy",
     "errors": {
       "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
       "keycloakIssuerMismatch": "The identity provider is not the one this deployment was set up with. Contact your administrator.",

@@ -7,6 +7,8 @@ export type MailSenderAddress = {
 /** One rendered message handed to an adapter. Both parts are required, so neither is derived. */
 export type OutgoingMail = {
   readonly from: MailSenderAddress;
+  /** The branding reply-to address (R-55), or undefined when the branding sets none. */
+  readonly replyTo: string | undefined;
   readonly to: string;
   readonly subject: string;
   readonly html: string;

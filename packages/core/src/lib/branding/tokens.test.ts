@@ -10,6 +10,7 @@ const seeded = {
   fontSize: "large",
   fontFamily: "manrope",
   textColor: "#000000",
+  loginBackgroundColor: null,
 };
 
 describe("brandingTokens", () => {
@@ -19,8 +20,23 @@ describe("brandingTokens", () => {
       "--primary-foreground": "#ffffff",
       "font-size": "16px",
       "--font-sans": "var(--font-face-plus-jakarta-sans)",
+      "--sign-in-background": "var(--background)",
     });
   });
+
+  it.each([
+    ["#f5f5f4", "#f5f5f4"],
+    ["red;}</style>", "var(--background)"],
+  ])(
+    "emits the sign-in background for %j as %j (R-54)",
+    (loginBackgroundColor, expected) => {
+      expect(
+        brandingTokens({ ...seeded, loginBackgroundColor })[
+          "--sign-in-background"
+        ]
+      ).toBe(expected);
+    }
+  );
 
   it("emits the packages/ui defaults when no branding row exists (R-12a)", () => {
     expect(brandingTokens(undefined)).toEqual({
@@ -28,17 +44,28 @@ describe("brandingTokens", () => {
       "--primary-foreground": colorRoles.light["primary-foreground"],
       "font-size": "15px",
       "--font-sans": "var(--font-face-plus-jakarta-sans)",
+      "--sign-in-background": "var(--background)",
     });
   });
 
   it.each([
     [
       "a seed without a color",
-      { primaryColor: null, primaryForeground: null, fontSize: "default" },
+      {
+        primaryColor: null,
+        primaryForeground: null,
+        fontSize: "default",
+        loginBackgroundColor: null,
+      },
     ],
     [
       "a color without its foreground",
-      { primaryColor: "#0f766e", primaryForeground: null, fontSize: "default" },
+      {
+        primaryColor: "#0f766e",
+        primaryForeground: null,
+        fontSize: "default",
+        loginBackgroundColor: null,
+      },
     ],
     [
       "a value that would close the style element",
@@ -46,6 +73,7 @@ describe("brandingTokens", () => {
         primaryColor: "red;}</style><script>",
         primaryForeground: "#ffffff",
         fontSize: "default",
+        loginBackgroundColor: null,
       },
     ],
   ])("falls back to the default pair for %s", (_case, branding) => {
@@ -63,6 +91,7 @@ describe("brandingTokens", () => {
           primaryColor: null,
           primaryForeground: null,
           fontSize,
+          loginBackgroundColor: null,
         })["font-size"]
       ).toBe("15px");
     }

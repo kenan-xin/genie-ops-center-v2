@@ -17,6 +17,22 @@ export type MailTemplateId = (typeof MAIL_TEMPLATE_IDS)[number];
 /** The values one template reads. A missing value renders empty text, never the word `undefined`. */
 export type MailTemplateVariables = Readonly<Record<string, string>>;
 
+/**
+ * The typed branding object every template layout reads (R-59a): names, the primary pair and the
+ * footer lines. An unset optional value is `null`, so the layout leaves its line out.
+ */
+export type MailBrandingTheme = {
+  readonly companyName: string;
+  readonly productName: string;
+  readonly primaryColor: string;
+  readonly primaryForeground: string;
+  readonly footerText: string | null;
+  readonly supportEmail: string | null;
+  readonly supportUrl: string | null;
+  readonly termsUrl: string | null;
+  readonly privacyUrl: string | null;
+};
+
 /** One rendered message: a subject, an HTML part and a plain-text part written separately. */
 export type RenderedMail = {
   readonly subject: string;

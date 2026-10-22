@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { RedactingLogger } from "../logging/index.ts";
+import type { MailBranding } from "./branding.ts";
+import { mailBrandingTheme, mailReplyTo } from "./branding.ts";
 import type { MailTemplateId } from "./catalogue.ts";
 import { createResendSender } from "./resend.ts";
 import type { MailSender, MailSenderAddress } from "./sender.ts";
@@ -50,11 +52,7 @@ export type Mailer = {
   readonly send: (input: MailSendInput) => Promise<void>;
 };
 
-/** The branding values a mailer reads: the sender display name and the fallback company name. */
-export type MailBranding = {
-  readonly companyName: string;
-  readonly emailSenderName: string | null;
-};
+export type { MailBranding } from "./branding.ts";
 
 /** Builds an absolute link from `PUBLIC_URL`; `createPublicUrl` supplies it (R-70). */
 export type PublicLinkBuilder = (path: string) => string;
@@ -328,12 +326,14 @@ function configuredSend(
 
     const rendered = await renderMailTemplate(
       input.templateId,
-      input.variables
+      input.variables,
+      mailBrandingTheme(branding)
     );
 
     try {
       await sender({
         from: senderFor(branding, address),
+        replyTo: mailReplyTo(branding),
         to: input.to,
         subject: rendered.subject,
         html: rendered.html,

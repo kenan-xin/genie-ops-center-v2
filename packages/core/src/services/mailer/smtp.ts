@@ -15,6 +15,7 @@ export function createSmtpSender(smtpUrl: string): MailSender {
   return async (mail) => {
     await transport.sendMail({
       from: nodemailerSender(mail.from),
+      replyTo: mail.replyTo,
       to: mail.to,
       subject: mail.subject,
       html: mail.html,

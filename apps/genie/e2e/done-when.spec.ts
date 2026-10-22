@@ -1,8 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rmdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
@@ -13,7 +9,6 @@ import {
   setRealmUserEnabled,
   setRealmUserGroupMemberships,
 } from "../testing/e2e-keycloak.ts";
-import { scopedProject } from "../testing/worktree-scope.ts";
 import { doneAdmitGroup, doneGrantGroup, scenarioEmail } from "./scenarios.ts";
 import {
   BROKER_DB,
@@ -24,6 +19,7 @@ import {
   queryBrokerDatabase,
 } from "./support/brokered.ts";
 import { chooseOption } from "./support/choose-option.ts";
+import { withDeploymentLock } from "./support/lock.ts";
 import { rpcPost } from "./support/rpc.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
@@ -289,34 +285,6 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
   await blockedPage.context().close();
 });
 
-/**
- * Holds a lock across Playwright's worker processes. The module entitlement is one row per
- * deployment, so the phone and the desktop runs of the AC-26 proof must not disable it at once.
- */
-async function withDeploymentLock<T>(run: () => Promise<T>): Promise<T> {
-  const lock = join(tmpdir(), scopedProject("genie-s2-16-entitlement.lock"));
-  const deadline = Date.now() + 120_000;
-
-  /* eslint-disable no-await-in-loop -- each attempt exists only because the lock was held. */
-  while (true) {
-    try {
-      await mkdir(lock);
-      break;
-    } catch (error) {
-      if (Date.now() > deadline) throw error;
-
-      await sleep(250);
-    }
-  }
-  /* eslint-enable no-await-in-loop */
-
-  try {
-    return await run();
-  } finally {
-    await rmdir(lock);
-  }
-}
-
 /** The ids of one person's direct role assignments, to prove they survive the lifecycle. */
 async function assignmentIds(email: string): Promise<readonly string[]> {
   return queryBrokerDatabase(
@@ -354,7 +322,9 @@ test("retained access: a disabled module's grant is ineffective, the mixed role 
 
   await signInThroughBroker(page, { baseUrl, email });
 
-  await withDeploymentLock(async () => {
+  // The module entitlement is one row per deployment, so the phone and the desktop runs of the
+  // AC-26 proof must not disable it at once.
+  await withDeploymentLock("s2-16-entitlement", async () => {
     try {
       await expectPlaceholderEntries(page, baseUrl, 1);
 

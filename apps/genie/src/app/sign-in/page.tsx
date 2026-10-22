@@ -1,7 +1,9 @@
+import { focusRing } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
+import { SignInAction } from "./sign-in-action.tsx";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,11 @@ export const dynamic = "force-dynamic";
  * OAuth refusal codes reach this page through `errorCallbackURL`, and `signInCause` maps each one
  * to the state a person can act on. The session-expired banner names the tenant's idle minutes,
  * read through the settings reader (R-14).
+ *
+ * Section 3 brands it as text and color only (R-54): company and product names, welcome text,
+ * the system-use notice, the support contact and the terms and privacy links come from branding.
+ * The primary pair comes from the root layout's token layer, the background from
+ * `--sign-in-background`. No logo and no background image (F-1).
  */
 const DEFAULT_STATE = "default";
 
@@ -24,13 +31,17 @@ const DEFAULT_STATE = "default";
  * client-only mode only the Genie Ops Center session ended, so the copy says the company sign-in
  * stays active (R-17, ADR 0010).
  */
-async function clientOnlyProductName(): Promise<string | undefined> {
-  const { tenant } = requireContext();
-  const { realmMode } = await tenant.settings.get();
+async function clientOnlyProductName(
+  productName: string
+): Promise<string | undefined> {
+  const { realmMode } = await requireContext().tenant.settings.get();
 
-  return realmMode === "customer"
-    ? (await tenant.branding.get()).productName
-    : undefined;
+  return realmMode === "customer" ? productName : undefined;
+}
+
+/** A branding text value, or null when it is unset or blank. */
+function present(value: string | null): string | null {
+  return value === null || value.trim() === "" ? null : value;
 }
 
 export default async function SignInPage(props: {
@@ -41,8 +52,22 @@ export default async function SignInPage(props: {
 
   const cause = signInCause(error);
 
+  const branding = await requireContext().tenant.branding.get();
+
   const productName =
-    cause === "signed_out" ? await clientOnlyProductName() : undefined;
+    cause === "signed_out"
+      ? await clientOnlyProductName(branding.productName)
+      : undefined;
+
+  const supportEmail = present(branding.supportEmail);
+
+  const supportUrl = present(branding.supportUrl);
+
+  const termsUrl = present(branding.termsUrl);
+
+  const privacyUrl = present(branding.privacyUrl);
+
+  const linkClass = `rounded-sm hover:text-foreground hover:underline ${focusRing}`;
 
   // Each cause is its own catalogue call rather than a computed key, so the catalogue-coverage
   // check can read the literal key out of this file.
@@ -69,14 +94,62 @@ export default async function SignInPage(props: {
                     : t("errors.signedOutClientOnly", { productName });
 
   return (
-    <main data-sign-in-state={cause ?? DEFAULT_STATE}>
-      <h1>{t("title")}</h1>
-      {banner === undefined ? null : (
-        <p role="alert" data-testid="sign-in-banner">
-          {banner}
+    <main
+      data-sign-in-state={cause ?? DEFAULT_STATE}
+      className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-sign-in-background px-4 py-12 dark:bg-background"
+    >
+      <div className="text-center">
+        <h1 className="text-lg font-semibold text-foreground">
+          {branding.companyName}
+        </h1>
+        <p className="text-xs text-muted-foreground">{branding.productName}</p>
+      </div>
+      <section className="flex w-full max-w-md flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm sm:p-8">
+        {banner === undefined ? null : (
+          <p
+            role="alert"
+            data-testid="sign-in-banner"
+            className="rounded-lg border bg-muted p-3 text-sm text-foreground"
+          >
+            {banner}
+          </p>
+        )}
+        <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
+        <p data-testid="sign-in-welcome" className="text-muted-foreground">
+          {present(branding.loginWelcomeText) ??
+            t("welcomeFallback", { companyName: branding.companyName })}
         </p>
-      )}
-      <a href="/api/auth/sign-in/keycloak">{t("action")}</a>
+        <SignInAction
+          notice={branding.loginNoticeText}
+          requiresAcknowledgement={branding.loginNoticeRequiresAcknowledgement}
+          label={t("action")}
+          acknowledgeLabel={t("acknowledge")}
+        />
+      </section>
+      <footer className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
+        <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {supportEmail !== null ? (
+            <a href={`mailto:${supportEmail}`} className={linkClass}>
+              {supportEmail}
+            </a>
+          ) : supportUrl !== null ? (
+            <a href={supportUrl} className={linkClass}>
+              {supportUrl}
+            </a>
+          ) : null}
+          {termsUrl === null ? null : (
+            <a href={termsUrl} className={linkClass}>
+              {t("terms")}
+            </a>
+          )}
+          {privacyUrl === null ? null : (
+            <a href={privacyUrl} className={linkClass}>
+              {t("privacy")}
+            </a>
+          )}
+        </nav>
+        <p>{branding.productName}</p>
+      </footer>
     </main>
   );
 }

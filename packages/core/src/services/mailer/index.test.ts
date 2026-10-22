@@ -4,6 +4,7 @@ import { AppError } from "../../lib/errors/index.ts";
 import { createPublicUrl } from "../../lib/tenant-context/index.ts";
 import type { LogValue } from "../logging/index.ts";
 import { createLogger, silentLogger } from "../logging/index.ts";
+import { mailBranding } from "./__fixtures__/branding.ts";
 import { closeServer, startSmtpSink } from "./__fixtures__/smtp-sink.ts";
 import type { MailerDependencies, MailerEnvironment } from "./index.ts";
 import { createMailer } from "./index.ts";
@@ -39,9 +40,7 @@ function resendEnv(): MailerEnvironment {
 
 function deps(logger: MailerDependencies["logger"]): MailerDependencies {
   return {
-    branding: {
-      get: () => Promise.resolve({ companyName: "Co", emailSenderName: null }),
-    },
+    branding: { get: () => Promise.resolve(mailBranding()) },
     logger,
     publicUrl: createPublicUrl(PUBLIC_URL),
   };
@@ -442,10 +441,7 @@ describe("the mailer's link variables (R-70)", () => {
     const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 
     const mailer = createMailer(developmentEnv(), {
-      branding: {
-        get: () =>
-          Promise.resolve({ companyName: "Co", emailSenderName: null }),
-      },
+      branding: { get: () => Promise.resolve(mailBranding()) },
       logger: silentLogger(),
       publicUrl: createPublicUrl("https://genie.example.com/ops"),
     });
@@ -469,10 +465,7 @@ describe("the mailer's link variables (R-70)", () => {
   it("cannot build a mailer dependency set without a public URL", () => {
     // @ts-expect-error publicUrl is required, so no action link can be sent unverified.
     const incomplete: MailerDependencies = {
-      branding: {
-        get: () =>
-          Promise.resolve({ companyName: "Co", emailSenderName: null }),
-      },
+      branding: { get: () => Promise.resolve(mailBranding()) },
       logger: silentLogger(),
     };
 
@@ -507,7 +500,8 @@ function brandedDeps(
 ): MailerDependencies {
   return {
     branding: {
-      get: () => Promise.resolve({ companyName: "Acme", emailSenderName }),
+      get: () =>
+        Promise.resolve(mailBranding({ companyName: "Acme", emailSenderName })),
     },
     logger,
     publicUrl: createPublicUrl(PUBLIC_URL),
@@ -538,6 +532,45 @@ describe("the mailer's delivery", () => {
 
     expect(error.code).toBe("mail-not-configured");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("renders each send with the branding the reader returns at that moment (R-59a)", async () => {
+    const fetchMock = wireAccepting();
+
+    let row = mailBranding({
+      companyName: "First Co",
+      primaryColor: "#0f766e",
+      primaryForeground: "#ffffff",
+      emailFooterText: "First footer",
+    });
+
+    const mailer = createMailer(resendEnv(), {
+      branding: { get: () => Promise.resolve(row) },
+      logger: silentLogger(),
+      publicUrl: createPublicUrl(PUBLIC_URL),
+    });
+
+    const send = () =>
+      mailer.send({
+        templateId: "new-device-sign-in",
+        to: "person@example.com",
+        variables: { link: "/records" },
+      });
+
+    await send();
+    row = { ...row, companyName: "Second Co" };
+    await send();
+
+    // SAFETY: the Resend adapter posts one JSON body per message.
+    const [first, second] = fetchMock.mock.calls.map(
+      ([, init]) =>
+        JSON.parse(String(init?.body)) as { html: string; text: string }
+    );
+
+    expect(first?.html).toContain("#0f766e");
+    expect(first?.html).toContain("First footer");
+    expect(first?.text).toContain("First Co");
+    expect(second?.text).toContain("Second Co");
   });
 
   it.each([
@@ -593,6 +626,35 @@ describe("the mailer's delivery", () => {
           (message) => (message.match(/^From:/gim) ?? []).length === 1
         )
       ).toBe(true);
+    } finally {
+      await closeServer(sink.server);
+    }
+  });
+
+  it("sets Reply-To from the branding reply-to address, and leaves it out when unset (R-55)", async () => {
+    const sink = await startSmtpSink();
+
+    try {
+      for (const emailReplyTo of ["replies@acme.invalid", null]) {
+        // oxlint-disable-next-line no-await-in-loop -- one message per branding row, in order.
+        await createMailer(smtpEnv(sink.url), {
+          branding: {
+            get: () => Promise.resolve(mailBranding({ emailReplyTo })),
+          },
+          logger: silentLogger(),
+          publicUrl: createPublicUrl(PUBLIC_URL),
+        }).send({
+          templateId: "new-device-sign-in",
+          to: "ada@example.invalid",
+          variables: { link: "/records" },
+        });
+      }
+
+      const replyTo = sink.messages.map(
+        (message) => message.match(/^Reply-To:\s*(.+)$/im)?.[1]
+      );
+
+      expect(replyTo).toEqual(["replies@acme.invalid", undefined]);
     } finally {
       await closeServer(sink.server);
     }

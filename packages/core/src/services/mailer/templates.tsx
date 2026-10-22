@@ -13,6 +13,7 @@
 
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -20,11 +21,13 @@ import {
   Html,
   Link,
   Preview,
+  Section,
   Text,
   render,
 } from "@react-email/components";
 
 import type {
+  MailBrandingTheme,
   MailTemplateId,
   MailTemplateVariables,
   RenderedMail,
@@ -33,6 +36,7 @@ import type {
 export { MAIL_TEMPLATE_IDS } from "./catalogue.ts";
 
 export type {
+  MailBrandingTheme,
   MailTemplateId,
   MailTemplateVariables,
   RenderedMail,
@@ -184,69 +188,167 @@ const BUILDERS: Readonly<
   "module-notification": moduleNotification,
 };
 
+/**
+ * The fixed neutrals of the layout. Emails always render light, so only the primary pair and the
+ * names come from branding (R-59a). The face stays the default face, as on the web (R-14).
+ */
 const STYLES = {
-  body: { backgroundColor: "#f4f5f7", fontFamily: "sans-serif" },
+  body: {
+    backgroundColor: "#f4f5f7",
+    fontFamily: '"Plus Jakarta Sans", Arial, Helvetica, sans-serif',
+  },
   container: {
     backgroundColor: "#ffffff",
     margin: "0 auto",
     maxWidth: "560px",
-    padding: "32px",
   },
+  bar: { padding: "16px 32px" },
+  company: { fontSize: "16px", fontWeight: 600, margin: 0 },
+  card: { padding: "8px 32px 32px" },
   heading: { color: "#111827", fontSize: "22px" },
   paragraph: { color: "#374151", fontSize: "15px", lineHeight: "24px" },
-  button: { color: "#1d4ed8", fontSize: "15px" },
+  button: { borderRadius: "6px", fontSize: "15px", padding: "12px 20px" },
+  url: { color: "#6b7280", fontSize: "12px", wordBreak: "break-all" as const },
   rule: { borderColor: "#e5e7eb" },
-  footer: { color: "#6b7280", fontSize: "12px" },
+  footer: { color: "#6b7280", fontSize: "12px", margin: "4px 0" },
+  footerLink: { color: "#6b7280", textDecoration: "underline" },
 };
 
-/** The one branded layout every catalogue template renders through. */
-function MailLayout({ content }: { readonly content: MailContent }) {
+/** The support line: the email when set, else the support page. */
+function supportTarget(
+  theme: MailBrandingTheme
+): { label: string; href: string } | null {
+  if (theme.supportEmail !== null) {
+    return { label: theme.supportEmail, href: `mailto:${theme.supportEmail}` };
+  }
+
+  return theme.supportUrl === null
+    ? null
+    : { label: theme.supportUrl, href: theme.supportUrl };
+}
+
+/** The one branded layout every catalogue template renders through (email spec, layout order). */
+function MailLayout({
+  content,
+  theme,
+}: {
+  readonly content: MailContent;
+  readonly theme: MailBrandingTheme;
+}) {
+  const support = supportTarget(theme);
+
   return (
     <Html lang="en">
       <Head />
       <Preview>{content.preview}</Preview>
       <Body style={STYLES.body}>
         <Container style={STYLES.container}>
-          <Heading style={STYLES.heading}>{content.heading}</Heading>
-          {content.paragraphs.map((paragraph) => (
-            <Text key={paragraph} style={STYLES.paragraph}>
-              {paragraph}
+          <Section
+            style={{ ...STYLES.bar, backgroundColor: theme.primaryColor }}
+          >
+            <Text style={{ ...STYLES.company, color: theme.primaryForeground }}>
+              {theme.companyName}
             </Text>
-          ))}
-          <Link href={content.action.url} style={STYLES.button}>
-            {content.action.label}
-          </Link>
-          <Hr style={STYLES.rule} />
-          <Text style={STYLES.footer}>{content.footer}</Text>
+          </Section>
+          <Section style={STYLES.card}>
+            <Heading style={STYLES.heading}>{content.heading}</Heading>
+            {content.paragraphs.map((paragraph) => (
+              <Text key={paragraph} style={STYLES.paragraph}>
+                {paragraph}
+              </Text>
+            ))}
+            <Button
+              href={content.action.url}
+              style={{
+                ...STYLES.button,
+                backgroundColor: theme.primaryColor,
+                color: theme.primaryForeground,
+              }}
+            >
+              {content.action.label}
+            </Button>
+            <Text style={STYLES.url}>{content.action.url}</Text>
+            <Hr style={STYLES.rule} />
+            <Text style={STYLES.footer}>{content.footer}</Text>
+            {theme.footerText === null ? null : (
+              <Text style={STYLES.footer}>{theme.footerText}</Text>
+            )}
+            {support === null ? null : (
+              <Text style={STYLES.footer}>
+                Support:{" "}
+                <Link href={support.href} style={STYLES.footerLink}>
+                  {support.label}
+                </Link>
+              </Text>
+            )}
+            {theme.termsUrl === null && theme.privacyUrl === null ? null : (
+              <Text style={STYLES.footer}>
+                {theme.termsUrl === null ? null : (
+                  <Link href={theme.termsUrl} style={STYLES.footerLink}>
+                    Terms
+                  </Link>
+                )}
+                {theme.termsUrl !== null && theme.privacyUrl !== null
+                  ? " · "
+                  : null}
+                {theme.privacyUrl === null ? null : (
+                  <Link href={theme.privacyUrl} style={STYLES.footerLink}>
+                    Privacy
+                  </Link>
+                )}
+              </Text>
+            )}
+            <Text style={STYLES.footer}>{theme.productName}</Text>
+          </Section>
         </Container>
       </Body>
     </Html>
   );
 }
 
-/** The plain-text part, written here and never derived from the rendered HTML (R-44). */
-function renderText(content: MailContent): string {
+/**
+ * The plain-text part, written here and never derived from the rendered HTML (R-44). It keeps the
+ * HTML reading order and writes every link out in full (R-56).
+ */
+function renderText(content: MailContent, theme: MailBrandingTheme): string {
+  const support = supportTarget(theme);
+
+  const footer = [
+    content.footer,
+    theme.footerText,
+    support === null ? null : `Support: ${support.label}`,
+    theme.termsUrl === null ? null : `Terms: ${theme.termsUrl}`,
+    theme.privacyUrl === null ? null : `Privacy: ${theme.privacyUrl}`,
+    theme.productName,
+  ].filter((line) => line !== null);
+
   return [
+    theme.companyName,
+    "",
     content.heading,
     "",
     ...content.paragraphs,
     "",
     `${content.action.label}: ${content.action.url}`,
     "",
-    content.footer,
+    ...footer,
   ].join("\n");
 }
 
-/** Renders one catalogue template to its subject, its HTML part and its plain-text part (R-44). */
+/**
+ * Renders one catalogue template to its subject, its HTML part and its plain-text part (R-44),
+ * with every color, name and footer line taken from the typed branding object (R-59a).
+ */
 export async function renderMailTemplate(
   id: MailTemplateId,
-  variables: MailTemplateVariables
+  variables: MailTemplateVariables,
+  theme: MailBrandingTheme
 ): Promise<RenderedMail> {
   const content = BUILDERS[id](variables);
 
   return {
     subject: content.subject,
-    html: await render(<MailLayout content={content} />),
-    text: renderText(content),
+    html: await render(<MailLayout content={content} theme={theme} />),
+    text: renderText(content, theme),
   };
 }

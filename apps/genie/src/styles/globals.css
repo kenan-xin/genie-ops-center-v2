@@ -31,6 +31,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-destructive: var(--destructive);
   --color-brand-on-dark: var(--brand-on-dark);
+  --color-sign-in-background: var(--sign-in-background);
 }
 
 /*

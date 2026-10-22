@@ -74,6 +74,7 @@ export const E2E_READER_SPECS = [
   "groups",
   "people",
   "screens",
+  "branding",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -538,10 +539,14 @@ export async function setRealmUserEnabled(
   }
 }
 
-/** Creates a realm user with a password and a verified email. */
+/** Creates a realm user with a password and, unless told otherwise, a verified email. */
 export async function createRealmUser(
   realm: string,
-  user: { readonly email: string; readonly password: string }
+  user: {
+    readonly email: string;
+    readonly password: string;
+    readonly emailVerified?: boolean;
+  }
 ): Promise<void> {
   const response = await admin(`/realms/${realm}/users`, {
     method: "POST",
@@ -549,7 +554,7 @@ export async function createRealmUser(
       username: user.email,
       email: user.email,
       enabled: true,
-      emailVerified: true,
+      emailVerified: user.emailVerified ?? true,
       firstName: "E2E",
       lastName: "Person",
       credentials: [

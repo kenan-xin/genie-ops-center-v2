@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { Resend, type CreateEmailOptions } from "resend";
 
 import { formatSenderAddress, type MailSender } from "./sender.ts";
 
@@ -17,13 +17,17 @@ export function createResendSender(apiKey: string): MailSender {
   const resend = new Resend(apiKey);
 
   return async (mail) => {
-    const { error } = await resend.emails.send({
+    const message: CreateEmailOptions = {
       from: formatSenderAddress(mail.from),
       to: [mail.to],
       subject: mail.subject,
       html: mail.html,
       text: mail.text,
-    });
+    };
+
+    if (mail.replyTo !== undefined) message.replyTo = mail.replyTo;
+
+    const { error } = await resend.emails.send(message);
 
     if (error !== null) {
       throw new Error(`Resend did not accept the message: ${error.message}`);
