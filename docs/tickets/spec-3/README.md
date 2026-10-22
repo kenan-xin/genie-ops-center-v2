@@ -1,6 +1,6 @@
 # Spec 3 ticket breakdown
 
-Spec: [Shell, branding and design system](../../specs/03-shell-branding-and-design-system.md), re-approved 2026-10-22. Beads epic: `genie-ops-center-v2-6wz1`. The owner approved this breakdown on 2026-10-22. Beads owns live status, claims and blockers. These documents own ticket scope and acceptance.
+Spec: [Shell, branding and design system](../../specs/03-shell-branding-and-design-system.md), re-approved 2026-10-22. Technical plan: [03-shell-branding-and-design-system.md](../../tech-plans/03-shell-branding-and-design-system.md). Beads epic: `genie-ops-center-v2-6wz1`. The owner approved this breakdown on 2026-10-22. Beads owns live status, claims and blockers. These documents own ticket scope and acceptance.
 
 ## Definition of done for every ticket
 
