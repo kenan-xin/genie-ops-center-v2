@@ -78,7 +78,7 @@ The oRPC and TanStack Query setup lives in `apps/genie/src/rpc/` and these rules
 | --- | --- | --- | --- |
 | Email templates | React Email (`@react-email/components`, which re-exports `@react-email/render`; `react-email` for preview) | components 1.0.12, render 2.0.6, preview tool 6.x | Every email Genie Ops Center initiates, rendered with the tenant's branding values. The HTML part renders from these components; the plain-text part is hand-written per template, never derived from the HTML (R-44). |
 | Email, Genie-hosted deployment | Resend (`resend` package) | 6.x | Hosted delivery behind the core mailer interface. |
-| Email, customer-hosted deployment | SMTP through Nodemailer (`nodemailer`) | 7.x | Government and healthcare deployments will not allow a hosted mail provider. One mailer interface, two adapters. Nodemailer is the established Node.js SMTP client with no runtime dependencies, and it accepts the `SMTP_URL` form of `../architecture/environment-contract.md` directly. |
+| Email, customer-hosted deployment | SMTP through Nodemailer (`nodemailer`) | 10.x | Government and healthcare deployments will not allow a hosted mail provider. One mailer interface, two adapters. Nodemailer is the established Node.js SMTP client with no runtime dependencies, and it accepts the `SMTP_URL` form of `../architecture/environment-contract.md` directly. |
 | Credential emails, local-account tenants | Keycloak built-in email templates | none | Set password, reset password, verify email carry Keycloak action tokens, so Keycloak sends them, unstyled, with the realm display name (`DEC-40`). Brokered tenants never receive these. |
 | AI chat backend | External Genie chat API | external | Server-side streaming proxy. Secrets never reach the browser. |
 
