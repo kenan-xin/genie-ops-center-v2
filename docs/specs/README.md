@@ -6,12 +6,12 @@ One specification per core roadmap section, named `NN-<section>.md`. A specifica
 
 | File | Roadmap section | Status | Confidence |
 | --- | --- | --- | --- |
-| `00-monorepo-foundation.md` | Section 0: Monorepo foundation | Approved for ticket breakdown, 2026-09-19; integrated 2026-09-23 | 8.2 |
-| `01-deployment-and-setup.md` | Section 1: Deployment and setup | Approved for ticket breakdown, 2026-09-23 | 8.4 |
-| `02-identity-and-access.md` | Section 2: Identity and access | Draft, awaiting approval | 8.5 |
-| `03-shell-branding-and-design-system.md` | Section 3: Shell, branding, and design system | Approved 2026-10-19, revised and re-approved 2026-10-22 | 8.1 |
+| `00-monorepo-foundation.md` | Section 0: Monorepo foundation | Approved for ticket breakdown, 2026-09-19; integrated 2026-09-23; G5 closed 2026-09-24 | 8.2 |
+| `01-deployment-and-setup.md` | Section 1: Deployment and setup | Approved for ticket breakdown, 2026-09-23; implemented, epic `1ia` closed 2026-09-26 | 8.4 |
+| `02-identity-and-access.md` | Section 2: Identity and access | Approved for ticket breakdown, 2026-09-27; implemented 2026-10-06, except AC-14 and gate S2-G3 (owner beads `d8l5.23`, `d8l5.24`) | 8.0 |
+| `03-shell-branding-and-design-system.md` | Section 3: Shell, branding, and design system | Approved 2026-10-19, revised and re-approved 2026-10-22; tickets under epic `6wz1` not started | 8.1 |
 | `04-solutions-module.md` | Section 4: Solutions module | Approved 2026-10-19 | 8.0 |
-| `05-operations.md` | Section 5: Operations | Draft, awaiting approval | 8.4 |
+| `05-operations.md` | Section 5: Operations | Draft, reworked 2026-10-20, awaiting approval | 7.1 |
 
 Customer modules (contracts, approvals) have no specification here. They are deferred on customer discovery (`../modules/README.md`) and get a specification per module phase when their discovery closes.
 
@@ -147,3 +147,5 @@ Each call below follows an existing decision or convention and was made by the c
 | 2026-09-27 | Spec 2 approval by the product owner | `02-identity-and-access.md` approved for ticket breakdown. Specs 3 to 5 remain drafts. |
 | 2026-09-27 | Spec 2 owner answers | The product owner decided B1 and B6 (option A each), confirmed the nine calls in this table that bind Spec 2 (`groups` claim form, sign-out, idle-timeout seam, account page roles summary, permission-gated route, realm session settings, nullable user columns, setup steps across releases with the setup step order, module admin key), and signed off the Spec 1 amendments of the same day. Spec 2 awaits approval. |
 | 2026-09-23 | Spec 1 approval by the product owner | `01-deployment-and-setup.md` approved for ticket breakdown, with Nodemailer confirmed as the SMTP client and the DEC-50 registration owner decided. Specs 2 to 5 remain drafts. |
+| 2026-10-19 | Spec 3 and Spec 4 approval by the product owner | `03-shell-branding-and-design-system.md` approved for ticket breakdown after the branding cut, the organization-only theme and the OPEN-9 seed decisions. `04-solutions-module.md` approved with R-39 set to four test layers and AC-5a moved to Section 5 AC-11. |
+| 2026-10-22 | Spec 3 revision and re-approval | Spec 3 revised after the critique (F-1 to F-26) and a consistency check (C-1 to C-13), then re-approved for ticket breakdown. The ticket breakdown under epic `6wz1` was approved the same day, and the technical plan was drafted after it. Spec 5 remains a draft. |
