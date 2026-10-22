@@ -27,7 +27,7 @@ import {
 
 /**
  * The S2-13 brokered scenario deployments. Two realms on the stand-in Keycloak play the customer:
- * the OIDC broker (S-B, S-D, S-G) and the SAML broker (S-E). Each has its own app container and
+ * the OIDC broker (S-B, S-D) and the SAML broker (S-E). Each has its own app container and
  * database, so brokering the realm (which sends every sign-in to the provider) never touches the
  * shared local sign-in deployment.
  *
@@ -36,7 +36,7 @@ import {
  * a person or a group row.
  */
 
-export type Scenario = "s-b" | "s-d" | "s-e" | "s-g" | "done" | "invite";
+export type Scenario = "s-b" | "s-d" | "s-e" | "done" | "invite";
 
 /**
  * The S2-16 done-when groups (AC-20 to AC-24). The admit group is pre-added and mapped to a role
@@ -66,13 +66,9 @@ function administratorSql(scenario: Scenario): string[] {
 /** The mapped directory group the OIDC and SAML broker databases pre-add and assign a role. */
 export const MAPPED_GROUP = "genie-admins";
 
-/** The groups pre-added by exact value before any sign-in (DEC-52), one per scenario and project. */
+/** The group pre-added by exact value before any sign-in (DEC-52), one per project. */
 export function preMappedGroupD(project: string): string {
   return `S2-13 pre mapped d ${project}`;
-}
-
-export function preMappedGroupG(project: string): string {
-  return `S2-13 pre mapped g ${project}`;
 }
 
 /** A company group that is mapped to no role, so a person holding only it is refused. */
@@ -112,10 +108,7 @@ function seedSql(preAddedGroups: readonly string[]): string {
 }
 
 const OIDC_SEED = [
-  seedSql([
-    ...E2E_PROJECTS.map(preMappedGroupD),
-    ...E2E_PROJECTS.map(preMappedGroupG),
-  ]),
+  seedSql(E2E_PROJECTS.map(preMappedGroupD)),
   "insert into role (name, permissions, is_system) values ('S2-16 member', array[]::text[], false) on conflict (name) do nothing",
   ...E2E_PROJECTS.flatMap((project) => [
     `insert into "group" (name, external_id, source, last_seen_at) values ('${doneAdmitGroup(project)}', '${doneAdmitGroup(project)}', 'idp', null) on conflict do nothing`,
@@ -244,23 +237,13 @@ async function seedCompanyPeople(): Promise<void> {
     readonly state: string;
     readonly groups: (project: string) => readonly string[];
   }> = [
-    { scenario: "s-b", state: "admitted", groups: () => [MAPPED_GROUP] },
     { scenario: "s-b", state: "refused", groups: () => [UNMAPPED_GROUP] },
     {
       scenario: "s-d",
       state: "prepad",
       groups: (project) => [preMappedGroupD(project), ...MANY_GROUPS],
     },
-    { scenario: "s-d", state: "offboard", groups: () => [MAPPED_GROUP] },
-    { scenario: "s-d", state: "refused", groups: () => [UNMAPPED_GROUP] },
     { scenario: "s-e", state: "admitted", groups: () => [MAPPED_GROUP] },
-    { scenario: "s-e", state: "refused", groups: () => [UNMAPPED_GROUP] },
-    {
-      scenario: "s-g",
-      state: "many",
-      groups: (project) => [preMappedGroupG(project), ...MANY_GROUPS],
-    },
-    { scenario: "s-g", state: "refused", groups: () => [UNMAPPED_GROUP] },
     { scenario: "done", state: "admin", groups: () => [] },
     {
       scenario: "done",

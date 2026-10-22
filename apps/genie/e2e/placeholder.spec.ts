@@ -1,51 +1,14 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
-import { rpcPost } from "./support/rpc.ts";
-import { signInThroughKeycloak } from "./support/sign-in.ts";
-
-/**
- * The criterion is WCAG 2.1 AA (DEC-21, `docs/core/tech-stack.md`), which is a
- * tag set, not "every rule axe ships". Scoping to it is deliberate: an unscoped
- * run also applies axe's best-practice rules, and one of them,
- * `page-has-heading-one`, is reported on the refused page below, which has no
- * level-one heading. That is a real best-practice finding and it is recorded in
- * the evidence; it is not a WCAG 2.1 AA failure, and asserting it here would
- * report the criterion as unmet when it is met.
- */
-const WCAG_21_AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-
-// Sign-in arrives with S2-04, so the browser is anonymous and the real
-// evaluator grants it nothing. The navigation omits the entry whose permission
-// refuses (R-34), and the route behind it is still mounted and still refuses
-// on the server (R-35): hiding is never the enforcement. The signed-in success
-// path at both viewports belongs to S2-04.
-test("navigation omits the module entry and its route still refuses", async ({
-  page,
-}) => {
-  await page.goto("/");
-
-  // `exact` because the accessible name of "Placeholder settings" also contains
-  // "Placeholder".
-  await expect(
-    page.getByRole("link", { name: "Placeholder", exact: true })
-  ).toHaveCount(0);
-
-  await page.goto("/placeholder");
-
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
-  // The refused page reveals nothing it would have rendered.
-  await expect(page.getByText("No records yet.")).toHaveCount(0);
-
-  const results = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
-
-  expect(results.violations).toEqual([]);
-});
+// The navigation filter, the refused route and the granted read (Spec 0 AC-11, R-34, R-35) are
+// proved signed in by `done-when.spec.ts`; the admin guard and the WCAG 2.1 AA scan of a refused
+// page by `section-2-screens.spec.ts`; the anonymous RPC envelope by
+// `testing/rpc-unauthenticated.integration.test.ts`.
 
 // The unscoped baseline, on the one screen that carries a level-one heading.
-// Every axe rule, best-practice included, is asserted here, so the scoped
-// assertion above is not the only accessibility check in this layer.
+// Every axe rule, best-practice included, is asserted here; the WCAG 2.1 AA scans
+// (DEC-21) of the other screens run in `section-2-screens.spec.ts`.
 test("the ordinary document passes the unscoped axe baseline", async ({
   page,
 }) => {
@@ -54,61 +17,6 @@ test("the ordinary document passes the unscoped axe baseline", async ({
   const results = await new AxeBuilder({ page }).analyze();
 
   expect(results.violations).toEqual([]);
-});
-
-test("the admin page is refused as well", async ({ page }) => {
-  await page.goto("/admin/placeholder");
-
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Placeholder settings" })
-  ).toHaveCount(0);
-});
-
-// The read procedure behind `placeholder:read`, through the real transport. An
-// anonymous request holds no session, so the envelope answers `unauthenticated`
-// at 401 rather than a bare permission refusal; the procedure's own `can()` is
-// unchanged and still holds no grant. The authorized read through a real role
-// assignment is proved at the integration layer.
-test("the placeholder read procedure refuses an anonymous request through the real transport", async ({
-  request,
-  baseURL,
-}) => {
-  const response = await rpcPost(
-    request,
-    `${baseURL}/api/rpc/placeholder/read`
-  );
-
-  expect(response.status()).toBe(401);
-
-  // SAFETY: the body is the RPC error body this route wrote, and the assertions
-  // below check the fields this test reads.
-  const body = (await response.json()) as {
-    json?: { status?: number; data?: { appCode?: string } };
-  };
-
-  expect(body.json?.status).toBe(401);
-  expect(body.json?.data?.appCode).toBe("unauthenticated");
-});
-
-// S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak
-// login form and holds `placeholder:read` through a real role assignment sees the module entry
-// and the read returns the row. Anonymous refusal above stays as the R-35 control.
-test("a signed-in person with a real grant sees the module entry and reads the placeholder row", async ({
-  page,
-}, testInfo) => {
-  await signInThroughKeycloak(page, {
-    email: e2eReaderEmail("placeholder", testInfo.project.name),
-  });
-
-  await expect(
-    page.getByRole("link", { name: "Placeholder", exact: true })
-  ).toBeVisible();
-
-  const response = await rpcPost(page.request, "/api/rpc/placeholder/read");
-
-  expect(response.status()).toBe(200);
-  expect(await response.text()).toContain("e2e-visible");
 });
 
 // The criterion is "the policy strips nothing" (DEC-31 as amended: no nonce, and

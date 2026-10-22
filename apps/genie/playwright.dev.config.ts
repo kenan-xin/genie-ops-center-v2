@@ -28,7 +28,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: `http://127.0.0.1:${PORT}` },
   projects: [
-    { name: "phone", use: { ...devices["Pixel 7"] } },
+    // DEC-25: a test tagged `@no-screen` renders no screen and runs at the desktop viewport only.
+    { name: "phone", grepInvert: /@no-screen/, use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
   ],
   globalSetup: "./e2e/dev/global-setup.ts",

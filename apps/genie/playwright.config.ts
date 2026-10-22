@@ -19,6 +19,9 @@ const RESOLVER_ARGS = [
   "--host-resolver-rules=MAP host.docker.internal 127.0.0.1",
 ];
 
+/** The DEC-25 tag of a test that renders no screen; the phone project leaves it out. */
+const NO_SCREEN = /@no-screen/;
+
 export default defineConfig({
   testDir: "./e2e",
   // The failed/invalid-provider browser proof needs the fixture image
@@ -53,6 +56,9 @@ export default defineConfig({
   projects: [
     {
       name: "phone",
+      // DEC-25: a test that renders no screen (headers, API refusals, redirects, database
+      // outcomes) carries the `@no-screen` tag and runs once, at the desktop viewport.
+      grepInvert: NO_SCREEN,
       use: {
         ...devices["Pixel 7"],
         launchOptions: { args: RESOLVER_ARGS },

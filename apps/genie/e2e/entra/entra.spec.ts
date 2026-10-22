@@ -77,7 +77,7 @@ async function directoryGroups(email: string): Promise<readonly string[]> {
   );
 }
 
-test("group object ids arrive in the claim, the pre-added group is filled, and its label names it (S-G 3-4, R-24b, R-24c)", async ({
+test("group object ids, nested ones included, arrive in the claim, the pre-added group is filled, and its label names it (S-G 3-4, 6, R-24b, R-24c)", async ({
   page,
 }) => {
   const entra = requireTenant();
@@ -87,6 +87,8 @@ test("group object ids arrive in the claim, the pre-added group is filled, and i
   const groups = await directoryGroups(entra.assigned.email);
 
   expect(groups).toContain(entra.groupId);
+  // S-G 6: a nested group arrives as its own value beside the direct one.
+  expect(groups).toContain(entra.parentGroupId);
 
   for (const value of groups) expect(value).toMatch(OBJECT_ID);
 
@@ -113,19 +115,6 @@ test("group object ids arrive in the claim, the pre-added group is filled, and i
   const inspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
   await expect(inspector.getByText(entra.groupId)).toBeVisible();
-});
-
-test("a nested group arrives as its own value beside the direct one (S-G 6)", async ({
-  page,
-}) => {
-  const entra = requireTenant();
-
-  await signInWithEntra(page, entra.assigned);
-
-  const groups = await directoryGroups(entra.assigned.email);
-
-  expect(groups).toContain(entra.groupId);
-  expect(groups).toContain(entra.parentGroupId);
 });
 
 test("Entra refuses a person the app is not assigned to, before any account exists (S-G 1-2)", async ({

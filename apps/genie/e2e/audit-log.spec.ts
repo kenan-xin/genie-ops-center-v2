@@ -12,9 +12,9 @@ const IDLE_MINUTES = 15;
 /**
  * The browser proof for the Audit log route.
  *
- * The anonymous cases stay as controls: the route stays mounted and refuses on the server (R-35),
- * and the list procedure refuses through the transport as `unauthenticated` at 401 rather than a
- * bare permission refusal (Spec 2 R-14). The signed-in success path at both viewports is the
+ * The anonymous case stays as a control: the route stays mounted and refuses on the server (R-35).
+ * The list procedure's anonymous `unauthenticated` refusal at 401 (Spec 2 R-14) is proved by
+ * `testing/rpc-unauthenticated.integration.test.ts`. The signed-in success path at both viewports is the
  * AC-16 case at the end; the expired-session case proves the RPC refusal lands the browser on the
  * sign-in page's session-expired state.
  */
@@ -27,28 +27,6 @@ test("the audit route refuses an anonymous request and reveals nothing", async (
   // The refused page reveals nothing it would have rendered.
   await expect(page.getByRole("heading", { name: "Audit log" })).toHaveCount(0);
   await expect(page.getByText(/Who did what/)).toHaveCount(0);
-});
-
-test("the audit list procedure refuses an anonymous request through the real transport", async ({
-  request,
-  baseURL,
-}) => {
-  // The browser's same-origin proof, which the RPC route checks before any procedure runs.
-  const response = await request.post(`${baseURL}/api/rpc/audit/list`, {
-    headers: { "sec-fetch-site": "same-origin" },
-    data: { json: {} },
-  });
-
-  expect(response.status()).toBe(401);
-
-  // SAFETY: the body is the RPC error body this route wrote, and the assertions below read the
-  // two fields this test checks.
-  const body = (await response.json()) as {
-    json?: { status?: number; data?: { appCode?: string } };
-  };
-
-  expect(body.json?.status).toBe(401);
-  expect(body.json?.data?.appCode).toBe("unauthenticated");
 });
 
 /** The current browser session's row id, read through the cookie the sign-in set. */

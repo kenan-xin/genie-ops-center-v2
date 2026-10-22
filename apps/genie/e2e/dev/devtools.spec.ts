@@ -83,19 +83,8 @@ test("the devtools open and report this deployment truthfully", async ({
   await expect(fact(page, "User")).toHaveText(
     "No user is signed in. Section 0 has no identity yet."
   );
-});
 
-test("the Query, Form and Pacer panels are available", async ({ page }) => {
-  test.setTimeout(180000);
-
-  await page.goto("/");
-
-  const trigger = page.getByRole("button", { name: /tanstack devtools/i });
-
-  await expect(trigger).toBeVisible(FIRST_PAINT);
-  await trigger.click();
-
-  // Asserted together rather than in a loop: they are independent, and this
+  // The Query, Form and Pacer panels sit beside it in the same shell. Asserted together rather than in a loop: they are independent, and this
   // repository's lint refuses `await` inside a loop.
   await Promise.all(
     ["TanStack Query", "TanStack Form", "TanStack Pacer"].map((name) =>

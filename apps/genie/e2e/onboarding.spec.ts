@@ -8,24 +8,26 @@ import {
 import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
-test("jit admits a realm person through a mapped directory group", async ({
-  page,
-}, testInfo) => {
-  const email = e2eOnboardingEmail("admitted", testInfo.project.name);
+test(
+  "jit admits a realm person through a mapped directory group",
+  { tag: "@no-screen" },
+  async ({ page }, testInfo) => {
+    const email = e2eOnboardingEmail("admitted", testInfo.project.name);
 
-  await signInThroughKeycloak(page, { email });
+    await signInThroughKeycloak(page, { email });
 
-  const [person] = await queryDatabase(
-    `select status || ':' || onboarding from "user" where email = '${email}'`
-  );
+    const [person] = await queryDatabase(
+      `select status || ':' || onboarding from "user" where email = '${email}'`
+    );
 
-  const [membership] = await queryDatabase(
-    `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
-  );
+    const [membership] = await queryDatabase(
+      `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
+    );
 
-  expect(person).toBe("active:jit");
-  expect(membership).toBe("1");
-});
+    expect(person).toBe("active:jit");
+    expect(membership).toBe("1");
+  }
+);
 
 test("jit refuses a person without a mapped group before creating an account", async ({
   page,
@@ -51,23 +53,25 @@ test("jit refuses a person without a mapped group before creating an account", a
   ).toEqual(["1"]);
 });
 
-test("removing all realm groups removes all idp memberships on next sign-in", async ({
-  page,
-}, testInfo) => {
-  const email = e2eOnboardingEmail("offboarded", testInfo.project.name);
+test(
+  "removing all realm groups removes all idp memberships on next sign-in",
+  { tag: "@no-screen" },
+  async ({ page }, testInfo) => {
+    const email = e2eOnboardingEmail("offboarded", testInfo.project.name);
 
-  expect(
-    await queryDatabase(
-      `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
-    )
-  ).toEqual(["1"]);
+    expect(
+      await queryDatabase(
+        `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
+      )
+    ).toEqual(["1"]);
 
-  await setRealmUserGroups(E2E_SIGN_IN_REALM, email, []);
-  await signInThroughKeycloak(page, { email });
+    await setRealmUserGroups(E2E_SIGN_IN_REALM, email, []);
+    await signInThroughKeycloak(page, { email });
 
-  expect(
-    await queryDatabase(
-      `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
-    )
-  ).toEqual(["0"]);
-});
+    expect(
+      await queryDatabase(
+        `select count(*) from group_member gm join "user" u on u.id = gm.user_id where u.email = '${email}' and gm.source = 'idp'`
+      )
+    ).toEqual(["0"]);
+  }
+);

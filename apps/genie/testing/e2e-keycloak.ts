@@ -71,7 +71,6 @@ export const E2E_READER_SPECS = [
   "auth",
   "sessions",
   "audit",
-  "s-a",
   "groups",
   "people",
   "screens",

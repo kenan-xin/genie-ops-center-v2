@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import {
@@ -318,18 +319,49 @@ export const SearchNarrowsTheList: Story = {
   },
 };
 
-export const AddPersonShowsTheRefusalAndStaysOpen: Story = {
-  args: { error: "A person with that email already exists." },
+/**
+ * A host that refuses Add person the way the People route does: it sets the catalogue message on
+ * `error` and rejects the promise.
+ */
+function RefusingHost(props: PeopleScreenProps) {
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  return (
+    <PeopleScreen
+      {...props}
+      error={error}
+      onAddPerson={async (input) => {
+        await props.onAddPerson?.(input);
+        setError("A person with that email already exists.");
+
+        throw new Error("email-taken");
+      }}
+    />
+  );
+}
+
+export const AddPersonRefusedOnSubmitStaysOpen: Story = {
+  render: (args) => <RefusingHost {...args} />,
   play: async ({ canvas }) => {
+    onAddPerson.mockClear();
+
     await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
     const dialog = within(canvas.getByRole("dialog", { name: "Add person" }));
 
-    await expect(dialog.getByRole("alert")).toHaveTextContent("already exists");
-    // The dialog stays open on a refusal.
+    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+
+    await expect(onAddPerson).toHaveBeenCalled();
+
+    // The refusal is shown inside the dialog, which stays open with the typed address.
+    await expect(await dialog.findByRole("alert")).toHaveTextContent(
+      "already exists"
+    );
     await expect(
       canvas.getByRole("dialog", { name: "Add person" })
     ).toBeInTheDocument();
+    await expect(dialog.getByLabelText("Email")).toHaveValue("ada@example.com");
   },
 };
 

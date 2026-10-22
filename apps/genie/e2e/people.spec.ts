@@ -8,8 +8,9 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 /**
  * S2-10 through the real realm, the real database, the real People screen and the real mail sink:
  * an administrator adds a brokered person, the invitation checkbox is checked by default (R-40a),
- * the `invitation-brokered` email reaches Mailpit with a sign-in link built from PUBLIC_URL, and
- * the audit row holds no link (R-44). Remove bans the row and keeps it (R-43), self-protection
+ * and the `invitation-brokered` email reaches Mailpit with a sign-in link built from PUBLIC_URL.
+ * The audit row that holds no link (R-44) is proved by the People router's integration tests, and
+ * the email-taken refusal that keeps the dialog open by the People screen's stories. Remove bans the row and keeps it (R-43), self-protection
  * disables the viewer's own Disable control with the server's reason (R-38), and the break-glass
  * account never appears (R-39). The local-account set-password flow is the S-F spec's subject.
  *
@@ -81,17 +82,6 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   expect(mail.Subject).toContain("invited");
   expect(linksIn(mail)).toContain(`${publicUrl}/sign-in`);
 
-  // R-44: the audit row records the send and never the link.
-  const [metadata] = await queryDatabase(
-    `select metadata::text from audit_event
-      where action = 'core:invitation_sent'
-        and target_id = (select id from "user" where email = '${personEmail}')
-      order by occurred_at desc limit 1`
-  );
-
-  expect(metadata).toBeDefined();
-  expect(metadata).not.toContain("http");
-
   // Open the added person and remove them. Remove confirms first, bans the row, and keeps it.
   await page
     .getByRole("button", { name: new RegExp(`E2E Added ${project}`) })
@@ -152,24 +142,4 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await page.getByLabel("Search people").fill(e2eBreakGlassEmail(project));
 
   await expect(page.getByText(/No people match/)).toBeVisible();
-});
-
-test("keeps the Add person dialog open and shows the email-taken refusal", async ({
-  page,
-}, testInfo) => {
-  const adminEmail = e2eReaderEmail("people", testInfo.project.name);
-
-  await signInThroughKeycloak(page, { email: adminEmail });
-  await page.goto("/admin/people");
-
-  await page.getByRole("button", { name: "Add person" }).click();
-
-  const dialog = page.getByRole("dialog", { name: "Add person" });
-
-  // The signed-in administrator's own address is already taken.
-  await dialog.getByLabel("Email", { exact: true }).fill(adminEmail);
-  await dialog.getByRole("button", { name: "Add person" }).press("Enter");
-
-  await expect(dialog.getByRole("alert")).toHaveText(/already exists/);
-  await expect(dialog).toBeVisible();
 });

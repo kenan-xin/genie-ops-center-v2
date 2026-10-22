@@ -238,29 +238,11 @@ test("a break-glass sign-in works with the realm unreachable (DEC-24)", async ({
     // The credential step completes with no realm: Better Auth answers, then the forced card.
     expect((await signedIn).status(), await stack.image.logs()).toBe(200);
 
+    // The forced card is the proof; the password change and enrollment that follow do not touch
+    // the realm and are the AC-15 and re-enroll tests' subject.
     await expect(page.getByLabel("Current password")).toBeVisible({
       timeout: COLD_REQUEST_MS,
     });
-
-    await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
-    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
-    await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
-    await page
-      .getByRole("button", { name: "Set password and continue" })
-      .click();
-
-    const manualKey = await page
-      .getByTestId("enrollment-manual-key")
-      .textContent();
-
-    await fillAuthenticatorCode(page, totpCode(manualKey ?? ""));
-    await page
-      .getByRole("button", { name: "Confirm and open the console" })
-      .click();
-
-    await expect
-      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
-      .toBe("/admin/account");
   } finally {
     await stack.image.stop();
     await stack.deployment.stop();

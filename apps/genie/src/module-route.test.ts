@@ -23,7 +23,7 @@ import { pinnedRoutePermission } from "./module-route.ts";
  * when that gate is *not* in the path: a route-level check must not rely on the
  * validator having run. That the validator also rejects these declarations is
  * proved separately in `packages/core`, and that the real browser refuses the
- * pages is proved by `e2e/placeholder.spec.ts`.
+ * pages is proved by `e2e/done-when.spec.ts` and `e2e/section-2-screens.spec.ts`.
  */
 
 /** A key a caller holds, which a bypassed declaration repoints an entry to. */

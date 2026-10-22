@@ -7,6 +7,7 @@ import {
 import { markSetupDone, startDisposablePostgres } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { startDiscoveryStub } from "./identity-discovery-stub.ts";
 import {
   startIdentityStandins,
   stopIdentityStandins,
@@ -113,28 +114,32 @@ describe("the R-54c address guard refuses to start the application", () => {
     }
   }, 180000);
 
-  it("exits when client-only mode runs alongside the bundled Keycloak (AC-12a)", async () => {
-    // The recorded address equals `KEYCLOAK_URL`, so only the realm-mode cause can refuse.
+  // Scenario S-A: a stack that starts after setup, against the Keycloak setup recorded and whose
+  // realm advertises that same address as its issuer, passes both start guards (R-54c, R-54d).
+  it("starts healthy when KEYCLOAK_URL is the recorded address and the issuer matches it", async () => {
+    const realm = await startDiscoveryStub();
+
     const database = await preparedDatabase({
-      realmMode: "customer",
-      keycloakUrlAtSetup: "http://127.0.0.1:1",
+      realmMode: "managed",
+      keycloakUrlAtSetup: realm.hostUrl,
       setupSatisfied: true,
     });
 
     try {
-      const result = await runBuiltAppUntilExit(
-        database.url,
-        scopedPort(3463),
-        { STACK_PROFILES: "bundled-keycloak" }
-      );
+      const app = await startBuiltApp(database.url, scopedPort(3463), {
+        KEYCLOAK_URL: realm.hostUrl,
+      });
 
-      expect(result.code).toBe(1);
-      expect(result.output).toContain(
-        "client-only mode, but the stack runs its own Keycloak"
-      );
-      expect(result.output).not.toContain("bootstrap complete");
+      try {
+        const health = await fetch(`${app.baseUrl}/api/health`);
+
+        expect(await health.text(), app.logs()).toBe("ok");
+      } finally {
+        await app.stop();
+      }
     } finally {
       await database.stop();
+      await realm.stop();
     }
   }, 180000);
 });

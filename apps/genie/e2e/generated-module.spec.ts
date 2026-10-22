@@ -10,7 +10,7 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
  *
  * These cases need a stack whose image carries a generated module, which the
  * ordinary end-to-end stack does not. `GENIE_MODULE_UNDER_TEST` names that module
- * and the file skips without it, so an ordinary run reports three skips rather
+ * and the file skips without it, so an ordinary run reports skips rather
  * than a pass. The run that does prove this is
  * `tools/generators/scripts/prove-generated-module.ts`, which builds the image,
  * sets the variable and fails if these cases do not execute.
@@ -48,19 +48,6 @@ test.skip(
   "set GENIE_MODULE_UNDER_TEST to the generated module's id"
 );
 
-test("the generated module's workspace page is refused", async ({ page }) => {
-  await page.goto(`/m/${id}`);
-
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
-
-  // The refusal is `can()`'s, not R-8's module-disabled gate landing first.
-  await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
-
-  // The refused page reveals nothing the module would have rendered.
-  await expect(page.getByText("No records yet.")).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
-});
-
 test("the generated module's admin page is refused", async ({ page }) => {
   await page.goto(`/admin/m/${id}`);
 
@@ -81,7 +68,13 @@ test("its navigation entry is omitted and its route still refuses", async ({
   await page.goto(`/m/${id}`);
 
   await expect(page.getByTestId("permission-denied")).toBeVisible();
+
+  // The refusal is `can()`'s, not R-8's module-disabled gate landing first.
   await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
+
+  // The refused page reveals nothing the module would have rendered.
+  await expect(page.getByText("No records yet.")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
 });
 
 // S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak

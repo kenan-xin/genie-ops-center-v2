@@ -270,9 +270,18 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
   await blockedPage.goto(`${baseUrl}/api/auth/sign-in/keycloak`);
   await blockedPage.locator("#username").fill(personEmail);
   await blockedPage.locator("#password").fill(E2E_USER_PASSWORD);
-  await blockedPage.locator("#kc-login").click();
 
-  await expect(blockedPage.getByText(/account is disabled/i)).toBeVisible();
+  // Keycloak answers the login with its own page rather than a redirect back to the application.
+  // Its wording is Keycloak's, so the status and where the browser stayed are what count.
+  const [login] = await Promise.all([
+    blockedPage.waitForResponse((response) =>
+      response.url().includes("/login-actions/authenticate")
+    ),
+    blockedPage.locator("#kc-login").click(),
+  ]);
+
+  expect(login.status()).toBe(200);
+  await blockedPage.waitForLoadState();
   expect(new URL(blockedPage.url()).origin).not.toBe(new URL(baseUrl).origin);
   expect(await personState(INVITE_DB, personEmail)).toBe("active:invited:1");
 

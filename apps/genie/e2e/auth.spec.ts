@@ -13,10 +13,11 @@ import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
- * The Better Auth surface as a browser sees it (Spec 2 AC-1, AC-5, R-6, R-7, R-17, R-62): the
- * catch-all serves only its allowlist, the stored realm tokens rest sealed, sign-out ends both
- * sessions, and a realm identity with the break-glass email is refused. Every case signs in
- * through the real Keycloak login form of the realm the setup run created from the template.
+ * The Better Auth surface as a browser sees it (Spec 2 AC-1, AC-5, R-7, R-17, R-62): the stored
+ * realm tokens rest sealed, sign-out ends both sessions, and a realm identity with the break-glass
+ * email is refused. Every case signs in through the real Keycloak login form of the realm the
+ * setup run created from the template. The catch-all allowlist (R-6, R-7) is proved over the
+ * built server by `testing/session-clearing.integration.test.ts`.
  */
 const END_SESSION = `${standinKeycloakUrl()}/realms/${E2E_SIGN_IN_REALM}/protocol/openid-connect/logout`;
 
@@ -53,56 +54,6 @@ function jwtPayload(token: string): {
     readonly sid?: string;
   };
 }
-
-test("an id token sign-in is refused before Better Auth and creates no session (R-6)", async ({
-  page,
-}) => {
-  await page.goto("/sign-in");
-
-  const response = await page.request.post("/api/auth/sign-in/social", {
-    data: { provider: "keycloak", idToken: { token: "a.b.c" } },
-  });
-
-  expect(response.status()).toBe(404);
-  expect(response.headers()["set-cookie"]).toBeUndefined();
-
-  const session = await page.request.get("/api/auth/get-session");
-
-  expect(await session.json()).toBeNull();
-});
-
-test("the token-reading and account-linking endpoints answer 404 with a session cookie (R-7)", async ({
-  page,
-}, testInfo) => {
-  const email = e2eReaderEmail("auth", testInfo.project.name);
-
-  await signInThroughKeycloak(page, { email });
-
-  const signedIn = await page.request.get("/api/auth/get-session");
-
-  expect(signedIn.status()).toBe(200);
-  expect(JSON.stringify(await signedIn.json())).toContain(email);
-
-  const answers = await Promise.all(
-    [
-      "get-access-token",
-      "refresh-token",
-      "account-info",
-      "link-social",
-      "unlink-account",
-      "list-accounts",
-    ].flatMap((path) => [
-      page.request
-        .get(`/api/auth/${path}`)
-        .then((response) => `GET ${path} ${response.status()}`),
-      page.request
-        .post(`/api/auth/${path}`, { data: { providerId: "keycloak" } })
-        .then((response) => `POST ${path} ${response.status()}`),
-    ])
-  );
-
-  for (const answer of answers) expect(answer).toMatch(/ 404$/);
-});
 
 test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7, R-17)", async ({
   page,
@@ -176,55 +127,53 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   expect(await realmSessionIds(E2E_SIGN_IN_REALM, email)).not.toContain(sid);
 });
 
-test("with no stored id token, sign-out falls back to client_id and still ends the realm session (R-17)", async ({
-  page,
-}, testInfo) => {
-  const email = e2eReaderEmail("auth", testInfo.project.name);
-  const earlier = await realmSessionIds(E2E_SIGN_IN_REALM, email);
+// The end-session URL is not spelled out here: a missing client_id, return address or state makes
+// Keycloak refuse the redirect or return elsewhere, which the landing below catches.
+test(
+  "with no stored id token, sign-out falls back to client_id and still ends the realm session (R-17)",
+  { tag: "@no-screen" },
+  async ({ page }, testInfo) => {
+    const email = e2eReaderEmail("auth", testInfo.project.name);
+    const earlier = await realmSessionIds(E2E_SIGN_IN_REALM, email);
 
-  await signInThroughKeycloak(page, { email });
+    await signInThroughKeycloak(page, { email });
 
-  // The stored token is gone, for example after a secret rotation that cannot unseal it.
-  await queryDatabase(
-    `update account set id_token = null where provider_id = 'keycloak' and user_id = (select id from "user" where email = '${email}')`
-  );
+    // The stored token is gone, for example after a secret rotation that cannot unseal it.
+    await queryDatabase(
+      `update account set id_token = null where provider_id = 'keycloak' and user_id = (select id from "user" where email = '${email}')`
+    );
 
-  // This browser's realm session: the one the sign-in above added.
-  const sessions = (await realmSessionIds(E2E_SIGN_IN_REALM, email)).filter(
-    (sid) => !earlier.includes(sid)
-  );
+    // This browser's realm session: the one the sign-in above added.
+    const sessions = (await realmSessionIds(E2E_SIGN_IN_REALM, email)).filter(
+      (sid) => !earlier.includes(sid)
+    );
 
-  expect(sessions).toHaveLength(1);
+    expect(sessions).toHaveLength(1);
 
-  const signOut = await page.request.post("/api/auth/sign-out", {
-    headers: { origin: new URL(page.url()).origin },
-    maxRedirects: 0,
-  });
+    const signOut = await page.request.post("/api/auth/sign-out", {
+      headers: { origin: new URL(page.url()).origin },
+      maxRedirects: 0,
+    });
 
-  expect(signOut.status()).toBe(303);
+    expect(signOut.status()).toBe(303);
 
-  const publicUrl = new URL(page.url()).origin;
-  const location = new URL(signOut.headers()["location"] ?? "");
+    const publicUrl = new URL(page.url()).origin;
+    const location = new URL(signOut.headers()["location"] ?? "");
 
-  expect(`${location.origin}${location.pathname}`).toBe(END_SESSION);
-  expect(location.searchParams.has("id_token_hint")).toBe(false);
-  expect(location.searchParams.get("client_id")).toBe(E2E_CLIENT_ID);
-  expect(location.searchParams.get("post_logout_redirect_uri")).toBe(publicUrl);
-  expect(location.searchParams.get("state")).toBe("signed_out");
+    // Without a hint Keycloak asks for confirmation; confirming ends the realm session and returns
+    // the browser to the signed-out page, so "You are signed out." is true.
+    await page.goto(location.toString());
+    await page.locator("#kc-logout").click();
 
-  // Without a hint Keycloak asks for confirmation; confirming ends the realm session and returns
-  // the browser to the signed-out page, so "You are signed out." is true.
-  await page.goto(location.toString());
-  await page.locator("#kc-logout").click();
+    await expect
+      .poll(() => page.url(), { timeout: 15_000 })
+      .toBe(`${publicUrl}/sign-in?error=signed_out`);
 
-  await expect
-    .poll(() => page.url(), { timeout: 15_000 })
-    .toBe(`${publicUrl}/sign-in?error=signed_out`);
+    const remaining = await realmSessionIds(E2E_SIGN_IN_REALM, email);
 
-  const remaining = await realmSessionIds(E2E_SIGN_IN_REALM, email);
-
-  expect(remaining).not.toContain(sessions[0]);
-});
+    expect(remaining).not.toContain(sessions[0]);
+  }
+);
 
 test("a realm identity with the break-glass email is refused and never linked (R-62)", async ({
   page,

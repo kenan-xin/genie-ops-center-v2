@@ -9,7 +9,9 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
  * AC-5), at the phone and the desktop viewport, signed in through the real Keycloak realm the
  * setup run created. The idle boundary itself is staged in the database - the tenant's real
  * window is 15 minutes, and no e2e run waits it out - while every read, slide, and refusal the
- * assertions see goes through the real routes.
+ * assertions see goes through the real routes. The foreign-origin refusals, the session-expired
+ * link to a live session and the idle sign-out are proved over the built server by
+ * `testing/session-clearing.integration.test.ts`.
  */
 
 /** The tenant's seeded idle window; the expired banner names it (R-14). */
@@ -157,98 +159,65 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
     .toBe("1");
 });
 
-test("the activity call slides a live session and answers the absolute idle expiry (R-15, R-15a)", async ({
-  page,
-}, testInfo) => {
-  const email = sessionsEmail(testInfo);
+test(
+  "the activity call slides a live session and answers the absolute idle expiry (R-15, R-15a)",
+  { tag: "@no-screen" },
+  async ({ page }, testInfo) => {
+    const email = sessionsEmail(testInfo);
 
-  await signInThroughKeycloak(page, { email });
+    await signInThroughKeycloak(page, { email });
 
-  const current = await currentSessionId(page, email);
+    const current = await currentSessionId(page, email);
 
-  const [before] = await queryDatabase(
-    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
-  );
+    const [before] = await queryDatabase(
+      `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+    );
 
-  await page.goto("/");
+    await page.goto("/");
 
-  // Loading and restoring a document use the server's read-only expiry, never the activity writer.
-  await page.reload();
+    // Loading and restoring a document use the server's read-only expiry, never the activity writer.
+    await page.reload();
 
-  const [afterNavigation] = await queryDatabase(
-    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
-  );
+    const [afterNavigation] = await queryDatabase(
+      `select coalesce(last_active_at::text, '') from session where id = '${current}'`
+    );
 
-  expect(afterNavigation).toBe(before);
+    expect(afterNavigation).toBe(before);
 
-  // The mount read answers the expiry the client exposes (R-15a).
-  const attribute = page.locator("[data-session-idle-expiry]");
+    // The mount read answers the expiry the client exposes (R-15a).
+    const attribute = page.locator("[data-session-idle-expiry]");
 
-  await expect(attribute).toHaveCount(1, { timeout: 10_000 });
+    await expect(attribute).toHaveCount(1, { timeout: 10_000 });
 
-  const mounted = await attribute.getAttribute("data-session-idle-expiry");
+    const mounted = await attribute.getAttribute("data-session-idle-expiry");
 
-  expect(mounted).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(mounted).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
-  // Real input: one pointer event reaches the route, which is the one writer of last activity.
-  const activity = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/session/activity") &&
-      response.status() === 200
-  );
+    // Real input: one pointer event reaches the route, which is the one writer of last activity.
+    const activity = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/session/activity") &&
+        response.status() === 200
+    );
 
-  await page.mouse.click(10, 10);
+    await page.mouse.click(10, 10);
 
-  const answer = await activity;
+    const answer = await activity;
 
-  // SAFETY: the route's own handler answers `{ idleExpiresAt }` as JSON.
-  const body = (await answer.json()) as { readonly idleExpiresAt?: string };
+    // SAFETY: the route's own handler answers `{ idleExpiresAt }` as JSON.
+    const body = (await answer.json()) as { readonly idleExpiresAt?: string };
 
-  expect(body.idleExpiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(body.idleExpiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
-  const [lastActive] = await queryDatabase(
-    `select last_active_at is not null from session where id = '${current}'`
-  );
+    // The slide wrote a later time than the sign-in left (none reads as an empty row), so the click
+    // really reached the route.
+    const [slid] = await queryDatabase(
+      `select (last_active_at > coalesce(nullif('${before ?? ""}', '')::timestamptz, '-infinity'))::text from session where id = '${current}'`
+    );
 
-  expect(lastActive).toBe("t");
-});
-
-test("foreign-origin state changes are refused without sliding or revoking a session", async ({
-  page,
-}, testInfo) => {
-  const email = sessionsEmail(testInfo);
-
-  await signInThroughKeycloak(page, { email });
-
-  const current = await currentSessionId(page, email);
-
-  const other = await insertOtherSession(email, {
-    userAgent: WINDOWS_CHROME_UA,
-    address: "192.0.2.52",
-  });
-
-  const [before] = await queryDatabase(
-    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
-  );
-
-  const activity = await page.request.post("/api/session/activity", {
-    headers: { origin: "https://evil.example.test" },
-  });
-
-  const revoke = await page.request.post("/api/session/revoke-others", {
-    headers: { origin: "https://evil.example.test" },
-  });
-
-  expect(activity.status()).toBe(403);
-  expect(revoke.status()).toBe(403);
-  expect(await sessionRowCount(other)).toBe("1");
-
-  const [after] = await queryDatabase(
-    `select coalesce(last_active_at::text, '') from session where id = '${current}'`
-  );
-
-  expect(after).toBe(before);
-});
+    expect(slid).toBe("true");
+  }
+);
 
 test("an idle session is refused and the browser lands on the expired banner (R-14, R-17a)", async ({
   page,
@@ -444,57 +413,4 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
   await expect
     .poll(() => sessionRowCount(current), { timeout: 10_000 })
     .toBe("0");
-});
-
-test("a link to the session-expired route does not sign a live browser out (genie-ops-center-v2-1rr0)", async ({
-  page,
-}, testInfo) => {
-  const email = sessionsEmail(testInfo);
-
-  await signInThroughKeycloak(page, { email });
-
-  const current = await currentSessionId(page, email);
-
-  // Another site can link here, and the session cookie travels on a top-level link.
-  await page.goto("/api/auth/session-expired");
-
-  await expect
-    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
-    .toBe("/");
-
-  expect(await currentSessionId(page, email)).toBe(current);
-
-  await page.goto("/account");
-
-  await expect(page.getByText(email)).toBeVisible();
-});
-
-test("sign-out of an idle session deletes its row and clears the cookie without a Keycloak redirect (R-17)", async ({
-  page,
-}, testInfo) => {
-  const email = sessionsEmail(testInfo);
-
-  await signInThroughKeycloak(page, { email });
-
-  const current = await currentSessionId(page, email);
-  await queryDatabase(
-    `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
-  );
-
-  const response = await page.request.post("/api/auth/sign-out", {
-    headers: { origin: new URL(page.url()).origin },
-    maxRedirects: 0,
-  });
-
-  expect(response.status()).toBe(303);
-  expect(new URL(response.headers()["location"] ?? "").pathname).toBe(
-    "/sign-in"
-  );
-  expect(
-    new URL(response.headers()["location"] ?? "").searchParams.get("error")
-  ).toBe("session_expired");
-  expect(response.headers()["set-cookie"] ?? "").toMatch(
-    /genie-session=;.*Expires=Thu, 01 Jan 1970/
-  );
-  expect(await sessionRowCount(current)).toBe("0");
 });

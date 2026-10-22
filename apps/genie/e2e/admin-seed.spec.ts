@@ -84,7 +84,12 @@ test("AC-19: a member without an admin key sees no admin switch", async ({
     email: e2eReaderEmail("placeholder", testInfo.project.name),
   });
 
-  await expect(page.locator('nav[aria-label] a[href^="/admin"]')).toHaveCount(
-    0
-  );
+  // The navigation rendered with the reader's own entry, so the absent admin entry is not a
+  // selector that matches nothing.
+  const navigation = page.locator("nav[aria-label]").first();
+
+  await expect(
+    navigation.getByRole("link", { name: "Placeholder", exact: true })
+  ).toBeVisible();
+  await expect(navigation.locator('a[href^="/admin"]')).toHaveCount(0);
 });
