@@ -36,7 +36,9 @@ npx shadcn@latest view @diceui/file-upload
 npx shadcn@latest add @diceui/file-upload --dry-run
 ```
 
-The shadcn MCP server (`npx shadcn@latest mcp init --client claude`) searches every registry that `components.json` configures. Its tool names and its access to registries that are not configured are unconfirmed.
+The `shadcn` MCP server is registered for Claude Code (`.mcp.json`), Codex (`.codex/config.toml`) and OpenCode (`opencode.json`). Its tools are `get_project_registries`, `list_items_in_registries`, `search_items_in_registries`, `view_items_in_registries`, `get_item_examples_from_registries`, `get_add_command_for_items` and `get_audit_checklist`. The server reads `components.json` from its process directory and ignores `--cwd` (tested with shadcn 4.22.1), so each configuration starts it inside `packages/ui`.
+
+The server refuses a namespace that is not under `registries` in `packages/ui/components.json`, even when the official index lists it. Only `@shadcn` works without an entry. To adopt a registry, add its namespace and the URL from the [official index](https://ui.shadcn.com/r/registries.json) to that `registries` block, in the same change that rates it on this page. Agents then see it with no other configuration.
 
 These rules apply to every component that you take from a source on this page:
 
@@ -156,4 +158,4 @@ The shadcn.io metadata says that shadcn-admin runs on Next.js. Its `package.json
 - The install URLs of Tweakcn and StyleGlide, and the item count of ElevenLabs UI.
 - The React Aria base of JollyUI, inferred from component names only.
 - Whether AI Elements by Vercel and the Radix-style items of Kibo UI break on a Base UI project. This is inferred from `asChild` in their code, not tested.
-- Whether `npx shadcn search` without a registry argument searches every configured registry, and the tool names of the shadcn MCP server.
+- Whether `npx shadcn search` without a registry argument searches every configured registry.

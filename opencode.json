@@ -6,6 +6,15 @@
       "command": ["graft", "mcp"],
       "enabled": true
     },
+    "shadcn": {
+      "type": "local",
+      "command": [
+        "sh",
+        "-c",
+        "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@latest mcp"
+      ],
+      "enabled": true
+    },
     "nx-mcp": {
       "type": "local",
       "command": ["npx", "nx", "mcp"],

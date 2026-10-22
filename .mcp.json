@@ -4,6 +4,13 @@
       "command": "graft",
       "args": ["mcp"]
     },
+    "shadcn": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@latest mcp"
+      ]
+    },
     "genie-storybook": {
       "type": "http",
       "url": "http://127.0.0.1:6006/mcp"

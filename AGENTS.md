@@ -34,6 +34,10 @@ Start Storybook with `nx run @genie/storybook:storybook` (it serves `http://127.
 - If a property is not documented, ask instead of guessing.
 - Check your work with `test-run` on the stories you touched.
 
+### shadcn MCP
+
+The `shadcn` MCP server (in `.mcp.json`, `.codex/config.toml` and `opencode.json`) searches, views and gives add commands for the registries under `registries` in `packages/ui/components.json`. Use it for the registry steps of the order above. To adopt a new registry, add its namespace to that block, as [UI component sources](docs/architecture/ui-component-sources.md) describes.
+
 TanStack Devtools is mounted once, in `apps/genie/src/devtools/`, and only in development. Add a panel there for new client state rather than logging to the console. Every devtools package stays a development dependency, and `apps/genie/testing/devtools-exclusion.test.ts` fails if any of them reaches the production build. That folder's `README.md` holds the rest, including the rule for adding a probe to the exclusion test.
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.

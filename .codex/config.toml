@@ -5,3 +5,8 @@ hooks = true
 [mcp_servers."nx-mcp"]
 command = "npx"
 args = ["nx", "mcp"]
+
+# Starts in packages/ui because shadcn mcp reads components.json from its process directory and ignores --cwd.
+[mcp_servers.shadcn]
+command = "sh"
+args = ["-c", "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@latest mcp"]
