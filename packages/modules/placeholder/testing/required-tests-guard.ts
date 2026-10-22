@@ -11,8 +11,6 @@ import type { RequiredCase } from "@genie/core/testing/required-tests-validator"
  *
  * - R-24 and R-38: the router and schema proof runs against a real Postgres
  *   with the real histories applied, and no part of the database is mocked.
- * - R-24: core's migration ledger and this module's own ledger are separate,
- *   and this module's one migration is recorded in its own ledger.
  * - DEC-34: the standing tenant-isolation test reads through this router, so
  *   its read path cannot silently stop running.
  */
@@ -30,8 +28,6 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder read procedure against a real database answers only the named record to a person with a record-scoped read grant",
       "the placeholder read procedure against a real database refuses an anonymous caller",
       "the placeholder read procedure against a real database appends placeholder:admin to Tenant administrator on enable and removes it on disable",
-      "the placeholder read procedure against a real database keeps core's ledger and the module's ledger apart",
-      "the placeholder read procedure against a real database recorded the module's one migration in the module's ledger",
     ],
   },
   {

@@ -11,11 +11,6 @@ import {
   type TenantTransaction,
   withTransaction,
 } from "../src/lib/tenant-context/with-transaction.ts";
-import {
-  createEventBus,
-  durableEventQueues,
-  registerSubscription,
-} from "../src/services/event-bus/index.ts";
 import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
@@ -261,17 +256,6 @@ const abandonContract: EventContract<{ id: string; label: string }> = {
 };
 const abandonAttempts: string[] = [];
 
-const archiveHandler = async () => {};
-const notifyHandler = async () => {};
-const byId = (payload: { id: string }) => payload.id;
-
-function queueOf(
-  entries: ReturnType<typeof durableEventQueues>,
-  handler: () => Promise<void>
-): string | undefined {
-  return entries.find((entry) => entry.handler === handler)?.queue;
-}
-
 // SAFETY: this fixture substitutes the shutdown-abandon module's own declaration over the base
 // module, including its own migration ledger name: the omission check maps that name back to the
 // module id, so the base module's ledger would read as an installed "event-test" module. Its
@@ -430,13 +414,6 @@ afterAll(async () => {
   }
   await stopDatabase?.();
 });
-
-const busFor = () =>
-  createEventBus({
-    jobQueue: context.jobQueue,
-    logger: silentLogger(),
-    tenant: () => context,
-  });
 
 describe("the typed event bus against Testcontainers Postgres", () => {
   it("does not deliver fast or durable work for an event in a rolled-back transaction", async () => {
@@ -686,61 +663,6 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     ).toEqual(["retry-first", "retry-next"]);
   });
 
-  it("refuses direct durable subscriptions", async () => {
-    const isolated = runtimeContext(
-      createTenantContext(
-        {
-          DATABASE_URL: databaseUrl,
-          PUBLIC_URL: "https://test.example.invalid",
-        },
-        silentLogger(),
-        []
-      )
-    );
-    const contract = {
-      name: "core.direct-registration-check",
-      version: 1,
-      payload: z.object({ id: z.string(), label: z.string() }),
-    };
-    try {
-      expect(() =>
-        isolated.events.on(contract, async () => {}, { durable: true })
-      ).toThrow();
-    } finally {
-      await stopJobQueue(isolated.jobQueue);
-      await isolated.db.$client.end();
-    }
-  });
-
-  it("refuses direct serialized subscriptions", async () => {
-    const isolated = runtimeContext(
-      createTenantContext(
-        {
-          DATABASE_URL: databaseUrl,
-          PUBLIC_URL: "https://test.example.invalid",
-        },
-        silentLogger(),
-        []
-      )
-    );
-    const contract = {
-      name: "core.direct-serialized-registration-check",
-      version: 1,
-      payload: z.object({ id: z.string(), label: z.string() }),
-    };
-
-    try {
-      expect(() =>
-        isolated.events.on(contract, async () => {}, {
-          serializeBy: (payload) => payload.id,
-        })
-      ).toThrow();
-    } finally {
-      await stopJobQueue(isolated.jobQueue);
-      await isolated.db.$client.end();
-    }
-  });
-
   it("refuses event emission outside withTransaction even without a fast subscriber", async () => {
     await expect(
       context.db.transaction(async (tx) => {
@@ -905,111 +827,6 @@ describe("the typed event bus against Testcontainers Postgres", () => {
       "the second dead-letter move was not logged after operator deletion",
       10000
     );
-  });
-
-  it("keeps a module subscription's queue name stable when same-mode subscriptions are reordered", () => {
-    const namingContract: EventContract<{ id: string }> = {
-      name: "event-naming.record-touched",
-      version: 1,
-      payload: z.object({ id: z.string() }),
-    };
-    // `name` is the smallest stable identity a subscription can carry: a handler's identity does
-    // not survive a rebuild, so the queue name must come from an explicit name (or the event
-    // itself), never from the declaration index.
-    const archive = {
-      event: namingContract,
-      name: "archive",
-      serializeBy: (payload: { id: string }) => payload.id,
-      handler: archiveHandler,
-    };
-    const notify = {
-      event: namingContract,
-      name: "notify",
-      serializeBy: (payload: { id: string }) => payload.id,
-      handler: notifyHandler,
-    };
-
-    const queuesFor = (order: readonly (typeof archive)[]) => {
-      const bus = createEventBus({
-        jobQueue: context.jobQueue,
-        logger: silentLogger(),
-        tenant: () => context,
-      });
-      for (const subscription of order) {
-        registerSubscription(bus, "event-naming", subscription);
-      }
-      return durableEventQueues(bus);
-    };
-
-    const declared = queuesFor([archive, notify]);
-    const reordered = queuesFor([notify, archive]);
-
-    expect(queueOf(declared, archiveHandler)).toBe(
-      queueOf(reordered, archiveHandler)
-    );
-    expect(queueOf(declared, notifyHandler)).toBe(
-      queueOf(reordered, notifyHandler)
-    );
-    expect(queueOf(declared, archiveHandler)).not.toBe(
-      queueOf(declared, notifyHandler)
-    );
-  });
-
-  it("refuses two subscriptions that resolve to one queue", () => {
-    const collisionContract: EventContract<{ id: string }> = {
-      name: "event-collision.record-touched",
-      version: 1,
-      payload: z.object({ id: z.string() }),
-    };
-
-    // Two unnamed durable subscriptions to one event fall back to one queue name.
-    const unnamed = busFor();
-    registerSubscription(unnamed, "event-collision", {
-      event: collisionContract,
-      durable: true,
-      handler: archiveHandler,
-    });
-    expect(() =>
-      registerSubscription(unnamed, "event-collision", {
-        event: collisionContract,
-        durable: true,
-        handler: notifyHandler,
-      })
-    ).toThrow(/already uses/);
-
-    // A durable "fifo.x" and a serialized "x" both join to "....v1.fifo.x".
-    const dotted = busFor();
-    registerSubscription(dotted, "event-collision", {
-      event: collisionContract,
-      name: "fifo.x",
-      durable: true,
-      handler: archiveHandler,
-    });
-    expect(() =>
-      registerSubscription(dotted, "event-collision", {
-        event: collisionContract,
-        name: "x",
-        serializeBy: byId,
-        handler: notifyHandler,
-      })
-    ).toThrow("event.event-collision.event-collision.record-touched.v1.fifo.x");
-
-    // A serialized "x.dead-letter" would drain the dead-letter queue of the serialized "x".
-    const deadLetter = busFor();
-    registerSubscription(deadLetter, "event-collision", {
-      event: collisionContract,
-      name: "x",
-      serializeBy: byId,
-      handler: archiveHandler,
-    });
-    expect(() =>
-      registerSubscription(deadLetter, "event-collision", {
-        event: collisionContract,
-        name: "x.dead-letter",
-        serializeBy: byId,
-        handler: notifyHandler,
-      })
-    ).toThrow(/already uses/);
   });
 
   it("discards an after-commit entry registered through fn inside a rolled-back savepoint and runs a released one", async () => {

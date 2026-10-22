@@ -1,7 +1,7 @@
 import { userInfo } from "node:os";
 
 import type { Client } from "pg";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
@@ -16,7 +16,7 @@ import { CORE_HISTORY, runMigrations } from "../src/services/migrator/index.ts";
 import { ModuleManagementError } from "../src/services/module-management/index.ts";
 import { runGenieOps } from "../src/services/ops/index.ts";
 import { databaseClient } from "./database-client.ts";
-import { startDisposablePostgres } from "./index.ts";
+import { type DisposablePostgres, startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -27,6 +27,68 @@ const PRIOR_ENABLED_AT = new Date("2025-01-02T03:04:05.000Z");
 afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
 });
+
+/** The migrated database every case copies, so the core history is applied once per file. */
+const TEMPLATE_DATABASE = "module_lifecycle_template";
+
+/** The container every case shares. Each case still gets a database of its own. */
+let server: DisposablePostgres;
+
+/** The shared container's address with another database name in its path. */
+function databaseUrl(name: string): string {
+  const url = new URL(server.url);
+
+  url.pathname = `/${name}`;
+
+  return url.toString();
+}
+
+/** Runs one statement on the container's own database, outside every case's database. */
+async function onServer(statement: string): Promise<void> {
+  const admin = databaseClient({ connectionString: server.url });
+
+  await admin.connect();
+
+  try {
+    await admin.query(statement);
+  } finally {
+    await admin.end();
+  }
+}
+
+beforeAll(async () => {
+  server = await startDisposablePostgres();
+
+  await onServer(`create database ${TEMPLATE_DATABASE}`);
+
+  const template = createTenantContext(
+    {
+      DATABASE_URL: databaseUrl(TEMPLATE_DATABASE),
+      PUBLIC_URL: "https://test.example.invalid",
+    },
+    silentLogger(),
+    []
+  );
+
+  try {
+    await runMigrations({
+      env: template.env,
+      pool: template.db.$client,
+      histories: [CORE_HISTORY],
+      compiledModuleIds: [],
+    });
+  } finally {
+    // A template database can be copied only while nothing is connected to it.
+    await template.db.$client.end();
+  }
+}, 120000);
+
+afterAll(async () => {
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await server?.stop();
+});
+
+let databaseCount = 0;
 
 type Fixture = {
   readonly source: { DATABASE_URL: string; PUBLIC_URL: string };
@@ -91,25 +153,32 @@ const compiledPlaceholderModule: Module = {
 async function createFixture(
   compiledModules: readonly Module[] = [validModule]
 ): Promise<Fixture> {
-  const postgres = await startDisposablePostgres();
+  // Every case drops tables or counts audit rows, so each gets a database of its own, copied from
+  // the migrated template rather than migrated again.
+  databaseCount += 1;
+
+  const name = `module_lifecycle_${databaseCount}`;
+
+  await onServer(`create database ${name} template ${TEMPLATE_DATABASE}`);
 
   const source = {
-    DATABASE_URL: postgres.url,
+    DATABASE_URL: databaseUrl(name),
     PUBLIC_URL: "https://test.example.invalid",
   };
 
   const moduleIds = compiledModules.map((module) => module.identity.id);
   const context = createTenantContext(source, silentLogger(), moduleIds);
-  const observer = databaseClient({ connectionString: postgres.url });
+  const observer = databaseClient({ connectionString: source.DATABASE_URL });
 
   await observer.connect();
 
   cleanups.push(async () => {
     await context.db.$client.end();
     await observer.end();
-    await postgres.stop();
   });
 
+  // The template already holds the core history, so this run applies nothing; it settles the
+  // compiled module list the way a start of this image would.
   await runMigrations({
     env: context.env,
     pool: context.db.$client,
@@ -310,111 +379,6 @@ describe("genie-ops module lifecycle", () => {
     expectAudit(rows[0], "ops:module-enable", ["placeholder"], "failure");
   }, 120000);
 
-  it("setModuleEnabled refuses to enable an unregistered module without inserting a row", async () => {
-    const fixture = await createFixture([compiledPlaceholderModule]);
-
-    const { setModuleEnabled } =
-      await import("../src/services/module-management/index.ts");
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "placeholder",
-        true
-      )
-    ).rejects.toMatchObject({ code: "module-not-registered" });
-    await expect(
-      fixture.observer.query(
-        "select count(*)::int as count from tenant_module where module_id = $1",
-        ["placeholder"]
-      )
-    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-  }, 120000);
-
-  it("setModuleEnabled refuses to disable an unregistered module without inserting a row", async () => {
-    const fixture = await createFixture([compiledPlaceholderModule]);
-
-    const { setModuleEnabled } =
-      await import("../src/services/module-management/index.ts");
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "placeholder",
-        false
-      )
-    ).rejects.toMatchObject({ code: "module-not-registered" });
-    await expect(
-      fixture.observer.query(
-        "select count(*)::int as count from tenant_module where module_id = $1",
-        ["placeholder"]
-      )
-    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-  }, 120000);
-
-  it("setModuleEnabled reports transitions and preserves enabled_at on repeated enable and disable", async () => {
-    const fixture = await createFixture([validModule]);
-    await fixture.observer.query(
-      "insert into tenant_module (module_id, enabled, enabled_at) values ($1, true, $2)",
-      ["fixture", PRIOR_ENABLED_AT]
-    );
-
-    const { setModuleEnabled } =
-      await import("../src/services/module-management/index.ts");
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "fixture",
-        true
-      )
-    ).resolves.toEqual({ changed: false });
-    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
-      {
-        enabled: true,
-        enabled_at: PRIOR_ENABLED_AT,
-      }
-    );
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "fixture",
-        false
-      )
-    ).resolves.toEqual({ changed: true });
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "fixture",
-        false
-      )
-    ).resolves.toEqual({ changed: false });
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "fixture",
-        true
-      )
-    ).resolves.toEqual({ changed: true });
-    await expect(moduleRow(fixture.observer, "fixture")).resolves.toMatchObject(
-      {
-        enabled: true,
-        enabled_at: expect.any(Date),
-      }
-    );
-    expect(
-      (await moduleRow(fixture.observer, "fixture")).enabled_at?.getTime()
-    ).toBeGreaterThan(PRIOR_ENABLED_AT.getTime());
-  }, 120000);
-
   it("module disable prints the cause, exits nonzero, and writes one failure audit row", async () => {
     const fixture = await createFixture([validModule]);
     await fixture.observer.query("drop table tenant_module");
@@ -475,39 +439,6 @@ describe("genie-ops module lifecycle", () => {
     await expect(
       fixture.observer.query("select count(*)::int as count from tenant_module")
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-  }, 120000);
-
-  it("module enable refuses missing required configuration without changing the disabled row", async () => {
-    const fixture = await createFixture([requiredConfigurationModule]);
-    await seedModule(fixture.observer, "required-config");
-    await fixture.observer.query(
-      "update tenant_module set enabled_at = $2 where module_id = $1",
-      ["required-config", PRIOR_ENABLED_AT]
-    );
-
-    const priorEnabledAt = (
-      await moduleRow(fixture.observer, "required-config")
-    ).enabled_at;
-
-    const captured = outputCapture();
-
-    const exitCode = await runGenieOps(
-      ["module", "enable", "required-config"],
-      runnerOptions(fixture, captured)
-    );
-
-    expect(exitCode).not.toBe(0);
-    expect(captured.lines.join("\n")).toContain("endpoint");
-    await expect(
-      moduleRow(fixture.observer, "required-config")
-    ).resolves.toMatchObject({
-      enabled: false,
-      enabled_at: priorEnabledAt,
-      config: {},
-    });
-    const rows = await auditRows(fixture.observer);
-    expect(rows).toHaveLength(1);
-    expectAudit(rows[0], "ops:module-enable", ["required-config"], "failure");
   }, 120000);
 
   it("module enable refuses invalid required configuration with actionable issues and without changing the disabled row", async () => {

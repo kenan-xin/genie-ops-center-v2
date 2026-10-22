@@ -4,6 +4,7 @@ import { AppError } from "../../lib/errors/index.ts";
 import { createPublicUrl } from "../../lib/tenant-context/index.ts";
 import type { LogValue } from "../logging/index.ts";
 import { createLogger, silentLogger } from "../logging/index.ts";
+import { closeServer, startSmtpSink } from "./__fixtures__/smtp-sink.ts";
 import type { MailerDependencies, MailerEnvironment } from "./index.ts";
 import { createMailer } from "./index.ts";
 
@@ -477,4 +478,193 @@ describe("the mailer's link variables (R-70)", () => {
 
     expect(incomplete.branding).toBeDefined();
   });
+});
+
+const LOG_LEVELS = [
+  "fatal",
+  "error",
+  "warn",
+  "info",
+  "debug",
+  "trace",
+  "silent",
+] as const;
+
+function smtpEnv(smtpUrl: string): MailerEnvironment {
+  return {
+    mailProvider: "smtp",
+    mailFrom: "mailer@example.invalid",
+    resendApiKey: undefined,
+    smtpUrl,
+    runtimeMode: "production",
+    publicUrl: PUBLIC_URL,
+  };
+}
+
+function brandedDeps(
+  logger: MailerDependencies["logger"],
+  emailSenderName: string | null = "Acme Security"
+): MailerDependencies {
+  return {
+    branding: {
+      get: () => Promise.resolve({ companyName: "Acme", emailSenderName }),
+    },
+    logger,
+    publicUrl: createPublicUrl(PUBLIC_URL),
+  };
+}
+
+describe("the mailer's delivery", () => {
+  it("refuses an unconfigured production mailer before a caller writes, and on send", async () => {
+    const fetchMock = wireOff();
+
+    const mailer = createMailer(
+      { ...developmentEnv(), runtimeMode: "production" },
+      deps(silentLogger())
+    );
+
+    // requireConfigured is the gate an action calls before it creates a row (R-45).
+    expect(() => mailer.requireConfigured()).toThrow(
+      expect.objectContaining({ code: "mail-not-configured" })
+    );
+
+    const error = await refused(() =>
+      mailer.send({
+        templateId: "new-device-sign-in",
+        to: "person@example.com",
+        variables: { link: "/records" },
+      })
+    );
+
+    expect(error.code).toBe("mail-not-configured");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { case: "an invalid recipient", to: "not-an-email" },
+    {
+      case: "a comma-joined recipient list",
+      to: "ada@example.invalid, grace@example.invalid",
+    },
+  ])("refuses $case before sending", async ({ to }) => {
+    const fetchMock = wireAccepting();
+
+    const mailer = createMailer(resendEnv(), deps(silentLogger()));
+
+    const error = await refused(() =>
+      mailer.send({ templateId: "new-device-sign-in", to, variables: {} })
+    );
+
+    expect(error.code).toBe("invalid-input");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("quotes comma and address-like sender names as exactly one From address", async () => {
+    const sink = await startSmtpSink();
+
+    try {
+      const expected = [
+        { name: "Acme, Inc", header: '"Acme, Inc" <mailer@example.invalid>' },
+        {
+          name: "Acme <x@evil>,",
+          header: '"Acme <x@evil>," <mailer@example.invalid>',
+        },
+      ];
+
+      for (const sender of expected) {
+        // oxlint-disable-next-line no-await-in-loop -- one message per sender, in order.
+        await createMailer(
+          smtpEnv(sink.url),
+          brandedDeps(silentLogger(), sender.name)
+        ).send({
+          templateId: "new-device-sign-in",
+          to: "ada@example.invalid",
+          variables: { link: "/records" },
+        });
+      }
+
+      const fromHeaders = sink.messages.map(
+        (message) => message.match(/^From:\s*(.+)$/im)?.[1]
+      );
+
+      expect(fromHeaders).toEqual(expected.map(({ header }) => header));
+      expect(
+        sink.messages.every(
+          (message) => (message.match(/^From:/gim) ?? []).length === 1
+        )
+      ).toBe(true);
+    } finally {
+      await closeServer(sink.server);
+    }
+  });
+
+  // R-49: a provider's rejection can echo the message, including a path-segment token the
+  // redactor cannot see, so the failure line carries the code and status only, at every level.
+  it.each([
+    {
+      link: "query-token link",
+      url: `${PUBLIC_URL}/invite?token=query-token-secret`,
+      token: "query-token-secret",
+    },
+    {
+      link: "path-token link",
+      url: `${PUBLIC_URL}/invite/path-token-secret`,
+      token: "path-token-secret",
+    },
+  ])(
+    "never logs an SMTP failure reply containing a $link at any level",
+    async ({ url, token }) => {
+      const sink = await startSmtpSink({
+        dataFailureReply: `554 5.7.1 rejected link ${url}`,
+      });
+
+      try {
+        // oxlint-disable no-await-in-loop -- each level gets its own logger and send, in order.
+        for (const logLevel of LOG_LEVELS) {
+          const chunks: string[] = [];
+
+          const logger = createLogger(
+            { logLevel },
+            { write: (line: string) => void chunks.push(line) }
+          );
+
+          const stdout = vi.spyOn(process.stdout, "write");
+
+          const stderr = vi.spyOn(process.stderr, "write");
+
+          const error = await refused(() =>
+            createMailer(smtpEnv(sink.url), brandedDeps(logger)).send({
+              templateId: "invitation-brokered",
+              to: "ada@example.invalid",
+              variables: { link: url, invitationUrl: url },
+            })
+          );
+
+          const combined = [
+            ...chunks,
+            ...stdout.mock.calls.map(([chunk]) => String(chunk)),
+            ...stderr.mock.calls.map(([chunk]) => String(chunk)),
+          ].join("");
+
+          stdout.mockRestore();
+          stderr.mockRestore();
+
+          // The thrown error is the safe catalogue error: neither the link nor the reply.
+          expect(error.code).toBe("mail-delivery-failed");
+          expect(String(error)).not.toContain(token);
+          expect(combined).not.toContain(url);
+          expect(combined).not.toContain(token);
+
+          // A mailer that logged nothing would pass the checks above, so pin the failure line at
+          // every level that emits an error (all but the two quiet ones).
+          if (logLevel !== "fatal" && logLevel !== "silent") {
+            expect(combined).toContain("mail-delivery-failed");
+          }
+        }
+        // oxlint-enable no-await-in-loop
+      } finally {
+        await closeServer(sink.server);
+      }
+    }
+  );
 });

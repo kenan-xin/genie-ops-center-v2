@@ -292,35 +292,6 @@ async function recordMismatchedAddress(
 }
 
 describe("the R-54c identity-command guard", () => {
-  it("refuses a listed identity command on an address mismatch and writes a failing row", async () => {
-    const { source, context } = await fixture();
-
-    await recordMismatchedAddress(context);
-
-    const captured = outputCapture();
-
-    await expect(
-      runGenieOps(["module", "enable", "fixture"], {
-        source: { ...source, ...AUTH_ENV },
-        compiledModules: [],
-        histories: [],
-        identityCommands: ["module-enable"],
-        ...captured,
-      })
-    ).resolves.not.toBe(0);
-
-    expect(captured.lines.join("\n")).toContain(
-      "KEYCLOAK_URL is not the Keycloak that setup used"
-    );
-
-    const rows = await auditRows(context);
-
-    expect(rows.at(-1)).toMatchObject({
-      action: "ops:module-enable",
-      metadata: { outcome: "failure" },
-    });
-  }, 120000);
-
   it("lists idp set, and only idp set, as an identity command", () => {
     expect(IDENTITY_COMMANDS).toEqual(["idp-set"]);
   });
@@ -340,9 +311,10 @@ describe("the R-54c identity-command guard", () => {
           "--protocol",
           "oidc",
           "--issuer-url",
-          "https://idp.example.com/realms/company",
+          "http://idp.example.com/realms/company",
           "--client-id",
           "genie-oidc",
+          "--allow-http",
         ],
         {
           source: { ...source, ...AUTH_ENV },
@@ -361,9 +333,13 @@ describe("the R-54c identity-command guard", () => {
 
     const rows = await auditRows(context);
 
+    // The refused run is audited with its flags, --allow-http included.
     expect(rows.at(-1)).toMatchObject({
       action: "ops:idp-set",
-      metadata: { outcome: "failure" },
+      metadata: {
+        outcome: "failure",
+        args: expect.arrayContaining(["--allow-http"]),
+      },
     });
   }, 120000);
 
@@ -399,46 +375,6 @@ describe("the R-54c identity-command guard", () => {
     await expect(
       context.db.$client.query("select count(*)::int as count from audit_event")
     ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-  }, 120000);
-
-  it("records --allow-http in the audited arguments", async () => {
-    const { source, context } = await fixture();
-
-    await recordMismatchedAddress(context);
-
-    const captured = outputCapture();
-
-    await expect(
-      runGenieOps(
-        [
-          "idp",
-          "set",
-          "--protocol",
-          "oidc",
-          "--issuer-url",
-          "http://idp.example.com/realms/company",
-          "--client-id",
-          "genie-oidc",
-          "--allow-http",
-        ],
-        {
-          source: { ...source, ...AUTH_ENV },
-          compiledModules: [],
-          histories: [],
-          ...captured,
-        }
-      )
-    ).resolves.not.toBe(0);
-
-    const rows = await auditRows(context);
-
-    expect(rows.at(-1)).toMatchObject({
-      action: "ops:idp-set",
-      metadata: {
-        outcome: "failure",
-        args: expect.arrayContaining(["--allow-http"]),
-      },
-    });
   }, 120000);
 
   it("does not guard module or retire, so an address mismatch leaves them alone", async () => {
@@ -493,19 +429,25 @@ describe("the R-54c identity-command guard", () => {
 
 describe("genie-ops parse guards", () => {
   it("dispatches on the first positional and parses each subcommand independently", async () => {
-    const { source } = await fixture();
     const captured = outputCapture();
 
+    // Parsing refuses before a context exists, so the source is never read and needs no database.
     await expect(
       runGenieOps(["unknown-command"], {
-        source,
+        source: {
+          DATABASE_URL: "not-a-database-url",
+          PUBLIC_URL: "not-a-public-url",
+        },
         compiledModules: [],
         histories: [],
         ...captured,
       })
     ).resolves.not.toBe(0);
 
-    expect(captured.lines.join("\n")).toMatch(/unknown|command|usage/i);
+    // The parse refusal itself, not the invalid source a command that got past parsing would meet.
+    expect(captured.lines.join("\n")).toContain(
+      "genie-ops: unknown or invalid command"
+    );
   }, 120000);
 
   it("does not echo an unexpected positional value or write an audit row", async () => {

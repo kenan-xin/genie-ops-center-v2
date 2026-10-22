@@ -401,6 +401,10 @@ describe("the migrator's one reserved session, watched on a real database", () =
     expect(await advisoryLockOwner(holder)).toBe(holderPid);
     expect(watched.statements.join(" ")).not.toContain("pg_advisory_unlock");
     expect(watched.released).toEqual([false]);
+
+    // The run gave up at the limit before any history began, so the database is untouched.
+    expect(await ledgerNames(context)).toEqual([]);
+    expect(await tableExists(context, "alpha_record")).toBe(false);
   });
 });
 
@@ -423,131 +427,6 @@ describe("the migrator against a real database", () => {
 
     expect(await tableExists(context, "alpha_record")).toBe(true);
     expect(await appliedCount(context, alpha.table)).toBe(1);
-  });
-
-  it("applies nothing the second time it runs over the same database", async () => {
-    const context = await freshDeployment();
-    const alpha = await writeHistory("alpha", ALPHA_TABLE);
-
-    const run = {
-      env: context.env,
-      pool: context.db.$client,
-      histories: migrationPlan([alpha]),
-      compiledModuleIds: ["alpha"],
-    };
-
-    await runMigrations(run);
-
-    const afterFirst = await appliedCount(context, alpha.table);
-
-    // The statement creates a table, so a second application would fail outright. A clean
-    // second run is therefore proof on its own, and the ledger says the same thing.
-    await runMigrations(run);
-
-    expect(afterFirst).toBe(1);
-    expect(await appliedCount(context, alpha.table)).toBe(1);
-    expect(await tableExists(context, "alpha_record")).toBe(true);
-  });
-
-  it("holds no advisory lock once a run has finished", async () => {
-    const context = await freshDeployment();
-    const alpha = await writeHistory("alpha", ALPHA_TABLE);
-
-    await runMigrations({
-      env: context.env,
-      pool: context.db.$client,
-      histories: migrationPlan([alpha]),
-      compiledModuleIds: ["alpha"],
-    });
-
-    expect(await advisoryLocks(context)).toBe(0);
-  });
-
-  it("waits for the lock, gives up at the limit and applies nothing", async () => {
-    const context = await freshDeployment(250);
-    const alpha = await writeHistory("alpha", ALPHA_TABLE);
-
-    const holder = databaseClient({
-      connectionString: context.env.databaseUrl,
-    });
-
-    await holder.connect();
-
-    cleanups.push(() => holder.end());
-
-    await holder.query("SELECT pg_advisory_lock($1)", [
-      MIGRATION_LOCK_KEY.toString(),
-    ]);
-
-    await expect(
-      runMigrations({
-        env: context.env,
-        pool: context.db.$client,
-        histories: migrationPlan([alpha]),
-        compiledModuleIds: ["alpha"],
-      })
-    ).rejects.toMatchObject({ code: "migration-lock-timeout" });
-
-    // No history began, so the database is untouched and the only lock is the one this test
-    // is holding.
-    expect(await ledgerNames(context)).toEqual([]);
-    expect(await tableExists(context, "alpha_record")).toBe(false);
-    expect(await advisoryLocks(context)).toBe(1);
-  });
-
-  it("keeps the original error when a history fails, and blocks no later run", async () => {
-    const context = await freshDeployment();
-
-    // A history whose statement the database refuses. It stands where a missing folder used to:
-    // the migrator no longer reads a folder, so the failure a history can still raise is the
-    // database rejecting what it was given.
-    const broken: MigrationHistory = {
-      name: "broken",
-      migrations: [
-        {
-          sql: ['CREATE TABLE "broken_record" ("id" no_such_type);'],
-          bps: true,
-          folderMillis: 1789948987482,
-          hash: "broken",
-        },
-      ],
-      table: "__drizzle_migrations_broken",
-    };
-
-    const raised: Error | undefined = await runMigrations({
-      env: context.env,
-      pool: context.db.$client,
-      histories: migrationPlan([broken]),
-      compiledModuleIds: ["broken"],
-    }).then(
-      () => undefined,
-      (error: Error) => error
-    );
-
-    expect(raised).toMatchObject({ code: "migration-failed" });
-    expect(raised?.cause).toBeInstanceOf(Error);
-
-    // The failed run left nothing applied: a later run takes the lock and finishes. The image
-    // still compiles the module, so its empty ledger is installed and not an omission.
-    await runMigrations({
-      env: context.env,
-      pool: context.db.$client,
-      histories: migrationPlan([]),
-      compiledModuleIds: ["broken"],
-    });
-
-    // Drizzle creates a history's ledger table before it opens the transaction that runs the
-    // statements, so a history that fails leaves its ledger behind, empty. That is drizzle's
-    // own order and it predates this migrator: what matters is that the failed statement
-    // recorded nothing and applied nothing.
-    expect(await ledgerNames(context)).toEqual([
-      { schema: "drizzle", table: "__drizzle_migrations" },
-      { schema: "drizzle", table: "__drizzle_migrations_broken" },
-    ]);
-
-    expect(await appliedCount(context, "__drizzle_migrations_broken")).toBe(0);
-    expect(await tableExists(context, "broken_record")).toBe(false);
-    expect(await advisoryLocks(context)).toBe(0);
   });
 });
 
@@ -737,41 +616,7 @@ describe("the migrator recovering from a real database failure", () => {
     // contains the lost session (genie-ops-center-v2-wwc).
   });
 
-  it("fails the start and destroys the session when the lock is gone by cleanup time", async () => {
-    const context = await freshDeployment();
-    const alpha = await writeHistory("alpha", ALPHA_TABLE);
-
-    // A session-level advisory lock is not transactional, so this release outlives drizzle's
-    // migration transaction. By cleanup the run no longer holds the lock it took, and the
-    // unlock answers false: the same uncertainty a lost and retaken lock would leave.
-    const saboteur = await writeHistory(
-      "saboteur",
-      "SELECT pg_advisory_unlock_all();"
-    );
-
-    const watched = instrumentedPool(context.db.$client);
-
-    const raised: Error | undefined = await runMigrations({
-      env: context.env,
-      pool: watched.pool,
-      histories: migrationPlan([alpha, saboteur]),
-      compiledModuleIds: ["alpha", "saboteur"],
-    }).then(
-      () => undefined,
-      (error: Error) => error
-    );
-
-    // Every history applied and the start still fails, because a container must not serve on
-    // a session nobody can account for (R-27).
-    expect(raised).toMatchObject({ code: "migration-failed" });
-    expect(raised?.cause).toBeInstanceOf(Error);
-    expect(String(raised?.cause)).toContain("could not be restored");
-    expect(watched.released).toEqual([true]);
-    expect(await appliedCount(context, alpha.table)).toBe(1);
-    expect(await advisoryLocks(context)).toBe(0);
-  });
-
-  it("rolls a failed history back whole, leaving no half applied table", async () => {
+  it("rolls a failed history back whole, keeps the original error, and blocks no later run", async () => {
     const context = await freshDeployment();
 
     const partial = await writeHistory(
@@ -783,14 +628,18 @@ describe("the migrator recovering from a real database failure", () => {
       ].join("\n")
     );
 
-    await expect(
-      runMigrations({
-        env: context.env,
-        pool: context.db.$client,
-        histories: migrationPlan([partial]),
-        compiledModuleIds: ["partial"],
-      })
-    ).rejects.toMatchObject({ code: "migration-failed" });
+    const raised: Error | undefined = await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([partial]),
+      compiledModuleIds: ["partial"],
+    }).then(
+      () => undefined,
+      (error: Error) => error
+    );
+
+    expect(raised).toMatchObject({ code: "migration-failed" });
+    expect(raised?.cause).toBeInstanceOf(Error);
 
     // The first statement of the history succeeded and the second did not. Drizzle runs a
     // history in one transaction, so the rollback must take the first one back with it.
@@ -798,6 +647,17 @@ describe("the migrator recovering from a real database failure", () => {
     expect(await tableExists(context, "lost_record")).toBe(false);
     expect(await appliedCount(context, partial.table)).toBe(0);
     expect(await advisoryLocks(context)).toBe(0);
+
+    // The failed run blocks no later one: the next start takes the lock and finishes. The image
+    // still compiles the module, so its empty ledger is installed and not an omission.
+    await expect(
+      runMigrations({
+        env: context.env,
+        pool: context.db.$client,
+        histories: migrationPlan([]),
+        compiledModuleIds: ["partial"],
+      })
+    ).resolves.toBeUndefined();
   });
 });
 

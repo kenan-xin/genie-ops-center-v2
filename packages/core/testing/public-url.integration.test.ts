@@ -54,41 +54,30 @@ function assertHostIndependentLink(
   query: Readonly<Record<string, string>> | undefined,
   expected: string
 ): void {
-  const context = contextWithPublicUrl();
-  const fromDefaultHost = publicUrl(context, path, query);
-
-  // The caller's request headers are deliberately outside the URL-builder API.
-  // Constructing requests with either proxy header must not affect the link.
-  const alternateRequest = new Request(`${PUBLIC_URL}/source`, {
-    headers: {
-      "host": "attacker.example.invalid",
-      "x-forwarded-host": "attacker.example.invalid",
-    },
-  });
-
-  expect(alternateRequest.headers.get("host")).toBe("attacker.example.invalid");
-  const fromAlternateHost = publicUrl(context, path, query);
-
-  expect(fromDefaultHost).toBe(expected);
-  expect(fromAlternateHost).toBe(expected);
+  // The builder takes no request, so no request Host or forwarded header can reach the link.
+  expect(publicUrl(contextWithPublicUrl(), path, query)).toBe(expected);
 }
 
 describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
-  it("builds the identity callback URL from PUBLIC_URL regardless of request Host", () => {
-    assertHostIndependentLink(
-      "/api/auth/callback/keycloak",
-      { returnTo: "/" },
-      `${PUBLIC_URL}/api/auth/callback/keycloak?returnTo=%2F`
-    );
-  });
-
-  it("builds the email invitation link from PUBLIC_URL regardless of request Host", () => {
-    assertHostIndependentLink(
-      "/invite",
-      { token: "invite-token" },
-      `${PUBLIC_URL}/invite?token=invite-token`
-    );
-  });
+  it.each([
+    {
+      link: "identity callback URL",
+      path: "/api/auth/callback/keycloak",
+      query: { returnTo: "/" },
+      expected: `${PUBLIC_URL}/api/auth/callback/keycloak?returnTo=%2F`,
+    },
+    {
+      link: "email invitation link",
+      path: "/invite",
+      query: { token: "invite-token" },
+      expected: `${PUBLIC_URL}/invite?token=invite-token`,
+    },
+  ])(
+    "builds the $link from PUBLIC_URL regardless of request Host",
+    ({ path, query, expected }) => {
+      assertHostIndependentLink(path, query, expected);
+    }
+  );
 
   it("builds the tokenized download link from PUBLIC_URL regardless of request Host", async () => {
     assertHostIndependentLink(

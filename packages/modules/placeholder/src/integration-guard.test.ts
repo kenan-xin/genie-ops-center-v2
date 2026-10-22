@@ -1,14 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  REQUIRED_TESTS,
-  requiredViolations,
-  type TestReport,
-} from "../testing/required-tests-guard.ts";
+import { REQUIRED_TESTS } from "../testing/required-tests-guard.ts";
 
 /**
  * The module integration suite's own guard controls, beside the guarded target.
@@ -18,12 +14,11 @@ import {
  * router and schema proof could stop running while the package reports green.
  * These controls hold the fix's contract: `test:integration` runs through the
  * required-execution runner, the module keeps its own mandatory manifest naming
- * every integration case it ships today, the shared validator fails a report
- * that skipped or lost a mandatory case, and the real command line enforces it.
+ * every integration case it ships today, and the real command line enforces it.
+ * The shared validator's own cases live in core's `testing/required-runner.test.ts`.
  *
- * No case here starts Postgres: the validator cases read reports in memory, and
- * the command-line case filters to a name that matches nothing, so vitest
- * collects without running a single hook.
+ * No case here starts Postgres: the command-line case filters to a name that
+ * matches nothing, so vitest collects without running a single hook.
  */
 const PACKAGE_ROOT = join(import.meta.dirname, "..");
 
@@ -42,8 +37,6 @@ const ROUTER_CASES = [
   "the placeholder read procedure against a real database answers only the named record to a person with a record-scoped read grant",
   "the placeholder read procedure against a real database refuses an anonymous caller",
   "the placeholder read procedure against a real database appends placeholder:admin to Tenant administrator on enable and removes it on disable",
-  "the placeholder read procedure against a real database keeps core's ledger and the module's ledger apart",
-  "the placeholder read procedure against a real database recorded the module's one migration in the module's ledger",
 ];
 
 function packageJson(): { scripts: Record<string, string> } {
@@ -93,85 +86,6 @@ describe("the placeholder integration guard", () => {
     const router = REQUIRED_TESTS.find((entry) => entry.file === ROUTER_FILE);
 
     expect(router?.cases).toEqual(ROUTER_CASES);
-  });
-});
-
-function reportOf(
-  files: readonly {
-    readonly file: string;
-    readonly assertions: readonly {
-      readonly fullName: string;
-      readonly status?: string;
-    }[];
-  }[]
-): TestReport {
-  return {
-    testResults: files.map((file) => ({
-      name: resolve(PACKAGE_ROOT, file.file),
-      assertionResults: [...file.assertions],
-    })),
-  };
-}
-
-/** Every manifest case, collected, executed and passed. */
-function healthyReport(): TestReport {
-  return reportOf(
-    REQUIRED_TESTS.map((entry) => ({
-      file: entry.file,
-      assertions: entry.cases.map((fullName) => ({
-        fullName,
-        status: "passed",
-      })),
-    }))
-  );
-}
-
-function violationsFor(report: TestReport): string {
-  return requiredViolations(report, REQUIRED_TESTS, PACKAGE_ROOT).join(" ");
-}
-
-describe("the placeholder manifest validator", () => {
-  it("accepts a report that proves every mandatory case", () => {
-    expect(violationsFor(healthyReport())).toBe("");
-  });
-
-  it("fails a mandatory case a filter removed from execution, naming it", () => {
-    const filtered = reportOf([
-      {
-        file: ROUTER_FILE,
-        assertions: ROUTER_CASES.map((fullName, index) => ({
-          fullName,
-          status: index === 0 ? "skipped" : "passed",
-        })),
-      },
-    ]);
-
-    const violations = violationsFor(filtered);
-
-    expect(violations).toContain("did not execute");
-    expect(violations).toContain(ROUTER_CASES[0] ?? "");
-  });
-
-  it("fails a mandatory file vitest never collected", () => {
-    expect(violationsFor({ testResults: [] })).toContain(
-      `${ROUTER_FILE}: was never collected`
-    );
-  });
-
-  it("fails one removed mandatory case while its file still collects the others", () => {
-    const partial = reportOf([
-      {
-        file: ROUTER_FILE,
-        assertions: ROUTER_CASES.slice(1).map((fullName) => ({
-          fullName,
-          status: "passed",
-        })),
-      },
-    ]);
-
-    expect(violationsFor(partial)).toContain(
-      `never collected: ${ROUTER_CASES[0] ?? ""}`
-    );
   });
 });
 

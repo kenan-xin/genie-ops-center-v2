@@ -1,7 +1,8 @@
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 
-import { bossOptions } from "./index.ts";
+import { silentLogger } from "../logging/index.ts";
+import { bossOptions, createJobQueue } from "./index.ts";
 
 // A pg pool is lazy: building one opens no connection, and nothing here queries it.
 const pool = new Pool({
@@ -27,5 +28,22 @@ describe("bossOptions", () => {
       schedule: true,
       useListenNotify: false,
     });
+  });
+});
+
+describe("the job queue's schedule", () => {
+  it("rejects a caller schedule key in the declaration-owned namespace", async () => {
+    // The worker rewrites or removes `genie.module.*` keys every heartbeat, so a caller schedule
+    // there would silently vanish. The refusal comes before pg-boss starts.
+    const queue = createJobQueue(pool, silentLogger());
+
+    await expect(
+      queue.schedule(
+        "reporting.read-record",
+        "*/5 * * * *",
+        { reportId: "caller" },
+        { key: "genie.module.reporting.read-record" }
+      )
+    ).rejects.toThrow(/reserved/i);
   });
 });

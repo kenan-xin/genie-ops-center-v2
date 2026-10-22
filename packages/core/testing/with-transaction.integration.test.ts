@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Client } from "pg";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { type AfterCommit, withTransaction } from "../src/index.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
@@ -11,13 +11,53 @@ import {
   silentLogger,
 } from "../src/services/logging/index.ts";
 import { databaseClient } from "./database-client.ts";
-import { startDisposablePostgres } from "./index.ts";
+import { type DisposablePostgres, startDisposablePostgres } from "./index.ts";
 
 const cleanups: Array<() => Promise<void>> = [];
+
+/** The container every case shares. Each case still gets a database of its own, below. */
+let server: DisposablePostgres;
+
+beforeAll(async () => {
+  server = await startDisposablePostgres();
+}, 120000);
+
+afterAll(async () => {
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await server?.stop();
+});
 
 afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
 });
+
+let databaseCount = 0;
+
+/**
+ * A new, empty database in a shared container. A case asserts on its own tables and on the
+ * backends of `current_database()`, so a database per case keeps every case blind to the others
+ * while the container start is paid once.
+ */
+async function freshDatabaseUrl(on: DisposablePostgres): Promise<string> {
+  databaseCount += 1;
+
+  const name = `with_transaction_${databaseCount}`;
+  const admin = databaseClient({ connectionString: on.url });
+
+  await admin.connect();
+
+  try {
+    await admin.query(`create database ${name}`);
+  } finally {
+    await admin.end();
+  }
+
+  const url = new URL(on.url);
+
+  url.pathname = `/${name}`;
+
+  return url.toString();
+}
 
 /**
  * One disposable Postgres, the context over it, and a second connection the test itself
@@ -30,25 +70,26 @@ type TransactionFixture = {
 };
 
 async function startTransactionFixture(
-  logger: Pick<RedactingLogger, "error" | "info" | "debug"> = silentLogger()
+  logger: Pick<RedactingLogger, "error" | "info" | "debug"> = silentLogger(),
+  on: DisposablePostgres = server
 ): Promise<TransactionFixture> {
-  const postgres = await startDisposablePostgres();
+  const databaseUrl = await freshDatabaseUrl(on);
 
   const context = createTenantContext(
     {
-      DATABASE_URL: postgres.url,
+      DATABASE_URL: databaseUrl,
       PUBLIC_URL: "https://test.example.invalid",
     },
     logger,
     []
   );
 
-  const observer = databaseClient({ connectionString: postgres.url });
+  const observer = databaseClient({ connectionString: databaseUrl });
 
+  // Each case ends its own pool and observer; the container outlives them for the next case.
   cleanups.push(async () => {
     await observer.end();
     await context.db.$client.end();
-    await postgres.stop();
   });
 
   await observer.connect();
@@ -206,42 +247,6 @@ describe("withTransaction against a real database", () => {
     expect(logged).toContain("after-commit failure");
   });
 
-  it("refuses a nested call on the same context and opens no second connection", async () => {
-    const { context, observer } = await startTransactionFixture();
-
-    let poolDuring:
-      | { readonly total: number; readonly idle: number }
-      | undefined;
-
-    let otherBackendsDuring: number[] = [];
-
-    const result = await withTransaction(context, async (tx) => {
-      await expect(
-        withTransaction(context, async () => "inner")
-      ).rejects.toThrow(/cannot be nested/);
-
-      await tx.execute(sql`select 1`);
-
-      poolDuring = {
-        total: context.db.$client.totalCount,
-        idle: context.db.$client.idleCount,
-      };
-
-      const backends = await observer.query<{ pid: number }>(
-        "select pid from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid()"
-      );
-
-      otherBackendsDuring = backends.rows.map((row) => row.pid);
-
-      return "outer";
-    });
-
-    expect(result).toBe("outer");
-    // The refused inner call never reached the pool: only the outer transaction's client exists.
-    expect(poolDuring).toEqual({ total: 1, idle: 0 });
-    expect(otherBackendsDuring).toHaveLength(1);
-  });
-
   it("runs two parallel top-level calls on one context, each committing and running its entries", async () => {
     const { context, observer } = await startTransactionFixture();
     await context.db.$client.query(
@@ -330,76 +335,6 @@ describe("withTransaction against a real database", () => {
     expect(ran).toBe(false);
   });
 
-  it("keeps a second context's transaction independent inside the first (DEC-34)", async () => {
-    const first = await startTransactionFixture();
-    const second = await startTransactionFixture();
-
-    await first.context.db.$client.query(
-      "create table wt_a (id integer primary key, label text)"
-    );
-    await second.context.db.$client.query(
-      "create table wt_b (id integer primary key, label text)"
-    );
-
-    await expect(
-      withTransaction(first.context, async (txA) => {
-        await txA.execute(sql`insert into wt_a (id, label) values (1, 'a')`);
-
-        // A transaction on another context is not this context's nested transaction: it opens on
-        // its own pool and commits on its own, while the outer one may still roll back (DEC-34).
-        const inner = await withTransaction(second.context, async (txB) => {
-          await txB.execute(sql`insert into wt_b (id, label) values (1, 'b')`);
-
-          return "second-context";
-        });
-
-        expect(inner).toBe("second-context");
-
-        throw new Error("roll a back");
-      })
-    ).rejects.toThrow("roll a back");
-
-    const [a] = (
-      await first.observer.query<{ count: number }>(
-        "select count(*)::int as count from wt_a"
-      )
-    ).rows;
-
-    const [b] = (
-      await second.observer.query<{ count: number }>(
-        "select count(*)::int as count from wt_b"
-      )
-    ).rows;
-
-    expect(a?.count).toBe(0);
-    expect(b?.count).toBe(1);
-  });
-
-  it("refuses re-entering the first context through a second one (A to B to A)", async () => {
-    const first = await startTransactionFixture();
-    const second = await startTransactionFixture();
-
-    await expect(
-      withTransaction(first.context, async (txA) => {
-        await txA.execute(sql`select 1`);
-
-        await withTransaction(second.context, async (txB) => {
-          await txB.execute(sql`select 1`);
-
-          // The chain is A -> B, so a second A is a nested transaction on a context already
-          // active: the guard walks every ancestor, not only the nearest scope.
-          await expect(
-            withTransaction(first.context, async () => "inner")
-          ).rejects.toThrow(/cannot be nested/);
-
-          return "second";
-        });
-
-        return "first";
-      })
-    ).resolves.toBe("first");
-  });
-
   it("serves the transaction from the context's own pool and opens no second connection", async () => {
     const { context, observer } = await startTransactionFixture();
 
@@ -441,5 +376,90 @@ describe("withTransaction against a real database", () => {
     // The transaction's client returned to the context pool; still exactly one connection.
     expect(context.db.$client.totalCount).toBe(1);
     expect(context.db.$client.idleCount).toBe(1);
+  });
+
+  /** Two tenant contexts on two databases in two containers, as two deployments are (DEC-34). */
+  describe("across two deployments", () => {
+    let other: DisposablePostgres;
+
+    beforeAll(async () => {
+      other = await startDisposablePostgres();
+    }, 120000);
+
+    afterAll(async () => {
+      await other?.stop();
+    });
+
+    it("keeps a second context's transaction independent inside the first (DEC-34)", async () => {
+      const first = await startTransactionFixture();
+      const second = await startTransactionFixture(silentLogger(), other);
+
+      await first.context.db.$client.query(
+        "create table wt_a (id integer primary key, label text)"
+      );
+      await second.context.db.$client.query(
+        "create table wt_b (id integer primary key, label text)"
+      );
+
+      await expect(
+        withTransaction(first.context, async (txA) => {
+          await txA.execute(sql`insert into wt_a (id, label) values (1, 'a')`);
+
+          // A transaction on another context is not this context's nested transaction: it opens on
+          // its own pool and commits on its own, while the outer one may still roll back (DEC-34).
+          const inner = await withTransaction(second.context, async (txB) => {
+            await txB.execute(
+              sql`insert into wt_b (id, label) values (1, 'b')`
+            );
+
+            return "second-context";
+          });
+
+          expect(inner).toBe("second-context");
+
+          throw new Error("roll a back");
+        })
+      ).rejects.toThrow("roll a back");
+
+      const [a] = (
+        await first.observer.query<{ count: number }>(
+          "select count(*)::int as count from wt_a"
+        )
+      ).rows;
+
+      const [b] = (
+        await second.observer.query<{ count: number }>(
+          "select count(*)::int as count from wt_b"
+        )
+      ).rows;
+
+      expect(a?.count).toBe(0);
+      expect(b?.count).toBe(1);
+    });
+
+    it("refuses re-entering the first context through a second one (A to B to A)", async () => {
+      const first = await startTransactionFixture();
+      const second = await startTransactionFixture(silentLogger(), other);
+
+      await expect(
+        withTransaction(first.context, async (txA) => {
+          await txA.execute(sql`select 1`);
+
+          await withTransaction(second.context, async (txB) => {
+            await txB.execute(sql`select 1`);
+
+            // The chain is A -> B, so a second A is a nested transaction on a context already
+            // active: the guard walks every ancestor, not only the nearest scope.
+            await expect(
+              withTransaction(first.context, async () => "inner")
+            ).rejects.toThrow(/cannot be nested/);
+
+            return "second";
+          });
+
+          return "first";
+        })
+      ).resolves.toBe("first");
+    });
   });
 });

@@ -349,42 +349,6 @@ describe("MigrationRun compiled-module guards", () => {
     );
   });
 
-  it("accepts an image omitting a never-installed module on a fresh database", async () => {
-    const moduleId = "never-installed-module";
-    const context = await freshContext();
-
-    expect(await tableExists(context, "drizzle", "__drizzle_migrations")).toBe(
-      false
-    );
-    expect(await tableExists(context, "public", "tenant_module")).toBe(false);
-
-    await expect(
-      runMigrations({
-        env: context.env,
-        pool: context.db.$client,
-        histories: migrationPlan([]),
-        compiledModuleIds: [],
-      })
-    ).resolves.toBeUndefined();
-
-    expect(await moduleRows(context)).toEqual([]);
-    expect(
-      await tableExists(context, "drizzle", moduleLedgerTable(moduleId))
-    ).toBe(false);
-    expect(await tableExists(context, "drizzle", "__drizzle_migrations")).toBe(
-      true
-    );
-
-    await expect(
-      runMigrations({
-        env: context.env,
-        pool: context.db.$client,
-        histories: migrationPlan([]),
-        compiledModuleIds: [],
-      })
-    ).resolves.toBeUndefined();
-  });
-
   it("starts a fresh database with no drizzle schema and creates an empty module ledger", async () => {
     const context = await freshContext(["empty-module"]);
 

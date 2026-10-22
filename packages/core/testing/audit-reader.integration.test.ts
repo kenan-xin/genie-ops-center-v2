@@ -184,17 +184,6 @@ describe("the audit reader against a real database", () => {
     });
   });
 
-  it("answers a caller holding the key", async () => {
-    const id = await insertEvent({
-      action: "core:person_added",
-      summary: "A readable row",
-    });
-
-    const page = await read({ caller: request(await insertAuditReader()) });
-
-    expect(page.events.some((event) => event.id === id)).toBe(true);
-  });
-
   it("pages newest first across equal timestamps with no gap and no repeat", async () => {
     const instant = "2026-01-02T03:04:05.000Z";
 

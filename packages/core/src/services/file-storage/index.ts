@@ -131,7 +131,10 @@ function storageKeyFor(fileId: string): string {
  * Applies the size limit, the type allow-list and the SVG sanitizer, in that order, before any
  * byte reaches the adapter (R-35, R-36, R-37). The returned bytes and type are what gets stored.
  */
-async function prepareUpload(input: UploadFileInput, fileMaxBytes: number) {
+export async function prepareUpload(
+  input: UploadFileInput,
+  fileMaxBytes: number
+) {
   if (input.bytes.length > fileMaxBytes) {
     throw new Error(
       `The upload is ${input.bytes.length} bytes, over the FILE_MAX_BYTES limit of ${fileMaxBytes}.`

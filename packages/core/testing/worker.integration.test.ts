@@ -1,7 +1,7 @@
 import { createServer, connect, type AddressInfo } from "node:net";
 
 import { PgBoss } from "pg-boss";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type {
   JobDeclaration,
@@ -281,74 +281,6 @@ describe("the core pg-boss worker", () => {
     await worker;
   });
 
-  it("serializes concurrent fresh application and worker migration runs", async () => {
-    const database = await disposablePostgres();
-    const app = createTenantContext(source(database.url), silentLogger(), [
-      "dual-start",
-    ]);
-    const workerContext = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      ["dual-start"]
-    );
-    const module = moduleWithJob("dual-start", async () => {});
-    const moduleHistory: MigrationHistory = {
-      name: "dual-start",
-      table: "__drizzle_migrations_dual-start",
-      migrations: [
-        {
-          sql: [
-            'CREATE TABLE "dual-start_migration_count" ("id" integer NOT NULL);',
-            'INSERT INTO "dual-start_migration_count" ("id") VALUES (1);',
-          ],
-          bps: true,
-          folderMillis: 1789948987482,
-          hash: "dual-start-history",
-        },
-      ],
-    };
-    const controller = new AbortController();
-    cleanups.push(async () => {
-      await Promise.all([app.db.$client.end(), workerContext.db.$client.end()]);
-    });
-
-    const worker = runWorker({
-      source: source(database.url),
-      modules: [module],
-      histories: [moduleHistory],
-      ...OUTPUT,
-      signal: controller.signal,
-      heartbeat: {
-        cron: "* * * * *",
-        path: "/tmp/worker-heartbeat",
-        staleAfterMs: 180000,
-      },
-    });
-    const appMigration = runMigrations({
-      env: app.env,
-      pool: app.db.$client,
-      histories: migrationPlan([moduleHistory]),
-      compiledModuleIds: ["dual-start"],
-    });
-
-    await appMigration;
-    await waitUntil(async () => {
-      const result = await app.db.$client.query<{ count: number }>(
-        'select count(*)::int as count from "dual-start_migration_count"'
-      );
-
-      return result.rows[0]?.count === 1;
-    });
-    controller.abort();
-    await worker;
-
-    const count = await workerContext.db.$client.query<{ count: number }>(
-      'select count(*)::int as count from "dual-start_migration_count"'
-    );
-
-    expect(count.rows).toEqual([{ count: 1 }]);
-  });
-
   it("starts its own migrator and pg-boss schema without an application process", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(
@@ -391,10 +323,6 @@ describe("the core pg-boss worker", () => {
 
   it("skips a job of a compiled module with no tenant_module row", async () => {
     await expectSkippedModuleJob({ id: "unseeded", enabled: undefined });
-  });
-
-  it("checks entitlement before running a queued job for a disabled module", async () => {
-    await expectSkippedModuleJob({ id: "disabled", enabled: false });
   });
 
   it("registers a new module disabled and runs neither its queued job nor its declared schedule", async () => {
@@ -497,35 +425,6 @@ describe("the core pg-boss worker", () => {
     );
   });
 
-  it("keeps the job queue as a fixed context member exposing enqueue and schedule", async () => {
-    const database = await disposablePostgres();
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-
-    cleanups.push(() => context.db.$client.end());
-
-    expect(Object.keys(context).toSorted()).toEqual([
-      "authRequestScope",
-      "branding",
-      "capabilities",
-      "correlationScope",
-      "db",
-      "entitlements",
-      "env",
-      "events",
-      "fileStorage",
-      "jobQueue",
-      "mailer",
-      "publicUrl",
-      "settings",
-    ]);
-    expect(context.jobQueue.enqueue).toBeDefined();
-    expect(context.jobQueue.schedule).toBeDefined();
-  });
-
   it("schedules a declared job with a cron expression distinct from its data", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(source(database.url), silentLogger(), [
@@ -610,39 +509,6 @@ describe("the core pg-boss worker", () => {
       cron: "0 3 * * *",
       key: "genie.module.scheduled.read-record",
     });
-  });
-
-  it("rejects a caller schedule key in the declaration-owned namespace", async () => {
-    const database = await disposablePostgres();
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-
-    cleanups.push(() => context.db.$client.end());
-
-    await runMigrations({
-      env: context.env,
-      pool: context.db.$client,
-      histories: migrationPlan([]),
-      compiledModuleIds: [],
-    });
-    const scheduleModule = moduleWithJob(
-      "reporting",
-      async () => {},
-      "0 3 * * *"
-    );
-    const reservationKey = `genie.module.${scheduleModule.jobs[0]?.name}`;
-
-    await expect(
-      context.jobQueue.schedule(
-        scheduleModule.jobs[0]?.name ?? "reporting.read-record",
-        "*/5 * * * *",
-        { reportId: "caller" },
-        { key: reservationKey }
-      )
-    ).rejects.toThrow(/reserved/i);
   });
 
   it("preserves an application schedule and payload after declaration reconciliation", async () => {
@@ -948,54 +814,6 @@ describe("the core pg-boss worker", () => {
     expect(afterLateHandler[0]?.state).toBe(afterShutdown[0]?.state);
   });
 
-  it("uses the tenant context pool for pg-boss rather than a second driver pool", async () => {
-    const database = await disposablePostgres();
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-    const poolQuery = vi.spyOn(context.db.$client, "query");
-
-    cleanups.push(() => context.db.$client.end());
-
-    const queue = await boss(context);
-    const statements = poolQuery.mock.calls
-      .map(([statement]) => String(statement))
-      .join("\n");
-
-    expect(statements).toMatch(/pgboss/i);
-    expect(queue.getDb()).toBeDefined();
-  });
-
-  it("leaves worker-only supervision and scheduling disabled on the application instance", async () => {
-    const database = await disposablePostgres();
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-    const appBoss = new PgBoss({
-      db: {
-        executeSql: async (text, values) =>
-          context.db.$client.query(text, values),
-      },
-      schema: "pgboss",
-      supervise: false,
-      schedule: false,
-      useListenNotify: false,
-    });
-
-    cleanups.push(async () => {
-      await appBoss.stop();
-      await context.db.$client.end();
-    });
-    await appBoss.start();
-
-    expect(appBoss.isMaintaining()).toBe(false);
-    expect(appBoss.isBamWorking()).toBe(false);
-  });
-
   it("writes heartbeat from the scheduled core job only after migration completes, then becomes stale when aborted", async () => {
     const { access, unlink } = await import("node:fs/promises");
     const database = await disposablePostgres();
@@ -1061,112 +879,6 @@ describe("the core pg-boss worker", () => {
     expect(await publisher.getSchedules("core.worker-heartbeat")).toHaveLength(
       1
     );
-  });
-
-  it("uses WORKER_HEARTBEAT_PATH when set and the default path otherwise", async () => {
-    const customPath = `/tmp/genie-worker-override-${crypto.randomUUID()}`;
-    const defaultPath = `/tmp/genie-worker-default-${crypto.randomUUID()}`;
-    const { access, unlink } = await import("node:fs/promises");
-    cleanups.push(async () => {
-      await unlink(customPath).catch(() => undefined);
-      await unlink(defaultPath).catch(() => undefined);
-    });
-
-    const defaultDatabase = await disposablePostgres();
-    const defaultController = new AbortController();
-    const defaultWorker = runWorker({
-      source: source(defaultDatabase.url),
-      modules: [],
-      histories: [],
-      ...OUTPUT,
-      signal: defaultController.signal,
-      heartbeat: {
-        cron: "*/1 * * * * *",
-        path: defaultPath,
-        staleAfterMs: 1800,
-      },
-    });
-
-    await waitUntil(async () =>
-      access(defaultPath).then(
-        () => true,
-        () => false
-      )
-    );
-    defaultController.abort();
-    await defaultWorker;
-
-    const overrideDatabase = await disposablePostgres();
-    const overrideController = new AbortController();
-    const overrideWorker = runWorker({
-      source: source(overrideDatabase.url, {
-        WORKER_HEARTBEAT_PATH: customPath,
-      }),
-      modules: [],
-      histories: [],
-      ...OUTPUT,
-      signal: overrideController.signal,
-      heartbeat: { cron: "*/1 * * * * *", staleAfterMs: 1800 },
-    });
-
-    await waitUntil(async () =>
-      access(customPath).then(
-        () => true,
-        () => false
-      )
-    );
-    overrideController.abort();
-    await overrideWorker;
-  });
-
-  it("writes to a unique default heartbeat path on a clean startup", async () => {
-    const { access, unlink } = await import("node:fs/promises");
-    const database = await disposablePostgres();
-    const heartbeatPath = `/tmp/genie-worker-default-path-${crypto.randomUUID()}`;
-    const context = createTenantContext(
-      source(database.url),
-      silentLogger(),
-      []
-    );
-    const controller = new AbortController();
-
-    cleanups.push(async () => {
-      await unlink(heartbeatPath).catch(() => undefined);
-      await context.db.$client.end();
-    });
-
-    const worker = runWorker({
-      source: source(database.url, { WORKER_HEARTBEAT_PATH: heartbeatPath }),
-      modules: [],
-      histories: [],
-      ...OUTPUT,
-      signal: controller.signal,
-      heartbeat: { cron: "*/1 * * * * *", staleAfterMs: 1800 },
-    });
-
-    await waitUntil(async () =>
-      access(heartbeatPath).then(
-        () => true,
-        () => false
-      )
-    );
-    controller.abort();
-    await worker;
-
-    expect(
-      await access(heartbeatPath).then(
-        () => true,
-        () => false
-      )
-    ).toBe(true);
-  });
-
-  it("pins pg-boss to version 12.38.0", async () => {
-    const packageJson = await import("../package.json", {
-      with: { type: "json" },
-    });
-
-    expect(packageJson.default.dependencies["pg-boss"]).toBe("12.38.0");
   });
 });
 

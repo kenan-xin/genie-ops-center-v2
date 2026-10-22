@@ -681,6 +681,19 @@ async function elapsedAfterAbort(
 }
 
 /**
+ * Where the heartbeat file goes: the test seam's `path`, then `WORKER_HEARTBEAT_PATH`, then the
+ * default. An empty `WORKER_HEARTBEAT_PATH` counts as unset (environment contract).
+ */
+export function heartbeatPath(
+  options: Pick<WorkerOptions, "heartbeat" | "source">
+): string {
+  return (
+    options.heartbeat?.path ??
+    (options.source.WORKER_HEARTBEAT_PATH || DEFAULT_WORKER_HEARTBEAT_PATH)
+  );
+}
+
+/**
  * The core heartbeat queue: no entitlement gate, a round trip, the schedules, then the file. The
  * file is written last, so a reconciliation that keeps failing lets the health check go stale.
  */
@@ -690,9 +703,7 @@ function heartbeatLoop(
   jobs: readonly { moduleId: string; job: JobDeclaration }[],
   options: WorkerOptions
 ): QueueLoop {
-  const path =
-    options.heartbeat?.path ??
-    (options.source.WORKER_HEARTBEAT_PATH || DEFAULT_WORKER_HEARTBEAT_PATH);
+  const path = heartbeatPath(options);
 
   return {
     name: HEARTBEAT_JOB,

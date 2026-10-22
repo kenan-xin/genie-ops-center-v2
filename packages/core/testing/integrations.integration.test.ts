@@ -1,6 +1,14 @@
 import { eq } from "drizzle-orm";
 import type { DestinationStream } from "pino";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import {
   createTenantContext,
@@ -8,7 +16,10 @@ import {
 } from "../src/lib/tenant-context/index.ts";
 import { tenantIntegration } from "../src/schema.ts";
 import { createLogger } from "../src/services/logging/index.ts";
-import { startDisposableDeployment } from "./index.ts";
+import {
+  type DisposableDeployment,
+  startDisposableDeployment,
+} from "./index.ts";
 
 const SECRET_REF = "GENIE_TEST_INTEGRATION_API_KEY";
 
@@ -50,11 +61,23 @@ async function resolveIntegration(
 
 const cleanups: Array<() => Promise<void>> = [];
 
-afterEach(async () => {
-  const pending = cleanups.splice(0);
+/**
+ * One migrated deployment for the whole file. Every case inserts its own integration row and
+ * reads it back by the id the insert returned, so no case depends on another's rows.
+ */
+let deployment: DisposableDeployment;
 
-  await Promise.all(pending.slice(1).map((cleanup) => cleanup()));
-  await pending[0]?.();
+beforeAll(async () => {
+  deployment = await startDisposableDeployment();
+}, 120000);
+
+afterAll(async () => {
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await deployment?.stop();
+});
+
+afterEach(async () => {
+  await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
   vi.restoreAllMocks();
 });
 
@@ -176,10 +199,6 @@ function captureLoggerStream() {
 
 describe("integration resolver against a real database", () => {
   it("returns non-secret configuration and the live secret at call time without storing the credential", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
     const config = {
       baseUrl: "https://records.example.invalid/api",
       region: "eu",
@@ -255,10 +274,6 @@ describe("integration resolver against a real database", () => {
   }, 120000);
 
   it("reads a rotated secret at each call and refuses once the environment value is removed", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
     const inserted = await deployment.context.db
       .insert(tenantIntegration)
       .values({
@@ -318,10 +333,6 @@ describe("integration resolver against a real database", () => {
   }, 120000);
 
   it("resolves an integration with no secret reference and returns undefined secret", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
     const inserted = await deployment.context.db
       .insert(tenantIntegration)
       .values({
@@ -330,6 +341,7 @@ describe("integration resolver against a real database", () => {
         name: "Public records API",
         config: { baseUrl: "https://records.example.invalid/api" },
         secretRef: null,
+        status: "disabled",
       })
       .returning({ id: tenantIntegration.id });
 
@@ -348,14 +360,12 @@ describe("integration resolver against a real database", () => {
       id: integration.id,
       config: { baseUrl: "https://records.example.invalid/api" },
       secret: undefined,
+      // The caller decides whether to use the integration, so the status comes back too.
+      status: "disabled",
     });
   }, 120000);
 
   it("rejects a missing integration id and names the id in the error", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
     const missingId = "00000000-0000-4000-8000-000000000001";
 
     await expect(
@@ -363,43 +373,7 @@ describe("integration resolver against a real database", () => {
     ).rejects.toThrow(missingId);
   }, 120000);
 
-  it("returns integration status so the caller can decide whether to use it", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const inserted = await deployment.context.db
-      .insert(tenantIntegration)
-      .values({
-        moduleId: "records",
-        kind: "http",
-        name: "Disabled records API",
-        config: { baseUrl: "https://records.example.invalid/api" },
-        secretRef: null,
-        status: "disabled",
-      })
-      .returning({ id: tenantIntegration.id });
-
-    const integration = inserted[0];
-
-    expect(integration).toBeDefined();
-
-    if (integration === undefined)
-      throw new Error("Integration insert returned no row.");
-
-    const resolved = await resolveIntegration(
-      deployment.context,
-      integration.id
-    );
-
-    expect(resolved.status).toBe("disabled");
-  }, 120000);
-
   it("names an absent secret reference without exposing another secret in the error or output", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
     const inserted = await deployment.context.db
       .insert(tenantIntegration)
       .values({

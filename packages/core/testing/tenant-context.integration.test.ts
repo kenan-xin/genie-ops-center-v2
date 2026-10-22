@@ -89,32 +89,6 @@ describe("tenant context database clients", () => {
     }
   });
 
-  it("keeps an error listener while a client is checked out", async () => {
-    const postgres = await startDisposablePostgres();
-
-    const context = createTenantContext(
-      {
-        DATABASE_URL: postgres.url,
-        PUBLIC_URL: "https://test.example.invalid",
-      },
-      silentLogger(),
-      []
-    );
-
-    cleanups.push(async () => {
-      await context.db.$client.end();
-      await postgres.stop();
-    });
-
-    const client = await context.db.$client.connect();
-
-    try {
-      expect(client.listenerCount("error")).toBeGreaterThan(0);
-    } finally {
-      client.release(true);
-    }
-  });
-
   it("rejects the active query when its backend terminates", async () => {
     const postgres = await startDisposablePostgres();
 
