@@ -10,7 +10,9 @@ import { resolveConfig } from "vitest/node";
  */
 describe("the browser connect timeout", () => {
   it("gives a loaded runner twice Vitest's 60 s default, where Vitest reads it", async () => {
-    const { vitestConfig } = await resolveConfig({
+    // Vitest 5's `resolveConfig` answers the resolved Vite config; the Vitest
+    // part is its `test` property.
+    const { test: vitestConfig } = await resolveConfig({
       config: join(import.meta.dirname, "../vitest.config.ts"),
     });
 

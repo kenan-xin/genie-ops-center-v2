@@ -70,7 +70,7 @@ const manifest: Template = (names) =>
       "@types/react": "19.3.0",
       "oxlint": "1.89.0",
       "storybook": "10.6.3",
-      "vitest": "4.1.11",
+      "vitest": "5.0.5",
     },
     genie: { module: { id: names.id, entrypoint: "src/index.ts" } },
     nx: { tags: ["module"] },

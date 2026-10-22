@@ -42,6 +42,10 @@ Raise the Vitest major when both conditions hold.
 
 When both hold, raise `vitest` and every `@storybook/*` pin in one change, revalidate Storybook compatibility, build, component tests and cache behavior, and amend the unit-test and integration-test rows of `../core/tech-stack.md`. Do not raise Vitest alone, because the addon peer is what caps it.
 
+## Update 2026-10-22: Vitest 5
+
+`@storybook/addon-vitest` 10.6.3 declares `vitest: "^4.0.0 || ^5.0.0"`, with the same range for `@vitest/browser` and `@vitest/browser-playwright`, so Vitest 5 resolves under Storybook 10 and `@nx/storybook` 23.3.0 without Storybook 11. The reopening conditions above assumed the support would arrive only with Storybook 11; it arrived in a 10.x patch instead. The workspace moves to Vitest 5.0.5 in one change, still one runner for every layer, and the decision itself stands: the Storybook addon's peer range keeps capping the Vitest major, so a later Vitest major waits for the addon in the same way.
+
 ## Related records
 
 - One development-only Storybook host and its early pinned-version gate: [ADR 0008](0008-foundation-integration-and-generated-registry.md).
