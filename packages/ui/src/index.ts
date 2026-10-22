@@ -1,3 +1,5 @@
+export { Button } from "./components/button.tsx";
+
 export { DeploymentDiagnostics } from "./diagnostics/deployment-diagnostics.tsx";
 
 export type { DeploymentDiagnosticsProps } from "./diagnostics/deployment-diagnostics.tsx";
