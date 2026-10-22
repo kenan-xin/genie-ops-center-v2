@@ -88,6 +88,8 @@ Amended 2026-09-17, SVG sanitizing: the phrase "SVG sanitized on upload" above n
 
 Designed in: Section 1. Implemented: `postgres` adapter, limits, sanitizer, and tokenized downloads in Section 1; `s3` adapter and scanning after the core sections. Revisit when a tenant's file bytes pass a few gigabytes or backups slow down.
 
+Amended 2026-10-22, S3 for every deployment (owner decision): every deployment stores its files in an S3-compatible bucket through the `s3` adapter, not in Postgres. The `s3` adapter is built first in roadmap Section 6 (item 6). When it lands, the default of `FILE_STORAGE_ADAPTER` becomes `s3` in the same change. Until then the `postgres` adapter is the only built one, and a deployment that already holds files in it moves them with `genie-ops files migrate`. The `postgres` adapter stays for tests, local development, and as the source of that migration, so the two rules above that keep the migration path open still hold. Why: document-heavy modules need more than 15 MB per file, one storage path keeps operations simple, and database backups stay small. Trade-off: every deployment needs a bucket and its credentials, the customer's own or one that Genie provides (Cloudflare R2 is the first test target), and a stack can no longer start with Postgres alone in production.
+
 ## DEC-21. Accessibility and in-app notifications
 
 Question: the accessibility target was "basics", and modules will want an inbox rather than email only.
@@ -432,6 +434,8 @@ Trade-off: a document-bearing module on the `postgres` adapter cannot accept a f
 Guard: the limit and the `s3` condition live in the startup validation of the environment (`DEC-9`), in one place, and the file service reads the validated value.
 
 Designed in: Section 1. Implemented: Section 1 with the file storage service. Revisit if node-postgres gains streaming for large values; the change is then a higher default on the `postgres` adapter with the same variable.
+
+Amended 2026-10-22: with `s3` the adapter of every deployment (`DEC-20` as amended), the 15 MB limit applies only where the `postgres` adapter still runs, in tests and local development. The first customer's deployment sets `FILE_MAX_BYTES` to 20 MB.
 
 ## DEC-45. Every `genie-ops` command writes an audit event
 

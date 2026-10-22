@@ -32,8 +32,8 @@ Provisional (D-11 answered from the product docs). The engine, the builder, and 
 
 Provisional (D-2 and D-5 to D-10 answered from the product docs, D-1 and D-3 in part). Work items:
 
-1. Agreement register: the customer's master list format, 17 columns plus a status. A row exists from submission and gets its number when the case completes. Counterparty as its own record. Nothing is deleted, and documents are kept forever.
-2. Versions: upload to managed storage, assign the next version number, keep every prior version. Applicants upload new versions. The storage region is DEFERRED (D-3).
+1. Agreement register: the customer's master list format, 17 columns plus a status. A row exists from submission and gets its number when the case completes. Counterparty as its own record. Nothing is deleted, and documents are kept forever. The "Dept./Office" column is copied from the agreement form's "Assigned department / section" field when the case completes, never from a directory attribute, and it grants no access (owner, 2026-10-22).
+2. Versions: upload through the core file service, which stores files in S3 in every deployment (`DEC-20`, amended 2026-10-22), up to 20 MB per file. Assign the next version number and keep every prior version. Applicants upload new versions. The storage region is DEFERRED (D-3).
 3. Expiry and renewal: a computed active or inactive status. No reminder job and no email in phase one. Later: one daily job declared through the module contract's Jobs point that evaluates `reminder_rule`, sends email through the core mailer, and records each send in `reminder_sent`. The figures are DEFERRED (D-9) until the customer confirms them.
 4. Search and retrieval: filter by counterparty, type, department, office, status, date range. One click opens the current version.
 5. Permissions and default roles as below. Settled 2026-10-20 (owner, ADR 0012): the full register is read by `approvals:register-read` holders tenant-wide. Office is a field and a filter only (D-7). Case visibility comes from relations and case-read grants (ADR 0012, section 3, amended 2026-10-21), never from a department (PD-121).
@@ -45,7 +45,7 @@ Done when: an applicant uploads an agreement, its register row appears with the 
 
 Model path, 2026-10-21 (owner): the register AI calls the genie-studio smart API over HTTP (`DEC-8`), through the core outbound HTTP service, with its key held as a `secret_ref`. It does not depend on the boss agent's model setting (`OPEN-12`).
 
-The product docs put AI reading at upload in phase one. The whole part stays DEFERRED (D-4), because the product docs contradict the customer on whether the AI is allowed to read the customer's highest-rank documents.
+The product docs put AI reading at upload in phase one. Provisional since 2026-10-22: the owner resolved D-4, and the AI reads every uploaded document for the agreement legal use case. The AI work still follows the workflow and the register in the build order.
 
 1. Extraction on upload: the register fields with page and quote, and a key-terms brief with obligations, important dates, payment terms, service commitments, termination conditions. Stored as a structured summary per version. The reading runs in the background, and the applicant gets an in-app notification to review the fields.
 2. Clause search across agreements.

@@ -156,7 +156,7 @@ Work items:
 3. Relation scopes inside `can()`, `scopesFor()` and `canMany()`: the `record_relation` and `record_relation_version` tables, relation-scope role assignments, and the effective-access rule (ADR 0012, section 3).
 4. The outbound HTTP service: allowed hosts, redirect re-checks, timeouts, size caps, and secret resolution from environment references and from keys that an administrator types on a write-only screen (`DEC-53`). The Solutions chat proxy moves onto it (ADR 0012).
 5. The notification inbox: a module API to write and mark notifications, the inbox screen, and the header bell with its unread count (`DEC-21`, amended 2026-10-20).
-6. The `s3` file adapter, tested against MinIO in CI. Cloudflare R2 is the first real target (`DEC-20`).
+6. The `s3` file adapter, tested against MinIO in CI. Cloudflare R2 is the first real target. Built first in this section, because every deployment stores its files in S3, and the default of `FILE_STORAGE_ADAPTER` becomes `s3` in the same change (`DEC-20`, amended 2026-10-22).
 
 Done when: the placeholder module shows a page with a route parameter, calls its own procedure from the browser with types, lists only the records a relation grants, makes one allowed outbound call, writes a notification that the bell counts, and stores a file through the `s3` adapter, at a phone and a desktop viewport.
 

@@ -62,7 +62,7 @@ The table below defines the values; the tables above define when each is require
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `FILE_STORAGE_ADAPTER` | `postgres` | `postgres` stores bytes in `file_blob`; `s3`, `gcs`, or `azure` store them in a bucket through FlyDrive, each with its own variables added when that store is built (`DEC-20`). |
+| `FILE_STORAGE_ADAPTER` | `postgres` | `postgres` stores bytes in `file_blob`; `s3`, `gcs`, or `azure` store them in a bucket through FlyDrive, each with its own variables added when that store is built (`DEC-20`). The default becomes `s3` when that adapter lands, because every deployment stores its files in S3 (`DEC-20`, amended 2026-10-22). |
 | `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | unset | Required when the adapter is `s3`. `S3_ENDPOINT` is for an S3-compatible service such as MinIO. |
 | `FILE_MAX_BYTES` | `15728640` (15 MB) | Largest accepted upload. Startup validation rejects a value above the default unless `FILE_STORAGE_ADAPTER` is `s3` (`DEC-44`). |
 
