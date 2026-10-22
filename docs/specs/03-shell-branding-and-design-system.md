@@ -170,7 +170,7 @@ R-43. The admin portal must carry a Branding page behind `core:branding:manage` 
 
 R-44. One Publish must write the whole draft to `tenant_branding` in one transaction and write one `audit_event` row naming the changed fields, with the action `core:branding_published` (R-90a). Discard drops the draft. Unpublished changes are guarded by the browser's own unload prompt and by no in-app leave dialog (`../design/sections/branding/spec.md`, "User Flows").
 
-R-45. Publish must go through one `applyBranding` step in core, which today writes the branding row only. Nothing from branding is written to the Keycloak realm (`DEC-40`, Guard).
+R-45. Publish must go through one `applyBranding` step in core, which writes the branding row only. Section 3 creates the step. Before it, the setup seed is the only writer of the row. Nothing from branding is written to the Keycloak realm (`DEC-40`, Guard).
 
 R-46. Revised 2026-10-22 (owner, spec 03 critique F-2 and F-26). The Colors and theme tab must check four named contrast pairs and show one pill per pair: Fill, Text on nav, Count pill, and Focus ring. Fill and Count pill check the stored foreground on the tenant color. Text on nav checks the tenant color on the light navigation surface. These three are checked at 4.5:1. The Focus ring pair is checked at 3:1 against white and against the subtle surface, for WCAG 2.1 success criterion 1.4.11. Publish is blocked while any pair fails. A failing pill offers no automatic fix. There is no dark text or dark ring pill, because those use the fixed `--brand-on-dark` of R-15, which the fixed layer proves once (`../design/sections/branding/spec.md`, "User Flows" and "UI Requirements", `../design/design-system/tokens.md`, "Focus ring").
 

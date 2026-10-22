@@ -371,7 +371,7 @@ Why not realm localization overrides: Genie Ops Center can write `genie.*` messa
 
 Trade-off: a customer without an identity provider sees Keycloak styling on three emails and on the set-password page. In return there is one template system, one sign-in path, and no Keycloak artifact to maintain.
 
-Guard: the branding save in core goes through one `applyBranding` step, which today updates the `branding` row only, so a realm write is one added call there and nowhere else. The realm template keeps `emailTheme` unset rather than absent, so a theme is a template value, not a schema change. The realm display name stays equal to the company name so the built-in and a future theme print the same name.
+Guard: the branding save in core goes through one `applyBranding` step, which updates the `branding` row only (Section 3 creates the step), so a realm write is one added call there and nowhere else. The realm template keeps `emailTheme` unset rather than absent, so a theme is a template value, not a schema change. The realm display name stays equal to the company name so the built-in and a future theme print the same name.
 
 Designed in: now. Implemented: Section 2, in the local-accounts realm template variant. Revisit when a local-account customer asks for branded credential emails; the first step is then the localization override path above, which needs no Java.
 

@@ -1,18 +1,20 @@
 # Spec 3 technical plan
 
-Confidence: 7.8/10. The spec is re-approved, and the 2026-10-22 revision settled the token set, the theme switch, the CSP scope and the deferred items. Three points lower the score. Nobody has run the shadcn command line against a Base UI registry yet. Tailwind 4 in the app still reads a JavaScript config through `@config`. A request-bound root layout makes every shell route dynamic, and no test measures that cost yet.
+Confidence: 7.8/10. The spec is re-approved, and the 2026-10-22 revision settled the token set, the theme switch, the CSP scope and the deferred items. Three points lower the score. Nobody has run the shadcn command line against a Base UI registry yet. Tailwind 4 has not yet been shown to read a generated `@source` file in the Next build. A request-bound root layout makes every shell route dynamic, and no test measures that cost yet.
 
-Status: drafted on 2026-10-22, after the owner approved the [ticket breakdown](../tickets/spec-3/README.md). It supplements [Spec 3](../specs/03-shell-branding-and-design-system.md) and does not replace its numbered requirements. The Traycer artifacts `spec-03-critique-decisions` and `section-3-ticket-plan` hold the reasoning.
+Status: drafted on 2026-10-22, after the owner approved the [ticket breakdown](../tickets/spec-3/README.md). It supplements [Spec 3](../specs/03-shell-branding-and-design-system.md) and does not replace its numbered requirements. The Traycer artifacts `spec-03-critique-decisions` and `section-3-ticket-plan` hold the reasoning. Revised on the same day after the cold review `spec-3-tickets-critique`: code claims corrected, D3-2 to D3-6 sharpened, D3-7 added, and S3-04 split into S3-04a and S3-04b (owner).
 
 ## Scope and decision authority
 
 Deliver Section 3 on the Section 2 code as built. Today the code has these gaps:
 
-- `apps/genie/src/styles/globals.css` imports Tailwind and the shared preset through `@config`, and defines no design variables.
-- `ThemeProvider` in `packages/ui/src/theme/theme-provider.tsx` puts `data-theme` and inline colors on a `div`, not on `<html>`.
-- Four files declare their own `focusRing`: `packages/core/src/features/admin/ui.tsx`, `audit/helpers.ts`, `break-glass/break-glass-account.tsx` and `break-glass/break-glass-sign-in.tsx`.
-- `apps/genie/tailwind.config.ts` scans only `packages/core/src/features`. Storybook adds one `@source` line per selected module through `apps/storybook/.storybook/module-tailwind-sources.ts`.
+- `apps/genie/src/styles/globals.css` is two lines: Tailwind and `@config`. It defines no design variables. The shared preset `packages/config/src/tailwind/preset.ts` holds a content glob only, with an empty theme. The 3yv proof `apps/genie/src/styles/tailwind-preset.test.ts` asserts that glob.
+- The app sets no theme attribute: the root layout renders `<html lang>` only. `ThemeProvider` puts `data-theme` and inline colors on a `div`, and only Storybook uses it.
+- Four files declare their own `focusRing`: `packages/core/src/features/admin/ui.tsx`, `audit/helpers.ts`, `break-glass/break-glass-account.tsx` and `break-glass/break-glass-sign-in.tsx`. `admin/ui.tsx` and `audit/helpers.ts` are two small kits that six screens import.
+- The app scans `packages/core/src/features` (`apps/genie/tailwind.config.ts`) and `apps/genie/src` (the preset glob), and no module. Storybook adds one `@source` line per selected module through `moduleSourceLines` in `apps/storybook/.storybook/module-tailwind-sources.ts`.
 - `packages/ui` has no `components.json` and no `@base-ui/react`.
+- `applyBranding` does not exist. The setup seed is the only writer of `tenant_branding`. The file service applies `FILE_MAX_BYTES` (default 15 MB), the postgres adapter has no limit, and the type allow-list has no `.ico` type.
+- None of the ten R-90a audit keys exist. `apps/genie/src/rpc/router.ts` lists the core router areas by hand.
 
 | Accepted direction | Authority |
 | --- | --- |
@@ -28,23 +30,25 @@ Deliver Section 3 on the Section 2 code as built. Today the code has these gaps:
 
 D3-1, the Base UI spike decides the primitive setup. S3-01 runs the shadcn command line with a Base UI registry in `packages/ui`, writes `components.json`, adds `@base-ui/react`, and renders one primitive in a documented story. It records the exact versions and commands in `docs/core/tech-stack.md`. If the command line cannot install Base UI components, S3-01 stays open and every primitives ticket waits for the owner (owner answer, 2026-10-22). Do not hand-write the components, and do not fall back to Radix, without that answer.
 
-D3-2, the app reads module Tailwind sources from the selection. The registry emitter in `tools/generators/src/registry/emit.ts` already writes `apps/genie/src/modules.ts` from `MODULE_INCLUDE`. It also writes `apps/genie/src/styles/module-sources.generated.css`, with one `@source` line per selected module, in the same run. The file is generated, ignored by Git, and never edited. `globals.css` imports it and adds static `@source` lines for `packages/ui/src` and `packages/core/src`. The Storybook plugin and the emitter share one helper for the line format, so that the two hosts cannot drift. A build test asserts that a class used only in an excluded module is absent from the built CSS (R-19c, AC-3).
+D3-2, the app reads Tailwind sources from the selection. `apps/genie/tools/generate-registry.ts` already writes `apps/genie/src/modules.ts` from the text that `tools/generators/src/registry/emit.ts` returns. In the same run it also writes `apps/genie/src/styles/module-sources.generated.css`, with one `@source` line per selected module. The file is generated, ignored by Git, and never edited. `globals.css` imports it and adds static `@source` lines for `packages/ui/src`, `packages/core/src` and `apps/genie/src`. S3-01 removes `@config` and the preset content glob, and removes the preset if nothing else uses it. The 3yv proof is rewritten to assert the `@source` list. `moduleSourceLines` moves into `tools/generators`, and both Storybook and `generate-registry.ts` import it, so that the two hosts cannot drift. A build test asserts that a class used only in an excluded module is absent from the built CSS (R-19c, AC-3).
 
-D3-3, the token layer is CSS-first. S3-02 moves the colors, scales and radius from the JavaScript preset into `@theme inline` in `globals.css`. The preset keeps only what Tailwind 4 still reads from a config. The 3yv proof, which asserts that the app reads the preset, changes in the same ticket to assert the new source of truth. It is not deleted without a replacement. `packages/ui/src/theme/tokens.ts` stays as the typed source for the fixed values, and a unit test compares it with the CSS variables.
+D3-3, the token layer is new CSS. The preset holds no token, so nothing moves. S3-02 writes the variables with `@theme inline` in `globals.css`. `packages/ui/src/theme/tokens.ts` stays as the typed source for the fixed values, and a unit test compares it with the CSS variables.
 
-D3-4, the theme lives on `<html>`. The root layout sets `data-theme` on `<html>`, and the pre-hydration script of R-17 sets it before paint. `ThemeProvider` stays only as a Storybook decorator that sets the same attribute on the story root. The focus ring is one export from `packages/ui`, and the four copies are deleted in S3-02. S3-03 adds the lint check of R-19a that refuses a second `focusRing` or `ConfirmDialog`.
+D3-4, the theme lives on `<html>`, and the focus ring has one owner. The root layout sets `data-theme` on `<html>`, and the pre-hydration script of R-17 sets it before paint. `ThemeProvider` stays only as a Storybook decorator that sets the same attribute on the story root. S3-02 adds one `focusRing` export to `packages/ui` and repoints the four copies to it. S3-03 deletes the two kits (`admin/ui.tsx` and the kit half of `audit/helpers.ts`), switches the six screens that import them, and adds the lint check of R-19a that refuses a second `focusRing` or `ConfirmDialog`.
 
-D3-5, branding is emitted per request. The root layout reads branding through the tenant context reader (`DEC-34`, `DEC-46`) and renders one style element with the tenant variables, or the fixed defaults before setup (R-12a). Routes that render the shell or the sign-in page are dynamic. Do not cache their markup across requests (R-16). If a later measurement shows a real cost, a Section 5 ticket can revisit this. A change here must keep the reader as the only cache.
+D3-5, branding is emitted per request. The root layout reads branding through the tenant context reader (`DEC-34`, `DEC-46`) and renders one style element with the tenant variables. The reader throws when `tenant_branding` has no row, so the emitter uses the fixed defaults on the `SETUP_REQUIRED_HEADER` branch that the layout already has, and calls the reader otherwise (R-12a). Routes that render the shell or the sign-in page are dynamic. Do not cache their markup across requests (R-16). If a later measurement shows a real cost, a Section 5 ticket can revisit this. A change here must keep the reader as the only cache.
 
-D3-6, one writer for shared files. S3-04 owns the only Section 3 migration (R-86a). S3-05, S3-06 and S3-07 add no migration. If one of them needs a column, it stops and the change goes into a new migration after S3-04 merges. The same rule covers `packages/ui` exports and `globals.css` while those three tickets run in parallel: one ticket at a time merges a change to them, and the others rebase.
+D3-6, one writer for shared files. S3-04a owns the only Section 3 migration (R-86a). S3-05, S3-06 and S3-07 add no migration. If one of them needs a column, it stops and the change goes into a new migration after S3-04a merges. Before the three page tickets start, S3-04a also adds the stubs they would otherwise all write: the ten R-90a audit keys in `packages/core/src/services/audit/actions.ts`, the four router keys with empty routers in `apps/genie/src/rpc/router.ts`, the four admin navigation entries, and an `issues` field on `AppError` in `packages/core/src/lib/errors/index.ts`. For the files that still change in parallel, one ticket at a time merges and the others rebase: `packages/ui` exports, `globals.css`, `packages/core/src/index.ts`, `apps/genie/src/messages/en.json` and `apps/genie/e2e/global-setup.ts`.
+
+D3-7, the shell loads the logo through the signed download link. The identity block (S3-04b) and the Branding preview (S3-07) render the logo through the existing signed download link of the file service, issued per render on the dynamic shell route. An image shows only when its `scan_status` is clean or skipped (R-49). No new image route is added.
 
 ## Delivery order and gates
 
 1. Foundation. S3-01, the Base UI spike and the Tailwind sources (D3-1, D3-2).
 2. Tokens. S3-02, the fixed and tenant token layers (D3-3, D3-4, D3-5).
-3. Primitives and the public pages. S3-03 replaces the core kit. S3-08 builds sign-in branding, the email templates and the Keycloak page check in parallel.
-4. Shell. S3-04, with the R-86a migration.
-5. Pages. S3-05, S3-06 and S3-07 in parallel (D3-6).
+3. Primitives and the public pages. S3-03 replaces the core kits. S3-08 builds sign-in branding, the email templates and the Keycloak page check in parallel, with branding rows written through the end-to-end seed.
+4. Shell. S3-04a: the R-86a migration, the contract change, the navigation tree and the shared stubs. Then S3-04b: the chromes and shell behaviors.
+5. Pages. S3-05, S3-06 and S3-07 in parallel (D3-6). AC-11b waits for S3-09, because it needs the S3-06 save path.
 6. Acceptance. S3-09.
 
 Gate S3-G1 comes after step 1. The spike story renders, `docs/core/tech-stack.md` records the setup, and the built CSS proves R-19c. No other primitives ticket starts before this gate.
