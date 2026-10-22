@@ -19,8 +19,11 @@ import { join, resolve } from "node:path";
  *                                        [--no-integration] [--no-browser]
  *
  * The layers, in order: generate, link, lint, typecheck, unit tests, selection and
- * story discovery, the real database, the Storybook component tests, and the
- * application's denied route in a browser at a phone and a desktop viewport.
+ * story discovery, the real database, and the application's denied route in a
+ * browser at a phone and a desktop viewport. The generated stories are not run
+ * here: apps/storybook selection-confidentiality ("appears in the selected
+ * static build and runs without a host or CI edit", AC-27) generates a module
+ * and runs its stories as component tests in the integration gate.
  *
  * `--keep` leaves the generated module in place, linked, for inspection; the run
  * then says which files it did not put back. `--no-integration` and `--no-browser`
@@ -40,10 +43,9 @@ const SHARED_FILES = ["pnpm-lock.yaml", "apps/genie/package.json"];
 
 const MINUTE = 60_000;
 
-/** Per-step timeouts. Storybook runs and the image build are slow by nature;
- * Playwright gets a middle ground; everything else is fast and gets the floor. */
+/** Per-step timeouts. The image build is slow by nature; Playwright gets a
+ * middle ground; everything else is fast and gets the floor. */
 const STEP_TIMEOUT_MS = new Map<string, number>([
-  ["Storybook component tests with the generated module", 15 * MINUTE],
   ["build an image carrying the generated module", 15 * MINUTE],
   ["denied route at a phone and a desktop viewport", 10 * MINUTE],
 ]);
@@ -283,23 +285,6 @@ try {
   }
 
   if (withBrowser) {
-    // The generator's story templates must render and pass. Whether Storybook picks a
-    // new module's stories up at all is proved elsewhere: by the discovery step above
-    // and by apps/storybook selection-confidentiality ("discovers a newly added module
-    // with no host or CI edit"), so one run with the module selected is enough here.
-    await run(
-      "pnpm",
-      [
-        "exec",
-        "nx",
-        "run",
-        "@genie/storybook:test-storybook",
-        "--skip-nx-cache",
-      ],
-      "Storybook component tests with the generated module",
-      { MODULE_INCLUDE: id }
-    );
-
     await run(
       "pnpm",
       ["exec", "nx", "run", "@genie/app:build-image"],
