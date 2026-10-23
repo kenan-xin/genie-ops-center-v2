@@ -496,6 +496,106 @@ export function productionSources(root: string): readonly SourceText[] {
 }
 
 /**
+ * The JSX attributes whose string value a person reads or hears: the accessible
+ * names and descriptions, and a component prop named for its copy, such as
+ * `title`, `label` or `confirmLabel`.
+ */
+const USER_FACING_ATTRIBUTE =
+  /^(?:aria-(?:label|description|placeholder|roledescription|valuetext)|alt|title|placeholder|label|description|message|heading|summary|[a-z]\w*(?:Label|Text|Title|Description|Message))$/;
+
+/** Text with at least one letter: a word, not punctuation, a symbol or a number. */
+const WORDS = /\p{L}/u;
+
+/** The literal text of a string or template, its substitutions left out. */
+function literalText(node: ts.Node): string | undefined {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+
+  if (ts.isTemplateExpression(node)) {
+    return [
+      node.head.text,
+      ...node.templateSpans.map((span) => span.literal.text),
+    ].join(" ");
+  }
+
+  return undefined;
+}
+
+/**
+ * Every string literal one file renders as user-facing text (Spec 3 R-41, AC-19a): JSX text, a
+ * literal or template written as a JSX child, and the value of a user-facing attribute. Each entry
+ * reads `path:line: "text"`. Such text must come from the catalogue, or reach a core screen as a
+ * prop the application fills from it.
+ *
+ * shortcut: reads JSX only, so copy built in a plain constant or passed to `toast()` is not seen;
+ * extend it to call arguments when the Section 3 screens take their copy from the catalogue.
+ */
+export function inlineTextLiterals(
+  path: string,
+  text: string
+): readonly string[] {
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
+
+  const found: string[] = [];
+
+  // The CSS or script an element carries is code, not copy.
+  const insideCode = (node: ts.Node) =>
+    ts.isJsxElement(node.parent) &&
+    ["style", "script"].includes(
+      node.parent.openingElement.tagName.getText(source)
+    );
+
+  const report = (node: ts.Node, value: string) => {
+    if (WORDS.test(value) && !insideCode(node))
+      found.push(`${where(source, node)}: ${JSON.stringify(value.trim())}`);
+  };
+
+  walk(source, (node) => {
+    if (ts.isJsxText(node)) {
+      report(node, node.text);
+
+      return;
+    }
+
+    if (ts.isJsxExpression(node) && node.expression !== undefined) {
+      const value = literalText(node.expression);
+      const parent = node.parent;
+
+      if (
+        value !== undefined &&
+        (ts.isJsxElement(parent) || ts.isJsxFragment(parent))
+      ) {
+        report(node, value);
+      }
+
+      return;
+    }
+
+    if (!ts.isJsxAttribute(node) || node.initializer === undefined) return;
+
+    if (!USER_FACING_ATTRIBUTE.test(node.name.getText(source))) return;
+
+    const initializer = ts.isJsxExpression(node.initializer)
+      ? node.initializer.expression
+      : node.initializer;
+
+    const value =
+      initializer === undefined ? undefined : literalText(initializer);
+
+    if (value !== undefined) report(node, value);
+  });
+
+  return found;
+}
+
+/**
  * One sentence per problem. An empty array means every referenced key resolves
  * in the catalogue, every catalogue key is referenced, and no reference was
  * written in a shape this check cannot read.

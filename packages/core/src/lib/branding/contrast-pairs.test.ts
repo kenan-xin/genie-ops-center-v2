@@ -1,9 +1,24 @@
+import { colorRoles } from "@genie/ui/tokens";
 import { describe, expect, it } from "vitest";
 
 import {
   brandingContrastPairs,
   brandingContrastPasses,
 } from "./contrast-pairs.ts";
+import { contrastRatio } from "./foreground.ts";
+
+// R-68, WCAG 1.4.11: the input border is a component boundary, so it holds 3:1 on every surface.
+it.each(["light", "dark"] as const)(
+  "holds the %s input border at 3:1 against the card and the page (R-68, AC-17)",
+  (theme) => {
+    const roles = colorRoles[theme];
+
+    expect(contrastRatio(roles.input, roles.card)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(roles.input, roles.background)).toBeGreaterThanOrEqual(
+      3
+    );
+  }
+);
 
 function pairs(primaryColor: string) {
   return Object.fromEntries(

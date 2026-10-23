@@ -60,7 +60,7 @@ export function ColorsTab(props: {
         ) : null}
       </div>
       {valid ? <ContrastPills primaryColor={color} /> : null}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-pretty text-muted-foreground">
         In the dark theme, brand text and the focus ring use one fixed light
         color, #60a5fa. Buttons keep this color in both themes.
       </p>

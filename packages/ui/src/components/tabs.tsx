@@ -50,7 +50,8 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
-      className={cn("flex-1 text-sm outline-none", className)}
+      // The panel takes focus from the keyboard, so it shows the one ring (R-8).
+      className={cn("flex-1 text-sm", focusRing, className)}
       {...props}
     />
   );

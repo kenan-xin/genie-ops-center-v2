@@ -7,6 +7,7 @@ import {
   analyseSource,
   catalogueLeafKeys,
   catalogueViolations,
+  inlineTextLiterals,
   productionSources,
   scanCatalogue,
 } from "./catalogue-coverage.ts";
@@ -444,5 +445,83 @@ describe("the application's own sources against the English catalogue", () => {
   // empty answer here cannot come from a checker that reports nothing.
   it("resolves every referenced key and leaves no catalogue entry unread", () => {
     expect(catalogueViolations(sources, en)).toEqual([]);
+  });
+});
+
+describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
+  it("reports JSX text, a literal child and a user-facing attribute, and nothing else", () => {
+    expect(
+      inlineTextLiterals(
+        "screen.tsx",
+        `export function Screen({ t, n }) {
+  return (
+    <section aria-label="Modules" className="grid gap-2" data-testid="modules">
+      Switch it off
+      {"Off"}
+      <Dialog confirmLabel={\`Delete \${n}\`} title={t("title")} />
+      {t("body")} {n} · 42
+      <style>{\`:root{--x:1}\`}</style>
+    </section>
+  );
+}
+`
+      )
+    ).toEqual([
+      'screen.tsx:3: "Modules"',
+      'screen.tsx:4: "Switch it off"',
+      'screen.tsx:5: "Off"',
+      'screen.tsx:6: "Delete"',
+    ]);
+  });
+
+  /**
+   * The shell takes every string from the catalogue already. The page screens of S3-05 to S3-07
+   * still render English literals in core, recorded per file as debt (bead in the S3-09 row of
+   * the Spec 3 state). A new literal anywhere fails, and moving one to the catalogue lowers its
+   * count here in the same change.
+   */
+  const KNOWN_INLINE = {
+    // Section 2, outside R-41's scope, but in the application the catalogue owns.
+    "apps/genie/src/app/admin/audit/audit-log-route.tsx": 2,
+    "packages/core/src/features/branding/branding-screen.tsx": 15,
+    "packages/core/src/features/branding/colors-tab.tsx": 5,
+    "packages/core/src/features/branding/contrast-pills.tsx": 2,
+    "packages/core/src/features/branding/identity-tab.tsx": 4,
+    "packages/core/src/features/branding/image-slot.tsx": 13,
+    "packages/core/src/features/branding/previews.tsx": 6,
+    "packages/core/src/features/branding/sign-in-tab.tsx": 6,
+    "packages/core/src/features/categories/assign-items.tsx": 13,
+    "packages/core/src/features/categories/categories-screen.tsx": 17,
+    "packages/core/src/features/modules/modules-screen.tsx": 17,
+    "packages/core/src/features/settings/core-sections.tsx": 12,
+    "packages/core/src/features/settings/settings-screen.tsx": 17,
+  } satisfies Record<string, number>;
+
+  const SCREEN_ROOTS = [
+    [APP_SOURCE_ROOT, "apps/genie/src"],
+    ...["shell", "modules", "categories", "settings", "branding"].map(
+      (feature) =>
+        [
+          join(APP_SOURCE_ROOT, "../../../packages/core/src/features", feature),
+          `packages/core/src/features/${feature}`,
+        ] as const
+    ),
+  ] as const;
+
+  it("renders no new inline literal in the application, the shell or a Section 3 screen", () => {
+    const counts: Record<string, number> = {};
+
+    for (const [root, label] of SCREEN_ROOTS) {
+      for (const source of productionSources(root)) {
+        const found = inlineTextLiterals(source.path, source.text).length;
+
+        if (found > 0) counts[`${label}/${source.path}`] = found;
+      }
+    }
+
+    expect(Object.keys(counts).some((path) => path.includes("/shell/"))).toBe(
+      false
+    );
+    expect(counts).toEqual(KNOWN_INLINE);
   });
 });

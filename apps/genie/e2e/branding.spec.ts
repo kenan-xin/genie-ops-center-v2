@@ -5,6 +5,7 @@ import {
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
+import { publishBranding } from "./support/branding-page.ts";
 import { queryDatabase } from "./support/database.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { rpcPost } from "./support/rpc.ts";
@@ -67,19 +68,6 @@ async function openBranding(page: Page, project: string): Promise<void> {
   );
 }
 
-/** Publishes the draft through the confirm dialog. The header holds Publish on a desktop, the bar on a phone. */
-async function publish(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-
-  const dialog = page.getByRole("dialog");
-
-  await dialog.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(
-    page.getByText("Published", { exact: true }).first()
-  ).toBeVisible();
-  await expect(dialog).toHaveCount(0);
-}
-
 const rootPrimary = (page: Page) =>
   page.evaluate(() =>
     getComputedStyle(document.documentElement)
@@ -131,7 +119,7 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
           await expect(page.getByText("4 unpublished changes")).toBeVisible();
           await expectNoAxeViolations(page, `branding draft ${theme}`);
 
-          await publish(page);
+          await publishBranding(page);
 
           expect(await publishedCount()).toBe(before + 1);
           expect(

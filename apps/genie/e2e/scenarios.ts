@@ -140,6 +140,8 @@ const INVITE_SEED = [
   // S3-06: the Tenant Settings proof's own administrator, and a person whose role lacks the
   // settings key (the mixed role above), so neither shares a sign-in with another proof.
   ...administratorSql("invite", "settings"),
+  // S3-09: the Section 3 acceptance proof's own administrator, who opens every Section 3 screen.
+  ...administratorSql("invite", "acceptance"),
   ...E2E_PROJECTS.flatMap((project) => {
     const email = scenarioEmail("invite", "nosettings", project);
 
@@ -320,6 +322,7 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "invite", state: "modules", groups: () => [] },
     { scenario: "invite", state: "settings", groups: () => [] },
     { scenario: "invite", state: "nosettings", groups: () => [] },
+    { scenario: "invite", state: "acceptance", groups: () => [] },
     { scenario: "landing", state: "member", groups: () => [] },
     { scenario: "landing", state: "nogrant", groups: () => [] },
     { scenario: "landing", state: "menu", groups: () => [] },

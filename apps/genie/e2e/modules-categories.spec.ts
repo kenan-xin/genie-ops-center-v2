@@ -11,6 +11,7 @@ import {
   queryBrokerDatabase,
 } from "./support/brokered.ts";
 import { withDeploymentLock } from "./support/lock.ts";
+import { rpcPost } from "./support/rpc.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
@@ -199,6 +200,41 @@ test("lists every compiled module and switches one off through the confirm dialo
     },
     LOCK_WAIT_MS
   );
+});
+
+test("a person without core:settings:manage sees no Modules or Categories entry, and both routes and their procedures refuse (AC-19a, R-93)", async ({
+  page,
+}, testInfo) => {
+  await signInThroughBroker(page, {
+    baseUrl: BASE,
+    email: scenarioEmail("invite", "nosettings", testInfo.project.name),
+  });
+  await page.goto(`${BASE}/admin/audit`);
+
+  const navigation = await openNavigation(page);
+
+  for (const [name, procedure] of [
+    ["Modules", "/api/rpc/modules/list"],
+    ["Categories", "/api/rpc/categories/list"],
+  ] as const) {
+    // oxlint-disable no-await-in-loop -- one screen at a time in one page.
+    await expect(
+      navigation.getByRole("link", { name, exact: true })
+    ).toHaveCount(0);
+
+    const read = await rpcPost(page.request, `${BASE}${procedure}`);
+
+    expect(read.status(), procedure).toBe(403);
+    expect(await read.text()).toContain('"appCode":"forbidden"');
+    // oxlint-enable no-await-in-loop
+  }
+
+  for (const path of ["/admin/modules", "/admin/categories"]) {
+    // oxlint-disable-next-line no-await-in-loop -- one route at a time.
+    await page.goto(`${BASE}${path}`);
+    // oxlint-disable-next-line no-await-in-loop -- as above.
+    await expect(page.getByTestId("permission-denied"), path).toBeVisible();
+  }
 });
 
 test("genie-ops module disable writes the same row with one ops row and no core row (R-90a) @no-screen", async () => {

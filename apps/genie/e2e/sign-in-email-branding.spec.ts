@@ -1,7 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import {
+  e2eBrandingAdminEmail,
+  e2eReaderEmail,
+} from "../testing/e2e-keycloak.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
+import { publishBranding } from "./support/branding-page.ts";
 import { queryDatabase } from "./support/database.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { linksIn, waitForMessageTo } from "./support/mailpit.ts";
@@ -9,9 +13,10 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
  * Spec 3 AC-6, AC-12, AC-14 and AC-15: a branding change reaches the sign-in page and a rendered
- * email as text and color, once with the tenant default theme light and once dark. Publish lands
- * in S3-07, so the change is written to `tenant_branding` directly; the 10-second reader cache
- * (DEC-46) is waited out by polling, never by a fixed sleep.
+ * email as text and color, once with the tenant default theme light and once dark. The change is
+ * published through the Branding page (S3-09 rerun). The page edits no email field yet, so the
+ * sender, reply-to, footer, support and legal values are written to `tenant_branding` directly.
+ * The 10-second reader cache (DEC-46) is waited out by polling, never by a fixed sleep.
  *
  * The branding row is one row that both projects share, so each project holds a lock while it
  * writes and reads it, and puts the seed values back before it lets go.
@@ -62,13 +67,43 @@ test("a branding change reaches the sign-in page and the email, light and dark",
 
           // oxlint-disable no-await-in-loop -- one theme at a time, under one lock.
           await queryDatabase(
-            `update tenant_branding set company_name = '${companyName}', product_name = 'Branded Ops',
-             primary_color = '#0f766e', primary_foreground = '#ffffff', default_theme = '${theme}',
-             login_welcome_text = 'Welcome ${theme}', login_background_color = '#f5f5f4',
+            `update tenant_branding set
              email_sender_name = 'Branded Sender', email_reply_to = 'replies@example.invalid', email_footer_text = '${footer}',
              support_email = 'help@example.invalid', terms_url = '${publicUrl}/terms',
              privacy_url = '${publicUrl}/privacy'`
           );
+
+          // Everything the Branding page edits goes through it, and one Publish. The previous
+          // round's reader is still signed in to Keycloak, so its session goes first.
+          await context.clearCookies();
+          await signInThroughKeycloak(page, {
+            email: e2eBrandingAdminEmail(project),
+          });
+          await page.goto("/admin/branding");
+
+          const company = page.getByRole("textbox", { name: "Company name" });
+
+          // A fill before the read answers would be replaced by the published row.
+          await expect(company).not.toHaveValue("");
+          await company.fill(companyName);
+          await page
+            .getByRole("textbox", { name: "Product name" })
+            .fill("Branded Ops");
+          await page.getByRole("tab", { name: "Colors" }).click();
+          await page
+            .getByRole("textbox", { name: "Primary color", exact: true })
+            .fill("#0f766e");
+          await page
+            .getByRole("radio", { name: theme === "light" ? "Light" : "Dark" })
+            .check();
+          await page.getByRole("tab", { name: "Sign-in" }).click();
+          await page
+            .getByRole("textbox", { name: "Welcome text" })
+            .fill(`Welcome ${theme}`);
+          await page
+            .getByRole("textbox", { name: "Background color", exact: true })
+            .fill("#f5f5f4");
+          await publishBranding(page);
 
           // AC-12: a signed-out visitor sees the new branding on the sign-in page.
           await context.clearCookies();
