@@ -131,6 +131,10 @@ export const Desktop: Story = {
       await screen.findByRole("menuitem", { name: "Remove" })
     );
     await expect(onRemove).toHaveBeenCalledTimes(1);
+    // Under load the closing menu still holds its enabled Remove item.
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+    );
 
     await userEvent.click(
       canvas.getByRole("button", {
