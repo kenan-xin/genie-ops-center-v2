@@ -54,7 +54,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
   });
   await page.goto("/admin/people");
 
-  await clearMailpit();
+  await clearMailpit(personEmail);
 
   // Add person as a local account: the dialog offers the type because local accounts are on.
   await page.getByRole("button", { name: "Add person" }).click();

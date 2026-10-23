@@ -27,11 +27,15 @@ export type MailpitMessage = {
   readonly Text: string;
 };
 
-/** Empties the sink, so a spec reads only the messages its own action sent. */
-export async function clearMailpit(): Promise<void> {
-  await fetch(`${standinMailpitUrl()}/api/v1/messages`, {
-    method: "DELETE",
-  }).catch(() => undefined);
+/**
+ * Deletes the messages addressed to `email`, so a spec reads only the messages its own action sent.
+ * Only that recipient's: parallel specs share the sink, and emptying it drops their mail (xok3.12).
+ */
+export async function clearMailpit(email: string): Promise<void> {
+  await fetch(
+    `${standinMailpitUrl()}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
+    { method: "DELETE" }
+  ).catch(() => undefined);
 }
 
 async function summariesTo(email: string): Promise<readonly MailpitSummary[]> {

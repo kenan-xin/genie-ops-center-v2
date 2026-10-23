@@ -56,7 +56,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await expect(invitation).toBeChecked();
 
   // Read only this spec's messages.
-  await clearMailpit();
+  await clearMailpit(personEmail);
 
   await addDialog.getByRole("button", { name: "Add person" }).press("Enter");
 
