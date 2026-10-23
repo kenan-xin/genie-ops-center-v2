@@ -14,6 +14,9 @@ save cannot race the validation. On a real disable-to-enable transition it valid
 missing or invalid required value refuses with `module-config-invalid` and actionable `issues`,
 leaving the row disabled and `enabled_at` unchanged. Disable validates nothing. A repeated enable or
 disable is a no-op, and the call returns `{ changed }` so a caller can tell it was the transition.
+`setModuleEnabledIn` is the same procedure inside the caller's transaction, for a caller that
+writes its own audit row with the switch (the Modules page); `setModuleEnabled` wraps it for the
+command line.
 
 ## What must not go here
 

@@ -1,5 +1,6 @@
 import {
   AppError,
+  type AppErrorIssue,
   CORE_ERRORS,
   GENERIC_ERROR_CODE,
   type ModuleRPCContext,
@@ -25,6 +26,7 @@ type RefusalData = {
   readonly appCode: string;
   readonly requestId: string;
   readonly retryAfterMinutes?: number;
+  readonly issues?: readonly AppErrorIssue[];
 };
 
 function refusal(
@@ -55,17 +57,16 @@ export function toTransportError(input: {
   const { cause, requestId } = input;
 
   if (cause instanceof AppError) {
-    return refusal(
-      cause.code,
-      cause.safeMessage,
-      cause.retryAfterMinutes === undefined
-        ? { appCode: cause.code, requestId }
-        : {
-            appCode: cause.code,
-            requestId,
-            retryAfterMinutes: cause.retryAfterMinutes,
-          }
-    );
+    let data: RefusalData = { appCode: cause.code, requestId };
+
+    if (cause.retryAfterMinutes !== undefined) {
+      data = { ...data, retryAfterMinutes: cause.retryAfterMinutes };
+    }
+
+    // Only a real list is carried, as in `safeBodyFor` (`@genie/core`, lib/errors).
+    if (cause.issues?.length) data = { ...data, issues: cause.issues };
+
+    return refusal(cause.code, cause.safeMessage, data);
   }
 
   const badRequest =

@@ -56,9 +56,9 @@ export function doneGrantGroup(project: string): string {
 }
 
 /** One pre-added active administrator per project, a local member of `Genie Administrators`. */
-function administratorSql(scenario: Scenario): string[] {
+function administratorSql(scenario: Scenario, state = "admin"): string[] {
   return E2E_PROJECTS.flatMap((project) => {
-    const email = scenarioEmail(scenario, "admin", project);
+    const email = scenarioEmail(scenario, state, project);
 
     return [
       `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S2-16 Admin ${project}', '${email}', true, 'active') on conflict (email) do nothing`,
@@ -125,6 +125,8 @@ const OIDC_SEED = [
 const INVITE_SEED = [
   "update tenant_settings set onboarding_mode = 'invite'",
   ...administratorSql("invite"),
+  // S3-05: the Modules and Categories proof's own administrator, so it never shares a sign-in.
+  ...administratorSql("invite", "modules"),
   // AC-26: a mixed role, one module's keys beside a core key, held directly by one person.
   "insert into role (name, permissions, is_system) values ('S2-16 mixed', array['placeholder:read', 'placeholder:use', 'core:audit:read'], false) on conflict (name) do nothing",
   ...E2E_PROJECTS.flatMap((project) => {
@@ -304,6 +306,7 @@ async function seedCompanyPeople(): Promise<void> {
     },
     { scenario: "invite", state: "admin", groups: () => [] },
     { scenario: "invite", state: "mixed", groups: () => [] },
+    { scenario: "invite", state: "modules", groups: () => [] },
     { scenario: "landing", state: "member", groups: () => [] },
     { scenario: "landing", state: "nogrant", groups: () => [] },
     { scenario: "landing", state: "menu", groups: () => [] },

@@ -5,6 +5,7 @@ import {
   createRequestPrincipal,
   defineModuleErrors,
   implementModule,
+  ModuleManagementError,
   type TenantContext,
 } from "@genie/core";
 import { oc } from "@genie/core/rpc";
@@ -32,7 +33,12 @@ const contract = {
   limited: oc.route({ method: "POST", path: "/reports/limited" }),
   quota: oc.route({ method: "POST", path: "/reports/quota" }),
   leaky: oc.route({ method: "POST", path: "/reports/leaky" }),
+  notCompiled: oc.route({ method: "POST", path: "/reports/not-compiled" }),
+  notRegistered: oc.route({ method: "POST", path: "/reports/not-registered" }),
+  configInvalid: oc.route({ method: "POST", path: "/reports/config-invalid" }),
 };
+
+const ENDPOINT_ISSUE = { path: "endpoint", message: "Invalid url" };
 
 const os = implementModule("reports", contract);
 
@@ -50,6 +56,25 @@ const router = os.router({
   leaky: os.leaky.handler(() => {
     throw new Error(
       'duplicate key value violates unique constraint "secret_pkey"'
+    );
+  }),
+  notCompiled: os.notCompiled.handler(() => {
+    throw new ModuleManagementError(
+      "module-not-compiled",
+      "module-not-compiled: secret-module is not compiled into this image"
+    );
+  }),
+  notRegistered: os.notRegistered.handler(() => {
+    throw new ModuleManagementError(
+      "module-not-registered",
+      "module-not-registered: secret-module has no tenant_module row"
+    );
+  }),
+  configInvalid: os.configInvalid.handler(() => {
+    throw new ModuleManagementError(
+      "module-config-invalid",
+      "module-config-invalid: secret-module endpoint: Invalid url",
+      [ENDPOINT_ISSUE]
     );
   }),
 });
@@ -116,6 +141,7 @@ type ErrorBody = {
       readonly appCode: string;
       readonly requestId: string;
       readonly retryAfterMinutes?: number;
+      readonly issues?: readonly { path: string; message: string }[];
     };
   };
 };
@@ -199,6 +225,28 @@ describe("the RPC handler's error interceptor", () => {
     expect(answer.body.json.data.appCode).toBe("reports:quota-exceeded");
     expect(answer.body.json.message).toBe("The reports quota is used up.");
   });
+
+  it.each([
+    ["notCompiled", "module-not-compiled", 404, undefined],
+    ["notRegistered", "module-not-registered", 409, undefined],
+    ["configInvalid", "module-config-invalid", 400, [ENDPOINT_ISSUE]],
+  ] as const)(
+    "answers the module-management refusal %s with its catalogue code, status and issues, never the operator text",
+    async (procedure, appCode, status, issues) => {
+      const { call } = setup();
+
+      const answer = await refusal(await call(procedure));
+
+      expect(answer.status).toBe(status);
+      expect(answer.body.json.data).toEqual(
+        issues === undefined
+          ? { appCode, requestId: REQUEST_ID }
+          : { appCode, requestId: REQUEST_ID, issues }
+      );
+      expect(answer.body.json.message).toBe(CORE_ERROR_MESSAGES[appCode]);
+      expect(answer.text).not.toContain("secret-module");
+    }
+  );
 
   it("answers a plain Error inside a procedure with the generic 500 and no cause text", async () => {
     const { call } = setup();

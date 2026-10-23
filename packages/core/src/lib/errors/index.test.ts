@@ -97,6 +97,26 @@ describe("safeBodyFor", () => {
     });
   });
 
+  it("carries the issues of a refused write, and no issues key without them", () => {
+    const body = safeBodyFor(
+      new AppError(CORE_ERRORS["module-config-invalid"], {
+        issues: [{ path: "endpoint", message: "Invalid url" }],
+      }),
+      "r1"
+    );
+
+    expect(body).toEqual({
+      code: "module-config-invalid",
+      message: CORE_ERROR_MESSAGES["module-config-invalid"],
+      requestId: "r1",
+      issues: [{ path: "endpoint", message: "Invalid url" }],
+    });
+
+    expect(
+      Object.keys(safeBodyFor(new AppError(CORE_ERRORS.forbidden), "r1"))
+    ).not.toContain("issues");
+  });
+
   it("maps an unknown error to the generic entry", () => {
     const body = safeBodyFor(
       new Error("relation placeholder_record does not exist"),

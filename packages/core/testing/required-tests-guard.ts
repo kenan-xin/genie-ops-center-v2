@@ -406,4 +406,30 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the audit reader against a real database resolves a target once per request, even when the grant is a declared parent",
     ],
   },
+  {
+    file: "testing/modules-page.integration.test.ts",
+    reason:
+      "Spec 3 R-82 to R-91a and R-90a require the Modules page service to share the enable procedure and write its own core audit row",
+    cases: [
+      "the modules page service against a real database the page and the command line write the same tenant_module row",
+      "the modules page service against a real database a page switch writes one core row and no ops row; a command run writes one ops row and no core row",
+      "the modules page service against a real database a repeated switch writes no audit row",
+      "the modules page service against a real database an enable with an invalid stored config refuses with issues, leaves the row off, writes no audit row",
+      "the modules page service against a real database listModules lists compiled modules in image order, maps a dangling category id to null, lists holders of <id>:use and keeps holders of a disabled module",
+      "the modules page service against a real database setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module, writes one core:module_category_set row",
+      "the modules page service against a real database a repeated placement changes nothing and writes no audit row",
+    ],
+  },
+  {
+    file: "testing/categories-page.integration.test.ts",
+    reason:
+      "Spec 3 R-87 to R-90a require the Categories page service's counts, its audit row per change and a delete that touches no module table",
+    cases: [
+      "the categories page service against a real database create, rename, reorder and delete each write exactly one audit row with its R-90a action",
+      "the categories page service against a real database counts come from tenant_module.category_id of compiled placeable modules, and the ungrouped count includes a dangling id",
+      "the categories page service against a real database delete leaves members ungrouped and changes no row outside category and tenant_module",
+      "the categories page service against a real database a duplicate or blank name refuses and writes no row",
+      "the categories page service against a real database reorder refuses a list that misses or adds an id",
+    ],
+  },
 ];

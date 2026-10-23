@@ -118,7 +118,7 @@ export async function writeAdminAuditEvent(
  * error. Only the code reaches the fallback line: the message and every value (drizzle's
  * wrapper message holds the SQL and the parameters) stay in the server log (R-45, R-66).
  */
-function pgErrorCode(error: Error | undefined): string | undefined {
+export function pgErrorCode(error: Error | undefined): string | undefined {
   for (let current = error; current !== undefined;) {
     if ("code" in current) {
       const code: unknown = current.code;

@@ -57,10 +57,17 @@ const link = new RPCLink({
 export const rpc: ContractRouterClient<BrowserContract> =
   createORPCClient(link);
 
-/** A refusal as a screen shows it: the catalogue message and, when rate-limited, the wait. */
+/**
+ * A refusal as a screen shows it: the catalogue message, when rate-limited the wait, and for an
+ * invalid module configuration its issues.
+ */
 export type Refusal = {
   readonly message: string;
   readonly retryAfterMinutes?: number;
+  readonly issues?: readonly {
+    readonly path: string;
+    readonly message: string;
+  }[];
 };
 
 /**
@@ -76,9 +83,13 @@ export function refusalOf(cause: unknown): Refusal {
 
   if (!data.success) return { message: "" };
 
-  const minutes = data.data.retryAfterMinutes;
+  const { retryAfterMinutes, issues } = data.data;
+  let refusal: Refusal = { message: cause.message };
 
-  return minutes === undefined
-    ? { message: cause.message }
-    : { message: cause.message, retryAfterMinutes: minutes };
+  if (retryAfterMinutes !== undefined)
+    refusal = { ...refusal, retryAfterMinutes };
+
+  if (issues !== undefined) refusal = { ...refusal, issues };
+
+  return refusal;
 }

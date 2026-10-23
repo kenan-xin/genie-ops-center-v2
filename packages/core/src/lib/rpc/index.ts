@@ -12,11 +12,15 @@ export { oc };
 
 /**
  * The data of every refusal the RPC transport answers: the catalogue code, the request id that
- * correlates the body with the log line (R-46), and the wait of a rate-limited refusal. The app's
+ * correlates the body with the log line (R-46), the wait of a rate-limited refusal, and the field
+ * issues of a refused write (a module enable whose configuration does not parse). The app's
  * error interceptor builds it fresh, never from oRPC's own data (ADR 0011, decision 6).
  */
 export const appErrorData = z.object({
   appCode: z.string(),
   requestId: z.string(),
   retryAfterMinutes: z.number().optional(),
+  issues: z
+    .array(z.object({ path: z.string(), message: z.string() }))
+    .optional(),
 });

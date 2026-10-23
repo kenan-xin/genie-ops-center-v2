@@ -21,6 +21,21 @@ describe("refusalOf", () => {
     });
   });
 
+  it("carries the issues of a refused module enable", () => {
+    const issues = [{ path: "endpoint", message: "Invalid url" }];
+
+    const refusal = new ORPCError("module-config-invalid", {
+      status: 400,
+      message: "The module configuration is not valid.",
+      data: { appCode: "module-config-invalid", requestId: "req-2", issues },
+    });
+
+    expect(refusalOf(refusal)).toEqual({
+      message: "The module configuration is not valid.",
+      issues,
+    });
+  });
+
   it("has no message for an answer written outside the interceptor", () => {
     // The origin refusal decodes to an ORPCError carrying only oRPC's fallback text.
     expect(refusalOf(new ORPCError("FORBIDDEN"))).toEqual({ message: "" });

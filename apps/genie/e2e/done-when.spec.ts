@@ -339,47 +339,54 @@ test("retained access: a disabled module's grant is ineffective, the mixed role 
   const email = scenarioEmail("invite", "mixed", testInfo.project.name);
   const before = await assignmentIds(email);
 
-  await signInThroughBroker(page, { baseUrl, email });
-
   // The module entitlement is one row per deployment, so the phone and the desktop runs of the
-  // AC-26 proof must not disable it at once.
-  await withDeploymentLock("s2-16-entitlement", async () => {
-    try {
-      await expectPlaceholderEntries(page, baseUrl, 1);
+  // AC-26 proof, and `modules-categories.spec.ts`, must not change it at once. That spec also
+  // signs this person in, so the sign-in sits inside the lock, and its holds set the long wait.
+  test.setTimeout(420_000);
 
-      await brokeredGenieOps("invite", ["module", "disable", "placeholder"]);
+  await withDeploymentLock(
+    "s2-16-entitlement",
+    async () => {
+      await signInThroughBroker(page, { baseUrl, email });
 
-      // The module's keys grant nothing while it is unavailable: its route and its procedure
-      // answer 403 with the module-disabled refusal of Section 1 R-8.
-      await expectPlaceholderEntries(page, baseUrl, 0);
+      try {
+        await expectPlaceholderEntries(page, baseUrl, 1);
 
-      const route = await page.goto(`${baseUrl}/placeholder`);
+        await brokeredGenieOps("invite", ["module", "disable", "placeholder"]);
 
-      expect(route?.status()).toBe(403);
+        // The module's keys grant nothing while it is unavailable: its route and its procedure
+        // answer 403 with the module-disabled refusal of Section 1 R-8.
+        await expectPlaceholderEntries(page, baseUrl, 0);
 
-      const read = await rpcPost(
-        page.request,
-        `${baseUrl}/api/rpc/placeholder/read`
-      );
+        const route = await page.goto(`${baseUrl}/placeholder`);
 
-      expect(read.status()).toBe(403);
-      expect(await read.text()).toContain("module-disabled");
+        expect(route?.status()).toBe(403);
 
-      // The unrelated core key in the same role keeps working (R-33d, CF-MA-10).
-      await page.goto(`${baseUrl}/admin/audit`);
-      await expect(
-        page.getByRole("heading", { name: "Audit log" })
-      ).toBeVisible();
+        const read = await rpcPost(
+          page.request,
+          `${baseUrl}/api/rpc/placeholder/read`
+        );
 
-      await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+        expect(read.status()).toBe(403);
+        expect(await read.text()).toContain("module-disabled");
 
-      // The remaining valid grant comes back under the same assignment (CF-MA-11).
-      await expectPlaceholderEntries(page, baseUrl, 1);
-      await placeholderVisible(page, baseUrl);
-    } finally {
-      await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
-    }
-  });
+        // The unrelated core key in the same role keeps working (R-33d, CF-MA-10).
+        await page.goto(`${baseUrl}/admin/audit`);
+        await expect(
+          page.getByRole("heading", { name: "Audit log" })
+        ).toBeVisible();
+
+        await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+
+        // The remaining valid grant comes back under the same assignment (CF-MA-11).
+        await expectPlaceholderEntries(page, baseUrl, 1);
+        await placeholderVisible(page, baseUrl);
+      } finally {
+        await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+      }
+    },
+    300_000
+  );
 
   expect(before.length).toBe(1);
   expect(await assignmentIds(email)).toEqual(before);

@@ -1,9 +1,16 @@
 import { and, eq } from "drizzle-orm";
 
-import type { AppErrorIssue } from "../../lib/errors/index.ts";
+import {
+  AppError,
+  type AppErrorIssue,
+  CORE_ERRORS,
+} from "../../lib/errors/index.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
+import {
+  type TenantTransaction,
+  withTransaction,
+} from "../../lib/tenant-context/with-transaction.ts";
 import { tenantModule } from "../../schema.ts";
 import { syncModuleAdminKey } from "../authorization/roles.ts";
 
@@ -20,25 +27,27 @@ export type ModuleManagementErrorCode =
   | "module-config-invalid";
 
 /**
- * The refusal the enable/disable procedure raises. A plain `Error` cannot carry a stable code
- * and a dynamic, actionable message at once; this one carries both, and the enable path attaches
- * one `issues` entry per invalid field so the command line and the Modules screen of Section 3
- * show the same detail (R-68, R-68a).
+ * The refusal the enable/disable procedure raises. It is an `AppError`, so a transport answers
+ * its catalogue code, fixed safe message, status and `issues` like any other refusal, with no
+ * mapping in a router. It is the one `AppError` whose `message` differs from `safeMessage`: the
+ * command line prints `message`, and that dynamic text (the module id, each issue) is what an
+ * operator acts on. No transport reads `message`, so the id never reaches a response body. The
+ * enable path attaches one `issues` entry per invalid field, so the command line and the Modules
+ * screen show the same detail (R-68, R-68a).
  */
-export class ModuleManagementError extends Error {
-  readonly code: ModuleManagementErrorCode;
+export class ModuleManagementError extends AppError {
+  declare readonly code: ModuleManagementErrorCode;
 
-  readonly issues: readonly ModuleConfigIssue[];
+  declare readonly issues: readonly ModuleConfigIssue[];
 
   constructor(
     code: ModuleManagementErrorCode,
     message: string,
     issues: readonly ModuleConfigIssue[] = []
   ) {
-    super(message);
+    super(CORE_ERRORS[code], { issues });
+    Object.defineProperty(this, "message", { value: message });
     this.name = "ModuleManagementError";
-    this.code = code;
-    this.issues = issues;
   }
 }
 
@@ -71,9 +80,27 @@ function describeIssue(issue: ModuleConfigIssue): string {
  * with actionable issues and leaves the row untouched. Disable validates nothing, so a module
  * whose configuration no longer parses can still be switched off. A repeated enable or disable is a
  * no-op that keeps `enabled_at`; `changed` reports whether this call was the transition.
+ *
+ * This form opens its own transaction, for the command line. A caller that writes more in the same
+ * transaction, like the Modules page with its audit row, calls `setModuleEnabledIn`.
  */
 export async function setModuleEnabled(
   context: TenantContext,
+  compiledModules: readonly Module[],
+  moduleId: string,
+  enabled: boolean
+): Promise<ModuleEnableResult> {
+  return withTransaction(context, (tx) =>
+    setModuleEnabledIn(tx, compiledModules, moduleId, enabled)
+  );
+}
+
+/**
+ * `setModuleEnabled` inside the caller's transaction, because `withTransaction` refuses nesting.
+ * The caller's other writes commit or roll back with the switch.
+ */
+export async function setModuleEnabledIn(
+  tx: TenantTransaction,
   compiledModules: readonly Module[],
   moduleId: string,
   enabled: boolean
@@ -89,64 +116,62 @@ export async function setModuleEnabled(
     );
   }
 
-  return withTransaction(context, async (tx) => {
-    const rows = await tx
-      .select({ enabled: tenantModule.enabled, config: tenantModule.config })
-      .from(tenantModule)
-      .where(eq(tenantModule.moduleId, moduleId))
-      .for("update");
+  const rows = await tx
+    .select({ enabled: tenantModule.enabled, config: tenantModule.config })
+    .from(tenantModule)
+    .where(eq(tenantModule.moduleId, moduleId))
+    .for("update");
 
-    const row = rows[0];
+  const row = rows[0];
 
-    if (row === undefined) {
+  if (row === undefined) {
+    throw new ModuleManagementError(
+      "module-not-registered",
+      `module-not-registered: ${moduleId} has no tenant_module row; run \`genie-ops setup\` or \`genie-ops migrate\` first`
+    );
+  }
+
+  const configuration = module.configuration;
+
+  if (enabled && !row.enabled && configuration !== undefined) {
+    // The row's jsonb is unparsed input; this schema run is its boundary, and it is the only
+    // place the stored config is trusted (R-68a). It runs only on a real disable-to-enable
+    // transition, so a repeated enable never refuses a module that is already active.
+    const result = configuration.schema.safeParse(row.config ?? {});
+
+    if (!result.success) {
+      const issues = result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      }));
+
       throw new ModuleManagementError(
-        "module-not-registered",
-        `module-not-registered: ${moduleId} has no tenant_module row; run \`genie-ops setup\` or \`genie-ops migrate\` first`
+        "module-config-invalid",
+        `module-config-invalid: ${moduleId} ${issues.map(describeIssue).join("; ")}`,
+        issues
       );
     }
+  }
 
-    const configuration = module.configuration;
-
-    if (enabled && !row.enabled && configuration !== undefined) {
-      // The row's jsonb is unparsed input; this schema run is its boundary, and it is the only
-      // place the stored config is trusted (R-68a). It runs only on a real disable-to-enable
-      // transition, so a repeated enable never refuses a module that is already active.
-      const result = configuration.schema.safeParse(row.config ?? {});
-
-      if (!result.success) {
-        const issues = result.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        }));
-
-        throw new ModuleManagementError(
-          "module-config-invalid",
-          `module-config-invalid: ${moduleId} ${issues.map(describeIssue).join("; ")}`,
-          issues
-        );
-      }
-    }
-
-    // The condition is the transition itself (`enabled = false` to enable, `enabled = true` to
-    // disable), so a repeated call matches no row and changes nothing, and `enabled_at` moves only
-    // on a real enable.
-    const updated = await tx
-      .update(tenantModule)
-      .set(
-        enabled ? { enabled: true, enabledAt: new Date() } : { enabled: false }
+  // The condition is the transition itself (`enabled = false` to enable, `enabled = true` to
+  // disable), so a repeated call matches no row and changes nothing, and `enabled_at` moves only
+  // on a real enable.
+  const updated = await tx
+    .update(tenantModule)
+    .set(
+      enabled ? { enabled: true, enabledAt: new Date() } : { enabled: false }
+    )
+    .where(
+      and(
+        eq(tenantModule.moduleId, moduleId),
+        eq(tenantModule.enabled, !enabled)
       )
-      .where(
-        and(
-          eq(tenantModule.moduleId, moduleId),
-          eq(tenantModule.enabled, !enabled)
-        )
-      )
-      .returning({ moduleId: tenantModule.moduleId });
+    )
+    .returning({ moduleId: tenantModule.moduleId });
 
-    // R-31: the real transition appends or removes the module's admin key on `Tenant
-    // administrator` in the same transaction, so the two never disagree.
-    if (updated.length > 0) await syncModuleAdminKey(tx, module, enabled);
+  // R-31: the real transition appends or removes the module's admin key on `Tenant
+  // administrator` in the same transaction, so the two never disagree.
+  if (updated.length > 0) await syncModuleAdminKey(tx, module, enabled);
 
-    return { changed: updated.length > 0 };
-  });
+  return { changed: updated.length > 0 };
 }

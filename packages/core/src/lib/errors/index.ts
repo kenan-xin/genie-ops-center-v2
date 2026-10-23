@@ -43,6 +43,12 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "Local accounts are not available in this realm, so this person cannot be created as a local account.",
   "realm-account-failed":
     "The identity provider could not create the account. Try again, or check the realm.",
+  "module-not-compiled": "That module is not part of this deployment.",
+  "module-not-registered":
+    "That module is not set up in this deployment yet. An operator must run setup or migrate first.",
+  "module-config-invalid":
+    "The module's configuration is missing a required value or holds an invalid one, so the module stayed off.",
+  "category-name-taken": "A category with that name already exists.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */
@@ -84,11 +90,12 @@ export type ErrorDefinition = {
 /** The former name of `ErrorDefinition`, kept for the module-facing spelling. */
 export type ModuleErrorDefinition = ErrorDefinition;
 
-/** The body an ordinary route handler returns (R-46). */
+/** The body an ordinary route handler returns (R-46), with the field issues of a refused write. */
 export type SafeErrorBody = {
   readonly code: string;
   readonly message: string;
   readonly requestId: string;
+  readonly issues?: readonly AppErrorIssue[];
 };
 
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -282,7 +289,10 @@ export function safeBodyFor(
   requestId: string
 ): SafeErrorBody {
   if (error instanceof AppError) {
-    return { code: error.code, message: error.safeMessage, requestId };
+    const body = { code: error.code, message: error.safeMessage, requestId };
+
+    // An empty list says nothing a client can act on, so only a real one is carried.
+    return error.issues?.length ? { ...body, issues: error.issues } : body;
   }
 
   return { code: GENERIC_ERROR_CODE, message: GENERIC_MESSAGE, requestId };

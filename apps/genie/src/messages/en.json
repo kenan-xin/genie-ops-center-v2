@@ -55,6 +55,14 @@
     "audit": {
       "title": "Audit log",
       "description": "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited."
+    },
+    "modules": {
+      "title": "Modules",
+      "description": "The modules this deployment carries. Switch one on or off for everyone, and give it a category. Who can open a module is set in Roles."
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Headings that group modules in the navigation."
     }
   },
   "noGrants": {

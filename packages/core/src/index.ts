@@ -474,10 +474,32 @@ export {
 
 export {
   type ModuleConfigIssue,
+  type ModuleEnableResult,
   ModuleManagementError,
   type ModuleManagementErrorCode,
   setModuleEnabled,
+  setModuleEnabledIn,
 } from "./services/module-management/index.ts";
+
+export { hasWorkspaceEntry } from "./lib/module-contract/workspace-entry.ts";
+
+export {
+  listModules,
+  type ModuleHolder,
+  type ModuleRow,
+  setModuleCategory,
+  switchModule,
+} from "./services/modules/index.ts";
+
+export {
+  type CategoryList,
+  type CategoryRow,
+  createCategory,
+  deleteCategory,
+  listCategories,
+  renameCategory,
+  reorderCategories,
+} from "./services/categories/index.ts";
 
 export {
   type LogBindings,

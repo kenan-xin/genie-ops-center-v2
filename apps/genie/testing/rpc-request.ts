@@ -37,6 +37,9 @@ export const rpcRefusalBody = z.object({
       appCode: z.string(),
       requestId: z.string(),
       retryAfterMinutes: z.number().optional(),
+      issues: z
+        .array(z.object({ path: z.string(), message: z.string() }))
+        .optional(),
     }),
   }),
 });

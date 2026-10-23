@@ -403,6 +403,9 @@ describe("tenant_module write boundary", () => {
       "packages/core/src/services/setup/index.ts",
       "packages/core/src/services/module-management/index.ts",
       "packages/core/src/lib/tenant-context/readers.ts",
+      // The Modules and Categories pages read rows fresh and place a module (`category_id` only).
+      "packages/core/src/services/modules/index.ts",
+      "packages/core/src/services/categories/index.ts",
     ]);
 
     // Both the SQL name and the drizzle table object name count: a core file reaches the table

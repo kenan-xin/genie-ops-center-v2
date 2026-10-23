@@ -40,6 +40,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/modules-rpc.integration.test.ts",
+    reason:
+      "Bead 4xz and Spec 3 Decision 9 require the enable refusals to reach the RPC body with their status and issues through the one transport seam",
+    cases: [
+      "the modules RPC refusals answers each module refusal with its code, its status and, for an invalid config, its issues",
+      "the modules RPC refusals refuses a caller without core:settings:manage at 403 even with a malformed body",
+    ],
+  },
+  {
     file: "testing/isolation.integration.test.ts",
     cases: [
       "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",

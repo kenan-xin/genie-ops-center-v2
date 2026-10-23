@@ -13,6 +13,10 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["email-taken", 400],
   ["local-accounts-unavailable", 400],
   ["rate-limited", 429],
+  ["module-not-compiled", 404],
+  ["module-not-registered", 409],
+  ["module-config-invalid", 400],
+  ["category-name-taken", 400],
 ]);
 
 /**
