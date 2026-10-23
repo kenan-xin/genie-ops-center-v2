@@ -149,9 +149,11 @@ const LANDING_SEED = [
   ...E2E_PROJECTS.flatMap((project) => {
     const member = scenarioEmail("landing", "member", project);
     const nogrant = scenarioEmail("landing", "nogrant", project);
+    // S3-04b: a second person with no grant, for the user menu proof in `admin-seed.spec.ts`.
+    const menu = scenarioEmail("landing", "menu", project);
 
     return [
-      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S3-04a Member ${project}', '${member}', true, 'active'), (gen_random_uuid()::text, 'S3-04a No grant ${project}', '${nogrant}', true, 'active') on conflict (email) do nothing`,
+      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S3-04a Member ${project}', '${member}', true, 'active'), (gen_random_uuid()::text, 'S3-04a No grant ${project}', '${nogrant}', true, 'active'), (gen_random_uuid()::text, 'S3-04b Menu ${project}', '${menu}', true, 'active') on conflict (email) do nothing`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'Landing fixture user' and u.email = '${member}' on conflict do nothing`,
     ];
   }),
@@ -304,6 +306,7 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "invite", state: "mixed", groups: () => [] },
     { scenario: "landing", state: "member", groups: () => [] },
     { scenario: "landing", state: "nogrant", groups: () => [] },
+    { scenario: "landing", state: "menu", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {

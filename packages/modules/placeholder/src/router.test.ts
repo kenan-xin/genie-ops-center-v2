@@ -121,6 +121,8 @@ function contextWith(
         createLink: () => Promise.reject(new Error("the router linked a file")),
         fetchLink: () =>
           Promise.reject(new Error("the router served a file link")),
+        createBrandingMarkLink: () =>
+          Promise.reject(new Error("the router linked the branding mark")),
       },
       mailer: {
         provider: "none",

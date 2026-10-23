@@ -2,6 +2,7 @@
 
 import { SessionActivity } from "@genie/core/features/account";
 import type { SessionActivityResult } from "@genie/core/features/account";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 /** The activity route's answer, parsed at the boundary. */
@@ -38,6 +39,8 @@ export function SessionActivityMount(props: {
   readonly idleMinutes: number;
   readonly initialIdleExpiresAt: string;
 }) {
+  const t = useTranslations("idle");
+
   return (
     <SessionActivity
       idleMinutes={props.idleMinutes}
@@ -45,6 +48,17 @@ export function SessionActivityMount(props: {
       call={postActivity}
       onUnauthenticated={() => {
         window.location.assign("/sign-in?error=session_expired");
+      }}
+      warning={{
+        title: t("title"),
+        description: t("description", { idleMinutes: props.idleMinutes }),
+        countdownLabel: t("countdownLabel"),
+        staySignedIn: t("staySignedIn"),
+        signOutNow: t("signOutNow"),
+      }}
+      signOutAction="/api/auth/sign-out"
+      onIdleExpired={() => {
+        window.location.assign("/api/auth/session-expired");
       }}
     />
   );

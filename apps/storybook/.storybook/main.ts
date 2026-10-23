@@ -37,6 +37,8 @@ const config: StorybookConfig = {
   stories: [
     ...shared.stories,
     `${FROM_HOST}/apps/genie/src/**/*.stories.@(ts|tsx|mdx)`,
+    // Composition stories: a host outside apps/genie builds the shell from core and ui.
+    "../stories/**/*.stories.@(ts|tsx)",
   ],
   addons: [...shared.addons],
   features: { ...shared.features },

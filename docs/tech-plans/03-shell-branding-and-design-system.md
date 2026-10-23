@@ -42,6 +42,8 @@ D3-6, one writer for shared files. S3-04a owns the only Section 3 migration (R-8
 
 D3-7, the shell loads the logo through the signed download link. The identity block (S3-04b) and the Branding preview (S3-07) render the logo through the existing signed download link of the file service, issued per render on the dynamic shell route. An image shows only when its `scan_status` is clean or skipped (R-49). No new image route is added.
 
+Amended 2026-10-23 (S3-04b): the shell's image is the square mark. Its link has a branding scope that any signed-in person may fetch, because no permission key reaches a person with no grants. `/api/files/download` is the file service's existing generic link route (Spec 1 R-38), now served by the app. It is not an image route.
+
 ## Delivery order and gates
 
 1. Foundation. S3-01, the Base UI spike and the Tailwind sources (D3-1, D3-2).

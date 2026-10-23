@@ -117,10 +117,10 @@ export const RevokeOneSession: Story = {
       // The title names the device; the consequence is one sentence.
       await expect(dialog.getByText(/Pixel 7 \(Android\)/)).toBeInTheDocument();
 
-      // Cancel is focused when the dialog opens.
-      await expect(
-        dialog.getByRole("button", { name: "Cancel" })
-      ).toHaveFocus();
+      // Cancel is focused when the dialog opens; Base UI moves focus a frame after it mounts.
+      await waitFor(() =>
+        expect(dialog.getByRole("button", { name: "Cancel" })).toHaveFocus()
+      );
 
       await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
 

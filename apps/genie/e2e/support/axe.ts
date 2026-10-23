@@ -12,6 +12,26 @@ export async function expectNoAxeViolations(
   page: Page,
   label: string
 ): Promise<void> {
+  // An overlay that is still fading in reads as low contrast. Base UI marks one entering or leaving
+  // with these attributes before its transition starts, so both settle before axe measures.
+  await page.waitForFunction(
+    () =>
+      document.querySelector("[data-starting-style], [data-ending-style]") ===
+      null,
+    undefined,
+    { polling: 100 }
+  );
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter(
+          (animation) => animation.effect?.getTiming().iterations !== Infinity
+        )
+        .map((animation) => animation.finished.catch(() => undefined))
+    )
+  );
+
   const results = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
 
   expect(

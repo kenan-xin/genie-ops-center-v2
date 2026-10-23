@@ -1,8 +1,11 @@
 import { type PermissionKey } from "@genie/core";
 import { EMPTY_AUDIT_FILTERS } from "@genie/core/features/audit";
+import { PageHeader } from "@genie/core/features/shell";
+import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
+import { ShellFrame } from "../../../shell-frame.tsx";
 import { AuditLogRoute } from "./audit-log-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -22,21 +25,26 @@ const AUDIT_READ_PERMISSION: PermissionKey = "core:audit:read";
  * neither.
  */
 export default async function AuditLogPage() {
-  return renderIfPermitted(AUDIT_READ_PERMISSION, async (caller) => {
-    const branding = await requireContext().tenant.branding.get();
+  const content = await renderIfPermitted(
+    AUDIT_READ_PERMISSION,
+    async (caller) => {
+      const branding = await requireContext().tenant.branding.get();
+      const t = await getTranslations("pages");
 
-    return (
-      <main>
-        <h1>Audit log</h1>
-        <p>
-          Who did what, when, on which record. Events are kept for the
-          tenant&apos;s lifetime and never edited.
-        </p>
-        <AuditLogRoute
-          viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
-          initialFilters={EMPTY_AUDIT_FILTERS}
-        />
-      </main>
-    );
-  });
+      return (
+        <main>
+          <PageHeader
+            title={t("audit.title")}
+            description={t("audit.description")}
+          />
+          <AuditLogRoute
+            viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
+            initialFilters={EMPTY_AUDIT_FILTERS}
+          />
+        </main>
+      );
+    }
+  );
+
+  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

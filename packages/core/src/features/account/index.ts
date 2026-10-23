@@ -11,6 +11,8 @@ export {
   type SessionActivityProps,
 } from "./session-activity.tsx";
 
+export { type IdleWarningStrings } from "./idle-warning-dialog.tsx";
+
 export {
   type AccountGroup,
   type AccountPageProps,

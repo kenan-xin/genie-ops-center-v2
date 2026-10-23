@@ -21,6 +21,7 @@ import {
 import { chooseOption } from "./support/choose-option.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { rpcPost } from "./support/rpc.ts";
+import { openNavigation } from "./support/shell.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
 /**
@@ -53,8 +54,11 @@ async function personState(
 
 async function placeholderVisible(page: Page, baseUrl: string): Promise<void> {
   await page.goto(`${baseUrl}/`);
+  // The Workspace nav: the module also pins the same entry, so the panel holds it twice.
   await expect(
-    page.getByRole("link", { name: "Placeholder", exact: true })
+    (await openNavigation(page))
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: "Placeholder", exact: true })
   ).toBeVisible();
 
   await page.goto(`${baseUrl}/placeholder`);
@@ -71,6 +75,8 @@ async function placeholderVisible(page: Page, baseUrl: string): Promise<void> {
 /** R-34, R-35: no entry, and the route and the procedure refuse a signed-in person. */
 async function placeholderRefused(page: Page, baseUrl: string): Promise<void> {
   await page.goto(`${baseUrl}/`);
+  // Opened so the phone drawer renders its links; counted page-wide, pinned rail included.
+  await openNavigation(page);
   await expect(
     page.getByRole("link", { name: "Placeholder", exact: true })
   ).toHaveCount(0);
@@ -293,7 +299,11 @@ async function assignmentIds(email: string): Promise<readonly string[]> {
   );
 }
 
-/** Reloads until the Placeholder entry has the expected count; the entitlement reader caches 10 s. */
+/**
+ * Reloads until the Placeholder entry has the expected count; the entitlement reader caches 10 s.
+ * A present entry is counted in the Workspace nav (the module also pins it); an absent one is
+ * counted page-wide, so a surviving pinned link fails the refusal.
+ */
 async function expectPlaceholderEntries(
   page: Page,
   baseUrl: string,
@@ -304,7 +314,16 @@ async function expectPlaceholderEntries(
       async () => {
         await page.goto(`${baseUrl}/`);
 
-        return page
+        const navigation = await openNavigation(page);
+
+        return (
+          count === 0
+            ? page
+            : navigation.getByRole("navigation", {
+                name: "Workspace",
+                exact: true,
+              })
+        )
           .getByRole("link", { name: "Placeholder", exact: true })
           .count();
       },

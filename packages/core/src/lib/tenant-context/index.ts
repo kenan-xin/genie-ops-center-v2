@@ -319,7 +319,7 @@ export function createTenantContext(
       tenant: () => context,
     }),
     capabilities,
-    fileStorage: createFileStorage(db, env, publicUrl),
+    fileStorage: createFileStorage(db, env, publicUrl, readers.branding),
     mailer: createMailer(env, {
       branding: readers.branding,
       logger,

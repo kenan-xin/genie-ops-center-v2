@@ -11,6 +11,7 @@ import type {
   FileStorageAdapter,
   PublicUrlBuilder,
 } from "../../lib/tenant-context/index.ts";
+import type { BrandingReader } from "../../lib/tenant-context/readers.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { file } from "../../schema.ts";
 import { can } from "../authorization/index.ts";
@@ -18,7 +19,12 @@ import type { RequestPrincipal } from "../authorization/principal.ts";
 import { createPostgresFileBlobStore } from "./adapters/postgres.ts";
 import type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
 import { sanitizeUploadedSvg } from "./sanitize-svg.ts";
-import { createFileLinkSecret, readFileLink, signFileLink } from "./token.ts";
+import {
+  createFileLinkSecret,
+  type FileLinkScope,
+  readFileLink,
+  signFileLink,
+} from "./token.ts";
 
 export type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
 
@@ -102,7 +108,10 @@ export type FetchFileLinkInput = {
 /**
  * The one file store every caller reaches through `context.fileStorage` (R-6, R-32). `store` and
  * `fetch` are the byte operations; `createLink` and `fetchLink` are the tokenized download pair,
- * each gated by the one `can()` seam (R-38, DEC-39).
+ * each gated by the one `can()` seam (R-38, DEC-39). `createBrandingMarkLink` issues the one link
+ * that skips `can()`: the square mark the branding row names, for any signed-in person, because no
+ * permission key reaches a person with no grants (Spec 3 R-39, D3-7). It takes no file id, so no
+ * caller can point it at another file.
  */
 export type FileStorage = {
   readonly store: (
@@ -111,6 +120,9 @@ export type FileStorage = {
   ) => Promise<StoredFile>;
   readonly fetch: (fileId: string) => Promise<FetchedFile>;
   readonly createLink: (input: FileLinkInput) => Promise<TokenizedFileLink>;
+  readonly createBrandingMarkLink: (input: {
+    readonly principal: RequestPrincipal;
+  }) => Promise<TokenizedFileLink | undefined>;
   readonly fetchLink: (input: FetchFileLinkInput) => Promise<FetchedFile>;
 };
 
@@ -191,10 +203,18 @@ async function assertCan(
 export function createFileStorage(
   db: FileStorageDatabase,
   env: Pick<DeploymentEnvironment, "fileStorageAdapter" | "fileMaxBytes">,
-  publicUrl: PublicUrlBuilder
+  publicUrl: PublicUrlBuilder,
+  branding: BrandingReader
 ): FileStorage {
   const blobStore = createBlobStore(env.fileStorageAdapter, db);
   const secret = createFileLinkSecret();
+
+  function linkFor(scope: FileLinkScope): TokenizedFileLink {
+    const expiresAt = new Date(Date.now() + FILE_LINK_TTL_MS);
+    const token = signFileLink(scope, expiresAt, secret);
+
+    return { token, url: publicUrl(FILE_DOWNLOAD_PATH, { token }), expiresAt };
+  }
 
   async function fetch(fileId: string): Promise<FetchedFile> {
     const [row] = await db
@@ -252,28 +272,43 @@ export function createFileStorage(
     async createLink(input) {
       await assertCan(input.principal, input.permission, input.resource);
 
-      const expiresAt = new Date(Date.now() + FILE_LINK_TTL_MS);
-
       // The scope is signed into the token, so serving cannot widen the authorization decision.
-      const scope = {
+      return linkFor({
+        kind: "record",
         fileId: input.fileId,
         permission: input.permission,
         resource: input.resource,
-      };
+      });
+    },
+    async createBrandingMarkLink({ principal }) {
+      if (!principal.authenticated) return undefined;
 
-      const token = signFileLink(scope, expiresAt, secret);
+      const { logoMarkFileId } = await branding.get();
 
-      return {
-        token,
-        url: publicUrl(FILE_DOWNLOAD_PATH, { token }),
-        expiresAt,
-      };
+      if (logoMarkFileId === null) return undefined;
+
+      const [row] = await db
+        .select({ scanStatus: file.scanStatus })
+        .from(file)
+        .where(eq(file.id, logoMarkFileId));
+
+      if (row?.scanStatus !== "clean" && row?.scanStatus !== "skipped") {
+        return undefined;
+      }
+
+      return linkFor({ kind: "branding", fileId: logoMarkFileId });
     },
     async fetchLink(input) {
       // Verify first: a forged token costs no `can()` work (Section 2 reads the database there).
       const scope = readFileLink(input.token, secret);
 
-      await assertCan(input.principal, scope.permission, scope.resource);
+      if (scope.kind === "branding") {
+        if (!input.principal.authenticated) {
+          throw new Error("Permission denied for this file link.");
+        }
+      } else {
+        await assertCan(input.principal, scope.permission, scope.resource);
+      }
 
       return fetch(scope.fileId);
     },

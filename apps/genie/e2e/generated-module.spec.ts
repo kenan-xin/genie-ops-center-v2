@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { rpcPost } from "./support/rpc.ts";
+import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -88,7 +89,9 @@ test("a signed-in person with a real grant sees the generated module and reads i
   });
 
   await expect(
-    page.getByRole("link", { name: displayName, exact: true })
+    (await openNavigation(page))
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: displayName, exact: true })
   ).toBeVisible();
 
   await page.goto(`/m/${id}`);

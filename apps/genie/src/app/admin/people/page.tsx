@@ -1,7 +1,10 @@
 import { type PermissionKey } from "@genie/core";
+import { PageHeader } from "@genie/core/features/shell";
+import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
+import { ShellFrame } from "../../../shell-frame.tsx";
 import { PeopleRoute } from "./people-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -16,20 +19,19 @@ const PEOPLE_MANAGE: PermissionKey = "core:people:manage";
  * (DEC-46) and handed to the Add person dialog; the server re-checks every write.
  */
 export default async function PeoplePage() {
-  return renderIfPermitted(PEOPLE_MANAGE, async (caller) => {
+  const content = await renderIfPermitted(PEOPLE_MANAGE, async (caller) => {
     const tenant = requireContext().tenant;
+    const t = await getTranslations("pages");
 
     const branding = await tenant.branding.get();
     const settings = await tenant.settings.get();
 
     return (
       <main>
-        <h1>People</h1>
-        <p>
-          Everyone who can sign in. Add a person, give them roles, and revoke
-          access when they leave. A pending person becomes active at their first
-          sign-in.
-        </p>
+        <PageHeader
+          title={t("people.title")}
+          description={t("people.description")}
+        />
         <PeopleRoute
           viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
           settings={{
@@ -41,4 +43,6 @@ export default async function PeoplePage() {
       </main>
     );
   });
+
+  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

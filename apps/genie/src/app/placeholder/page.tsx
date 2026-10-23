@@ -6,6 +6,7 @@ import { notFound } from "next/navigation.js";
 import { pinnedRoutePermission } from "../../module-route.ts";
 import { renderIfPermitted } from "../../page-access.tsx";
 import { moduleById } from "../../registry.ts";
+import { ShellFrame } from "../../shell-frame.tsx";
 
 export const dynamic = "force-dynamic";
 
@@ -31,5 +32,7 @@ export default async function PlaceholderRoute() {
 
   if (Page === undefined) notFound();
 
-  return renderIfPermitted(permission, () => <Page />);
+  const content = await renderIfPermitted(permission, () => <Page />);
+
+  return <ShellFrame chrome="workspace">{content}</ShellFrame>;
 }

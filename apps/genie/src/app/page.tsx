@@ -1,22 +1,21 @@
-import { navigationTree, supportContact } from "@genie/core";
-import { NoGrantsEmptyState } from "@genie/core/features/shell";
-import { focusRing, NavigationList } from "@genie/ui";
+import { supportContact } from "@genie/core";
+import { NoGrantsEmptyState, PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 
 import { SIGNED_OUT, SIGNED_OUT_PATH } from "../auth.ts";
 import { requireContext } from "../context.ts";
-import { documentPrincipal } from "../document-session.ts";
-import { modules } from "../registry.ts";
+import { documentSessionState } from "../document-session.ts";
+import { ShellFrame } from "../shell-frame.tsx";
+import { shellModel } from "../shell-model.ts";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The ordinary document, built from the Spec 3 navigation tree: the workspace entries, one list per
- * category, one Administration link, and the no-grants empty state when nothing lands (R-30, R-34).
- * The tree hides every module whose entitlement is off (R-8) and every entry whose permission the
- * person does not hold. Hiding is not the enforcement: each route still refuses in its own `can()`
- * check (R-35).
+ * The home route (Spec 3 R-34). A signed-in person whose navigation tree resolves a landing route
+ * goes there, so Back to workspace and a typed `/` land on the same page. Everyone else sees the
+ * shell (when signed in) around the no-grants empty state. The shell's sidebar is the navigation;
+ * hiding an entry is not the enforcement, each route still refuses in its own `can()` check.
  *
  * AC-26, across real bundles. This page's own server bundle stamps the id it read onto the
  * document it renders. The proxy never writes this attribute, so a second context in this bundle
@@ -33,50 +32,27 @@ export default async function HomePage(props: {
   if ((await props.searchParams).state === SIGNED_OUT)
     redirect(SIGNED_OUT_PATH);
 
-  const t = await getTranslations("app");
+  const signedIn = (await documentSessionState()).status === "authenticated";
+
+  if (signedIn) {
+    const { landing } = await shellModel();
+
+    if (landing !== undefined) redirect(landing);
+  }
+
+  const tApp = await getTranslations("app");
+  const tShell = await getTranslations("shell");
+  const tNoGrants = await getTranslations("noGrants");
   const { contextId, tenant } = requireContext();
 
-  const tree = await navigationTree({
-    tenant,
-    modules,
-    caller: await documentPrincipal(),
-  });
-
-  const tNoGrants = await getTranslations("noGrants");
-  const adminEntry = tree.admin[0]?.entries[0];
-
-  // Read branding only when nothing lands; the empty state is the one place that needs it.
-  const branding =
-    tree.landing === undefined ? await tenant.branding.get() : undefined;
-
-  const contact = branding ? supportContact(branding) : null;
+  const branding = await tenant.branding.get();
+  const contact = supportContact(branding);
 
   return (
-    <main data-context-id={contextId}>
-      <h1>{t("title")}</h1>
-      {tree.workspace.length > 0 && (
-        <NavigationList
-          heading={t("workspaceHeading")}
-          items={tree.workspace}
-          emptyMessage=""
-        />
-      )}
-      {tree.categories
-        .filter((group) => group.entries.length > 0)
-        .map((group) => (
-          <NavigationList
-            key={group.id}
-            heading={group.name}
-            items={group.entries}
-            emptyMessage=""
-          />
-        ))}
-      {adminEntry && (
-        <a href={adminEntry.path} className={focusRing}>
-          {t("administration")}
-        </a>
-      )}
-      {branding && (
+    <ShellFrame chrome="workspace">
+      <main data-context-id={contextId}>
+        {/* An anonymous home keeps the product heading (setup gate AC-2); the shell names it Workspace. */}
+        <PageHeader title={signedIn ? tShell("workspace") : tApp("title")} />
         <NoGrantsEmptyState
           companyName={branding.companyName}
           title={tNoGrants("title")}
@@ -90,7 +66,7 @@ export default async function HomePage(props: {
             },
           })}
         />
-      )}
-    </main>
+      </main>
+    </ShellFrame>
   );
 }

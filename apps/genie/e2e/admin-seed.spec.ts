@@ -4,8 +4,14 @@ import {
   e2eAdministratorEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { scenarioEmail } from "./scenarios.ts";
+import { landingBaseUrl } from "./support/brokered.ts";
 import { queryDatabase } from "./support/database.ts";
-import { signInThroughKeycloak } from "./support/sign-in.ts";
+import { openNavigation, openUserMenu } from "./support/shell.ts";
+import {
+  signInThroughBroker,
+  signInThroughKeycloak,
+} from "./support/sign-in.ts";
 
 /**
  * AC-19 (Gate S2-G2): on a fresh managed stack `genie-ops setup` completes every step, the
@@ -68,28 +74,66 @@ test("AC-19: the first administrator is activated and sees the admin switch", as
 
   expect(after).toEqual(["active invited"]);
 
-  // The admin switch: the workspace lands the administrator on an admin-surface entry, which only
-  // a holder of a module admin key (through Tenant administrator) is offered (R-31, R-34).
-  await expect(page.locator('a[href^="/admin"]').first()).toBeVisible();
+  // The admin switch (R-32, bead 1ri3): the workspace user menu offers Administration, which opens
+  // the first core admin entry, People, and offers no Back to workspace.
+  const menu = await openUserMenu(page);
+
+  await expect(
+    menu.getByRole("menuitem", { name: "Administration", exact: true })
+  ).toHaveAttribute("href", "/admin/people");
+  await expect(
+    menu.getByRole("menuitem", { name: "Back to workspace" })
+  ).toHaveCount(0);
+
+  // In the admin chrome the switch turns back: Back to workspace, and no Administration.
+  await page.goto("/admin/people");
+
+  const adminMenu = await openUserMenu(page);
+
+  await expect(
+    adminMenu.getByRole("menuitem", { name: "Back to workspace", exact: true })
+  ).toBeVisible();
+  await expect(
+    adminMenu.getByRole("menuitem", { name: "Administration" })
+  ).toHaveCount(0);
 });
 
-test("AC-19: a member without an admin key sees no admin switch", async ({
+test("AC-19: the workspace rail holds no admin entry, and a person without a core admin key sees no admin switch", async ({
   page,
 }, testInfo) => {
   test.setTimeout(120000);
 
   // The pre-added placeholder reader holds `placeholder:read` and `placeholder:use`, not the
-  // module's admin key, so the admin switch must be absent for them.
+  // module's admin key, so no admin entry reaches the workspace rail. The seeded E2E reader role
+  // also holds core admin keys (`e2e/global-setup.ts`), so the reader does see the switch.
   await signInThroughKeycloak(page, {
     email: e2eReaderEmail("placeholder", testInfo.project.name),
   });
 
   // The navigation rendered with the reader's own entry, so the absent admin entry is not a
-  // selector that matches nothing.
-  const navigation = page.locator("nav[aria-label]").first();
+  // selector that matches nothing. The workspace rail carries no admin entry.
+  const navigation = await openNavigation(page);
 
   await expect(
-    navigation.getByRole("link", { name: "Placeholder", exact: true })
+    navigation
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: "Placeholder", exact: true })
   ).toBeVisible();
   await expect(navigation.locator('a[href^="/admin"]')).toHaveCount(0);
+
+  // The switch follows core admin keys (Decision 7), and the seeded E2E reader role holds some,
+  // so the menu proof signs in a person with no grant at all: the landing deployment's member.
+  await signInThroughBroker(page, {
+    baseUrl: landingBaseUrl(),
+    email: scenarioEmail("landing", "menu", testInfo.project.name),
+  });
+
+  const menu = await openUserMenu(page);
+
+  await expect(
+    menu.getByRole("menuitem", { name: "Account", exact: true })
+  ).toBeVisible();
+  await expect(
+    menu.getByRole("menuitem", { name: "Administration" })
+  ).toHaveCount(0);
 });

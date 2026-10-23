@@ -8,24 +8,36 @@ import type {
 } from "../../lib/module-contract/keys.ts";
 
 /**
- * What a download token binds: the file, the permission and the owning record the `can()` check
- * ran against. `fetchLink` reads the permission and resource back from the verified token, so a
- * caller cannot widen a link after it was issued (R-38).
+ * What a download token binds. A `record` link binds the file, the permission and the owning record
+ * the `can()` check ran against; `fetchLink` reads them back from the verified token, so a caller
+ * cannot widen a link after it was issued (R-38). A `branding` link binds only the file the
+ * branding row names, which any signed-in person may fetch (Spec 3 R-39, D3-7).
  */
-export type FileLinkScope = {
-  readonly fileId: string;
-  readonly permission: PermissionKey;
-  readonly resource: ResourceRef;
-};
+export type FileLinkScope =
+  | {
+      readonly kind: "record";
+      readonly fileId: string;
+      readonly permission: PermissionKey;
+      readonly resource: ResourceRef;
+    }
+  | { readonly kind: "branding"; readonly fileId: string };
 
 /** The signed payload. `z.number()` is finite, so a `NaN` or infinite expiry is refused. */
-const payloadSchema = z.object({
-  fileId: z.string(),
-  permission: z.string(),
-  resourceType: z.string(),
-  resourceId: z.string(),
-  expiresAt: z.number(),
-});
+const payloadSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("record"),
+    fileId: z.string(),
+    permission: z.string(),
+    resourceType: z.string(),
+    resourceId: z.string(),
+    expiresAt: z.number(),
+  }),
+  z.object({
+    kind: z.literal("branding"),
+    fileId: z.string(),
+    expiresAt: z.number(),
+  }),
+]);
 
 /**
  * The key that signs a download token. Section 1 has no file-link secret of its own in the
@@ -55,14 +67,19 @@ export function signFileLink(
   expiresAt: Date,
   secret: Buffer
 ): string {
+  const body =
+    scope.kind === "record"
+      ? {
+          kind: scope.kind,
+          fileId: scope.fileId,
+          permission: scope.permission,
+          resourceType: scope.resource.type,
+          resourceId: scope.resource.id,
+        }
+      : { kind: scope.kind, fileId: scope.fileId };
+
   const payload = Buffer.from(
-    JSON.stringify({
-      fileId: scope.fileId,
-      permission: scope.permission,
-      resourceType: scope.resource.type,
-      resourceId: scope.resource.id,
-      expiresAt: expiresAt.getTime(),
-    }),
+    JSON.stringify({ ...body, expiresAt: expiresAt.getTime() }),
     "utf8"
   ).toString("base64url");
 
@@ -105,16 +122,18 @@ export function readFileLink(token: string, secret: Buffer): FileLinkScope {
 
   if (!parsed.success) throw invalidToken();
 
-  const { fileId, permission, resourceType, resourceId, expiresAt } =
-    parsed.data;
+  const data = parsed.data;
 
-  if (Date.now() > expiresAt) throw invalidToken();
+  if (Date.now() > data.expiresAt) throw invalidToken();
+
+  if (data.kind === "branding") return { kind: data.kind, fileId: data.fileId };
 
   return {
-    fileId,
+    kind: data.kind,
+    fileId: data.fileId,
     // SAFETY: the HMAC above proves the payload came from signFileLink, which signed a
     // PermissionKey; the schema only re-establishes that the value is a string.
-    permission: permission as PermissionKey,
-    resource: { type: resourceType, id: resourceId },
+    permission: data.permission as PermissionKey,
+    resource: { type: data.resourceType, id: data.resourceId },
   };
 }

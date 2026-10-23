@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 
 import { scenarioEmail } from "./scenarios.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
@@ -10,6 +10,7 @@ import {
   queryBrokerDatabase,
 } from "./support/brokered.ts";
 import { withDeploymentLock } from "./support/lock.ts";
+import { openNavigation } from "./support/shell.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
 
 /**
@@ -48,16 +49,21 @@ async function landedPath(page: Page): Promise<string> {
   return new URL(page.url()).pathname;
 }
 
-/** The home page's blocks: entry links under `Operations` and `Workspace`, and each block's count. */
+/**
+ * The shell navigation's blocks: entry links in the `Operations` category group and the
+ * `Workspace` nav, and each block's count. `/` redirects to the landing route while it resolves.
+ */
 async function homeBlocks(page: Page): Promise<readonly number[]> {
   await page.goto(`${BASE}/`);
 
-  const operations = page.getByRole("navigation", {
+  const navigation = await openNavigation(page);
+
+  const operations = navigation.getByRole("group", {
     name: "Operations",
     exact: true,
   });
 
-  const workspace = page.getByRole("navigation", {
+  const workspace = navigation.getByRole("navigation", {
     name: "Workspace",
     exact: true,
   });
@@ -190,6 +196,91 @@ test("a category moves the static entry and the landing flag survives; a deleted
 
         await expect.poll(() => homeBlocks(page), POLL).toEqual([0, 1, 0, 1]);
       } finally {
+        await queryBrokerDatabase(
+          LANDING_DB,
+          "delete from category where name = 'Operations'; update tenant_module set category_id = null where module_id = 'landing-fixture'"
+        );
+        await expect.poll(() => homeBlocks(page), POLL).toEqual([0, 1, 0, 1]);
+      }
+    },
+    300_000
+  );
+});
+
+test("collapsing a category persists on the device and not on another (R-31)", async ({
+  page,
+  browser,
+}, testInfo) => {
+  const email = scenarioEmail("landing", "member", testInfo.project.name);
+
+  await withDeploymentLock(
+    LOCK,
+    async () => {
+      // The other device keeps this project's viewport, so the phone run walks the drawer.
+      const other = await browser.newContext(
+        devices[
+          testInfo.project.name === "phone" ? "Pixel 7" : "Desktop Chrome"
+        ]
+      );
+
+      try {
+        await queryBrokerDatabase(
+          LANDING_DB,
+          "insert into category (name, position) values ('Operations', 1) on conflict (name) do nothing; update tenant_module set category_id = (select id from category where name = 'Operations') where module_id = 'landing-fixture'"
+        );
+
+        await signInThroughBroker(page, {
+          baseUrl: BASE,
+          email,
+          landing: LANDING,
+        });
+        await expect.poll(() => homeBlocks(page), POLL).toEqual([1, 0, 1, 0]);
+
+        const navigation = await openNavigation(page);
+
+        const toggle = navigation.getByRole("button", {
+          name: "Operations",
+          exact: true,
+        });
+
+        await expect(toggle).toHaveAttribute("aria-expanded", "true");
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+        // Collapsed on this device: it stays collapsed after a reload.
+        await page.reload();
+
+        const reloaded = await openNavigation(page);
+
+        await expect(
+          reloaded.getByRole("button", { name: "Operations", exact: true })
+        ).toHaveAttribute("aria-expanded", "false");
+        await expect(
+          reloaded.getByRole("group", { name: "Operations", exact: true })
+        ).toHaveCount(0);
+
+        // Another device (a fresh browser context) shows it expanded.
+        const otherPage = await other.newPage();
+
+        await signInThroughBroker(otherPage, {
+          baseUrl: BASE,
+          email,
+          landing: LANDING,
+        });
+
+        const otherNavigation = await openNavigation(otherPage);
+
+        await expect(
+          otherNavigation.getByRole("button", {
+            name: "Operations",
+            exact: true,
+          })
+        ).toHaveAttribute("aria-expanded", "true");
+        await expect(
+          otherNavigation.getByRole("link", { name: ENTRY, exact: true })
+        ).toBeVisible();
+      } finally {
+        await other.close();
         await queryBrokerDatabase(
           LANDING_DB,
           "delete from category where name = 'Operations'; update tenant_module set category_id = null where module_id = 'landing-fixture'"

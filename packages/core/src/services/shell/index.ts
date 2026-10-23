@@ -1,0 +1,145 @@
+import type {
+  ShellIdentity,
+  ShellLink,
+  ShellNavigation,
+} from "../../features/shell/types.ts";
+import {
+  type SupportContact,
+  supportContact,
+} from "../../lib/branding/support.ts";
+import type { CoreAdminGroupId } from "../../lib/entitlement/core-admin.ts";
+import { CORE_ADMIN_NAVIGATION } from "../../lib/entitlement/core-admin.ts";
+import {
+  CORE_NAVIGATION_ID,
+  type PermittedEntry,
+} from "../../lib/entitlement/index.ts";
+import {
+  type NavigationTree,
+  navigationTree,
+} from "../../lib/entitlement/tree.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
+import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import type { TenantSettings } from "../../lib/tenant-context/readers.ts";
+import type { RequestPrincipal } from "../authorization/principal.ts";
+
+/** Catalogue copy for core's own admin entries and groups (R-41); module copy stays declared. */
+export type ShellLabels = {
+  readonly coreEntries: Readonly<Record<string, string>>;
+  readonly coreGroups: Readonly<Record<CoreAdminGroupId, string>>;
+};
+
+export type ShellModel = {
+  readonly navigation: ShellNavigation;
+  readonly landing: string | undefined;
+  readonly isAdministrator: boolean;
+  readonly adminHome: string | undefined;
+  readonly identity: ShellIdentity;
+  readonly support: SupportContact | null;
+  readonly changePasswordUrl: string | null;
+};
+
+const coreGroupIds = new Set<string>(
+  CORE_ADMIN_NAVIGATION.map((group) => group.id)
+);
+
+const isCoreGroup = (id: string): id is CoreAdminGroupId =>
+  coreGroupIds.has(id);
+
+/** The tree as browser links: `{ id, label, href }` only, so no permission key leaves the server. */
+export function shellNavigation(
+  tree: NavigationTree,
+  modules: readonly Module[],
+  labels: ShellLabels
+): ShellNavigation {
+  const link = (entry: PermittedEntry): ShellLink => ({
+    id: entry.id,
+    label:
+      (entry.moduleId === CORE_NAVIGATION_ID
+        ? labels.coreEntries[entry.id]
+        : undefined) ?? entry.label,
+    href: entry.path,
+  });
+
+  return {
+    pinned: tree.pinned.map(link),
+    workspace: tree.workspace.map(link),
+    categories: tree.categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      entries: category.entries.map(link),
+    })),
+    admin: tree.admin.map((group) => ({
+      id: group.id,
+      label: isCoreGroup(group.id)
+        ? labels.coreGroups[group.id]
+        : (modules.find((module) => module.identity.id === group.id)?.identity
+            .displayName ?? group.id),
+      entries: group.entries.map(link),
+    })),
+  };
+}
+
+/**
+ * The chrome switch (R-32, DEC-23). The core admin entries cover all six core keys, so holding a
+ * core admin group in the already permitted tree equals holding a core admin permission.
+ */
+export function administration(
+  tree: NavigationTree
+): Pick<ShellModel, "isAdministrator" | "adminHome"> {
+  const first = tree.admin.find((group) => isCoreGroup(group.id));
+
+  return {
+    isAdministrator: first !== undefined,
+    adminHome: first?.entries[0]?.path,
+  };
+}
+
+/** The realm's own account page, which only a local-account tenant links (Spec 2 R-18). */
+export function realmAccountUrl(input: {
+  readonly settings: Pick<
+    TenantSettings,
+    "localAccountsEnabled" | "realmSupportsLocalAccounts" | "keycloakUrlAtSetup"
+  >;
+  readonly publicUrl: string;
+  readonly realm: string | undefined;
+}): string | null {
+  const { settings } = input;
+
+  return settings.localAccountsEnabled && settings.realmSupportsLocalAccounts
+    ? `${settings.keycloakUrlAtSetup ?? input.publicUrl}/realms/${input.realm ?? "genie"}/account`
+    : null;
+}
+
+/** One request's shell: one navigation tree pass (R-30) plus the branding and settings readers. */
+export async function loadShell(input: {
+  readonly tenant: TenantContext;
+  readonly modules: readonly Module[];
+  readonly caller: RequestPrincipal;
+  readonly labels: ShellLabels;
+}): Promise<ShellModel> {
+  const { tenant, modules, caller } = input;
+
+  const [tree, branding, settings, mark] = await Promise.all([
+    navigationTree({ tenant, modules, caller }),
+    tenant.branding.get(),
+    tenant.settings.get(),
+    tenant.fileStorage.createBrandingMarkLink({ principal: caller }),
+  ]);
+
+  return {
+    navigation: shellNavigation(tree, modules, input.labels),
+    landing: tree.landing,
+    ...administration(tree),
+    identity: {
+      companyName: branding.companyName,
+      productName: branding.productName,
+      markUrl: mark?.url ?? null,
+    },
+    support: supportContact(branding),
+    changePasswordUrl: realmAccountUrl({
+      settings,
+      publicUrl: tenant.env.publicUrl,
+      realm: tenant.env.auth?.keycloakRealm,
+    }),
+  };
+}

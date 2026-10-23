@@ -1,4 +1,9 @@
-import { principalFor, readOwnGroups, readRoleSummaries } from "@genie/core";
+import {
+  principalFor,
+  readOwnGroups,
+  readRoleSummaries,
+  realmAccountUrl,
+} from "@genie/core";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 
@@ -6,6 +11,7 @@ import { requireAuth, SIGN_IN_PATH } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
 import { documentSessionState } from "../../document-session.ts";
 import { modules } from "../../registry.ts";
+import { ShellFrame } from "../../shell-frame.tsx";
 import { AccountRoute } from "./account-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +46,7 @@ export default async function AccountPage() {
   if (state.status === "anonymous") redirect(SIGN_IN_PATH);
 
   const t = await getTranslations("account");
+  const tPages = await getTranslations("pages");
 
   const userId = state.session.user.id;
 
@@ -80,36 +87,38 @@ export default async function AccountPage() {
 
   const settings = await tenant.settings.get();
 
-  // The realm's own account page, which only a local-account tenant links from Profile (R-18).
-  const realmAccountUrl =
-    settings.localAccountsEnabled && settings.realmSupportsLocalAccounts
-      ? `${settings.keycloakUrlAtSetup ?? tenant.env.publicUrl}/realms/${tenant.env.auth?.keycloakRealm ?? "genie"}/account`
-      : null;
+  const accountManagementUrl = realmAccountUrl({
+    settings,
+    publicUrl: tenant.env.publicUrl,
+    realm: tenant.env.auth?.keycloakRealm,
+  });
 
   return (
-    <AccountRoute
-      profile={{
-        name: state.session.user.name,
-        email: state.session.user.email,
-      }}
-      groups={groups.map((group) => ({
-        id: group.id,
-        name: group.name,
-        source: group.source,
-      }))}
-      sessions={sessions.map((session) => ({
-        id: session.id,
-        device: session.device,
-        browser: session.browser,
-        ipAddress: session.ipAddress,
-        signedInAt: session.signedInAt.toISOString(),
-        lastActiveAt: session.lastActiveAt.toISOString(),
-        isCurrent: session.isCurrent,
-      }))}
-      roleGrants={roleGrants}
-      accountManagementUrl={realmAccountUrl}
-      timeZone={branding.defaultTimeZone}
-      nowIso={new Date().toISOString()}
-    />
+    <ShellFrame chrome="workspace" title={tPages("account.title")}>
+      <AccountRoute
+        profile={{
+          name: state.session.user.name,
+          email: state.session.user.email,
+        }}
+        groups={groups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          source: group.source,
+        }))}
+        sessions={sessions.map((session) => ({
+          id: session.id,
+          device: session.device,
+          browser: session.browser,
+          ipAddress: session.ipAddress,
+          signedInAt: session.signedInAt.toISOString(),
+          lastActiveAt: session.lastActiveAt.toISOString(),
+          isCurrent: session.isCurrent,
+        }))}
+        roleGrants={roleGrants}
+        accountManagementUrl={accountManagementUrl}
+        timeZone={branding.defaultTimeZone}
+        nowIso={new Date().toISOString()}
+      />
+    </ShellFrame>
   );
 }

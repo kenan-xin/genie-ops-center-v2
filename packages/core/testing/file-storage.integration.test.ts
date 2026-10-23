@@ -16,13 +16,14 @@ import type {
   ResourceRef,
 } from "../src/lib/module-contract/keys.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
-import { file, fileBlob } from "../src/schema.ts";
+import { file, fileBlob, tenantBranding } from "../src/schema.ts";
 import type { RequestPrincipal } from "../src/services/authorization/index.ts";
 import { createRequestPrincipal } from "../src/services/authorization/index.ts";
 import type { PermissionGrants } from "../src/services/authorization/index.ts";
 import { databaseClient } from "./database-client.ts";
 import {
   type DisposableDeployment,
+  markSetupDone,
   startDisposableDeployment,
 } from "./index.ts";
 
@@ -435,5 +436,103 @@ describe("FileStorage against a real Postgres deployment", () => {
 
       expect(orphan.rows).toEqual([]);
     }
+  });
+});
+
+async function storedMark(): Promise<string> {
+  const { context } = deployment;
+
+  return withTransaction(
+    context,
+    async (tx) => (await context.fileStorage.store(upload(), tx)).id
+  );
+}
+
+/** A signed-in person who holds no permission key at all. */
+function member(): RequestPrincipal {
+  return createRequestPrincipal(
+    { userId: "u2", groups: [], authenticated: true },
+    () => Promise.resolve({ keys: new Set(), scopes: new Map() })
+  );
+}
+
+function anonymous(): RequestPrincipal {
+  return createRequestPrincipal(
+    { userId: "anonymous", groups: [], authenticated: false },
+    () => Promise.resolve({ keys: new Set(), scopes: new Map() })
+  );
+}
+
+/**
+ * The shell's square mark (Spec 3 R-39, D3-7). The branding reader caches for ten seconds, so each
+ * case moves the clock past that window after it writes the row; the shift only grows, so a value
+ * cached at an earlier case's clock never looks fresh.
+ */
+describe("the branding mark link", () => {
+  let clockShift = 0;
+
+  async function brandingNames(markFileId: string | null): Promise<void> {
+    const { context } = deployment;
+
+    await markSetupDone(context);
+    await context.db.update(tenantBranding).set({ logoMarkFileId: markFileId });
+
+    clockShift += 60_000;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + clockShift);
+  }
+
+  it("issues a mark link that a signed-in person with no grants can fetch", async () => {
+    const storage = deployment.context.fileStorage;
+
+    await brandingNames(await storedMark());
+
+    const link = await storage.createBrandingMarkLink({ principal: member() });
+
+    expect(link?.url).toMatch(/\/api\/files\/download\?token=[^&]+$/);
+    await expect(
+      storage.fetchLink({ token: link!.token, principal: member() })
+    ).resolves.toMatchObject({ bytes: PNG_BYTES, mimeType: "image/png" });
+  });
+
+  it("refuses the mark to an anonymous principal", async () => {
+    const storage = deployment.context.fileStorage;
+
+    await brandingNames(await storedMark());
+
+    await expect(
+      storage.createBrandingMarkLink({ principal: anonymous() })
+    ).resolves.toBeUndefined();
+
+    const link = await storage.createBrandingMarkLink({ principal: member() });
+
+    await expect(
+      storage.fetchLink({ token: link!.token, principal: anonymous() })
+    ).rejects.toThrow();
+  });
+
+  it("issues no mark link while the scan is pending", async () => {
+    const { context } = deployment;
+    const markId = await storedMark();
+
+    await context.db
+      .update(file)
+      .set({ scanStatus: "pending" })
+      .where(eq(file.id, markId));
+    await brandingNames(markId);
+
+    await expect(
+      context.fileStorage.createBrandingMarkLink({ principal: member() })
+    ).resolves.toBeUndefined();
+  });
+
+  it("issues no mark link when branding names no mark", async () => {
+    await brandingNames(null);
+
+    await expect(
+      deployment.context.fileStorage.createBrandingMarkLink({
+        principal: member(),
+      })
+    ).resolves.toBeUndefined();
   });
 });

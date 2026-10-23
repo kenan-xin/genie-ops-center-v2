@@ -1,8 +1,61 @@
 {
   "app": {
-    "title": "Genie Ops Center",
-    "workspaceHeading": "Workspace",
-    "administration": "Administration"
+    "title": "Genie Ops Center"
+  },
+  "shell": {
+    "workspace": "Workspace",
+    "adminPortal": "Admin portal",
+    "pinned": "Pinned",
+    "categories": "Categories",
+    "navigation": "Navigation",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "offline": "You are offline. Changes will not be saved until the connection returns.",
+    "account": "Account",
+    "changePassword": "Change password",
+    "opensInNewTab": "Opens in a new tab",
+    "administration": "Administration",
+    "backToWorkspace": "Back to workspace",
+    "helpAndSupport": "Help and support",
+    "signOut": "Sign out",
+    "roleAdministrator": "Administrator",
+    "roleMember": "Workspace member",
+    "adminGroups": {
+      "peopleAndAccess": "People and access",
+      "tenant": "Tenant",
+      "catalog": "Catalog"
+    },
+    "coreNavigation": {
+      "people": "People",
+      "groups": "Groups",
+      "roles": "Roles",
+      "branding": "Branding",
+      "settings": "Settings",
+      "audit": "Audit log",
+      "modules": "Modules",
+      "categories": "Categories"
+    }
+  },
+  "pages": {
+    "account": {
+      "title": "Account"
+    },
+    "people": {
+      "title": "People",
+      "description": "Everyone who can sign in. Add a person, give them roles, and revoke access when they leave. A pending person becomes active at their first sign-in."
+    },
+    "groups": {
+      "title": "Groups",
+      "description": "Directory groups from the identity provider, and local groups you manage here. A role assigned to a group reaches every member."
+    },
+    "roles": {
+      "title": "Roles",
+      "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access."
+    },
+    "audit": {
+      "title": "Audit log",
+      "description": "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited."
+    }
   },
   "noGrants": {
     "title": "No solutions yet",
@@ -36,5 +89,12 @@
       "signedOut": "You are signed out.",
       "signedOutClientOnly": "You are signed out of {productName}. Your company sign-in stays active."
     }
+  },
+  "idle": {
+    "title": "Still there?",
+    "description": "You have been inactive for a while. For your security, this session ends after {idleMinutes} minutes without activity.",
+    "countdownLabel": "Signing out in",
+    "staySignedIn": "Stay signed in",
+    "signOutNow": "Sign out now"
   }
 }

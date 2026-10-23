@@ -1,7 +1,10 @@
 import { type PermissionKey } from "@genie/core";
+import { PageHeader } from "@genie/core/features/shell";
+import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
+import { ShellFrame } from "../../../shell-frame.tsx";
 import { RolesRoute } from "./roles-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -15,21 +18,22 @@ const ROLES_MANAGE: PermissionKey = "core:roles:manage";
  * anonymous or unpermitted request before the screen mounts.
  */
 export default async function RolesPage() {
-  return renderIfPermitted(ROLES_MANAGE, async (caller) => {
+  const content = await renderIfPermitted(ROLES_MANAGE, async (caller) => {
     const branding = await requireContext().tenant.branding.get();
+    const t = await getTranslations("pages");
 
     return (
       <main>
-        <h1>Roles</h1>
-        <p>
-          Named sets of permission keys. A system role is read-only and
-          copyable; a custom role is yours to edit. Who holds a role is decided
-          in Access.
-        </p>
+        <PageHeader
+          title={t("roles.title")}
+          description={t("roles.description")}
+        />
         <RolesRoute
           viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
         />
       </main>
     );
   });
+
+  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

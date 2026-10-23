@@ -12,7 +12,7 @@ The stylesheet imports the application's `apps/genie/src/styles/globals.css` and
 
 ## What must not go here
 
-No server barrel, no database factory, no tenant bootstrap, and no deployment environment read. No story file: stories live in `packages/ui`, `packages/core`, and each module package. No component that exists only for this host rather than for the product.
+No server barrel, no database factory, no tenant bootstrap, and no deployment environment read. No story file: stories live in `packages/ui`, `packages/core`, and each module package. The one exception is the composition stories under `stories/`: they import only the public `@genie/core` and `@genie/ui` entry points and prove that a host outside `apps/genie` composes the shell from them. No component that exists only for this host rather than for the product.
 
 ## What it imports
 

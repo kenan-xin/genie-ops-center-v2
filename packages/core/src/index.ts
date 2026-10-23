@@ -291,6 +291,15 @@ export {
   navigationTree,
 } from "./lib/entitlement/tree.ts";
 
+export {
+  administration,
+  loadShell,
+  realmAccountUrl,
+  type ShellLabels,
+  type ShellModel,
+  shellNavigation,
+} from "./services/shell/index.ts";
+
 // The server half of the module API (ADR 0011). A module router throws `AppError`, never a
 // protocol error, so core re-exports no oRPC error; the browser-safe half is `@genie/core/rpc`.
 export {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
 import type { AccountSession } from "../account/types.ts";
+import { PageHeader } from "../shell/page-header.tsx";
 import {
   BreakGlassPasswordForm,
   RateLimitNotice,
@@ -267,7 +268,7 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
       data-testid="break-glass-account"
       className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
     >
-      <h1 className="text-2xl font-bold text-foreground">Account</h1>
+      <PageHeader title="Account" />
 
       <Block
         title="Profile"

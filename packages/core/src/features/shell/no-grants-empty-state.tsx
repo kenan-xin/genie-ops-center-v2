@@ -1,6 +1,7 @@
 import { buttonVariants, EmptyState, focusRing } from "@genie/ui";
 
 import { MailIcon } from "../admin/icons.tsx";
+import { tenantInitial } from "./tenant-initial.ts";
 
 export type NoGrantsEmptyStateProps = {
   readonly companyName: string;
@@ -13,7 +14,7 @@ export type NoGrantsEmptyStateProps = {
 export function NoGrantsEmptyState(props: NoGrantsEmptyStateProps) {
   const { contact } = props;
   // The tenant letter tile (tokens.md, letter tile medium); no letter, no tile.
-  const letter = Array.from(props.companyName.trim())[0]?.toLocaleUpperCase();
+  const letter = tenantInitial(props.companyName);
 
   return (
     <EmptyState

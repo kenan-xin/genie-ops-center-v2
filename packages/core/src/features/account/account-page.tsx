@@ -2,6 +2,7 @@ import { Button, ConfirmDialog, focusRing } from "@genie/ui";
 import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
+import { PageHeader } from "../shell/page-header.tsx";
 import type {
   AccountGroup,
   AccountPageProps,
@@ -324,7 +325,7 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
       className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
       data-testid="account-page"
     >
-      <h1 className="text-2xl font-bold text-foreground">Account</h1>
+      <PageHeader title="Account" />
 
       <ProfileBlock
         profile={props.profile}

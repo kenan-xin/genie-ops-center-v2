@@ -75,6 +75,7 @@ export const E2E_READER_SPECS = [
   "people",
   "screens",
   "branding",
+  "shell",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];

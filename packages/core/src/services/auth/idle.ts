@@ -17,6 +17,18 @@ export function activityThrottleWaitMs(idleMinutes: number): number {
   return (idleMinutes * 60_000) / 2;
 }
 
+/** How long before the idle expiry the warning opens: two minutes, or half the window (R-33). */
+export function warningLeadMs(idleMinutes: number): number {
+  return Math.min(120_000, activityThrottleWaitMs(idleMinutes));
+}
+
+/** The warning's `m:ss` countdown; a partial second rounds up, so `0:00` means expired. */
+export function formatCountdown(remainingMs: number): string {
+  const seconds = Math.ceil(Math.max(0, remainingMs) / 1000);
+
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 /**
  * True when the idle window has closed. The boundary is half open: at exactly
  * `last activity + idle minutes` the session is already expired, which is what "refused after

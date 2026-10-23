@@ -1,7 +1,10 @@
 import { type PermissionKey } from "@genie/core";
+import { PageHeader } from "@genie/core/features/shell";
+import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
+import { ShellFrame } from "../../../shell-frame.tsx";
 import { GroupsRoute } from "./groups-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -16,20 +19,22 @@ const GROUPS_MANAGE: PermissionKey = "core:groups:manage";
  * gives each person a preference.
  */
 export default async function GroupsPage() {
-  return renderIfPermitted(GROUPS_MANAGE, async (caller) => {
+  const content = await renderIfPermitted(GROUPS_MANAGE, async (caller) => {
     const branding = await requireContext().tenant.branding.get();
+    const t = await getTranslations("pages");
 
     return (
       <main>
-        <h1>Groups</h1>
-        <p>
-          Directory groups from the identity provider, and local groups you
-          manage here. A role assigned to a group reaches every member.
-        </p>
+        <PageHeader
+          title={t("groups.title")}
+          description={t("groups.description")}
+        />
         <GroupsRoute
           viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
         />
       </main>
     );
   });
+
+  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }
