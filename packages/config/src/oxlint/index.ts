@@ -136,8 +136,8 @@ export const sharedOxlintConfig: OxlintConfig = {
     "**/coverage/**",
     // Scratch state a local coverage tool writes. It is JSON, never source.
     ".supercov/**",
-    // Agent-tool shims the graft CLI regenerates on each update, so hand
-    // repairs would only drift from the generator output.
+    // The plain-Node CommonJS check of the optional Codex hooks. It sits
+    // outside every package and runs under `node`, not under this toolchain.
     ".claude/helpers/**",
     // Agent skills installed from upstream. The install-anti-slop skill ships its
     // own copy of the rule source as assets, which the vendored copy below

@@ -9,47 +9,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { entry } = require('./graft-resolve.cjs');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hooks-test-'));
 const clean = { ...process.env };
-delete clean.GRAFT_CLAUDE_DIR;
 delete clean.IMPECCABLE_BIN;
-
-// An installed copy of the package, for the version the caller asks for.
-function install(base, version) {
-  const root = path.join(base, 'node_modules', '@nanonets', 'graft');
-  const dist = path.join(root, 'dist', 'claude');
-  fs.mkdirSync(dist, { recursive: true });
-  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: '@nanonets/graft', version }));
-  fs.writeFileSync(path.join(dist, 'hooks.js'), 'export const main = () => {};\n');
-  return dist;
-}
-
-// graft: the configured directory wins even against a newer discovered install.
-const project = path.join(tmp, 'project');
-const newerInstall = install(project, '9.9.9');
-const olderInstall = install(path.join(tmp, 'configured'), '0.1.0');
-process.env.CLAUDE_PROJECT_DIR = project;
-assert.strictEqual(entry('hooks.js'), path.join(newerInstall, 'hooks.js'));
-process.env.GRAFT_CLAUDE_DIR = olderInstall;
-assert.strictEqual(entry('hooks.js'), path.join(olderInstall, 'hooks.js'));
-
-// graft: a stale configured directory falls back to discovery instead of breaking.
-process.env.GRAFT_CLAUDE_DIR = path.join(tmp, 'gone');
-assert.strictEqual(entry('hooks.js'), path.join(newerInstall, 'hooks.js'));
-
-// graft: with nothing configured, a missing installation must not break the hook.
-delete process.env.GRAFT_CLAUDE_DIR;
-process.env.CLAUDE_PROJECT_DIR = tmp;
-const guess = entry('hooks.js');
-assert.ok(path.isAbsolute(guess));
-if (!fs.existsSync(guess)) {
-  // Only safe while graft is absent: a present installation would really run.
-  execFileSync(process.execPath, [path.join(__dirname, 'graft-hooks.cjs'), 'post-edit'], {
-    env: { ...clean, CLAUDE_PROJECT_DIR: tmp, PATH: path.join(tmp, 'nowhere') },
-  });
-}
 
 // The POSIX command of the Codex hooks, taken from the file the agent reads.
 const hooks = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '.codex', 'hooks.json'), 'utf8'));

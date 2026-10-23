@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "graft": {
-      "command": "graft",
-      "args": ["mcp"]
-    },
     "shadcn": {
       "command": "sh",
       "args": [
