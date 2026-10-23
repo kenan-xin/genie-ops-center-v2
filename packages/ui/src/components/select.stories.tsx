@@ -77,6 +77,10 @@ export const Default: Story = {
       "r-reader",
       expect.anything()
     );
+    // The popup fades out; the a11y check must not catch it half unmounted.
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    );
   },
 };
 
