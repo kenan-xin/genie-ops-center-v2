@@ -7,13 +7,17 @@ const WORKSPACE_ROOT = resolve(APP_ROOT, "../..");
 
 /**
  * Files under the watched roots that are build outputs rather than hand-written
- * source. `generate-registry` declares `src/modules.ts` as its output, so Nx
+ * source. `generate-registry` declares `src/modules.ts` and
+ * `src/styles/module-sources.generated.css` as its outputs, so Nx
  * restores it on a cache hit and writes it with a fresh modification time — its
  * timestamp then says nothing about whether `.next` is current. Measured: without
  * this exclusion the check fired on a correct tree under root `pnpm test`, where
  * `build` was a cache hit and `generate-registry` was restored.
  */
-const GENERATED_SOURCES = new Set([join(APP_ROOT, "src", "modules.ts")]);
+const GENERATED_SOURCES = new Set([
+  join(APP_ROOT, "src", "modules.ts"),
+  join(APP_ROOT, "src", "styles", "module-sources.generated.css"),
+]);
 
 /** Every source tree whose change can alter the application build. */
 function sourceRoots(): readonly string[] {
