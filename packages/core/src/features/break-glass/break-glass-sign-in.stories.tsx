@@ -125,7 +125,7 @@ export const RateLimited: Story = {
     const canvas = within(canvasElement);
 
     // The neutral notice names the remaining minutes; the inputs and the button are disabled.
-    await expect(canvas.getByTestId("rate-limit-notice")).toHaveTextContent(
+    await expect(canvas.getByRole("status")).toHaveTextContent(
       "Try again in 12 minutes."
     );
     await expect(canvas.getByLabelText("Email")).toBeDisabled();
@@ -211,9 +211,7 @@ export const Enrollment: Story = {
     await expect(
       canvas.getByLabelText("QR code for the authenticator app")
     ).toBeInTheDocument();
-    await expect(canvas.getByTestId("enrollment-manual-key")).toHaveTextContent(
-      "JBSW Y3DP EHPK 3PXP"
-    );
+    await expect(canvas.getByText("JBSW Y3DP EHPK 3PXP")).toBeInTheDocument();
 
     await expect(
       heightOf(canvas.getByRole("button", { name: "Copy key" }))
@@ -260,7 +258,7 @@ export const RateLimitedChangePassword: Story = {
     const canvas = within(canvasElement);
 
     // The neutral notice names the minutes; the fields and the button are disabled (R-21).
-    await expect(canvas.getByTestId("rate-limit-notice")).toHaveTextContent(
+    await expect(canvas.getByRole("status")).toHaveTextContent(
       "Try again in 9 minutes."
     );
     await expect(canvas.getByLabelText("Current password")).toBeDisabled();
@@ -280,7 +278,7 @@ export const RateLimitedEnrollment: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByTestId("rate-limit-notice")).toHaveTextContent(
+    await expect(canvas.getByRole("status")).toHaveTextContent(
       "Try again in 4 minutes."
     );
     await expect(

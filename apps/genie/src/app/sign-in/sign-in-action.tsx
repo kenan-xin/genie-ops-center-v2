@@ -32,7 +32,7 @@ export function SignInAction({
     <div className="flex flex-col gap-4">
       {text === "" ? null : (
         <div className="rounded-lg border bg-muted text-sm">
-          <p data-testid="sign-in-notice" className="p-4 whitespace-pre-line">
+          <p role="note" className="p-4 whitespace-pre-line">
             {text}
           </p>
           {gated ? (

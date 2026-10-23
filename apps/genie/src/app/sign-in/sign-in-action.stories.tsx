@@ -43,18 +43,14 @@ const assertOpenAction: NonNullable<Story["play"]> = async ({
 export const Default: Story = {
   play: async (context) => {
     await assertOpenAction(context);
-    await expect(
-      context.canvas.queryByTestId("sign-in-notice")
-    ).not.toBeInTheDocument();
+    await expect(context.canvas.queryByRole("note")).not.toBeInTheDocument();
   },
 };
 
 export const NoticeOnly: Story = {
   args: { notice: NOTICE },
   play: async (context) => {
-    await expect(
-      context.canvas.getByTestId("sign-in-notice")
-    ).toHaveTextContent(NOTICE);
+    await expect(context.canvas.getByRole("note")).toHaveTextContent(NOTICE);
     await assertOpenAction(context);
   },
 };
@@ -83,9 +79,7 @@ export const AcknowledgementWithoutNotice: Story = {
   args: { notice: "  ", requiresAcknowledgement: true },
   play: async (context) => {
     await assertOpenAction(context);
-    await expect(
-      context.canvas.queryByTestId("sign-in-notice")
-    ).not.toBeInTheDocument();
+    await expect(context.canvas.queryByRole("note")).not.toBeInTheDocument();
   },
 };
 

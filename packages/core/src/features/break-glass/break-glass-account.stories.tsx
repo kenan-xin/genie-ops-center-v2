@@ -146,9 +146,7 @@ export const ConfirmReenroll: Story = {
 
     onConfirmReenroll.mockClear();
 
-    await expect(canvas.getByTestId("enrollment-manual-key")).toHaveTextContent(
-      "ABCD EFGH IJKL MNOP"
-    );
+    await expect(canvas.getByText("ABCD EFGH IJKL MNOP")).toBeInTheDocument();
 
     await userEvent.type(canvas.getByLabelText("Code from the app"), "123456");
     await userEvent.click(canvas.getByRole("button", { name: "Confirm" }));
@@ -186,9 +184,9 @@ export const RateLimitedReenroll: Story = {
 
     // The per-account window's neutral notice with the minutes; the start control is disabled.
     // Both the Change password block and the re-enroll panel show the neutral notice.
-    await expect(
-      canvas.getAllByTestId("rate-limit-notice")[0]
-    ).toHaveTextContent("Try again in 7 minutes.");
+    await expect(canvas.getAllByRole("status")[0]).toHaveTextContent(
+      "Try again in 7 minutes."
+    );
     await expect(canvas.getByLabelText("Confirm your password")).toBeDisabled();
     await expect(
       canvas.getByRole("button", { name: "Start re-enroll" })
