@@ -830,7 +830,8 @@ describe("the development server and the MCP addon", () => {
     // The real MCP tool call, not only the index. The UI content is present, so
     // the tool answered, and no module content is.
     expect(docs).toContain("Disclosure");
-    expect(docs).not.toContain("modules-");
+    // Anchored on the id's opening parenthesis: core ids such as `core-modules--…` also contain "modules-".
+    expect(docs).not.toContain("(modules-");
     expect(docs).not.toContain("placeholder:");
 
     for (const needle of PLACEHOLDER_NEEDLES) {
