@@ -12,13 +12,14 @@ describe("TenantContext", () => {
     expectTypeOf<TenantContext["env"]>().toEqualTypeOf<DeploymentEnvironment>();
   });
 
-  it("carries the three cached tenant readers, the job queue, the file store, the mailer and the public link builder", () => {
+  it("carries the four cached tenant readers, the job queue, the file store, the mailer and the public link builder", () => {
     expectTypeOf<keyof TenantContext>().toEqualTypeOf<
       | "db"
       | "env"
       | "settings"
       | "branding"
       | "entitlements"
+      | "categories"
       | "jobQueue"
       | "events"
       | "capabilities"

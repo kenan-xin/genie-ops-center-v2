@@ -28,13 +28,13 @@ function databaseTripwire(): TenantContext["db"] {
 }
 
 /**
- * The three readers with the module enabled: the entitlement gate reads `isEnabled` and gets
- * `true`, while settings and branding stay at the same tripwire as the database, because a module
- * procedure must refuse an unpermitted caller before it reads them (R-5, DEC-34).
+ * The readers with the module enabled: the entitlement gate reads `isEnabled` and gets `true`,
+ * categories answer empty, and settings and branding stay at the same tripwire as the database,
+ * because a module procedure must refuse an unpermitted caller before it reads them (R-5, DEC-34).
  */
 function readersWithModuleEnabled(): Pick<
   TenantContext,
-  "settings" | "branding" | "entitlements"
+  "settings" | "branding" | "entitlements" | "categories"
 > {
   return {
     settings: {
@@ -45,6 +45,10 @@ function readersWithModuleEnabled(): Pick<
     },
     entitlements: {
       isEnabled: () => Promise.resolve(true),
+    },
+    categories: {
+      list: () => Promise.resolve([]),
+      ofModule: () => Promise.resolve(null),
     },
   };
 }

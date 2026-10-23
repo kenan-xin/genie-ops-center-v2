@@ -60,6 +60,23 @@ describe("AppError", () => {
     expect(error.safeMessage).toBe(CORE_ERROR_MESSAGES["environment-invalid"]);
   });
 
+  it("carries its issues as a frozen copy", () => {
+    const source = [{ path: "title", message: "Required" }];
+
+    const error = new AppError(CORE_ERRORS["internal-error"], {
+      issues: source,
+    });
+
+    source.push({ path: "extra", message: "Late" });
+    source[0] = { path: "changed", message: "Changed" };
+
+    expect(error.issues).toEqual([{ path: "title", message: "Required" }]);
+    expect(Object.isFrozen(error.issues)).toBe(true);
+    expect(Object.isFrozen(error.issues?.[0])).toBe(true);
+    expect(() => Object.assign(error, { issues: [] })).toThrow(TypeError);
+    expect(new AppError(CORE_ERRORS["internal-error"]).issues).toBeUndefined();
+  });
+
   it("freezes every core definition", () => {
     expect(Object.isFrozen(CORE_ERRORS)).toBe(true);
     expect(Object.isFrozen(CORE_ERRORS["internal-error"])).toBe(true);

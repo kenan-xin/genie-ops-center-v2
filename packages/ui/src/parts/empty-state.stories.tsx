@@ -41,3 +41,13 @@ export const ClearFilters: Story = {
     await expect(onClear).toHaveBeenCalledOnce();
   },
 };
+
+export const WithMedia: Story = {
+  args: { media: <span data-testid="media">A</span> },
+  play: async ({ canvas }) => {
+    const media = canvas.getByTestId("media");
+
+    await expect(media).toBeVisible();
+    await expect(media.closest('[data-variant="icon"]')).toBeNull();
+  },
+};

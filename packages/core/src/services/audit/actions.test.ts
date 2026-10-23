@@ -28,4 +28,21 @@ describe("the audit action catalogue", () => {
     expect(AUDIT_ACTIONS).toContain("core:group_label_changed");
     expect(AUDIT_ACTIONS).toContain("core:permission_transformation");
   });
+
+  it("holds the ten Section 3 actions of R-90a", () => {
+    expect(AUDIT_ACTIONS).toEqual(
+      expect.arrayContaining([
+        "core:branding_published",
+        "core:settings_updated",
+        "core:module_configured",
+        "core:module_enabled",
+        "core:module_disabled",
+        "core:module_category_set",
+        "core:category_created",
+        "core:category_renamed",
+        "core:category_reordered",
+        "core:category_deleted",
+      ])
+    );
+  });
 });

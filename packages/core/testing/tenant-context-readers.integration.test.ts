@@ -58,14 +58,18 @@ async function readerContext() {
 }
 
 /**
- * The pool reads whose SQL targets one of the three reader tables.
+ * The pool reads whose SQL matches `pattern`, by default one of the settings, branding or module
+ * tables. The category case passes its own pattern to count each table separately.
  *
  * Drizzle's node-postgres session passes the SQL as a `QueryConfig` object, not a string, so the
  * statement is read from `text` when present and from the value itself otherwise. A read is
  * counted from its SQL, so the assertion proves one database read per cached reader rather than
  * one call of any kind.
  */
-function readerReads(calls: readonly (readonly unknown[])[]): number {
+function readerReads(
+  calls: readonly (readonly unknown[])[],
+  pattern = /select .*tenant_(settings|branding|module)/is
+): number {
   return calls.filter((call) => {
     const statement = call[0];
 
@@ -75,7 +79,7 @@ function readerReads(calls: readonly (readonly unknown[])[]): number {
       (statement as { readonly text?: string } | undefined)?.text ??
       String(statement);
 
-    return /select .*tenant_(settings|branding|module)/is.test(sql);
+    return pattern.test(sql);
   }).length;
 }
 
@@ -140,5 +144,67 @@ describe("tenant context readers", () => {
 
     expect(await context.entitlements.isEnabled("retired-module")).toBe(false);
     expect(readerReads(query.mock.calls)).toBe(0);
+  });
+
+  it("serves the category list and each module's placement from one cached read each, and rereads after ten seconds", async () => {
+    const context = await readerContext();
+    const pool = context.db.$client;
+
+    await pool.query(
+      "insert into category (name, position) values ('Finance', 2), ('Clinical', 1), ('Admin', 1)"
+    );
+
+    const finance = await pool.query<{ id: string }>(
+      "select id from category where name = 'Finance'"
+    );
+
+    const financeId = finance.rows[0]?.id ?? "";
+
+    await pool.query(
+      "update tenant_module set category_id = $1 where module_id = 'placeholder'",
+      [financeId]
+    );
+
+    const query = vi.spyOn(pool, "query");
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+
+    expect(await context.entitlements.isEnabled("placeholder")).toBe(true);
+    expect(await context.categories.ofModule("placeholder")).toBe(financeId);
+    expect(await context.categories.ofModule("placeholder")).toBe(financeId);
+
+    const names = async () =>
+      (await context.categories.list()).map((row) => row.name);
+
+    expect(await names()).toEqual(["Admin", "Clinical", "Finance"]);
+    expect(await names()).toEqual(["Admin", "Clinical", "Finance"]);
+
+    expect(readerReads(query.mock.calls, /from "tenant_module"/i)).toBe(1);
+    expect(readerReads(query.mock.calls, /from "category"/i)).toBe(1);
+
+    const before = query.mock.calls.length;
+
+    expect(await context.categories.ofModule("missing-module")).toBeNull();
+    expect(query.mock.calls.length).toBe(before);
+
+    await pool.query(
+      "update category set name = 'Money' where name = 'Finance'"
+    );
+    await pool.query("update tenant_module set category_id = null");
+
+    expect(await context.categories.ofModule("placeholder")).toBe(financeId);
+    expect((await context.categories.list()).map((row) => row.name)).toContain(
+      "Finance"
+    );
+
+    vi.advanceTimersByTime(10001);
+
+    expect(await context.categories.ofModule("placeholder")).toBeNull();
+    expect((await context.categories.list()).map((row) => row.name)).toEqual([
+      "Admin",
+      "Clinical",
+      "Money",
+    ]);
   });
 });

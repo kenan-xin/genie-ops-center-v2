@@ -10,6 +10,11 @@ import type { EntitlementReader } from "../tenant-context/readers.ts";
  * gate `implementModule` attaches in `lib/rpc/`, where the module router base lives (d1y).
  */
 
+/** A kept entry and the module that declared it. Core's own admin entries carry CORE_NAVIGATION_ID. */
+export type PermittedEntry = NavigationEntry & { readonly moduleId: string };
+
+export const CORE_NAVIGATION_ID = "core";
+
 /**
  * R-8, the navigation half: the declared entries of every compiled module whose entitlement is
  * off leave the tree. The module stays mounted and its routes still exist; only its entries are
@@ -22,7 +27,7 @@ import type { EntitlementReader } from "../tenant-context/readers.ts";
 export async function enabledNavigation(input: {
   readonly entitlements: EntitlementReader;
   readonly modules: readonly Module[];
-}): Promise<readonly NavigationEntry[]> {
+}): Promise<readonly PermittedEntry[]> {
   const decided = await Promise.all(
     input.modules.map(async (module) => ({
       module,
@@ -31,7 +36,11 @@ export async function enabledNavigation(input: {
   );
 
   return decided.flatMap(({ module, enabled }) =>
-    enabled ? module.navigation.entries : []
+    enabled
+      ? module.navigation.entries.map((entry) =>
+          Object.assign({}, entry, { moduleId: module.identity.id })
+        )
+      : []
   );
 }
 
@@ -45,8 +54,15 @@ export async function permittedNavigation(input: {
   readonly entitlements: EntitlementReader;
   readonly modules: readonly Module[];
   readonly caller: RequestPrincipal;
-}): Promise<readonly NavigationEntry[]> {
-  const entries = await enabledNavigation(input);
+  /** Core's own admin entries: no entitlement, the same `can()` filter. */
+  readonly coreEntries?: readonly NavigationEntry[];
+}): Promise<readonly PermittedEntry[]> {
+  const entries = [
+    ...(await enabledNavigation(input)),
+    ...(input.coreEntries ?? []).map((entry) =>
+      Object.assign({}, entry, { moduleId: CORE_NAVIGATION_ID })
+    ),
+  ];
 
   const allowed = await Promise.all(
     entries.map((entry) => can(input.caller, entry.requiredPermission))

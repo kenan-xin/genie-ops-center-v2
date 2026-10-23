@@ -473,6 +473,8 @@ Guard: the readers are the only members of the context that reach `tenant_settin
 
 Designed in: Section 0. Implemented: the readers in Section 1 item 1 with their tables; the settings reader is first read by the sessions of Section 2 item 4. Revisit when a customer needs a change to show within a second, or when a deployment runs several application replicas; the change is then a `pg_notify` channel that every save fires and that clears the same caches, and the 10 second expiry stays as the fallback.
 
+Amended 2026-10-23 (Spec 3 R-28, S3-04a): the core `category` rows are a changing member under the same rule, read through `categories.list()`. A module's placement, `tenant_module.category_id`, comes from the same cached `tenant_module` read as its entitlement, through `categories.ofModule()`, so that row keeps one cache.
+
 ## DEC-47. One tenant brand color, plus a font size preset and a text color
 
 Question: `tenant_branding` carried three colors, primary, secondary, and accent, each with a computed foreground. The shell design found no surface that uses a secondary color, and an accent with no named surface cannot be contrast-checked, because a check needs the pair that is rendered. Which colors does a tenant set?
@@ -589,7 +591,7 @@ Why not separate module categories in core: two category systems in one tree, an
 
 Trade-off: the solutions module loses ownership of a table it designed, and a category delete can leave a dangling id in `solution_category` by design. The solutions Categories screen moves to the admin portal.
 
-Guard: the Navigation row of the module contract names `categoryId` as a core `category` id, and core's tree builder reads only `category` and `tenant_module`. The placeholder module's navigation test covers an entry with a category, an entry without one, and a deleted category.
+Guard: core's tree builder reads only `category` and `tenant_module`, through the tenant context readers, and its unit test covers an entry with a category, an entry without one, and an entry whose category no longer exists. Amended 2026-10-23 (Spec 3 R-29): a static entry carries no `categoryId`. The Navigation row of the module contract says so, and the placeholder module declares none.
 
 Left to the design: the headings above the tree (the design uses CATEGORIES and OTHER) and the sort order inside a category (the design sorts by label, module and record entries mixed). The design's choice stands until a document says otherwise.
 

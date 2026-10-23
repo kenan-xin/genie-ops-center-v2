@@ -20,16 +20,6 @@ import {
   placeholderRecord,
 } from "./schema.ts";
 
-/**
- * A category row this deployment holds. The navigation guard of DEC-51 needs a case for a live
- * category, for no category, and for one that no longer exists, so the three workspace entries
- * below carry one each.
- */
-const LIVE_CATEGORY_ID = "4b7f1d52-7f4e-4f0f-93a8-8a8f6f2c1a11";
-
-/** A category id that no longer exists. A module treats it as no category (DEC-51). */
-const REMOVED_CATEGORY_ID = "9d0f8b3c-2f5a-4f2e-9d61-0b7a1c4e5f22";
-
 const readRecordJob: JobDeclaration = {
   name: "placeholder.read-record",
   handler: async ({ tenant }) => {
@@ -110,7 +100,6 @@ const home = {
   path: "/placeholder",
   surface: "workspace",
   requiredPermission: "placeholder:use",
-  categoryId: LIVE_CATEGORY_ID,
 } as const;
 
 const archive = {
@@ -127,7 +116,6 @@ const retired = {
   path: "/placeholder/retired",
   surface: "workspace",
   requiredPermission: "placeholder:use",
-  categoryId: REMOVED_CATEGORY_ID,
 } as const;
 
 const settings = {

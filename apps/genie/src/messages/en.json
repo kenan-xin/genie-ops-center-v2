@@ -1,8 +1,13 @@
 {
   "app": {
     "title": "Genie Ops Center",
-    "navigationHeading": "Modules",
-    "noModules": "No modules are compiled into this deployment."
+    "workspaceHeading": "Workspace",
+    "administration": "Administration"
+  },
+  "noGrants": {
+    "title": "No solutions yet",
+    "description": "Ask your administrator to grant you access to a solution.",
+    "contact": "Contact {companyName} support"
   },
   "viewer": {
     "heading": "Placeholder viewer",

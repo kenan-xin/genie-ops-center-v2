@@ -1,9 +1,13 @@
 // Type-only imports are erased, so this browser file pulls no core runtime into the bundle.
 import type {
   AuditContract,
+  BrandingContract,
+  CategoriesContract,
   GroupsContract,
+  ModulesContract,
   PeopleContract,
   RolesContract,
+  SettingsContract,
 } from "@genie/core";
 import { appErrorData } from "@genie/core/rpc";
 import { createORPCClient, ORPCError } from "@orpc/client";
@@ -15,12 +19,16 @@ import {
   SESSION_EXPIRED_PATH,
 } from "../unauthenticated.ts";
 
-/** The contracts the browser calls: core's four administration areas. */
+/** The contracts the browser calls: core's eight administration areas. */
 type BrowserContract = {
   readonly audit: AuditContract;
   readonly groups: GroupsContract;
   readonly people: PeopleContract;
   readonly roles: RolesContract;
+  readonly modules: ModulesContract;
+  readonly categories: CategoriesContract;
+  readonly settings: SettingsContract;
+  readonly branding: BrandingContract;
 };
 
 const link = new RPCLink({

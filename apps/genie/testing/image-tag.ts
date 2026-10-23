@@ -17,6 +17,14 @@ export const IMAGE = testImageTag("genie-s005", "test");
 /** The fixture image the browser gate builds and drives. */
 export const FIXTURE_IMAGE = testImageTag("genie-s005", "fixture");
 
+/** The fixture modules `FIXTURE_IMAGE` compiles (`tools/fixture-modules/`). */
+export const FIXTURE_MODULES = [
+  "failing-viewer",
+  "invalid-viewer",
+  "permitted-viewer",
+  "landing-fixture",
+] as const;
+
 /**
  * The fixed tag the compose stack defaults to (`${GENIE_IMAGE:-genie-s005:test}`).
  * `build-image` applies it as well as the scoped tag, so the browser paths keep

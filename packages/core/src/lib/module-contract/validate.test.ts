@@ -35,14 +35,21 @@ describe("validateModule", () => {
     expect(validateModule(validModule)).toEqual([]);
   });
 
-  it.each(["core", "audit", "groups", "people", "roles"])(
-    "reserves the module id %s",
-    (id) => {
-      expect(validateModule(renameModule(validModule, id))).toContain(
-        `Module id "${id}" is reserved for core.`
-      );
-    }
-  );
+  it.each([
+    "core",
+    "audit",
+    "groups",
+    "people",
+    "roles",
+    "modules",
+    "categories",
+    "settings",
+    "branding",
+  ])("reserves the module id %s", (id) => {
+    expect(validateModule(renameModule(validModule, id))).toContain(
+      `Module id "${id}" is reserved for core.`
+    );
+  });
 
   it("accepts an equivalent rename to a declared key from a retired one", () => {
     const renamed = {

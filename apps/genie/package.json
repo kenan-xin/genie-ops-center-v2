@@ -146,7 +146,8 @@
       "test:e2e": {
         "cache": false,
         "dependsOn": [
-          "build-image"
+          "build-image",
+          "build-fixture-image"
         ]
       },
       "test:e2e:dev": {

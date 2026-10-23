@@ -114,6 +114,25 @@ export const navigationWithoutPinned: Module = {
   navigation: { entries: validModule.navigation.entries },
 };
 
+// A static entry carries no category: core places it by the module's placement (Spec 3 R-29).
+export const staticEntryWithCategory: Module = {
+  ...validModule,
+  navigation: {
+    pinned: [],
+    entries: [
+      {
+        id: "fixture-home",
+        label: "Fixture",
+        path: "/fixture",
+        surface: "workspace",
+        requiredPermission: "fixture:use",
+        // @ts-expect-error a static entry carries no categoryId (Spec 3 R-29, AC-4)
+        categoryId: "4b7f1d52-7f4e-4f0f-93a8-8a8f6f2c1a11",
+      },
+    ],
+  },
+};
+
 // 8. Pages: React components, keyed by name, on both surfaces.
 export const pageIsAString: Module = {
   ...validModule,

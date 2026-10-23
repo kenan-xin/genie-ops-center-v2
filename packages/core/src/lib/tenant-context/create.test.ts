@@ -78,7 +78,7 @@ describe("createPublicUrl (R-70)", () => {
 });
 
 describe("createTenantContext", () => {
-  it("holds the fixed members and three readers and nothing else (R-18)", async () => {
+  it("holds the fixed members and four readers and nothing else (R-18)", async () => {
     const context = createTenantContext(MINIMAL, silentLogger(), []);
 
     try {
@@ -86,6 +86,7 @@ describe("createTenantContext", () => {
         "authRequestScope",
         "branding",
         "capabilities",
+        "categories",
         "correlationScope",
         "db",
         "entitlements",

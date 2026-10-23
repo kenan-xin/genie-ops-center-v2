@@ -45,7 +45,9 @@ import { registerContextLogger } from "./with-transaction.ts";
 
 export type {
   BrandingReader,
+  CategoryReader,
   EntitlementReader,
+  NavigationCategory,
   SettingsReader,
   TenantBranding,
   TenantReaders,
@@ -132,7 +134,7 @@ export type DeploymentEnvironment = {
 
 /**
  * The one object every procedure, job and page reads through (DEC-34). It holds its fixed members
- * (`db`, `env`, `jobQueue`, `fileStorage`, `mailer`) and the three cached tenant readers of R-5,
+ * (`db`, `env`, `jobQueue`, `fileStorage`, `mailer`) and the four cached tenant readers (R-5, DEC-51),
  * each of which expires ten seconds after it is filled (DEC-46). A later service ticket adds its
  * own flat readonly member here.
  */
@@ -147,6 +149,8 @@ export type TenantContext = {
   readonly branding: TenantReaders["branding"];
   /** The module entitlement reader of R-5, a gate separate from `can()` (DEC-39). */
   readonly entitlements: TenantReaders["entitlements"];
+  /** The navigation category reader: the category rows and each module's placement (DEC-51). */
+  readonly categories: TenantReaders["categories"];
   /** The pg-boss job queue over this context's pool (D-11). It starts on first use. */
   readonly jobQueue: JobQueue;
   /** The typed event bus (R-53). Emission happens through `withTransaction`. */

@@ -40,11 +40,11 @@ describe("the migration plan", () => {
   });
 
   it("carries core's migrations as data, so no folder is resolved at run time", () => {
-    // Core owns the Section 1 migration, the Section 2 identity migration (R-1) and the audit
-    // reader's keyset index (R-67), so the history holds all four. The SQL still arrives as data
-    // read from a declared `new URL`, never as a folder path, which is what keeps it in a
-    // production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(4);
+    // Core owns the Section 1 migration, the Section 2 identity migration (R-1), the audit
+    // reader's keyset index (R-67) and the Section 3 navigation tables (R-86a), so the history
+    // holds all five. The SQL still arrives as data read from a declared `new URL`, never as a
+    // folder path, which is what keeps it in a production image.
+    expect(CORE_HISTORY.migrations).toHaveLength(5);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'
@@ -56,6 +56,10 @@ describe("the migration plan", () => {
 
     expect(CORE_HISTORY.migrations[3]?.sql.join("")).toContain(
       'CREATE INDEX "audit_event_occurred_at_id_idx"'
+    );
+
+    expect(CORE_HISTORY.migrations[4]?.sql.join("")).toContain(
+      'CREATE TABLE "category"'
     );
 
     expect(CORE_HISTORY).not.toHaveProperty("folder");

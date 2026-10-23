@@ -201,7 +201,7 @@ describe("the setup gate", () => {
       expect(body, path).toContain("This deployment is not set up yet");
       expect(body, path).toContain("migrations");
       expect(body, path).toContain("seed");
-      expect(body, path).not.toContain('aria-label="Modules"');
+      expect(body, path).not.toContain("data-context-id=");
       expect(body, path).not.toContain("Placeholder viewer");
     }
   });
@@ -219,7 +219,7 @@ describe("the setup gate", () => {
       expect(response.status, path).toBe(200);
       expect(body, path).toContain("This deployment is not set up yet");
       expect(body, path).not.toContain("Placeholder viewer");
-      expect(body, path).not.toContain('aria-label="Modules"');
+      expect(body, path).not.toContain("data-context-id=");
     }
   });
 
@@ -236,7 +236,7 @@ describe("the setup gate", () => {
       expect(response.status, path).toBe(200);
       expect(body, path).toContain("This deployment is not set up yet");
       expect(body, path).not.toContain("Placeholder viewer");
-      expect(body, path).not.toContain('aria-label="Modules"');
+      expect(body, path).not.toContain("data-context-id=");
     }
   });
 
@@ -341,7 +341,7 @@ describe("the setup gate", () => {
     const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(body).toContain('aria-label="Modules"');
+    expect(body).toContain("data-context-id=");
     expect(body).not.toContain("This deployment is not set up yet");
     expect(body).not.toContain('"messages":{}');
   });

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { type NavigationEntry, type TenantContext } from "@genie/core";
+import { type TenantContext } from "@genie/core";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { describe, expect, it } from "vitest";
 
@@ -28,20 +28,16 @@ describe("the placeholder module declaration", () => {
     ]);
   });
 
-  it("gives the DEC-51 guard one workspace entry of each category case", () => {
-    const entries: readonly NavigationEntry[] =
-      placeholderModule.navigation.entries;
+  it("declares no categoryId on any navigation entry (Spec 3 R-29, AC-4)", () => {
+    const { entries, pinned } = placeholderModule.navigation;
 
-    const workspace = entries.filter((entry) => entry.surface === "workspace");
+    for (const entry of [...entries, ...pinned]) {
+      expect(entry).not.toHaveProperty("categoryId");
+    }
 
-    expect(workspace).toHaveLength(3);
-
-    const withCategory = workspace.filter(
-      (entry) => entry.categoryId !== undefined
-    );
-
-    expect(withCategory).toHaveLength(2);
-    expect(workspace.length - withCategory.length).toBe(1);
+    expect(
+      entries.filter((entry) => entry.surface === "workspace")
+    ).toHaveLength(3);
   });
 
   it("pins entries it declares, in order", () => {

@@ -288,6 +288,11 @@ describe("MigrationRun compiled-module guards", () => {
     );
 
     await context.db.$client.query(
+      "insert into category (id, name, position) values ($1, 'Operations', 1)",
+      [categoryId]
+    );
+
+    await context.db.$client.query(
       "insert into tenant_module (module_id, enabled, enabled_at, category_id, config) values ('alpha', true, $1, $2, $3)",
       [
         new Date("2025-04-03T02:01:00.000Z"),

@@ -1,15 +1,9 @@
 import { SETUP_STEPS } from "@genie/core";
 
+import { FIXTURE_MODULES } from "../../testing/image-tag.ts";
 import { IMAGE, HOST_PORT, composeWithEnv } from "./stack.ts";
 
 const READY_URL = `http://127.0.0.1:${HOST_PORT}/api/health`;
-
-/** The modules the fixture image compiled (`tools/build-fixture-image.ts`). */
-const FIXTURE_MODULES = [
-  "failing-viewer",
-  "invalid-viewer",
-  "permitted-viewer",
-] as const;
 
 /** Test-only stand-in for `genie-ops setup` until the real setup command lands. */
 async function seedTestSetup(): Promise<void> {

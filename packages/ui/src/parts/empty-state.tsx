@@ -11,6 +11,8 @@ import {
 
 export function EmptyState(props: {
   readonly icon?: ReactNode;
+  /** Shown as given, without the icon box: a letter tile or an image. */
+  readonly media?: ReactNode;
   readonly title: string;
   readonly description: string;
   readonly action?: ReactNode;
@@ -21,6 +23,7 @@ export function EmptyState(props: {
         {props.icon ? (
           <EmptyMedia variant="icon">{props.icon}</EmptyMedia>
         ) : null}
+        {props.media ? <EmptyMedia>{props.media}</EmptyMedia> : null}
         <EmptyTitle>{props.title}</EmptyTitle>
         <EmptyDescription>{props.description}</EmptyDescription>
       </EmptyHeader>

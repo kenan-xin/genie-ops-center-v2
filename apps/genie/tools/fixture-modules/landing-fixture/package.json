@@ -1,0 +1,19 @@
+{
+  "name": "@genie/module-landing-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "react": "19.3.1"
+  },
+  "genie": {
+    "module": {
+      "id": "landing-fixture",
+      "entrypoint": "src/index.ts"
+    }
+  }
+}

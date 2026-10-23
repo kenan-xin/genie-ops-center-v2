@@ -174,6 +174,12 @@ export function defineModuleErrors<
   >;
 }
 
+/** One field-level problem of a refused write: the field's path and the message for it. */
+export type AppErrorIssue = {
+  readonly path: string;
+  readonly message: string;
+};
+
 /**
  * An error that carries a catalogue code. The cause is kept for the log and is never read by a
  * transport adapter, so wrapping an upstream failure loses no detail on the server side.
@@ -204,12 +210,19 @@ export class AppError extends Error {
    */
   declare readonly retryAfterMinutes: number | undefined;
 
+  /**
+   * The field-level issues of a refused write, as a frozen copy: the array and each issue are
+   * frozen, so neither the caller's source array nor a later assignment can change them.
+   */
+  declare readonly issues: readonly AppErrorIssue[] | undefined;
+
   constructor(
     definition: ErrorDefinition,
     options: {
       readonly cause?: unknown;
       readonly requestId?: string;
       readonly retryAfterMinutes?: number;
+      readonly issues?: readonly AppErrorIssue[];
     } = {}
   ) {
     // Both halves reach a client, so neither may be assembled at the throw site. A core code
@@ -237,6 +250,15 @@ export class AppError extends Error {
       ["safeMessage", message],
       ["requestId", options.requestId],
       ["retryAfterMinutes", options.retryAfterMinutes],
+      [
+        "issues",
+        options.issues &&
+          Object.freeze(
+            options.issues.map((issue) =>
+              Object.freeze({ path: issue.path, message: issue.message })
+            )
+          ),
+      ],
     ] as const) {
       Object.defineProperty(this, name, {
         value,

@@ -31,6 +31,7 @@ describe("the core package root", () => {
         "authRequestScope",
         "branding",
         "capabilities",
+        "categories",
         "correlationScope",
         "db",
         "entitlements",

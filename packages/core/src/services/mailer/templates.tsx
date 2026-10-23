@@ -26,6 +26,7 @@ import {
   render,
 } from "@react-email/components";
 
+import { supportContact } from "../../lib/branding/support.ts";
 import type {
   MailBrandingTheme,
   MailTemplateId,
@@ -214,19 +215,6 @@ const STYLES = {
   footerLink: { color: "#6b7280", textDecoration: "underline" },
 };
 
-/** The support line: the email when set, else the support page. */
-function supportTarget(
-  theme: MailBrandingTheme
-): { label: string; href: string } | null {
-  if (theme.supportEmail !== null) {
-    return { label: theme.supportEmail, href: `mailto:${theme.supportEmail}` };
-  }
-
-  return theme.supportUrl === null
-    ? null
-    : { label: theme.supportUrl, href: theme.supportUrl };
-}
-
 /** The one branded layout every catalogue template renders through (email spec, layout order). */
 function MailLayout({
   content,
@@ -235,7 +223,7 @@ function MailLayout({
   readonly content: MailContent;
   readonly theme: MailBrandingTheme;
 }) {
-  const support = supportTarget(theme);
+  const support = supportContact(theme);
 
   return (
     <Html lang="en">
@@ -311,7 +299,7 @@ function MailLayout({
  * HTML reading order and writes every link out in full (R-56).
  */
 function renderText(content: MailContent, theme: MailBrandingTheme): string {
-  const support = supportTarget(theme);
+  const support = supportContact(theme);
 
   const footer = [
     content.footer,

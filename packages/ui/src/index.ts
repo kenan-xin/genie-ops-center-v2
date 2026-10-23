@@ -1,5 +1,7 @@
 export { Button } from "./components/button.tsx";
 
+export { buttonVariants } from "./components/button-variants.ts";
+
 export {
   Field,
   FieldContent,

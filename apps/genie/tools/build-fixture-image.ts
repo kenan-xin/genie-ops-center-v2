@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { FIXTURE_IMAGE } from "../testing/image-tag.ts";
+import { FIXTURE_IMAGE, FIXTURE_MODULES } from "../testing/image-tag.ts";
 import {
   stageFixtureModule,
   stageWorkspace,
@@ -10,7 +10,8 @@ import {
 
 /**
  * Builds `genie-s005:fixture`, the disposable image carrying the failing,
- * invalid and permitted frame-origin fixture modules (AC-25).
+ * invalid and permitted frame-origin fixture modules (AC-25), and the landing
+ * fixture, the one module with the landing flag (Spec 3 AC-4).
  *
  * The repository is never touched. The script stages a build context under the
  * operating system's temporary directory — outside the repository's inventory —
@@ -37,12 +38,6 @@ import {
  * two worktrees running the fixture gate never replace each other's image.
  */
 const FIXTURE_TAG = FIXTURE_IMAGE;
-
-const FIXTURE_MODULES = [
-  "failing-viewer",
-  "invalid-viewer",
-  "permitted-viewer",
-] as const;
 
 let failed = false;
 

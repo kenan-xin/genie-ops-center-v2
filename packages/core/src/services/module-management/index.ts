@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
+import type { AppErrorIssue } from "../../lib/errors/index.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
@@ -10,10 +11,7 @@ import { syncModuleAdminKey } from "../authorization/roles.ts";
  * One actionable validation failure of R-68a: the configuration field a person has to fix
  * (`path`) and the message the schema gives for it. It is what a caller renders beside the field.
  */
-export type ModuleConfigIssue = {
-  readonly path: string;
-  readonly message: string;
-};
+export type ModuleConfigIssue = AppErrorIssue;
 
 /** The stable refusal codes of the one enable/disable procedure. */
 export type ModuleManagementErrorCode =

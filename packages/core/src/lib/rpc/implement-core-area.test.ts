@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import {
   auditContract,
+  brandingContract,
+  categoriesContract,
   callProcedure,
   createGroupsRouter,
   createPeopleRouter,
@@ -10,9 +12,11 @@ import {
   createRolesRouter,
   groupsContract,
   type ModuleRPCContext,
+  modulesContract,
   peopleContract,
   type PermissionKey,
   rolesContract,
+  settingsContract,
   type TenantContext,
 } from "../../index.ts";
 import { contractRouteProblems } from "./conformance.ts";
@@ -116,6 +120,10 @@ describe("the core area implementer", () => {
     expect(contractRouteProblems("groups", groupsContract)).toEqual([]);
     expect(contractRouteProblems("people", peopleContract)).toEqual([]);
     expect(contractRouteProblems("roles", rolesContract)).toEqual([]);
+    expect(contractRouteProblems("modules", modulesContract)).toEqual([]);
+    expect(contractRouteProblems("categories", categoriesContract)).toEqual([]);
+    expect(contractRouteProblems("settings", settingsContract)).toEqual([]);
+    expect(contractRouteProblems("branding", brandingContract)).toEqual([]);
 
     // The check is live: a contract under another area's prefix is refused.
     expect(contractRouteProblems("people", groupsContract)).not.toEqual([]);

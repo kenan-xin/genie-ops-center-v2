@@ -10,9 +10,11 @@ export {
   createPublicUrl,
   createTenantContext,
   type AuthEnvironment,
+  type CategoryReader,
   type DeploymentEnvironment,
   type FileStorageAdapter,
   IDENTITY_CALLBACK_PATH,
+  type NavigationCategory,
   type PublicUrlBuilder,
   type TenantContext,
 } from "./lib/tenant-context/index.ts";
@@ -107,6 +109,8 @@ export {
 
 export { CorrelationScope } from "./lib/correlation/index.ts";
 
+export { supportContact, type SupportContact } from "./lib/branding/support.ts";
+
 export { brandingTokens } from "./lib/branding/tokens.ts";
 
 export type {
@@ -124,6 +128,7 @@ export {
 
 export {
   AppError,
+  type AppErrorIssue,
   CORE_ERROR_MESSAGES,
   CORE_ERRORS,
   type CoreErrorCode,
@@ -266,10 +271,25 @@ export {
 } from "./services/roles/index.ts";
 
 export {
+  CORE_NAVIGATION_ID,
   enabledNavigation,
   landingRoute,
+  type PermittedEntry,
   permittedNavigation,
 } from "./lib/entitlement/index.ts";
+
+export {
+  CORE_ADMIN_NAVIGATION,
+  type CoreAdminGroupId,
+} from "./lib/entitlement/core-admin.ts";
+
+export {
+  type AdminNavigationGroup,
+  buildNavigationTree,
+  type NavigationCategoryGroup,
+  type NavigationTree,
+  navigationTree,
+} from "./lib/entitlement/tree.ts";
 
 // The server half of the module API (ADR 0011). A module router throws `AppError`, never a
 // protocol error, so core re-exports no oRPC error; the browser-safe half is `@genie/core/rpc`.
@@ -477,3 +497,43 @@ export {
   setupSatisfied,
   stepSettled,
 } from "./services/setup/index.ts";
+
+export {
+  type ModulesContract,
+  modulesContract,
+} from "./services/modules/contract.ts";
+
+export {
+  createModulesRouter,
+  type ModulesRouter,
+} from "./services/modules/router.ts";
+
+export {
+  type CategoriesContract,
+  categoriesContract,
+} from "./services/categories/contract.ts";
+
+export {
+  createCategoriesRouter,
+  type CategoriesRouter,
+} from "./services/categories/router.ts";
+
+export {
+  type SettingsContract,
+  settingsContract,
+} from "./services/settings/contract.ts";
+
+export {
+  createSettingsRouter,
+  type SettingsRouter,
+} from "./services/settings/router.ts";
+
+export {
+  type BrandingContract,
+  brandingContract,
+} from "./services/branding/contract.ts";
+
+export {
+  createBrandingRouter,
+  type BrandingRouter,
+} from "./services/branding/router.ts";

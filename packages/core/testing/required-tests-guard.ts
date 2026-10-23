@@ -68,14 +68,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/deployment-tables.integration.test.ts",
     reason:
-      "Spec 1 AC-1's first half, R-1, R-1a, R-2 and R-3, requires the deployment-table shape proof to run",
+      "Spec 1 AC-1's first half, R-1, R-1a, R-2 and R-3, and Spec 3 AC-11a and R-86a, require the deployment-table shape proof to run",
     cases: [
       "the Section 1 deployment tables creates the eleven deployment tables with exactly the documented columns",
       "the Section 1 deployment tables gives every table its documented primary key and index shape",
-      "the Section 1 deployment tables does not create the Section 3 tables category and user_preference",
-      "the Section 1 deployment tables keeps every person-naming column nullable and leaves tenant_module.category_id without a foreign key",
+      "the Section 1 deployment tables keeps every person-naming column and tenant_module.category_id nullable",
       "the Section 1 deployment tables keeps the file_blob bytes column in external storage",
       "the Section 1 deployment tables refuses a second row in each single-row table",
+      "the Section 3 navigation tables creates category and user_preference with exactly the documented columns",
+      "the Section 3 navigation tables gives tenant_module.category_id a nullable foreign key to category.id declared on delete set null",
+      "the Section 3 navigation tables sets the category of every module that named a deleted category to null and touches no other row",
+      "the Section 3 navigation tables upgrades a database with Section 1 and Section 2 rows and an orphan category id, nulling only that id",
     ],
   },
   {
@@ -366,6 +369,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "permission evolution against an existing database applies a transformation once under concurrent starts and retries",
       "permission evolution against an existing database exposes no partial transformation after a failure, fails the start, and a repaired retry completes",
       "permission evolution against an existing database covers a new record with a broad grant and not with a narrow one",
+    ],
+  },
+  {
+    file: "testing/navigation-tree.integration.test.ts",
+    reason: "Spec 3 AC-4 tree parts, R-28 to R-30 and R-91",
+    cases: [
+      "the navigation tree against a real database a holder of the use key lands on the landing route and sees its entries move under the module's category",
+      "the navigation tree against a real database a person without the use key sees no workspace entry and no landing route, and an auditor sees only the audit log",
+      "the navigation tree against a real database a disabled landing module leaves the tree and the landing route",
+      "the navigation tree against a real database deleting the category returns the module's entries to the workspace block",
     ],
   },
   {

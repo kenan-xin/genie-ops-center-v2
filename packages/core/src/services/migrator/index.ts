@@ -60,6 +60,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0003_audit_event_keyset_index.sql",
     import.meta.url
   ),
+  "0004_navigation_categories": new URL(
+    "../../../drizzle/0004_navigation_categories.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

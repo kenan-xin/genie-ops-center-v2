@@ -2,13 +2,28 @@ import { implementModule } from "@genie/core";
 import { oc } from "@genie/core/rpc";
 import { describe, expect, it } from "vitest";
 
-import { composeRouter } from "./router.ts";
+import { composeRouter, createAppRouter } from "./router.ts";
 
 const contract = { read: oc.route({ method: "POST", path: "/reports/read" }) };
 
 const os = implementModule("reports", contract);
 
 const router = os.router({ read: os.read.handler(() => "read") });
+
+describe("createAppRouter", () => {
+  it("mounts core's eight areas beside the modules", () => {
+    expect(Object.keys(createAppRouter([]))).toEqual([
+      "audit",
+      "groups",
+      "people",
+      "roles",
+      "modules",
+      "categories",
+      "settings",
+      "branding",
+    ]);
+  });
+});
 
 describe("composeRouter", () => {
   it("keys each entry by its id", () => {

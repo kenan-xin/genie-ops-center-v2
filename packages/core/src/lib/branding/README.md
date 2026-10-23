@@ -13,6 +13,9 @@ The WCAG `contrastRatio` beside it, and the `brandingTokens` emitter: the four d
 layout writes on `:root` per request (Spec 3 R-12 to R-14), with the `packages/ui` defaults when no
 branding row exists.
 
+The `supportContact` rule: the one support link, an email or else an http(s) page, that the mailer
+footer and the no-grants home page both show, and none when branding holds no valid contact.
+
 ## What must not go here
 
 A database read, a tenant context, a React component, and a second palette. This is one pure

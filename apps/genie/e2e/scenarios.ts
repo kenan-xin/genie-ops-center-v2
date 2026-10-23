@@ -14,12 +14,16 @@ import {
   updateRealmClient,
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
+import { FIXTURE_IMAGE } from "../testing/image-tag.ts";
 import {
   BROKER_IDP_ALIAS,
   brokeredPort,
   BROKER_REALM,
+  imageExists,
   INVITE_REALM,
   invitePort,
+  LANDING_REALM,
+  landingPort,
   provisionBrokered,
   SAML_REALM,
   samlPort,
@@ -36,7 +40,7 @@ import {
  * a person or a group row.
  */
 
-export type Scenario = "s-b" | "s-d" | "s-e" | "done" | "invite";
+export type Scenario = "s-b" | "s-d" | "s-e" | "done" | "invite" | "landing";
 
 /**
  * The S2-16 done-when groups (AC-20 to AC-24). The admit group is pre-added and mapped to a role
@@ -135,6 +139,24 @@ const INVITE_SEED = [
 
 const SAML_SEED = seedSql([]);
 
+/**
+ * S3-04a: per project, a member who holds the landing fixture's role directly, and a person with no
+ * grant at all. The support email gives the no-grants empty state its contact link (R-34).
+ */
+const LANDING_SEED = [
+  "update tenant_settings set onboarding_mode = 'invite'",
+  "update tenant_branding set support_email = 'support@example.invalid'",
+  ...E2E_PROJECTS.flatMap((project) => {
+    const member = scenarioEmail("landing", "member", project);
+    const nogrant = scenarioEmail("landing", "nogrant", project);
+
+    return [
+      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S3-04a Member ${project}', '${member}', true, 'active'), (gen_random_uuid()::text, 'S3-04a No grant ${project}', '${nogrant}', true, 'active') on conflict (email) do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'Landing fixture user' and u.email = '${member}' on conflict do nothing`,
+    ];
+  }),
+].join("; ");
+
 /** Starts both brokered deployments and seeds the company people they sign in as. */
 export async function provisionScenarioDeployments(
   compose: readonly string[],
@@ -197,6 +219,29 @@ export async function provisionScenarioDeployments(
     seedSql: INVITE_SEED,
   });
 
+  // S3-04a: the landing route needs a module with the landing flag, which only the fixture image
+  // compiles. `test:e2e` builds it; a run without it leaves `navigation.spec.ts` to fail loudly.
+  if (await imageExists(FIXTURE_IMAGE)) {
+    await provisionBrokered(compose, {
+      suffix: "landing",
+      realm: LANDING_REALM,
+      hostPort: landingPort(),
+      keycloakIssuer: keycloak.keycloakUrl,
+      image: FIXTURE_IMAGE,
+      idpArgs: [
+        "--protocol",
+        "oidc",
+        "--issuer-url",
+        `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}`,
+        "--client-id",
+        COMPANY_OIDC_CLIENT_ID,
+        "--allow-http",
+      ],
+      idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
+      seedSql: LANDING_SEED,
+    });
+  }
+
   // The company stand-in's SAML client registers `http://*` as its ACS pattern, which Keycloak's
   // redirect-URI validation rejects. Register the exact broker ACS URL the SAML tenant realm
   // presents in its AuthnRequest instead.
@@ -257,6 +302,8 @@ async function seedCompanyPeople(): Promise<void> {
     },
     { scenario: "invite", state: "admin", groups: () => [] },
     { scenario: "invite", state: "mixed", groups: () => [] },
+    { scenario: "landing", state: "member", groups: () => [] },
+    { scenario: "landing", state: "nogrant", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {

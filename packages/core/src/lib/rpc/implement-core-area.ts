@@ -8,7 +8,7 @@ import {
 } from "./implement-module.ts";
 
 /**
- * The oRPC implementer of one of core's own areas (`audit`, `groups`, `people`, `roles`), with only
+ * The oRPC implementer of one of core's own areas (`audit`, `groups`, `people`, `roles`, `modules`, `categories`, `settings`, `branding`), with only
  * the session check attached through the implementer's own `.use()` (ADR 0011). Like
  * `implementModule`, the check counts toward the procedure's `inputValidationIndex`, so an
  * anonymous, idle-expired or capped request answers `unauthenticated` at 401 whatever its input

@@ -16,6 +16,7 @@ export default async function globalTeardown(): Promise<void> {
   await stopBrokered("oidc");
   await stopBrokered("saml");
   await stopBrokered("invite");
+  await stopBrokered("landing");
   await stopClientOnly();
 
   // The fixed project name makes this work whether or not the two hooks shared

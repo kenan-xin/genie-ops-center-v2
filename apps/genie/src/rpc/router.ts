@@ -1,13 +1,17 @@
 import {
   createAuditRouter,
+  createBrandingRouter,
+  createCategoriesRouter,
   createGroupsRouter,
+  createModulesRouter,
   createPeopleRouter,
   createRolesRouter,
+  createSettingsRouter,
   type Module,
   type ModuleRouter,
 } from "@genie/core";
 
-/** The composed router: one entry per module id, plus core's four areas. */
+/** The composed router: one entry per module id, plus core's eight areas. */
 export type AppRouter = Readonly<Record<string, ModuleRouter>>;
 
 /**
@@ -38,7 +42,8 @@ export function composeRouter(
  * declaration carries, so the RPC path is `/api/rpc/<moduleId>/<procedure>`. Core's own
  * administration areas join them: `audit` behind `core:audit:read` (R-67), `groups` behind
  * `core:groups:manage`, `people` behind `core:people:manage` and `roles` behind
- * `core:roles:manage` (R-37).
+ * `core:roles:manage` (R-37). `modules`, `categories`, `settings` and `branding` are empty until
+ * S3-05, S3-06 and S3-07 fill them (Section 3, D3-6).
  */
 export function createAppRouter(modules: readonly Module[]): AppRouter {
   return composeRouter([
@@ -47,5 +52,9 @@ export function createAppRouter(modules: readonly Module[]): AppRouter {
     ["groups", createGroupsRouter()],
     ["people", createPeopleRouter()],
     ["roles", createRolesRouter(modules)],
+    ["modules", createModulesRouter()],
+    ["categories", createCategoriesRouter()],
+    ["settings", createSettingsRouter()],
+    ["branding", createBrandingRouter()],
   ]);
 }

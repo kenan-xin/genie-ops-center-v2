@@ -57,6 +57,23 @@ async function seedTenantReaders(
   );
 }
 
+/** Inserts one category and places `placeholder` in it, returning the category id. */
+async function placeInCategory(tenant: TenantContext, name: string) {
+  const inserted = await tenant.db.$client.query<{ id: string }>(
+    "insert into category (name, position) values ($1, 1) returning id",
+    [name]
+  );
+
+  const id = inserted.rows[0]?.id ?? "";
+
+  await tenant.db.$client.query(
+    "update tenant_module set category_id = $1 where module_id = 'placeholder'",
+    [id]
+  );
+
+  return id;
+}
+
 /** A second context on the same database, with a cold entitlement cache. */
 function cold(tenant: TenantContext): TenantContext {
   return createTenantContext(
@@ -259,10 +276,28 @@ describe("two tenant contexts in one process", () => {
       "update tenant_module set enabled = false where module_id = 'placeholder'"
     );
 
+    const placed = await Promise.all([
+      placeInCategory(first.context, "First only"),
+      placeInCategory(second.context, "Second only"),
+    ]);
+
     const firstCold = cold(first.context);
     const secondCold = cold(second.context);
 
     try {
+      expect(
+        (await firstCold.categories.list()).map((row) => row.name)
+      ).toEqual(["First only"]);
+      expect(
+        (await secondCold.categories.list()).map((row) => row.name)
+      ).toEqual(["Second only"]);
+      expect(await firstCold.categories.ofModule("placeholder")).toBe(
+        placed[0]
+      );
+      expect(await secondCold.categories.ofModule("placeholder")).toBe(
+        placed[1]
+      );
+
       expect(await firstCold.entitlements.isEnabled("placeholder")).toBe(true);
       expect(await secondCold.entitlements.isEnabled("placeholder")).toBe(
         false
@@ -274,6 +309,14 @@ describe("two tenant contexts in one process", () => {
       ]);
       await second.context.db.$client.query(
         "update tenant_module set enabled = true where module_id = 'placeholder'"
+      );
+      await Promise.all(
+        [first.context, second.context].map(async (tenant) => {
+          await tenant.db.$client.query(
+            "update tenant_module set category_id = null"
+          );
+          await tenant.db.$client.query("delete from category");
+        })
       );
     }
 

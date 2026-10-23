@@ -63,6 +63,27 @@ export function inviteBaseUrl(): string {
   return `http://127.0.0.1:${invitePort()}`;
 }
 
+/** The S3-04a landing deployment: the fixture image, so one module carries the landing flag. */
+export const LANDING_REALM = "genie-landing";
+
+export const LANDING_DB = "genie_broker_landing";
+
+export function landingPort(): number {
+  return scopedPort(4000);
+}
+
+export function landingBaseUrl(): string {
+  return `http://127.0.0.1:${landingPort()}`;
+}
+
+/** True when the local Docker daemon holds the image tag. */
+export async function imageExists(tag: string): Promise<boolean> {
+  return run("docker", ["image", "inspect", tag]).then(
+    () => true,
+    () => false
+  );
+}
+
 export function brokeredBaseUrl(): string {
   return `http://127.0.0.1:${brokeredPort()}`;
 }
@@ -84,6 +105,8 @@ export type BrokeredSpec = {
   readonly idpEnv?: Readonly<Record<string, string>>;
   /** The SQL against the new database, run after setup and `idp set`. */
   readonly seedSql: string;
+  /** The app image; defaults to this worktree's test image. */
+  readonly image?: string;
 };
 
 /** True when the container exists and is running. */
@@ -215,7 +238,7 @@ export async function provisionBrokered(
     ],
     {
       // This worktree's image, not the shared fixed tag another worktree's build can overwrite.
-      env: { ...process.env, GENIE_IMAGE: IMAGE },
+      env: { ...process.env, GENIE_IMAGE: spec.image ?? IMAGE },
     }
   );
 

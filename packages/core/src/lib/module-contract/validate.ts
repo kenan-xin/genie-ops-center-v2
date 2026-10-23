@@ -3,10 +3,11 @@ import type { ZodType } from "zod";
 import { moduleApiProblems } from "../rpc/conformance.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
-import type {
-  Module,
-  NavigationEntry,
-  PermissionTransformation,
+import {
+  MAX_PINNED_ENTRIES,
+  type Module,
+  type NavigationEntry,
+  type PermissionTransformation,
 } from "./module.ts";
 import { AUDITOR_ROLE, TENANT_ADMINISTRATOR_ROLE } from "./system-roles.ts";
 
@@ -25,17 +26,18 @@ const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
  */
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
-/** Ids a module may not take: core itself, and the core areas beside the modules in the RPC router. */
+/** Ids a module may not take: core itself, and the core areas (eight) beside the modules in the RPC router. */
 const RESERVED_IDS: ReadonlySet<string> = new Set([
   "core",
   "audit",
   "groups",
   "people",
   "roles",
+  "modules",
+  "categories",
+  "settings",
+  "branding",
 ]);
-
-/** The navigation contract caps the pinned rail at six entries. */
-const MAX_PINNED = 6;
 
 /**
  * The zod def members this validator reads beyond the public `type`
@@ -299,7 +301,7 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
-  if (module.navigation.pinned.length > MAX_PINNED) {
+  if (module.navigation.pinned.length > MAX_PINNED_ENTRIES) {
     problems.push(
       `The pinned list holds ${module.navigation.pinned.length} entries. The maximum is six.`
     );
@@ -503,7 +505,6 @@ function sameEntry(left: NavigationEntry, right: NavigationEntry): boolean {
     left.path === right.path &&
     left.surface === right.surface &&
     left.requiredPermission === right.requiredPermission &&
-    left.categoryId === right.categoryId &&
     left.landing === right.landing
   );
 }

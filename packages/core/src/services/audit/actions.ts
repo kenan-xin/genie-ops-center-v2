@@ -47,6 +47,17 @@ export const AUDIT_ACTIONS = [
   "core:group_members_removed",
   // Permission evolution writes this one from the migrator (R-33c).
   "core:permission_transformation",
+  // Shell, branding, settings, modules and categories (Section 3, R-90a).
+  "core:branding_published",
+  "core:settings_updated",
+  "core:module_configured",
+  "core:module_enabled",
+  "core:module_disabled",
+  "core:module_category_set",
+  "core:category_created",
+  "core:category_renamed",
+  "core:category_reordered",
+  "core:category_deleted",
 ] as const;
 
 /** One action string the reader's fixed filter offers. */

@@ -1,11 +1,17 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-import { tenantBranding, tenantModule, tenantSettings } from "../../schema.ts";
+import {
+  category,
+  tenantBranding,
+  tenantModule,
+  tenantSettings,
+} from "../../schema.ts";
 
 /**
- * The three changing tenant readers of R-5: settings over `tenant_settings`, branding over
- * `tenant_branding`, and entitlements over `tenant_module`. This module is the only place in
+ * The four changing tenant readers: settings over `tenant_settings`, branding over
+ * `tenant_branding`, entitlements over `tenant_module`, and categories over `category` plus each
+ * module's placement on `tenant_module` (DEC-46, amended for DEC-51). This module is the only place in
  * core that reads those tables (R-7); the migrator run, the `seed` step and the enable
  * procedure write them, and every other caller reads through a context that this file built.
  */
@@ -41,10 +47,25 @@ export type EntitlementReader = {
   readonly isEnabled: (moduleId: string) => Promise<boolean>;
 };
 
+/** One `category` row as the navigation tree reads it (DEC-51). */
+export type NavigationCategory = {
+  readonly id: string;
+  readonly name: string;
+  readonly position: number;
+};
+
+export type CategoryReader = {
+  /** Every category row, ordered by `position`, then `name`. */
+  readonly list: () => Promise<readonly NavigationCategory[]>;
+  /** A compiled module's category id, or null: no row, no category, or an id the image did not compile. */
+  readonly ofModule: (moduleId: string) => Promise<string | null>;
+};
+
 export type TenantReaders = {
   readonly settings: SettingsReader;
   readonly branding: BrandingReader;
   readonly entitlements: EntitlementReader;
+  readonly categories: CategoryReader;
 };
 
 /** One cached read: the reader a caller holds. */
@@ -117,7 +138,7 @@ function singletonRow<TValue>(rows: readonly TValue[], table: string): TValue {
 }
 
 /**
- * Builds the three readers over one database client. They are lazy: building them opens no
+ * Builds the four readers over one database client. They are lazy: building them opens no
  * connection and reads no row (R-19), and each keeps its own cache for the life of its context.
  *
  * `compiledModuleIds` is the one compiled-image list the caller also hands the migrator run
@@ -127,8 +148,6 @@ export function createTenantReaders(input: {
   readonly db: TenantDatabase;
   readonly compiledModuleIds: readonly string[];
 }): TenantReaders {
-  const compiled = new Set(input.compiledModuleIds);
-
   const settings = createCachedReader(async () => {
     const rows = await input.db.select().from(tenantSettings).limit(1);
 
@@ -141,36 +160,57 @@ export function createTenantReaders(input: {
     return singletonRow(rows, "tenant_branding");
   });
 
-  function entitlementReaderFor(moduleId: string): CachedReader<boolean> {
+  // One cached read per compiled module serves both the entitlement and the placement.
+  function placementReaderFor(
+    moduleId: string
+  ): CachedReader<{ enabled: boolean; categoryId: string | null }> {
     return createCachedReader(async () => {
       const rows = await input.db
-        .select({ enabled: tenantModule.enabled })
+        .select({
+          enabled: tenantModule.enabled,
+          categoryId: tenantModule.categoryId,
+        })
         .from(tenantModule)
         .where(eq(tenantModule.moduleId, moduleId))
         .limit(1);
 
-      return rows[0]?.enabled ?? false;
+      return rows[0] ?? { enabled: false, categoryId: null };
     });
   }
 
-  // One cache per compiled module. An id the image did not compile is answered false without a
+  // One cache per compiled module. An id the image did not compile is answered without a
   // query, so a caller that passes an arbitrary id cannot grow this map.
   const byModule = new Map(
     input.compiledModuleIds.map((moduleId) => [
       moduleId,
-      entitlementReaderFor(moduleId),
+      placementReaderFor(moduleId),
     ])
   );
 
   const entitlements: EntitlementReader = {
     async isEnabled(moduleId: string): Promise<boolean> {
-      if (!compiled.has(moduleId)) return false;
-
-      // `byModule` is built from the same list as `compiled`, so every compiled
-      // id already has a reader and the `?? false` only satisfies the type.
-      return byModule.get(moduleId)?.get() ?? false;
+      return (await byModule.get(moduleId)?.get())?.enabled ?? false;
     },
   };
 
-  return { settings, branding, entitlements };
+  const categoryRows = createCachedReader(
+    async (): Promise<readonly NavigationCategory[]> =>
+      input.db
+        .select({
+          id: category.id,
+          name: category.name,
+          position: category.position,
+        })
+        .from(category)
+        .orderBy(asc(category.position), asc(category.name))
+  );
+
+  const categories: CategoryReader = {
+    list: categoryRows.get,
+    async ofModule(moduleId: string): Promise<string | null> {
+      return (await byModule.get(moduleId)?.get())?.categoryId ?? null;
+    },
+  };
+
+  return { settings, branding, entitlements, categories };
 }

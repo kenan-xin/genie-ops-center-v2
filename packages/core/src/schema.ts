@@ -24,8 +24,8 @@ import {
  *
  * Nothing here carries a `tenant_id`: the database is the tenant (ADR 0007). The six
  * person-naming columns stay nullable and each points at `user.id` (R-2, data-shape rule 7);
- * `tenant_module.category_id` stays nullable and still carries no foreign key, because the
- * Section 3 migration that creates `category` adds the category key (data-shape rules 4 and 7).
+ * `tenant_module.category_id` stays nullable and points at `category.id`, which the Section 3
+ * migration creates, and a deleted category sets it to null (R-86a, data-shape rules 4 and 7).
  */
 
 /**
@@ -41,12 +41,23 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
 
 const withTimeZone = { withTimezone: true } as const;
 
+/** The heading list of `DEC-51` that the Categories page manages; modules name a row by id. */
+export const category = pgTable("category", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+});
+
 /** One row per compiled module, plus retained historical rows after controlled removal. */
 export const tenantModule = pgTable("tenant_module", {
   moduleId: text("module_id").primaryKey(),
   enabled: boolean("enabled").notNull().default(false),
   enabledAt: timestamp("enabled_at", withTimeZone),
-  categoryId: uuid("category_id"),
+  categoryId: uuid("category_id").references(() => category.id, {
+    onDelete: "set null",
+  }),
   config: jsonb("config").notNull().default({}),
 });
 
@@ -500,6 +511,19 @@ export const notification = pgTable(
   ]
 );
 
+/**
+ * A person's overrides of the tenant defaults. R-86a creates it; nothing writes it until the
+ * personal Preferences block returns (revision F-24).
+ */
+export const userPreference = pgTable("user_preference", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id),
+  locale: text("locale"),
+  timeZone: text("time_zone"),
+  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+});
+
 /** Every core table by its SQL name, the one place a core table is registered. */
 export const coreTables = {
   tenant_module: tenantModule,
@@ -523,4 +547,6 @@ export const coreTables = {
   role,
   role_assignment: roleAssignment,
   notification,
+  category,
+  user_preference: userPreference,
 } satisfies Readonly<Record<string, PgTable>>;

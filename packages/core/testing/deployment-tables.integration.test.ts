@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { startDisposableDeployment } from "./index.ts";
+import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
+import {
+  CORE_HISTORY,
+  type MigrationHistory,
+  runMigrations,
+} from "../src/services/migrator/index.ts";
+import { startDisposableDeployment, startDisposablePostgres } from "./index.ts";
 
 /**
  * The deployment tables the Section 1 core migration must create (R-1), against a real Postgres
@@ -180,6 +188,33 @@ const documentedEntries = Object.entries(DEPLOYMENT_TABLES) as Array<
   [string, DocumentedTable]
 >;
 
+/** The Section 3 migration's tables (R-86a), documented in data-shape.md "Navigation" and "Branding". */
+const SECTION_3_TABLES: Array<[string, DocumentedTable]> = [
+  [
+    "category",
+    {
+      columns: {
+        id: { type: "uuid", nullable: false },
+        name: { type: "text", nullable: false },
+        position: { type: "integer", nullable: false },
+        created_at: { type: "timestamp with time zone", nullable: false },
+        updated_at: { type: "timestamp with time zone", nullable: false },
+      },
+    },
+  ],
+  [
+    "user_preference",
+    {
+      columns: {
+        user_id: { type: "text", nullable: false },
+        locale: { type: "text", nullable: true },
+        time_zone: { type: "text", nullable: true },
+        updated_at: { type: "timestamp with time zone", nullable: false },
+      },
+    },
+  ],
+];
+
 /**
  * The columns of R-2, in the order the requirement lists them: every Section 1 column that names
  * a person is nullable, because a row written before a person existed survives. The Section 2
@@ -289,25 +324,6 @@ async function indexFacts(
   return result.rows;
 }
 
-/** The columns of one table that some foreign key constraint covers. */
-async function foreignKeyColumns(
-  client: {
-    query: <T>(text: string, values?: unknown[]) => Promise<{ rows: T[] }>;
-  },
-  table: string
-): Promise<string[]> {
-  const result = await client.query<{ attname: string }>(
-    `select distinct a.attname
-       from pg_constraint c
-       join pg_attribute a
-         on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
-      where c.contype = 'f' and c.conrelid = to_regclass($1)`,
-    [`public.${table}`]
-  );
-
-  return result.rows.map((row) => row.attname);
-}
-
 /**
  * One column's storage strategy as `pg_attribute` holds it: `p` plain, `m` main, `x` extended,
  * `e` external. R-3 needs `e` on `file_blob.bytes`, so Postgres never compresses bytes that
@@ -355,85 +371,99 @@ async function indexDefinitions(
 const covered = (index: { columns: string[] }): string =>
   index.columns.join(",");
 
+type Client = {
+  query: <T>(text: string, values?: unknown[]) => Promise<{ rows: T[] }>;
+};
+
+/** Every way the database's columns differ from the documented tables, as readable lines. */
+async function columnProblems(
+  client: Client,
+  entries: Array<[string, DocumentedTable]>
+): Promise<string[]> {
+  const present = await publicTables(client);
+  const problems: string[] = [];
+
+  const actualByTable = new Map(
+    await Promise.all(
+      entries.map(
+        async ([table]): Promise<
+          [string, Awaited<ReturnType<typeof columnFacts>>]
+        > => [table, await columnFacts(client, table)]
+      )
+    )
+  );
+
+  for (const [table, documented] of entries) {
+    if (!present.includes(table)) {
+      problems.push(`${table}: the table does not exist`);
+
+      continue;
+    }
+
+    const actual = actualByTable.get(table);
+
+    if (actual === undefined) {
+      problems.push(`${table}: the column catalogue query returned no result`);
+
+      continue;
+    }
+
+    for (const column of Object.keys(documented.columns)) {
+      if (!actual.has(column)) {
+        problems.push(`${table}.${column}: the column is missing`);
+      }
+    }
+
+    for (const column of actual.keys()) {
+      if (!(column in documented.columns)) {
+        problems.push(`${table}.${column}: no such column in data-shape.md`);
+      }
+    }
+
+    for (const [column, expected] of Object.entries(documented.columns)) {
+      const fact = actual.get(column);
+
+      if (fact === undefined) continue;
+
+      if (expected.type !== undefined && fact.dataType !== expected.type) {
+        problems.push(
+          `${table}.${column}: type ${fact.dataType}, data-shape.md says ${expected.type}`
+        );
+      }
+
+      if (
+        expected.nullable !== undefined &&
+        fact.nullable !== expected.nullable
+      ) {
+        problems.push(
+          `${table}.${column}: is ${fact.nullable ? "nullable" : "not null"}, data-shape.md says the opposite`
+        );
+      }
+
+      if (
+        expected.default !== undefined &&
+        fact.defaultValue !== expected.default
+      ) {
+        problems.push(
+          `${table}.${column}: default ${String(fact.defaultValue)}, data-shape.md says ${expected.default}`
+        );
+      }
+    }
+  }
+
+  return problems;
+}
+
 describe("the Section 1 deployment tables", () => {
   it("creates the eleven deployment tables with exactly the documented columns", async () => {
     const deployment = await startDisposableDeployment();
 
     cleanups.push(deployment.stop);
 
-    const client = deployment.context.db.$client;
-    const present = await publicTables(client);
-    const problems: string[] = [];
-
-    const actualByTable = new Map(
-      await Promise.all(
-        documentedEntries.map(
-          async ([table]): Promise<
-            [string, Awaited<ReturnType<typeof columnFacts>>]
-          > => [table, await columnFacts(client, table)]
-        )
-      )
+    const problems = await columnProblems(
+      deployment.context.db.$client,
+      documentedEntries
     );
-
-    for (const [table, documented] of documentedEntries) {
-      if (!present.includes(table)) {
-        problems.push(`${table}: the table does not exist`);
-
-        continue;
-      }
-
-      const actual = actualByTable.get(table);
-
-      if (actual === undefined) {
-        problems.push(
-          `${table}: the column catalogue query returned no result`
-        );
-
-        continue;
-      }
-
-      for (const column of Object.keys(documented.columns)) {
-        if (!actual.has(column)) {
-          problems.push(`${table}.${column}: the column is missing`);
-        }
-      }
-
-      for (const column of actual.keys()) {
-        if (!(column in documented.columns)) {
-          problems.push(`${table}.${column}: no such column in data-shape.md`);
-        }
-      }
-
-      for (const [column, expected] of Object.entries(documented.columns)) {
-        const fact = actual.get(column);
-
-        if (fact === undefined) continue;
-
-        if (expected.type !== undefined && fact.dataType !== expected.type) {
-          problems.push(
-            `${table}.${column}: type ${fact.dataType}, data-shape.md says ${expected.type}`
-          );
-        }
-
-        if (
-          expected.nullable !== undefined &&
-          fact.nullable !== expected.nullable
-        ) {
-          problems.push(
-            `${table}.${column}: is ${fact.nullable ? "nullable" : "not null"}, data-shape.md says the opposite`
-          );
-        }
-
-        if (
-          expected.default !== undefined &&
-          fact.defaultValue !== expected.default
-        ) {
-          problems.push(
-            `${table}.${column}: default ${String(fact.defaultValue)}, data-shape.md says ${expected.default}`
-          );
-        }
-      }
-    }
 
     expect(problems).toEqual([]);
   });
@@ -539,18 +569,7 @@ describe("the Section 1 deployment tables", () => {
     expect(problems).toEqual([]);
   });
 
-  it("does not create the Section 3 tables category and user_preference", async () => {
-    const deployment = await startDisposableDeployment();
-
-    cleanups.push(deployment.stop);
-
-    const present = await publicTables(deployment.context.db.$client);
-
-    expect(present).not.toContain("category");
-    expect(present).not.toContain("user_preference");
-  });
-
-  it("keeps every person-naming column nullable and leaves tenant_module.category_id without a foreign key", async () => {
+  it("keeps every person-naming column and tenant_module.category_id nullable", async () => {
     const deployment = await startDisposableDeployment();
 
     cleanups.push(deployment.stop);
@@ -571,20 +590,8 @@ describe("the Section 1 deployment tables", () => {
           async (
             table
           ): Promise<
-            [
-              string,
-              {
-                columns: Awaited<ReturnType<typeof columnFacts>>;
-                foreignKeys: Awaited<ReturnType<typeof foreignKeyColumns>>;
-              },
-            ]
-          > => [
-            table,
-            {
-              columns: await columnFacts(client, table),
-              foreignKeys: await foreignKeyColumns(client, table),
-            },
-          ]
+            [string, { columns: Awaited<ReturnType<typeof columnFacts>> }]
+          > => [table, { columns: await columnFacts(client, table) }]
         )
       )
     );
@@ -610,18 +617,11 @@ describe("the Section 1 deployment tables", () => {
       }
     }
 
-    // tenant_module.category_id stays nullable with no foreign key until Section 3 creates
-    // `category`; the six person columns gain their key in Section 2 and are not checked here.
+    // The six person columns gain their key in Section 2 and are not checked here.
     const categoryFacts = factsByTable.get("tenant_module");
 
     if (!categoryFacts?.columns.get("category_id")?.nullable) {
       problems.push("tenant_module.category_id: must be nullable");
-    }
-
-    if (categoryFacts?.foreignKeys.includes("category_id")) {
-      problems.push(
-        "tenant_module.category_id: carries a foreign key, and none may exist yet"
-      );
     }
 
     expect(problems).toEqual([]);
@@ -683,5 +683,190 @@ describe("the Section 1 deployment tables", () => {
     );
 
     expect(problems.filter((problem) => problem !== undefined)).toEqual([]);
+  });
+});
+
+const ORPHAN_CATEGORY_ID = "11111111-1111-4111-8111-111111111111";
+
+function emptyHistory(name: string): MigrationHistory {
+  return { name, migrations: [], table: moduleLedgerTable(name) };
+}
+
+/** The foreign keys of one table: the covered column, the target table, and the delete action. */
+async function foreignKeys(client: Client, table: string) {
+  const result = await client.query<{
+    column: string;
+    target: string;
+    onDelete: string;
+  }>(
+    `select a.attname as "column", c.confrelid::regclass::text as target, c.confdeltype as "onDelete"
+       from pg_constraint c
+       join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+      where c.contype = 'f' and c.conrelid = to_regclass($1)`,
+    [`public.${table}`]
+  );
+
+  return result.rows;
+}
+
+describe("the Section 3 navigation tables", () => {
+  it("creates category and user_preference with exactly the documented columns", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    expect(await columnProblems(client, SECTION_3_TABLES)).toEqual([]);
+
+    const insert =
+      "insert into category (name, position) values ('Operations', 1)";
+
+    await client.query(insert);
+
+    await expect(client.query(insert)).rejects.toMatchObject({ code: "23505" });
+  });
+
+  it("gives tenant_module.category_id a nullable foreign key to category.id declared on delete set null", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    expect(await foreignKeys(client, "tenant_module")).toEqual([
+      { column: "category_id", target: "category", onDelete: "n" },
+    ]);
+
+    expect(await foreignKeys(client, "user_preference")).toEqual([
+      { column: "user_id", target: '"user"', onDelete: "a" },
+    ]);
+  });
+
+  it("sets the category of every module that named a deleted category to null and touches no other row", async () => {
+    const deployment = await startDisposableDeployment();
+
+    cleanups.push(deployment.stop);
+
+    const client = deployment.context.db.$client;
+
+    const { rows: categories } = await client.query<{ id: string }>(
+      "insert into category (name, position) values ('A', 1), ('B', 2) returning id"
+    );
+
+    const [a, b] = [categories[0]?.id, categories[1]?.id];
+
+    await client.query(
+      `insert into tenant_module (module_id, enabled, category_id, config) values
+         ('m1', true, $1, '{"k":1}'), ('m2', false, $2, '{"k":2}'), ('m3', true, null, '{}')`,
+      [a, b]
+    );
+
+    const before = await client.query("select * from category where id = $1", [
+      b,
+    ]);
+
+    await client.query("delete from category where id = $1", [a]);
+
+    const modules = await client.query(
+      "select module_id, enabled, category_id, config from tenant_module order by module_id"
+    );
+
+    expect(modules.rows).toEqual([
+      { module_id: "m1", enabled: true, category_id: null, config: { k: 1 } },
+      { module_id: "m2", enabled: false, category_id: b, config: { k: 2 } },
+      { module_id: "m3", enabled: true, category_id: null, config: {} },
+    ]);
+    expect((await client.query("select * from category")).rows).toEqual(
+      before.rows
+    );
+  });
+
+  it("upgrades a database with Section 1 and Section 2 rows and an orphan category id, nulling only that id", async () => {
+    const postgres = await startDisposablePostgres();
+    const compiledModuleIds = ["alpha", "beta"];
+
+    const context = createTenantContext(
+      {
+        DATABASE_URL: postgres.url,
+        PUBLIC_URL: "https://test.example.invalid",
+      },
+      silentLogger(),
+      compiledModuleIds
+    );
+
+    cleanups.push(async () => {
+      await context.db.$client.end();
+      await postgres.stop();
+    });
+
+    const client = context.db.$client;
+    const moduleHistories = compiledModuleIds.map(emptyHistory);
+
+    await runMigrations({
+      env: context.env,
+      pool: client,
+      histories: [
+        { ...CORE_HISTORY, migrations: CORE_HISTORY.migrations.slice(0, 4) },
+        ...moduleHistories,
+      ],
+      compiledModuleIds,
+    });
+
+    await client.query(`
+      insert into tenant_settings (onboarding_mode) values ('invite');
+      insert into tenant_branding (company_name, product_name, default_locale, default_time_zone)
+        values ('Co', 'Product', 'en', 'UTC');
+      insert into "user" (id, name, email) values ('u1', 'Person', 'u1@example.invalid');
+      insert into "group" (name, source) values ('g1', 'local');
+      insert into role (name, permissions) values ('r1', array['a:b']);
+      insert into role_assignment (role_id, principal_type, principal_id)
+        select id, 'user', 'u1' from role where name = 'r1';
+    `);
+    await client.query(
+      `insert into tenant_module (module_id, enabled, category_id) values
+         ('alpha', true, $1), ('beta', false, null)`,
+      [ORPHAN_CATEGORY_ID]
+    );
+
+    const keyed = {
+      tenant_settings: "updated_at",
+      tenant_branding: "company_name",
+      user: "id",
+      group: "id",
+      role: "id",
+      role_assignment: "id",
+      tenant_module: "module_id",
+    };
+
+    const read = async () =>
+      Object.fromEntries(
+        await Promise.all(
+          Object.entries(keyed).map(async ([table, key]) => [
+            table,
+            (await client.query(`select * from "${table}" order by "${key}"`))
+              .rows,
+          ])
+        )
+      );
+
+    const before = await read();
+
+    await runMigrations({
+      env: context.env,
+      pool: client,
+      histories: [CORE_HISTORY, ...moduleHistories],
+      compiledModuleIds,
+    });
+
+    const expected = structuredClone(before);
+
+    // SAFETY: the read above holds the alpha row first, ordered by module_id.
+    expected.tenant_module[0].category_id = null;
+
+    expect(await read()).toEqual(expected);
+    expect(await foreignKeys(client, "tenant_module")).toEqual([
+      { column: "category_id", target: "category", onDelete: "n" },
+    ]);
   });
 });

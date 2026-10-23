@@ -82,9 +82,11 @@ export type NavigationEntry = {
   readonly path: string;
   readonly surface: "workspace" | "admin";
   readonly requiredPermission: PermissionKey;
-  readonly categoryId?: string;
   readonly landing?: boolean;
 };
+
+/** The most entries a module may pin. */
+export const MAX_PINNED_ENTRIES = 6;
 
 export type ModuleNavigation = {
   /** Ordered, at most six entries (module contract, Navigation row). */
