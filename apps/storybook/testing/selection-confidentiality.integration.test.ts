@@ -358,7 +358,14 @@ beforeAll(() => {
 }, 300000);
 
 afterAll(() => {
-  if (stage !== "") rmSync(stage, { recursive: true, force: true });
+  // Retries: a just-killed dev server can still write into the stage (ENOTEMPTY).
+  if (stage !== "")
+    rmSync(stage, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 200,
+    });
 });
 
 describe("two explicit selections on one revision", () => {
