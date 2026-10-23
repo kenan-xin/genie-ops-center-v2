@@ -137,6 +137,17 @@ const INVITE_SEED = [
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'S2-16 mixed' and u.email = '${email}' on conflict do nothing`,
     ];
   }),
+  // S3-06: the Tenant Settings proof's own administrator, and a person whose role lacks the
+  // settings key (the mixed role above), so neither shares a sign-in with another proof.
+  ...administratorSql("invite", "settings"),
+  ...E2E_PROJECTS.flatMap((project) => {
+    const email = scenarioEmail("invite", "nosettings", project);
+
+    return [
+      `insert into "user" (id, name, email, email_verified, status) values (gen_random_uuid()::text, 'S3-06 No settings ${project}', '${email}', true, 'active') on conflict (email) do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'S2-16 mixed' and u.email = '${email}' on conflict do nothing`,
+    ];
+  }),
 ].join("; ");
 
 const SAML_SEED = seedSql([]);
@@ -307,6 +318,8 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "invite", state: "admin", groups: () => [] },
     { scenario: "invite", state: "mixed", groups: () => [] },
     { scenario: "invite", state: "modules", groups: () => [] },
+    { scenario: "invite", state: "settings", groups: () => [] },
+    { scenario: "invite", state: "nosettings", groups: () => [] },
     { scenario: "landing", state: "member", groups: () => [] },
     { scenario: "landing", state: "nogrant", groups: () => [] },
     { scenario: "landing", state: "menu", groups: () => [] },

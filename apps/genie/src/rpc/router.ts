@@ -54,7 +54,7 @@ export function createAppRouter(modules: readonly Module[]): AppRouter {
     ["roles", createRolesRouter(modules)],
     ["modules", createModulesRouter(modules)],
     ["categories", createCategoriesRouter(modules)],
-    ["settings", createSettingsRouter()],
+    ["settings", createSettingsRouter(modules)],
     ["branding", createBrandingRouter()],
   ]);
 }

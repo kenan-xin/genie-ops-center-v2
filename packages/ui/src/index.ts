@@ -121,6 +121,8 @@ export type { ThemeName } from "./theme/tokens.ts";
 
 export { Switch } from "./components/switch.tsx";
 
+export { RadioGroup, RadioGroupItem } from "./components/radio-group.tsx";
+
 export {
   Tabs,
   TabsContent,
@@ -143,3 +145,25 @@ export { CountPill, LabelPill, MonoChip, StatusPill } from "./parts/pills.tsx";
 export { EmptyState } from "./parts/empty-state.tsx";
 
 export { HelpDisclosure } from "./parts/help-disclosure.tsx";
+
+export {
+  configFieldKind,
+  configFieldMessage,
+  configFormValidator,
+  configValueSchema,
+} from "./parts/config-form-schema.ts";
+
+export { ConfigForm } from "./parts/config-form.tsx";
+
+export type {
+  ConfigFormFooterState,
+  ConfigFormProps,
+} from "./parts/config-form.tsx";
+
+export type {
+  ConfigFieldKind,
+  ConfigFieldSchema,
+  ConfigFormField,
+  ConfigFormSchema,
+  ConfigValue,
+} from "./parts/config-form-schema.ts";

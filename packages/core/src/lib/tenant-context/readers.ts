@@ -14,6 +14,8 @@ import {
  * module's placement on `tenant_module` (DEC-46, amended for DEC-51). This module is the only place in
  * core that reads those tables (R-7); the migrator run, the `seed` step and the enable
  * procedure write them, and every other caller reads through a context that this file built.
+ * The Tenant Settings service (`services/settings/`) also writes `tenant_settings` and
+ * `tenant_module.config`, and its page reads them fresh; no save clears these caches.
  */
 
 /** The Drizzle client every reader reads through. The pool and its `$client` stay on the context. */

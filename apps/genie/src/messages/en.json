@@ -63,6 +63,10 @@
     "categories": {
       "title": "Categories",
       "description": "Headings that group modules in the navigation."
+    },
+    "settings": {
+      "title": "Tenant settings",
+      "description": "Sign-in, sessions, and the settings each module exposes for this tenant. Branding has its own page."
     }
   },
   "noGrants": {

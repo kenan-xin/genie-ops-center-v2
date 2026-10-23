@@ -87,11 +87,14 @@ const recordTouchedSubscriptions: readonly Subscription<RecordTouched>[] = [
 ];
 
 const configurationSchema = z.object({
-  title: z.string().default("Placeholder"),
+  title: z.string().min(1).max(60).default("Placeholder"),
   pageSize: z.number().int().min(1).max(100).default(20),
   enabled: z.boolean().default(false),
   mode: z.enum(["basic", "advanced"]).default("basic"),
-  tags: z.array(z.string()).default([]),
+  tags: z
+    .array(z.string().regex(/^[a-z0-9-]+$/))
+    .max(5)
+    .default([]),
 });
 
 const home = {

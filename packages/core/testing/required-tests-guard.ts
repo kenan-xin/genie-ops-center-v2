@@ -432,4 +432,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the categories page service against a real database reorder refuses a list that misses or adds an id",
     ],
   },
+  {
+    file: "testing/settings-page.integration.test.ts",
+    reason:
+      "Spec 3 R-72 to R-80, R-90a, AC-10 and AC-19 require one audit row per settings save, refusals with issues, the section permission as an AND, and module saves that never enable",
+    cases: [
+      "core section saves each core save writes exactly one core:settings_updated row and changes only its own fields",
+      "core section saves a save of the stored values answers changed false and writes no audit row",
+      "core section saves idle minutes 4 and 481 refuse with settings-invalid and the issue for sessionIdleMinutes; 5 and 480 save",
+      "core section saves local accounts on refuses with local-accounts-unavailable while the realm does not support them",
+      "module section saves a module save writes exactly one core:module_configured row and the parsed values to tenant_module.config",
+      "module section saves refuses an invalid value with settings-invalid and the field issue, and writes nothing",
+      "module section saves a disabled module saves valid configuration and stays disabled with the Tenant administrator admin key unchanged",
+      "section access (AC-19) baseline only, baseline plus the required key, module key only and no key on reads and writes",
+      "section access (AC-19) a compiled module without configuration and a module the image does not compile contribute no section, and saving either answers not-found",
+    ],
+  },
 ];

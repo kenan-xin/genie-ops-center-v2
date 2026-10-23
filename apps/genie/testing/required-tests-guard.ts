@@ -49,6 +49,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/settings-rpc.integration.test.ts",
+    reason:
+      "Spec 3 R-79 and R-93 require a refused settings save to reach the RPC body with settings-invalid and its issues, behind the core:settings:manage gate",
+    cases: [
+      "the settings RPC refusals answers an invalid save with settings-invalid at 400 and the field issues",
+      "the settings RPC refusals refuses a caller with a module admin key alone at 403",
+    ],
+  },
+  {
     file: "testing/isolation.integration.test.ts",
     cases: [
       "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",

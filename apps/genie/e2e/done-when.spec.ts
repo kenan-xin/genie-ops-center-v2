@@ -197,98 +197,118 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
   page,
   browser,
 }, testInfo) => {
-  const project = testInfo.project.name;
-  const baseUrl = inviteBaseUrl();
-  const run = randomUUID().slice(0, 8);
-  const personEmail = scenarioEmail("invite", `person-${run}`, project);
-  const unknown = scenarioEmail("invite", `unknown-${run}`, project);
-  const displayName = `S2-16 Invited ${project}`;
+  // `tenant-settings.spec.ts` changes this deployment's onboarding mode under the same lock and
+  // restores it, so this proof never reads `jit` from the settings row (R-74).
+  test.setTimeout(420_000);
 
-  // Run-unique people at the provider, so a rerun against a stack that persists
-  // (GENIE_E2E_EXTERNAL=1) never meets an earlier run's rows or disabled user.
-  await Promise.all(
-    [personEmail, unknown].map((email) =>
-      createRealmUser(COMPANY_REALM, { email, password: E2E_USER_PASSWORD })
-    )
+  await withDeploymentLock(
+    "tenant-settings",
+    async () => {
+      const project = testInfo.project.name;
+      const baseUrl = inviteBaseUrl();
+      const run = randomUUID().slice(0, 8);
+      const personEmail = scenarioEmail("invite", `person-${run}`, project);
+      const unknown = scenarioEmail("invite", `unknown-${run}`, project);
+      const displayName = `S2-16 Invited ${project}`;
+
+      // Run-unique people at the provider, so a rerun against a stack that persists
+      // (GENIE_E2E_EXTERNAL=1) never meets an earlier run's rows or disabled user.
+      await Promise.all(
+        [personEmail, unknown].map((email) =>
+          createRealmUser(COMPANY_REALM, { email, password: E2E_USER_PASSWORD })
+        )
+      );
+
+      // AC-20 (invite): the administrator pre-adds the person on the People screen.
+      await signInThroughBroker(page, {
+        baseUrl,
+        email: scenarioEmail("invite", "admin", project),
+      });
+      await page.goto(`${baseUrl}/admin/people`);
+      await page.getByRole("button", { name: "Add person" }).click();
+
+      const addDialog = page.getByRole("dialog", { name: "Add person" });
+
+      await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
+      await addDialog
+        .getByLabel("Display name", { exact: true })
+        .fill(displayName);
+
+      // This deployment has no mail sink; the invitation email is the people spec's subject.
+      const invitation = addDialog.getByRole("checkbox", {
+        name: "Send invitation email",
+      });
+
+      // Keyboard, as the people spec drives this dialog: on the phone sheet a pointer click lands on
+      // the scrolling body.
+      await invitation.press("Space");
+      await expect(invitation).not.toBeChecked();
+      await addDialog
+        .getByRole("button", { name: "Add person" })
+        .press("Enter");
+
+      await expect
+        .poll(() => personState(INVITE_DB, personEmail), { timeout: 30_000 })
+        .toBe("pending:invited:0");
+
+      // The person signs in through the provider, is activated and holds a session.
+      const personPage = await newPage(browser);
+
+      await signInThroughBroker(personPage, { baseUrl, email: personEmail });
+
+      expect(await personState(INVITE_DB, personEmail)).toBe(
+        "active:invited:1"
+      );
+
+      // An unknown person is refused with the not-registered banner and no row (R-9).
+      const unknownPage = await newPage(browser);
+
+      await signInThroughBroker(unknownPage, {
+        baseUrl,
+        email: unknown,
+        landing: "/sign-in",
+      });
+
+      expect(new URL(unknownPage.url()).searchParams.get("error")).toBe(
+        "not_registered"
+      );
+      await expect(unknownPage.getByTestId("sign-in-banner")).toBeVisible();
+      expect(await personState(INVITE_DB, unknown)).toBeUndefined();
+
+      // AC-24 (invite): the provider stops assigning the person. Its login refuses them, so the next
+      // sign-in never reaches the application and no second session exists.
+      await setRealmUserEnabled(COMPANY_REALM, personEmail, false);
+
+      const blockedPage = await newPage(browser);
+
+      await blockedPage.goto(`${baseUrl}/api/auth/sign-in/keycloak`);
+      await blockedPage.locator("#username").fill(personEmail);
+      await blockedPage.locator("#password").fill(E2E_USER_PASSWORD);
+
+      // Keycloak answers the login with its own page rather than a redirect back to the application.
+      // Its wording is Keycloak's, so the status and where the browser stayed are what count.
+      const [login] = await Promise.all([
+        blockedPage.waitForResponse((response) =>
+          response.url().includes("/login-actions/authenticate")
+        ),
+        blockedPage.locator("#kc-login").click(),
+      ]);
+
+      expect(login.status()).toBe(200);
+      await blockedPage.waitForLoadState();
+      expect(new URL(blockedPage.url()).origin).not.toBe(
+        new URL(baseUrl).origin
+      );
+      expect(await personState(INVITE_DB, personEmail)).toBe(
+        "active:invited:1"
+      );
+
+      await personPage.context().close();
+      await unknownPage.context().close();
+      await blockedPage.context().close();
+    },
+    300_000
   );
-
-  // AC-20 (invite): the administrator pre-adds the person on the People screen.
-  await signInThroughBroker(page, {
-    baseUrl,
-    email: scenarioEmail("invite", "admin", project),
-  });
-  await page.goto(`${baseUrl}/admin/people`);
-  await page.getByRole("button", { name: "Add person" }).click();
-
-  const addDialog = page.getByRole("dialog", { name: "Add person" });
-
-  await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
-  await addDialog.getByLabel("Display name", { exact: true }).fill(displayName);
-
-  // This deployment has no mail sink; the invitation email is the people spec's subject.
-  const invitation = addDialog.getByRole("checkbox", {
-    name: "Send invitation email",
-  });
-
-  // Keyboard, as the people spec drives this dialog: on the phone sheet a pointer click lands on
-  // the scrolling body.
-  await invitation.press("Space");
-  await expect(invitation).not.toBeChecked();
-  await addDialog.getByRole("button", { name: "Add person" }).press("Enter");
-
-  await expect
-    .poll(() => personState(INVITE_DB, personEmail), { timeout: 30_000 })
-    .toBe("pending:invited:0");
-
-  // The person signs in through the provider, is activated and holds a session.
-  const personPage = await newPage(browser);
-
-  await signInThroughBroker(personPage, { baseUrl, email: personEmail });
-
-  expect(await personState(INVITE_DB, personEmail)).toBe("active:invited:1");
-
-  // An unknown person is refused with the not-registered banner and no row (R-9).
-  const unknownPage = await newPage(browser);
-
-  await signInThroughBroker(unknownPage, {
-    baseUrl,
-    email: unknown,
-    landing: "/sign-in",
-  });
-
-  expect(new URL(unknownPage.url()).searchParams.get("error")).toBe(
-    "not_registered"
-  );
-  await expect(unknownPage.getByTestId("sign-in-banner")).toBeVisible();
-  expect(await personState(INVITE_DB, unknown)).toBeUndefined();
-
-  // AC-24 (invite): the provider stops assigning the person. Its login refuses them, so the next
-  // sign-in never reaches the application and no second session exists.
-  await setRealmUserEnabled(COMPANY_REALM, personEmail, false);
-
-  const blockedPage = await newPage(browser);
-
-  await blockedPage.goto(`${baseUrl}/api/auth/sign-in/keycloak`);
-  await blockedPage.locator("#username").fill(personEmail);
-  await blockedPage.locator("#password").fill(E2E_USER_PASSWORD);
-
-  // Keycloak answers the login with its own page rather than a redirect back to the application.
-  // Its wording is Keycloak's, so the status and where the browser stayed are what count.
-  const [login] = await Promise.all([
-    blockedPage.waitForResponse((response) =>
-      response.url().includes("/login-actions/authenticate")
-    ),
-    blockedPage.locator("#kc-login").click(),
-  ]);
-
-  expect(login.status()).toBe(200);
-  await blockedPage.waitForLoadState();
-  expect(new URL(blockedPage.url()).origin).not.toBe(new URL(baseUrl).origin);
-  expect(await personState(INVITE_DB, personEmail)).toBe("active:invited:1");
-
-  await personPage.context().close();
-  await unknownPage.context().close();
-  await blockedPage.context().close();
 });
 
 /** The ids of one person's direct role assignments, to prove they survive the lifecycle. */

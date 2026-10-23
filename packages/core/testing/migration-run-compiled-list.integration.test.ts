@@ -406,6 +406,8 @@ describe("tenant_module write boundary", () => {
       // The Modules and Categories pages read rows fresh and place a module (`category_id` only).
       "packages/core/src/services/modules/index.ts",
       "packages/core/src/services/categories/index.ts",
+      // Tenant Settings reads rows fresh and writes a module's `config` only, never `enabled`.
+      "packages/core/src/services/settings/index.ts",
     ]);
 
     // Both the SQL name and the drizzle table object name count: a core file reaches the table
