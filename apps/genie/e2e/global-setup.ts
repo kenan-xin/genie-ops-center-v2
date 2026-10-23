@@ -23,6 +23,7 @@ import {
   E2E_READER_SPECS,
   E2E_SIGN_IN_REALM,
   e2eAdministratorEmail,
+  e2eBrandingAdminEmail,
   e2eBreakGlassEmail,
   e2eGroupsRolesEmail,
   e2eGroupsRolesGroup,
@@ -94,7 +95,10 @@ const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>
  * `admin_seed` pre-adds each pending, and `Genie Administrators` gives them `Tenant
  * administrator`, so the realm user created here links to that row on first sign-in.
  */
-const ADMINISTRATOR_EMAILS = E2E_PROJECTS.map(e2eAdministratorEmail);
+const ADMINISTRATOR_EMAILS = E2E_PROJECTS.flatMap((project) => [
+  e2eAdministratorEmail(project),
+  e2eBrandingAdminEmail(project),
+]);
 
 /** The break-glass accounts whose email a realm user also holds, one per project (R-62). */
 const BREAK_GLASS_EMAILS = E2E_PROJECTS.map(e2eBreakGlassEmail);

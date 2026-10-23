@@ -108,6 +108,14 @@ export function e2eAdministratorEmail(project: string): string {
   return `e2e.admin.${project}@example.com`;
 }
 
+/**
+ * The Branding proof's own first administrator, so its sign-in never races the admin-seed proof's
+ * sign-in of the same realm user (S3-07).
+ */
+export function e2eBrandingAdminEmail(project: string): string {
+  return `e2e.branding-admin.${project}@example.com`;
+}
+
 export function e2eOnboardingEmail(
   caseName: "admitted" | "refused" | "offboarded",
   project: string

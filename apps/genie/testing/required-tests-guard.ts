@@ -58,6 +58,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/branding-rpc.integration.test.ts",
+    reason:
+      "Spec 3 R-49 and R-93 require a branding upload in one multipart request, refusals with branding-upload-refused and branding-invalid at 400, and the core:branding:manage gate",
+    cases: [
+      "the branding RPC stores an ico upload in one multipart request and returns its preview link",
+      "the branding RPC refuses a png over 1 MB and a pdf with branding-upload-refused at 400",
+      "the branding RPC refuses a failing color with branding-invalid and the primaryColor issue",
+      "the branding RPC refuses a caller without the branding key at 403 and an anonymous caller at 401",
+    ],
+  },
+  {
     file: "testing/isolation.integration.test.ts",
     cases: [
       "two tenant contexts in one process each TenantContext reader, file store and placeholder router returns only its own database's data",

@@ -12,6 +12,10 @@ it as the fixed member `context.fileStorage`; nothing else builds or holds one (
   only; `s3`, `gcs` and `azure` arrive with their adapter.
 - `blob-store.ts`, the `FileBlobStore` seam every adapter implements.
 
+The allow-list holds both ico types, `image/x-icon` and `image/vnd.microsoft.icon`, for branding
+favicons. The branding upload seam in `services/branding/` narrows the list to its four image types
+and its own 1 MB cap before it calls `store`.
+
 ## What must not go here
 
 - A reading or writing of `file_blob` outside `adapters/`. That table is the adapter's alone, so a

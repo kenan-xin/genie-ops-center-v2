@@ -15,7 +15,9 @@ import {
  * core that reads those tables (R-7); the migrator run, the `seed` step and the enable
  * procedure write them, and every other caller reads through a context that this file built.
  * The Tenant Settings service (`services/settings/`) also writes `tenant_settings` and
- * `tenant_module.config`, and its page reads them fresh; no save clears these caches.
+ * `tenant_module.config`, and its page reads them fresh. The Branding service
+ * (`services/branding/`) writes `tenant_branding` through `applyBranding` and its page reads the
+ * row fresh too; no save clears these caches.
  */
 
 /** The Drizzle client every reader reads through. The pool and its `$client` stay on the context. */

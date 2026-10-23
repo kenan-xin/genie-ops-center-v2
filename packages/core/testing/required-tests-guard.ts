@@ -448,4 +448,26 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "section access (AC-19) a compiled module without configuration and a module the image does not compile contribute no section, and saving either answers not-found",
     ],
   },
+  {
+    file: "testing/branding-upload.integration.test.ts",
+    reason:
+      "Spec 3 R-49 and DEC-20 require the branding upload seam to refuse a file over 1 MB and a type outside the four-type list before the file store, and to sanitize an SVG",
+    cases: [
+      "uploadBrandingImage accepts a file of exactly 1048576 bytes and refuses 1048577 bytes with no file row",
+      "uploadBrandingImage stores an svg without its script element and its onload attribute",
+    ],
+  },
+  {
+    file: "testing/branding-page.integration.test.ts",
+    reason:
+      "Spec 3 R-44, R-45, R-49 and AC-5 require one Publish to write the changed branding columns with one core:branding_published row, a refusal to change nothing, and an image to render only while its scan is clean or skipped",
+    cases: [
+      "applyBranding writes three changed fields, the stored foreground and one audit row naming them",
+      "applyBranding answers changed false for the stored values and writes no audit row",
+      "applyBranding refuses a failing color, an empty company name and a pdf or missing file id, changing nothing",
+      "applyBranding lets two concurrent publishes each name only their own change",
+      "readBranding returns no url while the scan is pending, and the shell issues no mark link",
+      "readBranding returns no url while the scan is infected, and the shell issues no mark link",
+    ],
+  },
 ];

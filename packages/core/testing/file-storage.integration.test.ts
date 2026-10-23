@@ -181,6 +181,26 @@ describe("FileStorage against a real Postgres deployment", () => {
     expect(metadata?.storageKey).not.toBe(fileId);
   });
 
+  it("accepts an ico favicon under both of its declared types", async () => {
+    const { context } = deployment;
+    const storage = storageFor(context);
+    const ico = Buffer.from([0, 0, 1, 0]);
+
+    const types = ["image/x-icon", "image/vnd.microsoft.icon"];
+
+    const fetched = await Promise.all(
+      types.map(async (mimeType) => {
+        const stored = await withTransaction(context, (tx) =>
+          storage.store(upload(ico, mimeType, "favicon.ico"), tx)
+        );
+
+        return (await storage.fetch(stored.id)).mimeType;
+      })
+    );
+
+    expect(fetched).toEqual(types);
+  });
+
   it("stores a hostile SVG only after scripts, handlers, javascript URLs, foreignObject and external references are removed", async () => {
     const { context } = deployment;
 

@@ -13,6 +13,9 @@ The WCAG `contrastRatio` beside it, and the `brandingTokens` emitter: the four d
 layout writes on `:root` per request (Spec 3 R-12 to R-14), with the `packages/ui` defaults when no
 branding row exists.
 
+The four contrast checks of a tenant color (Spec 3 R-46): Fill, Text on nav, Count pill and Focus
+ring, built on `contrastRatio`. The Branding page and the publish service share them.
+
 The `supportContact` rule: the one support link, an email or else an http(s) page, that the mailer
 footer and the no-grants home page both show, and none when branding holds no valid contact.
 

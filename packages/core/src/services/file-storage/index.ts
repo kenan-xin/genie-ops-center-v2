@@ -52,7 +52,9 @@ export const UPLOAD_ALLOWED_MIME_TYPES: readonly string[] = Object.freeze([
   "image/png",
   "image/svg+xml",
   "image/tiff",
+  "image/vnd.microsoft.icon",
   "image/webp",
+  "image/x-icon",
   "text/csv",
   "text/markdown",
   "text/plain",
@@ -127,7 +129,7 @@ export type FileStorage = {
 };
 
 /** Lower-cases a declared type and drops any parameters, so `image/PNG; x` is `image/png`. */
-function normalizeMimeType(value: string): string {
+export function normalizeMimeType(value: string): string {
   return (value.split(";")[0] ?? "").trim().toLowerCase();
 }
 

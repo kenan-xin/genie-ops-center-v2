@@ -67,6 +67,10 @@
     "settings": {
       "title": "Tenant settings",
       "description": "Sign-in, sessions, and the settings each module exposes for this tenant. Branding has its own page."
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "How Genie Ops Center looks for the people of this tenant. Changes stay in this browser until you publish."
     }
   },
   "noGrants": {

@@ -1,0 +1,147 @@
+"use client";
+
+import { useState } from "react";
+
+import { foregroundFor } from "../../lib/branding/foreground.ts";
+import { primaryPair } from "../../lib/branding/tokens.ts";
+import { HEX_COLOR } from "../../services/branding/schemas.ts";
+import { tenantInitial } from "../shell/tenant-initial.ts";
+import type { ShellIdentity } from "../shell/types.ts";
+
+/**
+ * The draft colors for every element that carries `data-branding-preview` with this scope, the
+ * way the root layout writes `:root` (R-12). Only a valid hex reaches the style element, so a
+ * draft value can never close it; anything else falls back to the default pair.
+ */
+export function PreviewColors(props: {
+  readonly scope: string;
+  readonly primaryColor: string;
+  readonly signInBackground: string | null;
+}) {
+  const pair = primaryPair({
+    primaryColor: props.primaryColor,
+    primaryForeground: foregroundFor(props.primaryColor),
+  });
+
+  const background =
+    props.signInBackground !== null && HEX_COLOR.test(props.signInBackground)
+      ? props.signInBackground
+      : "var(--background)";
+
+  const root = `[data-branding-preview="${props.scope}"]`;
+
+  // `dark:` classes follow the page theme, not the preview toggle, so the preview reads its brand
+  // text color from a variable that the toggle's own data-theme sets (R-47).
+  return (
+    // oxlint-disable-next-line shadcn/no-inline-styles -- the draft color is a runtime tenant value; the root layout writes the saved one on :root the same way (R-12)
+    <style>{`${root}{--primary:${pair.primary};--primary-foreground:${pair.foreground};--sign-in-background:${background};--preview-brand:var(--primary);}${root}[data-theme="dark"]{--preview-brand:var(--brand-on-dark);--sign-in-background:var(--background);}`}</style>
+  );
+}
+
+/**
+ * The tenant mark as the preview draws it: the square mark, or the letter tile when there is none
+ * or its link fails. The shell's `TenantMark` styles its letter with `dark:` classes, which follow
+ * the page theme instead of the preview toggle, so the preview keeps its own.
+ */
+function PreviewMark(props: { readonly identity: ShellIdentity }) {
+  const { markUrl } = props.identity;
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card">
+      {markUrl !== null && markUrl !== failedUrl ? (
+        <img
+          src={markUrl}
+          alt=""
+          className="size-5.5 object-contain"
+          onError={() => setFailedUrl(markUrl)}
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="font-extrabold text-(--preview-brand)"
+        >
+          {tenantInitial(props.identity.companyName)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+const NAV = ["Reports", "Settings"];
+
+/** A small shell: the identity block, an active row with its count pill, and a primary button. */
+export function ShellPreview(props: { readonly identity: ShellIdentity }) {
+  return (
+    <div className="flex min-h-60 overflow-hidden rounded-lg border bg-background text-sm">
+      <div className="flex w-36 shrink-0 flex-col gap-3 border-r bg-muted p-2 sm:w-44">
+        <div className="flex min-w-0 items-center gap-2">
+          <PreviewMark identity={props.identity} />
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-semibold">
+              {props.identity.companyName}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              {props.identity.productName}
+            </span>
+          </span>
+        </div>
+        <ul className="flex flex-col gap-1">
+          <li className="flex items-center justify-between rounded-md border bg-background px-2 py-1.5 font-semibold text-(--preview-brand)">
+            Requests
+            <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+              3
+            </span>
+          </li>
+          {NAV.map((label) => (
+            <li key={label} className="px-2 py-1.5 text-muted-foreground">
+              {label}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-3">
+        <p className="font-semibold">Requests</p>
+        <p className="rounded-lg border bg-card p-3 text-muted-foreground">
+          Three requests wait for review.
+        </p>
+        <span className="self-start rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-foreground">
+          New request
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The sign-in card with the draft welcome text, notice and background (R-54). */
+export function SignInPreview(props: {
+  readonly identity: ShellIdentity;
+  readonly welcomeText: string;
+  readonly noticeText: string;
+  readonly requiresAcknowledgement: boolean;
+}) {
+  return (
+    <div className="flex justify-center rounded-lg bg-(--sign-in-background) p-4">
+      <div className="flex w-full max-w-72 flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center text-sm">
+        <PreviewMark identity={props.identity} />
+        <p className="text-base font-bold">{props.identity.companyName}</p>
+        <p className="text-muted-foreground">
+          {props.welcomeText === ""
+            ? `Sign in to ${props.identity.productName}`
+            : props.welcomeText}
+        </p>
+        {props.noticeText === "" ? null : (
+          <p className="w-full rounded-md border bg-muted p-2 text-left text-xs">
+            {props.noticeText}
+          </p>
+        )}
+        {props.requiresAcknowledgement && props.noticeText !== "" ? (
+          <p className="self-start text-xs">I have read the notice</p>
+        ) : null}
+        <span className="mt-1 w-full rounded-lg bg-primary py-1.5 font-semibold text-primary-foreground">
+          Sign in
+        </span>
+      </div>
+    </div>
+  );
+}

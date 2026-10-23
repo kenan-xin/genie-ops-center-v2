@@ -568,3 +568,13 @@ export {
   createBrandingRouter,
   type BrandingRouter,
 } from "./services/branding/router.ts";
+
+export type {
+  BrandingImageView,
+  BrandingView,
+} from "./services/branding/index.ts";
+
+export type {
+  BrandingDraft,
+  BrandingImageSlot,
+} from "./services/branding/schemas.ts";
