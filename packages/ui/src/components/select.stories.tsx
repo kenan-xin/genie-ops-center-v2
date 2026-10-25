@@ -94,6 +94,8 @@ export const KeyboardHighlight: Story = {
   play: async ({ globals }) => {
     await userEvent.tab();
     await userEvent.keyboard("{Enter}");
+    // The arrow must land in the open list, so wait for the popup to paint first.
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeVisible());
     await userEvent.keyboard("{ArrowDown}");
 
     const option = await screen.findByRole("option", { name: "Administrator" });
