@@ -117,6 +117,19 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
             .getByRole("textbox", { name: "Welcome text" })
             .fill(`Welcome ${theme}`);
           await expect(page.getByText("4 unpublished changes")).toBeVisible();
+
+          // AC-5: the preview shows the draft before Publish; phones open it with Show preview.
+          if (testInfo.project.name === "phone")
+            await page.getByRole("button", { name: "Show preview" }).click();
+
+          const preview = page.getByRole("group", { name: "Preview" });
+
+          await expect(preview.getByText(companyName)).toBeVisible();
+          await expect(preview.getByText(`Welcome ${theme}`)).toBeVisible();
+          await expect(preview.getByText("Sign in", { exact: true })).toHaveCSS(
+            "background-color",
+            `rgb(${[1, 3, 5].map((at) => Number.parseInt(color.slice(at, at + 2), 16)).join(", ")})`
+          );
           await expectNoAxeViolations(page, `branding draft ${theme}`);
 
           await publishBranding(page);
