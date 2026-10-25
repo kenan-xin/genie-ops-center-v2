@@ -24,7 +24,7 @@ Spec R-27, R-31, R-32, R-33, R-35, R-37 to R-42. Plan D3-5, D3-7.
 - The user menu with the chrome switch (R-32, bead `1ri3`).
 - The idle dialog inside `SessionActivity` (R-33). It inherits that component's mount condition: authenticated sessions only.
 - The offline bar (R-35), the bottom-bar slot (R-37), the phone drawer (R-38).
-- The branding read for the identity block (R-39). The logo loads through the signed download link, issued per render (D3-7).
+- The branding read for the identity block (R-39). The images load through the branding mark link, issued per render (D3-7). The link skips `can()` and serves only the image of one branding slot to a signed-in person.
 - No bell and an empty search slot (R-40). The message catalogue for every shell string (R-41). The security headers (R-42).
 
 ## Acceptance
