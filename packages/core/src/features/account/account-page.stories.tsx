@@ -48,9 +48,16 @@ type Story = StoryObj<typeof meta>;
 
 /** The desktop table's session rows, in the fixture's current-first order. */
 function sessionTable(canvasElement: HTMLElement) {
-  const table = within(canvasElement).getByRole("table");
+  const table = within(canvasElement).getByRole("table", { name: "Sessions" });
 
   return within(table);
+}
+
+/** The row's overflow menu trigger: R-23 puts the per-session sign-out in it. */
+function phoneRowActions(canvasElement: HTMLElement) {
+  return sessionTable(canvasElement).getByRole("button", {
+    name: "Actions for Pixel 7 (Android)",
+  });
 }
 
 export const Default: Story = {
@@ -72,13 +79,13 @@ export const Default: Story = {
       canvas.getByText(/changes are made in the company directory/i)
     ).toBeInTheDocument();
 
-    // Sessions: the current row carries the chip and no button; the others a Sign out. The
+    // Sessions: the current row carries the chip and no menu; the others an actions menu. The
     // assertions scope to the desktop table; the phone card list renders the same rows.
     const table = sessionTable(canvasElement);
 
     await expect(table.getByText("THIS DEVICE")).toBeInTheDocument();
     await expect(
-      table.getAllByRole("button", { name: "Sign out" }).length
+      table.getAllByRole("button", { name: /^Actions for / }).length
     ).toBe(2);
 
     // Roles and access: both grants with count, scope, and arrival.
@@ -101,16 +108,15 @@ export const Default: Story = {
 
 export const RevokeOneSession: Story = {
   play: async ({ canvasElement, step }) => {
-    const table = sessionTable(canvasElement);
-
-    const phoneRow = table.getByRole("row", {
-      name: /Pixel 7 \(Android\)/,
-    });
+    const signOut = async () => {
+      await userEvent.click(phoneRowActions(canvasElement));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Sign out" })
+      );
+    };
 
     await step("cancel keeps the session", async () => {
-      await userEvent.click(
-        within(phoneRow).getByRole("button", { name: "Sign out" })
-      );
+      await signOut();
 
       const dialog = within(await screen.findByRole("dialog"));
 
@@ -132,9 +138,7 @@ export const RevokeOneSession: Story = {
     await step("confirm signs the session out", async () => {
       onRevokeSession.mockClear();
 
-      await userEvent.click(
-        within(phoneRow).getByRole("button", { name: "Sign out" })
-      );
+      await signOut();
 
       const dialog = within(await screen.findByRole("dialog"));
 
@@ -150,14 +154,13 @@ export const RevokeOneSession: Story = {
 
 export const EscapeCancelsAndReturnsFocus: Story = {
   play: async ({ canvasElement }) => {
-    const row = sessionTable(canvasElement).getByRole("row", {
-      name: /Pixel 7 \(Android\)/,
-    });
-
-    const opener = within(row).getByRole("button", { name: "Sign out" });
+    const opener = phoneRowActions(canvasElement);
 
     onRevokeSession.mockClear();
     await userEvent.click(opener);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Sign out" })
+    );
     await screen.findByRole("dialog");
 
     await userEvent.keyboard("{Escape}");
@@ -202,16 +205,24 @@ export const SignOutInFlight: Story = {
       name: "Sign out all other sessions",
     });
 
-    // DR-17: while a sign-out runs, every Sign out button is busy and drops a second press.
+    // DR-17: while a sign-out runs, the block button is busy and the row item is refused, so
+    // neither starts a second one.
     await expect(others).toHaveAttribute("aria-busy", "true");
-    await expect(
-      sessionTable(canvasElement).getAllByRole("button", {
-        name: "Sign out",
-      })[0]
-    ).toHaveAttribute("aria-busy", "true");
 
     await userEvent.click(others);
     await expect(screen.queryByRole("dialog")).toBeNull();
+
+    await userEvent.click(phoneRowActions(canvasElement));
+
+    const item = await screen.findByRole("menuitem", { name: "Sign out" });
+
+    await expect(item).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(item);
+    await expect(screen.queryByRole("dialog")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+    );
   },
 };
 
@@ -230,7 +241,7 @@ export const OnlyThisDevice: Story = {
     ).toBeInTheDocument();
 
     await expect(
-      canvas.queryByRole("button", { name: "Sign out" })
+      canvas.queryByRole("button", { name: /^Actions for / })
     ).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: "Sign out all other sessions" })

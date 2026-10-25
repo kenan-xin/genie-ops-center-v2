@@ -1,4 +1,4 @@
-import { Button, ConfirmDialog, focusRing } from "@genie/ui";
+import { Button, ConfirmDialog, DataTable, focusRing } from "@genie/ui";
 import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
@@ -12,8 +12,9 @@ import type {
 /**
  * The Account page's three Section 2 blocks (R-18): Profile, Sessions with per-session sign-out
  * and sign out everywhere, and the read-only Roles and access. One column of stacked blocks with
- * a block title and a one-line description each, max reading width, no tabs. The phone layout is
- * the base and the desktop table joins at `md`; both are in the tree, hidden by the breakpoint.
+ * a block title and a one-line description each, max reading width, no tabs. Sessions is the shared
+ * DataTable: a card list on a phone, a table from `md`, and the per-session sign-out in each row's
+ * overflow menu (R-23).
  *
  * Every write on this page is a sign-out, and both sign-outs open the shared confirm dialog
  * before the callback fires. The Roles and access block edits nothing: its note says who to ask.
@@ -114,59 +115,11 @@ function ProfileBlock(props: {
   );
 }
 
-const tableHeading =
-  "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground";
-
-const tableCell = "px-3 py-3 text-sm text-foreground align-middle";
-
 function currentChip(): JSX.Element {
   return (
     <span className="inline-flex items-center rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">
       THIS DEVICE
     </span>
-  );
-}
-
-function SessionRows(props: {
-  readonly sessions: readonly AccountSession[];
-  readonly timeZone: string;
-  readonly revoking?: boolean | undefined;
-  readonly onAskRevoke: (session: AccountSession) => void;
-}) {
-  return (
-    <>
-      {props.sessions.map((session) => (
-        <tr key={session.id} data-session-id={session.id}>
-          <td className={tableCell}>
-            <span className="flex flex-col">
-              <span className="font-medium">{session.device}</span>
-              <span className="text-muted-foreground">{session.browser}</span>
-            </span>
-          </td>
-          <td className={tableCell}>{session.ipAddress}</td>
-          <td className={tableCell}>
-            {formatInstant(session.signedInAt, props.timeZone)}
-          </td>
-          <td className={tableCell}>
-            {formatInstant(session.lastActiveAt, props.timeZone)}
-          </td>
-          <td className={`${tableCell} text-right`}>
-            {session.isCurrent ? (
-              currentChip()
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={props.revoking}
-                onClick={() => props.onAskRevoke(session)}
-              >
-                Sign out
-              </Button>
-            )}
-          </td>
-        </tr>
-      ))}
-    </>
   );
 }
 
@@ -178,6 +131,7 @@ function SessionsBlock(props: {
   readonly onAskRevokeOthers: () => void;
 }) {
   const others = props.sessions.filter((session) => !session.isCurrent);
+  const instant = (value: string) => formatInstant(value, props.timeZone);
 
   return (
     <Block
@@ -196,63 +150,61 @@ function SessionsBlock(props: {
         </div>
       )}
 
-      {/* The phone card list; the desktop table joins at the md breakpoint. */}
-      <ul className="flex flex-col gap-3 md:hidden" aria-label="Sessions">
-        {props.sessions.map((session) => (
-          <li
-            key={session.id}
-            data-session-id={session.id}
-            className="flex flex-col gap-2 rounded-xl border border-border bg-white p-4 dark:bg-card"
-          >
-            <span className="flex items-center justify-between gap-3">
-              <span className="font-medium text-foreground">
-                {session.device}
+      <DataTable
+        label="Sessions"
+        rows={props.sessions}
+        rowKey={(session) => session.id}
+        rowLabel={(session) => session.device}
+        columns={[
+          {
+            id: "device",
+            header: "Device",
+            cell: (session) => (
+              <span className="flex flex-col">
+                <span>{session.device}</span>
+                <span className="font-normal text-muted-foreground">
+                  {session.browser}
+                </span>
               </span>
-              {session.isCurrent ? (
-                currentChip()
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={props.revoking}
-                  onClick={() => props.onAskRevoke(session)}
-                >
-                  Sign out
-                </Button>
-              )}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {session.browser} · {session.ipAddress}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Signed in {formatInstant(session.signedInAt, props.timeZone)}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Last active {formatInstant(session.lastActiveAt, props.timeZone)}
-            </span>
-          </li>
-        ))}
-      </ul>
+            ),
+          },
+          {
+            id: "ipAddress",
+            header: "IP address",
+            cell: (session) => session.ipAddress,
+          },
+          {
+            id: "signedInAt",
+            header: "Signed in",
+            cell: (session) => instant(session.signedInAt),
+          },
+          {
+            id: "lastActiveAt",
+            header: "Last active",
+            cell: (session) => instant(session.lastActiveAt),
+          },
+        ]}
+        status={(session) => (session.isCurrent ? currentChip() : null)}
+        // One fact keeps the card at the height of the earlier hand-built card: the identity
+        // already shows the browser, and the table keeps the sign-in time.
+        facts={(session) => [
+          `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
+        ]}
+        actions={(session) => {
+          if (session.isCurrent) return [];
 
-      <table className="hidden w-full border-collapse overflow-hidden rounded-xl border border-border bg-white text-left md:table dark:bg-card">
-        <thead>
-          <tr className="border-b border-border">
-            <th className={tableHeading}>Device</th>
-            <th className={tableHeading}>IP address</th>
-            <th className={tableHeading}>Signed in</th>
-            <th className={tableHeading}>Last active</th>
-            <th className={tableHeading}>Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          <SessionRows
-            sessions={props.sessions}
-            timeZone={props.timeZone}
-            revoking={props.revoking}
-            onAskRevoke={props.onAskRevoke}
-          />
-        </tbody>
-      </table>
+          const signOut = {
+            label: "Sign out",
+            onSelect: () => props.onAskRevoke(session),
+            danger: true,
+          };
+
+          // DR-17: a menu item has no loading state, so it refuses a second sign-out.
+          return props.revoking === true
+            ? [{ ...signOut, refusal: "A sign-out is running." }]
+            : [signOut];
+        }}
+      />
     </Block>
   );
 }
