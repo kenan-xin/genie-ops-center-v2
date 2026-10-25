@@ -487,7 +487,7 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     "packages/core/src/features/branding/colors-tab.tsx": 5,
     "packages/core/src/features/branding/contrast-pills.tsx": 2,
     "packages/core/src/features/branding/identity-tab.tsx": 4,
-    "packages/core/src/features/branding/image-slot.tsx": 14,
+    "packages/core/src/features/branding/image-slot.tsx": 13,
     "packages/core/src/features/branding/previews.tsx": 6,
     "packages/core/src/features/branding/sign-in-tab.tsx": 6,
     "packages/core/src/features/categories/assign-items.tsx": 13,

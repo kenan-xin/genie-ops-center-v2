@@ -57,6 +57,13 @@ export function ImageSlot(props: {
   const { image, state } = props;
   const error = state.error ?? props.issue;
 
+  // One element, rendered by the image card and by the missing-id state, so the label stays single.
+  const remove = (
+    <Button variant="ghost" size="sm" onClick={props.onRemove}>
+      Remove
+    </Button>
+  );
+
   function choose(files: FileList | null) {
     const file = files?.[0];
 
@@ -131,14 +138,7 @@ export function ImageSlot(props: {
             </span>
           </button>
           {props.missing === true ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-start"
-              onClick={props.onRemove}
-            >
-              Remove
-            </Button>
+            <div className="self-start">{remove}</div>
           ) : null}
         </>
       ) : image.scanStatus === "infected" ? (
@@ -195,9 +195,7 @@ export function ImageSlot(props: {
             >
               Replace
             </Button>
-            <Button variant="ghost" size="sm" onClick={props.onRemove}>
-              Remove
-            </Button>
+            {remove}
           </div>
         </div>
       )}
