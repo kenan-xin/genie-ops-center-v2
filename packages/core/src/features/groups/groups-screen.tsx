@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   ConfirmDialog,
   DataTable,
   Dialog,
@@ -13,7 +14,6 @@ import {
   Field,
   FieldDescription,
   FieldLabel,
-  focusRing,
   HelpDisclosure,
   Input,
   LabelPill,
@@ -632,13 +632,9 @@ export function GroupsScreen(props: GroupsScreenProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
-            <input
-              type="checkbox"
-              className={`size-4 ${focusRing}`}
+            <Checkbox
               checked={props.includeArchived}
-              onChange={(event) =>
-                props.onChangeIncludeArchived(event.target.checked)
-              }
+              onCheckedChange={props.onChangeIncludeArchived}
             />
             Show archived
           </label>

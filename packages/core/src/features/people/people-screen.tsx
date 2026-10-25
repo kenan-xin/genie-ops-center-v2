@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   ConfirmDialog,
   DataTable,
   Dialog,
@@ -16,6 +17,8 @@ import {
   HelpDisclosure,
   Input,
   LabelPill,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -941,6 +944,7 @@ export function AddPersonDialog(props: {
   const emailId = useId();
   const nameId = useId();
   const rolesId = useId();
+  const accountTypeId = useId();
 
   // The dialog stays mounted, so each open starts from an empty form.
   useEffect(() => {
@@ -1016,33 +1020,31 @@ export function AddPersonDialog(props: {
           ) : null}
 
           {localAvailable ? (
-            <fieldset>
-              <legend className="mb-1 text-xs font-semibold text-foreground">
+            <div>
+              <span
+                id={accountTypeId}
+                className="mb-1 block text-xs font-semibold text-foreground"
+              >
                 Account type
-              </legend>
-              <label className="mr-4 inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
-                <input
-                  type="radio"
-                  name="account-type"
-                  value="brokered"
-                  className={`size-4 ${focusRing}`}
-                  checked={accountType === "brokered"}
-                  onChange={() => setAccountType("brokered")}
-                />
-                Identity provider
-              </label>
-              <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
-                <input
-                  type="radio"
-                  name="account-type"
-                  value="local"
-                  className={`size-4 ${focusRing}`}
-                  checked={accountType === "local"}
-                  onChange={() => setAccountType("local")}
-                />
-                Local password
-              </label>
-            </fieldset>
+              </span>
+              <RadioGroup
+                aria-labelledby={accountTypeId}
+                value={accountType}
+                onValueChange={(value) => {
+                  if (value === "brokered" || value === "local")
+                    setAccountType(value);
+                }}
+              >
+                <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
+                  <RadioGroupItem value="brokered" />
+                  Identity provider
+                </label>
+                <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
+                  <RadioGroupItem value="local" />
+                  Local password
+                </label>
+              </RadioGroup>
+            </div>
           ) : null}
 
           {localAvailable && accountType === "local" ? (
@@ -1053,11 +1055,9 @@ export function AddPersonDialog(props: {
 
           {brokered ? (
             <label className="flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
-              <input
-                type="checkbox"
-                className={`size-4 ${focusRing}`}
+              <Checkbox
                 checked={sendInvitation}
-                onChange={(event) => setSendInvitation(event.target.checked)}
+                onCheckedChange={setSendInvitation}
               />
               Send invitation email
             </label>

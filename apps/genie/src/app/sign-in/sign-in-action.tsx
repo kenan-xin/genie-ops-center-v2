@@ -1,6 +1,6 @@
 "use client";
 
-import { focusRing } from "@genie/ui";
+import { Checkbox, focusRing } from "@genie/ui";
 import { useState } from "react";
 
 export type SignInActionProps = {
@@ -37,11 +37,9 @@ export function SignInAction({
           </p>
           {gated ? (
             <label className="flex items-center gap-3 border-t px-4 py-3">
-              <input
-                type="checkbox"
-                className={`size-5 accent-primary ${focusRing}`}
+              <Checkbox
                 checked={acknowledged}
-                onChange={(event) => setAcknowledged(event.target.checked)}
+                onCheckedChange={setAcknowledged}
               />
               {acknowledgeLabel}
             </label>

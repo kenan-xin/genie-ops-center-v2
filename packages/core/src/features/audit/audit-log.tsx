@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   CountPill,
   Field,
   FieldLabel,
@@ -380,13 +381,11 @@ function FilterPanel(props: {
       ) : null}
 
       <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={filters.operatorOnly}
-          onChange={(event) =>
-            props.onChange({ ...filters, operatorOnly: event.target.checked })
+          onCheckedChange={(checked) =>
+            props.onChange({ ...filters, operatorOnly: checked })
           }
-          className={`size-4 rounded border-muted-foreground text-primary ${focusRing}`}
         />
         Operator rows only
       </label>

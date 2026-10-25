@@ -314,7 +314,9 @@ export const AddLocalAccountNotesTheSetPasswordEmail: Story = {
     );
 
     await userEvent.type(dialog.getByLabelText("Email"), "local@example.com");
-    await userEvent.click(dialog.getByLabelText("Local password"));
+    await userEvent.click(
+      dialog.getByRole("radio", { name: "Local password" })
+    );
 
     await expect(
       dialog.getByText("A separate email sets this person's password.")

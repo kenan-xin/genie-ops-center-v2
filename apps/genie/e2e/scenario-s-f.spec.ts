@@ -63,7 +63,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
 
   await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
   await addDialog.getByLabel("Display name", { exact: true }).fill(personName);
-  await addDialog.getByLabel("Local password").press("Space");
+  await addDialog.getByRole("radio", { name: "Local password" }).press("Space");
 
   // A local account carries no invitation checkbox; the realm sends the set-password email.
   await expect(

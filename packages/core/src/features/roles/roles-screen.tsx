@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   ConfirmDialog,
   DataTable,
   Dialog,
@@ -192,10 +193,9 @@ function RoleFormBody(props: {
                 key={entry.key}
                 className="mt-1 flex items-center gap-2 text-sm text-foreground"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={picked.includes(entry.key)}
-                  onChange={() => toggle(entry.key)}
+                  onCheckedChange={() => toggle(entry.key)}
                 />
                 {entry.label}
               </label>

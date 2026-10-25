@@ -132,6 +132,8 @@ export { Switch } from "./components/switch.tsx";
 
 export { RadioGroup, RadioGroupItem } from "./components/radio-group.tsx";
 
+export { Checkbox } from "./components/checkbox.tsx";
+
 export {
   Tabs,
   TabsContent,
