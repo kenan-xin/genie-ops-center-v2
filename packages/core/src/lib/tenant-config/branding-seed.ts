@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isSupportEmail } from "../branding/support.ts";
+
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 const HTTP_URL = { protocol: /^https?$/ } as const;
@@ -56,7 +58,7 @@ const brandingSeedColumns = {
   email_footer_text: z.string().min(1).optional(),
   // Address columns: an omitted link or contact is hidden, per the contract.
   support_url: z.url(HTTP_URL).optional(),
-  support_email: z.email().optional(),
+  support_email: z.email().refine(isSupportEmail).optional(),
   terms_url: z.url(HTTP_URL).optional(),
   privacy_url: z.url(HTTP_URL).optional(),
   // Locale and time zone must be explicit customer values, never inferred from the host;

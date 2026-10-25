@@ -3,7 +3,13 @@ export type SupportContact = {
   readonly href: string;
 };
 
-const EMAIL = /^[^\s@]+@[^\s@]+$/;
+// One `@`, no space, and none of `? & # % / :`, which would add mailto headers or a path.
+const EMAIL = /^[^\s@?&#%/:]+@[^\s@?&#%/:]+$/;
+
+/** The one support email rule: the link builder and the branding write path both use it. */
+export function isSupportEmail(value: string): boolean {
+  return EMAIL.test(value);
+}
 
 /**
  * The one support link branding offers: a valid email wins, else an http(s) page, else none. Both
@@ -15,7 +21,7 @@ export function supportContact(values: {
 }): SupportContact | null {
   const email = values.supportEmail?.trim() ?? "";
 
-  if (EMAIL.test(email)) {
+  if (isSupportEmail(email)) {
     return { label: email, href: `mailto:${email}` };
   }
 

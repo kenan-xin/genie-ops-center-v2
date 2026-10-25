@@ -24,6 +24,27 @@ describe("supportContact", () => {
     ).toEqual({ label: url, href: url });
   });
 
+  it.each([
+    "a@b.c?cc=x@y.z",
+    "help@acme.example?cc=x",
+    "help@acme.example&bcc=x",
+    "help@acme.example#x",
+    "help%40@acme.example",
+    "help@acme.example/x",
+    "help:x@acme.example",
+  ])(
+    "refuses %s, which would add mailto headers or a path (primitives L-3)",
+    (supportEmail) => {
+      expect(supportContact({ supportEmail, supportUrl: null })).toBeNull();
+    }
+  );
+
+  it("keeps a plain email", () => {
+    expect(
+      supportContact({ supportEmail: "help@acme.example", supportUrl: null })
+    ).toEqual({ label: "help@acme.example", href: "mailto:help@acme.example" });
+  });
+
   it("refuses a javascript: URL", () => {
     expect(
       supportContact({ supportEmail: null, supportUrl: "javascript:alert(1)" })
