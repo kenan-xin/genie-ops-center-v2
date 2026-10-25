@@ -120,6 +120,34 @@ export const AllFiveKinds: Story = {
 
 export const AllFiveKindsOnPhone: Story = { ...AllFiveKinds, globals: phone };
 
+/** An integer field asks for a numeric keypad; a number field keeps the decimal point. */
+const numericSchema = {
+  type: "object",
+  properties: {
+    count: { type: "integer", minimum: 0, default: 1 },
+    ratio: { type: "number", minimum: 0, default: 0.5 },
+  },
+} as const satisfies ConfigFormSchema;
+
+export const IntegerAndNumberKeypads: Story = {
+  args: {
+    schema: numericSchema,
+    fields: [
+      { id: "count", title: "Count" },
+      { id: "ratio", title: "Ratio" },
+    ],
+    values: { count: 1, ratio: 0.5 },
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("spinbutton", { name: "Count" })
+    ).toHaveAttribute("inputmode", "numeric");
+    await expect(
+      canvas.getByRole("spinbutton", { name: "Ratio" })
+    ).toHaveAttribute("inputmode", "decimal");
+  },
+};
+
 export const BlurShowsMessage: Story = {
   play: async ({ canvas }) => {
     const title = canvas.getByRole("textbox", { name: "Title" });

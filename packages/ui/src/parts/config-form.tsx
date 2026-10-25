@@ -370,7 +370,7 @@ function ConfigFormControl({
         <Input
           id={id}
           type="number"
-          inputMode="decimal"
+          inputMode={field.type === "integer" ? "numeric" : "decimal"}
           value={value === undefined ? "" : String(value)}
           disabled={disabled}
           aria-invalid={invalid || undefined}
