@@ -80,14 +80,14 @@ const shadcnNonProductOverride: OxlintOverride = {
 };
 
 /**
- * The one accepted exception to the design-system rules, and the reason it is accepted. The root
- * layout writes the tenant branding layer per request in one `<style>` element (Spec 3 R-12,
- * R-16, D3-5): four declarations on `:root`, unlayered so they beat the fixed defaults. A theme
- * CSS file cannot hold them, because they differ per deployment and change at run time. The
+ * The one accepted exception to the design-system rules, and the reason it is accepted. The core
+ * branding head writes the tenant branding layer per request in one `<style>` element (Spec 3
+ * R-12, R-16, D3-5): the declarations on `:root`, unlayered so they beat the fixed defaults. A
+ * theme CSS file cannot hold them, because they differ per deployment and change at run time. The
  * exception is one exact file and one rule.
  */
 const shadcnBrandingStyleException: OxlintOverride = {
-  files: ["apps/genie/src/app/layout.tsx"],
+  files: ["packages/core/src/features/shell/branding-head.tsx"],
   rules: {
     "shadcn/no-inline-styles": "off",
   },

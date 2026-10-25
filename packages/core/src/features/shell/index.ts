@@ -26,6 +26,12 @@ export {
 
 export { tenantInitial } from "./tenant-initial.ts";
 
+export {
+  brandingHead,
+  BrandingHeadElements,
+  type BrandingHead,
+} from "./branding-head.tsx";
+
 export { IdentityBlock, TenantMark } from "./identity-block.tsx";
 
 export { UserMenu, type UserMenuProps } from "./user-menu.tsx";

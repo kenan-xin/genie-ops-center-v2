@@ -124,12 +124,14 @@ describe.concurrent(
 
     it("pins the one accepted exception, the branding style element, to one file and one rule", () => {
       const exceptions = (sharedOxlintConfig.overrides ?? []).filter((entry) =>
-        entry.files?.includes("apps/genie/src/app/layout.tsx")
+        entry.files?.includes(
+          "packages/core/src/features/shell/branding-head.tsx"
+        )
       );
 
       expect(exceptions.map((entry) => [entry.files, entry.rules])).toEqual([
         [
-          ["apps/genie/src/app/layout.tsx"],
+          ["packages/core/src/features/shell/branding-head.tsx"],
           { "shadcn/no-inline-styles": "off" },
         ],
       ]);

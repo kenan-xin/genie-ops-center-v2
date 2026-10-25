@@ -1,10 +1,10 @@
 import {
-  brandingTokens,
   idleExpiry,
   isLimitedBreakGlass,
   readCookie,
   sessionCookieName,
 } from "@genie/core";
+import { brandingHead, BrandingHeadElements } from "@genie/core/features/shell";
 import { Toaster } from "@genie/ui";
 import defaultFontHref from "@genie/ui/fonts/plus-jakarta-sans-latin-wght-normal.woff2?url";
 import { NextIntlClientProvider } from "next-intl";
@@ -36,13 +36,6 @@ function limitedSessionExempt(pathname: string): boolean {
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
 }
-
-/**
- * R-17: the organization's theme is `system`, so the device decides. This runs in <head>
- * before the body paints, and it keeps following the device while the page is open.
- */
-const FOLLOW_DEVICE_THEME =
-  '(()=>{const m=matchMedia("(prefers-color-scheme: dark)");const a=()=>{document.documentElement.dataset.theme=m.matches?"dark":"light"};a();m.addEventListener("change",a)})()';
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
@@ -82,19 +75,11 @@ export default async function RootLayout({
 
   // R-12a, D3-5: a fresh deployment has no branding row and the reader throws on a missing row,
   // so the not-set-up page and a process without a context emit the packages/ui defaults.
-  const branding =
+  const head = brandingHead(
     setupRequired || context === undefined
       ? undefined
-      : await context.tenant.branding.get();
-
-  const theme =
-    branding?.defaultTheme === "light" || branding?.defaultTheme === "dark"
-      ? branding.defaultTheme
-      : "system";
-
-  const rootDeclarations = Object.entries(brandingTokens(branding))
-    .map(([name, value]) => `${name}:${value}`)
-    .join(";");
+      : await context.tenant.branding.get()
+  );
 
   const cookieName =
     context === undefined
@@ -167,16 +152,9 @@ export default async function RootLayout({
 
   return (
     // The theme script sets data-theme before hydration, so <html> carries suppressHydrationWarning.
-    <html
-      lang={locale}
-      data-theme={theme === "dark" ? "dark" : "light"}
-      suppressHydrationWarning
-    >
+    <html lang={locale} data-theme={head.theme} suppressHydrationWarning>
       <head>
-        {theme === "system" ? (
-          <script dangerouslySetInnerHTML={{ __html: FOLLOW_DEVICE_THEME }} />
-        ) : null}
-        <style>{`:root{${rootDeclarations}}`}</style>
+        <BrandingHeadElements head={head} />
         {/* Fonts are fetched in CORS mode, so a preload without crossOrigin is fetched twice. */}
         <link
           rel="preload"
