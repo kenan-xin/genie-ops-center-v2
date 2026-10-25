@@ -4,7 +4,7 @@ import {
   startDisposableDeployment,
   type DisposableDeployment,
 } from "@genie/core/testing";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   E2E_BREAK_GLASS_PASSWORD,
@@ -15,6 +15,7 @@ import { startImage, type RunningImage } from "../testing/image-process.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { fillAuthenticatorCode, totpCode } from "./support/break-glass.ts";
 import { expectSecurityHeaders } from "./support/headers.ts";
+import { openUserMenu } from "./support/shell.ts";
 
 /**
  * The break-glass door at phone and desktop viewports (Spec 2 AC-3, AC-15, R-19 to R-21, R-62 to
@@ -80,6 +81,31 @@ async function startStandaloneBreakGlass(port: number): Promise<{
 
     throw error;
   }
+}
+
+/** The first sign-in of the standalone account: password change and enrollment, to the console. */
+async function completeFirstSignIn(page: Page, url: string): Promise<void> {
+  await page.goto(`${url}/admin/login`);
+  await page.getByLabel("Email").fill("standalone@example.invalid");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(E2E_BREAK_GLASS_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
+  await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+  await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
+  await page.getByRole("button", { name: "Set password and continue" }).click();
+
+  const key = await page.getByTestId("enrollment-manual-key").textContent();
+
+  await fillAuthenticatorCode(page, totpCode(key ?? ""));
+  await page
+    .getByRole("button", { name: "Confirm and open the console" })
+    .click();
+
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
+    .toBe("/admin/account");
 }
 
 test("a limited break-glass session stays limited across navigation (S1, R-30)", async ({
@@ -258,33 +284,8 @@ test("re-enroll replaces the authenticator and the new code signs in (R-66, B3)"
   const stack = await startStandaloneBreakGlass(port);
 
   try {
-    await page.goto(`${stack.url}/admin/login`);
-
     // First sign-in: change the password, enroll with the first authenticator.
-    await page.getByLabel("Email").fill("standalone@example.invalid");
-    await page
-      .getByLabel("Password", { exact: true })
-      .fill(E2E_BREAK_GLASS_PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByLabel("Current password").fill(E2E_BREAK_GLASS_PASSWORD);
-    await page.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
-    await page.getByLabel("Confirm new password").fill(NEW_PASSWORD);
-    await page
-      .getByRole("button", { name: "Set password and continue" })
-      .click();
-
-    const firstKey = await page
-      .getByTestId("enrollment-manual-key")
-      .textContent();
-
-    await fillAuthenticatorCode(page, totpCode(firstKey ?? ""));
-    await page
-      .getByRole("button", { name: "Confirm and open the console" })
-      .click();
-
-    await expect
-      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
-      .toBe("/admin/account");
+    await completeFirstSignIn(page, stack.url);
 
     // Re-enroll: disable the current authenticator with the current password, then enroll anew.
     await page.getByRole("button", { name: "Re-enroll" }).click();
@@ -315,6 +316,40 @@ test("re-enroll replaces the authenticator and the new code signs in (R-66, B3)"
     await expect
       .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
       .toBe("/admin/account");
+  } finally {
+    await stack.image.stop();
+    await stack.deployment.stop();
+  }
+});
+
+test("a break-glass session stays in the admin chrome (U-3, design account-and-inbox)", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(STANDALONE_TEST_MS);
+
+  const port = workerImagePort(3900, testInfo.workerIndex);
+  const stack = await startStandaloneBreakGlass(port);
+
+  try {
+    await completeFirstSignIn(page, stack.url);
+
+    const menu = await openUserMenu(page);
+
+    await expect(
+      menu.getByRole("menuitem", { name: "Sign out", exact: true })
+    ).toBeVisible();
+    await expect(
+      menu.getByRole("menuitem", { name: "Back to workspace" })
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // `/` would land a person in the workspace. The break-glass account reaches the admin home,
+    // the first core admin entry.
+    await page.goto(`${stack.url}/`);
+
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
+      .toBe("/admin/people");
   } finally {
     await stack.image.stop();
     await stack.deployment.stop();
