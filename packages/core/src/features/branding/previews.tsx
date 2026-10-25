@@ -31,7 +31,8 @@ export function PreviewColors(props: {
   // `dark:` classes follow the page theme, not the preview toggle, so the preview reads its brand
   // text color from a variable that the toggle's own data-theme sets (R-47).
   return (
-    // oxlint-disable-next-line shadcn/no-inline-styles -- the draft color is a runtime tenant value; the root layout writes the saved one on :root the same way (R-12)
+    // The draft color is a runtime tenant value; the root layout writes the saved one on :root the
+    // same way (R-12). packages/config pins this file as a no-inline-styles exception (U-8).
     <style>{`${root}{--primary:${pair.primary};--primary-foreground:${pair.foreground};--sign-in-background:${background};--preview-brand:var(--primary);}${root}[data-theme="dark"]{--preview-brand:var(--brand-on-dark);--sign-in-background:var(--background);}`}</style>
   );
 }

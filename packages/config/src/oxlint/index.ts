@@ -80,14 +80,18 @@ const shadcnNonProductOverride: OxlintOverride = {
 };
 
 /**
- * The one accepted exception to the design-system rules, and the reason it is accepted. The core
+ * The accepted exceptions to the design-system rules, and the reason they are accepted. The core
  * branding head writes the tenant branding layer per request in one `<style>` element (Spec 3
- * R-12, R-16, D3-5): the declarations on `:root`, unlayered so they beat the fixed defaults. A
- * theme CSS file cannot hold them, because they differ per deployment and change at run time. The
- * exception is one exact file and one rule.
+ * R-12, R-16, D3-5): the declarations on `:root`, unlayered so they beat the fixed defaults. The
+ * Branding page previews write the unsaved draft colors the same way, scoped to one preview
+ * (R-47). A theme CSS file cannot hold them, because they differ per deployment and change at run
+ * time. The exception is two exact files and one rule, and a test refuses an inline disable (U-8).
  */
 const shadcnBrandingStyleException: OxlintOverride = {
-  files: ["packages/core/src/features/shell/branding-head.tsx"],
+  files: [
+    "packages/core/src/features/shell/branding-head.tsx",
+    "packages/core/src/features/branding/previews.tsx",
+  ],
   rules: {
     "shadcn/no-inline-styles": "off",
   },

@@ -1,7 +1,11 @@
+import { globSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { lintAt } from "./__testing__/lint-at.ts";
+import { lintAt, WORKSPACE_ROOT } from "./__testing__/lint-at.ts";
 import { sharedOxlintConfig } from "./index.ts";
+import { NON_PRODUCT_FILE_PATTERNS } from "./non-product-files.ts";
 
 const LINT_TIMEOUT = 120_000;
 
@@ -122,19 +126,39 @@ describe.concurrent(
       expect(exceptions).toHaveLength(0);
     });
 
-    it("pins the one accepted exception, the branding style element, to one file and one rule", () => {
-      const exceptions = (sharedOxlintConfig.overrides ?? []).filter((entry) =>
-        entry.files?.includes(
-          "packages/core/src/features/shell/branding-head.tsx"
-        )
+    it("pins the accepted exceptions, the two branding style elements, to two files and one rule", () => {
+      const exceptions = (sharedOxlintConfig.overrides ?? []).filter(
+        (entry) =>
+          entry.rules?.["shadcn/no-inline-styles"] === "off" &&
+          !entry.files?.some((file) => NON_PRODUCT_FILE_PATTERNS.includes(file))
       );
 
       expect(exceptions.map((entry) => [entry.files, entry.rules])).toEqual([
         [
-          ["packages/core/src/features/shell/branding-head.tsx"],
+          [
+            "packages/core/src/features/shell/branding-head.tsx",
+            "packages/core/src/features/branding/previews.tsx",
+          ],
           { "shadcn/no-inline-styles": "off" },
         ],
       ]);
+    });
+
+    it("allows no inline disable of no-inline-styles, so the pin above sees every exception", () => {
+      const disabled = globSync(
+        [
+          "packages/**/*.{ts,tsx}",
+          "apps/**/*.{ts,tsx}",
+          "customers/**/*.{ts,tsx}",
+        ],
+        { cwd: WORKSPACE_ROOT, exclude: ["**/node_modules/**"] }
+      ).filter((file) =>
+        /oxlint-disable.*shadcn\/no-inline-styles/.test(
+          readFileSync(join(WORKSPACE_ROOT, file), "utf8")
+        )
+      );
+
+      expect(disabled).toEqual([]);
     });
 
     it("pins the fixed-tone exception to the status tone files and one rule", () => {
