@@ -173,7 +173,8 @@ describe("the generated customer stack smoke", () => {
 
     expect(await health.text()).toBe("ok");
 
-    const page = await running().request("/");
+    // A signed-out `/` redirects to the sign-in page (CR-PRIMITIVES-M1), so the open gate is read there.
+    const page = await running().request("/sign-in");
 
     expect(page.status).toBe(200);
     expect(await page.text()).not.toContain(NOT_SET_UP);
@@ -182,7 +183,7 @@ describe("the generated customer stack smoke", () => {
   it("serves the customer page and health while the excluded placeholder module is absent", async () => {
     const readyHealth = await running().request("/api/health");
 
-    const page = await running().request("/");
+    const page = await running().request("/sign-in");
 
     const excludedRoutes = [
       "/placeholder",

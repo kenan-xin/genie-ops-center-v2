@@ -287,7 +287,7 @@ const RPC_ROUTE = "/api/rpc/placeholder/read";
  * the RPC route handler and the viewer page. Twenty-four requests cycle through
  * them, so each class is served eight times.
  */
-const ROUTE_CLASSES = ["/", RPC_ROUTE, "/viewer/placeholder"] as const;
+const ROUTE_CLASSES = ["/sign-in", RPC_ROUTE, "/viewer/placeholder"] as const;
 
 /** The RPC route takes a same-origin `POST`, as the browser sends it; the pages take a `GET`. */
 const initFor = (path: string): RequestInit =>
@@ -735,7 +735,7 @@ describe("the built image", () => {
       );
 
       // Assert the responses, rather than swallowing them. Nothing else in this
-      // repository asserts that the ordinary document renders at all, so a `/`
+      // repository asserts that the ordinary document renders at all, so a page
       // that threw would be invisible to every gate: the next-intl request
       // configuration could be deleted and the suite would stay green. The RPC
       // request is anonymous, so its refusal answers `unauthenticated` at 401
@@ -793,7 +793,11 @@ describe("the built image", () => {
 
       // All three route classes were served, so the batch really exercised the
       // page, the RPC handler and the viewer rather than one class three times.
-      for (const needle of ['"path":"/"', "api/rpc", "viewer/placeholder"]) {
+      for (const needle of [
+        '"path":"/sign-in"',
+        "api/rpc",
+        "viewer/placeholder",
+      ]) {
         expect(
           requestLines.some((line) => line.includes(needle)),
           `no request line for ${needle}`

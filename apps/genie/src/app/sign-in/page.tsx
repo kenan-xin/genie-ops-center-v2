@@ -52,7 +52,9 @@ export default async function SignInPage(props: {
 
   const cause = signInCause(error);
 
-  const branding = await requireContext().tenant.branding.get();
+  const { contextId, tenant } = requireContext();
+
+  const branding = await tenant.branding.get();
 
   const productName =
     cause === "signed_out"
@@ -95,6 +97,8 @@ export default async function SignInPage(props: {
 
   return (
     <main
+      // AC-26: the anonymous page bundle stamps the context id it read (the home page redirects here).
+      data-context-id={contextId}
       data-sign-in-state={cause ?? DEFAULT_STATE}
       className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-sign-in-background px-4 py-12 dark:bg-background"
     >
