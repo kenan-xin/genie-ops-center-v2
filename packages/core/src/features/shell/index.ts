@@ -13,7 +13,7 @@ export { AppShell, type AppShellProps } from "./app-shell.tsx";
 
 export { activeHref } from "./active-link.ts";
 
-export { shellMenu, type ShellMenuInput } from "./menu-model.ts";
+export { shellChrome, shellMenu, type ShellMenuInput } from "./menu-model.ts";
 
 export {
   COLLAPSED_CATEGORIES_KEY,

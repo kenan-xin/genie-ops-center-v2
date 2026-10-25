@@ -1,5 +1,6 @@
 import {
   AppShell,
+  shellChrome,
   shellMenu,
   type ShellChrome,
 } from "@genie/core/features/shell";
@@ -44,10 +45,11 @@ export async function ShellFrame(props: {
   const [model, requestHeaders] = await Promise.all([shellModel(), headers()]);
 
   const person = state.session.user;
+  const chrome = shellChrome(props.chrome, model.isAdministrator);
 
   return (
     <AppShell
-      chrome={props.chrome}
+      chrome={chrome}
       {...(props.title === undefined ? {} : { title: props.title })}
       currentPath={requestHeaders.get(PATHNAME_HEADER) ?? "/"}
       navigation={model.navigation}
@@ -59,7 +61,7 @@ export async function ShellFrame(props: {
           : t("roleMember"),
       }}
       menu={shellMenu({
-        chrome: props.chrome,
+        chrome,
         isAdministrator: model.isAdministrator,
         isBreakGlass: person.isBreakGlass,
         landing: model.landing,

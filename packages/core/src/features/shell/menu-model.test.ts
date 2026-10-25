@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shellMenu, type ShellMenuInput } from "./menu-model.ts";
+import { shellChrome, shellMenu, type ShellMenuInput } from "./menu-model.ts";
 
 const administrator: ShellMenuInput = {
   chrome: "workspace",
@@ -15,6 +15,14 @@ const administrator: ShellMenuInput = {
     administration: "Administration",
   },
 };
+
+describe("shellChrome", () => {
+  it("gives a person with no admin entry the workspace chrome on an admin page", () => {
+    expect(shellChrome("admin", false)).toBe("workspace");
+    expect(shellChrome("admin", true)).toBe("admin");
+    expect(shellChrome("workspace", true)).toBe("workspace");
+  });
+});
 
 describe("shellMenu", () => {
   it("sends an administrator in the workspace to the admin home", () => {
