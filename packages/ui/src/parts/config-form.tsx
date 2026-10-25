@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm, useStore, type AnyFieldApi } from "@tanstack/react-form";
+import { isEqual } from "es-toolkit";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export type ConfigFormFooterState = {
 export type ConfigFormProps = {
   readonly schema: ConfigFormSchema;
   readonly fields: readonly ConfigFormField[];
-  /** The stored values. A new object (after a save) becomes the form's clean state. */
+  /** The stored values. Saved values that differ become the form's clean state. */
   readonly values: Readonly<Record<string, ConfigValue>>;
   /** Field element ids are `${idPrefix}-${field.id}`. */
   readonly idPrefix: string;
@@ -125,8 +126,9 @@ export function ConfigForm({
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
 
+  // A refetch hands a new object holding the values already shown: keep the edit.
   useEffect(() => {
-    if (shownValues.current === values) return;
+    if (isEqual(shownValues.current, values)) return;
 
     shownValues.current = values;
     form.reset({ ...values });

@@ -7,7 +7,7 @@ import {
   FIXTURE_SETTINGS,
 } from "./__fixtures__/settings.ts";
 import { TenantSettingsScreen } from "./settings-screen.tsx";
-import type { TenantSettingsScreenProps } from "./types.ts";
+import type { SettingsView, TenantSettingsScreenProps } from "./types.ts";
 
 const phone = { viewport: { value: "mobile1", isRotated: false } };
 
@@ -224,6 +224,103 @@ export const ModuleSection: Story = {
         expect.objectContaining({ pageSize: 40 })
       )
     );
+  },
+};
+
+/** A refetch hands the screen a new object with the values the server still holds. */
+const refetched = (
+  values: SettingsView["modules"][number]["values"] = {}
+): SettingsView => ({
+  core: { ...FIXTURE_SETTINGS.core },
+  modules: [
+    {
+      ...FIXTURE_PLACEHOLDER,
+      values: { ...FIXTURE_PLACEHOLDER.values, ...values },
+    },
+  ],
+});
+
+/** Refetching outside the form must not reset an edit in progress (DR-20 S3-06). */
+export const CoreEditSurvivesRefetch: Story = {
+  args: { target: { section: "sessions" } },
+  render: function Render(args) {
+    const [settings, setSettings] = useState(args.settings);
+
+    return (
+      <>
+        <button type="button" onClick={() => setSettings(refetched())}>
+          Refetch
+        </button>
+        <TenantSettingsScreen {...args} settings={settings} />
+      </>
+    );
+  },
+  play: async ({ canvas }) => {
+    const idle = canvas.getByRole("spinbutton", { name: "Idle timeout" });
+
+    await userEvent.clear(idle);
+    await userEvent.type(idle, "30");
+    await userEvent.click(canvas.getByRole("button", { name: "Refetch" }));
+
+    await expect(idle).toHaveValue(30);
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeEnabled();
+  },
+};
+
+/** The same for a module section, whose ConfigForm owns its own form state. */
+export const ModuleEditSurvivesRefetch: Story = {
+  args: { target: { section: "placeholder" } },
+  render: function Render(args) {
+    const [settings, setSettings] = useState(args.settings);
+
+    return (
+      <>
+        <button type="button" onClick={() => setSettings(refetched())}>
+          Refetch
+        </button>
+        <TenantSettingsScreen {...args} settings={settings} />
+      </>
+    );
+  },
+  play: async ({ canvas }) => {
+    const pageSize = canvas.getByRole("spinbutton", { name: "Page size" });
+
+    await userEvent.clear(pageSize);
+    await userEvent.type(pageSize, "40");
+    await userEvent.click(canvas.getByRole("button", { name: "Refetch" }));
+
+    await expect(pageSize).toHaveValue(40);
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeEnabled();
+  },
+};
+
+/** A refetch with saved values the form does not hold still becomes its clean state. */
+export const ModuleRefetchWithSavedValuesResets: Story = {
+  args: { target: { section: "placeholder" } },
+  render: function Render(args) {
+    const [settings, setSettings] = useState(args.settings);
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setSettings(refetched({ pageSize: 50 }))}
+        >
+          Refetch
+        </button>
+        <TenantSettingsScreen {...args} settings={settings} />
+      </>
+    );
+  },
+  play: async ({ canvas }) => {
+    const pageSize = canvas.getByRole("spinbutton", { name: "Page size" });
+
+    await userEvent.clear(pageSize);
+    await userEvent.type(pageSize, "40");
+    await userEvent.click(canvas.getByRole("button", { name: "Refetch" }));
+
+    await expect(pageSize).toHaveValue(50);
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
   },
 };
 
