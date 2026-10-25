@@ -1,4 +1,8 @@
-import { AppShell, type ShellChrome } from "@genie/core/features/shell";
+import {
+  AppShell,
+  shellMenu,
+  type ShellChrome,
+} from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
 import type { ReactNode } from "react";
@@ -26,14 +30,6 @@ export async function ShellFrame(props: {
 
   const person = state.session.user;
 
-  const switchTarget = !model.isAdministrator
-    ? null
-    : props.chrome === "admin"
-      ? { label: t("backToWorkspace"), href: model.landing ?? "/" }
-      : model.adminHome === undefined
-        ? null
-        : { label: t("administration"), href: model.adminHome };
-
   return (
     <AppShell
       chrome={props.chrome}
@@ -47,13 +43,19 @@ export async function ShellFrame(props: {
           ? t("roleAdministrator")
           : t("roleMember"),
       }}
-      menu={{
-        accountHref: person.isBreakGlass ? "/admin/account" : "/account",
+      menu={shellMenu({
+        chrome: props.chrome,
+        isAdministrator: model.isAdministrator,
+        isBreakGlass: person.isBreakGlass,
+        landing: model.landing,
+        adminHome: model.adminHome,
         changePasswordHref: model.changePasswordUrl,
-        switchTarget,
         supportHref: model.support?.href ?? null,
-        signOutAction: "/api/auth/sign-out",
-      }}
+        labels: {
+          backToWorkspace: t("backToWorkspace"),
+          administration: t("administration"),
+        },
+      })}
       strings={{
         workspace: t("workspace"),
         adminPortal: t("adminPortal"),
