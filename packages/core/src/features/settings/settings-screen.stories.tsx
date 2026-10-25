@@ -510,6 +510,41 @@ export const ModuleIssueOnField: Story = {
   },
 };
 
+/** A root or unmatched issue path names no field, so it stays in the summary line (DR-20 S3-06). */
+export const UnmatchedIssueStaysInSummary: Story = {
+  args: {
+    target: { section: "placeholder" },
+    onSaveModule: fn(async () => {
+      throw {
+        message: "The server refused the root.",
+        issues: [
+          { path: "", message: "Root says no." },
+          { path: "nope", message: "Unknown says no." },
+        ],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    const pageSize = canvas.getByRole("spinbutton", { name: "Page size" });
+
+    await userEvent.clear(pageSize);
+    await userEvent.type(pageSize, "40");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    // The server's own message survives a root issue path.
+    await expect(
+      await canvas.findByText(/Not saved\. The server refused the root\./)
+    ).toBeVisible();
+    // Neither issue names a field, so no field shows it and neither blocks Retry.
+    await expect(canvas.queryByText("Root says no.")).toBeNull();
+    await expect(canvas.queryByText("Unknown says no.")).toBeNull();
+    await expect(pageSize).not.toBeInvalid();
+    await expect(pageSize).toHaveValue(40);
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "Retry" })).toBeVisible();
+  },
+};
+
 /** The same for a core section: the server's issue for the idle timeout (DR-20 S3-06). */
 export const CoreIssueOnField: Story = {
   args: {

@@ -53,7 +53,7 @@ const refusal = z
   .object({
     message: z.string().min(1),
     issues: z
-      .array(z.object({ path: z.string().min(1), message: z.string().min(1) }))
+      .array(z.object({ path: z.string(), message: z.string().min(1) }))
       .optional(),
   })
   .catch({ message: "The server refused the change." });
