@@ -165,6 +165,30 @@ export const RowMenuNamesTheRefusal: Story = {
   },
 };
 
+export const RowMenuConfirmReturnsFocusToTheMenu: Story = {
+  play: async ({ canvas }) => {
+    onDisablePerson.mockClear();
+
+    const trigger = canvas.getByRole("button", {
+      name: "Actions for bea@example.com",
+    });
+
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Disable" })
+    );
+    await screen.findByRole("dialog", { name: "Disable Bea Brokered?" });
+
+    // Escape cancels the confirm, and keyboard focus goes back to the row's menu (primitives L-5).
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
+    await expect(onDisablePerson).not.toHaveBeenCalled();
+  },
+};
+
 export const DisableFromTheInspector: Story = {
   play: async ({ canvas }) => {
     onDisablePerson.mockClear();
