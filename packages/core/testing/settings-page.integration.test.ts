@@ -4,11 +4,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
+import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import type { AuditMetadataValue } from "../src/services/audit/index.ts";
 import {
   principalFor,
   seedRoles,
 } from "../src/services/authorization/index.ts";
+import { setModuleEnabledIn } from "../src/services/module-management/index.ts";
 import {
   readSettings,
   saveModuleSettings,
@@ -485,6 +487,68 @@ describe("module section saves", () => {
       expect.objectContaining({
         action: "core:module_configured",
         metadata: { changedFields: ["legacy"] },
+      }),
+    ]);
+  });
+
+  it("a save that runs during a module enable waits for it, and both the switch and the values survive", async () => {
+    const caller = await callerWith([BASE]);
+    const enabled = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+
+    // The enable holds its row lock until released. The save starts outside its transaction,
+    // because withTransaction refuses nesting.
+    const enable = withTransaction(deployment.context, async (tx) => {
+      await setModuleEnabledIn(tx, compiled, "fixture", true);
+      enabled.resolve();
+      await release.promise;
+    });
+
+    await enabled.promise;
+
+    const save = saveModuleSettings(deployment.context, compiled, caller, {
+      actorUserId,
+      moduleId: "fixture",
+      values: {
+        title: "During enable",
+        pageSize: 30,
+        enabled: false,
+        mode: "basic",
+        tags: [],
+      },
+    });
+
+    try {
+      // Commit the enable only once the save waits on the same tenant_module row lock.
+      await expect
+        .poll(async () => {
+          const [row] = await query<{ waiting: number }>(
+            "select count(*)::int as waiting from pg_stat_activity where wait_event_type = 'Lock' and query ilike '%from \"tenant_module\"%for update%'"
+          );
+
+          return row?.waiting;
+        })
+        .toBe(1);
+    } finally {
+      release.resolve();
+      await enable;
+    }
+
+    await expect(save).resolves.toEqual({ changed: true });
+    expect(await moduleRow("fixture")).toEqual({
+      enabled: true,
+      config: {
+        title: "During enable",
+        pageSize: 30,
+        enabled: false,
+        mode: "basic",
+        tags: [],
+      },
+    });
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({
+        action: "core:module_configured",
+        metadata: { changedFields: ["title", "pageSize"] },
       }),
     ]);
   });
