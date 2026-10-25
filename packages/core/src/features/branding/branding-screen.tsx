@@ -56,14 +56,29 @@ export type BrandingScreenProps = {
   ) => Promise<BrandingImageView>;
 };
 
+const publishIssue = z.object({
+  path: z.string(),
+  message: z.string().min(1),
+});
+
+// Read the message apart from the issues, so one malformed issue is dropped and the message stays.
 const refusedPublish = z
   .object({
     message: z.string().min(1),
-    issues: z
-      .array(z.object({ path: z.string(), message: z.string().min(1) }))
-      .optional(),
+    issues: z.array(z.unknown()).optional(),
   })
-  .catch({ message: "That change could not be published. Try again." });
+  .transform((refusal) => ({
+    message: refusal.message,
+    issues: (refusal.issues ?? []).flatMap((issue) => {
+      const parsed = publishIssue.safeParse(issue);
+
+      return parsed.success ? [parsed.data] : [];
+    }),
+  }))
+  .catch({
+    message: "That change could not be published. Try again.",
+    issues: [],
+  });
 
 const uploadMessage = z
   .object({
@@ -304,7 +319,7 @@ function BrandingEditor(
       setFailure(refused.message);
       setServerIssues(
         Object.fromEntries(
-          (refused.issues ?? []).map((issue) => [issue.path, issue.message])
+          refused.issues.map((issue) => [issue.path, issue.message])
         )
       );
     } finally {

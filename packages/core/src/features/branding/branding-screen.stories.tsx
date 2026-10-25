@@ -429,6 +429,8 @@ export const PublishRefused: Story = {
       throw {
         message:
           "Some branding values are not valid. Fix the marked fields and publish again.",
+        // A malformed issue is dropped, and the refusal's own message still shows.
+        issues: [{ path: 7, message: 8 }],
       };
     }),
   },
@@ -453,10 +455,8 @@ export const PublishRefused: Story = {
 
 export const PublishIssueOnImage: Story = {
   args: {
-    branding: brandingView(
-      { logoLightFileId: MARK.fileId },
-      { logoLight: MARK }
-    ),
+    // A dead id names the slot but has no image view: real data drops it from `images`.
+    branding: brandingView({ logoLightFileId: MARK.fileId }),
     onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {
       throw {
         message:
@@ -495,15 +495,17 @@ export const PublishIssueOnImage: Story = {
 
     // The refused Publish names the logo field, and the message sits under its slot.
     await expect(await slot().findByText(issue)).toBeVisible();
-    await expect(
-      slot().getByRole("button", { name: "Replace" })
-    ).toHaveAccessibleDescription(issue);
 
-    // Removing the image clears the issue it carried.
+    // A dead id has no image, so there is no Replace; the drop zone stays usable and Remove
+    // is offered, because the message tells the person to remove it.
+    await expect(slot().queryByRole("button", { name: "Replace" })).toBeNull();
+
+    // Removing the dead id clears the issue it carried.
     await user.click(slot().getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(slot().queryByText(issue)).toBeNull());
+    await expect(slot().queryByRole("button", { name: "Remove" })).toBeNull();
 
-    // The same refusal names it again, and a new upload replaces the dead image.
+    // The same refusal names it again, and a new upload replaces the dead id.
     await publish();
     await expect(await slot().findByText(issue)).toBeVisible();
 

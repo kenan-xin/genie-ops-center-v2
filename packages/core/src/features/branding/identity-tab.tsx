@@ -68,18 +68,25 @@ export function IdentityTab(props: {
           onChange={(value) => props.onChange("productName", value)}
         />
       </div>
-      {SLOTS.map((entry) => (
-        <ImageSlot
-          key={entry.slot}
-          label={entry.label}
-          recommended={entry.recommended}
-          image={props.images[entry.slot]}
-          state={props.slots[entry.slot] ?? {}}
-          issue={props.issues[SLOT_FIELD[entry.slot]]}
-          onFile={(file) => props.onFile(entry.slot, file)}
-          onRemove={() => props.onRemove(entry.slot)}
-        />
-      ))}
+      {SLOTS.map((entry) => {
+        const field = SLOT_FIELD[entry.slot];
+        const image = props.images[entry.slot];
+
+        return (
+          <ImageSlot
+            key={entry.slot}
+            label={entry.label}
+            recommended={entry.recommended}
+            image={image}
+            // A draft id with no image view is a dead id: the drop zone stays, plus Remove.
+            missing={image === undefined && props.draft[field] !== null}
+            state={props.slots[entry.slot] ?? {}}
+            issue={props.issues[field]}
+            onFile={(file) => props.onFile(entry.slot, file)}
+            onRemove={() => props.onRemove(entry.slot)}
+          />
+        );
+      })}
       <p className="text-sm text-muted-foreground">
         Without a square mark, the shell shows the first letter of the company
         name.

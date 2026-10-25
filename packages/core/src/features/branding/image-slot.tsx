@@ -33,15 +33,18 @@ function sizeText(bytes: number): string {
 
 /**
  * One branding image (R-49, R-50): a drop zone on a native file input until an image is set, then
- * the image with Replace, Remove and its scan status. A Scanning image is not shown, and an
- * Infected one shows the refusal alert. No library drop zone fits Base UI without a second
- * primitive, so this is a native input that the drop zone button opens.
+ * the image with Replace, Remove and its scan status. A draft id with no image view keeps the drop
+ * zone and offers Remove, because a refused Publish tells the person to remove it. A Scanning
+ * image is not shown, and an Infected one shows the refusal alert. No library drop zone fits Base
+ * UI without a second primitive, so this is a native input that the drop zone button opens.
  */
 export function ImageSlot(props: {
   readonly label: string;
   readonly recommended: string;
   readonly image: BrandingImageView | undefined;
   readonly state: SlotState;
+  /** The draft names a file this page has no image view for: a dead id. */
+  readonly missing?: boolean;
   /** A refused Publish's message for this slot, cleared when the image changes. */
   readonly issue?: string | undefined;
   readonly onFile: (file: File) => void;
@@ -92,40 +95,52 @@ export function ImageSlot(props: {
         </p>
       )}
       {state.uploading !== undefined ? null : image === undefined ? (
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          aria-describedby={error === undefined ? undefined : `${id}-error`}
-          className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""} ${focusRing}`}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(event) => {
-            event.preventDefault();
-            setDragging(false);
-            choose(event.dataTransfer.files);
-          }}
-        >
-          <UploadCloud
-            aria-hidden="true"
-            className="size-5 text-muted-foreground"
-          />
-          <span>
-            Drop an image or{" "}
-            <span className="font-semibold text-primary dark:text-brand-on-dark">
-              browse
+        <>
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            aria-describedby={error === undefined ? undefined : `${id}-error`}
+            className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""} ${focusRing}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              choose(event.dataTransfer.files);
+            }}
+          >
+            <UploadCloud
+              aria-hidden="true"
+              className="size-5 text-muted-foreground"
+            />
+            <span>
+              Drop an image or{" "}
+              <span className="font-semibold text-primary dark:text-brand-on-dark">
+                browse
+              </span>
             </span>
-          </span>
-          <span className="text-xs text-muted-foreground">
-            PNG, SVG, WebP or ICO, up to 1 MB. {props.recommended}.
-          </span>
-          <span className="text-xs text-muted-foreground">
-            SVG files are cleaned on upload. Scan status stays Skipped until a
-            scanner exists.
-          </span>
-        </button>
+            <span className="text-xs text-muted-foreground">
+              PNG, SVG, WebP or ICO, up to 1 MB. {props.recommended}.
+            </span>
+            <span className="text-xs text-muted-foreground">
+              SVG files are cleaned on upload. Scan status stays Skipped until a
+              scanner exists.
+            </span>
+          </button>
+          {props.missing === true ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-start"
+              onClick={props.onRemove}
+            >
+              Remove
+            </Button>
+          ) : null}
+        </>
       ) : image.scanStatus === "infected" ? (
         <div
           role="alert"
