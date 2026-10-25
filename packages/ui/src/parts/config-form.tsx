@@ -70,7 +70,12 @@ const formatNumber = (n: number): string => n.toLocaleString("en-GB");
 function rangeText(field: ConfigFieldSchema): string {
   if (field.type !== "number" && field.type !== "integer") return "";
 
-  const { minimum: min, maximum: max } = field;
+  // `z.number().int()` emits the safe-integer bounds, which are no range a person set (admin L-3).
+  const min =
+    field.minimum === Number.MIN_SAFE_INTEGER ? undefined : field.minimum;
+
+  const max =
+    field.maximum === Number.MAX_SAFE_INTEGER ? undefined : field.maximum;
 
   if (min !== undefined && max !== undefined)
     return `From ${formatNumber(min)} to ${formatNumber(max)}.`;

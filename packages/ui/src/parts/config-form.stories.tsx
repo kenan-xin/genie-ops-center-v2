@@ -170,6 +170,47 @@ export const OptionalNumberLeftEmpty: Story = {
   },
 };
 
+/** `z.number().int()` emits the safe-integer bounds; they are no range a person sets (admin L-3). */
+export const RangeHintSkipsSafeIntegerBounds: Story = {
+  args: {
+    schema: {
+      type: "object",
+      properties: {
+        count: {
+          type: "integer",
+          minimum: Number.MIN_SAFE_INTEGER,
+          maximum: Number.MAX_SAFE_INTEGER,
+          default: 1,
+        },
+        floor: {
+          type: "integer",
+          minimum: 1,
+          maximum: Number.MAX_SAFE_INTEGER,
+          default: 1,
+        },
+        size: { type: "integer", minimum: 1, maximum: 10, default: 1 },
+      },
+    },
+    fields: [
+      { id: "count", title: "Count", description: "Any whole number." },
+      { id: "floor", title: "Floor" },
+      { id: "size", title: "Size" },
+    ],
+    values: { count: 1, floor: 1, size: 1 },
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("spinbutton", { name: "Count" })
+    ).toHaveAccessibleDescription("Any whole number.");
+    await expect(
+      canvas.getByRole("spinbutton", { name: "Floor" })
+    ).toHaveAccessibleDescription("At least 1.");
+    await expect(
+      canvas.getByRole("spinbutton", { name: "Size" })
+    ).toHaveAccessibleDescription("From 1 to 10.");
+  },
+};
+
 export const BlurShowsMessage: Story = {
   play: async ({ canvas }) => {
     const title = canvas.getByRole("textbox", { name: "Title" });
