@@ -127,6 +127,19 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   expect(await realmSessionIds(E2E_SIGN_IN_REALM, email)).not.toContain(sid);
 });
 
+test(
+  "a signed-out visitor on / goes to the sign-in page, not the no-grants empty state (R-34)",
+  { tag: "@no-screen" },
+  async ({ request }) => {
+    const home = await request.get("/", { maxRedirects: 0 });
+
+    expect(home.status()).toBe(307);
+    expect(
+      new URL(home.headers().location ?? "", "http://base.invalid").pathname
+    ).toBe("/sign-in");
+  }
+);
+
 // The end-session URL is not spelled out here: a missing client_id, return address or state makes
 // Keycloak refuse the redirect or return elsewhere, which the landing below catches.
 test(
