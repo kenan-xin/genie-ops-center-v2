@@ -7,6 +7,8 @@ import { expectNoAxeViolations } from "./support/axe.ts";
 import {
   INVITE_DB,
   inviteBaseUrl,
+  LANDING_DB,
+  landingBaseUrl,
   queryBrokerDatabase,
 } from "./support/brokered.ts";
 import { withDeploymentLock } from "./support/lock.ts";
@@ -20,12 +22,11 @@ import { signInThroughBroker } from "./support/sign-in.ts";
  *
  * They run on the invite deployment, as the page proofs of S3-05 and S3-06 do, with their own
  * administrator. The invite branding keeps the theme `system`, so the emulated color scheme picks
- * the theme. AC-11b writes the placeholder row, so it holds the lock the Modules proof holds and
- * restores the row before it lets go.
+ * the theme. AC-11b runs on the landing deployment instead, because only the fixture image compiles
+ * the module with a required value and no default. It restores that module's row before it lets
+ * go of the row's lock.
  */
 const BASE = inviteBaseUrl();
-
-const LOCK = "s2-16-entitlement";
 
 const LOCK_WAIT_MS = 300_000;
 
@@ -338,52 +339,69 @@ test("under prefers-reduced-motion no transition or animation runs on the shell,
   }
 });
 
-const placeholderRow = () =>
-  sql(
-    "select enabled::text || ' ' || config::text from tenant_module where module_id = 'placeholder'"
+/** The fixture module whose required `endpoint` has no default. Only the fixture image compiles it. */
+const REQUIRED = "required-setting";
+
+/** AC-11b writes the fixture's row, so the phone and the desktop runs take turns on it. */
+const REQUIRED_LOCK = "s3-09-required-setting";
+
+const LANDING = landingBaseUrl();
+
+async function landingSql(query: string): Promise<string> {
+  const [first] = await queryBrokerDatabase(LANDING_DB, query);
+
+  return first ?? "";
+}
+
+const requiredRow = () =>
+  landingSql(
+    `select enabled::text || ' ' || config::text from tenant_module where module_id = '${REQUIRED}'`
   );
 
 const enabledCount = () =>
-  sql(
-    "select count(*) from audit_event where action = 'core:module_enabled'"
+  landingSql(
+    `select count(*) from audit_event where action = 'core:module_enabled' and target_id = '${REQUIRED}'`
   ).then(Number);
 
-/** Every assignment of a role that carries a placeholder key: the access the attempts must keep. */
-const placeholderAssignments = () =>
-  sql(
+/** Every assignment of a role that carries the fixture's key: the access the attempts must keep. */
+const requiredAssignments = () =>
+  landingSql(
     `select coalesce(string_agg(a.role_id || ':' || a.principal_type || ':' || a.principal_id, ',' order by a.role_id, a.principal_id), '')
        from role_assignment a join role r on r.id = a.role_id
-      where r.permissions && array['placeholder:read', 'placeholder:use']`
+      where r.permissions && array['${REQUIRED}:use']`
   );
 
 test("first enable: a required value refuses the switch, a settings save keeps the module off, then the enable succeeds (AC-11b, R-84a)", async ({
   page,
 }, testInfo) => {
   await withDeploymentLock(
-    LOCK,
+    REQUIRED_LOCK,
     async () => {
-      const original = await sql(
-        "select config::text from tenant_module where module_id = 'placeholder'"
+      const wasEnabled = await landingSql(
+        `select enabled::text from tenant_module where module_id = '${REQUIRED}'`
       );
 
-      const wasEnabled = await sql(
-        "select enabled::text from tenant_module where module_id = 'placeholder'"
+      const wasConfig = await landingSql(
+        `select config::text from tenant_module where module_id = '${REQUIRED}'`
       );
 
       try {
-        // The module arrives off, with its required title unset and one other setting already made.
-        await sql(
-          `update tenant_module set enabled = false, config = '{"title": "", "pageSize": 30}'::jsonb where module_id = 'placeholder'`
+        // The module arrives off, with its required endpoint never set.
+        await landingSql(
+          `update tenant_module set enabled = false, config = '{}'::jsonb where module_id = '${REQUIRED}'`
         );
 
-        const access = await placeholderAssignments();
+        const access = await requiredAssignments();
         const before = await enabledCount();
 
-        await signIn(page, testInfo.project.name);
-        await page.goto(`${BASE}/admin/modules`);
+        await signInThroughBroker(page, {
+          baseUrl: LANDING,
+          email: scenarioEmail("landing", "acceptance", testInfo.project.name),
+        });
+        await page.goto(`${LANDING}/admin/modules`);
 
         const toggle = page
-          .getByRole("switch", { name: "Placeholder enabled" })
+          .getByRole("switch", { name: "Required setting fixture enabled" })
           .filter({ visible: true });
 
         await expect(toggle).not.toBeChecked();
@@ -392,16 +410,16 @@ test("first enable: a required value refuses the switch, a settings save keeps t
         // The refusal names the field and points at the core configuration path.
         const refusal = page
           .getByRole("alert")
-          .filter({ hasText: "title" })
+          .filter({ hasText: "endpoint" })
           .filter({ visible: true });
 
         await expect(refusal).toBeVisible();
-        await expect(refusal.getByText("title", { exact: true })).toBeVisible();
+        await expect(
+          refusal.getByText("endpoint", { exact: true })
+        ).toBeVisible();
         await expect(toggle).not.toBeChecked();
         await expectNoAxeViolations(page, "first enable refused");
-        expect(await placeholderRow()).toBe(
-          'false {"title": "", "pageSize": 30}'
-        );
+        expect(await requiredRow()).toBe("false {}");
         expect(await enabledCount()).toBe(before);
 
         // Saving the value through Tenant Settings is not activation.
@@ -414,35 +432,34 @@ test("first enable: a required value refuses the switch, a settings save keeps t
 
         await page
           .getByRole("navigation", { name: "Settings sections" })
-          .getByRole("button", { name: /^Placeholder( |$)/ })
+          .getByRole("button", { name: /^Required setting fixture( |$)/ })
           .click();
-        await expect(page.getByText("Title is required.")).toBeVisible();
-        await page.getByRole("textbox", { name: "Title" }).fill("First enable");
+        await page
+          .getByRole("textbox", { name: "Endpoint" })
+          .fill("First enable");
         await page.getByRole("button", { name: "Save", exact: true }).click();
         await expect(
-          page.getByText("Placeholder saved. Written to the audit log.").first()
+          page
+            .getByText(
+              "Required setting fixture saved. Written to the audit log."
+            )
+            .first()
         ).toBeVisible();
 
-        expect(
-          await sql(
-            "select enabled::text || ' ' || (config->>'title') || ' ' || (config->>'pageSize') from tenant_module where module_id = 'placeholder'"
-          )
-        ).toBe("false First enable 30");
+        expect(await requiredRow()).toBe('false {"endpoint": "First enable"}');
         expect(await enabledCount()).toBe(before);
 
-        const saved = (await placeholderRow()).replace(/^false /, "");
-
         // Enabling now succeeds, and the settings and the access are what they were.
-        await page.goto(`${BASE}/admin/modules`);
+        await page.goto(`${LANDING}/admin/modules`);
         await toggle.click();
         await expect(toggle).toBeChecked();
         await expect(page.getByText(SAVED)).toBeVisible();
         await expect.poll(enabledCount, POLL).toBe(before + 1);
-        expect(await placeholderRow()).toBe(`true ${saved}`);
-        expect(await placeholderAssignments()).toBe(access);
+        expect(await requiredRow()).toBe('true {"endpoint": "First enable"}');
+        expect(await requiredAssignments()).toBe(access);
       } finally {
-        await sql(
-          `update tenant_module set enabled = ${wasEnabled}, config = '${original.replaceAll("'", "''")}'::jsonb where module_id = 'placeholder'`
+        await landingSql(
+          `update tenant_module set enabled = ${wasEnabled}, config = '${wasConfig.replaceAll("'", "''")}'::jsonb where module_id = '${REQUIRED}'`
         );
       }
     },

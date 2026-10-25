@@ -174,6 +174,9 @@ const LANDING_SEED = [
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'Landing fixture user' and u.email in ('${member}', '${noaccess}') on conflict do nothing`,
     ];
   }),
+  // S3-09 AC-11b: the first-enable proof's own administrator, on the one deployment that compiles
+  // the fixture module with a required value.
+  ...administratorSql("landing", "acceptance"),
 ].join("; ");
 
 /** Starts both brokered deployments and seeds the company people they sign in as. */
@@ -329,6 +332,7 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "landing", state: "nogrant", groups: () => [] },
     { scenario: "landing", state: "menu", groups: () => [] },
     { scenario: "landing", state: "noaccess", groups: () => [] },
+    { scenario: "landing", state: "acceptance", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {

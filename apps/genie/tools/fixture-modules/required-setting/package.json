@@ -1,0 +1,19 @@
+{
+  "name": "@genie/module-required-setting",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@genie/core": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "genie": {
+    "module": {
+      "id": "required-setting",
+      "entrypoint": "src/index.ts"
+    }
+  }
+}

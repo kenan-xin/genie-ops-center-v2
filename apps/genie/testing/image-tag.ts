@@ -23,6 +23,7 @@ export const FIXTURE_MODULES = [
   "invalid-viewer",
   "permitted-viewer",
   "landing-fixture",
+  "required-setting",
 ] as const;
 
 /**

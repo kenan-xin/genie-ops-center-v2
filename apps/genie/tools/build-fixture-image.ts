@@ -10,8 +10,10 @@ import {
 
 /**
  * Builds `genie-s005:fixture`, the disposable image carrying the failing,
- * invalid and permitted frame-origin fixture modules (AC-25), and the landing
- * fixture, the one module with the landing flag (Spec 3 AC-4).
+ * invalid and permitted frame-origin fixture modules (AC-25), the landing
+ * fixture, the one module with the landing flag (Spec 3 AC-4), and the required
+ * setting fixture, the one module with a required value and no default (Spec 3
+ * AC-11b).
  *
  * The repository is never touched. The script stages a build context under the
  * operating system's temporary directory — outside the repository's inventory —
