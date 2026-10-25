@@ -533,6 +533,8 @@ export const CoreIssueOnField: Story = {
     await expect(idle).toHaveAccessibleDescription("Server says no.");
     await expect(idle).toHaveValue(30);
     await expect(canvas.getByText(/Not saved\./)).toBeVisible();
+    // A field refusal is fixed by editing the field, so Retry is not offered.
+    await expect(canvas.queryByRole("button", { name: "Retry" })).toBeNull();
 
     // Editing the field clears the server error it carried.
     await userEvent.clear(idle);

@@ -63,6 +63,8 @@ export function SectionFooter(props: {
   readonly lastChanged: LastChangedView;
   readonly timeZone: string;
   readonly failure: string | null;
+  /** False when a field issue refused the save: editing the field is the way forward. */
+  readonly retryable: boolean;
 }) {
   const { state } = props;
 
@@ -75,9 +77,11 @@ export function SectionFooter(props: {
         >
           <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
           Not saved. {props.failure} Your changes are still here.
-          <Button variant="link" size="sm" onClick={state.submit}>
-            Retry
-          </Button>
+          {props.retryable ? (
+            <Button variant="link" size="sm" onClick={state.submit}>
+              Retry
+            </Button>
+          ) : null}
         </p>
       )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

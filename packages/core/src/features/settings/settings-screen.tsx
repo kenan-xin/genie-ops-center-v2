@@ -221,18 +221,21 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
     }
   };
 
-  const footer = (lastChanged: LastChangedView) => (state: FooterState) => (
-    <SectionFooter
-      state={state}
-      lastChanged={lastChanged}
-      timeZone={props.timeZone}
-      failure={
-        failure !== null && failure.sectionId === current?.id
-          ? failure.message
-          : null
-      }
-    />
-  );
+  const footer = (lastChanged: LastChangedView) => (state: FooterState) => {
+    const shown =
+      failure !== null && failure.sectionId === current?.id ? failure : null;
+
+    return (
+      <SectionFooter
+        state={state}
+        lastChanged={lastChanged}
+        timeZone={props.timeZone}
+        failure={shown?.message ?? null}
+        // A field issue is fixed by editing that field, so Retry cannot succeed.
+        retryable={shown === null || shown.issues.length === 0}
+      />
+    );
+  };
 
   if (props.error !== undefined)
     return (
