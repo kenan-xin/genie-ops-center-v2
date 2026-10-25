@@ -1,14 +1,17 @@
 /*
- * The product stylesheet, imported and never copied, so a story renders with
- * the same Tailwind rules and tokens as the application.
+ * The same Tailwind setup and token layer as the application, from
+ * `@genie/ui` and never copied, so a story renders with the same rules.
  */
-@import "../../genie/src/styles/globals.css";
+@import "tailwindcss" source(none);
+@import "@genie/ui/fonts.css";
+@import "@genie/ui/tokens.css";
 
 /*
- * Tailwind writes a rule only for a class it finds in a scanned file. The
- * application's configuration scans its own source and the core feature
- * screens; these add the other shared story owners. `main.ts` adds the source
- * folder of each selected module, so an excluded module is never scanned.
+ * Tailwind writes a rule only for a class it finds in a scanned file, and
+ * automatic detection is off. These are the shared story owners, plus the
+ * application's own stories. `main.ts` adds the source folder of each selected
+ * module, so an excluded module is never scanned.
  */
 @source "../../../packages/ui/src";
 @source "../../../packages/core/src";
+@source "../../genie/src";

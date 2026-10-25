@@ -11,6 +11,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens": "./src/theme/tokens.ts",
+    "./tokens.css": "./src/theme/tokens.css",
     "./config-form-schema": "./src/parts/config-form-schema.ts",
     "./fonts.css": "./src/fonts/fonts.css",
     "./fonts/*": "./src/fonts/*"

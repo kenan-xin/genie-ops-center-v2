@@ -4,8 +4,9 @@ The shared theme surface.
 
 ## What belongs here
 
-The typed fixed token layer of `docs/design/design-system/tokens.md`, which
-`apps/genie/src/styles/globals.css` mirrors under a test (D3-3), the one focus
+The fixed token layer of `docs/design/design-system/tokens.md`, as CSS in
+`tokens.css` (exported as `@genie/ui/tokens.css`, which every app and Storybook
+imports) and typed in `tokens.ts`, compared under a test (D3-3), the one focus
 ring, and the Storybook-only `ThemeProvider` decorator. The decorator sets
 `data-theme` on the story root, because a story has no `<html data-theme>`.
 

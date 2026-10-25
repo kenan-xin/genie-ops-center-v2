@@ -1,8 +1,8 @@
 /**
  * The typed fixed token layer of `docs/design/design-system/tokens.md` (D3-3).
  *
- * `apps/genie/src/styles/globals.css` writes the same values as CSS variables,
- * and a test compares the two. Nothing here derives a value from a tenant: the
+ * `tokens.css` beside it writes the same values as CSS variables, and a test
+ * compares the two. Nothing here derives a value from a tenant: the
  * per-request branding layer overrides only the primary pair, the root size and
  * the face, so this package needs no color computation (the no-ramp rule).
  */

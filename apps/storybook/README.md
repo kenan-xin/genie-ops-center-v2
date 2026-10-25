@@ -8,7 +8,7 @@ The host is development-only. No Storybook package, story, fixture, or static ou
 
 Only the host configuration: `.storybook/main.ts`, `.storybook/preview.tsx`, `.storybook/preview.css`, and the small Vite plugin `main.ts` uses. The main file reads the module selection, spreads the shared preset, and adds Tailwind's Vite plugin. The preview file loads the stylesheet and sets the accessibility gate, the docs table of contents, and the theme toolbar.
 
-The stylesheet imports the application's `apps/genie/src/styles/globals.css` and never copies it, so a story renders with the product's Tailwind rules. It adds `@source` lines for `packages/ui` and `packages/core`; `main.ts` adds one for each selected module only, so an excluded module is never scanned.
+The stylesheet imports Tailwind and the token layer `@genie/ui/tokens.css`, the same file the application imports, and never copies it, so a story renders with the product's Tailwind rules. It adds `@source` lines for `packages/ui`, `packages/core` and `apps/genie/src`. `main.ts` adds one for each selected module only, so an excluded module is never scanned.
 
 ## What must not go here
 
