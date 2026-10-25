@@ -5,8 +5,9 @@ The one authorization seam in the platform.
 ## What belongs here
 
 `can()` and `scopesFor()`, the request-owned principal with its lazy grant read and its
-per-resource parent cache, the real grant reader and its one assignment query, the core permission
-keys and system roles with their seeding, the module admin-key append and removal, and the
+per-resource parent cache, the real grant reader and its one assignment query, the holder query
+that lists who holds a key by the grant reader's eligibility rules, the core permission keys and
+system roles with their seeding, the module admin-key append and removal, and the
 permission transformations the migrator run applies. Every permission check and every list-query
 scope filter in the platform routes through `can()` or `scopesFor()` here (DEC-39).
 

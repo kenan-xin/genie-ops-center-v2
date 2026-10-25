@@ -1,12 +1,14 @@
 import { eq, inArray } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import type { PermissionKey } from "../../lib/module-contract/keys.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import { hasWorkspaceEntry } from "../../lib/module-contract/workspace-entry.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { category, tenantModule } from "../../schema.ts";
 import { writeAdminAuditEvent } from "../audit/index.ts";
+import { type PermissionHolder, readHolders } from "../authorization/index.ts";
 import {
   type ModuleEnableResult,
   ModuleManagementError,
@@ -14,12 +16,7 @@ import {
 } from "../module-management/index.ts";
 
 /** A principal that holds `<id>:use` through one role (R-86). */
-export type ModuleHolder = {
-  readonly principalType: "user" | "group";
-  readonly principalId: string;
-  readonly label: string;
-  readonly roleName: string;
-};
+export type ModuleHolder = PermissionHolder;
 
 /** One row of the Modules page: a compiled module, its state, its category and its holders. */
 export type ModuleRow = {
@@ -70,19 +67,10 @@ export async function listModules(
     .leftJoin(category, eq(category.id, tenantModule.categoryId))
     .where(inArray(tenantModule.moduleId, ids));
 
-  const holders = await tenant.db.$client.query<ModuleHolder & { key: string }>(
-    `select k.key, a.principal_type as "principalType", a.principal_id as "principalId",
-            coalesce(u.name, g.name, 'Unknown') as label, r.name as "roleName"
-       from role_assignment a
-       join role r on r.id = a.role_id
-       cross join unnest(r.permissions) as k(key)
-       left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
-       left join "group" g on a.principal_type = 'group' and g.id = a.principal_id::uuid
-      where k.key = any($1::text[])
-        -- R-39: the break-glass account appears only in the audit log.
-        and coalesce(u.is_break_glass, false) = false
-      order by a.principal_type, lower(coalesce(u.name, g.name)), r.name`,
-    [ids.map((id) => `${id}:use`)]
+  const holders = await readHolders(
+    tenant,
+    compiled,
+    ids.map((id): PermissionKey => `${id}:use`)
   );
 
   const byId = new Map(rows.map((row) => [row.moduleId, row]));
@@ -97,9 +85,7 @@ export async function listModules(
       enabled: row?.enabled ?? false,
       categoryId: row?.categoryId ?? null,
       placeable: hasWorkspaceEntry(module),
-      holders: holders.rows
-        .filter((holder) => holder.key === `${id}:use`)
-        .map(({ key: _key, ...holder }) => holder),
+      holders: holders.get(`${id}:use`) ?? [],
     };
   });
 }

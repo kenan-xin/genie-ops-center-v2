@@ -40,6 +40,8 @@ const fixtureModule: Module = validModule;
 
 /** Compiled, its stored config fails its schema, so an enable refuses. */
 const requiredConfig = fixtureCopy("required-config", {
+  // A module with a workspace entry declares `<id>:use` (DEC-50), so its holders can hold it.
+  permissions: [{ key: "required-config:use", label: "Use the module" }],
   configuration: {
     schema: z.object({ endpoint: z.string().url() }),
     section: { id: "required-config", title: "Required configuration" },
@@ -252,7 +254,7 @@ describe("the modules page service against a real database", () => {
     expect(await auditRows()).toEqual([]);
   });
 
-  it("listModules lists compiled modules in image order, maps a dangling category id to null, lists holders of <id>:use and keeps holders of a disabled module", async () => {
+  it("listModules lists compiled modules in image order, maps a dangling category id to null, lists only the holders of <id>:use that the grant reader grants and keeps them for a disabled module", async () => {
     const [category] = await query(
       "insert into category (name, position) values ('Finance', 0) returning id"
     );
@@ -268,37 +270,63 @@ describe("the modules page service against a real database", () => {
       "set session_replication_role = replica; update tenant_module set category_id = gen_random_uuid() where module_id = 'headless'; set session_replication_role = origin"
     );
 
-    const [userId, groupId, breakGlassId, useRole, readRole] =
-      await Promise.all([
-        insertUser(deployment.context, { name: "Ada" }),
-        insertGroup(deployment.context, [], { name: "Analysts" }),
-        insertUser(deployment.context, {
-          name: "Break glass",
-          isBreakGlass: true,
-        }),
-        insertRole(deployment.context, {
-          name: "Config users",
-          permissions: ["required-config:use", "fixture:read"],
-        }),
-        insertRole(deployment.context, {
-          name: "Config readers",
-          permissions: ["required-config:read"],
-        }),
-      ]);
+    const [
+      userId,
+      groupId,
+      lapsedId,
+      breakGlassId,
+      bannedId,
+      erasedId,
+      archivedId,
+      useRole,
+      readRole,
+    ] = await Promise.all([
+      insertUser(deployment.context, { name: "Ada" }),
+      insertGroup(deployment.context, [], { name: "Analysts" }),
+      // A ban that has lapsed grants again, whatever the status says.
+      insertUser(deployment.context, {
+        name: "Ban lapsed",
+        status: "disabled",
+        banned: true,
+        banExpires: new Date(Date.now() - 86_400_000),
+      }),
+      insertUser(deployment.context, {
+        name: "Break glass",
+        isBreakGlass: true,
+      }),
+      insertUser(deployment.context, { name: "Banned", banned: true }),
+      insertUser(deployment.context, { name: "Erased", erasedAt: new Date() }),
+      insertGroup(deployment.context, [], {
+        name: "Archived analysts",
+        archivedAt: new Date(),
+      }),
+      insertRole(deployment.context, {
+        name: "Config users",
+        // `headless` declares no `headless:use`, so that key grants nothing (R-33b).
+        permissions: ["required-config:use", "fixture:read", "headless:use"],
+      }),
+      insertRole(deployment.context, {
+        name: "Config readers",
+        permissions: ["required-config:read"],
+      }),
+    ]);
+
+    // Every principal holds `Config users`. The Access column leaves out the last four: the
+    // break-glass account (R-39), a banned and an erased person, and an archived group (R-32).
+    const principals = [
+      { type: "user", id: userId },
+      { type: "group", id: groupId },
+      { type: "user", id: lapsedId },
+      { type: "user", id: breakGlassId },
+      { type: "user", id: bannedId },
+      { type: "user", id: erasedId },
+      { type: "group", id: archivedId },
+    ] as const;
 
     await Promise.all([
-      assignRole(deployment.context, {
-        roleId: useRole,
-        principal: { type: "user", id: userId },
-      }),
-      assignRole(deployment.context, {
-        roleId: useRole,
-        principal: { type: "group", id: groupId },
-      }),
-      assignRole(deployment.context, {
-        roleId: useRole,
-        principal: { type: "user", id: breakGlassId },
-      }),
+      ...principals.map((principal) =>
+        assignRole(deployment.context, { roleId: useRole, principal })
+      ),
       assignRole(deployment.context, {
         roleId: readRole,
         principal: { type: "user", id: userId },
@@ -351,8 +379,15 @@ describe("the modules page service against a real database", () => {
         label: "Ada",
         roleName: "Config users",
       },
+      {
+        principalType: "user",
+        principalId: lapsedId,
+        label: "Ban lapsed",
+        roleName: "Config users",
+      },
     ]);
     expect(rows[1]?.holders).toEqual([]);
+    expect(rows[2]?.holders).toEqual([]);
   });
 
   it("setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module, writes one core:module_category_set row", async () => {

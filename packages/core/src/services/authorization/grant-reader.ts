@@ -8,6 +8,7 @@ import type {
   RecordDescriptor,
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { eligibility } from "./eligibility.ts";
 import {
   type GrantReader,
   type PermissionGrants,
@@ -22,6 +23,8 @@ const NO_GRANTS: PermissionGrants = { keys: new Set(), scopes: new Map() };
 
 const BYPASS: PermissionGrants = { ...NO_GRANTS, bypass: true };
 
+const { inactivePerson, activeGroup } = eligibility("u", "g");
+
 /**
  * The one assignment query of R-27: the person's own row for the break-glass rule, then every
  * assignment whose principal is the person or a group they belong to, with the role's keys and
@@ -31,9 +34,7 @@ const BYPASS: PermissionGrants = { ...NO_GRANTS, bypass: true };
  */
 const ASSIGNMENTS_SQL = `
   select u.is_break_glass, u.must_change_password, u.two_factor_enabled,
-         (u.erased_at is not null
-           or (u.banned is true and (u.ban_expires is null or u.ban_expires > now())))
-           as inactive,
+         ${inactivePerson} as inactive,
          r.permissions, a.scope_type, a.scope_id,
          r.name as role_name, r.module_id as module_name,
          cardinality(r.permissions) as permission_count,
@@ -45,7 +46,7 @@ const ASSIGNMENTS_SQL = `
             select m.group_id::text
               from group_member m
               join "group" g on g.id = m.group_id
-             where m.user_id = u.id and g.archived_at is null))
+             where m.user_id = u.id and ${activeGroup}))
     left join role r on r.id = a.role_id
     left join "group" g on a.principal_type = 'group' and g.id = a.principal_id::uuid
    where u.id = $1`;

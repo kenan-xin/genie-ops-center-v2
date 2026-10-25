@@ -22,6 +22,8 @@ export {
   principalFor,
 } from "./grant-reader.ts";
 
+export { readHolders, type PermissionHolder } from "./holders.ts";
+
 export {
   readOwnGroups,
   readRoleSummaries,

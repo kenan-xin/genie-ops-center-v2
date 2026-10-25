@@ -115,13 +115,18 @@ test("lists every compiled module and switches one off through the confirm dialo
         ).toHaveCount(compiled);
         await expect(toggle).toBeChecked();
 
-        // Access lists the holders `role_assignment` gives, links to Roles and grants nothing here.
+        // Access lists the holders that `can()` grants, links to Roles and grants nothing here. No
+        // break-glass account (R-39), no erased or banned person, no archived group (R-32).
         const holders = Number(
           await sql(
             `select count(*) from role_assignment a
                join role r on r.id = a.role_id
                left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
-              where 'placeholder:use' = any(r.permissions) and coalesce(u.is_break_glass, false) = false`
+               left join "group" g on a.principal_type = 'group' and g.id::text = a.principal_id
+              where 'placeholder:use' = any(r.permissions)
+                and ((u.id is not null and u.is_break_glass = false and u.erased_at is null
+                      and not (u.banned is true and (u.ban_expires is null or u.ban_expires > now())))
+                  or (g.id is not null and g.archived_at is null))`
           )
         );
 

@@ -415,7 +415,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the modules page service against a real database a page switch writes one core row and no ops row; a command run writes one ops row and no core row",
       "the modules page service against a real database a repeated switch writes no audit row",
       "the modules page service against a real database an enable with an invalid stored config refuses with issues, leaves the row off, writes no audit row",
-      "the modules page service against a real database listModules lists compiled modules in image order, maps a dangling category id to null, lists holders of <id>:use and keeps holders of a disabled module",
+      "the modules page service against a real database listModules lists compiled modules in image order, maps a dangling category id to null, lists only the holders of <id>:use that the grant reader grants and keeps them for a disabled module",
       "the modules page service against a real database setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module, writes one core:module_category_set row",
       "the modules page service against a real database a repeated placement changes nothing and writes no audit row",
     ],
