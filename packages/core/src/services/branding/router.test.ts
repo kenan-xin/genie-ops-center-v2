@@ -35,7 +35,7 @@ describe("the branding router", () => {
       code: "forbidden",
     });
     await expect(
-      api.upload({ slot: "favicon", file: new File(["x"], "favicon.ico") })
+      api.upload({ file: new File(["x"], "favicon.ico") })
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 });

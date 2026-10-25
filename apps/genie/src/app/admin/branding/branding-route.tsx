@@ -1,6 +1,6 @@
 "use client";
 
-import type { BrandingDraft, BrandingImageSlot } from "@genie/core";
+import type { BrandingDraft } from "@genie/core";
 import { BrandingScreen } from "@genie/core/features/branding";
 import { toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,10 +26,7 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
   });
 
   const upload = useMutation({
-    mutationFn: (input: {
-      readonly slot: BrandingImageSlot;
-      readonly file: File;
-    }) => rpc.branding.upload(input),
+    mutationFn: (file: File) => rpc.branding.upload({ file }),
   });
 
   return (
@@ -55,9 +52,10 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
 
         await queryClient.invalidateQueries({ queryKey: ["branding"] });
       }}
-      onUpload={async (slot, file) => {
+      // The slot stays in the screen; the server stores a file and Publish names its slot (R-44).
+      onUpload={async (_slot, file) => {
         try {
-          return await upload.mutateAsync({ slot, file });
+          return await upload.mutateAsync(file);
         } catch (cause) {
           // The screen shows the first issue, which names the size or the type.
           throw refusalOf(cause);

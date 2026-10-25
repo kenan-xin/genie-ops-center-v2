@@ -111,7 +111,6 @@ afterAll(async () => {
 describe("the branding RPC", () => {
   it("stores an ico upload in one multipart request and returns its preview link", async () => {
     const view = await client(managerCookie).branding.upload({
-      slot: "favicon",
       file: new File([new Uint8Array([0, 0, 1, 0])], "favicon.ico", {
         type: "image/x-icon",
       }),
@@ -130,7 +129,6 @@ describe("the branding RPC", () => {
     expect(
       await refusal(
         api.upload({
-          slot: "logoLight",
           file: new File([new Uint8Array(1_048_577)], "big.png", {
             type: "image/png",
           }),
@@ -140,7 +138,6 @@ describe("the branding RPC", () => {
     expect(
       await refusal(
         api.upload({
-          slot: "logoLight",
           file: new File(["%PDF-1.7"], "report.pdf", {
             type: "application/pdf",
           }),
@@ -178,7 +175,6 @@ describe("the branding RPC", () => {
     expect(
       await refusal(
         client().branding.upload({
-          slot: "favicon",
           file: new File(["x"], "favicon.ico"),
         })
       )

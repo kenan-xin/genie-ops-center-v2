@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
 import type { BrandingImageView, BrandingView } from "./index.ts";
-import { BRANDING_IMAGE_SLOTS } from "./schemas.ts";
 
 /**
  * The Branding page API (R-43 to R-49), under core's `/branding/` area. The publish input checks
@@ -27,7 +26,7 @@ export const brandingContract = {
 
   upload: oc
     .route({ method: "POST", path: "/branding/images" })
-    .input(z.object({ slot: z.enum(BRANDING_IMAGE_SLOTS), file: z.file() }))
+    .input(z.object({ file: z.file() }))
     .output(z.custom<BrandingImageView>()),
 };
 
