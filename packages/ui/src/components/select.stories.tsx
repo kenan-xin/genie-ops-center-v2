@@ -11,6 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  type ThemeName,
 } from "../index.ts";
 
 const items = [
@@ -82,6 +83,44 @@ export const Default: Story = {
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     );
   },
+};
+
+/** R-8: the ring is --ring, blue-600 in light and the fixed --brand-on-dark (blue-400) in dark. */
+function ringColor(theme: ThemeName): string {
+  return theme === "dark" ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)";
+}
+
+export const KeyboardHighlight: Story = {
+  play: async ({ globals }) => {
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("{ArrowDown}");
+
+    const option = await screen.findByRole("option", { name: "Administrator" });
+
+    await waitFor(() => expect(option).toHaveFocus());
+    await expect(getComputedStyle(option).boxShadow).toContain(
+      ringColor(globals["theme"])
+    );
+
+    // DR-02: the highlight differs from the popup in both themes.
+    const popup = option.closest("[data-slot=select-content]");
+
+    await expect(popup).not.toBeNull();
+    await expect(getComputedStyle(option).backgroundColor).not.toBe(
+      getComputedStyle(popup ?? option).backgroundColor
+    );
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    );
+  },
+};
+
+export const KeyboardHighlightOnDark: Story = {
+  ...KeyboardHighlight,
+  globals: { theme: "dark" },
 };
 
 export const ShowsTheLabel: Story = {

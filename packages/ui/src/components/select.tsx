@@ -86,7 +86,7 @@ function SelectContent({
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
           className={cn(
-            "relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 overflow-x-hidden overflow-y-auto rounded-md border border-border bg-card text-foreground shadow-md motion-safe:transition-opacity data-starting-style:opacity-0 data-ending-style:opacity-0",
+            "relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 overflow-x-hidden overflow-y-auto rounded-md border p-1 border-border bg-card text-foreground shadow-md motion-safe:transition-opacity data-starting-style:opacity-0 data-ending-style:opacity-0",
             className
           )}
           {...props}
@@ -122,7 +122,9 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex min-h-11 w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-2 text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted lg:min-h-10 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex min-h-11 w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-2 text-sm text-foreground select-none data-highlighted:bg-border lg:min-h-10 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        // DR-02: --muted equals --card in dark, so the highlight is --border and the ring shows.
+        focusRing,
         className
       )}
       {...props}
