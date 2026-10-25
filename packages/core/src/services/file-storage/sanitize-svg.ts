@@ -40,6 +40,9 @@ function stripXmlInvalidCharacters(source: string): string {
     .join("");
 }
 
+/** An SVG the sanitizer refuses: not UTF-8, or empty after sanitizing. A caller may answer 400. */
+export class SvgRefusedError extends Error {}
+
 type Sanitizer = {
   /** Sanitizes one SVG string and returns it as well-formed XML. */
   readonly toXml: (svg: string) => string;
@@ -106,7 +109,7 @@ async function buildSanitizer(): Promise<Sanitizer> {
       const element = fragment.querySelector("svg");
 
       if (element === null || element.children.length === 0) {
-        throw new Error("The SVG is empty after sanitizing.");
+        throw new SvgRefusedError("The SVG is empty after sanitizing.");
       }
 
       // XML, not HTML, so U+00A0 stays a raw character and the bytes reparse as image/svg+xml.
@@ -123,7 +126,15 @@ async function buildSanitizer(): Promise<Sanitizer> {
 export async function sanitizeUploadedSvg(bytes: Buffer): Promise<Buffer> {
   const { toXml } = await loadSanitizer();
 
-  const source = stripXmlInvalidCharacters(bytes.toString("utf8"));
+  let decoded: string;
+
+  try {
+    decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new SvgRefusedError("The SVG is not UTF-8.");
+  }
+
+  const source = stripXmlInvalidCharacters(decoded);
 
   return Buffer.from(toXml(source), "utf8");
 }

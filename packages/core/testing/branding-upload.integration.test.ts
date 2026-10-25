@@ -8,6 +8,10 @@ import {
   seedRoles,
 } from "../src/services/authorization/index.ts";
 import type { RequestPrincipal } from "../src/services/authorization/principal.ts";
+import {
+  BRANDING_UPLOAD_BAD_SVG,
+  BRANDING_UPLOAD_OVER_LIMIT,
+} from "../src/services/branding/schemas.ts";
 import { uploadBrandingImage } from "../src/services/branding/upload.ts";
 import { insertPersonWith, startDisposableDeployment } from "./index.ts";
 
@@ -51,18 +55,17 @@ async function fileCount(): Promise<number> {
     .length;
 }
 
-async function refusal(input: {
-  fileName: string;
-  mimeType: string;
-  bytes: Buffer;
-}) {
+async function refusal(
+  input: {
+    fileName: string;
+    mimeType: string;
+    bytes: Buffer;
+  },
+  context = deployment.context
+) {
   const before = await fileCount();
 
-  const error: unknown = await uploadBrandingImage(
-    deployment.context,
-    caller,
-    input
-  ).then(
+  const error: unknown = await uploadBrandingImage(context, caller, input).then(
     () => undefined,
     (cause: unknown) => cause
   );
@@ -156,6 +159,53 @@ describe("uploadBrandingImage", () => {
       });
     }
   );
+
+  it.each([
+    [
+      "a script-only svg",
+      Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+      ),
+    ],
+    [
+      "a UTF-16 svg",
+      Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(
+          '<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>',
+          "utf16le"
+        ),
+      ]),
+    ],
+  ])("refuses %s with branding-upload-refused", async (_name, bytes) => {
+    expect(
+      await refusal({ fileName: "logo.svg", mimeType: "image/svg+xml", bytes })
+    ).toEqual({
+      code: "branding-upload-refused",
+      issues: [{ path: "file", message: BRANDING_UPLOAD_BAD_SVG }],
+    });
+  });
+
+  it("refuses a file over a FILE_MAX_BYTES below 1 MB with branding-upload-refused", async () => {
+    const small = {
+      ...deployment.context,
+      env: { ...deployment.context.env, fileMaxBytes: 1000 },
+    };
+
+    expect(
+      await refusal(
+        {
+          fileName: "logo.png",
+          mimeType: "image/png",
+          bytes: Buffer.alloc(1001),
+        },
+        small
+      )
+    ).toEqual({
+      code: "branding-upload-refused",
+      issues: [{ path: "file", message: BRANDING_UPLOAD_OVER_LIMIT }],
+    });
+  });
 
   it("stores an svg without its script element and its onload attribute", async () => {
     const view = await uploadBrandingImage(deployment.context, caller, {

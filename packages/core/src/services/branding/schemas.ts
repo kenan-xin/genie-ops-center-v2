@@ -41,6 +41,13 @@ export const BRANDING_UPLOAD_TOO_LARGE = "This file is over 1 MB.";
 
 export const BRANDING_UPLOAD_WRONG_TYPE = "Use a PNG, SVG, WebP or ICO file.";
 
+/** The deployment's `FILE_MAX_BYTES` is below 1 MB and the file is over it. */
+export const BRANDING_UPLOAD_OVER_LIMIT =
+  "This file is over the upload limit of this deployment.";
+
+export const BRANDING_UPLOAD_BAD_SVG =
+  "This SVG cannot be used. Save it as UTF-8 with at least one shape and no script.";
+
 /**
  * The type of a branding file: its declared type, or when that is empty the type its extension
  * names. Another extension answers an empty string, which the type list refuses.

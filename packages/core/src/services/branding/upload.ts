@@ -6,9 +6,12 @@ import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { file } from "../../schema.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
 import { normalizeMimeType } from "../file-storage/index.ts";
+import { SvgRefusedError } from "../file-storage/sanitize-svg.ts";
 import {
   BRANDING_IMAGE_MAX_BYTES,
   BRANDING_IMAGE_TYPES,
+  BRANDING_UPLOAD_BAD_SVG,
+  BRANDING_UPLOAD_OVER_LIMIT,
   BRANDING_UPLOAD_TOO_LARGE,
   BRANDING_UPLOAD_WRONG_TYPE,
   type BrandingImageView,
@@ -86,15 +89,30 @@ export async function uploadBrandingImage(
     readonly bytes: Buffer;
   }
 ): Promise<BrandingImageView> {
+  // A deployment's FILE_MAX_BYTES below 1 MB is the real cap; the file store would refuse with a 500.
+  if (input.bytes.length > tenant.env.fileMaxBytes)
+    refuse(BRANDING_UPLOAD_OVER_LIMIT);
+
   if (input.bytes.length > BRANDING_IMAGE_MAX_BYTES)
     refuse(BRANDING_UPLOAD_TOO_LARGE);
 
   if (!BRANDING_IMAGE_TYPES.includes(normalizeMimeType(input.mimeType)))
     refuse(BRANDING_UPLOAD_WRONG_TYPE);
 
-  const stored = await withTransaction(tenant, (tx) =>
-    tenant.fileStorage.store({ ...input, uploadedByUserId: caller.userId }, tx)
-  );
+  let stored: { readonly id: string };
+
+  try {
+    stored = await withTransaction(tenant, (tx) =>
+      tenant.fileStorage.store(
+        { ...input, uploadedByUserId: caller.userId },
+        tx
+      )
+    );
+  } catch (error) {
+    if (error instanceof SvgRefusedError) refuse(BRANDING_UPLOAD_BAD_SVG);
+
+    throw error;
+  }
 
   const view = await brandingImageView(tenant, caller, stored.id);
 
