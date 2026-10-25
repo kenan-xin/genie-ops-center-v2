@@ -46,6 +46,16 @@ const SLOT_FIELD = {
   favicon: "faviconFileId",
 } as const satisfies Record<BrandingImageSlot, BrandingField>;
 
+/** The one fixed refusal for a slot whose stored id has no `file` row, naming it in words. */
+const MISSING_IMAGE_MESSAGE = {
+  logoLight:
+    "The logo for light backgrounds is missing. Remove it or upload it again.",
+  logoDark:
+    "The logo for dark backgrounds is missing. Remove it or upload it again.",
+  logoMark: "The square mark is missing. Remove it or upload it again.",
+  favicon: "The favicon is missing. Remove it or upload it again.",
+} as const satisfies Record<BrandingImageSlot, string>;
+
 type BrandingRow = typeof tenantBranding.$inferSelect;
 
 /** The row as the page edits it: no null name, the default color, empty texts for absent ones. */
@@ -119,7 +129,7 @@ async function refuseForeignImages(
   const named = BRANDING_IMAGE_SLOTS.flatMap((slot) => {
     const id = draft[SLOT_FIELD[slot]];
 
-    return id === null ? [] : [{ field: SLOT_FIELD[slot], id }];
+    return id === null ? [] : [{ slot, field: SLOT_FIELD[slot], id }];
   });
 
   if (named.length === 0) return;
@@ -134,6 +144,8 @@ async function refuseForeignImages(
       )
     );
 
+  const found = new Set(rows.map((row) => row.id));
+
   const images = new Set(
     rows
       .filter((row) => BRANDING_IMAGE_TYPES.includes(row.mimeType))
@@ -144,7 +156,10 @@ async function refuseForeignImages(
     .filter((image) => !images.has(image.id))
     .map((image) => ({
       path: image.field,
-      message: "Upload the image again.",
+      // A row of the wrong type is not missing; a dead id names the slot that lost it.
+      message: found.has(image.id)
+        ? "Upload the image again."
+        : MISSING_IMAGE_MESSAGE[image.slot],
     }));
 
   if (issues.length > 0) invalid(issues);

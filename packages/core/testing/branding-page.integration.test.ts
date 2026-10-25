@@ -203,6 +203,33 @@ describe("applyBranding", () => {
     expect(await published()).toEqual([]);
   });
 
+  it("refuses an unrelated publish while a stored image id has no file row, naming each dead slot", async () => {
+    await query(
+      "update tenant_branding set logo_light_file_id = $1, logo_mark_file_id = $2",
+      [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+      ]
+    );
+
+    const error = await refusalOf({ companyName: "Acme" });
+
+    expect(error.code).toBe("branding-invalid");
+    expect(error.issues).toEqual([
+      {
+        path: "logoLightFileId",
+        message:
+          "The logo for light backgrounds is missing. Remove it or upload it again.",
+      },
+      {
+        path: "logoMarkFileId",
+        message: "The square mark is missing. Remove it or upload it again.",
+      },
+    ]);
+    expect(await brandingRow()).toMatchObject({ company_name: "E2E" });
+    expect(await published()).toEqual([]);
+  });
+
   it("lets two concurrent publishes each name only their own change", async () => {
     await Promise.all([
       applyBranding(deployment.context, {

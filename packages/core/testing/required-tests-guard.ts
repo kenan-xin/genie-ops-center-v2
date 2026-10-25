@@ -465,6 +465,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "applyBranding writes three changed fields, the stored foreground and one audit row naming them",
       "applyBranding answers changed false for the stored values and writes no audit row",
       "applyBranding refuses a failing color, an empty company name and a pdf or missing file id, changing nothing",
+      "applyBranding refuses an unrelated publish while a stored image id has no file row, naming each dead slot",
       "applyBranding lets two concurrent publishes each name only their own change",
       "readBranding returns no url while the scan is pending, and the shell issues no mark link",
       "readBranding returns no url while the scan is infected, and the shell issues no mark link",
