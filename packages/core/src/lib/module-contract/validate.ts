@@ -53,7 +53,109 @@ type ZodDefView = {
   readonly element?: ZodType;
 
   readonly options?: readonly ZodType[];
+
+  readonly checks?: readonly {
+    readonly _zod: {
+      readonly def: { readonly check: string; readonly pattern?: RegExp };
+    };
+  }[];
 };
+
+/**
+ * The JSON Schema keywords ConfigForm checks or reads (admin M-2). Any other keyword is a rule the
+ * browser form lets through and the server refuses. `anyOf` is only the labeled enum of U-4.
+ */
+const FIELD_KEYWORDS: ReadonlySet<string> = new Set([
+  "type",
+  "enum",
+  "default",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "minimum",
+  "maximum",
+  "items",
+  "maxItems",
+  "title",
+  "description",
+  "anyOf",
+]);
+
+/** What ConfigForm checks on one entry of a string list. */
+const ITEM_KEYWORDS: ReadonlySet<string> = new Set([
+  "type",
+  "maxLength",
+  "pattern",
+]);
+
+/** One choice of a labeled enum: its value and its title (U-4). */
+const CHOICE_KEYWORDS: ReadonlySet<string> = new Set([
+  "type",
+  "const",
+  "title",
+]);
+
+const titledChoice = z.object({ const: z.string(), title: z.string() });
+
+const jsonKeywords = z.record(z.string(), z.unknown());
+
+/** One emitted field. A boolean `items` schema fails the parse, so the field is refused. */
+const emittedField = z.looseObject({
+  items: jsonKeywords.optional(),
+  anyOf: z.array(jsonKeywords).optional(),
+});
+
+function keysWithin(
+  schema: z.infer<typeof jsonKeywords>,
+  allowed: ReadonlySet<string>
+): boolean {
+  return Object.keys(schema).every((key) => allowed.has(key));
+}
+
+/** True when the field's JSON Schema holds only keywords ConfigForm checks (admin M-2). */
+function formChecksKeywords(field: ZodType): boolean {
+  const { $schema: _dialect, ...emitted } = z.toJSONSchema(field, {
+    io: "input",
+    unrepresentable: "throw",
+  });
+
+  const parsed = emittedField.safeParse(emitted);
+
+  if (!parsed.success || !keysWithin(parsed.data, FIELD_KEYWORDS)) return false;
+
+  const { items, anyOf } = parsed.data;
+
+  if (items !== undefined && !keysWithin(items, ITEM_KEYWORDS)) return false;
+
+  return (
+    anyOf === undefined ||
+    anyOf.every(
+      (choice) =>
+        keysWithin(choice, CHOICE_KEYWORDS) &&
+        titledChoice.safeParse(choice).success
+    )
+  );
+}
+
+/**
+ * True when the schema, or a schema it wraps, carries a rule JSON Schema cannot carry: a
+ * refinement, or a pattern flag that `z.toJSONSchema` drops (admin M-2, DR-20 S3-06).
+ */
+function hiddenRule(schema: ZodType): boolean {
+  // SAFETY: the same public `def` view `fieldKind` reads.
+  const def = schema.def as ZodDefView;
+
+  const ownRule = (def.checks ?? []).some(
+    ({ _zod }) =>
+      _zod.def.check === "custom" || (_zod.def.pattern?.flags ?? "") !== ""
+  );
+
+  const wrapped = [def.innerType, def.element, ...(def.options ?? [])].filter(
+    (inner) => inner !== undefined
+  );
+
+  return ownRule || wrapped.some(hiddenRule);
+}
 
 /**
  * The five field kinds ConfigForm renders (DEC-28). Wrappers a settings form
@@ -381,10 +483,20 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
+    if (hiddenRule(configuration.schema)) {
+      problems.push(
+        `The configuration carries a refinement ConfigForm cannot check. Declare each rule on its field (DEC-28).`
+      );
+    }
+
     for (const [name, field] of Object.entries(configuration.schema.shape)) {
       if (fieldKind(field) === undefined) {
         problems.push(
           `Field "${name}" uses a field kind ConfigForm does not render. The five kinds are string, number, boolean, enum and string list (DEC-28).`
+        );
+      } else if (hiddenRule(field) || !formChecksKeywords(field)) {
+        problems.push(
+          `Field "${name}" uses a rule ConfigForm cannot check. The form checks length, a pattern with no flags, a range, a list size and titled choices, and nothing else (DEC-28).`
         );
       }
     }

@@ -834,6 +834,67 @@ describe("validateModule", () => {
     expect(validateModule(broken).join(" ")).toContain("field kind");
   });
 
+  // admin M-2: a rule the browser form cannot check would let the form allow a value the server refuses.
+  it.each([
+    ["a format", z.url()],
+    ["an exclusive bound", z.number().positive()],
+    ["a minimum list length", z.array(z.string()).min(1)],
+    ["an entry minimum length", z.array(z.string().min(2))],
+    ["a refinement", z.string().refine((value) => value !== "x")],
+    [
+      "an entry refinement",
+      z.array(z.string().refine((value) => value !== "x")),
+    ],
+    ["a pattern flag", z.string().regex(/^[a-z]+$/i)],
+    ["an untitled choice", z.union([z.literal("a"), z.literal("b")])],
+  ])("rejects a field rule ConfigForm cannot check: %s", (_name, field) => {
+    const broken = {
+      ...validModule,
+      configuration: {
+        ...validModule.configuration,
+        schema: z.object({ value: field }),
+        fields: { value: { id: "value", title: "Value" } },
+      },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain(
+      'Field "value" uses a rule ConfigForm cannot check'
+    );
+  });
+
+  it("rejects a refinement on the whole configuration", () => {
+    const broken = {
+      ...validModule,
+      configuration: {
+        ...validModule.configuration,
+        schema: z
+          .object({ value: z.string() })
+          .refine((values) => values.value !== "x"),
+        fields: { value: { id: "value", title: "Value" } },
+      },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain("refinement");
+  });
+
+  it("accepts a field annotated with a title and a description", () => {
+    const ok = {
+      ...validModule,
+      configuration: {
+        ...validModule.configuration,
+        schema: z.object({
+          value: z
+            .string()
+            .max(10)
+            .meta({ title: "Value", description: "Help" }),
+        }),
+        fields: { value: { id: "value", title: "Value" } },
+      },
+    };
+
+    expect(validateModule(ok)).toEqual([]);
+  });
+
   it("rejects a forbidden kind hidden under a default wrapper", () => {
     const broken = {
       ...validModule,
