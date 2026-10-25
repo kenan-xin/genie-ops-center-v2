@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import {
   configFieldChoices,
@@ -104,6 +105,40 @@ describe("configFieldMessage gives the fixed R-80 text", () => {
     );
     expect(message("tags", ["good", "Bad Tag"])).toBe("Entry 2: wrong format.");
     expect(message("tags", [])).toBeNull();
+  });
+});
+
+describe("patterns use the module schema's regex flags (DR-20 S3-06)", () => {
+  // `\:` is an identity escape: valid in a regex literal without flags, a SyntaxError under `u`.
+  // `z.toJSONSchema` emits only the source, so the client must rebuild it with no flags.
+  const pattern = "^[a-z\\:]+$";
+
+  const serverAccepts = (value: string): boolean =>
+    z.string().regex(new RegExp(pattern)).safeParse(value).success;
+
+  it("string: accepts and refuses exactly what the module's schema does", () => {
+    const field = { type: "string", pattern } as const;
+    const meta = { id: "code", title: "Code" };
+
+    for (const value of ["a", "a:b", "ab", "A", "a b"])
+      expect(configFieldMessage(field, meta, value) === null).toBe(
+        serverAccepts(value)
+      );
+  });
+
+  it("string list: accepts and refuses exactly what the module's schema does", () => {
+    const field = {
+      type: "array",
+      items: { type: "string", pattern },
+    } as const;
+
+    const meta = { id: "codes", title: "Codes" };
+    const server = z.array(z.string().regex(new RegExp(pattern)));
+
+    for (const value of [["a"], ["a:b"], ["ab"], ["a", "A"]])
+      expect(configFieldMessage(field, meta, value) === null).toBe(
+        server.safeParse(value).success
+      );
   });
 });
 

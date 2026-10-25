@@ -120,7 +120,8 @@ const formatNumber = (n: number): string => n.toLocaleString("en-GB");
 
 /**
  * The zod schema of one field, rebuilt from its JSON Schema with the fixed R-80 messages, so the
- * form accepts exactly what the module's own zod schema accepts on the server.
+ * form accepts exactly what the module's own zod schema accepts on the server. A pattern is
+ * rebuilt with no flags because `z.toJSONSchema` drops them and modules declare none (DR-20 S3-06).
  */
 function fieldValueSchema(
   field: ConfigFieldSchema,
@@ -169,7 +170,7 @@ function fieldValueSchema(
         item = item.max(field.items.maxLength);
 
       if (field.items.pattern !== undefined)
-        item = item.regex(new RegExp(field.items.pattern, "u"));
+        item = item.regex(new RegExp(field.items.pattern));
 
       const list = z.array(item, { error: wrongFormat });
 
@@ -194,7 +195,7 @@ function fieldValueSchema(
         });
 
       if (field.pattern !== undefined)
-        text = text.regex(new RegExp(field.pattern, "u"), {
+        text = text.regex(new RegExp(field.pattern), {
           error: wrongFormat,
         });
 
