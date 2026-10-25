@@ -121,6 +121,36 @@ export const Loading: Story = {
   },
 };
 
+export const LoadingWithoutIcon: Story = {
+  render: (args) => (
+    <div className="flex gap-4">
+      <Button {...args}>Save changes</Button>
+      <Button {...args} loading>
+        Save changes
+      </Button>
+    </div>
+  ),
+  play: async ({ args, canvas }) => {
+    const [idle, busy] = canvas.getAllByRole("button", {
+      name: "Save changes",
+    });
+
+    if (!idle || !busy) {
+      throw new Error("LoadingWithoutIcon renders two buttons");
+    }
+
+    // tokens.md "Buttons": the control keeps its width with no leading icon to replace.
+    await expect(busy).toHaveAttribute("aria-busy", "true");
+    await expect(busy.querySelector("svg")).toBeVisible();
+    await expect(busy.getBoundingClientRect().width).toBe(
+      idle.getBoundingClientRect().width
+    );
+
+    await userEvent.click(busy);
+    await expect(args.onClick).not.toHaveBeenCalled();
+  },
+};
+
 export const LoadingSubmitDoesNotSubmit: Story = {
   render: (args) => (
     <form onSubmit={(event) => event.preventDefault()}>

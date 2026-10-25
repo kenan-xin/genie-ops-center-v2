@@ -39,9 +39,19 @@ function Button({
 
   const hasLeadingIcon = nodes.some(isLeadingIcon);
 
-  const loadingContent = hasLeadingIcon
-    ? nodes.map((node) => (isLeadingIcon(node) ? spinner : node))
-    : [spinner, ...nodes];
+  // With no icon to replace, the label keeps its place (and the accessible name) under the spinner.
+  const loadingContent = hasLeadingIcon ? (
+    nodes.map((node) => (isLeadingIcon(node) ? spinner : node))
+  ) : (
+    <>
+      <span className="inline-flex items-center gap-2 opacity-0">
+        {children}
+      </span>
+      <span className="absolute inset-0 flex items-center justify-center">
+        {spinner}
+      </span>
+    </>
+  );
 
   const content = loading ? loadingContent : children;
 
@@ -49,7 +59,12 @@ function Button({
     <ButtonPrimitive
       data-slot="button"
       aria-busy={loading || undefined}
-      className={cn(buttonVariants({ variant, size }), focusRing, className)}
+      className={cn(
+        buttonVariants({ variant, size }),
+        loading && !hasLeadingIcon && "relative",
+        focusRing,
+        className
+      )}
       onClick={(event) => {
         // A submit button still submits on a dropped click, so cancel it too.
         if (loading) {
