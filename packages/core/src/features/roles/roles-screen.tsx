@@ -191,7 +191,7 @@ function RoleFormBody(props: {
             {group.keys.map((entry) => (
               <label
                 key={entry.key}
-                className="mt-1 flex items-center gap-2 text-sm text-foreground"
+                className="flex min-h-11 items-center gap-2 text-sm text-foreground"
               >
                 <Checkbox
                   checked={picked.includes(entry.key)}

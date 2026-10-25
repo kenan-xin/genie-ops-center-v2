@@ -1,3 +1,4 @@
+import type { ThemeName } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -218,6 +219,47 @@ export const NewRoleForm: Story = {
       permissions: ["fixture:use"],
     });
   },
+};
+
+/** Presses Tab until the target holds focus, so the ring shows as it does for a keyboard user. */
+async function tabTo(target: Element, stops = 40): Promise<void> {
+  if (document.activeElement === target || stops === 0) return;
+
+  await userEvent.tab();
+
+  return tabTo(target, stops - 1);
+}
+
+/** R-8: the ring is --ring, blue-600 in light and the fixed --brand-on-dark (blue-400) in dark. */
+function ringColor(theme: ThemeName): string {
+  return theme === "dark" ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)";
+}
+
+export const PermissionRowFocus: Story = {
+  play: async ({ canvas, globals }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /New role/ }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New role" })
+    );
+
+    const box = dialog.getByRole("checkbox", { name: "Use the fixture" });
+
+    await tabTo(box);
+    await expect(box).toHaveFocus();
+    await expect(getComputedStyle(box).boxShadow).toContain(
+      ringColor(globals["theme"])
+    );
+    // DR-02, R-5: each permission row is a 44 px target.
+    await expect(
+      box.closest("label")?.getBoundingClientRect().height
+    ).toBeGreaterThanOrEqual(44);
+  },
+};
+
+export const PermissionRowFocusOnDark: Story = {
+  ...PermissionRowFocus,
+  globals: { theme: "dark" },
 };
 
 export const EditRoleDispatchesUpdate: Story = {

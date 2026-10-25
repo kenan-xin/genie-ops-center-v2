@@ -245,7 +245,8 @@ function FilterChips(props: {
           key={chip.label}
           type="button"
           onClick={() => props.onChange(chip.next)}
-          className={`inline-flex h-8 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1.5 text-xs font-medium text-foreground hover:bg-muted ${focusRing}`}
+          // The after: element grows the 32 px chip to a 44 px hit area.
+          className={`relative inline-flex h-8 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1.5 text-xs font-medium text-foreground after:absolute after:inset-x-0 after:-inset-y-1.5 hover:bg-muted ${focusRing}`}
         >
           {chip.label}
           <CloseIcon className="size-4" />

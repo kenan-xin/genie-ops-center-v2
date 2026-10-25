@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Spinner, StatusPill } from "@genie/ui";
+import { Button, focusRing, Spinner, StatusPill } from "@genie/ui";
 import { UploadCloud } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
@@ -35,7 +35,7 @@ function sizeText(bytes: number): string {
  * One branding image (R-49, R-50): a drop zone on a native file input until an image is set, then
  * the image with Replace, Remove and its scan status. A Scanning image is not shown, and an
  * Infected one shows the refusal alert. No library drop zone fits Base UI without a second
- * primitive, so this is the native input inside its label.
+ * primitive, so this is a native input that the drop zone button opens.
  */
 export function ImageSlot(props: {
   readonly label: string;
@@ -72,6 +72,8 @@ export function ImageSlot(props: {
         type="file"
         accept={ACCEPT}
         className="sr-only"
+        // The drop zone button below is the one tab stop; it opens this input.
+        tabIndex={-1}
         aria-label={`Upload a file for ${props.label}`}
         aria-describedby={state.error === undefined ? undefined : `${id}-error`}
         onChange={(event) => {
@@ -86,9 +88,10 @@ export function ImageSlot(props: {
         </p>
       )}
       {state.uploading !== undefined ? null : image === undefined ? (
-        <label
-          htmlFor={`${id}-input`}
-          className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""}`}
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""} ${focusRing}`}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -117,7 +120,7 @@ export function ImageSlot(props: {
             SVG files are cleaned on upload. Scan status stays Skipped until a
             scanner exists.
           </span>
-        </label>
+        </button>
       ) : image.scanStatus === "infected" ? (
         <div
           role="alert"
@@ -178,7 +181,7 @@ export function ImageSlot(props: {
         </div>
       )}
       {state.error === undefined ? null : (
-        <p id={`${id}-error`} className="text-sm text-destructive">
+        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       )}

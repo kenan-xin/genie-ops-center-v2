@@ -1,3 +1,4 @@
+import type { ThemeName } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
@@ -221,11 +222,64 @@ export const UploadRefused: Story = {
       input,
       new File(["%PDF"], "report.pdf", { type: "application/pdf" })
     );
-    await expect(
-      slot.getByText("Use a PNG, SVG, WebP or ICO file.")
-    ).toBeVisible();
+    // DR-02, R-69: the refusal is announced, not only shown.
+    await expect(slot.getByRole("alert")).toHaveTextContent(
+      "Use a PNG, SVG, WebP or ICO file."
+    );
     await expect(args.onUpload).not.toHaveBeenCalled();
   },
+};
+
+/** Presses Tab until the target holds focus, so the ring shows as it does for a keyboard user. */
+async function tabTo(target: Element, stops = 60): Promise<void> {
+  if (document.activeElement === target || stops === 0) return;
+
+  await user.tab();
+
+  return tabTo(target, stops - 1);
+}
+
+/** R-8: the ring is --ring, blue-600 in light and the fixed --brand-on-dark (blue-400) in dark. */
+function ringColor(theme: ThemeName): string {
+  return theme === "dark" ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)";
+}
+
+export const KeyboardFocusRings: Story = {
+  play: async ({ canvas, globals }) => {
+    const ring = ringColor(globals["theme"]);
+
+    const upload = within(
+      canvas.getByRole("group", { name: "Square mark" })
+    ).getByRole("button", { name: /^Drop an image or browse/ });
+
+    await tabTo(upload);
+    await expect(upload).toHaveFocus();
+    await expect(getComputedStyle(upload).boxShadow).toContain(ring);
+
+    await user.click(canvas.getByRole("tab", { name: "Colors" }));
+
+    const primary = canvas.getByLabelText("Pick the primary color");
+
+    await tabTo(primary);
+    await expect(getComputedStyle(primary).boxShadow).toContain(ring);
+
+    await user.click(canvas.getByRole("tab", { name: "Sign-in" }));
+
+    const background = canvas.getByLabelText("Pick the background color");
+
+    await tabTo(background);
+    await expect(getComputedStyle(background).boxShadow).toContain(ring);
+
+    const notice = canvas.getByRole("textbox", { name: "System-use notice" });
+
+    await tabTo(notice);
+    await expect(getComputedStyle(notice).boxShadow).toContain(ring);
+  },
+};
+
+export const KeyboardFocusRingsOnDark: Story = {
+  ...KeyboardFocusRings,
+  globals: { theme: "dark" },
 };
 
 export const Uploading: Story = {

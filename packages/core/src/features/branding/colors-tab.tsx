@@ -1,6 +1,6 @@
 "use client";
 
-import { RadioGroup, RadioGroupItem } from "@genie/ui";
+import { focusRing, RadioGroup, RadioGroupItem } from "@genie/ui";
 
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import {
@@ -38,7 +38,7 @@ export function ColorsTab(props: {
           type="color"
           aria-label="Pick the primary color"
           value={valid ? color.toLowerCase() : "#000000"}
-          className="h-10 w-12 cursor-pointer rounded-lg border bg-background p-1"
+          className={`h-10 w-12 cursor-pointer rounded-lg border bg-background p-1 ${focusRing}`}
           onChange={(event) => props.onColor(event.target.value)}
         />
         <div className="w-48">

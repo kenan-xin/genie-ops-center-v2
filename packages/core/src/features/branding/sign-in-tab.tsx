@@ -1,6 +1,6 @@
 "use client";
 
-import { FieldError, FieldLabel, SwitchField } from "@genie/ui";
+import { FieldError, FieldLabel, focusRing, SwitchField } from "@genie/ui";
 
 import {
   type BrandingDraft,
@@ -36,7 +36,7 @@ export function SignInTab(props: {
           value={
             HEX_COLOR.test(background) ? background.toLowerCase() : "#ffffff"
           }
-          className="h-10 w-12 cursor-pointer rounded-lg border bg-background p-1"
+          className={`h-10 w-12 cursor-pointer rounded-lg border bg-background p-1 ${focusRing}`}
           onChange={(event) =>
             props.onChange("loginBackgroundColor", event.target.value)
           }
@@ -76,7 +76,7 @@ export function SignInTab(props: {
           aria-describedby={
             noticeError === undefined ? undefined : "branding-notice-text-error"
           }
-          className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          className={`rounded-lg border border-input bg-background px-3 py-2 text-sm ${focusRing}`}
           onChange={(event) => {
             props.onChange("loginNoticeText", event.target.value);
 

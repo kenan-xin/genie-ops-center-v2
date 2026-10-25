@@ -1,3 +1,4 @@
+import type { ThemeName } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
@@ -209,6 +210,45 @@ export const ActiveFilterChipsAndClearAll: Story = {
       ""
     );
   },
+};
+
+/** Presses Tab until the target holds focus, so the ring shows as it does for a keyboard user. */
+async function tabTo(target: Element, stops = 40): Promise<void> {
+  if (document.activeElement === target || stops === 0) return;
+
+  await userEvent.tab();
+
+  return tabTo(target, stops - 1);
+}
+
+/** R-8: the ring is --ring, blue-600 in light and the fixed --brand-on-dark (blue-400) in dark. */
+function ringColor(theme: ThemeName): string {
+  return theme === "dark" ? "rgb(96, 165, 250)" : "rgb(37, 99, 235)";
+}
+
+export const FilterChipFocus: Story = {
+  args: { filters: { ...EMPTY_AUDIT_FILTERS, operatorOnly: true } },
+  play: async ({ canvas, globals }) => {
+    const chip = canvas.getByRole("button", { name: "Operator rows" });
+
+    await tabTo(chip);
+    await expect(chip).toHaveFocus();
+    await expect(getComputedStyle(chip).boxShadow).toContain(
+      ringColor(globals["theme"])
+    );
+
+    // DR-02, R-5: the 32 px chip takes a press 5 px above and below it, a 44 px target.
+    const box = chip.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+
+    await expect(document.elementFromPoint(x, box.top - 5)).toBe(chip);
+    await expect(document.elementFromPoint(x, box.bottom + 5)).toBe(chip);
+  },
+};
+
+export const FilterChipFocusOnDark: Story = {
+  ...FilterChipFocus,
+  globals: { theme: "dark" },
 };
 
 export const OperatorFilter: Story = {
