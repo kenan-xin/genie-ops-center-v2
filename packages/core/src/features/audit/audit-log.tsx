@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   CountPill,
+  DataTable,
   Field,
   FieldLabel,
   focusRing,
@@ -417,6 +418,17 @@ function FilterButton(props: {
   );
 }
 
+function actorCell(event: AuditEvent): JSX.Element {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <Avatar actor={event.actor} size="sm" />
+      <span className="truncate font-medium text-foreground">
+        {event.actor?.name ?? "System"}
+      </span>
+    </span>
+  );
+}
+
 /** The target cell. The table names the record and marks a removed one; the sheet carries the link. */
 function TargetCell(props: { readonly event: AuditEvent }): JSX.Element {
   if (props.event.targetType === "") {
@@ -424,7 +436,7 @@ function TargetCell(props: { readonly event: AuditEvent }): JSX.Element {
   }
 
   return (
-    <span className="block truncate">
+    <span className="block wrap-anywhere">
       {props.event.targetLabel}
       {props.event.targetExists ? null : (
         <span className="ml-1.5 text-xs font-medium text-muted-foreground">
@@ -448,6 +460,21 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
 
   const change = (filters: AuditFilters) =>
     props.onChangeAuditFilters?.(filters);
+
+  const relative = (event: AuditEvent) => (
+    <span title={fmtExact(event.occurredAt, props.viewer.timeZone)}>
+      {relativeTime(event.occurredAt, now, props.viewer.timeZone)}
+    </span>
+  );
+
+  const when = (event: AuditEvent) => (
+    <>
+      {relative(event)}
+      <span className="block text-xs text-muted-foreground">
+        {fmtDateTime(event.occurredAt, props.viewer.timeZone)}
+      </span>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -478,7 +505,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
         onChange={change}
       />
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <section>
         {props.events.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold">No events match</p>
@@ -496,132 +523,53 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-border md:hidden ">
-              {props.events.map((event) => (
-                <li key={event.id}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenId(event.id)}
-                    className={`flex w-full flex-col gap-1.5 px-4 py-4 text-left hover:bg-muted/50 ${focusRing}`}
-                  >
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Avatar actor={event.actor} size="sm" />
-                        <span className="truncate text-sm font-semibold">
-                          {event.actor?.name ?? "System"}
-                        </span>
-                      </span>
-                      <span
-                        className="shrink-0 text-xs text-muted-foreground"
-                        title={fmtExact(
-                          event.occurredAt,
-                          props.viewer.timeZone
-                        )}
-                      >
-                        {relativeTime(
-                          event.occurredAt,
-                          now,
-                          props.viewer.timeZone
-                        )}
-                      </span>
-                    </span>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <ActionPill action={event.action} />
-                      <span className="text-xs text-muted-foreground">
-                        {event.targetLabel}
-                      </span>
-                    </span>
-                    <span className="line-clamp-2 text-sm text-foreground">
-                      {event.summary}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <table className="hidden w-full table-fixed md:table">
-              <colgroup>
-                <col className="w-28" />
-                <col className="w-44" />
-                <col className="w-68" />
-                <col className="w-48" />
-                <col />
-              </colgroup>
-              <thead className="border-b border-border bg-muted/50 ">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground first:pl-5 text-muted-foreground">
-                    When
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
-                    Actor
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
-                    Action
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
-                    Target
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground last:pr-5 text-muted-foreground">
-                    Summary
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {props.events.map((event) => (
-                  <tr
-                    key={event.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setOpenId(event.id)}
-                    onKeyDown={(keyboard) => {
-                      if (keyboard.key === "Enter" || keyboard.key === " ") {
-                        keyboard.preventDefault();
-                        setOpenId(event.id);
-                      }
-                    }}
-                    className="cursor-pointer hover:bg-muted/50"
-                  >
-                    <td className="px-4 py-3 align-middle text-sm first:pl-5 text-foreground">
-                      <span
-                        title={fmtExact(
-                          event.occurredAt,
-                          props.viewer.timeZone
-                        )}
-                      >
-                        {relativeTime(
-                          event.occurredAt,
-                          now,
-                          props.viewer.timeZone
-                        )}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {fmtDateTime(event.occurredAt, props.viewer.timeZone)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 align-middle text-sm">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Avatar actor={event.actor} size="sm" />
-                        <span className="truncate font-medium">
-                          {event.actor?.name ?? "System"}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 align-middle text-sm">
-                      <ActionPill action={event.action} wrap />
-                    </td>
-                    <td className="px-4 py-3 align-middle text-sm">
+            <DataTable
+              label="Audit events"
+              rows={props.events}
+              rowKey={(event) => event.id}
+              rowLabel={(event) => event.summary}
+              identityColumn="summary"
+              onOpenRow={(event) => setOpenId(event.id)}
+              columns={[
+                { id: "when", header: "When", cell: when },
+                { id: "actor", header: "Actor", cell: actorCell },
+                {
+                  id: "action",
+                  header: "Action",
+                  cell: (event) => <ActionPill action={event.action} wrap />,
+                },
+                {
+                  id: "target",
+                  header: "Target",
+                  cell: (event) => (
+                    <>
                       <span className="block text-xs text-muted-foreground">
                         {humanize(event.targetType)}
                       </span>
                       <TargetCell event={event} />
-                    </td>
-                    <td className="px-4 py-3 align-middle text-sm last:pr-5 text-foreground">
-                      <span className="block truncate">{event.summary}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+                {
+                  id: "summary",
+                  header: "Summary",
+                  cell: (event) => event.summary,
+                },
+              ]}
+              facts={(event) => [
+                <span key="actor" className="flex flex-wrap items-center gap-2">
+                  {actorCell(event)}
+                  {relative(event)}
+                </span>,
+                <span
+                  key="action"
+                  className="flex flex-wrap items-center gap-1.5"
+                >
+                  <ActionPill action={event.action} />
+                  <span className="text-xs">{event.targetLabel}</span>
+                </span>,
+              ]}
+            />
 
             <div className="flex flex-col items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:justify-between text-muted-foreground">
               {props.refreshing === true ? (

@@ -139,10 +139,10 @@ function showing(page: Page, loaded: number, total: number) {
 
 /** The one visible row or list entry for an event, at either viewport. */
 function eventRow(page: Page, summary: string) {
-  // The table row on desktop and the list entry on phone; the search chip also names the query.
+  // The summary is the row's open button in the table and on the card. The name is exact,
+  // because the search chip names the same query inside quotes.
   return page
-    .locator("tr[role=button], li > button")
-    .filter({ hasText: summary })
+    .getByRole("button", { name: summary, exact: true })
     .filter({ visible: true });
 }
 

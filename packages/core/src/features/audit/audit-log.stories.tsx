@@ -89,10 +89,13 @@ function rowButtons(canvasElement: HTMLElement) {
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    const table = within(canvas.getByRole("table"));
+    const table = within(canvas.getByRole("table", { name: "Audit events" }));
 
+    // The summary is the row's identity: the button that opens the sheet (R-23).
     await expect(
-      table.getByText("Added Ada Lovelace and assigned Tenant administrator.")
+      table.getByRole("button", {
+        name: "Added Ada Lovelace and assigned Tenant administrator.",
+      })
     ).toBeInTheDocument();
     await expect(
       table.getAllByText("core:person_added").length
@@ -114,6 +117,35 @@ export const Default: Story = {
 
 // u4nq: the accessibility test of every story reads this dark surface.
 export const Dark: Story = { globals: { theme: "dark" } };
+
+/** R-23: under 768 px each event is a card with the summary, the actor and the action. */
+export const Phone: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Audit events" });
+
+    await expect(list).toBeVisible();
+    await expect(canvas.queryByRole("table")).toBeNull();
+
+    const cards = within(list).getAllByRole("listitem");
+
+    await expect(cards).toHaveLength(4);
+
+    const first = within(cards[0]!);
+
+    await expect(first.getByText("core:person_added")).toBeVisible();
+    await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
+
+    await userEvent.click(
+      first.getByRole("button", {
+        name: "Added Ada Lovelace and assigned Tenant administrator.",
+      })
+    );
+    await expect(
+      await screen.findByRole("dialog", { name: "Audit event" })
+    ).toBeInTheDocument();
+  },
+};
 
 export const Empty: Story = {
   args: {

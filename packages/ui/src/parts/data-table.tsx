@@ -42,8 +42,10 @@ export type DataTableProps<Row> = {
   readonly rowKey: (row: Row) => string;
   /** Names the row's menu: `Actions for ${rowLabel(row)}`. */
   readonly rowLabel: (row: Row) => string;
-  /** The first column is the identity, on the table and on the card. */
+  /** The first column is the identity, on the table and on the card, unless `identityColumn` names another. */
   readonly columns: readonly DataTableColumn<Row>[];
+  /** The id of the column whose cell opens the row and leads the card. */
+  readonly identityColumn?: string;
   /** Shows on the table as a "Status" column after the given columns, and on the card. */
   readonly status?: (row: Row) => ReactNode;
   /** One or two scan facts for the card. A third is not rendered. */
@@ -60,6 +62,7 @@ export function DataTable<Row>({
   rowKey,
   rowLabel,
   columns,
+  identityColumn: identityId,
   status,
   facts,
   onOpenRow,
@@ -117,7 +120,8 @@ export function DataTable<Row>({
     );
   };
 
-  const [identityColumn] = columns;
+  const identityColumn =
+    columns.find((column) => column.id === identityId) ?? columns[0];
 
   return (
     <>
@@ -137,9 +141,9 @@ export function DataTable<Row>({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={rowKey(row)}>
-              {columns.map((column, index) => (
+              {columns.map((column) => (
                 <TableCell key={column.id}>
-                  {index === 0
+                  {column === identityColumn
                     ? identity(row, column.cell(row))
                     : column.cell(row)}
                 </TableCell>
