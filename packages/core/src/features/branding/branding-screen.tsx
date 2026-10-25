@@ -35,6 +35,7 @@ import {
   changedFields,
   createBrandingDraftStore,
   imageFor,
+  SLOT_FIELD,
 } from "./draft-store.ts";
 import { IdentityTab } from "./identity-tab.tsx";
 import type { SlotState } from "./image-slot.tsx";
@@ -46,7 +47,7 @@ export type BrandingScreenProps = {
   readonly loading?: boolean;
   readonly error?: string | undefined;
   readonly timeZone: string;
-  /** Receives only the changed fields. A rejection with `{ message }` keeps the draft. */
+  /** Receives only the changed fields. A rejection with `{ message, issues }` keeps the draft. */
   readonly onPublish: (changes: Partial<BrandingDraft>) => Promise<void>;
   readonly onUpload: (
     slot: BrandingImageSlot,
@@ -54,10 +55,14 @@ export type BrandingScreenProps = {
   ) => Promise<BrandingImageView>;
 };
 
-const refusalMessage = z
-  .object({ message: z.string().min(1) })
-  .transform((refusal) => refusal.message)
-  .catch("That change could not be published. Try again.");
+const refusedPublish = z
+  .object({
+    message: z.string().min(1),
+    issues: z
+      .array(z.object({ path: z.string(), message: z.string().min(1) }))
+      .optional(),
+  })
+  .catch({ message: "That change could not be published. Try again." });
 
 const uploadMessage = z
   .object({
@@ -120,6 +125,11 @@ function BrandingEditor(
   const [confirm, setConfirm] = useState<"publish" | "discard" | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+
+  const [serverIssues, setServerIssues] = useState<
+    Readonly<Record<string, string>>
+  >({});
+
   const [tab, setTab] = useState<BrandingTab>("identity");
   const scope = useId();
 
@@ -128,6 +138,34 @@ function BrandingEditor(
 
   // Counts Discards, so an upload that started before one never lands in the dropped draft.
   const discards = useRef(0);
+
+  // A refused Publish's issues sit under their fields until that field is edited (DR-20 S3-07).
+  const clearServerIssue = (field: string) =>
+    setServerIssues((current) => {
+      if (current[field] === undefined) return current;
+
+      const next = { ...current };
+
+      delete next[field];
+
+      return next;
+    });
+
+  const set = <K extends keyof BrandingDraft>(
+    field: K,
+    value: BrandingDraft[K]
+  ) => {
+    store.getState().set(field, value);
+    clearServerIssue(field);
+  };
+
+  const setImage = (
+    slot: BrandingImageSlot,
+    image: BrandingImageView | null
+  ) => {
+    store.getState().setImage(slot, image);
+    clearServerIssue(SLOT_FIELD[slot]);
+  };
 
   // A fresh read replaces the published values only while nothing is unpublished; with edits in
   // the draft it still brings its fresh preview links.
@@ -155,11 +193,14 @@ function BrandingEditor(
   }, [count]);
 
   const parsed = brandingDraftSchema.safeParse(draft);
-  const issues: Record<string, string> = {};
+  const clientIssues: Record<string, string> = {};
 
   if (!parsed.success)
     for (const issue of parsed.error.issues)
-      issues[issue.path.join(".")] ??= issue.message;
+      clientIssues[issue.path.join(".")] ??= issue.message;
+
+  // Fresh input wins over the last server message for a field that is edited.
+  const issues = { ...serverIssues, ...clientIssues };
 
   const hexValid = HEX_COLOR.test(draft.primaryColor);
 
@@ -213,7 +254,7 @@ function BrandingEditor(
 
       if (discards.current !== started) return;
 
-      store.getState().setImage(slot, image);
+      setImage(slot, image);
       // A later file's refusal stays: only this upload's own spinner is cleared.
       setSlots((current) =>
         current[slot]?.uploading === file.name
@@ -249,8 +290,16 @@ function BrandingEditor(
         after === before ? { ...after, draft: state.draft, images: {} } : after
       );
       setFailure(null);
+      setServerIssues({});
     } catch (cause) {
-      setFailure(refusalMessage.parse(cause));
+      const refused = refusedPublish.parse(cause);
+
+      setFailure(refused.message);
+      setServerIssues(
+        Object.fromEntries(
+          (refused.issues ?? []).map((issue) => [issue.path, issue.message])
+        )
+      );
     } finally {
       setPublishing(false);
       setConfirm(null);
@@ -285,8 +334,6 @@ function BrandingEditor(
     timeStyle: "short",
     timeZone: props.timeZone,
   }).format(new Date(props.branding.lastPublished.at));
-
-  const set = store.getState().set;
 
   const previewFor = (shown: BrandingTab) =>
     shown === "sign-in" ? (
@@ -373,7 +420,7 @@ function BrandingEditor(
                     onChange={set}
                     onFile={(slot, file) => void upload(slot, file)}
                     onRemove={(slot) => {
-                      store.getState().setImage(slot, null);
+                      setImage(slot, null);
                       setSlots((current) => ({ ...current, [slot]: {} }));
                     }}
                   />
@@ -429,6 +476,8 @@ function BrandingEditor(
           discards.current += 1;
           store.getState().discard();
           setSlots({});
+          setFailure(null);
+          setServerIssues({});
           setConfirm(null);
         }}
         onClose={() => setConfirm(null)}

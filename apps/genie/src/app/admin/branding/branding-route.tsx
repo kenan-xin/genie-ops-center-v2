@@ -7,9 +7,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { refusalOf, rpc } from "../../../rpc/client.ts";
 
-// A network failure or a non-catalogue answer carries no safe message of its own.
-const NOT_PUBLISHED = "That change could not be published. Try again.";
-
 /**
  * The browser half of the Branding route. The server refused a caller without
  * `core:branding:manage` before this mounts, and every procedure re-checks it. The draft lives in
@@ -52,7 +49,8 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
 
           if (result.changed) toast({ tone: "success", title: "Published" });
         } catch (cause) {
-          throw new Error(refusalOf(cause).message || NOT_PUBLISHED, { cause });
+          // The screen places the refusal's issues under their fields (DR-20 S3-07).
+          throw refusalOf(cause);
         }
 
         await queryClient.invalidateQueries({ queryKey: ["branding"] });

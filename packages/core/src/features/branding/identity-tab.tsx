@@ -5,6 +5,7 @@ import type {
   BrandingImageSlot,
   BrandingImageView,
 } from "../../services/branding/schemas.ts";
+import { SLOT_FIELD } from "./draft-store.ts";
 import { ImageSlot, type SlotState } from "./image-slot.tsx";
 import { TextField } from "./text-field.tsx";
 
@@ -74,6 +75,7 @@ export function IdentityTab(props: {
           recommended={entry.recommended}
           image={props.images[entry.slot]}
           state={props.slots[entry.slot] ?? {}}
+          issue={props.issues[SLOT_FIELD[entry.slot]]}
           onFile={(file) => props.onFile(entry.slot, file)}
           onRemove={() => props.onRemove(entry.slot)}
         />

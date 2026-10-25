@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, focusRing, Spinner, StatusPill } from "@genie/ui";
+import { Button, FieldError, focusRing, Spinner, StatusPill } from "@genie/ui";
 import { UploadCloud } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
@@ -42,6 +42,8 @@ export function ImageSlot(props: {
   readonly recommended: string;
   readonly image: BrandingImageView | undefined;
   readonly state: SlotState;
+  /** A refused Publish's message for this slot, cleared when the image changes. */
+  readonly issue?: string | undefined;
   readonly onFile: (file: File) => void;
   readonly onRemove: () => void;
 }) {
@@ -50,6 +52,7 @@ export function ImageSlot(props: {
   const [dragging, setDragging] = useState(false);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const { image, state } = props;
+  const error = state.error ?? props.issue;
 
   function choose(files: FileList | null) {
     const file = files?.[0];
@@ -75,7 +78,8 @@ export function ImageSlot(props: {
         // The drop zone button below is the one tab stop; it opens this input.
         tabIndex={-1}
         aria-label={`Upload a file for ${props.label}`}
-        aria-describedby={state.error === undefined ? undefined : `${id}-error`}
+        aria-invalid={error === undefined ? undefined : true}
+        aria-describedby={error === undefined ? undefined : `${id}-error`}
         onChange={(event) => {
           choose(event.target.files);
           event.target.value = "";
@@ -91,6 +95,7 @@ export function ImageSlot(props: {
         <button
           type="button"
           onClick={() => input.current?.click()}
+          aria-describedby={error === undefined ? undefined : `${id}-error`}
           className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""} ${focusRing}`}
           onDragOver={(event) => {
             event.preventDefault();
@@ -170,6 +175,7 @@ export function ImageSlot(props: {
             <Button
               variant="secondary"
               size="sm"
+              aria-describedby={error === undefined ? undefined : `${id}-error`}
               onClick={() => input.current?.click()}
             >
               Replace
@@ -180,10 +186,8 @@ export function ImageSlot(props: {
           </div>
         </div>
       )}
-      {state.error === undefined ? null : (
-        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
+      {error === undefined ? null : (
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       )}
     </div>
   );

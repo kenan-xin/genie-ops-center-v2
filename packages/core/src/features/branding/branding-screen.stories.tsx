@@ -423,6 +423,73 @@ export const PublishRefused: Story = {
   },
 };
 
+export const PublishIssueOnImage: Story = {
+  args: {
+    branding: brandingView(
+      { logoLightFileId: MARK.fileId },
+      { logoLight: MARK }
+    ),
+    onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {
+      throw {
+        message:
+          "Some branding values are not valid. Fix the marked fields and publish again.",
+        issues: [
+          {
+            path: "logoLightFileId",
+            message:
+              "The logo for light backgrounds is missing. Remove it or upload it again.",
+          },
+        ],
+      };
+    }),
+  },
+  play: async ({ args, canvas }) => {
+    const issue =
+      "The logo for light backgrounds is missing. Remove it or upload it again.";
+
+    const slot = () =>
+      within(canvas.getByRole("group", { name: "Logo for light backgrounds" }));
+
+    async function publish() {
+      await user.click(canvas.getByRole("button", { name: "Publish" }));
+      await user.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Publish",
+        })
+      );
+    }
+
+    await user.type(
+      canvas.getByRole("textbox", { name: "Company name" }),
+      " Ltd"
+    );
+    await publish();
+
+    // The refused Publish names the logo field, and the message sits under its slot.
+    await expect(await slot().findByText(issue)).toBeVisible();
+    await expect(
+      slot().getByRole("button", { name: "Replace" })
+    ).toHaveAccessibleDescription(issue);
+
+    // Removing the image clears the issue it carried.
+    await user.click(slot().getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(slot().queryByText(issue)).toBeNull());
+
+    // The same refusal names it again, and a new upload replaces the dead image.
+    await publish();
+    await expect(await slot().findByText(issue)).toBeVisible();
+
+    await user.upload(
+      canvas.getByLabelText("Upload a file for Logo for light backgrounds"),
+      new File(["png"], "new-logo.png", { type: "image/png" })
+    );
+    await waitFor(() => expect(slot().queryByText(issue)).toBeNull());
+    await waitFor(() =>
+      expect(args.onUpload).toHaveBeenCalledWith("logoLight", expect.any(File))
+    );
+  },
+};
+
 export const DiscardConfirm: Story = {
   play: async ({ canvas }) => {
     await user.type(
