@@ -801,6 +801,39 @@ describe("validateModule", () => {
     expect(validateModule(broken).join(" ")).toContain("field kind");
   });
 
+  it("accepts a labeled enum: a union of titled string literals (U-4)", () => {
+    const ok = {
+      ...validModule,
+      configuration: {
+        ...validModule.configuration,
+        schema: z.object({
+          mode: z
+            .union([
+              z.literal("basic").meta({ title: "Basic" }),
+              z.literal("advanced").meta({ title: "Advanced" }),
+            ])
+            .default("basic"),
+        }),
+        fields: { mode: { id: "mode", title: "Mode" } },
+      },
+    };
+
+    expect(validateModule(ok)).toEqual([]);
+  });
+
+  it("rejects a union that is not only string literals", () => {
+    const broken = {
+      ...validModule,
+      configuration: {
+        ...validModule.configuration,
+        schema: z.object({ mode: z.union([z.literal("a"), z.number()]) }),
+        fields: { mode: { id: "mode", title: "Mode" } },
+      },
+    };
+
+    expect(validateModule(broken).join(" ")).toContain("field kind");
+  });
+
   it("rejects a forbidden kind hidden under a default wrapper", () => {
     const broken = {
       ...validModule,

@@ -25,6 +25,16 @@ export type ConfigFieldSchema =
       readonly maximum?: number;
       readonly default?: number;
     }
+  | {
+      /** A labeled enum: zod emits a union of titled string literals as `anyOf` (U-4). */
+      readonly type?: undefined;
+      readonly anyOf: readonly {
+        readonly type: "string";
+        readonly const: string;
+        readonly title?: string;
+      }[];
+      readonly default?: string;
+    }
   | { readonly type: "boolean"; readonly default?: boolean }
   | {
       readonly type: "array";
@@ -65,6 +75,8 @@ export type ConfigFieldKind =
 
 export function configFieldKind(field: ConfigFieldSchema): ConfigFieldKind {
   switch (field.type) {
+    case undefined:
+      return "enum";
     case "string":
       return field.enum === undefined ? "string" : "enum";
     case "number":
@@ -75,6 +87,24 @@ export function configFieldKind(field: ConfigFieldSchema): ConfigFieldKind {
     case "array":
       return "stringList";
   }
+}
+
+export type ConfigChoice = { readonly value: string; readonly label: string };
+
+/** An enum field's choices. A labeled choice shows its title, an unlabeled one its raw value. */
+export function configFieldChoices(
+  field: ConfigFieldSchema
+): readonly ConfigChoice[] {
+  if (field.type === undefined)
+    return field.anyOf.map((option) => ({
+      value: option.const,
+      label: option.title ?? option.const,
+    }));
+
+  if (field.type === "string" && field.enum !== undefined)
+    return field.enum.map((value) => ({ value, label: value }));
+
+  return [];
 }
 
 /** Any value a ConfigForm field holds. Core parses request bodies and stored rows with it. */
@@ -100,7 +130,16 @@ function fieldValueSchema(
   const lower = title.toLowerCase();
   const wrongFormat = `${title} has the wrong format.`;
 
+  const choose = `Choose a value for ${lower}.`;
+
+  const oneOf = (options: readonly string[]) =>
+    z
+      .string({ error: choose })
+      .refine((value) => options.includes(value), { error: choose });
+
   switch (field.type) {
+    case undefined:
+      return oneOf(field.anyOf.map((option) => option.const));
     case "boolean":
       return z.boolean({ error: "Choose on or off." });
     case "number":
@@ -142,14 +181,7 @@ function fieldValueSchema(
     }
 
     case "string": {
-      if (field.enum !== undefined) {
-        const options = field.enum;
-        const choose = `Choose a value for ${lower}.`;
-
-        return z
-          .string({ error: choose })
-          .refine((value) => options.includes(value), { error: choose });
-      }
+      if (field.enum !== undefined) return oneOf(field.enum);
 
       let text = z.string({ error: wrongFormat });
 

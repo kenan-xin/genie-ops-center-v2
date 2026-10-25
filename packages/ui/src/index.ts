@@ -160,6 +160,7 @@ export { WarningNote } from "./parts/warning-note.tsx";
 export type { WarningNoteProps } from "./parts/warning-note.tsx";
 
 export {
+  configFieldChoices,
   configFieldKind,
   configFieldMessage,
   configFormValidator,
@@ -174,6 +175,7 @@ export type {
 } from "./parts/config-form.tsx";
 
 export type {
+  ConfigChoice,
   ConfigFieldKind,
   ConfigFieldSchema,
   ConfigFormField,

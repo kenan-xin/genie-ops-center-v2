@@ -1,4 +1,4 @@
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 import { moduleApiProblems } from "../rpc/conformance.ts";
 import { isPermissionKey } from "./keys.ts";
@@ -51,6 +51,8 @@ type ZodDefView = {
   readonly innerType?: ZodType;
 
   readonly element?: ZodType;
+
+  readonly options?: readonly ZodType[];
 };
 
 /**
@@ -79,6 +81,17 @@ function fieldKind(schema: ZodType): string | undefined {
 
     case "enum":
       return "enum";
+
+    // A labeled enum: a union of string literals, each titled through `.meta()` (U-4).
+    case "union":
+      return def.options?.every(
+        (option) =>
+          option instanceof z.ZodLiteral &&
+          option.values.size === 1 &&
+          z.string().safeParse(option.value).success
+      )
+        ? "enum"
+        : undefined;
 
     case "array": {
       const element = def.element;

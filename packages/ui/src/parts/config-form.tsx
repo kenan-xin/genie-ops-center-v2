@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "../components/select.tsx";
 import {
+  configFieldChoices,
   configFieldKind,
   configFieldMessage,
   configFormValidator,
@@ -322,11 +323,8 @@ function ConfigFormControl({
     );
   }
 
-  if (kind === "enum" && field.type === "string" && field.enum !== undefined) {
-    const items = field.enum.map((option) => ({
-      value: option,
-      label: option,
-    }));
+  if (kind === "enum") {
+    const items = configFieldChoices(field);
 
     return (
       <Field data-field={meta.id}>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  configFieldChoices,
   configFieldKind,
   configFieldMessage,
   configFormValidator,
@@ -103,6 +104,33 @@ describe("configFieldMessage gives the fixed R-80 text", () => {
     );
     expect(message("tags", ["good", "Bad Tag"])).toBe("Entry 2: wrong format.");
     expect(message("tags", [])).toBeNull();
+  });
+});
+
+describe("labeled enum (U-4)", () => {
+  const labeled = {
+    anyOf: [
+      { type: "string", const: "basic", title: "Basic" },
+      { type: "string", const: "advanced" },
+    ],
+    default: "basic",
+  } as const;
+
+  it("is an enum whose choices show the title, or the raw value without one", () => {
+    expect(configFieldKind(labeled)).toBe("enum");
+    expect(configFieldChoices(labeled)).toEqual([
+      { value: "basic", label: "Basic" },
+      { value: "advanced", label: "advanced" },
+    ]);
+  });
+
+  it("accepts only a declared value", () => {
+    const meta = { id: "mode", title: "Mode" };
+
+    expect(configFieldMessage(labeled, meta, "Basic")).toBe(
+      "Choose a value for mode."
+    );
+    expect(configFieldMessage(labeled, meta, "advanced")).toBeNull();
   });
 });
 

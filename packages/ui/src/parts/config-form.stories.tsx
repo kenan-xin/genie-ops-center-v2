@@ -262,6 +262,55 @@ export const FocusField: Story = {
   },
 };
 
+// zod emits a union of titled literals as `anyOf` of `{ type, const, title }` (U-4).
+const labeledSchema = {
+  type: "object",
+  properties: {
+    mode: {
+      anyOf: [
+        { type: "string", const: "basic", title: "Basic" },
+        { type: "string", const: "advanced", title: "Advanced" },
+      ],
+      default: "basic",
+    },
+    level: { type: "string", enum: ["low", "high"], default: "low" },
+  },
+} as const satisfies ConfigFormSchema;
+
+/** A labeled choice shows its title; an unlabeled choice shows the raw value. */
+export const LabeledChoices: Story = {
+  args: {
+    schema: labeledSchema,
+    fields: [
+      { id: "mode", title: "Mode" },
+      { id: "level", title: "Level" },
+    ],
+    values: { mode: "basic", level: "low" },
+  },
+  play: async ({ args, canvas }) => {
+    const mode = canvas.getByRole("combobox", { name: "Mode" });
+
+    await expect(mode).toHaveTextContent("Basic");
+    await expect(
+      canvas.getByRole("combobox", { name: "Level" })
+    ).toHaveTextContent("low");
+
+    await userEvent.click(mode);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Advanced" })
+    );
+    await expect(mode).toHaveTextContent("Advanced");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith({
+        mode: "advanced",
+        level: "low",
+      })
+    );
+  },
+};
+
 export const Disabled: Story = {
   args: { disabled: true },
   play: async ({ canvas }) => {
