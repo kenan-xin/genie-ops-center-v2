@@ -127,6 +127,34 @@ test("a person with no grants sees the empty state and no entry (R-34)", async (
   await expectNoAxeViolations(page, "no-grants empty state");
 });
 
+test("a member refused on an admin page sees the no-access state in the workspace chrome (shell L-4)", async ({
+  page,
+}, testInfo) => {
+  // The lock keeps the landing module enabled, so the member's workspace entry is in the rail.
+  await withDeploymentLock(
+    LOCK,
+    async () => {
+      await signInThroughBroker(page, {
+        baseUrl: BASE,
+        email: scenarioEmail("landing", "noaccess", testInfo.project.name),
+        landing: LANDING,
+      });
+
+      await page.goto(`${BASE}/admin/audit`);
+
+      await expect(page.getByTestId("permission-denied")).toBeVisible();
+
+      const navigation = await openNavigation(page);
+
+      await expect(
+        navigation.getByRole("link", { name: ENTRY, exact: true })
+      ).toBeVisible();
+      await expect(navigation.getByText("Admin portal")).toHaveCount(0);
+    },
+    300_000
+  );
+});
+
 test("a disabled landing module opens the empty state (R-30)", async ({
   page,
 }, testInfo) => {
