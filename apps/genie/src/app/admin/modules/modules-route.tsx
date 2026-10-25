@@ -6,6 +6,7 @@ import {
 } from "@genie/core/features/modules";
 import { toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
@@ -24,6 +25,7 @@ const NOT_SAVED = "That change could not be saved. Try again.";
 export function ModulesRoute() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const t = useTranslations("pages");
   const [refusal, setRefusal] = useState<ModuleRefusal | undefined>(undefined);
 
   const modules = useQuery({
@@ -94,6 +96,13 @@ export function ModulesRoute() {
       }
       rolesHref="/admin/roles"
       settingsHref="/admin/settings"
+      accessLabels={{
+        more: (count) => t("modules.access.more", { count }),
+        showAll: (count, module) =>
+          t("modules.access.showAll", { count, module }),
+        title: (module) => t("modules.access.title", { module }),
+        group: (group) => t("modules.access.group", { group }),
+      }}
       loading={modules.isPending || categories.isPending}
       // A failed background refetch keeps the rows already read; only a first read failure shows.
       error={

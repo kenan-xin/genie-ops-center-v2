@@ -492,7 +492,7 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     "packages/core/src/features/branding/sign-in-tab.tsx": 6,
     "packages/core/src/features/categories/assign-items.tsx": 13,
     "packages/core/src/features/categories/categories-screen.tsx": 17,
-    "packages/core/src/features/modules/modules-screen.tsx": 17,
+    "packages/core/src/features/modules/modules-screen.tsx": 16,
     "packages/core/src/features/settings/core-sections.tsx": 12,
     "packages/core/src/features/settings/settings-screen.tsx": 17,
   } satisfies Record<string, number>;

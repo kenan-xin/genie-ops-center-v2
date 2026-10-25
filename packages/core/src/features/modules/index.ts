@@ -5,6 +5,7 @@
 export { ModulesScreen } from "./modules-screen.tsx";
 
 export {
+  type AccessLabels,
   type CategoryOption,
   type ModuleHolderView,
   type ModuleRefusal,

@@ -71,6 +71,29 @@ export const FIXTURE_NEEDS_SETUP: ModuleView = {
   holders: [],
 };
 
+/** Held by fifteen principals, two of them groups: the Access cell names three (DR-26). */
+export const FIXTURE_CROWDED: ModuleView = {
+  id: "crowded",
+  displayName: "Crowded",
+  enabled: true,
+  categoryId: "c-ops",
+  placeable: true,
+  holders: [
+    ...Array.from({ length: 13 }, (_, index) => ({
+      principalType: "user" as const,
+      principalId: `p-${index + 10}`,
+      label: `Person ${index + 1}`,
+      roleName: "Crowded user",
+    })),
+    ...["Night shift", "Finance managers"].map((label, index) => ({
+      principalType: "group" as const,
+      principalId: `g-${index + 10}`,
+      label,
+      roleName: "Crowded user",
+    })),
+  ],
+};
+
 export const FIXTURE_MODULES: readonly ModuleView[] = [
   FIXTURE_ON,
   FIXTURE_UNPLACEABLE,

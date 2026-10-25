@@ -58,7 +58,13 @@
     },
     "modules": {
       "title": "Modules",
-      "description": "The modules this deployment carries. Switch one on or off for everyone, and give it a category. Who can open a module is set in Roles."
+      "description": "The modules this deployment carries. Switch one on or off for everyone, and give it a category. Who can open a module is set in Roles.",
+      "access": {
+        "more": "+{count}",
+        "showAll": "+{count} more holders of {module}",
+        "title": "Holders of {module}",
+        "group": "{group} (group)"
+      }
     },
     "categories": {
       "title": "Categories",

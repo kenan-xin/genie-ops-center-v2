@@ -130,12 +130,24 @@ test("lists every compiled module and switches one off through the confirm dialo
           )
         );
 
-        const holderList = page
-          .getByRole("list", { name: "Holders of Placeholder" })
-          .filter({ visible: true });
+        // The cell names three holders; "+N" opens the full list, one line per role (DR-26).
+        const expectHolderList = async () => {
+          await page
+            .getByRole("button", { name: /more holders of Placeholder$/ })
+            .filter({ visible: true })
+            .click();
 
-        await expect(holderList.getByRole("listitem")).toHaveCount(holders);
-        await expect(holderList).toContainText(`S2-16 Mixed ${project}`);
+          const holderList = page.getByRole("dialog", {
+            name: "Holders of Placeholder",
+          });
+
+          await expect(holderList.getByRole("listitem")).toHaveCount(holders);
+          await expect(holderList).toContainText(`S2-16 Mixed ${project}`);
+          await page.keyboard.press("Escape");
+          await expect(holderList).toBeHidden();
+        };
+
+        await expectHolderList();
         await expect(
           page
             .getByRole("link", { name: "Manage in Roles for Placeholder" })
@@ -170,7 +182,7 @@ test("lists every compiled module and switches one off through the confirm dialo
         expect(await placeholderEnabled()).toBe("f");
 
         // Off keeps its holders, muted, beside an Off pill (R-86).
-        await expect(holderList.getByRole("listitem")).toHaveCount(holders);
+        await expectHolderList();
         await expect(
           page
             .getByRole("row")

@@ -4,6 +4,7 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import {
   FIXTURE_CATEGORIES,
   FIXTURE_CONFIG_REFUSAL,
+  FIXTURE_CROWDED,
   FIXTURE_MODULES,
 } from "./__fixtures__/modules.ts";
 import { ModulesScreen } from "./modules-screen.tsx";
@@ -35,6 +36,12 @@ const meta = {
     onCategory: fn(),
     rolesHref: "/admin/roles",
     settingsHref: "/admin/settings",
+    accessLabels: {
+      more: (count) => `+${count}`,
+      showAll: (count, module) => `+${count} more holders of ${module}`,
+      title: (module) => `Holders of ${module}`,
+      group: (group) => `${group} (group)`,
+    },
   } satisfies ModulesScreenProps,
 } satisfies Meta<typeof ModulesScreen>;
 
@@ -48,8 +55,10 @@ export const Default: Story = {
 
     await expect(table.getByText("Fixture")).toBeInTheDocument();
     await expect(table.getByText("Reporting exports")).toBeInTheDocument();
-    // A person holding the key through two roles is listed once per role.
-    await expect(table.getAllByText(/Ada Lovelace/)).toHaveLength(2);
+    // A person holding the key through two roles is named once, groups first.
+    await expect(
+      table.getByText("Finance managers (group), Ada Lovelace")
+    ).toBeInTheDocument();
 
     await userEvent.click(
       table.getByRole("combobox", { name: "Category for Fixture" })
@@ -192,6 +201,67 @@ export const SwitchedOffKeepsHolders: Story = {
     await expect(
       row.getByRole("switch", { name: "Dormant enabled" })
     ).not.toBeChecked();
+  },
+};
+
+/**
+ * Fifteen holders: the cell names three, groups first, and "+12" opens the full list with each
+ * holder's role (DR-26). The keyboard reaches and opens it.
+ */
+const crowdedCell = async (
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
+  // The table on a desktop, the list on a phone; the other one is hidden.
+  layout: "table" | "list"
+) => {
+  const area = within(canvas.getByRole(layout, { name: "Modules" }));
+
+  await expect(
+    area.getByText("Night shift (group), Finance managers (group), Person 1")
+  ).toBeInTheDocument();
+
+  const more = area.getByRole("button", {
+    name: "+12 more holders of Crowded",
+  });
+
+  await expect(more).toHaveTextContent("+12");
+
+  // The category picker comes just before the cell: one Tab reaches the trigger, Enter opens it.
+  area.getByRole("combobox", { name: "Category for Crowded" }).focus();
+  await userEvent.tab();
+  await expect(more).toHaveFocus();
+  await userEvent.keyboard("{Enter}");
+
+  const popup = within(
+    await screen.findByRole("dialog", { name: "Holders of Crowded" })
+  );
+
+  await expect(popup.getAllByRole("listitem")).toHaveLength(15);
+  await expect(popup.getByText("Person 13")).toBeInTheDocument();
+
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await expect(more).toHaveFocus();
+
+  return more;
+};
+
+export const ManyHolders: Story = {
+  args: { modules: [FIXTURE_CROWDED] },
+  play: async ({ canvas }) => {
+    await crowdedCell(canvas, "table");
+  },
+};
+
+export const ManyHoldersOnPhone: Story = {
+  args: { modules: [FIXTURE_CROWDED] },
+  globals: phone,
+  play: async ({ canvas }) => {
+    const more = await crowdedCell(canvas, "list");
+
+    // A thumb target on a phone (tokens.md, 44 px).
+    await expect(more.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      44
+    );
   },
 };
 

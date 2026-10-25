@@ -29,6 +29,15 @@ export {
 export { Input } from "./components/input.tsx";
 
 export {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "./components/popover.tsx";
+
+export {
   Select,
   SelectContent,
   SelectGroup,

@@ -38,6 +38,17 @@ export type ModuleRefusal = {
   }[];
 };
 
+/** The Access cell strings, from the host's message catalogue (DR-26). */
+export type AccessLabels = {
+  /** The visible count of holders the cell does not name, for example "+12". */
+  readonly more: (count: number) => string;
+  /** The accessible name of that count; it starts with the visible text. */
+  readonly showAll: (count: number, moduleName: string) => string;
+  /** The title of the full list, and the name of the list in the cell. */
+  readonly title: (moduleName: string) => string;
+  readonly group: (groupName: string) => string;
+};
+
 export type ModulesScreenProps = {
   readonly modules: readonly ModuleView[];
   /** In display order. */
@@ -49,6 +60,7 @@ export type ModulesScreenProps = {
   readonly onCategory: (moduleId: string, categoryId: string | null) => void;
   readonly rolesHref: string;
   readonly settingsHref: string;
+  readonly accessLabels: AccessLabels;
   /** The list is still being read: no table and no empty state yet. */
   readonly loading?: boolean | undefined;
   /** The list could not be read: this text replaces the table. */

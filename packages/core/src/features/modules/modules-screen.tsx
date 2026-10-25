@@ -1,11 +1,16 @@
 "use client";
 
 import {
+  Button,
   ConfirmDialog,
   DataTable,
   focusRing,
   HelpDisclosure,
   MonoChip,
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -14,9 +19,19 @@ import {
   StatusPill,
   Switch,
 } from "@genie/ui";
+import { uniqBy } from "es-toolkit";
 import { useState } from "react";
 
-import type { ModuleRefusal, ModulesScreenProps, ModuleView } from "./types.ts";
+import type {
+  AccessLabels,
+  ModuleHolderView,
+  ModuleRefusal,
+  ModulesScreenProps,
+  ModuleView,
+} from "./types.ts";
+
+/** Holders the Access cell names; the rest become "+N" and the full list (DR-26). */
+const NAMED = 3;
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
@@ -59,13 +74,31 @@ function Refusal(props: {
 
 /**
  * Read-only: who holds a role carrying `<id>:use`. A switched-off module keeps them, muted (R-86).
+ * The cell names three, groups first, and "+N" opens the full list with each role (DR-26).
  * Every change lives on the Roles screen the line links to, never here (R-85, DEC-39).
  */
 function Access(props: {
   readonly module: ModuleView;
   readonly rolesHref: string;
+  readonly labels: AccessLabels;
 }) {
-  const { module } = props;
+  const { module, labels } = props;
+
+  const name = (holder: ModuleHolderView) =>
+    holder.principalType === "group"
+      ? labels.group(holder.label)
+      : holder.label;
+
+  // A principal holding the key through two roles is named once in the cell.
+  const principals = uniqBy(
+    module.holders.toSorted(
+      (a, b) =>
+        Number(a.principalType === "user") - Number(b.principalType === "user")
+    ),
+    (holder) => `${holder.principalType}:${holder.principalId}`
+  );
+
+  const hidden = principals.length - NAMED;
 
   return (
     <div
@@ -76,21 +109,35 @@ function Access(props: {
           No one holds {module.displayName} yet
         </p>
       ) : (
-        <ul
-          aria-label={`Holders of ${module.displayName}`}
-          className="grid gap-0.5"
-        >
-          {module.holders.map((holder) => (
-            // A principal holding the key through two roles appears once per role.
-            <li
-              key={`${holder.principalType}:${holder.principalId}:${holder.roleName}`}
-            >
-              {holder.label}
-              {holder.principalType === "group" ? " (group)" : ""}{" "}
-              <span className="text-muted-foreground">· {holder.roleName}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-wrap items-center gap-x-2">
+          <span>{principals.slice(0, NAMED).map(name).join(", ")}</span>
+          {hidden > 0 ? (
+            <Popover>
+              <PopoverTrigger
+                render={<Button variant="ghost" size="lg" />}
+                aria-label={labels.showAll(hidden, module.displayName)}
+              >
+                {labels.more(hidden)}
+              </PopoverTrigger>
+              <PopoverContent align="start">
+                <PopoverTitle>{labels.title(module.displayName)}</PopoverTitle>
+                <ul className="grid max-h-72 gap-0.5 overflow-y-auto">
+                  {module.holders.map((holder) => (
+                    // A principal holding the key through two roles appears once per role.
+                    <li
+                      key={`${holder.principalType}:${holder.principalId}:${holder.roleName}`}
+                    >
+                      {name(holder)}{" "}
+                      <span className="text-muted-foreground">
+                        · {holder.roleName}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </div>
       )}
       <a href={props.rolesHref} className={linkClass}>
         Manage in Roles
@@ -171,7 +218,11 @@ export function ModulesScreen(props: ModulesScreenProps) {
     );
 
   const access = (module: ModuleView) => (
-    <Access module={module} rolesHref={props.rolesHref} />
+    <Access
+      module={module}
+      rolesHref={props.rolesHref}
+      labels={props.accessLabels}
+    />
   );
 
   return (
