@@ -26,6 +26,7 @@ import {
   type BrandingImageSlot,
   type BrandingImageView,
   brandingDraftSchema,
+  brandingImageType,
   HEX_COLOR,
 } from "../../services/branding/schemas.ts";
 import { ColorsTab } from "./colors-tab.tsx";
@@ -242,15 +243,21 @@ function BrandingEditor(
     if (file.size > BRANDING_IMAGE_MAX_BYTES)
       return refuse(BRANDING_UPLOAD_TOO_LARGE);
 
-    if (!BRANDING_IMAGE_TYPES.includes(file.type.toLowerCase()))
+    const type = brandingImageType(file);
+
+    if (!BRANDING_IMAGE_TYPES.includes(type))
       return refuse(BRANDING_UPLOAD_WRONG_TYPE);
+
+    // The multipart part carries the file's type, so the type the screen checked is the one sent.
+    const typed =
+      type === file.type ? file : new File([file], file.name, { type });
 
     const started = discards.current;
 
     setSlots((current) => ({ ...current, [slot]: { uploading: file.name } }));
 
     try {
-      const image = await props.onUpload(slot, file);
+      const image = await props.onUpload(slot, typed);
 
       if (discards.current !== started) return;
 

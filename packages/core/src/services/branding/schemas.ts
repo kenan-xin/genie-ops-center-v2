@@ -28,9 +28,39 @@ export const BRANDING_IMAGE_TYPES: readonly string[] = Object.freeze([
   "image/vnd.microsoft.icon",
 ]);
 
+/** The type an extension names, for a file whose declared type is empty (DR-20 S3-07). */
+const BRANDING_IMAGE_TYPE_BY_EXTENSION: Readonly<Record<string, string>> =
+  Object.freeze({
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+    ".ico": "image/x-icon",
+  });
+
 export const BRANDING_UPLOAD_TOO_LARGE = "This file is over 1 MB.";
 
 export const BRANDING_UPLOAD_WRONG_TYPE = "Use a PNG, SVG, WebP or ICO file.";
+
+/**
+ * The type of a branding file: its declared type, or when that is empty the type its extension
+ * names. Another extension answers an empty string, which the type list refuses.
+ */
+export function brandingImageType(file: {
+  readonly name: string;
+  readonly type: string;
+}): string {
+  const declared = file.type.trim().toLowerCase();
+
+  if (declared !== "") return declared;
+
+  const fileName = file.name.toLowerCase();
+
+  return (
+    BRANDING_IMAGE_TYPE_BY_EXTENSION[
+      fileName.slice(fileName.lastIndexOf("."))
+    ] ?? ""
+  );
+}
 
 export type ScanStatus = "pending" | "clean" | "infected" | "skipped";
 

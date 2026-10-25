@@ -230,6 +230,34 @@ export const UploadRefused: Story = {
   },
 };
 
+/**
+ * DR-20 S3-07: a browser can report an empty type. The extension names the type, and the upload
+ * sends it; a file with another extension and no type is still refused.
+ */
+export const UploadWithNoDeclaredType: Story = {
+  play: async ({ args, canvas }) => {
+    const input = canvas.getByLabelText("Upload a file for Square mark");
+
+    await user.upload(input, new File(["png"], "logo.png", { type: "" }));
+
+    await waitFor(() =>
+      expect(args.onUpload).toHaveBeenCalledWith(
+        "logoMark",
+        expect.objectContaining({ name: "logo.png", type: "image/png" })
+      )
+    );
+
+    await user.upload(input, new File(["notes"], "notes.txt", { type: "" }));
+
+    await expect(
+      within(canvas.getByRole("group", { name: "Square mark" })).getByRole(
+        "alert"
+      )
+    ).toHaveTextContent("Use a PNG, SVG, WebP or ICO file.");
+    await expect(args.onUpload).toHaveBeenCalledOnce();
+  },
+};
+
 /** Presses Tab until the target holds focus, so the ring shows as it does for a keyboard user. */
 async function tabTo(target: Element, stops = 60): Promise<void> {
   if (document.activeElement === target || stops === 0) return;
