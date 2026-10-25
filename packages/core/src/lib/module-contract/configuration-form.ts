@@ -1,5 +1,6 @@
 import {
   configFieldMessage,
+  configFieldOptional,
   configValueSchema,
   type ConfigFormField,
   type ConfigFormSchema,
@@ -47,7 +48,16 @@ export function configurationForm(
       : { id, title, description: declared.description };
   });
 
-  return { schema: { type: "object", properties }, fields };
+  // A field with a default or `.optional()` is absent from `required`, so it may be left empty.
+  const required = emitted.required ?? [];
+
+  return {
+    schema:
+      required.length === 0
+        ? { type: "object", properties }
+        : { type: "object", properties, required },
+    fields,
+  };
 }
 
 /** One value per field: the stored one, or the JSON Schema default when the key is missing. */
@@ -76,7 +86,12 @@ export function configurationIssues(
     const message =
       schema === undefined
         ? null
-        : configFieldMessage(schema, field, values[field.id]);
+        : configFieldMessage(
+            schema,
+            field,
+            values[field.id],
+            configFieldOptional(form.schema, field.id)
+          );
 
     return message === null ? [] : [{ path: field.id, message }];
   });

@@ -148,6 +148,28 @@ export const IntegerAndNumberKeypads: Story = {
   },
 };
 
+/** An optional number left empty does not block Save; the module schema accepts it (admin M-2). */
+export const OptionalNumberLeftEmpty: Story = {
+  args: {
+    schema: {
+      type: "object",
+      properties: { limit: { type: "integer", minimum: 1 } },
+    },
+    fields: [{ id: "limit", title: "Limit" }],
+    values: { limit: 5 },
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.clear(canvas.getByRole("spinbutton", { name: "Limit" }));
+    await userEvent.tab();
+    await expect(canvas.queryByRole("alert")).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(args.onSubmit).toHaveBeenCalledWith({ limit: undefined })
+    );
+  },
+};
+
 export const BlurShowsMessage: Story = {
   play: async ({ canvas }) => {
     const title = canvas.getByRole("textbox", { name: "Title" });

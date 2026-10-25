@@ -25,6 +25,7 @@ import {
   configFieldChoices,
   configFieldKind,
   configFieldMessage,
+  configFieldOptional,
   configFormValidator,
   type ConfigFieldSchema,
   type ConfigFormField,
@@ -113,7 +114,12 @@ export function ConfigForm({
 
             return (
               field !== undefined &&
-              configFieldMessage(field, meta, values[meta.id]) !== null
+              configFieldMessage(
+                field,
+                meta,
+                values[meta.id],
+                configFieldOptional(schema, meta.id)
+              ) !== null
             );
           })
           .map((meta) => meta.id)

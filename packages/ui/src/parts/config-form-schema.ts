@@ -50,7 +50,15 @@ export type ConfigFieldSchema =
 export type ConfigFormSchema = {
   readonly type: "object";
   readonly properties: Readonly<Record<string, ConfigFieldSchema>>;
+  /** The fields that must hold a value. A field with a default or `.optional()` is absent. */
+  readonly required?: readonly string[];
 };
+
+/** True when the field may be left empty: JSON Schema lists it nowhere in `required` (admin M-2). */
+export const configFieldOptional = (
+  schema: ConfigFormSchema,
+  id: string
+): boolean => !(schema.required ?? []).includes(id);
 
 /** One field's label and help, in declared order. */
 export type ConfigFormField = {
@@ -119,9 +127,10 @@ export const configValueSchema = z.union([
 const formatNumber = (n: number): string => n.toLocaleString("en-GB");
 
 /**
- * The zod schema of one field, rebuilt from its JSON Schema with the fixed R-80 messages, so the
- * form accepts exactly what the module's own zod schema accepts on the server. A pattern is
- * rebuilt with no flags because `z.toJSONSchema` drops them and modules declare none (DR-20 S3-06).
+ * The zod schema of one field, rebuilt from its JSON Schema with the fixed R-80 messages. It
+ * matches the module's own zod schema only because `validateModule` refuses every rule outside
+ * this subset (admin M-2). A pattern is rebuilt with no flags because `z.toJSONSchema` drops them
+ * and `validateModule` refuses a flag (DR-20 S3-06).
  */
 function fieldValueSchema(
   field: ConfigFieldSchema,
@@ -204,12 +213,18 @@ function fieldValueSchema(
   }
 }
 
-/** The fixed R-80 message for one field value, or null when the value is valid. First rule wins. */
+/**
+ * The fixed R-80 message for one field value, or null when the value is valid. First rule wins.
+ * An optional field accepts an empty value (`undefined`); an empty string is still checked.
+ */
 export function configFieldMessage(
   field: ConfigFieldSchema,
   meta: ConfigFormField,
-  value: ConfigValue
+  value: ConfigValue,
+  optional = false
 ): string | null {
+  if (optional && value === undefined) return null;
+
   const result = fieldValueSchema(field, meta).safeParse(value);
 
   if (result.success) return null;
@@ -237,7 +252,12 @@ export function configFormValidator(
 
       if (field === undefined) continue;
 
-      const message = configFieldMessage(field, meta, values[meta.id]);
+      const message = configFieldMessage(
+        field,
+        meta,
+        values[meta.id],
+        configFieldOptional(schema, meta.id)
+      );
 
       if (message !== null)
         ctx.addIssue({ code: "custom", path: [meta.id], message });

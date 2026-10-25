@@ -30,6 +30,7 @@ const schema = {
       maxItems: 5,
     },
   },
+  required: ["title", "tags"],
 } as const satisfies ConfigFormSchema;
 
 const fields: readonly ConfigFormField[] = [
@@ -190,6 +191,23 @@ describe("configFormValidator", () => {
         path: ["mode"],
         message: "Choose a value for mode.",
       }),
+    ]);
+  });
+
+  // admin M-2: a field absent from `required` is optional in the module schema, so empty is valid.
+  it("accepts an empty optional field and refuses an empty required one", async () => {
+    const result = await configFormValidator(schema, fields)[
+      "~standard"
+    ].validate({
+      title: "Placeholder",
+      pageSize: undefined,
+      enabled: false,
+      mode: "basic",
+      tags: undefined,
+    });
+
+    expect("issues" in result && result.issues).toEqual([
+      expect.objectContaining({ path: ["tags"] }),
     ]);
   });
 

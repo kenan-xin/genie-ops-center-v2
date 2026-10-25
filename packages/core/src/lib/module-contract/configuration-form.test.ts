@@ -116,4 +116,26 @@ describe("configurationIssues", () => {
     expect(configuration.schema.safeParse(values).success).toBe(true);
     expect(configurationIssues(form, values)).toEqual([]);
   });
+
+  it("accepts an optional number left empty, as the module's own schema does (admin M-2)", () => {
+    const schema = z.object({
+      limit: z.number().int().min(1).optional(),
+      name: z.string().max(10),
+    });
+
+    const optional = configurationForm({
+      ...configuration,
+      schema,
+      fields: {},
+    });
+
+    const values = withDefaults(optional, { name: "a" });
+
+    expect(optional.schema.required).toEqual(["name"]);
+    expect(schema.safeParse(values).success).toBe(true);
+    expect(configurationIssues(optional, values)).toEqual([]);
+    expect(
+      configurationIssues(optional, { limit: undefined, name: undefined })
+    ).toEqual([{ path: "name", message: "name has the wrong format." }]);
+  });
 });
