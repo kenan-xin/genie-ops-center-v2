@@ -83,6 +83,28 @@ export const TextFloor: Story = {
   },
 };
 
+export const WidthCap: Story = {
+  render: () => <input aria-label="Search" className="w-full max-w-sm" />,
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("textbox", { name: "Search" });
+    const root = document.documentElement;
+    const before = root.style.fontSize;
+
+    try {
+      // DR-20 (S3-03): tokens.md caps a search field at 384 px at every root size preset.
+      const widths = Object.values(fontSizePresetsPx).map((px) => {
+        root.style.fontSize = `${px}px`;
+
+        return getComputedStyle(field).maxWidth;
+      });
+
+      await expect(new Set(widths)).toEqual(new Set(["384px"]));
+    } finally {
+      root.style.fontSize = before;
+    }
+  },
+};
+
 export const FocusRingOnDark: Story = {
   ...FocusRing,
   globals: { theme: "dark" },
