@@ -108,7 +108,11 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
           value={name}
           onValueChange={setName}
         />
-        <Button type="submit" disabled={name.trim() === ""}>
+        <Button
+          type="submit"
+          disabled={name.trim() === ""}
+          loading={props.reordering}
+        >
           <PlusIcon aria-hidden="true" />
           Add
         </Button>
@@ -200,6 +204,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                       variant="ghost"
                       size="icon"
                       aria-label={`Delete ${category.name}`}
+                      loading={props.reordering}
                       onClick={() =>
                         setConfirm({ id: category.id, open: true })
                       }

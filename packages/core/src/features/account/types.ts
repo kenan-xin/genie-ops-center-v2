@@ -56,4 +56,6 @@ export type AccountPageProps = {
   readonly onRevokeSession?: (sessionId: string) => void;
   /** Sign out every other session, after the confirm dialog agrees. */
   readonly onRevokeOtherSessions?: () => void;
+  /** A sign-out is running, so the Sign out buttons show the loading state (tokens.md "Buttons"). */
+  readonly revoking?: boolean | undefined;
 };

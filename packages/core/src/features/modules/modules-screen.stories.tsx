@@ -135,6 +135,19 @@ const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 };
 
+export const SwitchInFlight: Story = {
+  args: { pending: "fixture" },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Modules" }));
+
+    // DR-17: a switch has no loading state, so a spinner beside it shows its running call.
+    await expect(
+      table.getByRole("switch", { name: "Fixture enabled" })
+    ).toHaveAttribute("aria-busy", "true");
+    await expect(table.getByRole("status")).toHaveTextContent("Saving Fixture");
+  },
+};
+
 export const SwitchOffConfirms: Story = { play: switchOffConfirms };
 
 export const SwitchOffConfirmsOnPhone: Story = {

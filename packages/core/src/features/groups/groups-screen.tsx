@@ -254,6 +254,7 @@ export function GroupInspector(
                           size="sm"
                           disabled={blocked}
                           title={blocked ? LAST_ADMIN_REASON : undefined}
+                          loading={props.pending}
                           onClick={() => props.onRemoveMembers([member.id])}
                         >
                           Remove
@@ -289,6 +290,7 @@ export function GroupInspector(
                         <Button
                           variant="secondary"
                           disabled={selectedMembers.length === 0}
+                          loading={props.pending}
                           onClick={() => {
                             props.onAddMembers(selectedMembers);
                             setSelectedMembers([]);
@@ -307,6 +309,7 @@ export function GroupInspector(
                         variant="ghost"
                         disabled={blocked}
                         title={blocked ? LAST_ADMIN_REASON : undefined}
+                        loading={props.pending}
                         onClick={() => setConfirm("remove")}
                       >
                         Remove all
@@ -352,6 +355,7 @@ export function GroupInspector(
                     <Button
                       variant="ghost"
                       size="sm"
+                      loading={props.pending}
                       onClick={() => props.onUnassignRole(assignment.id)}
                     >
                       Remove
@@ -391,6 +395,7 @@ export function GroupInspector(
                   </div>
                   <Button
                     disabled={roleToAssign === ""}
+                    loading={props.pending}
                     onClick={() => {
                       props.onAssignRole(roleToAssign);
                       setRoleToAssign("");
@@ -421,6 +426,7 @@ export function GroupInspector(
               </Field>
               <div className="mt-2 flex gap-2">
                 <Button
+                  loading={props.pending}
                   onClick={() => {
                     props.onEditLabel(
                       labelDraft.trim() === "" ? null : labelDraft
@@ -457,6 +463,7 @@ export function GroupInspector(
               </Field>
               <div className="flex gap-2">
                 <Button
+                  loading={props.pending}
                   onClick={() => {
                     props.onEditLocal(nameDraft, descriptionDraft);
                     setEditing(null);
@@ -478,7 +485,11 @@ export function GroupInspector(
           <div className="flex flex-wrap gap-2 border-t border-input pt-3">
             {group.archived ? (
               props.onRestore === undefined ? null : (
-                <Button variant="secondary" onClick={props.onRestore}>
+                <Button
+                  variant="secondary"
+                  loading={props.pending}
+                  onClick={props.onRestore}
+                >
                   Restore group
                 </Button>
               )
@@ -491,6 +502,7 @@ export function GroupInspector(
                   variant="danger"
                   disabled={blocked}
                   title={blocked ? LAST_ADMIN_REASON : undefined}
+                  loading={props.pending}
                   onClick={() => setConfirm("delete")}
                 >
                   <TrashIcon /> Delete group
@@ -506,6 +518,7 @@ export function GroupInspector(
                     variant="danger"
                     disabled={blocked}
                     title={blocked ? LAST_ADMIN_REASON : undefined}
+                    loading={props.pending}
                     onClick={() => setConfirm("delete")}
                   >
                     <TrashIcon /> Delete group
@@ -515,6 +528,7 @@ export function GroupInspector(
                     variant="danger"
                     disabled={blocked}
                     title={blocked ? LAST_ADMIN_REASON : undefined}
+                    loading={props.pending}
                     onClick={() => setConfirm("archive")}
                   >
                     <ArchiveIcon /> Archive group
@@ -638,10 +652,15 @@ export function GroupsScreen(props: GroupsScreenProps) {
             />
             Show archived
           </label>
-          <Button variant="secondary" onClick={() => setDialog("directory")}>
+          {/* The add dialogs close on submit, so their opener shows the running write. */}
+          <Button
+            variant="secondary"
+            loading={props.pending}
+            onClick={() => setDialog("directory")}
+          >
             <DirectoryIcon /> Add directory group
           </Button>
-          <Button onClick={() => setDialog("local")}>
+          <Button loading={props.pending} onClick={() => setDialog("local")}>
             <PlusIcon /> New local group
           </Button>
         </div>
@@ -775,6 +794,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
       {selected === undefined ? null : (
         <GroupInspector
           open={inspectorOpen}
+          pending={props.pending}
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
           assignments={props.details?.[selected.id]?.assignments ?? []}

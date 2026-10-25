@@ -125,6 +125,7 @@ export function PeopleRoute(props: {
       roles={roles.data ?? []}
       canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}
+      pending={action.isPending}
       error={
         error ?? (list.isError ? "The people could not be read." : undefined)
       }

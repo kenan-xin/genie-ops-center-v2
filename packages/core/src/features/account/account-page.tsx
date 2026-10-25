@@ -130,6 +130,7 @@ function currentChip(): JSX.Element {
 function SessionRows(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
+  readonly revoking?: boolean | undefined;
   readonly onAskRevoke: (session: AccountSession) => void;
 }) {
   return (
@@ -156,6 +157,7 @@ function SessionRows(props: {
               <Button
                 variant="secondary"
                 size="sm"
+                loading={props.revoking}
                 onClick={() => props.onAskRevoke(session)}
               >
                 Sign out
@@ -171,6 +173,7 @@ function SessionRows(props: {
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
+  readonly revoking?: boolean | undefined;
   readonly onAskRevoke: (session: AccountSession) => void;
   readonly onAskRevokeOthers: () => void;
 }) {
@@ -183,7 +186,11 @@ function SessionsBlock(props: {
     >
       {others.length === 0 ? null : (
         <div>
-          <Button variant="secondary" onClick={props.onAskRevokeOthers}>
+          <Button
+            variant="secondary"
+            loading={props.revoking}
+            onClick={props.onAskRevokeOthers}
+          >
             Sign out all other sessions
           </Button>
         </div>
@@ -207,6 +214,7 @@ function SessionsBlock(props: {
                 <Button
                   variant="secondary"
                   size="sm"
+                  loading={props.revoking}
                   onClick={() => props.onAskRevoke(session)}
                 >
                   Sign out
@@ -240,6 +248,7 @@ function SessionsBlock(props: {
           <SessionRows
             sessions={props.sessions}
             timeZone={props.timeZone}
+            revoking={props.revoking}
             onAskRevoke={props.onAskRevoke}
           />
         </tbody>
@@ -336,6 +345,7 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
       <SessionsBlock
         sessions={props.sessions}
         timeZone={props.timeZone}
+        revoking={props.revoking}
         onAskRevoke={(session) => setPending({ kind: "one", session })}
         onAskRevokeOthers={() =>
           setPending({

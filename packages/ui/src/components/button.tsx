@@ -23,7 +23,7 @@ function Button({
   ...props
 }: ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants> & {
-    loading?: boolean;
+    loading?: boolean | undefined;
   }) {
   // The spinner takes the place of the leading icon, so the width stays.
   const nodes = React.Children.toArray(children);

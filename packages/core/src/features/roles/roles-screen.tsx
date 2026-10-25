@@ -244,6 +244,7 @@ function RoleDetailView(props: {
   readonly onDelete: () => void;
   readonly onOpenInAccess: () => void;
   readonly onRemoveUnavailable: (key: string) => void;
+  readonly pending?: boolean | undefined;
 }) {
   const { detail } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -265,15 +266,28 @@ function RoleDetailView(props: {
 
       <div className="mt-3 flex flex-wrap gap-2">
         {detail.kind === "system" ? (
-          <Button variant="secondary" onClick={props.onCopy}>
+          // The role dialog closes on submit, so its opener shows the running write.
+          <Button
+            variant="secondary"
+            loading={props.pending}
+            onClick={props.onCopy}
+          >
             <CopyIcon /> Copy role
           </Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={props.onEdit}>
+            <Button
+              variant="secondary"
+              loading={props.pending}
+              onClick={props.onEdit}
+            >
               <PencilIcon /> Edit role
             </Button>
-            <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+            <Button
+              variant="danger"
+              loading={props.pending}
+              onClick={() => setConfirmDelete(true)}
+            >
               <TrashIcon /> Delete role
             </Button>
           </>
@@ -316,6 +330,7 @@ function RoleDetailView(props: {
                       <Button
                         variant="ghost"
                         size="sm"
+                        loading={props.pending}
                         onClick={() => props.onRemoveUnavailable(entry.key)}
                       >
                         Remove
@@ -460,6 +475,7 @@ export function RolesScreen(props: RolesScreenProps) {
       <div>
         <RoleDetailView
           detail={props.detail}
+          pending={props.pending}
           onBack={() => props.onSelectRole(null)}
           onEdit={() =>
             openForm({
@@ -515,6 +531,7 @@ export function RolesScreen(props: RolesScreenProps) {
           </HelpDisclosure>
         </div>
         <Button
+          loading={props.pending}
           onClick={() =>
             openForm({
               mode: "create",

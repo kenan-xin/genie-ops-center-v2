@@ -129,6 +129,8 @@ export type PeopleScreenProps = {
    */
   readonly notice?: string | undefined;
   readonly loading?: boolean | undefined;
+  /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */
+  readonly pending?: boolean | undefined;
   /** Fires when a row opens or the inspector closes, so the host can load that person's detail. */
   readonly onSelectPerson?: (personId: string | null) => void;
   /**

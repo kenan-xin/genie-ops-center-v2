@@ -193,6 +193,28 @@ export const SignOutEverywhere: Story = {
   },
 };
 
+export const SignOutInFlight: Story = {
+  args: { revoking: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const others = canvas.getByRole("button", {
+      name: "Sign out all other sessions",
+    });
+
+    // DR-17: while a sign-out runs, every Sign out button is busy and drops a second press.
+    await expect(others).toHaveAttribute("aria-busy", "true");
+    await expect(
+      sessionTable(canvasElement).getAllByRole("button", {
+        name: "Sign out",
+      })[0]
+    ).toHaveAttribute("aria-busy", "true");
+
+    await userEvent.click(others);
+    await expect(screen.queryByRole("dialog")).toBeNull();
+  },
+};
+
 export const OnlyThisDevice: Story = {
   args: {
     sessions: FIXTURE_ACCOUNT_PAGE.sessions.filter(

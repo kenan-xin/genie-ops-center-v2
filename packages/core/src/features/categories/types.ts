@@ -41,7 +41,7 @@ export type CategoriesScreenProps = {
     | { readonly moduleId: string; readonly message: string }
     | undefined;
   readonly onRetry?: (() => void) | undefined;
-  /** A list write is saving: the reorder arrows refuse until it settles. */
+  /** A list write is saving: the reorder arrows refuse, and Add and Delete show the loading state. */
   readonly reordering?: boolean | undefined;
   /** The lists are still being read: no rows and no empty state yet. */
   readonly loading?: boolean | undefined;

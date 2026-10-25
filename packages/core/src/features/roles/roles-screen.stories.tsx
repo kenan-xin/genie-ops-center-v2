@@ -196,6 +196,26 @@ export const DeleteCustomRoleConfirms: Story = {
   },
 };
 
+export const WriteInFlight: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    pending: true,
+  },
+  play: async ({ canvas }) => {
+    const remove = canvas.getByRole("button", { name: /Delete role/ });
+
+    // DR-17: while a write runs, the buttons that write are busy and drop a second press.
+    await expect(remove).toHaveAttribute("aria-busy", "true");
+    await expect(
+      canvas.getByRole("button", { name: /Edit role/ })
+    ).toHaveAttribute("aria-busy", "true");
+
+    await userEvent.click(remove);
+    await expect(screen.queryByRole("dialog")).toBeNull();
+  },
+};
+
 export const NewRoleForm: Story = {
   play: async ({ canvas }) => {
     onCreateRole.mockClear();

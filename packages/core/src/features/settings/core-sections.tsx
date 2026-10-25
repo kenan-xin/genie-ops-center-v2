@@ -83,8 +83,8 @@ export function SectionFooter(props: {
             Discard
           </Button>
           <Button
-            disabled={!state.canSubmit || state.submitting}
-            aria-busy={state.submitting || undefined}
+            disabled={!state.canSubmit && !state.submitting}
+            loading={state.submitting}
             onClick={state.submit}
           >
             Save

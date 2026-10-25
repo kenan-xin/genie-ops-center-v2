@@ -12,6 +12,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
   Select,
+  Spinner,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -174,14 +175,21 @@ export function ModulesScreen(props: ModulesScreenProps) {
   // Switching on saves at once; switching off asks first (R-83).
   const enabledControl = (module: ModuleView) => (
     <div className="grid gap-2">
-      <Switch
-        aria-label={`${module.displayName} enabled`}
-        checked={module.enabled}
-        disabled={props.pending === module.id}
-        onCheckedChange={(on) =>
-          on ? props.onSwitch(module.id, true) : setConfirmId(module.id)
-        }
-      />
+      {/* A switch has no loading state, so a spinner sits beside it while its call runs. */}
+      <span className="flex items-center gap-2">
+        <Switch
+          aria-label={`${module.displayName} enabled`}
+          aria-busy={props.pending === module.id || undefined}
+          checked={module.enabled}
+          disabled={props.pending === module.id}
+          onCheckedChange={(on) =>
+            on ? props.onSwitch(module.id, true) : setConfirmId(module.id)
+          }
+        />
+        {props.pending === module.id ? (
+          <Spinner label={`Saving ${module.displayName}`} />
+        ) : null}
+      </span>
       {props.refusal?.moduleId === module.id ? (
         <Refusal refusal={props.refusal} settingsHref={props.settingsHref} />
       ) : null}

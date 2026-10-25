@@ -95,6 +95,8 @@ export type GroupsScreenProps = {
   /** The claims-managed failure, shown instead of the list. */
   readonly error?: string | undefined;
   readonly loading?: boolean | undefined;
+  /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */
+  readonly pending?: boolean | undefined;
   readonly onAddDirectoryGroup?: (
     externalId: string,
     displayLabel?: string
@@ -133,6 +135,7 @@ export type GroupInspectorProps = {
   readonly people: readonly PersonOption[];
   readonly roles: readonly AssignableRole[];
   readonly lastAdministrator: boolean;
+  readonly pending?: boolean | undefined;
   readonly onClose: () => void;
   readonly onArchive: () => void;
   readonly onRestore?: (() => void) | undefined;

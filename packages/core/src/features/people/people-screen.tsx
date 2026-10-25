@@ -190,6 +190,7 @@ export function PersonInspector(props: {
   readonly onRevokeSession: (sessionId: string) => void;
   readonly onRevokeAllSessions: () => void;
   readonly onManageAccess?: (() => void) | undefined;
+  readonly pending?: boolean | undefined;
 }) {
   const { person, viewer } = props;
   const open = props.open ?? true;
@@ -300,6 +301,7 @@ export function PersonInspector(props: {
                   <div className="mt-2">
                     <Button
                       variant="secondary"
+                      loading={props.pending}
                       onClick={props.onResendSetPassword}
                     >
                       Resend set-password email
@@ -321,6 +323,7 @@ export function PersonInspector(props: {
                   <div className="mt-2">
                     <Button
                       variant="secondary"
+                      loading={props.pending}
                       onClick={props.onResendInvitation}
                     >
                       Resend invitation
@@ -331,7 +334,11 @@ export function PersonInspector(props: {
 
               <div className="mt-3 flex flex-wrap gap-2 border-t border-input pt-3">
                 {person.status === "disabled" ? (
-                  <Button variant="secondary" onClick={props.onEnable}>
+                  <Button
+                    variant="secondary"
+                    loading={props.pending}
+                    onClick={props.onEnable}
+                  >
                     Re-enable
                   </Button>
                 ) : (
@@ -339,6 +346,7 @@ export function PersonInspector(props: {
                     variant="secondary"
                     disabled={blocked}
                     title={blocked ? blockedReason : undefined}
+                    loading={props.pending}
                     onClick={() => setConfirm("disable")}
                   >
                     Disable
@@ -348,6 +356,7 @@ export function PersonInspector(props: {
                   variant="danger"
                   disabled={blocked}
                   title={blocked ? blockedReason : undefined}
+                  loading={props.pending}
                   onClick={() => setConfirm("remove")}
                 >
                   <TrashIcon /> Remove
@@ -436,6 +445,7 @@ export function PersonInspector(props: {
                     <Button
                       variant="ghost"
                       size="sm"
+                      loading={props.pending}
                       onClick={() => props.onRevokeSession(session.id)}
                     >
                       Sign out
@@ -450,7 +460,11 @@ export function PersonInspector(props: {
               </ul>
               {person.sessions.length === 0 ? null : (
                 <div className="mt-3">
-                  <Button variant="ghost" onClick={props.onRevokeAllSessions}>
+                  <Button
+                    variant="ghost"
+                    loading={props.pending}
+                    onClick={props.onRevokeAllSessions}
+                  >
                     Sign out all
                   </Button>
                 </div>
@@ -855,6 +869,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
       {selected === undefined ? null : (
         <PersonInspector
           open={inspectorOpen}
+          pending={props.pending}
           person={selected}
           viewer={props.viewer}
           self={selected.id === props.viewer.id}
@@ -1080,7 +1095,8 @@ export function AddPersonDialog(props: {
             Cancel
           </Button>
           <Button
-            disabled={email.trim() === "" || props.submitting === true}
+            disabled={email.trim() === ""}
+            loading={props.submitting === true}
             onClick={() =>
               props.onSubmit({
                 email: email.trim(),

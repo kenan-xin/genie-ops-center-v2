@@ -84,6 +84,8 @@ export type RolesScreenProps = {
   readonly detail?: RoleDetail | undefined;
   readonly error?: string | undefined;
   readonly loading?: boolean | undefined;
+  /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */
+  readonly pending?: boolean | undefined;
   readonly onCreateRole?: (input: RoleInput) => void;
   readonly onUpdateRole?: (roleId: string, input: RoleInput) => void;
   readonly onDeleteRole?: (roleId: string) => void;

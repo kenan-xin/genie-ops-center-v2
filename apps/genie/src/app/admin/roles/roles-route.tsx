@@ -60,6 +60,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       onSelectRole={setSelectedRoleId}
       detail={detail.data}
       loading={list.isPending}
+      pending={action.isPending}
       error={list.isError ? "The roles could not be read." : undefined}
       onCreateRole={(input) =>
         run(() =>

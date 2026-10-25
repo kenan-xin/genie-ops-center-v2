@@ -50,6 +50,19 @@ export function AccountRoute(props: {
 
   const [sessions, setSessions] = useState(props.sessions);
 
+  const [revoking, setRevoking] = useState(false);
+
+  /** Runs one sign-out with the Sign out buttons in their loading state. */
+  async function whileRevoking(work: () => Promise<void>): Promise<void> {
+    setRevoking(true);
+
+    try {
+      await work();
+    } finally {
+      setRevoking(false);
+    }
+  }
+
   async function revokeOne(sessionId: string): Promise<void> {
     const response = await postSession("/api/session/revoke", { sessionId });
 
@@ -112,11 +125,12 @@ export function AccountRoute(props: {
         accountManagementUrl={props.accountManagementUrl}
         timeZone={props.timeZone}
         nowIso={props.nowIso}
+        revoking={revoking}
         onRevokeSession={(sessionId) => {
-          void revokeOne(sessionId);
+          void whileRevoking(() => revokeOne(sessionId));
         }}
         onRevokeOtherSessions={() => {
-          void revokeOthers();
+          void whileRevoking(revokeOthers);
         }}
       />
     </>

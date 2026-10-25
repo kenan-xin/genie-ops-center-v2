@@ -100,28 +100,33 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
 
   const inspector = page.getByRole("dialog", { name: personName });
 
+  const resend = inspector.getByRole("button", {
+    name: "Resend set-password email",
+  });
+
   /* eslint-disable no-await-in-loop -- the limit is a sequence by definition. */
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    // The button stays busy until the write and its reload settle, and drops a press until then.
+    await expect(resend).not.toHaveAttribute("aria-busy", "true");
+
     const [response] = await Promise.all([
       page.waitForResponse((one) =>
         one.url().includes("/api/rpc/people/resendSetPassword")
       ),
-      inspector
-        .getByRole("button", { name: "Resend set-password email" })
-        .click(),
+      resend.click(),
     ]);
 
     expect(response.status()).toBe(200);
   }
 
   // The fourth is refused with the neutral rate-limited code, and one audit row records it.
+  await expect(resend).not.toHaveAttribute("aria-busy", "true");
+
   const [limited] = await Promise.all([
     page.waitForResponse((one) =>
       one.url().includes("/api/rpc/people/resendSetPassword")
     ),
-    inspector
-      .getByRole("button", { name: "Resend set-password email" })
-      .click(),
+    resend.click(),
   ]);
 
   expect(limited.status()).toBe(429);

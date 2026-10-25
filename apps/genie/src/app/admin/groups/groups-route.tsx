@@ -85,6 +85,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
             }
       }
       loading={list.isPending}
+      pending={action.isPending}
       error={list.isError ? "The groups could not be read." : undefined}
       onAddDirectoryGroup={(externalId, displayLabel) =>
         run(() =>
