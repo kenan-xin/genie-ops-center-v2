@@ -1,6 +1,6 @@
 import { colorRoles } from "@genie/ui/tokens";
 import { eq, inArray, sql } from "drizzle-orm";
-import { isEqual } from "es-toolkit";
+import { difference, isEqual } from "es-toolkit";
 import { z } from "zod";
 
 import { foregroundFor } from "../../lib/branding/foreground.ts";
@@ -57,6 +57,19 @@ const MISSING_IMAGE_MESSAGE = {
 } as const satisfies Record<BrandingImageSlot, string>;
 
 type BrandingRow = typeof tenantBranding.$inferSelect;
+
+/** Every column of the row that names a file: the four slots and the sign-in background. */
+const FILE_COLUMNS = [
+  ...Object.values(SLOT_FIELD),
+  "loginBackgroundFileId",
+] as const;
+
+/** The file ids a branding row names. No page edits the sign-in background yet, but it counts. */
+function namedFiles(
+  row: Pick<BrandingRow, (typeof FILE_COLUMNS)[number]>
+): string[] {
+  return FILE_COLUMNS.flatMap((column) => row[column] ?? []);
+}
 
 /** The row as the page edits it: no null name, the default color, empty texts for absent ones. */
 function draftOf(row: BrandingRow): BrandingDraft {
@@ -168,10 +181,10 @@ async function refuseForeignImages(
 /**
  * The one writer of `tenant_branding` after setup (R-44, R-45, DEC-47). The draft holds the fields
  * to change; each is laid over the locked row, so a concurrent Publish of another field is kept.
- * The whole result is parsed with the page's schema, the foreground is computed and stored, and
- * one `core:branding_published` row names the changed fields, all in one transaction. It writes
- * the branding row only: no Keycloak call, no realm data. A Publish that changes nothing writes
- * nothing.
+ * The whole result is parsed with the page's schema, the foreground is computed and stored, one
+ * `core:branding_published` row names the changed fields, and the images that the row no longer
+ * names are deleted through the file store, all in one transaction. It makes no Keycloak call and
+ * writes no realm data. A Publish that changes nothing writes nothing.
  */
 export async function applyBranding(
   tenant: TenantContext,
@@ -227,6 +240,13 @@ export async function applyBranding(
       updatedByUserId: input.actorUserId,
       updatedAt: sql`now()`,
     });
+
+    // The images this Publish replaced or removed: the locked row names them and the new row does
+    // not. An upload that no row names yet may sit in another draft, so it stays (DR-20, DEC-20).
+    await tenant.fileStorage.remove(
+      difference(namedFiles(row), namedFiles({ ...row, ...parsed.data })),
+      tx
+    );
 
     // Only the field names: the values are on the row, and an image id says nothing (R-90a).
     await writeAdminAuditEvent(tx, {

@@ -1,12 +1,12 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { fileBlob } from "../../../schema.ts";
 import type { FileBlobStore, FileStorageDatabase } from "../blob-store.ts";
 
 /**
  * The default adapter: bytes in the tenant database (DEC-20, R-32). It is the only module that
- * touches the `file_blob` table. The blob is keyed by the file id, so the caller writes the
- * `file` row and this row in one transaction and a rollback leaves neither (R-33, D-6).
+ * touches the `file_blob` table. The blob is keyed by the file id, so the caller writes or deletes
+ * the `file` row and this row in one transaction, and a rollback undoes both (R-33, D-6).
  */
 export function createPostgresFileBlobStore(
   db: FileStorageDatabase
@@ -22,6 +22,9 @@ export function createPostgresFileBlobStore(
         .where(eq(fileBlob.id, fileId));
 
       return row?.bytes;
+    },
+    async remove(fileIds, tx) {
+      await tx.delete(fileBlob).where(inArray(fileBlob.id, fileIds));
     },
   };
 }

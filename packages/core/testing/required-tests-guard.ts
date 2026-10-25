@@ -105,6 +105,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "FileStorage against a real Postgres deployment checks permissions through can() before issuing and serving a link",
       "FileStorage against a real Postgres deployment refuses a forged link before reading the principal grants",
       "FileStorage against a real Postgres deployment writes metadata and bytes in the caller transaction so rollback leaves neither",
+      "FileStorage against a real Postgres deployment removes a file's row and bytes in the caller transaction, so a rollback keeps both",
     ],
   },
   {
@@ -460,13 +461,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/branding-page.integration.test.ts",
     reason:
-      "Spec 3 R-44, R-45, R-49 and AC-5 require one Publish to write the changed branding columns with one core:branding_published row, a refusal to change nothing, and an image to render only while its scan is clean or skipped",
+      "Spec 3 R-44, R-45, R-49 and AC-5 require one Publish to write the changed branding columns with one core:branding_published row, a refusal to change nothing, and an image to render only while its scan is clean or skipped; DEC-20 requires a Publish to delete, through the file store, only the images that no column names any more",
     cases: [
       "applyBranding writes three changed fields, the stored foreground and one audit row naming them",
       "applyBranding answers changed false for the stored values and writes no audit row",
       "applyBranding refuses a failing color, an empty company name and a pdf or missing file id, changing nothing",
       "applyBranding refuses an unrelated publish while a stored image id has no file row, naming each dead slot",
       "applyBranding lets two concurrent publishes each name only their own change",
+      "applyBranding deletes the images a publish replaced or removed and keeps every image a column or a draft still names",
       "readBranding returns no url while the scan is pending, and the shell issues no mark link",
       "readBranding returns no url while the scan is infected, and the shell issues no mark link",
     ],

@@ -80,8 +80,9 @@ beforeEach(async () => {
     `update tenant_branding set company_name = 'E2E', product_name = 'Genie', primary_color = null,
        primary_foreground = null, default_theme = 'system', logo_light_file_id = null,
        logo_dark_file_id = null, logo_mark_file_id = null, favicon_file_id = null,
-       login_background_color = null, login_welcome_text = null, login_notice_text = null,
-       login_notice_requires_acknowledgement = false, updated_by_user_id = null`
+       login_background_file_id = null, login_background_color = null, login_welcome_text = null,
+       login_notice_text = null, login_notice_requires_acknowledgement = false,
+       updated_by_user_id = null`
   );
   const [row] = await query<{ now: Date }>("select clock_timestamp() as now");
 
@@ -114,6 +115,32 @@ async function storedFile(mimeType: string, fileName: string): Promise<string> {
   );
 
   return stored.id;
+}
+
+/** Uploads one PNG through the branding seam and answers its file id. */
+async function imageId(fileName: string): Promise<string> {
+  const image = await uploadBrandingImage(deployment.context, caller, {
+    fileName,
+    mimeType: "image/png",
+    bytes: PNG_BYTES,
+  });
+
+  return image.fileId;
+}
+
+/** Which of the ids still have a `file` row and which still have bytes, each list sorted. */
+async function storedFiles(ids: readonly string[]) {
+  const present = async (table: "file" | "file_blob") =>
+    (
+      await query<{ id: string }>(
+        `select id from ${table} where id = any($1::uuid[])`,
+        [ids]
+      )
+    )
+      .map((row) => row.id)
+      .toSorted();
+
+  return { files: await present("file"), blobs: await present("file_blob") };
 }
 
 async function refusalOf(draft: Partial<BrandingDraft>) {
@@ -249,6 +276,58 @@ describe("applyBranding", () => {
     expect(
       (await published()).map((row) => row.metadata.changedFields).toSorted()
     ).toEqual([["companyName"], ["productName"]]);
+  });
+
+  it("deletes the images a publish replaced or removed and keeps every image a column or a draft still names", async () => {
+    const [replaced, removed, shared, next, unpublished] = await Promise.all([
+      imageId("replaced.png"),
+      imageId("removed.png"),
+      imageId("shared.png"),
+      imageId("next.png"),
+      imageId("unpublished.png"),
+    ]);
+
+    await applyBranding(deployment.context, {
+      actorUserId,
+      draft: {
+        logoLightFileId: replaced,
+        logoMarkFileId: shared,
+        faviconFileId: removed,
+      },
+    });
+    // The sign-in background, which no page edits, still names `shared`. The dark logo slot holds
+    // an id with no file row, as in the dead-id case above.
+    await query(
+      "update tenant_branding set login_background_file_id = $1, logo_dark_file_id = $2",
+      [shared, "00000000-0000-4000-8000-000000000003"]
+    );
+
+    expect(
+      await applyBranding(deployment.context, {
+        actorUserId,
+        draft: {
+          logoLightFileId: next,
+          logoDarkFileId: null,
+          logoMarkFileId: null,
+          faviconFileId: null,
+        },
+      })
+    ).toEqual({
+      changed: true,
+      changedFields: [
+        "logoLightFileId",
+        "logoDarkFileId",
+        "logoMarkFileId",
+        "faviconFileId",
+      ],
+    });
+
+    // `unpublished` stands for an upload in another administrator's draft.
+    const kept = [shared, next, unpublished].toSorted();
+
+    expect(
+      await storedFiles([replaced, removed, shared, next, unpublished])
+    ).toEqual({ files: kept, blobs: kept });
   });
 });
 

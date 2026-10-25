@@ -19,4 +19,13 @@ export type FileBlobStore = {
   ) => Promise<void>;
   /** Reads the bytes for one file, or `undefined` when the store holds none for it. */
   readonly get: (fileId: string) => Promise<Buffer | undefined>;
+  /**
+   * Deletes the bytes of the files in the caller's transaction, so a rollback keeps them (DR-20).
+   * A store outside the database must delete them only after that transaction commits, through
+   * `currentAfterCommit(tx)`.
+   */
+  readonly remove: (
+    fileIds: readonly string[],
+    tx: TenantTransaction
+  ) => Promise<void>;
 };

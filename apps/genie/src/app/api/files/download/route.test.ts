@@ -42,6 +42,7 @@ const tenant = createTenantContext(
 const fileStorage: FileStorage = {
   store: unused,
   fetch: unused,
+  remove: unused,
   createLink: unused,
   createBrandingMarkLink: unused,
   fetchLink: () => served(),

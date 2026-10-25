@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import type {
   PermissionKey,
@@ -109,12 +109,13 @@ export type FetchFileLinkInput = {
 };
 
 /**
- * The one file store every caller reaches through `context.fileStorage` (R-6, R-32). `store` and
- * `fetch` are the byte operations; `createLink` and `fetchLink` are the tokenized download pair,
- * each gated by the one `can()` seam (R-38, DEC-39). `createBrandingMarkLink` issues the one link
- * that skips `can()`: the image the branding row names for one slot (the square mark unless told
- * otherwise), for any signed-in person, because no permission key reaches a person with no grants
- * (Spec 3 R-39, D3-7). It takes a slot, never a file id, so no caller can point it at another file.
+ * The one file store every caller reaches through `context.fileStorage` (R-6, R-32). `store`,
+ * `fetch` and `remove` are the byte operations; `createLink` and `fetchLink` are the tokenized
+ * download pair, each gated by the one `can()` seam (R-38, DEC-39). `createBrandingMarkLink`
+ * issues the one link that skips `can()`: the image the branding row names for one slot (the
+ * square mark unless told otherwise), for any signed-in person, because no permission key reaches
+ * a person with no grants (Spec 3 R-39, D3-7). It takes a slot, never a file id, so no caller can
+ * point it at another file.
  */
 export type FileStorage = {
   readonly store: (
@@ -122,6 +123,14 @@ export type FileStorage = {
     tx: TenantTransaction
   ) => Promise<StoredFile>;
   readonly fetch: (fileId: string) => Promise<FetchedFile>;
+  /**
+   * Deletes the files, rows and bytes, in the caller's transaction, so a rollback keeps both. An id
+   * with no row is skipped. The caller checks that nothing still names the files (DR-20).
+   */
+  readonly remove: (
+    fileIds: readonly string[],
+    tx: TenantTransaction
+  ) => Promise<void>;
   readonly createLink: (input: FileLinkInput) => Promise<TokenizedFileLink>;
   readonly createBrandingMarkLink: (input: {
     readonly principal: RequestPrincipal;
@@ -273,6 +282,13 @@ export function createFileStorage(
       return { id };
     },
     fetch,
+    async remove(fileIds, tx) {
+      if (fileIds.length === 0) return;
+
+      // The rows and the bytes share the caller's transaction, so a rollback keeps both (D-6).
+      await tx.delete(file).where(inArray(file.id, fileIds));
+      await blobStore.remove(fileIds, tx);
+    },
     async createLink(input) {
       await assertCan(input.principal, input.permission, input.resource);
 

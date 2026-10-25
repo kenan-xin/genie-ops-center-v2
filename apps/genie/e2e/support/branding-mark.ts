@@ -45,7 +45,7 @@ export async function seedBrandingMark(
   }
 }
 
-/** Nulls the mark column. The file row stays, as after Remove and Publish on the Branding page. */
+/** Nulls the mark column by SQL. The file row stays: only a Publish deletes a replaced image. */
 export async function clearBrandingMark(): Promise<void> {
   await queryDatabase("update tenant_branding set logo_mark_file_id = null");
 }

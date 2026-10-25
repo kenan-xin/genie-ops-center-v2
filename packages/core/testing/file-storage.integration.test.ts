@@ -457,6 +457,39 @@ describe("FileStorage against a real Postgres deployment", () => {
       expect(orphan.rows).toEqual([]);
     }
   });
+
+  it("removes a file's row and bytes in the caller transaction, so a rollback keeps both", async () => {
+    const { context } = deployment;
+
+    const fileId = await withTransaction(
+      context,
+      async (tx) => (await context.fileStorage.store(upload(), tx)).id
+    );
+
+    await expect(
+      withTransaction(context, async (tx) => {
+        await context.fileStorage.remove([fileId], tx);
+
+        throw new Error("roll back file removal");
+      })
+    ).rejects.toThrow("roll back file removal");
+
+    expect((await context.fileStorage.fetch(fileId)).bytes).toEqual(PNG_BYTES);
+
+    await withTransaction(context, (tx) =>
+      context.fileStorage.remove([fileId], tx)
+    );
+
+    await expect(context.fileStorage.fetch(fileId)).rejects.toThrow(
+      `No file is recorded with the id "${fileId}".`
+    );
+    expect(
+      await context.db
+        .select({ id: fileBlob.id })
+        .from(fileBlob)
+        .where(eq(fileBlob.id, fileId))
+    ).toEqual([]);
+  });
 });
 
 async function storedMark(): Promise<string> {

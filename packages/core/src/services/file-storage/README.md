@@ -5,7 +5,7 @@ it as the fixed member `context.fileStorage`; nothing else builds or holds one (
 
 ## What belongs here
 
-- `store`, `fetch`, `createLink`, `createBrandingMarkLink` and `fetchLink`, and the upload rules that run before a byte is
+- `store`, `fetch`, `remove`, `createLink`, `createBrandingMarkLink` and `fetchLink`, and the upload rules that run before a byte is
   stored: the `FILE_MAX_BYTES` limit, the type allow-list, and the SVG sanitizer (R-35–R-37).
 - The token that a download link carries, signed over its scope and the expiry (R-38).
 - `adapters/`, one byte store per `FILE_STORAGE_ADAPTER`. This section ships the `postgres` adapter

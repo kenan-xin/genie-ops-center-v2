@@ -118,6 +118,7 @@ function contextWith(
       fileStorage: {
         store: () => Promise.reject(new Error("the router stored a file")),
         fetch: () => Promise.reject(new Error("the router fetched a file")),
+        remove: () => Promise.reject(new Error("the router removed a file")),
         createLink: () => Promise.reject(new Error("the router linked a file")),
         fetchLink: () =>
           Promise.reject(new Error("the router served a file link")),
