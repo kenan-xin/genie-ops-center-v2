@@ -1,10 +1,17 @@
 import { z } from "zod";
 
 import {
-  brandingContrastPairs,
-  contrastAllowsPublish,
-  signInContrastPairs,
-} from "../../lib/branding/contrast-pairs.ts";
+  BRANDING_TEXT_LIMITS,
+  brandingFileId,
+  brandingPrimaryColor,
+  brandingSignInBackground,
+  brandingText,
+} from "../../lib/branding/fields.ts";
+
+export {
+  BRANDING_CONTRAST_REFUSAL,
+  HEX_COLOR,
+} from "../../lib/branding/fields.ts";
 
 /**
  * The Branding draft (R-43 to R-49). It imports only zod and the pure contrast rule, so the screen
@@ -85,61 +92,31 @@ export type BrandingImageView = {
   readonly url: string | null;
 };
 
-export const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-
-const HEX_MESSAGE = "Enter a six-digit hex color, for example #2563eb.";
-
-const LENGTH_MESSAGE = "Keep it to 80 characters.";
-
-/** A color that puts an R-46 pair below 3:1. The screen's Publish gate names the same text. */
-export const BRANDING_CONTRAST_REFUSAL =
-  "Fix the failing contrast checks first.";
-
-function name(required: string) {
-  return z
-    .string()
-    .trim()
-    .min(1, { error: required })
-    .max(80, { error: LENGTH_MESSAGE });
-}
-
 function optionalText(max: number) {
-  return z
-    .string()
-    .trim()
-    .max(max, { error: `Keep it to ${max} characters.` })
+  return brandingText(max)
     .nullable()
     .transform((value) => (value === null || value === "" ? null : value));
 }
 
-// An invalid hex stops here, so it gets one message and no contrast check sees it.
-const hex = z
-  .string()
-  .trim()
-  .regex(HEX_COLOR, { error: HEX_MESSAGE, abort: true });
-
-const fileId = z.uuid().nullable();
+const fileId = brandingFileId.nullable();
 
 export const brandingDraftSchema = z
   .object({
-    companyName: name("Enter a company name."),
-    productName: name("Enter a product name."),
+    companyName: brandingText(BRANDING_TEXT_LIMITS.companyName).min(1, {
+      error: "Enter a company name.",
+    }),
+    productName: brandingText(BRANDING_TEXT_LIMITS.productName).min(1, {
+      error: "Enter a product name.",
+    }),
     logoLightFileId: fileId,
     logoDarkFileId: fileId,
     logoMarkFileId: fileId,
     faviconFileId: fileId,
-    primaryColor: hex.refine(
-      (color) => contrastAllowsPublish(brandingContrastPairs(color)),
-      { error: BRANDING_CONTRAST_REFUSAL }
-    ),
+    primaryColor: brandingPrimaryColor,
     defaultTheme: z.enum(["light", "dark", "system"]),
-    loginBackgroundColor: hex
-      .refine((color) => contrastAllowsPublish(signInContrastPairs(color)), {
-        error: BRANDING_CONTRAST_REFUSAL,
-      })
-      .nullable(),
-    loginWelcomeText: optionalText(120),
-    loginNoticeText: optionalText(1000),
+    loginBackgroundColor: brandingSignInBackground.nullable(),
+    loginWelcomeText: optionalText(BRANDING_TEXT_LIMITS.loginWelcomeText),
+    loginNoticeText: optionalText(BRANDING_TEXT_LIMITS.loginNoticeText),
     loginNoticeRequiresAcknowledgement: z.boolean(),
   })
   .refine(

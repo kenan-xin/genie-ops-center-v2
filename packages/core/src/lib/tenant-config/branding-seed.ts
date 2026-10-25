@@ -1,8 +1,14 @@
 import { z } from "zod";
 
+import {
+  BRANDING_TEXT_LIMITS,
+  brandingFileId,
+  brandingHex,
+  brandingPrimaryColor,
+  brandingSignInBackground,
+  brandingText,
+} from "../branding/fields.ts";
 import { isSupportEmail } from "../branding/support.ts";
-
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 const HTTP_URL = { protocol: /^https?$/ } as const;
 
@@ -20,38 +26,36 @@ const HTTP_URL = { protocol: /^https?$/ } as const;
  * The file carries a `$schema` key for editors; the loader strips it
  * before parsing, and this schema validates what remains (DEC-35). The admin portal
  * replaces these values after go-live, so this file seeds and never governs.
+ * The columns the Branding page edits take the page's own rules from `lib/branding/fields.ts`
+ * (U-7): limits, trim, UUID file ids and the R-46 floor, so a later Publish neither refuses nor
+ * changes a seeded value.
  */
 const brandingSeedColumns = {
-  company_name: z.string().min(1),
-  product_name: z.string().min(1),
-  logo_light_file_id: z.string().min(1).optional(),
-  logo_dark_file_id: z.string().min(1).optional(),
-  logo_mark_file_id: z.string().min(1).optional(),
-  favicon_file_id: z.string().min(1).optional(),
+  company_name: brandingText(BRANDING_TEXT_LIMITS.companyName).min(1),
+  product_name: brandingText(BRANDING_TEXT_LIMITS.productName).min(1),
+  logo_light_file_id: brandingFileId.optional(),
+  logo_dark_file_id: brandingFileId.optional(),
+  logo_mark_file_id: brandingFileId.optional(),
+  favicon_file_id: brandingFileId.optional(),
   // Derived: genie-ops setup computes primary_foreground from primary_color with the same shared
   // rule a branding save uses (white or near-black by relative luminance,
   // docs/design/reference/sections/branding/components/helpers.ts line 184, DEC-47).
   // Bead genie-ops-center-v2-1rd.3.1 tracks it; the file never authors it.
-  primary_color: z
-    .string()
-    .regex(HEX_COLOR, "a colour is a six digit hex value")
-    .optional(),
+  primary_color: brandingPrimaryColor.optional(),
   default_theme: z.enum(["light", "dark", "system"]).optional(),
   font_family: z
     .enum(["plus-jakarta-sans", "ibm-plex-sans", "manrope", "source-serif-4"])
     .optional(),
   font_size: z.enum(["compact", "default", "large"]).optional(),
-  text_color: z
-    .string()
-    .regex(HEX_COLOR, "a colour is a six digit hex value")
+  text_color: brandingHex.optional(),
+  login_background_file_id: brandingFileId.optional(),
+  login_background_color: brandingSignInBackground.optional(),
+  login_welcome_text: brandingText(BRANDING_TEXT_LIMITS.loginWelcomeText)
+    .min(1)
     .optional(),
-  login_background_file_id: z.string().min(1).optional(),
-  login_background_color: z
-    .string()
-    .regex(HEX_COLOR, "a colour is a six digit hex value")
+  login_notice_text: brandingText(BRANDING_TEXT_LIMITS.loginNoticeText)
+    .min(1)
     .optional(),
-  login_welcome_text: z.string().min(1).optional(),
-  login_notice_text: z.string().min(1).optional(),
   login_notice_requires_acknowledgement: z.boolean().optional(),
   email_sender_name: z.string().min(1).optional(),
   email_reply_to: z.email().optional(),

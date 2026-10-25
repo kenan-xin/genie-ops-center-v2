@@ -4,27 +4,33 @@
   "properties": {
     "company_name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 80
     },
     "product_name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 80
     },
     "logo_light_file_id": {
       "type": "string",
-      "minLength": 1
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "logo_dark_file_id": {
       "type": "string",
-      "minLength": 1
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "logo_mark_file_id": {
       "type": "string",
-      "minLength": 1
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "favicon_file_id": {
       "type": "string",
-      "minLength": 1
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "primary_color": {
       "type": "string",
@@ -53,7 +59,8 @@
     },
     "login_background_file_id": {
       "type": "string",
-      "minLength": 1
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
     },
     "login_background_color": {
       "type": "string",
@@ -61,11 +68,13 @@
     },
     "login_welcome_text": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 120
     },
     "login_notice_text": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 1000
     },
     "login_notice_requires_acknowledgement": {
       "type": "boolean"

@@ -13,16 +13,16 @@ const REQUIRED_ONLY = {
 // Every column the contract makes optional, supplied.
 const COMPLETE = {
   ...REQUIRED_ONLY,
-  logo_light_file_id: "file_light",
-  logo_dark_file_id: "file_dark",
-  logo_mark_file_id: "file_mark",
-  favicon_file_id: "file_favicon",
+  logo_light_file_id: "0b6a7a52-5d3e-4c1a-9f0e-1a2b3c4d5e01",
+  logo_dark_file_id: "0b6a7a52-5d3e-4c1a-9f0e-1a2b3c4d5e02",
+  logo_mark_file_id: "0b6a7a52-5d3e-4c1a-9f0e-1a2b3c4d5e03",
+  favicon_file_id: "0b6a7a52-5d3e-4c1a-9f0e-1a2b3c4d5e04",
   primary_color: "#1d4ed8",
   default_theme: "dark",
   font_family: "plus-jakarta-sans",
   font_size: "default",
   text_color: "#0f172a",
-  login_background_file_id: "file_bg",
+  login_background_file_id: "0b6a7a52-5d3e-4c1a-9f0e-1a2b3c4d5e05",
   login_background_color: "#f8fafc",
   login_welcome_text: "Sign in to Example Ops",
   login_notice_text: "For authorized use only.",
@@ -88,6 +88,15 @@ const OPTIONAL_COLUMNS = [
   "date_format",
   "number_format",
 ] as const satisfies readonly (keyof typeof COMPLETE)[];
+
+/** The paths of the fields the schema refuses, or none. */
+function refusedPaths(file: Partial<typeof COMPLETE>): string[] {
+  const result = brandingSeedSchema.safeParse(file);
+
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => issue.path.join("."));
+}
 
 describe("brandingSeedSchema", () => {
   it("accepts a minimal file: the four required values only", () => {
@@ -228,6 +237,42 @@ describe("brandingSeedSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  // U-7: setup refuses a seed that a later Publish on the Branding page would block or change.
+  describe("the Branding page rules", () => {
+    it("refuses a welcome text over 120 characters and names the field", () => {
+      expect(
+        refusedPaths({ ...REQUIRED_ONLY, login_welcome_text: "a".repeat(121) })
+      ).toEqual(["login_welcome_text"]);
+    });
+
+    it("refuses a primary color that puts an R-46 pair below 3:1", () => {
+      expect(
+        refusedPaths({ ...REQUIRED_ONLY, primary_color: "#ffff00" })
+      ).toEqual(["primary_color"]);
+    });
+
+    it("refuses a sign-in background that puts the sign-in text below 3:1", () => {
+      expect(
+        refusedPaths({ ...REQUIRED_ONLY, login_background_color: "#000000" })
+      ).toEqual(["login_background_color"]);
+    });
+
+    it("refuses a file id that is not a UUID", () => {
+      expect(
+        refusedPaths({ ...REQUIRED_ONLY, logo_light_file_id: "file_light" })
+      ).toEqual(["logo_light_file_id"]);
+    });
+
+    it("stores a name trimmed, as Publish would, so it never shows as a change", () => {
+      expect(
+        brandingSeedSchema.parse({
+          ...REQUIRED_ONLY,
+          company_name: "  Example Group ",
+        }).company_name
+      ).toBe("Example Group");
+    });
   });
 
   describe("login notice acknowledgement", () => {

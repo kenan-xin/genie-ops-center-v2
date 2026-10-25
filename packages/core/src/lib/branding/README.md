@@ -18,6 +18,10 @@ and Focus ring for the tenant color, and Sign-in text for the sign-in background
 its pair pass, warning or fail, and only a fail blocks Publish. The Branding page and the publish
 service share them.
 
+The field rules of the Branding page (text limits, trim, hex, UUID file ids and the R-46 floor).
+The page schema and the branding seed schema both build on them, so setup never stores a value
+that a later Publish refuses or changes.
+
 The `supportContact` rule: the one support link, an email or else an http(s) page, that the mailer
 footer and the no-grants home page both show, and none when branding holds no valid contact.
 
@@ -28,4 +32,4 @@ stateless rule, ported from the branding design reference.
 
 ## What it imports
 
-`@genie/ui/tokens`, for the fixed defaults. Nothing else.
+`@genie/ui/tokens`, for the fixed defaults, and `zod`, for the field rules. Nothing else.

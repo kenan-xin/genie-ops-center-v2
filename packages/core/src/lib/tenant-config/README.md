@@ -14,4 +14,4 @@ A deployment environment read, a database connection, a service, a secret, and a
 
 ## What it imports
 
-`zod` only. This is the one core folder that `tools/generators` may import, so it must never pull in the core runtime.
+`zod` and the pure rules of `lib/branding`. This is the one core folder that `tools/generators` may import, so it must never pull in the core runtime.
