@@ -584,6 +584,7 @@ describe("readSettings", () => {
     expect(core).toMatchObject({
       onboardingMode: "invite",
       localAccountsEnabled: false,
+      realmMode: "managed",
       realmSupportsLocalAccounts: true,
       sessionIdleMinutes: 45,
       lastChanged: { by: "Ada Admin" },

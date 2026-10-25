@@ -15,6 +15,7 @@ export type LastChangedView = {
 export type CoreSettingsView = {
   readonly onboardingMode: "invite" | "jit";
   readonly localAccountsEnabled: boolean;
+  readonly realmMode: "managed" | "customer";
   readonly realmSupportsLocalAccounts: boolean;
   readonly sessionIdleMinutes: number;
   readonly lastChanged: LastChangedView;
@@ -56,6 +57,11 @@ export type TenantSettingsScreenProps = {
   };
   readonly timeZone: string;
   readonly modulesHref: string;
+  /** Why local accounts are off when the realm holds none, for each `realmMode`. */
+  readonly localAccountsNotes: {
+    readonly managed: string;
+    readonly customer: string;
+  };
   /** Each save rejects with `{ message }` when the server refuses; the edits stay. */
   readonly onSaveSignIn: (input: SignInInput) => Promise<void>;
   readonly onSaveSessions: (input: SessionsInput) => Promise<void>;

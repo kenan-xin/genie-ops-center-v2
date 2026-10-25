@@ -47,6 +47,7 @@ export const FIXTURE_SETTINGS: SettingsView = {
   core: {
     onboardingMode: "invite",
     localAccountsEnabled: false,
+    realmMode: "managed",
     realmSupportsLocalAccounts: true,
     sessionIdleMinutes: 15,
     lastChanged: { by: "Ada Lovelace", at: "2026-10-20T09:30:00.000Z" },

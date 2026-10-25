@@ -141,6 +141,8 @@ const ONBOARDING_OPTIONS = [
 export function SignInSection(
   props: SectionProps<SignInInput> & {
     readonly realmSupportsLocalAccounts: boolean;
+    /** Shown under the disabled switch when the realm holds no local accounts. */
+    readonly localAccountsNote: string;
   }
 ) {
   const form = useForm({
@@ -210,8 +212,7 @@ export function SignInSection(
               />
               {props.realmSupportsLocalAccounts ? null : (
                 <p className="text-xs text-muted-foreground">
-                  The tenant realm is brokered only. Ask your Genie operator to
-                  add local accounts to the realm.
+                  {props.localAccountsNote}
                 </p>
               )}
             </div>

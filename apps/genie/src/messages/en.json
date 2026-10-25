@@ -73,7 +73,11 @@
     },
     "settings": {
       "title": "Tenant settings",
-      "description": "Sign-in, sessions, and the settings each module exposes for this tenant. Branding has its own page."
+      "description": "Sign-in, sessions, and the settings each module exposes for this tenant. Branding has its own page.",
+      "localAccounts": {
+        "managed": "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm.",
+        "customer": "Local accounts are not available because sign-in uses the company's own realm."
+      }
     },
     "branding": {
       "title": "Branding",

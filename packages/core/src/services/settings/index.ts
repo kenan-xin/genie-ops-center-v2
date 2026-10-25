@@ -52,6 +52,8 @@ export type LastChanged = {
 export type CoreSettingsView = {
   readonly onboardingMode: "invite" | "jit";
   readonly localAccountsEnabled: boolean;
+  /** `customer` is client-only mode: sign-in uses the company's own realm (ADR 0010). */
+  readonly realmMode: "managed" | "customer";
   readonly realmSupportsLocalAccounts: boolean;
   readonly sessionIdleMinutes: number;
   readonly lastChanged: LastChanged;
@@ -101,6 +103,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     .select({
       onboardingMode: tenantSettings.onboardingMode,
       localAccountsEnabled: tenantSettings.localAccountsEnabled,
+      realmMode: tenantSettings.realmMode,
       realmSupportsLocalAccounts: tenantSettings.realmSupportsLocalAccounts,
       sessionIdleMinutes: tenantSettings.sessionIdleMinutes,
       updatedAt: tenantSettings.updatedAt,
@@ -114,6 +117,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
   return {
     onboardingMode: row.onboardingMode === "jit" ? "jit" : "invite",
     localAccountsEnabled: row.localAccountsEnabled,
+    realmMode: row.realmMode === "customer" ? "customer" : "managed",
     realmSupportsLocalAccounts: row.realmSupportsLocalAccounts,
     sessionIdleMinutes: row.sessionIdleMinutes,
     lastChanged: lastChangedOf(row.updatedAt, row.updatedBy),

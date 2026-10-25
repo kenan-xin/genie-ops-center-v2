@@ -303,6 +303,9 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             realmSupportsLocalAccounts={
               settings.core.realmSupportsLocalAccounts
             }
+            localAccountsNote={
+              props.localAccountsNotes[settings.core.realmMode]
+            }
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(SIGN_IN, () => props.onSaveSignIn(values))()

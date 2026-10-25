@@ -36,6 +36,12 @@ const meta = {
     target: {},
     timeZone: "UTC",
     modulesHref: "/admin/modules",
+    localAccountsNotes: {
+      managed:
+        "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm.",
+      customer:
+        "Local accounts are not available because sign-in uses the company's own realm.",
+    },
     onSaveSignIn: saved(),
     onSaveSessions: saved(),
     onSaveModule: saved(),
@@ -154,7 +160,11 @@ export const BrokeredOnly: Story = {
   args: {
     settings: {
       ...FIXTURE_SETTINGS,
-      core: { ...FIXTURE_SETTINGS.core, realmSupportsLocalAccounts: false },
+      core: {
+        ...FIXTURE_SETTINGS.core,
+        realmMode: "managed",
+        realmSupportsLocalAccounts: false,
+      },
     },
   },
   play: async ({ canvas }) => {
@@ -166,6 +176,31 @@ export const BrokeredOnly: Story = {
         "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm."
       )
     ).toBeVisible();
+  },
+};
+
+/** Client-only mode signs in through the company's own realm, so no local account exists (ADR 0010). */
+export const ClientOnly: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: {
+        ...FIXTURE_SETTINGS.core,
+        realmMode: "customer",
+        realmSupportsLocalAccounts: false,
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("switch", { name: "Allow local accounts" })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      canvas.getByText(
+        "Local accounts are not available because sign-in uses the company's own realm."
+      )
+    ).toBeVisible();
+    await expect(canvas.queryByText(/brokered only/)).toBeNull();
   },
 };
 

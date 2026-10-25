@@ -7,6 +7,7 @@ import {
 } from "@genie/core/features/settings";
 import { type ConfigValue, toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
 
 import { refusalOf, rpc } from "../../../rpc/client.ts";
@@ -27,6 +28,7 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const t = useTranslations("pages");
 
   const settings = useQuery({
     queryKey: ["settings"],
@@ -80,6 +82,10 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       }}
       timeZone={props.timeZone}
       modulesHref="/admin/modules"
+      localAccountsNotes={{
+        managed: t("settings.localAccounts.managed"),
+        customer: t("settings.localAccounts.customer"),
+      }}
       onSaveSignIn={(input) =>
         saveWith(signIn.mutateAsync)("Sign-in & accounts", input)
       }
