@@ -48,6 +48,52 @@ async function openBrandedSignIn(
     .toBe(companyName);
 }
 
+test("an empty welcome text shows one default on the sign-in page and in its preview (DR-04)", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const companyName = `Default welcome ${project} Co`;
+
+  await withDeploymentLock(
+    "branding",
+    async () => {
+      try {
+        await queryDatabase(
+          `update tenant_branding set company_name = '${companyName}', product_name = 'Default Ops',
+           login_welcome_text = null`
+        );
+        await openBrandedSignIn(page, companyName);
+        await expect(page.getByTestId("sign-in-welcome")).toHaveText(
+          "Welcome to Default Ops"
+        );
+
+        await signInThroughKeycloak(page, {
+          email: e2eBrandingAdminEmail(project),
+        });
+        await page.goto("/admin/branding");
+        await expect(
+          page.getByRole("textbox", { name: "Company name" })
+        ).toHaveValue(companyName);
+        await page.getByRole("tab", { name: "Sign-in" }).click();
+
+        // On a phone the preview sits behind its toggle (R-53).
+        const toggle = page.getByRole("button", { name: "Show preview" });
+
+        if (await toggle.isVisible()) await toggle.click();
+
+        await expect(
+          page
+            .getByRole("group", { name: "Preview" })
+            .getByText("Welcome to Default Ops", { exact: true })
+        ).toBeVisible();
+      } finally {
+        await queryDatabase(SEED_RESET);
+      }
+    },
+    LOCK_WAIT_MS
+  );
+});
+
 test("a branding change reaches the sign-in page and the email, light and dark", async ({
   page,
   context,

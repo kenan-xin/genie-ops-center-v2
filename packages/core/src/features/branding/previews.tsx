@@ -81,7 +81,10 @@ export function ShellPreview(props: { readonly identity: ShellIdentity }) {
   );
 }
 
-/** The sign-in card with the draft welcome text, notice and background (R-54). */
+/**
+ * The sign-in card with the draft welcome text, notice and background (R-54). Text only, like
+ * the real page (F-1); the caller resolves an empty welcome text to the page's fallback (DR-04).
+ */
 export function SignInPreview(props: {
   readonly identity: ShellIdentity;
   readonly welcomeText: string;
@@ -91,13 +94,8 @@ export function SignInPreview(props: {
   return (
     <div className="flex justify-center rounded-lg bg-(--sign-in-background) p-4">
       <div className="flex w-full max-w-72 flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center text-sm">
-        <TenantMark identity={props.identity} size="sm" />
         <p className="text-base font-bold">{props.identity.companyName}</p>
-        <p className="text-muted-foreground">
-          {props.welcomeText === ""
-            ? `Sign in to ${props.identity.productName}`
-            : props.welcomeText}
-        </p>
+        <p className="text-muted-foreground">{props.welcomeText}</p>
         {props.noticeText === "" ? null : (
           <p className="w-full rounded-md border bg-muted p-2 text-left text-xs">
             {props.noticeText}

@@ -38,6 +38,7 @@ const meta = {
   args: {
     branding: brandingView(),
     timeZone: "UTC",
+    welcomeFallback: (productName) => `Welcome to ${productName}`,
     onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {}),
     onUpload: fn(async () => MARK),
   },

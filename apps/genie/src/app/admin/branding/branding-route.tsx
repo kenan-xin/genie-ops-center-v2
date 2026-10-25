@@ -4,6 +4,7 @@ import type { BrandingDraft } from "@genie/core";
 import { BrandingScreen } from "@genie/core/features/branding";
 import { toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 
 import { refusalOf, rpc } from "../../../rpc/client.ts";
 
@@ -14,6 +15,7 @@ import { refusalOf, rpc } from "../../../rpc/client.ts";
  */
 export function BrandingRoute(props: { readonly timeZone: string }) {
   const queryClient = useQueryClient();
+  const t = useTranslations("signIn");
 
   const branding = useQuery({
     queryKey: ["branding"],
@@ -40,6 +42,7 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
           : undefined
       }
       timeZone={props.timeZone}
+      welcomeFallback={(productName) => t("welcomeFallback", { productName })}
       onPublish={async (draft) => {
         try {
           const result = await publish.mutateAsync(draft);

@@ -102,7 +102,7 @@
   "signIn": {
     "title": "Sign in",
     "action": "Sign in with your company account",
-    "welcomeFallback": "Sign in with your {companyName} account to open your assigned solutions.",
+    "welcomeFallback": "Welcome to {productName}",
     "acknowledge": "I acknowledge these conditions.",
     "terms": "Terms of use",
     "privacy": "Privacy",

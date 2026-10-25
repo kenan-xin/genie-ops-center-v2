@@ -121,7 +121,7 @@ export default async function SignInPage(props: {
         <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
         <p data-testid="sign-in-welcome" className="text-muted-foreground">
           {present(branding.loginWelcomeText) ??
-            t("welcomeFallback", { companyName: branding.companyName })}
+            t("welcomeFallback", { productName: branding.productName })}
         </p>
         <SignInAction
           notice={branding.loginNoticeText}
