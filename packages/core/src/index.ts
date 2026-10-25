@@ -293,6 +293,8 @@ export {
 
 export {
   administration,
+  DEFAULT_FAVICON_URL,
+  faviconHref,
   loadShell,
   realmAccountUrl,
   type ShellLabels,

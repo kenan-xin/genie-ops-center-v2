@@ -21,6 +21,10 @@ import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { TenantSettings } from "../../lib/tenant-context/readers.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
+import type { FileStorage } from "../file-storage/index.ts";
+
+/** The Ops Center favicon, a static file of the app's `public/brand/` folder (DR-03). */
+export const DEFAULT_FAVICON_URL = "/brand/favicon.ico";
 
 /** Catalogue copy for core's own admin entries and groups (R-41); module copy stays declared. */
 export type ShellLabels = {
@@ -108,6 +112,23 @@ export function realmAccountUrl(input: {
   return settings.localAccountsEnabled && settings.realmSupportsLocalAccounts
     ? `${settings.keycloakUrlAtSetup ?? input.publicUrl}/realms/${input.realm ?? "genie"}/account`
     : null;
+}
+
+/**
+ * The tab icon of one document: the published favicon through the branding link, else the Ops
+ * Center default. A signed-out page gets no branding link, so it shows the default (R-54 defers a
+ * branded favicon on the sign-in page).
+ */
+export async function faviconHref(
+  fileStorage: Pick<FileStorage, "createBrandingMarkLink">,
+  caller: RequestPrincipal
+): Promise<string> {
+  const link = await fileStorage.createBrandingMarkLink({
+    principal: caller,
+    slot: "favicon",
+  });
+
+  return link?.url ?? DEFAULT_FAVICON_URL;
 }
 
 /** One request's shell: one navigation tree pass (R-30) plus the branding and settings readers. */

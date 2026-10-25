@@ -4,8 +4,12 @@ import { CORE_NAVIGATION_ID } from "../../lib/entitlement/index.ts";
 import type { PermittedEntry } from "../../lib/entitlement/index.ts";
 import type { NavigationTree } from "../../lib/entitlement/tree.ts";
 import { validModule } from "../../lib/module-contract/__fixtures__/valid-module.ts";
+import { createRequestPrincipal } from "../authorization/index.ts";
+import type { BrandingImageSlot } from "../branding/schemas.ts";
 import {
   administration,
+  DEFAULT_FAVICON_URL,
+  faviconHref,
   realmAccountUrl,
   type ShellLabels,
   shellNavigation,
@@ -205,5 +209,38 @@ describe("realmAccountUrl", () => {
         realm: "acme",
       })
     ).toBeNull();
+  });
+});
+
+/** A file store whose branding link knows only the given slots. */
+const storage = (published: readonly BrandingImageSlot[]) => ({
+  createBrandingMarkLink: async (input: {
+    readonly slot?: BrandingImageSlot;
+  }) =>
+    input.slot !== undefined && published.includes(input.slot)
+      ? {
+          token: "t",
+          url: `https://ops.example/api/files/download?token=${input.slot}`,
+          expiresAt: new Date(),
+        }
+      : undefined,
+});
+
+describe("faviconHref", () => {
+  const signedIn = createRequestPrincipal(
+    { userId: "u1", groups: [], authenticated: true },
+    () => Promise.resolve({ keys: new Set(), scopes: new Map() })
+  );
+
+  it("links the published favicon", async () => {
+    await expect(
+      faviconHref(storage(["favicon", "logoMark"]), signedIn)
+    ).resolves.toBe("https://ops.example/api/files/download?token=favicon");
+  });
+
+  it("falls back to the Ops Center favicon when none is linked", async () => {
+    await expect(faviconHref(storage(["logoMark"]), signedIn)).resolves.toBe(
+      DEFAULT_FAVICON_URL
+    );
   });
 });

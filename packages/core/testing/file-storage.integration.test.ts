@@ -491,11 +491,16 @@ function anonymous(): RequestPrincipal {
 describe("the branding mark link", () => {
   let clockShift = 0;
 
-  async function brandingNames(markFileId: string | null): Promise<void> {
+  async function brandingNames(
+    markFileId: string | null,
+    faviconFileId: string | null = null
+  ): Promise<void> {
     const { context } = deployment;
 
     await markSetupDone(context);
-    await context.db.update(tenantBranding).set({ logoMarkFileId: markFileId });
+    await context.db
+      .update(tenantBranding)
+      .set({ logoMarkFileId: markFileId, faviconFileId });
 
     clockShift += 60_000;
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -554,5 +559,24 @@ describe("the branding mark link", () => {
         principal: member(),
       })
     ).resolves.toBeUndefined();
+  });
+
+  it("links the image of the slot it is asked for", async () => {
+    const storage = deployment.context.fileStorage;
+
+    await brandingNames(null, await storedMark());
+
+    await expect(
+      storage.createBrandingMarkLink({ principal: member() })
+    ).resolves.toBeUndefined();
+
+    const link = await storage.createBrandingMarkLink({
+      principal: member(),
+      slot: "favicon",
+    });
+
+    await expect(
+      storage.fetchLink({ token: link!.token, principal: member() })
+    ).resolves.toMatchObject({ bytes: PNG_BYTES });
   });
 });

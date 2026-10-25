@@ -1,4 +1,6 @@
 import {
+  DEFAULT_FAVICON_URL,
+  faviconHref,
   idleExpiry,
   isLimitedBreakGlass,
   readCookie,
@@ -16,7 +18,10 @@ import type { ReactNode } from "react";
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
-import { documentSessionState } from "../document-session.ts";
+import {
+  documentPrincipal,
+  documentSessionState,
+} from "../document-session.ts";
 import { LimitedSessionMount } from "../limited-session-mount.tsx";
 import { PATHNAME_HEADER } from "../pathname-header.ts";
 import { QueryProvider } from "../providers.tsx";
@@ -39,12 +44,24 @@ function limitedSessionExempt(pathname: string): boolean {
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
- * application's own strings have one home (DEC-13).
+ * application's own strings have one home (DEC-13). The tab icon is the published
+ * favicon, else the Ops Center default (DR-03); the not-set-up page has no branding
+ * row, so it takes the default.
  */
 export async function generateMetadata() {
   const t = await getTranslations("app");
+  const context = readContext();
+  const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
 
-  return { title: t("title") };
+  const icon =
+    setupRequired || context === undefined
+      ? DEFAULT_FAVICON_URL
+      : await faviconHref(
+          context.tenant.fileStorage,
+          await documentPrincipal()
+        );
+
+  return { title: t("title"), icons: { icon } };
 }
 
 /**

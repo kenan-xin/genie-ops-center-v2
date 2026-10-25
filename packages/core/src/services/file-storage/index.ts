@@ -16,6 +16,7 @@ import type { TenantTransaction } from "../../lib/tenant-context/with-transactio
 import { file } from "../../schema.ts";
 import { can } from "../authorization/index.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
+import type { BrandingImageSlot } from "../branding/schemas.ts";
 import { createPostgresFileBlobStore } from "./adapters/postgres.ts";
 import type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
 import { sanitizeUploadedSvg } from "./sanitize-svg.ts";
@@ -111,9 +112,9 @@ export type FetchFileLinkInput = {
  * The one file store every caller reaches through `context.fileStorage` (R-6, R-32). `store` and
  * `fetch` are the byte operations; `createLink` and `fetchLink` are the tokenized download pair,
  * each gated by the one `can()` seam (R-38, DEC-39). `createBrandingMarkLink` issues the one link
- * that skips `can()`: the square mark the branding row names, for any signed-in person, because no
- * permission key reaches a person with no grants (Spec 3 R-39, D3-7). It takes no file id, so no
- * caller can point it at another file.
+ * that skips `can()`: the image the branding row names for one slot (the square mark unless told
+ * otherwise), for any signed-in person, because no permission key reaches a person with no grants
+ * (Spec 3 R-39, D3-7). It takes a slot, never a file id, so no caller can point it at another file.
  */
 export type FileStorage = {
   readonly store: (
@@ -124,6 +125,7 @@ export type FileStorage = {
   readonly createLink: (input: FileLinkInput) => Promise<TokenizedFileLink>;
   readonly createBrandingMarkLink: (input: {
     readonly principal: RequestPrincipal;
+    readonly slot?: BrandingImageSlot;
   }) => Promise<TokenizedFileLink | undefined>;
   readonly fetchLink: (input: FetchFileLinkInput) => Promise<FetchedFile>;
 };
@@ -282,23 +284,23 @@ export function createFileStorage(
         resource: input.resource,
       });
     },
-    async createBrandingMarkLink({ principal }) {
+    async createBrandingMarkLink({ principal, slot = "logoMark" }) {
       if (!principal.authenticated) return undefined;
 
-      const { logoMarkFileId } = await branding.get();
+      const fileId = (await branding.get())[`${slot}FileId`];
 
-      if (logoMarkFileId === null) return undefined;
+      if (fileId === null) return undefined;
 
       const [row] = await db
         .select({ scanStatus: file.scanStatus })
         .from(file)
-        .where(eq(file.id, logoMarkFileId));
+        .where(eq(file.id, fileId));
 
       if (row?.scanStatus !== "clean" && row?.scanStatus !== "skipped") {
         return undefined;
       }
 
-      return linkFor({ kind: "branding", fileId: logoMarkFileId });
+      return linkFor({ kind: "branding", fileId });
     },
     async fetchLink(input) {
       // Verify first: a forged token costs no `can()` work (Section 2 reads the database there).
