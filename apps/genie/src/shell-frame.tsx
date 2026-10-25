@@ -5,11 +5,24 @@ import {
 } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
+import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
 import { documentSessionState } from "./document-session.ts";
 import { PATHNAME_HEADER } from "./pathname-header.ts";
 import { shellModel } from "./shell-model.ts";
+
+/**
+ * The break-glass account lives only in the admin chrome (design `account-and-inbox`, U-3), so a
+ * workspace page sends it to the admin home. It bypasses `can()`, so its admin tree is never empty;
+ * its own account page is the fallback all the same.
+ */
+export async function keepBreakGlassInAdmin(): Promise<void> {
+  const state = await documentSessionState();
+
+  if (state.status === "authenticated" && state.session.user.isBreakGlass)
+    redirect((await shellModel()).adminHome ?? "/admin/account");
+}
 
 /**
  * The signed-in frame every shell page wraps its output in (Spec 3 R-27). A request without an
@@ -24,6 +37,8 @@ export async function ShellFrame(props: {
   const state = await documentSessionState();
 
   if (state.status !== "authenticated") return props.children;
+
+  if (props.chrome === "workspace") await keepBreakGlassInAdmin();
 
   const t = await getTranslations("shell");
   const [model, requestHeaders] = await Promise.all([shellModel(), headers()]);

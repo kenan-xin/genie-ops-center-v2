@@ -17,16 +17,18 @@ export type ShellMenuInput = {
 /**
  * The user menu as plain data (Spec 3 R-32), so a custom app can draw the same menu in its own
  * shell. Only an administrator gets the chrome switch, the break-glass account has its own account
- * page, and every menu signs out through the one auth route.
+ * page and no switch, because it lives only in the admin chrome (design `account-and-inbox`), and
+ * every menu signs out through the one auth route.
  */
 export function shellMenu(input: ShellMenuInput): ShellMenu {
-  const switchTarget = !input.isAdministrator
-    ? null
-    : input.chrome === "admin"
-      ? { label: input.labels.backToWorkspace, href: input.landing ?? "/" }
-      : input.adminHome === undefined
-        ? null
-        : { label: input.labels.administration, href: input.adminHome };
+  const switchTarget =
+    !input.isAdministrator || input.isBreakGlass
+      ? null
+      : input.chrome === "admin"
+        ? { label: input.labels.backToWorkspace, href: input.landing ?? "/" }
+        : input.adminHome === undefined
+          ? null
+          : { label: input.labels.administration, href: input.adminHome };
 
   return {
     accountHref: input.isBreakGlass ? "/admin/account" : "/account",

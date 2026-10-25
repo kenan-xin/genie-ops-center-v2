@@ -52,7 +52,7 @@ describe("shellMenu", () => {
     expect(shellMenu({ ...member, chrome: "admin" }).switchTarget).toBeNull();
   });
 
-  it("links the break-glass account to the admin account page", () => {
+  it("links the break-glass account to the admin account page and gives it no switch", () => {
     const menu = shellMenu({
       ...administrator,
       chrome: "admin",
@@ -60,6 +60,7 @@ describe("shellMenu", () => {
     });
 
     expect(menu.accountHref).toBe("/admin/account");
+    expect(menu.switchTarget).toBeNull();
     expect(menu.signOutAction).toBe("/api/auth/sign-out");
   });
 });

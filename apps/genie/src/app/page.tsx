@@ -6,7 +6,7 @@ import { redirect } from "next/navigation.js";
 import { SIGNED_OUT, SIGNED_OUT_PATH } from "../auth.ts";
 import { requireContext } from "../context.ts";
 import { documentSessionState } from "../document-session.ts";
-import { ShellFrame } from "../shell-frame.tsx";
+import { keepBreakGlassInAdmin, ShellFrame } from "../shell-frame.tsx";
 import { shellModel } from "../shell-model.ts";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,9 @@ export default async function HomePage(props: {
   const signedIn = (await documentSessionState()).status === "authenticated";
 
   if (signedIn) {
+    // Before the landing redirect, so break-glass goes to the admin home in one hop (U-3).
+    await keepBreakGlassInAdmin();
+
     const { landing } = await shellModel();
 
     if (landing !== undefined) redirect(landing);
