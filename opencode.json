@@ -6,7 +6,7 @@
       "command": [
         "sh",
         "-c",
-        "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@latest mcp"
+        "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@4.22.1 mcp"
       ],
       "enabled": true
     },

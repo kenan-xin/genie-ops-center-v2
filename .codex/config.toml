@@ -9,4 +9,4 @@ args = ["nx", "mcp"]
 # Starts in packages/ui because shadcn mcp reads components.json from its process directory and ignores --cwd.
 [mcp_servers.shadcn]
 command = "sh"
-args = ["-c", "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@latest mcp"]
+args = ["-c", "cd \"$(git rev-parse --show-toplevel)/packages/ui\" && exec npx -y shadcn@4.22.1 mcp"]
