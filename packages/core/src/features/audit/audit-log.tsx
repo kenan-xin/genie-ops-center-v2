@@ -7,6 +7,7 @@ import {
   Field,
   FieldLabel,
   focusRing,
+  HelpDisclosure,
   Input,
   Select,
   SelectContent,
@@ -31,7 +32,7 @@ import {
   RANGE_ORDER,
   relativeTime,
 } from "./helpers.ts";
-import { CloseIcon, FiltersIcon, HelpIcon, SystemIcon } from "./icons.tsx";
+import { CloseIcon, FiltersIcon, SystemIcon } from "./icons.tsx";
 import {
   EMPTY_AUDIT_FILTERS,
   type AuditActor,
@@ -128,54 +129,25 @@ function FilterSelect(props: {
   );
 }
 
-/** The contextual help disclosure: collapsed, opens on click, and closes on Escape. */
+/** The Audit log's one help disclosure, icon only in the toolbar (tokens.md). */
 function HelpNote(): JSX.Element {
-  const [open, setOpen] = useState(false);
-  const id = useId();
-  const label = "Why a row can look incomplete";
-
   return (
-    <span className="relative inline-flex shrink-0">
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-expanded={open}
-        aria-controls={`${id}-panel`}
-        aria-label={label}
-        title={label}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <HelpIcon className="size-5" />
-      </Button>
-      {open ? (
-        <div
-          id={`${id}-panel`}
-          role="group"
-          aria-label={label}
-          className="absolute left-0 top-full z-30 mt-1 w-80 max-w-full rounded-md border border-border bg-card p-4 text-left text-xs leading-relaxed text-foreground shadow-lg"
-        >
-          <p>
-            An event is never edited and never deleted. It keeps the words that
-            were true when it was written, so an old row can name something that
-            has since changed.
-          </p>
-          <p className="mt-2">
-            A target opens only while the record still exists and its module
-            returns a path. A target that no longer exists shows without a link
-            and reads Removed.
-          </p>
-          <p className="mt-2">
-            A person an operator erased appears under an anonymized name. Their
-            earlier events stay where they are.
-          </p>
-          <div className="mt-3">
-            <Button variant="link" size="sm" onClick={() => setOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </span>
+    <HelpDisclosure label="Why a row can look incomplete" iconOnly>
+      <p>
+        An event is never edited and never deleted. It keeps the words that were
+        true when it was written, so an old row can name something that has
+        since changed.
+      </p>
+      <p>
+        A target opens only while the record still exists and its module returns
+        a path. A target that no longer exists shows without a link and reads
+        Removed.
+      </p>
+      <p>
+        A person an operator erased appears under an anonymized name. Their
+        earlier events stay where they are.
+      </p>
+    </HelpDisclosure>
   );
 }
 

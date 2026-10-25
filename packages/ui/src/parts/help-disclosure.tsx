@@ -1,44 +1,70 @@
 "use client";
 
+import { useMediaQuery } from "@base-ui/react/unstable-use-media-query";
 import { CircleHelpIcon } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../components/collapsible.tsx";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/popover.tsx";
 
+/**
+ * Contextual help (tokens.md, "Help disclosure"): a labelled button that opens one 320 px callout
+ * on a press. Escape, a click outside and Close shut it, and focus returns to the button. Under
+ * 640 px the callout leaves the button and keeps 16 px from each viewport side. `iconOnly` is the
+ * toolbar form: the label moves to `aria-label` and `title`.
+ */
 export function HelpDisclosure(props: {
   readonly label: string;
   readonly children: ReactNode;
+  /** The edge of the button the callout lines up with from 640 px. */
+  readonly align?: "start" | "end";
+  readonly iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const phone = useMediaQuery("(max-width: 639px)", { noSsr: true });
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      onKeyDown={(event) => {
-        if (open && event.key === "Escape") {
-          // One Escape closes only this panel, not a dialog around it (tokens.md, "Overlays").
-          event.stopPropagation();
-          setOpen(false);
-          trigger.current?.focus();
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          props.iconOnly ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={props.label}
+              title={props.label}
+            />
+          ) : (
+            <Button variant="ghost" />
+          )
         }
-      }}
-    >
-      <CollapsibleTrigger ref={trigger} render={<Button variant="ghost" />}>
+      >
         <CircleHelpIcon aria-hidden="true" />
-        {props.label}
-      </CollapsibleTrigger>
-      <CollapsibleContent role="group" aria-label={props.label}>
-        <div className="rounded-lg bg-muted p-3 text-sm text-foreground">
+        {props.iconOnly ? null : props.label}
+      </PopoverTrigger>
+      <PopoverContent
+        role="group"
+        aria-label={props.label}
+        align={phone ? "center" : (props.align ?? "start")}
+        collisionPadding={16}
+        className="w-80 max-sm:w-(--available-width)"
+      >
+        <div className="flex flex-col gap-2 leading-relaxed">
           {props.children}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+        <Button
+          variant="link"
+          size="sm"
+          className="self-start"
+          onClick={() => setOpen(false)}
+        >
+          Close
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }

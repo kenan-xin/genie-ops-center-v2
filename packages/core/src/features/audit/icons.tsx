@@ -54,16 +54,6 @@ export function FiltersIcon(props: IconProps): JSX.Element {
   );
 }
 
-export function HelpIcon(props: IconProps): JSX.Element {
-  return (
-    <Icon className={props.className}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7" />
-      <path d="M12 17h.01" />
-    </Icon>
-  );
-}
-
 export function SystemIcon(props: IconProps): JSX.Element {
   return (
     <Icon className={props.className}>
