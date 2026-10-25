@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import { primaryPair } from "../../lib/branding/tokens.ts";
 import { HEX_COLOR } from "../../services/branding/schemas.ts";
-import { tenantInitial } from "../shell/tenant-initial.ts";
+import { TenantMark } from "../shell/identity-block.tsx";
 import type { ShellIdentity } from "../shell/types.ts";
 
 /**
@@ -38,36 +36,6 @@ export function PreviewColors(props: {
   );
 }
 
-/**
- * The tenant mark as the preview draws it: the square mark, or the letter tile when there is none
- * or its link fails. The shell's `TenantMark` styles its letter with `dark:` classes, which follow
- * the page theme instead of the preview toggle, so the preview keeps its own.
- */
-function PreviewMark(props: { readonly identity: ShellIdentity }) {
-  const { markUrl } = props.identity;
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-
-  return (
-    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-card">
-      {markUrl !== null && markUrl !== failedUrl ? (
-        <img
-          src={markUrl}
-          alt=""
-          className="size-5.5 object-contain"
-          onError={() => setFailedUrl(markUrl)}
-        />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="font-extrabold text-(--preview-brand)"
-        >
-          {tenantInitial(props.identity.companyName)}
-        </span>
-      )}
-    </span>
-  );
-}
-
 const NAV = ["Reports", "Settings"];
 
 /** A small shell: the identity block, an active row with its count pill, and a primary button. */
@@ -76,7 +44,7 @@ export function ShellPreview(props: { readonly identity: ShellIdentity }) {
     <div className="flex min-h-60 overflow-hidden rounded-lg border bg-background text-sm">
       <div className="flex w-36 shrink-0 flex-col gap-3 border-r bg-muted p-2 sm:w-44">
         <div className="flex min-w-0 items-center gap-2">
-          <PreviewMark identity={props.identity} />
+          <TenantMark identity={props.identity} size="sm" />
           <span className="flex min-w-0 flex-col">
             <span className="truncate font-semibold">
               {props.identity.companyName}
@@ -123,7 +91,7 @@ export function SignInPreview(props: {
   return (
     <div className="flex justify-center rounded-lg bg-(--sign-in-background) p-4">
       <div className="flex w-full max-w-72 flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center text-sm">
-        <PreviewMark identity={props.identity} />
+        <TenantMark identity={props.identity} size="sm" />
         <p className="text-base font-bold">{props.identity.companyName}</p>
         <p className="text-muted-foreground">
           {props.welcomeText === ""

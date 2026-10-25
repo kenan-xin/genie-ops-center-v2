@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { DEFAULT_MARK_URL } from "../shell/identity-block.tsx";
 import { brandingView, imageView, PIXEL } from "./__fixtures__/branding.ts";
 import {
   BrandingScreen,
@@ -293,8 +294,13 @@ export const BrokenPreviewLink: Story = {
     // The slot drops a thumbnail that fails to load instead of showing a broken image.
     await waitFor(() => expect(slot.querySelector("img")).toBeNull());
     await expect(within(slot).getByText("northwind-mark.png")).toBeVisible();
+    // The preview mark falls back to the Ops Center icon, as the shell does (DR-19).
     await waitFor(() =>
-      expect(within(preview(canvasElement)).getByText("N")).toBeVisible()
+      expect(
+        [...preview(canvasElement).querySelectorAll("img")].map((image) =>
+          image.getAttribute("src")
+        )
+      ).toEqual([DEFAULT_MARK_URL])
     );
   },
 };

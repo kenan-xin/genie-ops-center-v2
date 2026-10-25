@@ -54,7 +54,6 @@ export default async function HomePage(props: {
         {/* An anonymous home keeps the product heading (setup gate AC-2); the shell names it Workspace. */}
         <PageHeader title={signedIn ? tShell("workspace") : tApp("title")} />
         <NoGrantsEmptyState
-          companyName={branding.companyName}
           title={tNoGrants("title")}
           description={tNoGrants("description")}
           {...(contact && {

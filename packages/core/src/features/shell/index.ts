@@ -24,8 +24,6 @@ export {
   type NavigationRailProps,
 } from "./navigation-rail.tsx";
 
-export { tenantInitial } from "./tenant-initial.ts";
-
 export {
   brandingHead,
   BrandingHeadElements,

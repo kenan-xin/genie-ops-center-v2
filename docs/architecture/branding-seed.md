@@ -35,7 +35,7 @@ The owner settled the four open seed questions with the Spec 3 review:
 
 1. **Null versus omitted.** Omission is the only way to leave an optional value unset. An explicit `null` stays refused, so a seed has one spelling for "not set" and every file that validates today keeps validating.
 2. **Default materialization.** An omitted text with a default (`login_welcome_text`, `email_sender_name`) is stored as unset, and the application computes the default when it renders. A later change of `company_name` or `product_name` therefore updates every defaulted text, while a text the administrator wrote is never changed.
-3. **Fallback assets.** No logo: the product name as text. No logo mark: the initials of the product name on a tile in the primary color. No favicon: a neutral Genie Ops Center favicon. No login background image: the neutral login background. Setup never requires an image.
+3. **Fallback assets.** No logo: the product name as text. No logo mark: the Genie Ops Center icon, a static file in the image (amended 2026-10-26, DR-19). No favicon: a neutral Genie Ops Center favicon. No login background image: the neutral login background. Setup never requires an image.
 4. **Application-email readiness.** Application email is ready to send when the deployment's mail transport is configured (`MAIL_PROVIDER` and `MAIL_FROM`, `environment-contract.md`, "Mail"). Reply-to, sender name, and footer are optional and fall back as above.
 
 A list of database columns alone does not establish seed requiredness or defaults.

@@ -4,15 +4,14 @@ import { expect } from "storybook/test";
 import { NoGrantsEmptyState } from "./no-grants-empty-state.tsx";
 
 /**
- * The home page when the viewer holds no solution grant (R-34): the tenant letter tile, one title,
- * one sentence, and a support contact only when branding has a valid one.
+ * The home page when the viewer holds no solution grant (R-34): one title, one sentence, and a
+ * support contact only when branding has a valid one.
  */
 const meta = {
   title: "Core/No-grants empty state",
   component: NoGrantsEmptyState,
   tags: ["autodocs"],
   args: {
-    companyName: "Acme Health",
     title: "No solutions yet",
     description: "Ask your administrator to grant you access to a solution.",
   },
@@ -36,11 +35,6 @@ export const WithSupportEmail: Story = {
         "Ask your administrator to grant you access to a solution."
       )
     ).toBeVisible();
-
-    await expect(canvas.getByText("A")).toBeInTheDocument();
-    await expect(
-      canvas.queryByText("A", { ignore: "[aria-hidden=true]" })
-    ).toBeNull();
 
     const link = canvas.getByRole("link", {
       name: "Contact Acme Health support",
