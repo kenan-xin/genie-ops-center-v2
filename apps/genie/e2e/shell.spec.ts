@@ -302,7 +302,8 @@ test("the idle warning appears before the server expiry and Stay signed in keeps
 
 test("the identity block shows the square mark only for a clean or skipped file (R-39, R-49, D3-7)", async ({
   page,
-}) => {
+  browser,
+}, testInfo) => {
   // The mark sits in the aside's identity block from `lg`, in the top bar below it.
   const scope = atLg(page)
     ? page
@@ -314,7 +315,7 @@ test("the identity block shows the square mark only for a clean or skipped file 
     "branding",
     async () => {
       try {
-        await seedBrandingMark({ scanStatus: "skipped" });
+        await seedBrandingMark(browser, testInfo.project.name);
 
         await expect
           .poll(async () => {

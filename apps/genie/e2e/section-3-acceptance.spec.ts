@@ -119,7 +119,7 @@ test("axe finds no violation on the shell, the sign-in page and every Section 3 
   }
 });
 
-/** One Tab press: where focus landed, and whether it shows a ring or an outline. */
+/** One Tab press: where focus landed, and whether it shows the --ring color as a ring or an outline. */
 type Step = {
   readonly walk: number | null;
   readonly ring: boolean;
@@ -168,13 +168,25 @@ async function keyboardWalk(
 
       const style = getComputedStyle(element);
 
+      // R-8: the focus ring is the --ring color, resolved as rgb() in this element's theme.
+      const probe = document.createElement("span");
+
+      probe.style.color = style.getPropertyValue("--ring");
+      element.after(probe);
+
+      const ring = getComputedStyle(probe).color;
+
+      probe.remove();
+
       return {
         walk: element.hasAttribute("data-walk")
           ? Number(element.getAttribute("data-walk"))
           : null,
         ring:
-          style.boxShadow !== "none" ||
-          (style.outlineStyle !== "none" && style.outlineWidth !== "0px"),
+          style.boxShadow.includes(ring) ||
+          (style.outlineStyle !== "none" &&
+            style.outlineWidth !== "0px" &&
+            style.outlineColor === ring),
         name:
           element.getAttribute("aria-label") ??
           (element.textContent?.trim().slice(0, 40) || element.tagName),

@@ -1,6 +1,9 @@
-import { createHash, randomUUID } from "node:crypto";
+import { expect, type Browser } from "@playwright/test";
 
+import { e2eBrandingAdminEmail } from "../../testing/e2e-keycloak.ts";
+import { publishBranding } from "./branding-page.ts";
 import { queryDatabase } from "./database.ts";
+import { signInThroughKeycloak } from "./sign-in.ts";
 
 /** A 1×1 opaque PNG. */
 const PNG = Buffer.from(
@@ -9,38 +12,40 @@ const PNG = Buffer.from(
   "hex"
 );
 
-const sha256 = (value: string | Buffer): string =>
-  createHash("sha256").update(value).digest("hex");
-
 /**
- * Seeds the branding square mark the way the postgres file adapter stores one: a `file` row whose
- * `storage_key` is the sha256 of its id, its `file_blob`, and `tenant_branding.logo_mark_file_id`.
- * The caller holds the `branding` deployment lock.
+ * Publishes a branding square mark the way an administrator does (DR-15): the project's branding
+ * administrator uploads it on the Branding page, which stores it through the file service, and
+ * publishes. No scanner exists, so the file is `skipped`. The caller holds the `branding`
+ * deployment lock.
  */
-export async function seedBrandingMark(input: {
-  readonly scanStatus: "skipped" | "pending";
-}): Promise<void> {
-  const id = randomUUID();
+export async function seedBrandingMark(
+  browser: Browser,
+  project: string
+): Promise<void> {
+  const context = await browser.newContext();
 
-  await queryDatabase(
-    `insert into file (id, storage_key, file_name, mime_type, size_bytes, checksum, scan_status)
-       values ('${id}', '${sha256(id)}', 'mark.png', 'image/png', ${PNG.length}, '${sha256(PNG)}', '${input.scanStatus}');
-     insert into file_blob (id, bytes) values ('${id}', decode('${PNG.toString("hex")}', 'hex'));
-     update tenant_branding set logo_mark_file_id = '${id}'`
-  );
+  try {
+    const page = await context.newPage();
+
+    await signInThroughKeycloak(page, {
+      email: e2eBrandingAdminEmail(project),
+    });
+    await page.goto("/admin/branding");
+    await page
+      .getByLabel("Upload a file for Square mark")
+      .setInputFiles({ name: "mark.png", mimeType: "image/png", buffer: PNG });
+    await expect(
+      page
+        .getByRole("group", { name: "Square mark" })
+        .getByText("mark.png", { exact: true })
+    ).toBeVisible();
+    await publishBranding(page);
+  } finally {
+    await context.close();
+  }
 }
 
-/** Nulls the mark column, then deletes the file rows it named. */
+/** Nulls the mark column. The file row stays, as after Remove and Publish on the Branding page. */
 export async function clearBrandingMark(): Promise<void> {
-  const [id] = await queryDatabase(
-    "select logo_mark_file_id from tenant_branding where logo_mark_file_id is not null"
-  );
-
   await queryDatabase("update tenant_branding set logo_mark_file_id = null");
-
-  if (id !== undefined) {
-    await queryDatabase(
-      `delete from file_blob where id = '${id}'; delete from file where id = '${id}'`
-    );
-  }
 }
