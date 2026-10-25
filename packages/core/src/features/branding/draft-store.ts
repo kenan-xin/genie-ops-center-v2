@@ -61,7 +61,6 @@ export type BrandingDraftState = {
     slot: BrandingImageSlot,
     image: BrandingImageView | null
   ) => void;
-  readonly discard: () => void;
   readonly rebase: (published: BrandingView) => void;
   /** Takes a refetch's preview links (they expire) and leaves the draft alone (D3-7). */
   readonly refreshImages: (view: BrandingView) => void;
@@ -98,7 +97,6 @@ export function createBrandingDraftStore(view: BrandingView) {
                 ? state.images
                 : { ...state.images, [image.fileId]: image },
           })),
-        discard: () => set((state) => ({ draft: state.published })),
         rebase: (next) =>
           set((state) => ({
             published: next.draft,

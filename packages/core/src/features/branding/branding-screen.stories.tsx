@@ -821,6 +821,53 @@ export const RefreshedLinkWhileEditing: Story = {
   },
 };
 
+/**
+ * A refetch during a dirty draft brings a value that another administrator published; Discard
+ * resets to that latest read, not to the values the page first loaded (branding L-4).
+ */
+export const DiscardShowsTheRefetch: Story = {
+  render: function Render(args) {
+    const [branding, setBranding] = useState(args.branding);
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() =>
+            setBranding(brandingView({ companyName: "Renamed elsewhere" }))
+          }
+        >
+          Refetch
+        </button>
+        <BrandingScreen {...args} branding={branding} />
+      </>
+    );
+  },
+  play: async ({ canvas }) => {
+    await user.type(
+      canvas.getByRole("textbox", { name: "Product name" }),
+      " Plus"
+    );
+    await user.click(canvas.getByRole("button", { name: "Refetch" }));
+    await user.click(canvas.getByRole("button", { name: "Discard" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Discard",
+      })
+    );
+
+    await waitFor(() =>
+      expect(canvas.getByRole("textbox", { name: "Company name" })).toHaveValue(
+        "Renamed elsewhere"
+      )
+    );
+    await expect(
+      canvas.getByRole("textbox", { name: "Product name" })
+    ).toHaveValue("Northwind Ops");
+    await expect(canvas.queryByText(/unpublished change/)).toBeNull();
+  },
+};
+
 /** An upload that finishes after a later file was refused leaves that refusal in place. */
 export const LateUploadKeepsRefusal: Story = {
   args: {

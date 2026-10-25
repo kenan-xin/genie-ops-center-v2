@@ -43,12 +43,8 @@ describe("the branding draft store (R-43, R-44)", () => {
     ]);
   });
 
-  it("restores the published values on discard and clears the count on rebase", () => {
+  it("clears the count on rebase", () => {
     const store = createBrandingDraftStore(brandingView());
-
-    store.getState().set("companyName", "Acme");
-    store.getState().discard();
-    expect(store.getState().draft).toEqual(brandingView().draft);
 
     store.getState().set("companyName", "Acme");
     store.getState().rebase(brandingView({ companyName: "Acme" }));

@@ -500,7 +500,8 @@ function BrandingEditor(
         danger
         onConfirm={() => {
           discards.current += 1;
-          store.getState().discard();
+          // Reset to the newest read, so a value published elsewhere meanwhile shows (branding L-4).
+          store.getState().rebase(latest.current);
           setSlots({});
           setFailure(null);
           setServerIssues({});
