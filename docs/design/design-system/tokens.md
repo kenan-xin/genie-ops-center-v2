@@ -15,6 +15,8 @@ Plus Jakarta Sans, the default of the tenant font family key in `tenant_branding
 | Secondary (nav rows, menu items, helper text) | `text-sm` | regular or medium |
 | Caption (labels, pills, chips, counts) | `text-xs` | medium or semibold |
 
+The smallest text size is 12 px. `text-xs` is `max(12px, 0.8rem)` with a 4/3 line height: 12 px on the 15 px default root and on the 14 px Compact root, and 12.8 px on the 16 px Large root. No class renders text below it.
+
 On phones display and title step down one size (`text-xl lg:text-2xl`, `text-lg lg:text-xl`). Arbitrary pixel sizes (`text-[13.5px]`, `text-[11px]`, any `text-[Npx]`) are forbidden in every component; `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
 
 The tenant font size preset (set by the branding seed until the Branding Typography tab reopens) sets the root font size to 14, 15, or 16 px. The type scale above is rem-based, so every text size follows the root without per-component changes. Control heights do not follow it: the values in the next section are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact. `--foreground` is fixed in both themes: gray-900 in light and gray-100 in dark. A tenant text color for light surfaces is deferred with the Typography tab (owner decision 2026-10-22).

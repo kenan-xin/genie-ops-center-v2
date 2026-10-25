@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent } from "storybook/test";
 
 import { focusRing } from "../index.ts";
+import { fontSizePresetsPx } from "./tokens.ts";
 
 const meta = {
   title: "UI/Tokens",
@@ -54,6 +55,31 @@ export const Fonts: Story = {
     await expect(
       await document.fonts.load('15px "JetBrains Mono"')
     ).not.toHaveLength(0);
+  },
+};
+
+export const TextFloor: Story = {
+  render: () => <p className="text-xs">Caption, the smallest text size</p>,
+  play: async ({ canvas }) => {
+    const caption = canvas.getByText("Caption, the smallest text size");
+    const root = document.documentElement;
+    const before = root.style.fontSize;
+
+    try {
+      // DR-22: no root size preset renders text below 12 px.
+      const sizes = Object.values(fontSizePresetsPx).map((px) => {
+        root.style.fontSize = `${px}px`;
+
+        return Number.parseFloat(getComputedStyle(caption).fontSize);
+      });
+
+      await expect(Math.min(...sizes)).toBeGreaterThanOrEqual(12);
+
+      root.style.fontSize = `${fontSizePresetsPx.default}px`;
+      await expect(getComputedStyle(caption).fontSize).toBe("12px");
+    } finally {
+      root.style.fontSize = before;
+    }
   },
 };
 

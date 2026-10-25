@@ -34,6 +34,9 @@
 @theme {
   --font-sans: var(--font-face-plus-jakarta-sans);
   --font-mono: var(--font-face-jetbrains-mono);
+  /* DR-22: 12 px is the smallest text at every root preset; 0.8rem is 12 px on the 15 px root. */
+  --text-xs: max(12px, 0.8rem);
+  --text-xs--line-height: calc(4 / 3);
   --spacing: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
