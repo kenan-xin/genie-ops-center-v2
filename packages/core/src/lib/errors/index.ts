@@ -49,6 +49,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "module-config-invalid":
     "The module's configuration is missing a required value or holds an invalid one, so the module stayed off.",
   "category-name-taken": "A category with that name already exists.",
+  "categories-changed":
+    "The categories changed. The list was reloaded; try again.",
   "settings-invalid":
     "Some settings are not valid. Fix the marked fields and save again.",
   "branding-upload-refused":

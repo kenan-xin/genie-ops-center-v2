@@ -327,7 +327,7 @@ describe("the categories page service against a real database", () => {
     expect(await auditRows()).toEqual([]);
   });
 
-  it("reorder refuses a list that misses or adds an id", async () => {
+  it("reorder refuses a list that misses or adds an id as changed, and a repeated id as invalid", async () => {
     const a = await create("A");
     const b = await create("B");
     const unknown = "00000000-0000-4000-8000-000000000000";
@@ -335,12 +335,15 @@ describe("the categories page service against a real database", () => {
     await markAudit();
 
     await Promise.all(
-      [[b], [b, a, unknown], [b, b]].map((orderedIds) =>
+      [[b], [b, a, unknown]].map((orderedIds) =>
         expect(
           reorderCategories(deployment.context, { actorUserId, orderedIds })
-        ).rejects.toMatchObject({ code: "invalid-input" })
+        ).rejects.toMatchObject({ code: "categories-changed" })
       )
     );
+    await expect(
+      reorderCategories(deployment.context, { actorUserId, orderedIds: [b, b] })
+    ).rejects.toMatchObject({ code: "invalid-input" });
 
     await expect(
       renameCategory(deployment.context, {
@@ -357,6 +360,25 @@ describe("the categories page service against a real database", () => {
     ).rejects.toMatchObject({ code: "not-found" });
 
     expect(await categoryNames()).toEqual(["A", "B"]);
+    expect(await auditRows()).toEqual([]);
+  });
+
+  // admin L-2: a page that read the list before another administrator added a category.
+  it("a reorder after a concurrent create answers categories-changed and changes nothing", async () => {
+    const a = await create("A");
+    const b = await create("B");
+
+    await create("C");
+    await markAudit();
+
+    await expect(
+      reorderCategories(deployment.context, { actorUserId, orderedIds: [b, a] })
+    ).rejects.toMatchObject({
+      code: "categories-changed",
+      message: "The categories changed. The list was reloaded; try again.",
+    });
+
+    expect(await categoryNames()).toEqual(["A", "B", "C"]);
     expect(await auditRows()).toEqual([]);
   });
 });

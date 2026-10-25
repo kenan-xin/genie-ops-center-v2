@@ -17,6 +17,7 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["module-not-registered", 409],
   ["module-config-invalid", 400],
   ["category-name-taken", 400],
+  ["categories-changed", 409],
   ["settings-invalid", 400],
   ["branding-upload-refused", 400],
   ["branding-invalid", 400],

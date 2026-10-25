@@ -211,7 +211,8 @@ export async function renameCategory(
 
 /**
  * Rewrites `position` as 0..n-1 in the given order (Decision 8). The list must be exactly the
- * current id set, so a stale page cannot drop or invent a category. The same order is not a change.
+ * current id set, so a stale page cannot drop or invent a category; a page that read the list
+ * before another change gets its own code (admin L-2). The same order is not a change.
  */
 export async function reorderCategories(
   tenant: TenantContext,
@@ -230,12 +231,15 @@ export async function reorderCategories(
     const currentIds = current.map((row) => row.id);
     const given = new Set(input.orderedIds);
 
+    if (given.size !== input.orderedIds.length) {
+      throw new AppError(CORE_ERRORS["invalid-input"]);
+    }
+
     if (
-      given.size !== input.orderedIds.length ||
       given.size !== currentIds.length ||
       currentIds.some((id) => !given.has(id))
     ) {
-      throw new AppError(CORE_ERRORS["invalid-input"]);
+      throw new AppError(CORE_ERRORS["categories-changed"]);
     }
 
     if (currentIds.every((id, index) => id === input.orderedIds[index])) return;
