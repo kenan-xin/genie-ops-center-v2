@@ -311,6 +311,48 @@ describe("core section saves", () => {
     ).resolves.toEqual({ changed: true });
     expect((await settingsRow())?.realm_supports_local_accounts).toBe(false);
   });
+
+  it("a stored local accounts on switches off in a realm without local accounts, and stays refused back on", async () => {
+    await query(
+      "update tenant_settings set local_accounts_enabled = true, realm_supports_local_accounts = false"
+    );
+
+    // Saving the stored value again changes nothing and never refuses.
+    await expect(
+      saveSignInSettings(deployment.context, {
+        actorUserId,
+        onboardingMode: "invite",
+        localAccountsEnabled: true,
+      })
+    ).resolves.toEqual({ changed: false });
+
+    await expect(
+      saveSignInSettings(deployment.context, {
+        actorUserId,
+        onboardingMode: "invite",
+        localAccountsEnabled: false,
+      })
+    ).resolves.toEqual({ changed: true });
+
+    expect((await settingsRow())?.local_accounts_enabled).toBe(false);
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({
+        action: "core:settings_updated",
+        metadata: {
+          section: "sign-in",
+          changes: { localAccountsEnabled: { from: true, to: false } },
+        },
+      }),
+    ]);
+
+    await expect(
+      saveSignInSettings(deployment.context, {
+        actorUserId,
+        onboardingMode: "invite",
+        localAccountsEnabled: true,
+      })
+    ).rejects.toMatchObject({ code: "local-accounts-unavailable" });
+  });
 });
 
 describe("module section saves", () => {

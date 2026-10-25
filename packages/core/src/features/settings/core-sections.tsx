@@ -247,7 +247,11 @@ export function SignInSection(
                 label="Allow local accounts"
                 description="Add person also creates the account in the tenant realm and sends a set-password email."
                 checked={field.state.value}
-                disabled={!props.realmSupportsLocalAccounts}
+                // A saved "on" stays switchable, so it can be turned off; only turning it on needs the realm.
+                disabled={
+                  !props.realmSupportsLocalAccounts &&
+                  !props.values.localAccountsEnabled
+                }
                 onCheckedChange={field.handleChange}
               />
               {props.realmSupportsLocalAccounts ? null : (

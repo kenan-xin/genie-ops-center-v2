@@ -179,6 +179,37 @@ export const BrokeredOnly: Story = {
   },
 };
 
+/** A stored "on" in a realm without local accounts can still be switched off; only "on" is refused. */
+export const BrokeredOnlyStoredOn: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: {
+        ...FIXTURE_SETTINGS.core,
+        localAccountsEnabled: true,
+        realmSupportsLocalAccounts: false,
+      },
+    },
+  },
+  play: async ({ args, canvas }) => {
+    const toggle = canvas.getByRole("switch", {
+      name: "Allow local accounts",
+    });
+
+    await expect(toggle).not.toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(toggle);
+    await expect(toggle).not.toBeChecked();
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(args.onSaveSignIn).toHaveBeenCalledWith({
+        onboardingMode: "invite",
+        localAccountsEnabled: false,
+      })
+    );
+  },
+};
+
 /** Client-only mode signs in through the company's own realm, so no local account exists (ADR 0010). */
 export const ClientOnly: Story = {
   args: {
