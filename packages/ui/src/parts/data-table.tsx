@@ -1,7 +1,7 @@
 "use client";
 
 import { EllipsisIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
 import {
@@ -31,7 +31,7 @@ export type DataTableAction = {
   readonly label: string;
   readonly onSelect: () => void;
   readonly danger?: boolean;
-  /** Set when the action is refused: the item stays, disabled, with this reason as its title. */
+  /** Set when the action is refused: the item stays, disabled, and shows this reason as its description. */
   readonly refusal?: string;
 };
 
@@ -55,6 +55,31 @@ export type DataTableProps<Row> = {
 };
 
 const maxFacts = 2;
+
+// The reason is visible text, not a title, because a touch screen has no hover (R-21, R-38).
+function ActionItem({ item }: { readonly item: DataTableAction }) {
+  const reasonId = useId();
+
+  return (
+    <DropdownMenuItem
+      variant={item.danger ? "destructive" : "default"}
+      disabled={item.refusal !== undefined}
+      aria-label={item.label}
+      aria-describedby={item.refusal === undefined ? undefined : reasonId}
+      className={
+        item.refusal === undefined ? undefined : "flex-col items-start"
+      }
+      onClick={item.onSelect}
+    >
+      {item.label}
+      {item.refusal === undefined ? null : (
+        <span id={reasonId} className="text-xs text-muted-foreground">
+          {item.refusal}
+        </span>
+      )}
+    </DropdownMenuItem>
+  );
+}
 
 export function DataTable<Row>({
   label,
@@ -105,15 +130,7 @@ export function DataTable<Row>({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {items.map((item) => (
-            <DropdownMenuItem
-              key={item.label}
-              variant={item.danger ? "destructive" : "default"}
-              disabled={item.refusal !== undefined}
-              title={item.refusal}
-              onClick={item.onSelect}
-            >
-              {item.label}
-            </DropdownMenuItem>
+            <ActionItem key={item.label} item={item} />
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

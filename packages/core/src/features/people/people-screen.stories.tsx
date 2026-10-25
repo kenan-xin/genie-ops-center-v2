@@ -130,7 +130,7 @@ export const RowMenuNamesTheRefusal: Story = {
       // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
       await expect(item).toHaveAttribute("aria-disabled", "true");
       // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
-      await expect(item).toHaveAttribute("title", SELF_REASON);
+      await expect(item).toHaveAccessibleDescription(SELF_REASON);
     }
 
     await userEvent.keyboard("{Escape}");

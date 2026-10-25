@@ -51,7 +51,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The composed table of Spec 3 R-23. From 768 px it is a table. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, with its reason as the title. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them.",
+          "The composed table of Spec 3 R-23. From 768 px it is a table. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, and shows its reason as visible text that is the item's description. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them.",
       },
     },
   },
@@ -145,8 +145,7 @@ export const Desktop: Story = {
     const refused = await screen.findByRole("menuitem", { name: "Remove" });
 
     await expect(refused).toHaveAttribute("aria-disabled", "true");
-    await expect(refused).toHaveAttribute(
-      "title",
+    await expect(refused).toHaveAccessibleDescription(
       "The last administrator cannot be removed."
     );
     await userEvent.keyboard("{Escape}");
@@ -193,6 +192,35 @@ export const Phone: Story = {
     await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth
+    );
+  },
+};
+
+// A touch screen has no hover title, so the reason is visible text (R-21, R-38).
+export const PhoneRefusal: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Actions for averyveryveryverylongaddressforatest@example.com",
+      })
+    );
+
+    const refused = await screen.findByRole("menuitem", { name: "Remove" });
+
+    const reason = within(refused).getByText(
+      "The last administrator cannot be removed."
+    );
+
+    await expect(refused).toHaveAttribute("aria-disabled", "true");
+    // The popup fades in from opacity 0.
+    await waitFor(() => expect(reason).toBeVisible());
+    await expect(refused).toHaveAttribute("aria-describedby", reason.id);
+    await expect(refused).not.toHaveAttribute("title");
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     );
   },
 };
