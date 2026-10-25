@@ -379,11 +379,18 @@ export async function saveModuleSettings(
       );
     }
 
-    const shown = withDefaults(form, storedConfiguration.parse(row.config));
+    const stored = storedConfiguration.parse(row.config);
+    const shown = withDefaults(form, stored);
 
-    const changedFields = form.fields
-      .map((field) => field.id)
-      .filter((id) => !isEqual(shown[id], next[id]));
+    const declared = form.fields.map((field) => field.id);
+
+    // A stored key the schema no longer declares is dropped by the write, so it is a change (U-5).
+    const changedFields = [
+      ...declared.filter((id) => !isEqual(shown[id], next[id])),
+      ...Object.keys(stored).filter(
+        (key) => !declared.includes(key) && !(key in next)
+      ),
+    ];
 
     if (changedFields.length === 0) return { changed: false };
 

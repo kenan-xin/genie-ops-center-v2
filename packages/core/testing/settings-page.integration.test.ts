@@ -414,6 +414,39 @@ describe("module section saves", () => {
     expect(await auditRows()).toEqual([]);
   });
 
+  it("a save drops a stored key the schema does not declare and lists it in changedFields (U-5)", async () => {
+    const caller = await callerWith([BASE]);
+
+    await query(
+      `update tenant_module set config = '{"title": "Kept", "legacy": "old"}'::jsonb
+         where module_id = 'fixture'`
+    );
+
+    const { modules } = await readSettings(
+      deployment.context,
+      compiled,
+      caller
+    );
+
+    const shown = modules.find((section) => section.moduleId === "fixture");
+
+    await expect(
+      saveModuleSettings(deployment.context, compiled, caller, {
+        actorUserId,
+        moduleId: "fixture",
+        values: shown?.values ?? {},
+      })
+    ).resolves.toEqual({ changed: true });
+
+    expect((await moduleRow("fixture"))?.config).not.toHaveProperty("legacy");
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({
+        action: "core:module_configured",
+        metadata: { changedFields: ["legacy"] },
+      }),
+    ]);
+  });
+
   it("a disabled module saves valid configuration and stays disabled with the Tenant administrator admin key unchanged", async () => {
     const caller = await callerWith([BASE]);
     const before = await adminKey();
