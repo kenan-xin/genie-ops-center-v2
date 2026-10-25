@@ -41,6 +41,8 @@ const config: StorybookConfig = {
     "../stories/**/*.stories.@(ts|tsx)",
   ],
   addons: [...shared.addons],
+  // The shell's Ops Center defaults are static files of the app's public folder (DR-03).
+  staticDirs: [{ from: "../../genie/public/brand", to: "/brand" }],
   features: { ...shared.features },
   // Storybook does not read the application's PostCSS setup, so the preview
   // compiles the product stylesheet with Tailwind's own Vite plugin.

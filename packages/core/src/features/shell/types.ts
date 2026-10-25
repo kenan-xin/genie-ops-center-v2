@@ -32,6 +32,8 @@ export type ShellNavigation = {
 export type ShellIdentity = {
   readonly companyName: string;
   readonly productName: string;
+  readonly logoLightUrl: string | null;
+  readonly logoDarkUrl: string | null;
   readonly markUrl: string | null;
 };
 

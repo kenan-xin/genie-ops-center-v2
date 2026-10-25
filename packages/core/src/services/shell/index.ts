@@ -21,6 +21,7 @@ import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { TenantSettings } from "../../lib/tenant-context/readers.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
+import type { BrandingImageSlot } from "../branding/schemas.ts";
 import type { FileStorage } from "../file-storage/index.ts";
 
 /** The Ops Center favicon, a static file of the app's `public/brand/` folder (DR-03). */
@@ -140,12 +141,23 @@ export async function loadShell(input: {
 }): Promise<ShellModel> {
   const { tenant, modules, caller } = input;
 
-  const [tree, branding, settings, mark] = await Promise.all([
-    navigationTree({ tenant, modules, caller }),
-    tenant.branding.get(),
-    tenant.settings.get(),
-    tenant.fileStorage.createBrandingMarkLink({ principal: caller }),
-  ]);
+  const link = async (slot: BrandingImageSlot) =>
+    (
+      await tenant.fileStorage.createBrandingMarkLink({
+        principal: caller,
+        slot,
+      })
+    )?.url ?? null;
+
+  const [tree, branding, settings, logoLightUrl, logoDarkUrl, markUrl] =
+    await Promise.all([
+      navigationTree({ tenant, modules, caller }),
+      tenant.branding.get(),
+      tenant.settings.get(),
+      link("logoLight"),
+      link("logoDark"),
+      link("logoMark"),
+    ]);
 
   return {
     navigation: shellNavigation(tree, modules, input.labels),
@@ -154,7 +166,9 @@ export async function loadShell(input: {
     identity: {
       companyName: branding.companyName,
       productName: branding.productName,
-      markUrl: mark?.url ?? null,
+      logoLightUrl,
+      logoDarkUrl,
+      markUrl,
     },
     support: supportContact(branding),
     changePasswordUrl: realmAccountUrl({

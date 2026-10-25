@@ -32,6 +32,8 @@ const meta = {
     identity: {
       companyName: "Acme Logistics",
       productName: "Ops Center",
+      logoLightUrl: null,
+      logoDarkUrl: null,
       markUrl: null,
     },
     user: { name: "Alex Morgan", roleLabel: "Administrator" },

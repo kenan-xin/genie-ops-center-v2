@@ -87,6 +87,8 @@ const meta = {
     identity: {
       companyName: "Acme Logistics",
       productName: "Ops Center",
+      logoLightUrl: null,
+      logoDarkUrl: null,
       markUrl: null,
     },
     user: { name: "Alex Morgan", roleLabel: "Member" },
@@ -211,7 +213,13 @@ export const WorkspacePhone: Story = {
 };
 
 const longNames = {
-  identity: { companyName: LONG, productName: LONG, markUrl: null },
+  identity: {
+    companyName: LONG,
+    productName: LONG,
+    logoLightUrl: null,
+    logoDarkUrl: null,
+    markUrl: null,
+  },
   user: { name: LONG, roleLabel: "Member" },
   currentPath: "/long",
   navigation: {

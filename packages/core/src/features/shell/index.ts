@@ -32,7 +32,11 @@ export {
   type BrandingHead,
 } from "./branding-head.tsx";
 
-export { IdentityBlock, TenantMark } from "./identity-block.tsx";
+export {
+  DEFAULT_MARK_URL,
+  IdentityBlock,
+  TenantMark,
+} from "./identity-block.tsx";
 
 export { UserMenu, type UserMenuProps } from "./user-menu.tsx";
 

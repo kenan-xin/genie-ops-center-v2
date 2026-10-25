@@ -334,28 +334,18 @@ test("the identity block shows the square mark only for a clean or skipped file 
           }, POLL)
           .toBe("loaded");
 
-        // A pending file is not served, so the shell falls back to the letter tile.
+        // A pending file is not served, so the shell falls back to the Ops Center icon (DR-19).
         await queryDatabase(
           "update file set scan_status = 'pending' where id = (select logo_mark_file_id from tenant_branding)"
         );
-
-        const [companyName] = await queryDatabase(
-          "select company_name from tenant_branding"
-        );
-
-        const letter =
-          Array.from((companyName ?? "").trim())[0]?.toLocaleUpperCase() ?? "";
-
-        expect(letter).not.toBe("");
 
         await expect
           .poll(async () => {
             await page.goto("/account");
 
-            return scope.locator("img").count();
+            return scope.locator("img").getAttribute("src");
           }, POLL)
-          .toBe(0);
-        await expect(scope.getByText(letter, { exact: true })).toBeVisible();
+          .toBe("/brand/icon-blue.svg");
       } finally {
         await clearBrandingMark();
       }

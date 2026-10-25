@@ -186,12 +186,12 @@ function BrandingEditor(
     })
   );
 
-  const markUrl = slotImages["logoMark"]?.url ?? null;
-
   const identity = {
     companyName: draft.companyName,
     productName: draft.productName,
-    markUrl,
+    logoLightUrl: slotImages["logoLight"]?.url ?? null,
+    logoDarkUrl: slotImages["logoDark"]?.url ?? null,
+    markUrl: slotImages["logoMark"]?.url ?? null,
   };
 
   async function upload(slot: BrandingImageSlot, file: File) {

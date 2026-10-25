@@ -72,13 +72,44 @@ function shellFor(userId: string) {
 /** The branding reader caches for ten seconds; each write moves the clock further past it. */
 let clockShift = 0;
 
-async function brandingNames(markFileId: string | null): Promise<void> {
-  await deployment.context.db
-    .update(tenantBranding)
-    .set({ logoMarkFileId: markFileId });
+async function brandingNames(
+  images: Partial<
+    Record<
+      "logoLightFileId" | "logoDarkFileId" | "logoMarkFileId",
+      string | null
+    >
+  >
+): Promise<void> {
+  await deployment.context.db.update(tenantBranding).set(images);
   clockShift += 60_000;
+  // Shift from the real clock: a second call in one test must not add to the faked one.
+  vi.useRealTimers();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(Date.now() + clockShift);
+}
+
+/** A stored 1x1 PNG. A new file is written with scan status `skipped`, so it is served. */
+function storePixel(): Promise<string> {
+  const { context } = deployment;
+
+  return withTransaction(
+    context,
+    async (tx) =>
+      (
+        await context.fileStorage.store(
+          {
+            fileName: "image.png",
+            mimeType: "image/png",
+            bytes: Buffer.from(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
+              "base64"
+            ),
+            uploadedByUserId: null,
+          },
+          tx
+        )
+      ).id
+  );
 }
 
 describe("loadShell against a real database", () => {
@@ -123,31 +154,34 @@ describe("loadShell against a real database", () => {
     const { context } = deployment;
     const userId = await insertUser(context);
 
-    const markId = await withTransaction(
-      context,
-      async (tx) =>
-        (
-          await context.fileStorage.store(
-            {
-              fileName: "mark.png",
-              mimeType: "image/png",
-              bytes: Buffer.from(
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=",
-                "base64"
-              ),
-              uploadedByUserId: null,
-            },
-            tx
-          )
-        ).id
-    );
+    const markId = await storePixel();
 
-    await brandingNames(markId);
+    await brandingNames({ logoMarkFileId: markId });
     expect((await shellFor(userId)).identity.markUrl).toContain(
       "/api/files/download?token="
     );
 
-    await brandingNames(null);
+    await brandingNames({ logoMarkFileId: null });
     expect((await shellFor(userId)).identity.markUrl).toBeNull();
+  });
+
+  it("links each published logo to its own theme (DR-03)", async () => {
+    const userId = await insertUser(deployment.context);
+    const logoId = await storePixel();
+
+    await brandingNames({ logoLightFileId: logoId, logoDarkFileId: null });
+    expect((await shellFor(userId)).identity).toMatchObject({
+      logoLightUrl: expect.stringContaining("/api/files/download?token="),
+      logoDarkUrl: null,
+      markUrl: null,
+    });
+
+    await brandingNames({ logoLightFileId: null, logoDarkFileId: logoId });
+    expect((await shellFor(userId)).identity).toMatchObject({
+      logoLightUrl: null,
+      logoDarkUrl: expect.stringContaining("/api/files/download?token="),
+    });
+
+    await brandingNames({ logoDarkFileId: null });
   });
 });
