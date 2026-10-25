@@ -2,10 +2,12 @@
 
 import { FieldError, FieldLabel, focusRing, SwitchField } from "@genie/ui";
 
+import { signInContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import {
   type BrandingDraft,
   HEX_COLOR,
 } from "../../services/branding/schemas.ts";
+import { ContrastPills } from "./contrast-pills.tsx";
 import { TextField } from "./text-field.tsx";
 
 type SignInField =
@@ -14,7 +16,10 @@ type SignInField =
   | "loginNoticeText"
   | "loginNoticeRequiresAcknowledgement";
 
-/** The sign-in page: background color, welcome text and the system-use notice (R-43, R-54). */
+/**
+ * The sign-in page: background color with the fifth contrast check, welcome text and the
+ * system-use notice (R-43, R-46, R-54).
+ */
 export function SignInTab(props: {
   readonly draft: BrandingDraft;
   readonly issues: Readonly<Record<string, string>>;
@@ -57,6 +62,9 @@ export function SignInTab(props: {
           />
         </div>
       </div>
+      {HEX_COLOR.test(background) ? (
+        <ContrastPills pairs={signInContrastPairs(background)} />
+      ) : null}
       <TextField
         id="branding-welcome-text"
         label="Welcome text"

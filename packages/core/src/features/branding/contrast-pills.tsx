@@ -2,9 +2,9 @@
 
 import { StatusPill } from "@genie/ui";
 
-import {
-  brandingContrastPairs,
-  type ContrastPairId,
+import type {
+  ContrastPair,
+  ContrastPairId,
 } from "../../lib/branding/contrast-pairs.ts";
 
 const LABELS: Record<ContrastPairId, string> = {
@@ -12,7 +12,14 @@ const LABELS: Record<ContrastPairId, string> = {
   "text-on-nav": "Text on nav",
   "count-pill": "Count pill",
   "focus-ring": "Focus ring",
+  "sign-in-text": "Sign-in text",
 };
+
+const LEVELS = {
+  pass: { tone: "success", word: "Pass" },
+  warning: { tone: "warning", word: "Warning" },
+  fail: { tone: "danger", word: "Fail" },
+} as const;
 
 /** Truncated, never rounded up, so a failing 4.496 never reads as 4.50. */
 function ratioText(ratio: number): string {
@@ -20,13 +27,16 @@ function ratioText(ratio: number): string {
 }
 
 /**
- * The four R-46 checks, each with its ratio, its target and a Pass or Fail word, so the result
- * reads without color. There is no Fix action: the administrator picks another color.
+ * R-46 checks, each with its ratio, its target and a Pass, Warning or Fail word, so the result
+ * reads without color. Only Fail blocks Publish. There is no Fix action: the administrator picks
+ * another color.
  */
-export function ContrastPills(props: { readonly primaryColor: string }) {
+export function ContrastPills(props: {
+  readonly pairs: readonly ContrastPair[];
+}) {
   return (
     <ul aria-label="Contrast checks" className="grid gap-2 sm:grid-cols-2">
-      {brandingContrastPairs(props.primaryColor).map((pair) => (
+      {props.pairs.map((pair) => (
         <li
           key={pair.id}
           className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
@@ -37,8 +47,8 @@ export function ContrastPills(props: { readonly primaryColor: string }) {
             <span className="text-xs text-muted-foreground">
               target {pair.target === 3 ? "3:1" : "4.5:1"}
             </span>
-            <StatusPill tone={pair.ok ? "success" : "danger"}>
-              {pair.ok ? "Pass" : "Fail"}
+            <StatusPill tone={LEVELS[pair.level].tone}>
+              {LEVELS[pair.level].word}
             </StatusPill>
           </span>
         </li>

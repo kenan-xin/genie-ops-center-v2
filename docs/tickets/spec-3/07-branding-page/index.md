@@ -22,7 +22,7 @@ Spec R-43 to R-53. R-48, R-51 and R-52 are deferred. Plan D3-7.
 
 - The Identity, Colors and theme, and Sign-in page tabs.
 - This ticket creates `applyBranding` in core. Publish goes through it, and it writes the branding row only (R-45).
-- Four contrast pills with no auto-fix.
+- Five contrast pills with no auto-fix: four on the Colors and theme tab, and Sign-in text on the Sign-in page tab. Publish is blocked below 3:1, and a text pill warns between 3:1 and 4.5:1 (R-46, revised 2026-10-25).
 - A branding upload seam in core checks the 1 MB cap and the four-type list, then calls the file service. The service limit is `FILE_MAX_BYTES` (default 15 MB), and the postgres adapter has none.
 - Add `image/x-icon` and `image/vnd.microsoft.icon` to the core allow-list in `packages/core/src/services/file-storage/index.ts`, and note it in that folder's README.
 - The preview loads the logo through the signed download link (D3-7). The phone layout. R-92 to R-95 apply to every screen of this ticket (R-93 server refusal, R-94 TanStack Query, R-95 can()).

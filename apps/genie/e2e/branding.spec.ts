@@ -162,7 +162,7 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
   );
 });
 
-test("a color that fails a named pair blocks Publish (AC-5, AC-17)", async ({
+test("a pair below 3:1 blocks Publish and a text pair under 4.5:1 only warns (AC-5, AC-17)", async ({
   page,
 }, testInfo) => {
   await withDeploymentLock(
@@ -170,28 +170,56 @@ test("a color that fails a named pair blocks Publish (AC-5, AC-17)", async ({
     async () => {
       await queryDatabase(SEED_RESET);
       await openBranding(page, testInfo.project.name);
-      await page.getByRole("tab", { name: "Colors" }).click();
-      await expectNoAxeViolations(page, "branding colors");
-
-      await page
-        .getByRole("textbox", { name: "Primary color", exact: true })
-        .fill("#93c5fd");
 
       const pills = page.getByRole("list", { name: "Contrast checks" });
 
-      await expect(
-        pills.getByRole("listitem").filter({ hasText: "Text on nav" })
-      ).toContainText("Fail");
-      await expect(
-        pills.getByRole("listitem").filter({ hasText: "Focus ring" })
-      ).toContainText("Fail");
-      await expect(
-        page.getByRole("button", { name: "Publish", exact: true })
-      ).toHaveAttribute("aria-disabled", "true");
+      const pill = (name: string) =>
+        pills.getByRole("listitem").filter({ hasText: name });
+
+      const publish = page.getByRole("button", {
+        name: "Publish",
+        exact: true,
+      });
+
+      // DR-05: the fifth pair checks the sign-in text on the sign-in background.
+      await page.getByRole("tab", { name: "Sign-in" }).click();
+
+      const background = page.getByRole("textbox", {
+        name: "Background color",
+        exact: true,
+      });
+
+      await background.fill("#22aaee");
+      await expect(pill("Sign-in text")).toContainText("Fail");
+      await expect(publish).toHaveAttribute("aria-disabled", "true");
+      await background.fill("");
+
+      await page.getByRole("tab", { name: "Colors" }).click();
+      await expectNoAxeViolations(page, "branding colors");
+
+      const primary = page.getByRole("textbox", {
+        name: "Primary color",
+        exact: true,
+      });
+
+      // Between 3:1 and 4.5:1 a text pair warns and Publish stays open; the ring passes at 3:1.
+      await primary.fill("#ec4899");
+      await expect(pill("Fill")).toContainText("Warning");
+      await expect(pill("Text on nav")).toContainText("Warning");
+      await expect(pill("Count pill")).toContainText("Warning");
+      await expect(pill("Focus ring")).toContainText("Pass");
+      await expect(publish).not.toHaveAttribute("aria-disabled", "true");
+
+      // Below 3:1 every pair fails and blocks Publish, and no pill offers a fix.
+      await primary.fill("#ca8a04");
+      await expect(pills.getByText("Fail")).toHaveCount(4);
+      await expect(publish).toHaveAttribute("aria-disabled", "true");
       await expect(page.getByRole("button", { name: "Fix" })).toHaveCount(0);
       expect(
-        await sql("select coalesce(primary_color, 'none') from tenant_branding")
-      ).toBe("none");
+        await sql(
+          "select coalesce(primary_color, 'none') || ' ' || coalesce(login_background_color, 'none') from tenant_branding"
+        )
+      ).toBe("none none");
     },
     LOCK_WAIT_MS
   );

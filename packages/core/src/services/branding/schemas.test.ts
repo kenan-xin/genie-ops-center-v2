@@ -54,12 +54,28 @@ describe("brandingDraftSchema", () => {
       "Fix the failing contrast checks first.",
     ],
     [
+      { loginBackgroundColor: "#22aaee" },
+      "loginBackgroundColor",
+      "Fix the failing contrast checks first.",
+    ],
+    [
+      { loginBackgroundColor: "blue" },
+      "loginBackgroundColor",
+      "Enter a six-digit hex color, for example #2563eb.",
+    ],
+    [
       { loginNoticeRequiresAcknowledgement: true },
       "loginNoticeRequiresAcknowledgement",
       "Add a notice first.",
     ],
   ])("refuses %o with one issue on %s", (input, path, message) => {
     expect(issues(input)).toEqual([{ path, message }]);
+  });
+
+  it("accepts colors between 3:1 and 4.5:1, which only warn (R-46)", () => {
+    expect(
+      issues({ primaryColor: "#ec4899", loginBackgroundColor: "#55bbee" })
+    ).toEqual([]);
   });
 
   it("refuses a logo id that is not a uuid", () => {

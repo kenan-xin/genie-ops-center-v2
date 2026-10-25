@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { brandingContrastPasses } from "../../lib/branding/contrast-pairs.ts";
+import {
+  brandingContrastPairs,
+  contrastAllowsPublish,
+  signInContrastPairs,
+} from "../../lib/branding/contrast-pairs.ts";
 
 /**
  * The Branding draft (R-43 to R-49). It imports only zod and the pure contrast rule, so the screen
@@ -87,6 +91,10 @@ const HEX_MESSAGE = "Enter a six-digit hex color, for example #2563eb.";
 
 const LENGTH_MESSAGE = "Keep it to 80 characters.";
 
+/** A color that puts an R-46 pair below 3:1. The screen's Publish gate names the same text. */
+export const BRANDING_CONTRAST_REFUSAL =
+  "Fix the failing contrast checks first.";
+
 function name(required: string) {
   return z
     .string()
@@ -104,7 +112,11 @@ function optionalText(max: number) {
     .transform((value) => (value === null || value === "" ? null : value));
 }
 
-const hex = z.string().trim().regex(HEX_COLOR, { error: HEX_MESSAGE });
+// An invalid hex stops here, so it gets one message and no contrast check sees it.
+const hex = z
+  .string()
+  .trim()
+  .regex(HEX_COLOR, { error: HEX_MESSAGE, abort: true });
 
 const fileId = z.uuid().nullable();
 
@@ -116,11 +128,16 @@ export const brandingDraftSchema = z
     logoDarkFileId: fileId,
     logoMarkFileId: fileId,
     faviconFileId: fileId,
-    primaryColor: hex.refine(brandingContrastPasses, {
-      error: "Fix the failing contrast checks first.",
-    }),
+    primaryColor: hex.refine(
+      (color) => contrastAllowsPublish(brandingContrastPairs(color)),
+      { error: BRANDING_CONTRAST_REFUSAL }
+    ),
     defaultTheme: z.enum(["light", "dark", "system"]),
-    loginBackgroundColor: hex.nullable(),
+    loginBackgroundColor: hex
+      .refine((color) => contrastAllowsPublish(signInContrastPairs(color)), {
+        error: BRANDING_CONTRAST_REFUSAL,
+      })
+      .nullable(),
     loginWelcomeText: optionalText(120),
     loginNoticeText: optionalText(1000),
     loginNoticeRequiresAcknowledgement: z.boolean(),

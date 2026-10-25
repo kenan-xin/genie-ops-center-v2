@@ -14,9 +14,9 @@ import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 import { useStore } from "zustand";
 
-import { brandingContrastPasses } from "../../lib/branding/contrast-pairs.ts";
 import type { BrandingView } from "../../services/branding/index.ts";
 import {
+  BRANDING_CONTRAST_REFUSAL,
   BRANDING_IMAGE_MAX_BYTES,
   BRANDING_IMAGE_SLOTS,
   BRANDING_IMAGE_TYPES,
@@ -27,7 +27,6 @@ import {
   type BrandingImageView,
   brandingDraftSchema,
   brandingImageType,
-  HEX_COLOR,
 } from "../../services/branding/schemas.ts";
 import { ColorsTab } from "./colors-tab.tsx";
 import {
@@ -220,15 +219,15 @@ function BrandingEditor(
   // Fresh input wins over the last server message for a field that is edited.
   const issues = { ...serverIssues, ...clientIssues };
 
-  const hexValid = HEX_COLOR.test(draft.primaryColor);
-
+  // The server's own schema decides, so the browser blocks exactly what a Publish would refuse:
+  // a pair below 3:1, never a warning (R-46).
   const blocked =
     count === 0
       ? "No changes to publish."
-      : hexValid && !brandingContrastPasses(draft.primaryColor)
-        ? "Fix the failing contrast checks first."
-        : parsed.success
-          ? null
+      : parsed.success
+        ? null
+        : Object.values(clientIssues).includes(BRANDING_CONTRAST_REFUSAL)
+          ? BRANDING_CONTRAST_REFUSAL
           : "Fix the marked fields first.";
 
   const groups = changedByTab({ draft, published });

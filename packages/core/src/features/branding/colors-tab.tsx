@@ -2,6 +2,7 @@
 
 import { focusRing, RadioGroup, RadioGroupItem } from "@genie/ui";
 
+import { brandingContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import {
   type BrandingDraft,
@@ -59,7 +60,7 @@ export function ColorsTab(props: {
           </span>
         ) : null}
       </div>
-      {valid ? <ContrastPills primaryColor={color} /> : null}
+      {valid ? <ContrastPills pairs={brandingContrastPairs(color)} /> : null}
       <p className="text-sm text-pretty text-muted-foreground">
         In the dark theme, brand text and the focus ring use one fixed light
         color, #60a5fa. Buttons keep this color in both themes.

@@ -18,7 +18,7 @@ const user = userEvent.setup({ applyAccept: false });
 const MARK = imageView();
 
 /**
- * The Branding page (R-43 to R-53): three tabs over one browser draft, a live preview, four
+ * The Branding page (R-43 to R-53): three tabs over one browser draft, a live preview, five
  * contrast checks and one Publish. The host owns the read, the publish and the upload.
  */
 const meta = {
@@ -129,6 +129,41 @@ export const ColorsFailing: Story = {
   },
 };
 
+/** R-46: between 3:1 and 4.5:1 a text pair warns, the ring passes at 3:1, and Publish works. */
+export const ColorsWarning: Story = {
+  // The preview shows the warning color on purpose, as in ColorsFailing.
+  parameters: {
+    a11y: { test: "error", context: { exclude: ["[data-branding-preview]"] } },
+  },
+  play: async ({ args, canvas }) => {
+    await user.click(canvas.getByRole("tab", { name: "Colors" }));
+
+    const hex = canvas.getByRole("textbox", { name: "Primary color" });
+
+    await user.clear(hex);
+    await user.type(hex, "#ec4899");
+
+    const pills = within(canvas.getByRole("list", { name: "Contrast checks" }));
+
+    await expect(pills.getAllByRole("listitem")).toHaveLength(4);
+    await expect(pills.getAllByText("Warning")).toHaveLength(3);
+    await expect(pills.getAllByText("3.52:1")).toHaveLength(3);
+    await expect(pills.getByText("Pass")).toBeVisible();
+    await expect(pills.getByText("3.37:1")).toBeVisible();
+
+    await user.click(canvas.getByRole("button", { name: "Publish" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Publish",
+      })
+    );
+
+    await waitFor(() =>
+      expect(args.onPublish).toHaveBeenCalledWith({ primaryColor: "#ec4899" })
+    );
+  },
+};
+
 export const InvalidHex: Story = {
   play: async ({ canvas }) => {
     await user.click(canvas.getByRole("tab", { name: "Colors" }));
@@ -173,6 +208,67 @@ export const SignIn: Story = {
     await expect(
       within(preview(canvasElement)).getByText("Authorized use only.")
     ).toBeVisible();
+  },
+};
+
+/**
+ * R-46, DR-05: the fifth pair checks the sign-in text on the sign-in background. A stored color
+ * below 3:1 blocks a Publish of any field, and one between 3:1 and 4.5:1 only warns.
+ */
+export const SignInContrast: Story = {
+  args: { branding: brandingView({ loginBackgroundColor: "#22aaee" }) },
+  play: async ({ args, canvas }) => {
+    await user.click(canvas.getByRole("tab", { name: "Sign-in" }));
+
+    const pill = () =>
+      within(
+        within(canvas.getByRole("list", { name: "Contrast checks" })).getByRole(
+          "listitem"
+        )
+      );
+
+    await expect(pill().getByText("Sign-in text")).toBeVisible();
+    await expect(pill().getByText("2.89:1")).toBeVisible();
+    await expect(pill().getByText("target 4.5:1")).toBeVisible();
+    await expect(pill().getByText("Fail")).toBeVisible();
+
+    await user.type(
+      canvas.getByRole("textbox", { name: "Welcome text" }),
+      "Hello"
+    );
+
+    const publish = canvas.getByRole("button", { name: "Publish" });
+
+    await expect(publish).toHaveAttribute("aria-disabled", "true");
+    await expect(publish).toHaveAttribute(
+      "title",
+      "Fix the failing contrast checks first."
+    );
+
+    const background = canvas.getByRole("textbox", {
+      name: "Background color",
+    });
+
+    await user.clear(background);
+    await user.type(background, "#55bbee");
+
+    await expect(pill().getByText("3.50:1")).toBeVisible();
+    await expect(pill().getByText("Warning")).toBeVisible();
+    await expect(publish).not.toHaveAttribute("aria-disabled", "true");
+
+    await user.click(publish);
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Publish",
+      })
+    );
+
+    await waitFor(() =>
+      expect(args.onPublish).toHaveBeenCalledWith({
+        loginBackgroundColor: "#55bbee",
+        loginWelcomeText: "Hello",
+      })
+    );
   },
 };
 
