@@ -102,6 +102,7 @@ export function ModulesRoute() {
           t("modules.access.showAll", { count, module }),
         title: (module) => t("modules.access.title", { module }),
         group: (group) => t("modules.access.group", { group }),
+        saving: (module) => t("modules.access.saving", { module }),
       }}
       loading={modules.isPending || categories.isPending}
       // A failed background refetch keeps the rows already read; only a first read failure shows.

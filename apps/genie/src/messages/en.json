@@ -63,7 +63,8 @@
         "more": "+{count}",
         "showAll": "+{count} more holders of {module}",
         "title": "Holders of {module}",
-        "group": "{group} (group)"
+        "group": "{group} (group)",
+        "saving": "Saving {module}"
       }
     },
     "categories": {

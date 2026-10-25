@@ -38,7 +38,7 @@ export type ModuleRefusal = {
   }[];
 };
 
-/** The Access cell strings, from the host's message catalogue (DR-26). */
+/** The Access cell strings and the switch spinner name, from the host's message catalogue (DR-26). */
 export type AccessLabels = {
   /** The visible count of holders the cell does not name, for example "+12". */
   readonly more: (count: number) => string;
@@ -47,6 +47,8 @@ export type AccessLabels = {
   /** The title of the full list, and the name of the list in the cell. */
   readonly title: (moduleName: string) => string;
   readonly group: (groupName: string) => string;
+  /** The name of the spinner beside an enable switch while its call runs. */
+  readonly saving: (moduleName: string) => string;
 };
 
 export type ModulesScreenProps = {

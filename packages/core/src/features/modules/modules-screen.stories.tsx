@@ -41,6 +41,7 @@ const meta = {
       showAll: (count, module) => `+${count} more holders of ${module}`,
       title: (module) => `Holders of ${module}`,
       group: (group) => `${group} (group)`,
+      saving: (module) => `Saving ${module}`,
     },
   } satisfies ModulesScreenProps,
 } satisfies Meta<typeof ModulesScreen>;

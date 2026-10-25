@@ -187,7 +187,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
           }
         />
         {props.pending === module.id ? (
-          <Spinner label={`Saving ${module.displayName}`} />
+          <Spinner label={props.accessLabels.saving(module.displayName)} />
         ) : null}
       </span>
       {props.refusal?.moduleId === module.id ? (
