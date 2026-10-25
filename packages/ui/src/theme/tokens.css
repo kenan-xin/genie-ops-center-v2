@@ -37,6 +37,8 @@
   /* DR-22: 12 px is the smallest text at every root preset; 0.8rem is 12 px on the 15 px root. */
   --text-xs: max(12px, 0.8rem);
   --text-xs--line-height: calc(4 / 3);
+  /* The Alert icon column (`grid-cols-leading-icon`), so the primitive needs no arbitrary value. */
+  --grid-template-columns-leading-icon: auto 1fr;
   --spacing: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;

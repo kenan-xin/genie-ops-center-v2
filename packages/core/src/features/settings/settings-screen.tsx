@@ -6,6 +6,7 @@ import {
   ConfirmDialog,
   focusRing,
   StatusPill,
+  WarningNote,
 } from "@genie/ui";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import {
@@ -341,12 +342,9 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         headingRef={heading}
         extra={
           module.enabled ? null : (
-            <div
-              role="status"
-              className="rounded-lg border border-border bg-muted px-3.5 py-3 text-sm"
-            >
+            <WarningNote size="md" role="status">
               <p className="font-semibold">{module.title} is switched off.</p>
-              <p className="mt-0.5 text-muted-foreground">
+              <p className="mt-0.5">
                 Its settings stay editable, so the tenant can be prepared before
                 the module is enabled. Saving here changes settings only: it
                 never switches the module on. That happens on{" "}
@@ -358,13 +356,13 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
                     event.preventDefault();
                     guarded(() => window.location.assign(props.modulesHref));
                   }}
-                  className={`font-semibold text-foreground underline ${focusRing}`}
+                  className={`font-semibold underline ${focusRing}`}
                 >
                   Modules
                 </a>
                 .
               </p>
-            </div>
+            </WarningNote>
           )
         }
       >

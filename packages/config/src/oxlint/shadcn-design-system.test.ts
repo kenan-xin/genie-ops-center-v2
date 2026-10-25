@@ -147,6 +147,7 @@ describe.concurrent(
       expect(exceptions.map((entry) => [entry.files, entry.rules])).toEqual([
         [
           [
+            "packages/ui/src/components/alert.tsx",
             "packages/ui/src/components/badge.tsx",
             "packages/ui/src/components/field.tsx",
             "packages/ui/src/parts/toast.tsx",

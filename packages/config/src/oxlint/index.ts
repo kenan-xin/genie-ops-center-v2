@@ -95,10 +95,12 @@ const shadcnBrandingStyleException: OxlintOverride = {
 
 /**
  * Fixed status tones (tokens.md "Forms": field error red-700; "Color roles": status is semantic)
- * have no role, so these files may name a palette color: the pills, the field error and the toast icons.
+ * have no role, so these files may name a palette color: the warning alert, the pills, the field
+ * error and the toast icons.
  */
 const shadcnFixedToneException: OxlintOverride = {
   files: [
+    "packages/ui/src/components/alert.tsx",
     "packages/ui/src/components/badge.tsx",
     "packages/ui/src/components/field.tsx",
     "packages/ui/src/parts/toast.tsx",
