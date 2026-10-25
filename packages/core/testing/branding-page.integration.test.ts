@@ -1,3 +1,5 @@
+import { Socket, connect } from "node:net";
+
 import type { QueryResultRow } from "pg";
 import {
   afterAll,
@@ -9,6 +11,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { z } from "zod";
 
 import { AppError } from "../src/lib/errors/index.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
@@ -141,6 +144,20 @@ async function storedFiles(ids: readonly string[]) {
       .toSorted();
 
   return { files: await present("file"), blobs: await present("file_blob") };
+}
+
+/**
+ * What one `Socket#connect` call dials. pg passes `(port, host)`, `tls.connect` passes an options
+ * object, and `net.connect` passes one normalized `[options, callback]` array, which `flat()`
+ * unwraps. A target with no port, such as a socket path, answers NaN.
+ */
+const dialTarget = z.union([
+  z.object({ port: z.coerce.number() }).transform((options) => options.port),
+  z.coerce.number(),
+]);
+
+function dialedPort(args: readonly unknown[]): number {
+  return dialTarget.safeParse(args.flat()[0]).data ?? Number.NaN;
 }
 
 async function refusalOf(draft: Partial<BrandingDraft>) {
@@ -328,6 +345,44 @@ describe("applyBranding", () => {
     expect(
       await storedFiles([replaced, removed, shared, next, unpublished])
     ).toEqual({ files: kept, blobs: kept });
+  });
+});
+
+describe("the branding service boundary", () => {
+  it("opens no connection but to its own database while it uploads, publishes and reads (R-45, AC-5)", async () => {
+    const database = Number(new URL(deployment.context.env.databaseUrl).port);
+    const sockets = vi.spyOn(Socket.prototype, "connect");
+    const requests = vi.spyOn(globalThis, "fetch");
+
+    const dialed = () =>
+      sockets.mock.calls.map(dialedPort).filter((port) => port !== database);
+
+    try {
+      await applyBranding(deployment.context, {
+        actorUserId,
+        draft: { companyName: "Acme", logoMarkFileId: await imageId("a.png") },
+      });
+      // A second mark replaces the first, so the image cleanup runs too.
+      await applyBranding(deployment.context, {
+        actorUserId,
+        draft: { logoMarkFileId: await imageId("b.png") },
+      });
+      await readBranding(deployment.context, caller);
+
+      expect(dialed()).toEqual([]);
+      expect(requests).not.toHaveBeenCalled();
+
+      // The control: a connection the test opens itself shows, so the empty list above means none.
+      connect(9, "127.0.0.1")
+        .on("error", () => undefined)
+        .destroy();
+
+      expect(dialed()).toEqual([9]);
+    } finally {
+      // Restoring clears the call history, so every assertion above runs first.
+      sockets.mockRestore();
+      requests.mockRestore();
+    }
   });
 });
 

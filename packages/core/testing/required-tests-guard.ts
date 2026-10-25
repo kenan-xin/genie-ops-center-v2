@@ -469,6 +469,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "applyBranding refuses an unrelated publish while a stored image id has no file row, naming each dead slot",
       "applyBranding lets two concurrent publishes each name only their own change",
       "applyBranding deletes the images a publish replaced or removed and keeps every image a column or a draft still names",
+      "the branding service boundary opens no connection but to its own database while it uploads, publishes and reads (R-45, AC-5)",
       "readBranding returns no url while the scan is pending, and the shell issues no mark link",
       "readBranding returns no url while the scan is infected, and the shell issues no mark link",
     ],
