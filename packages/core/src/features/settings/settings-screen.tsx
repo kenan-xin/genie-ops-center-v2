@@ -8,6 +8,7 @@ import {
   StatusPill,
   WarningNote,
 } from "@genie/ui";
+import { isEqual, mapValues, pickBy } from "es-toolkit";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
@@ -57,6 +58,12 @@ const refusal = z
       .optional(),
   })
   .catch({ message: "The server refused the change." });
+
+/** The fields that differ from the values the form loaded: a save sends only these (admin M-1). */
+const changedOnly = <T extends Record<string, unknown>>(
+  values: T,
+  loaded: T
+): Partial<T> => pickBy(values, (value, key) => !isEqual(value, loaded[key]));
 
 function SectionCard(props: {
   readonly title: string;
@@ -310,6 +317,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
   const sectionKey = `${current.id}:${resetKey}`;
 
   const content = () => {
+    const signIn = {
+      onboardingMode: settings.core.onboardingMode,
+      localAccountsEnabled: settings.core.localAccountsEnabled,
+    };
+
     if (current.id === SIGN_IN)
       return (
         <SectionCard
@@ -319,10 +331,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         >
           <SignInSection
             key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}
-            values={{
-              onboardingMode: settings.core.onboardingMode,
-              localAccountsEnabled: settings.core.localAccountsEnabled,
-            }}
+            values={signIn}
             realmSupportsLocalAccounts={
               settings.core.realmSupportsLocalAccounts
             }
@@ -336,7 +345,9 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             }
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
-              save(SIGN_IN, () => props.onSaveSignIn(values))()
+              save(SIGN_IN, () =>
+                props.onSaveSignIn(changedOnly(values, signIn))
+              )()
             }
             footer={footer(settings.core.lastChanged)}
           />
@@ -418,7 +429,14 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(module.moduleId, () =>
-                props.onSaveModule(module.moduleId, values)
+                props.onSaveModule(
+                  module.moduleId,
+                  // JSON drops undefined, so a cleared field travels as null (JSON Merge Patch).
+                  mapValues(
+                    changedOnly(values, module.values),
+                    (value) => value ?? null
+                  )
+                )
               )()
             }
             footer={footer(module.lastChanged)}

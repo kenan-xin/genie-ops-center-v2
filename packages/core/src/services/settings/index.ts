@@ -4,7 +4,7 @@ import type {
   ConfigValue,
 } from "@genie/ui/config-form-schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { isEqual } from "es-toolkit";
+import { isEqual, mapValues, pick } from "es-toolkit";
 import type { z } from "zod";
 
 import {
@@ -227,7 +227,8 @@ type CoreSection = {
 
 /**
  * Writes the changed core fields on the locked singleton row with one `core:settings_updated` row,
- * in one transaction (R-79, R-90a). Values equal to the stored ones write nothing.
+ * in one transaction (R-79, R-90a). Values equal to the stored ones write nothing, and a field not
+ * sent keeps the stored value, so a concurrent save of another field is kept (admin M-1).
  */
 async function saveCore(
   tenant: TenantContext,
@@ -255,9 +256,12 @@ async function saveCore(
 
     if (Object.keys(changes).length === 0) return { changed: false };
 
-    await tx
-      .update(tenantSettings)
-      .set({ ...next, updatedByUserId: actorUserId, updatedAt: sql`now()` });
+    await tx.update(tenantSettings).set({
+      // SAFETY: `changes` holds only keys the loop above took from `next`.
+      ...pick(next, Object.keys(changes) as SettingsField[]),
+      updatedByUserId: actorUserId,
+      updatedAt: sql`now()`,
+    });
 
     await writeAdminAuditEvent(tx, {
       action: "core:settings_updated",
@@ -272,16 +276,19 @@ async function saveCore(
   });
 }
 
-/** Onboarding mode and local accounts (R-74). The page never writes `realm_supports_local_accounts`. */
+/**
+ * Onboarding mode and local accounts (R-74), each optional: the form sends only what changed. The
+ * page never writes `realm_supports_local_accounts`.
+ */
 export async function saveSignInSettings(
   tenant: TenantContext,
   input: {
     readonly actorUserId: string;
-    readonly onboardingMode: string;
-    readonly localAccountsEnabled: boolean;
+    readonly onboardingMode?: string | undefined;
+    readonly localAccountsEnabled?: boolean | undefined;
   }
 ): Promise<{ readonly changed: boolean }> {
-  const parsed = signInSettingsSchema.safeParse(input);
+  const parsed = signInSettingsSchema.partial().safeParse(input);
 
   if (!parsed.success)
     throw new AppError(CORE_ERRORS["settings-invalid"], {
@@ -327,7 +334,9 @@ export async function saveSessionSettings(
 }
 
 /**
- * A module section save (R-75, R-77, R-79). It validates with the module's own zod schema and
+ * A module section save (R-75, R-77, R-79). The sent fields are laid over the locked row's shown
+ * values, as Branding Publish does, so a concurrent save of another field is kept; a field sent as
+ * null is cleared (admin M-1). It validates the result with the module's own zod schema and
  * writes `tenant_module.config` only: it never writes `enabled`, so a save alone never switches a
  * module on. A section the caller may not open, a module without configuration and a module the
  * image does not compile all answer `not-found`, so no hidden section is disclosed.
@@ -339,7 +348,7 @@ export async function saveModuleSettings(
   input: {
     readonly actorUserId: string;
     readonly moduleId: string;
-    readonly values: Readonly<Record<string, ConfigValue>>;
+    readonly values: Readonly<Record<string, ConfigValue | null>>;
   }
 ): Promise<{ readonly changed: boolean }> {
   const module = compiled.find(
@@ -356,17 +365,6 @@ export async function saveModuleSettings(
     throw new AppError(CORE_ERRORS["not-found"]);
 
   const form = configurationForm(configuration);
-  const parsed = configuration.schema.safeParse(input.values);
-
-  if (!parsed.success) {
-    const issues = configurationIssues(form, input.values);
-
-    throw new AppError(CORE_ERRORS["settings-invalid"], {
-      issues: issues.length === 0 ? issuesOf(parsed.error) : issues,
-    });
-  }
-
-  const next = storedConfiguration.parse(parsed.data);
 
   return withTransaction(tenant, async (tx) => {
     // The same row lock as the enable procedure, so a concurrent enable waits for this write.
@@ -385,6 +383,23 @@ export async function saveModuleSettings(
 
     const stored = storedConfiguration.parse(row.config);
     const shown = withDefaults(form, stored);
+
+    const values = mapValues(
+      { ...shown, ...input.values },
+      (value) => value ?? undefined
+    );
+
+    const parsed = configuration.schema.safeParse(values);
+
+    if (!parsed.success) {
+      const issues = configurationIssues(form, values);
+
+      throw new AppError(CORE_ERRORS["settings-invalid"], {
+        issues: issues.length === 0 ? issuesOf(parsed.error) : issues,
+      });
+    }
+
+    const next = storedConfiguration.parse(parsed.data);
 
     const declared = form.fields.map((field) => field.id);
 

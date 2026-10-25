@@ -357,6 +357,90 @@ describe("core section saves", () => {
   });
 });
 
+// Each form sends only the fields its person changed, so a form loaded before another
+// administrator's save does not write that save's fields back (admin M-1).
+describe("saves from two forms loaded at the same time", () => {
+  it("two sign-in saves of different fields both survive, and each audit row names only its field", async () => {
+    await saveSignInSettings(deployment.context, {
+      actorUserId,
+      onboardingMode: "jit",
+    });
+    await saveSignInSettings(deployment.context, {
+      actorUserId,
+      localAccountsEnabled: true,
+    });
+
+    expect(await settingsRow()).toMatchObject({
+      onboarding_mode: "jit",
+      local_accounts_enabled: true,
+    });
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({
+        metadata: {
+          section: "sign-in",
+          changes: { onboardingMode: { from: "invite", to: "jit" } },
+        },
+      }),
+      expect.objectContaining({
+        metadata: {
+          section: "sign-in",
+          changes: { localAccountsEnabled: { from: false, to: true } },
+        },
+      }),
+    ]);
+  });
+
+  it("two module saves of different fields both survive, and each audit row names only its field", async () => {
+    const caller = await callerWith([BASE]);
+
+    await saveModuleSettings(deployment.context, compiled, caller, {
+      actorUserId,
+      moduleId: "fixture",
+      values: { title: "From A" },
+    });
+    await saveModuleSettings(deployment.context, compiled, caller, {
+      actorUserId,
+      moduleId: "fixture",
+      values: { pageSize: 40 },
+    });
+
+    expect((await moduleRow("fixture"))?.config).toEqual({
+      title: "From A",
+      pageSize: 40,
+      enabled: false,
+      mode: "basic",
+      tags: [],
+    });
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({ metadata: { changedFields: ["title"] } }),
+      expect.objectContaining({ metadata: { changedFields: ["pageSize"] } }),
+    ]);
+  });
+
+  it("a module field sent as null drops its stored value and falls back to the default", async () => {
+    const caller = await callerWith([BASE]);
+
+    await query(
+      `update tenant_module set config = '{"title": "Kept", "pageSize": 40}'::jsonb
+         where module_id = 'fixture'`
+    );
+
+    await saveModuleSettings(deployment.context, compiled, caller, {
+      actorUserId,
+      moduleId: "fixture",
+      values: { pageSize: null },
+    });
+
+    expect((await moduleRow("fixture"))?.config).toMatchObject({
+      title: "Kept",
+      pageSize: 20,
+    });
+    expect(await auditRows()).toEqual([
+      expect.objectContaining({ metadata: { changedFields: ["pageSize"] } }),
+    ]);
+  });
+});
+
 describe("module section saves", () => {
   it("a module save writes exactly one core:module_configured row and the parsed values to tenant_module.config", async () => {
     const caller = await callerWith([BASE]);

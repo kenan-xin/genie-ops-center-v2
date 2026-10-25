@@ -13,6 +13,7 @@ const saved = z.custom<{ readonly changed: boolean }>();
  * The Tenant Settings API (R-72 to R-80), under core's `/settings/` area. Save inputs check shape
  * only; the service parses with the strict schemas above or the module's own schema, so a refusal
  * carries `settings-invalid` with its issues. Answers are typed from the service with `z.custom`.
+ * A save sends only the fields the person changed; a module field sent as null is cleared (admin M-1).
  */
 export const settingsContract = {
   read: oc
@@ -23,8 +24,8 @@ export const settingsContract = {
     .route({ method: "PUT", path: "/settings/sign-in" })
     .input(
       z.object({
-        onboardingMode: z.string(),
-        localAccountsEnabled: z.boolean(),
+        onboardingMode: z.string().optional(),
+        localAccountsEnabled: z.boolean().optional(),
       })
     )
     .output(saved),
@@ -37,7 +38,10 @@ export const settingsContract = {
   saveModule: oc
     .route({ method: "PUT", path: "/settings/modules/{moduleId}" })
     .input(
-      z.object({ moduleId, values: z.record(z.string(), configValueSchema) })
+      z.object({
+        moduleId,
+        values: z.record(z.string(), configValueSchema.nullable()),
+      })
     )
     .output(saved),
 };

@@ -201,9 +201,9 @@ export const BrokeredOnlyStoredOn: Story = {
     await expect(toggle).not.toBeChecked();
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
+    // Only the changed field is sent, so a stale form keeps another administrator's change (admin M-1).
     await waitFor(() =>
       expect(args.onSaveSignIn).toHaveBeenCalledWith({
-        onboardingMode: "invite",
         localAccountsEnabled: false,
       })
     );
@@ -250,10 +250,9 @@ export const ModuleSection: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
-      expect(args.onSaveModule).toHaveBeenCalledWith(
-        "placeholder",
-        expect.objectContaining({ pageSize: 40 })
-      )
+      expect(args.onSaveModule).toHaveBeenCalledWith("placeholder", {
+        pageSize: 40,
+      })
     );
   },
 };

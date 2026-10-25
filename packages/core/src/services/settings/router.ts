@@ -37,9 +37,8 @@ export function createSettingsRouter(modules: readonly Module[]) {
 
     saveSignIn: managed.saveSignIn.handler(({ context, input }) =>
       saveSignInSettings(context.tenant, {
+        ...input,
         actorUserId: context.caller.userId,
-        onboardingMode: input.onboardingMode,
-        localAccountsEnabled: input.localAccountsEnabled,
       })
     ),
 

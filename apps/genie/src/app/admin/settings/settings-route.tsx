@@ -54,7 +54,7 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     };
 
   const signIn = useMutation({
-    mutationFn: (input: SignInInput) => rpc.settings.saveSignIn(input),
+    mutationFn: (input: Partial<SignInInput>) => rpc.settings.saveSignIn(input),
   });
 
   const sessions = useMutation({
@@ -64,7 +64,7 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
   const module = useMutation({
     mutationFn: (input: {
       readonly moduleId: string;
-      readonly values: Record<string, ConfigValue>;
+      readonly values: Record<string, ConfigValue | null>;
     }) => rpc.settings.saveModule(input),
   });
 

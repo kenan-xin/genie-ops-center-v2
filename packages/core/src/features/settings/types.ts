@@ -71,13 +71,15 @@ export type TenantSettingsScreenProps = {
   /**
    * Each save rejects with `{ message, issues? }` when the server refuses; the edits stay. The
    * message shows in the section's summary line, and each issue shows under the field whose id
-   * equals its `path` (DR-20 S3-06).
+   * equals its `path` (DR-20 S3-06). A save carries only the fields the person changed, and a
+   * cleared module field is null, so a stale form never writes back another administrator's
+   * change (admin M-1).
    */
-  readonly onSaveSignIn: (input: SignInInput) => Promise<void>;
+  readonly onSaveSignIn: (input: Partial<SignInInput>) => Promise<void>;
   readonly onSaveSessions: (input: SessionsInput) => Promise<void>;
   readonly onSaveModule: (
     moduleId: string,
-    values: Record<string, ConfigValue>
+    values: Record<string, ConfigValue | null>
   ) => Promise<void>;
   /** The host writes the opened section into the address. */
   readonly onTargetChange: (target: { readonly section: string }) => void;
