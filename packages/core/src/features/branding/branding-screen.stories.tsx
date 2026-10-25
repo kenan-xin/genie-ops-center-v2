@@ -572,6 +572,27 @@ export const UnloadGuard: Story = {
   },
 };
 
+export const UnloadGuardAfterPublish: Story = {
+  play: async ({ args, canvas }) => {
+    await expect(unload()).toBe(false);
+    await user.type(
+      canvas.getByRole("textbox", { name: "Product name" }),
+      " Plus"
+    );
+    await expect(unload()).toBe(true);
+
+    await user.click(canvas.getByRole("button", { name: "Publish" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Publish",
+      })
+    );
+
+    await waitFor(() => expect(args.onPublish).toHaveBeenCalledOnce());
+    await waitFor(() => expect(unload()).toBe(false));
+  },
+};
+
 export const Phone: Story = {
   globals: phone,
   play: async ({ canvas, canvasElement }) => {
