@@ -252,19 +252,19 @@ mkdir -p "$fmt/docs"
 printf '{"a":1}\n' >"$fmt/docs/diagram.json"
 git -C "$fmt" add docs/diagram.json
 status=0
-pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 10" >"$work/case10.out" 2>&1 || status=$?
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "test: case 10" >"$work/case10.out" 2>&1 || status=$?
 [ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case10.out"
 # A refused commit leaves its files staged. Unstage them, so case 11 commits its
 # own file only and cannot fail for case 10's reason.
 git -C "$fmt" reset -q
 expect "exit status" "0" "$status"
-expect "commit written" "case 10" "$(git -C "$fmt" log -1 --format=%s)"
+expect "commit written" "test: case 10" "$(git -C "$fmt" log -1 --format=%s)"
 
 say "case 11: the real format job still formats and restages a non-ignored file"
 printf 'export const a = {b:1}\n' >"$fmt/probe.ts"
 git -C "$fmt" add probe.ts
 status=0
-pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 11" >"$work/case11.out" 2>&1 || status=$?
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "test: case 11" >"$work/case11.out" 2>&1 || status=$?
 [ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case11.out"
 expect "exit status" "0" "$status"
 expect "committed file formatted" "export const a = { b: 1 };" "$(git -C "$fmt" show HEAD:probe.ts)"
@@ -275,20 +275,39 @@ mkdir -p "$fmt/.claude/helpers"
 printf 'module.exports = {};\n' >"$fmt/.claude/helpers/probe.cjs"
 git -C "$fmt" add .claude/helpers/probe.cjs
 status=0
-pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 12" >"$work/case12.out" 2>&1 || status=$?
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "test: case 12" >"$work/case12.out" 2>&1 || status=$?
 [ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case12.out"
 git -C "$fmt" reset -q
 expect "exit status" "0" "$status"
-expect "commit written" "case 12" "$(git -C "$fmt" log -1 --format=%s)"
+expect "commit written" "test: case 12" "$(git -C "$fmt" log -1 --format=%s)"
 
 say "case 13: the real lint job still refuses a staged file with a lint error"
 printf 'export function f() {\n  debugger;\n}\n' >"$fmt/probe-lint.ts"
 git -C "$fmt" add probe-lint.ts
 status=0
-pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "case 13" >"$work/case13.out" 2>&1 || status=$?
+pnpm_config_verify_deps_before_run=false git -C "$fmt" commit -q -m "test: case 13" >"$work/case13.out" 2>&1 || status=$?
 git -C "$fmt" reset -q
 expect "exit status" "1" "$status"
 expect "lint error named" "found" "$(found 'no-debugger' "$work/case13.out")"
+
+say "case 14: the real commit-msg job refuses a subject that is not Conventional Commits"
+printf 'one\n' >"$fmt/msg.txt"
+git -C "$fmt" add msg.txt
+for subject in "MAESTRO: feat(core): add a page" "feat(core): Add a page" "feat(core): add a page." "update things"; do
+  status=0
+  git -C "$fmt" commit -q -m "$subject" >"$work/case14.out" 2>&1 || status=$?
+  expect "refused: $subject" "1" "$status"
+done
+expect "rule named" "found" "$(found 'is not a Conventional Commits subject' "$work/case14.out")"
+
+say "case 15: the real commit-msg job accepts Conventional Commits and Git's merge subjects"
+for subject in "feat(core)!: add a page" "Merge branch 'chore/x' into develop"; do
+  status=0
+  git -C "$fmt" commit -q --allow-empty -m "$subject" >"$work/case15.out" 2>&1 || status=$?
+  [ "$status" -eq 0 ] || sed 's/^/     | /' "$work/case15.out"
+  expect "accepted: $subject" "$subject" "$(git -C "$fmt" log -1 --format=%s)"
+done
+git -C "$fmt" reset -q
 
 printf '\n'
 if [ "$failures" -eq 0 ]; then

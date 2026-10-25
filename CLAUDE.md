@@ -93,7 +93,7 @@ These choices are settled. Do not substitute one without approval.
 
 - Branches: `feature/kebab-subject`, `bugfix/kebab-subject`, or `chore/kebab-subject`. No other prefix. When a new task checkout is needed, create its branch from the latest `develop`; reuse an assigned task worktree as specified in Execution authority. Never commit straight to `develop` or `main`.
 - This file and `AGENTS.md` are tracked. Edit them in the assigned worktree and mirror substantive shared instructions across both.
-- Commits and pull request titles: Conventional Commits — `type(scope): subject`, imperative, under 72 characters; the body explains why. Allowed types and detailed rules are in the "Commits and Pull Request Titles" section of `AGENTS.md`.
+- Commits and pull request titles: Conventional Commits — `type(scope): subject`, imperative, under 72 characters; the body explains why. Allowed types and detailed rules are in the "Commits and Pull Request Titles" section of `AGENTS.md`. The `commit-msg` hook refuses any other subject, including a tool prefix such as `MAESTRO:`.
 - Integration: use a pull request from the feature branch to `develop`, or owner-approved local integration through `wt` in the reserved window. When `develop` is ready for production, open a pull request from `develop` to `main`. `main` is the production branch and receives changes only through that pull request.
 - Merging: pull requests into `main` are squash-merged, so `main` history is one commit per release carrying the pull request's Conventional Commits title. Pull requests into `develop` keep their commits.
 - Gates: `pnpm gate:merge` passes on the branch before any merge into `develop`, and end-to-end tests pass on `develop` before the pull request to `main`.

@@ -2,7 +2,8 @@
 
 What this folder is for: one dispatcher for each git hook name. Each file runs
 the Beads hook of the same name from `.beads/hooks/`, then Lefthook for
-`pre-commit`. It exits with the first non-zero status.
+`pre-commit`. It exits with the first non-zero status. `commit-msg` runs only
+Lefthook, because Beads ships no hook of that name.
 
 What must not go in it: hook logic. A check belongs in `lefthook.yml` or in the
 managed Beads hooks, never here.

@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Runs Lefthook for commit-msg. Beads ships no commit-msg hook, so none runs here.
+# Fails loudly when Lefthook is missing, so a broken install can never look
+# like a clean commit.
+set -eu
+
+here=$(cd "$(dirname "$0")" && pwd)
+lefthook_bin="$here/../node_modules/.bin/lefthook"
+if [ ! -x "$lefthook_bin" ]; then
+  echo "hook dispatcher: pinned workspace Lefthook is missing; run pnpm install --frozen-lockfile from the repository root, then retry the commit" >&2
+  exit 1
+fi
+"$lefthook_bin" run commit-msg "$@"

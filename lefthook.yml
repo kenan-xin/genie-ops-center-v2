@@ -25,3 +25,17 @@ pre-commit:
       # printf and sed join the files with commas, without a trailing one. A
       # space-separated --files value made Nx pass files on to tsc (TS5112).
       run: pnpm exec nx affected -t typecheck --outputStyle=static --files="$(printf '%s,' {staged_files} | sed 's/,$//')"
+
+commit-msg:
+  jobs:
+    - name: conventional-commits
+      # The rules in AGENTS.md, "Commits and Pull Request Titles". Git's own merge
+      # and autosquash subjects pass. commitlint was not added: two dependencies
+      # and a Node start on every commit for one regular expression.
+      run: |
+        subject=$(grep -v '^#' {1} | grep -m1 -v '^[[:space:]]*$' || true)
+        if printf '%s\n' "$subject" | grep -Eq '^(Merge |(fixup|squash|amend)! )'; then exit 0; fi
+        if printf '%s\n' "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: [^A-Z ].*[^.]$' && [ ${#subject} -lt 72 ]; then exit 0; fi
+        echo "commit-msg: \"$subject\" is not a Conventional Commits subject." >&2
+        echo "Write type(scope): subject, lowercase, no final period, under 72 characters (AGENTS.md, \"Commits and Pull Request Titles\")." >&2
+        exit 1

@@ -97,6 +97,7 @@ Every commit message and every pull request title follows the [Conventional Comm
 - Breaking change: `!` after the type or scope (`feat!:` / `feat(core)!:`) plus a `BREAKING CHANGE:` footer saying what breaks and how to migrate.
 - Body: include one when the why is not obvious from the subject; explain the reason, not the diff.
 - Pull request titles use the same format; a squash merge takes its commit message from the pull request title.
+- The `commit-msg` job in `lefthook.yml` refuses a subject that breaks these rules. Git's merge and autosquash subjects pass. Never add a tool prefix such as `MAESTRO:`.
 
 ## Dependencies
 
