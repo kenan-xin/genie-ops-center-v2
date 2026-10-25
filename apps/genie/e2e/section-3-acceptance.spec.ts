@@ -30,6 +30,9 @@ const BASE = inviteBaseUrl();
 
 const LOCK_WAIT_MS = 300_000;
 
+/** `modules-categories.spec.ts` counts whole-table category audit rows under this lock. */
+const CATEGORIES_LOCK = "s2-16-entitlement";
+
 const POLL = { timeout: 30_000, intervals: [1000] };
 
 const SAVED = "Saved. Written to the audit log.";
@@ -282,61 +285,67 @@ test("under prefers-reduced-motion no transition or animation runs on the shell,
     await expect(deleteDialog).toBeVisible();
   };
 
-  try {
-    await page.goto(`${BASE}/admin/categories`);
-    await page.getByLabel("New category name").fill(name);
-    await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(
-      page.getByRole("listitem", { name, exact: true })
-    ).toBeVisible();
+  await withDeploymentLock(
+    CATEGORIES_LOCK,
+    async () => {
+      try {
+        await page.goto(`${BASE}/admin/categories`);
+        await page.getByLabel("New category name").fill(name);
+        await page.getByRole("button", { name: "Add", exact: true }).click();
+        await expect(
+          page.getByRole("listitem", { name, exact: true })
+        ).toBeVisible();
 
-    // The control: with no preference the same dialog moves, so the recorder can see motion.
-    await page.emulateMedia({ reducedMotion: "no-preference" });
-    await takeMotion(page);
-    await openDelete();
-    await expect
-      .poll(async () => (await takeMotion(page)).length)
-      .toBeGreaterThan(0);
-    await deleteDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(deleteDialog).toHaveCount(0);
+        // The control: with no preference the same dialog moves, so the recorder can see motion.
+        await page.emulateMedia({ reducedMotion: "no-preference" });
+        await takeMotion(page);
+        await openDelete();
+        await expect
+          .poll(async () => (await takeMotion(page)).length)
+          .toBeGreaterThan(0);
+        await deleteDialog.getByRole("button", { name: "Cancel" }).click();
+        await expect(deleteDialog).toHaveCount(0);
 
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    // Let the control's exit finish before the slate is cleaned.
-    await expect
-      .poll(() => page.evaluate(() => document.getAnimations().length))
-      .toBe(0);
-    await takeMotion(page);
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        // Let the control's exit finish before the slate is cleaned.
+        await expect
+          .poll(() => page.evaluate(() => document.getAnimations().length))
+          .toBe(0);
+        await takeMotion(page);
 
-    // The shell: a page load and a hover over a navigation row.
-    await page.goto(`${BASE}/admin/categories`);
+        // The shell: a page load and a hover over a navigation row.
+        await page.goto(`${BASE}/admin/categories`);
 
-    const navigation = await openNavigation(page);
+        const navigation = await openNavigation(page);
 
-    if (atLg(page)) await navigation.getByRole("link").first().hover();
+        if (atLg(page)) await navigation.getByRole("link").first().hover();
 
-    expect(
-      await takeMotion(page),
-      atLg(page) ? "shell" : "shell and drawer"
-    ).toEqual([]);
+        expect(
+          await takeMotion(page),
+          atLg(page) ? "shell" : "shell and drawer"
+        ).toEqual([]);
 
-    if (!atLg(page)) {
-      await page.keyboard.press("Escape");
-      await expect(navigation).toBeHidden();
-      expect(await takeMotion(page), "drawer close").toEqual([]);
-    }
+        if (!atLg(page)) {
+          await page.keyboard.press("Escape");
+          await expect(navigation).toBeHidden();
+          expect(await takeMotion(page), "drawer close").toEqual([]);
+        }
 
-    // The dialog, and the toast its confirm raises.
-    await openDelete();
-    expect(await takeMotion(page), "dialog").toEqual([]);
-    await deleteDialog
-      .getByRole("button", { name: "Delete", exact: true })
-      .click();
-    await expect(deleteDialog).toHaveCount(0);
-    await expect(page.getByText(SAVED).first()).toBeVisible();
-    expect(await takeMotion(page), "dialog close and toast").toEqual([]);
-  } finally {
-    await sql(`delete from category where name = '${name}'`);
-  }
+        // The dialog, and the toast its confirm raises.
+        await openDelete();
+        expect(await takeMotion(page), "dialog").toEqual([]);
+        await deleteDialog
+          .getByRole("button", { name: "Delete", exact: true })
+          .click();
+        await expect(deleteDialog).toHaveCount(0);
+        await expect(page.getByText(SAVED).first()).toBeVisible();
+        expect(await takeMotion(page), "dialog close and toast").toEqual([]);
+      } finally {
+        await sql(`delete from category where name = '${name}'`);
+      }
+    },
+    LOCK_WAIT_MS
+  );
 });
 
 /** The fixture module whose required `endpoint` has no default. Only the fixture image compiles it. */
