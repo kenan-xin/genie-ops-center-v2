@@ -320,7 +320,7 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
         onConfirm={() => {
           if (pending?.kind === "one")
             props.onRevokeSession?.(pending.session.id);
-          else props.onRevokeOtherSessions?.();
+          else if (pending?.kind === "others") props.onRevokeOtherSessions?.();
 
           setPending(null);
         }}
