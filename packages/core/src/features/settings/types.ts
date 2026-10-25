@@ -42,6 +42,12 @@ export type SignInInput = {
   readonly localAccountsEnabled: boolean;
 };
 
+/** A server issue for one field: the message to show under the field `path` names. */
+export type SettingsIssue = {
+  readonly path: string;
+  readonly message: string;
+};
+
 export type SessionsInput = { readonly sessionIdleMinutes: number };
 
 export type TenantSettingsScreenProps = {
@@ -62,7 +68,11 @@ export type TenantSettingsScreenProps = {
     readonly managed: string;
     readonly customer: string;
   };
-  /** Each save rejects with `{ message }` when the server refuses; the edits stay. */
+  /**
+   * Each save rejects with `{ message, issues? }` when the server refuses; the edits stay. The
+   * message shows in the section's summary line, and each issue shows under the field whose id
+   * equals its `path` (DR-20 S3-06).
+   */
   readonly onSaveSignIn: (input: SignInInput) => Promise<void>;
   readonly onSaveSessions: (input: SessionsInput) => Promise<void>;
   readonly onSaveModule: (

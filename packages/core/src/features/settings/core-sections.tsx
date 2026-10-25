@@ -10,7 +10,12 @@ import {
   RadioGroupItem,
   SwitchField,
 } from "@genie/ui";
-import { type AnyFormApi, useForm, useStore } from "@tanstack/react-form";
+import {
+  type AnyFieldApi,
+  type AnyFormApi,
+  useForm,
+  useStore,
+} from "@tanstack/react-form";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
@@ -18,7 +23,12 @@ import {
   sessionSettingsSchema,
   signInSettingsSchema,
 } from "../../services/settings/schemas.ts";
-import type { LastChangedView, SessionsInput, SignInInput } from "./types.ts";
+import type {
+  LastChangedView,
+  SessionsInput,
+  SettingsIssue,
+  SignInInput,
+} from "./types.ts";
 
 export type FooterState = {
   readonly dirty: boolean;
@@ -99,8 +109,31 @@ type SectionProps<T> = {
   readonly values: T;
   readonly onSubmit: (values: T) => Promise<void>;
   readonly onDirtyChange: (dirty: boolean) => void;
+  /** A refused save's issues for this section; each shows under the field it names. */
+  readonly issues?: readonly SettingsIssue[] | undefined;
   readonly footer: (state: FooterState) => ReactNode;
 };
+
+/** Editing a field clears the server error it carried (DR-20 S3-06). */
+const clearServerError = ({ fieldApi }: { readonly fieldApi: AnyFieldApi }) =>
+  fieldApi.setMeta((prev) => ({
+    ...prev,
+    errorMap: { ...prev.errorMap, onServer: undefined },
+  }));
+
+/** A refused save's issues become each named field's `onServer` error; an edit clears it. */
+function useServerIssues(
+  form: AnyFormApi,
+  issues: readonly SettingsIssue[] | undefined
+): void {
+  useEffect(() => {
+    for (const issue of issues ?? [])
+      form.setFieldMeta(issue.path, (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onServer: { message: issue.message } },
+      }));
+  }, [form, issues]);
+}
 
 /** The form state every core section hands its footer, from the TanStack Form store. */
 function useFooterState(
@@ -148,8 +181,11 @@ export function SignInSection(
   const form = useForm({
     defaultValues: props.values,
     validators: { onChange: signInSettingsSchema },
+    listeners: { onChange: clearServerError },
     onSubmit: async ({ value }) => props.onSubmit(value),
   });
+
+  useServerIssues(form, props.issues);
 
   const footer = useFooterState(form, props.onDirtyChange);
 
@@ -229,8 +265,11 @@ export function SessionsSection(props: SectionProps<SessionsInput>) {
   const form = useForm({
     defaultValues: props.values,
     validators: { onChange: sessionSettingsSchema },
+    listeners: { onChange: clearServerError },
     onSubmit: async ({ value }) => props.onSubmit(value),
   });
+
+  useServerIssues(form, props.issues);
 
   const footer = useFooterState(form, props.onDirtyChange);
 

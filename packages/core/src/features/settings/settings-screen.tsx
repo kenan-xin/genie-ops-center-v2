@@ -28,6 +28,7 @@ import { resolveSettingsTarget } from "./settings-target.ts";
 import type {
   LastChangedView,
   ModuleSettingsView,
+  SettingsIssue,
   TenantSettingsScreenProps,
 } from "./types.ts";
 
@@ -47,10 +48,15 @@ type Section = {
   readonly disabled: boolean;
 };
 
-const refusalMessage = z
-  .object({ message: z.string().min(1) })
-  .transform((refusal) => refusal.message)
-  .catch("The server refused the change.");
+/** A refused save as the screen uses it: the line's message and the issues to place on fields. */
+const refusal = z
+  .object({
+    message: z.string().min(1),
+    issues: z
+      .array(z.object({ path: z.string().min(1), message: z.string().min(1) }))
+      .optional(),
+  })
+  .catch({ message: "The server refused the change." });
 
 function SectionCard(props: {
   readonly title: string;
@@ -101,6 +107,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
   const [failure, setFailure] = useState<{
     readonly sectionId: string;
     readonly message: string;
+    readonly issues: readonly SettingsIssue[];
   } | null>(null);
 
   const [resetKey, setResetKey] = useState(0);
@@ -197,7 +204,20 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
     try {
       await write();
     } catch (cause) {
-      setFailure({ sectionId, message: refusalMessage.parse(cause) });
+      const parsed = refusal.parse(cause);
+
+      // Only a path this section's fields own becomes a field error; the rest stays in the line.
+      const ids = new Set(
+        CORE_FIELDS.get(sectionId) ??
+          moduleOf(sectionId)?.fields.map((field) => field.id) ??
+          []
+      );
+
+      setFailure({
+        sectionId,
+        message: parsed.message,
+        issues: (parsed.issues ?? []).filter((issue) => ids.has(issue.path)),
+      });
     }
   };
 
@@ -306,6 +326,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             localAccountsNote={
               props.localAccountsNotes[settings.core.realmMode]
             }
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(SIGN_IN, () => props.onSaveSignIn(values))()
@@ -325,6 +350,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           <SessionsSection
             key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}
             values={{ sessionIdleMinutes: settings.core.sessionIdleMinutes }}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(SESSIONS, () => props.onSaveSessions(values))()
@@ -377,6 +407,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             values={module.values}
             idPrefix={`cfg-${module.moduleId}`}
             focusFieldId={target.fieldId ?? undefined}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(module.moduleId, () =>

@@ -482,6 +482,67 @@ export const SaveRefused: Story = {
   },
 };
 
+export const ModuleIssueOnField: Story = {
+  args: {
+    target: { section: "placeholder" },
+    onSaveModule: fn(async () => {
+      throw {
+        message: "The server refused the change.",
+        issues: [{ path: "pageSize", message: "Server says no." }],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    const pageSize = canvas.getByRole("spinbutton", { name: "Page size" });
+
+    await userEvent.clear(pageSize);
+    await userEvent.type(pageSize, "40");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await expect(await canvas.findByText("Server says no.")).toBeVisible();
+    await expect(pageSize).toBeInvalid();
+    await expect(pageSize).toHaveAccessibleDescription("Server says no.");
+    // The edits stay and the summary line stays.
+    await expect(pageSize).toHaveValue(40);
+    await expect(
+      canvas.getByText(/Not saved\. The server refused the change\./)
+    ).toBeVisible();
+  },
+};
+
+/** The same for a core section: the server's issue for the idle timeout (DR-20 S3-06). */
+export const CoreIssueOnField: Story = {
+  args: {
+    target: { section: "sessions" },
+    onSaveSessions: fn(async () => {
+      throw {
+        message: "The server refused the change.",
+        issues: [{ path: "sessionIdleMinutes", message: "Server says no." }],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    const idle = canvas.getByRole("spinbutton", { name: "Idle timeout" });
+
+    await userEvent.clear(idle);
+    await userEvent.type(idle, "30");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await expect(await canvas.findByText("Server says no.")).toBeVisible();
+    await expect(idle).toBeInvalid();
+    await expect(idle).toHaveAccessibleDescription("Server says no.");
+    await expect(idle).toHaveValue(30);
+    await expect(canvas.getByText(/Not saved\./)).toBeVisible();
+
+    // Editing the field clears the server error it carried.
+    await userEvent.clear(idle);
+    await userEvent.type(idle, "31");
+    await waitFor(() =>
+      expect(canvas.queryByText("Server says no.")).toBeNull()
+    );
+  },
+};
+
 export const StaleLink: Story = {
   args: { target: { section: "retired-module", field: "x" } },
   play: async ({ canvas }) => {

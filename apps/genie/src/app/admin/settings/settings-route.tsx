@@ -45,7 +45,9 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
         if (result.changed)
           toast({ tone: "success", title: savedText(section) });
       } catch (cause) {
-        throw new Error(refusalOf(cause).message || NOT_SAVED, { cause });
+        const refusal = refusalOf(cause);
+
+        throw { message: refusal.message || NOT_SAVED, issues: refusal.issues };
       } finally {
         await queryClient.invalidateQueries({ queryKey: ["settings"] });
       }

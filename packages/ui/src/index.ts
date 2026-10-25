@@ -173,6 +173,7 @@ export { ConfigForm } from "./parts/config-form.tsx";
 
 export type {
   ConfigFormFooterState,
+  ConfigFormIssue,
   ConfigFormProps,
 } from "./parts/config-form.tsx";
 

@@ -279,6 +279,24 @@ export const NewValuesReset: Story = {
   },
 };
 
+/** A server issue shows under the field it names, and editing that field clears it (DR-20 S3-06). */
+export const ServerIssueOnField: Story = {
+  args: { issues: [{ path: "pageSize", message: "Server says no." }] },
+  play: async ({ canvas }) => {
+    const pageSize = canvas.getByRole("spinbutton", { name: "Page size" });
+
+    await expect(await canvas.findByText("Server says no.")).toBeVisible();
+    await expect(pageSize).toBeInvalid();
+    await expect(pageSize).toHaveAccessibleDescription("Server says no.");
+
+    await userEvent.clear(pageSize);
+    await userEvent.type(pageSize, "40");
+    await waitFor(() =>
+      expect(canvas.queryByText("Server says no.")).toBeNull()
+    );
+  },
+};
+
 export const FocusField: Story = {
   args: { focusFieldId: "pageSize" },
   play: async ({ canvas }) => {

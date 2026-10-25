@@ -41,6 +41,12 @@ export type ConfigFormFooterState = {
   readonly reset: () => void;
 };
 
+/** A server issue for one field: the message to show under the field `path` names. */
+export type ConfigFormIssue = {
+  readonly path: string;
+  readonly message: string;
+};
+
 export type ConfigFormProps = {
   readonly schema: ConfigFormSchema;
   readonly fields: readonly ConfigFormField[];
@@ -53,6 +59,8 @@ export type ConfigFormProps = {
   readonly onDirtyChange?: (dirty: boolean) => void;
   /** The field a link named; it takes focus once. */
   readonly focusFieldId?: string | undefined;
+  /** A refused save's issues; each shows under the field whose id equals its `path` until edited. */
+  readonly issues?: readonly ConfigFormIssue[] | undefined;
   readonly footer: (state: ConfigFormFooterState) => ReactNode;
 };
 
@@ -84,6 +92,7 @@ export function ConfigForm({
   onSubmit,
   onDirtyChange,
   focusFieldId,
+  issues,
   footer,
 }: ConfigFormProps) {
   const validator = useMemo(
@@ -115,6 +124,14 @@ export function ConfigForm({
   const form = useForm({
     defaultValues: { ...values },
     validators: { onMount: validator, onChange: validator, onBlur: validator },
+    listeners: {
+      // Editing a field clears the server error it carried (DR-20 S3-06).
+      onChange: ({ fieldApi }) =>
+        fieldApi.setMeta((prev) => ({
+          ...prev,
+          errorMap: { ...prev.errorMap, onServer: undefined },
+        })),
+    },
     onSubmit: async ({ value }) => onSubmit({ ...value }),
   });
 
@@ -133,6 +150,15 @@ export function ConfigForm({
     shownValues.current = values;
     form.reset({ ...values });
   }, [form, values]);
+
+  // A refused save's issues become each named field's server error; a change or blur clears it.
+  useEffect(() => {
+    for (const issue of issues ?? [])
+      form.setFieldMeta(issue.path, (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onServer: { message: issue.message } },
+      }));
+  }, [form, issues]);
 
   useEffect(() => {
     if (focusFieldId === undefined) return;
@@ -163,7 +189,9 @@ export function ConfigForm({
                   id={`${idPrefix}-${meta.id}`}
                   disabled={disabled}
                   showError={
-                    api.state.meta.isBlurred || failedOnLoad.has(meta.id)
+                    api.state.meta.isBlurred ||
+                    failedOnLoad.has(meta.id) ||
+                    api.state.meta.errorMap.onServer !== undefined
                   }
                 />
               )}
