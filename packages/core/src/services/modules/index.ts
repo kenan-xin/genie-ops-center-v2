@@ -10,6 +10,7 @@ import { category, tenantModule } from "../../schema.ts";
 import { writeAdminAuditEvent } from "../audit/index.ts";
 import { type PermissionHolder, readHolders } from "../authorization/index.ts";
 import {
+  compiledModule,
   type ModuleEnableResult,
   ModuleManagementError,
   setModuleEnabledIn,
@@ -29,21 +30,6 @@ export type ModuleRow = {
   readonly placeable: boolean;
   readonly holders: readonly ModuleHolder[];
 };
-
-function compiledModule(compiled: readonly Module[], moduleId: string): Module {
-  const module = compiled.find(
-    (candidate) => candidate.identity.id === moduleId
-  );
-
-  if (module === undefined) {
-    throw new ModuleManagementError(
-      "module-not-compiled",
-      `module-not-compiled: ${moduleId} is not compiled into this image`
-    );
-  }
-
-  return module;
-}
 
 /**
  * The compiled modules in image order, read from the database rather than the 10-second cached

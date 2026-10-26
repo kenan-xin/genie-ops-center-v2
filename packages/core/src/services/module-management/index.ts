@@ -63,6 +63,25 @@ function describeIssue(issue: ModuleConfigIssue): string {
   return issue.path === "" ? issue.message : `${issue.path}: ${issue.message}`;
 }
 
+/** The compiled module of an id, or the `module-not-compiled` refusal. */
+export function compiledModule(
+  compiled: readonly Module[],
+  moduleId: string
+): Module {
+  const module = compiled.find(
+    (candidate) => candidate.identity.id === moduleId
+  );
+
+  if (module === undefined) {
+    throw new ModuleManagementError(
+      "module-not-compiled",
+      `module-not-compiled: ${moduleId} is not compiled into this image`
+    );
+  }
+
+  return module;
+}
+
 /**
  * The one procedure that switches a compiled module on or off (R-68, DEC-50). The `genie-ops
  * module enable|disable` command and the Modules page of Section 3 both call this, so the two
@@ -105,16 +124,7 @@ export async function setModuleEnabledIn(
   moduleId: string,
   enabled: boolean
 ): Promise<ModuleEnableResult> {
-  const module = compiledModules.find(
-    (candidate) => candidate.identity.id === moduleId
-  );
-
-  if (module === undefined) {
-    throw new ModuleManagementError(
-      "module-not-compiled",
-      `module-not-compiled: ${moduleId} is not compiled into this image`
-    );
-  }
+  const module = compiledModule(compiledModules, moduleId);
 
   const rows = await tx
     .select({ enabled: tenantModule.enabled, config: tenantModule.config })
