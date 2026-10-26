@@ -24,7 +24,7 @@ async function seedTestSetup(): Promise<void> {
       "-d",
       "genie",
       "-c",
-      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ('E2E', 'Genie', 'en', 'UTC') on conflict do nothing`,
+      `insert into tenant_module (module_id, enabled) values ${rows} on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_settings default values on conflict do nothing; insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ('E2E', 'Genie', 'en', 'UTC') on conflict do nothing`,
     ],
     {}
   );

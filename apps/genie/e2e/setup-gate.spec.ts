@@ -32,9 +32,10 @@ async function psql(sql: string): Promise<void> {
 async function completeKnownSteps(): Promise<void> {
   const steps = SETUP_STEPS.map((step) => `('${step}', 'done')`).join(", ");
 
-  // The branding row omits default_theme, so the column default `system` applies.
+  // The seed step's two rows, as `markSetupDone` writes them: the sign-in page reads settings
+  // (R-51a). The branding row omits default_theme, so the column default `system` applies.
   await psql(
-    `insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_branding (company_name, product_name, default_locale, default_time_zone, primary_color, primary_foreground, font_size) values ('Setup Gate', 'Genie Ops Center', 'en', 'UTC', '#0f766e', '#ffffff', 'large') on conflict do nothing`
+    `insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_settings default values on conflict do nothing; insert into tenant_branding (company_name, product_name, default_locale, default_time_zone, primary_color, primary_foreground, font_size) values ('Setup Gate', 'Genie Ops Center', 'en', 'UTC', '#0f766e', '#ffffff', 'large') on conflict do nothing`
   );
 }
 

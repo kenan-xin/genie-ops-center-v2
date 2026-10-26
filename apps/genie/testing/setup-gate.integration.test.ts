@@ -372,7 +372,11 @@ describe("the setup gate", () => {
         on conflict (step) do update
           set state = 'pending', detail = null, updated_at = now()
       `);
-      // The seed step's branding row: the root layout reads it on every document once the gate opens.
+      // The seed step's two rows: the root layout reads branding on every document once the gate
+      // opens, and the sign-in page reads settings (R-51a).
+      await raceDeployment.context.db.$client.query(
+        "insert into tenant_settings default values on conflict do nothing"
+      );
       await raceDeployment.context.db.$client.query(
         `insert into tenant_branding (company_name, product_name, default_locale, default_time_zone)
          values ('E2E', 'Genie', 'en', 'UTC') on conflict do nothing`
