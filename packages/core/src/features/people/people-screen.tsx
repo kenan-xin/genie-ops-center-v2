@@ -645,13 +645,14 @@ export function PeopleScreen(props: PeopleScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
           <label htmlFor={searchId} className="sr-only">
             Search people
           </label>
           <Input
             id={searchId}
-            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            className="sm:w-72 sm:flex-none"
+            placeholder="Search people"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

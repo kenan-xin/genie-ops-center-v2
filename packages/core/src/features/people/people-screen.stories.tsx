@@ -104,6 +104,31 @@ export const Phone: Story = {
   },
 };
 
+export const PhoneSearchTakesTheRow: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        phone390: {
+          name: "Phone 390",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(window.innerWidth).toBe(390);
+
+    const search = canvas.getByRole("textbox", { name: "Search people" });
+
+    await expect(search).toHaveAttribute("placeholder", "Search people");
+    await expect(search.getBoundingClientRect().width).toBeGreaterThanOrEqual(
+      300
+    );
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
   play: async ({ canvas }) => {
