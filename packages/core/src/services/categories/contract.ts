@@ -3,8 +3,8 @@ import { z } from "zod";
 import { oc } from "../../lib/rpc/index.ts";
 import type { CategoryList } from "./index.ts";
 
-// The service trims and refuses a blank name; 80 is the service's own bound.
-const name = z.string().max(80);
+// Trimmed before the bound, as the service counts; the service refuses a blank name.
+const name = z.string().trim().max(80);
 
 /**
  * The Categories page API (R-87 to R-91), under core's `/categories/` area. Every category id is a

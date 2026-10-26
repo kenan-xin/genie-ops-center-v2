@@ -1,6 +1,7 @@
 import type { QueryResultRow } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { callProcedure, createRequestPrincipal } from "../src/index.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
@@ -12,6 +13,7 @@ import {
   renameCategory,
   reorderCategories,
 } from "../src/services/categories/index.ts";
+import { createCategoriesRouter } from "../src/services/categories/router.ts";
 import { insertUser, startDisposableDeployment } from "./index.ts";
 
 /**
@@ -260,6 +262,28 @@ describe("the categories page service against a real database", () => {
     expect((await auditRows()).map((row) => row.metadata)).toEqual([
       { name: "Finance", moduleCount: 2 },
     ]);
+  });
+
+  it("the router trims a name before its length bound, so it and the service keep one rule", async () => {
+    const client = callProcedure(createCategoriesRouter(compiled), {
+      tenant: deployment.context,
+      caller: createRequestPrincipal(
+        { userId: actorUserId, groups: [], authenticated: true },
+        () =>
+          Promise.resolve({
+            keys: new Set(["core:settings:manage"]),
+            scopes: new Map(),
+          })
+      ),
+      requestId: "req-categories-trim",
+    });
+
+    await client.create({ name: `  ${"x".repeat(80)}  ` });
+    await expect(
+      client.create({ name: ` ${"y".repeat(81)} ` })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(await categoryNames()).toEqual(["x".repeat(80)]);
   });
 
   it("a duplicate or blank name refuses and writes no row", async () => {
