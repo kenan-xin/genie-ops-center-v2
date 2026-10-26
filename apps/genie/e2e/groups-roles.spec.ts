@@ -143,7 +143,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   });
 
   await expect(
-    archiveDialog.getByText(/assignment.* stop granting/)
+    archiveDialog.getByText(/1 assignment stops granting/)
   ).toBeVisible();
 
   const [archiveResponse] = await Promise.all([

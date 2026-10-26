@@ -250,6 +250,28 @@ export const ArchiveConfirmNamesTheAssignmentCount: Story = {
   },
 };
 
+export const ArchiveConfirmUsesTheSingularForOne: Story = {
+  args: { groups: [{ ...FIXTURE_DIRECTORY, assignmentCount: 1 }] },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Finance managers/ })
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Finance managers" })
+      ).getByRole("button", { name: "Archive group" })
+    );
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: "Archive Finance managers?" })
+    );
+
+    await expect(
+      confirm.getByText(/Its 1 assignment stops granting/)
+    ).toBeInTheDocument();
+  },
+};
+
 export const LastAdministratorBlocksArchiveWithTheReason: Story = {
   args: { lastAdministratorGroupIds: [FIXTURE_DIRECTORY.id] },
   play: async ({ canvas }) => {
@@ -275,10 +297,17 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
     onDeleteLocalGroup.mockClear();
 
     await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    // One grant reads in the singular.
+    await expect(
+      inspector.getByText("1 grant reaches this group today.")
+    ).toBeInTheDocument();
     await userEvent.click(
-      within(
-        await screen.findByRole("dialog", { name: "Operations" })
-      ).getByRole("button", { name: "Delete group" })
+      inspector.getByRole("button", { name: "Delete group" })
     );
 
     const confirm = within(

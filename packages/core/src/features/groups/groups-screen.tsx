@@ -207,8 +207,9 @@ export function GroupInspector(
               Access is managed in one place
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {group.assignmentCount} grant
-              {group.assignmentCount === 1 ? "" : "s"} reach this group today.
+              {group.assignmentCount}{" "}
+              {group.assignmentCount === 1 ? "grant reaches" : "grants reach"}{" "}
+              this group today.
             </p>
             {props.onOpenInAccess === undefined ? null : (
               <div className="mt-2">
@@ -541,8 +542,8 @@ export function GroupInspector(
           open={confirm === "archive"}
           title={`Archive ${groupLabel(group)}?`}
           description={`Its ${group.assignmentCount} assignment${
-            group.assignmentCount === 1 ? "" : "s"
-          } stop granting while it is archived. The rows are kept and restore brings them back.`}
+            group.assignmentCount === 1 ? " stops" : "s stop"
+          } granting while it is archived. The rows are kept and restore brings them back.`}
           confirmLabel="Archive group"
           danger
           onConfirm={() => {
