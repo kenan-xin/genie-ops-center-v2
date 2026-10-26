@@ -513,6 +513,9 @@ importers:
       react-dom:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
+      react-idle-timer:
+        specifier: 5.7.3
+        version: 5.7.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       resend:
         specifier: 6.34.1
         version: 6.34.1(@react-email/render@2.0.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
@@ -6398,6 +6401,12 @@ packages:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
       react: ^19.3.1
+
+  react-idle-timer@5.7.3:
+    resolution: {integrity: sha512-7QuPkJ8ffraiECVRP1KlzHOocvkvN1XEPeOevnfMLNc7A6O/TMZo11j5sPfYvftvkOqNA84iCc5dYXoX+m2raQ==}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16'
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
@@ -12663,6 +12672,11 @@ snapshots:
     dependencies:
       react: 19.3.1
       scheduler: 0.28.0
+
+  react-idle-timer@5.7.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   react-is@17.0.2: {}
 
