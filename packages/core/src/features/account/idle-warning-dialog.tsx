@@ -19,6 +19,8 @@ export type IdleWarningStrings = {
   readonly countdownLabel: string;
   readonly staySignedIn: string;
   readonly signOutNow: string;
+  /** The inline error when Stay signed in cannot reach the server. */
+  readonly stayFailed: string;
 };
 
 /**
@@ -31,6 +33,8 @@ export function IdleWarningDialog(props: {
   readonly remainingMs: number;
   readonly strings: IdleWarningStrings;
   readonly signOutAction: string;
+  /** The last Stay signed in failed; the warning stays open for another try. */
+  readonly failed: boolean;
   readonly onStaySignedIn: () => void;
 }): JSX.Element {
   const countdownLabel = useId();
@@ -56,6 +60,11 @@ export function IdleWarningDialog(props: {
             {formatCountdown(props.remainingMs)}
           </p>
         </div>
+        {props.failed ? (
+          <p role="alert" className="text-sm text-destructive">
+            {props.strings.stayFailed}
+          </p>
+        ) : null}
         <DialogFooter>
           {/* `contents`, so the button is the footer's flex item like its sibling. */}
           <form method="post" action={props.signOutAction} className="contents">

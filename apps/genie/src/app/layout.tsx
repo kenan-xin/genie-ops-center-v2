@@ -1,7 +1,6 @@
 import {
   DEFAULT_FAVICON_URL,
   faviconHref,
-  idleExpiry,
   isLimitedBreakGlass,
   readCookie,
   sessionCookieName,
@@ -84,10 +83,10 @@ export default async function RootLayout({
   const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
   const messages = setupRequired ? {} : await getMessages();
 
-  // The activity client mounts for a live browser session. Its first expiry is supplied by this
-  // enforced read (R-15a), so loading, restoring or navigating never writes last_active_at. The
-  // one read also decides the limited-session page below, and the page rendering in parallel
-  // shares it, so a document pays for one session read and makes one idle decision.
+  // The activity client mounts for a live browser session and makes one activity call, so a
+  // document load starts the browser's idle count and the server window together (R-15a). The
+  // enforced session read also decides the limited-session page below, and the page rendering
+  // in parallel shares it, so a document pays for one session read and makes one idle decision.
   const context = readContext();
 
   // R-12a, D3-5: a fresh deployment has no branding row and the reader throws on a missing row,
@@ -120,19 +119,9 @@ export default async function RootLayout({
   const activity =
     context === undefined || session?.status !== "authenticated"
       ? undefined
-      : await (async () => {
-          const settings = await context.tenant.settings.get();
-
-          return {
-            idleMinutes: settings.sessionIdleMinutes,
-            initialIdleExpiresAt: idleExpiry({
-              lastActivityAt:
-                session.session.session.lastActiveAt ??
-                session.session.session.createdAt,
-              idleMinutes: settings.sessionIdleMinutes,
-            }).toISOString(),
-          };
-        })();
+      : {
+          idleMinutes: (await context.tenant.settings.get()).sessionIdleMinutes,
+        };
 
   // R-30, R-65: a limited break-glass session renders the limited-session page on every route
   // except the door itself, whatever the route asked for. The activity client stays mounted, so

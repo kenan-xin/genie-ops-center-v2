@@ -78,11 +78,22 @@ test("an expired session on an RPC call lands on the sign-in page", async ({
 
   await signInThroughKeycloak(page, { email });
 
+  // The landing page's own mount call must not slide the session after the staging below.
+  await page.waitForLoadState("networkidle");
+
+  const mounted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/session/activity")
+  );
+
   await page.goto("/admin/audit");
 
   // The signed-in reader's grant renders the route; the client mounts and reads the list.
   await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
   await expect(page.getByLabel("Search summary or target")).toBeVisible();
+
+  // The page's mount call answered before the staging, so it cannot answer for the staged
+  // session, and `activityCalls` below does not count it.
+  expect((await mounted).status()).toBe(200);
 
   const current = await currentSessionId(page, email);
 

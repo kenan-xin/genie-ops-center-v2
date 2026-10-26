@@ -170,12 +170,15 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 });
 
 test(
-  "the activity call slides a live session and answers the absolute idle expiry (R-15, R-15a)",
+  "a document load makes one activity call, which slides a live session (R-15, R-15a)",
   { tag: "@no-screen" },
   async ({ page }, testInfo) => {
     const email = sessionsEmail(testInfo);
 
     await signInThroughKeycloak(page, { email });
+
+    // The landing page makes its own mount call, which must land before `before` is read.
+    await page.waitForLoadState("networkidle");
 
     const current = await currentSessionId(page, email);
 
@@ -183,43 +186,17 @@ test(
       `select coalesce(last_active_at::text, '') from session where id = '${current}'`
     );
 
+    // The mount call is the throttle's leading call, so a load starts the browser's idle count and
+    // the server window together.
+    const activity = page.waitForResponse((response) =>
+      response.url().endsWith("/api/session/activity")
+    );
+
     await page.goto("/");
 
-    // Loading and restoring a document use the server's read-only expiry, never the activity writer.
-    await page.reload();
+    expect((await activity).status()).toBe(200);
 
-    const [afterNavigation] = await queryDatabase(
-      `select coalesce(last_active_at::text, '') from session where id = '${current}'`
-    );
-
-    expect(afterNavigation).toBe(before);
-
-    // The mount read answers the expiry the client exposes (R-15a).
-    const attribute = page.locator("[data-session-idle-expiry]");
-
-    await expect(attribute).toHaveCount(1, { timeout: 10_000 });
-
-    const mounted = await attribute.getAttribute("data-session-idle-expiry");
-
-    expect(mounted).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-
-    // Real input: one pointer event reaches the route, which is the one writer of last activity.
-    const activity = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/api/session/activity") &&
-        response.status() === 200
-    );
-
-    await page.mouse.click(10, 10);
-
-    const answer = await activity;
-
-    // SAFETY: the route's own handler answers `{ idleExpiresAt }` as JSON.
-    const body = (await answer.json()) as { readonly idleExpiresAt?: string };
-
-    expect(body.idleExpiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-
-    // The slide wrote a later time than the sign-in left (none reads as an empty row), so the click
+    // The slide wrote a later time than the sign-in left (none reads as an empty row), so the call
     // really reached the route.
     const [slid] = await queryDatabase(
       `select (last_active_at > coalesce(nullif('${before ?? ""}', '')::timestamptz, '-infinity'))::text from session where id = '${current}'`
@@ -236,14 +213,28 @@ test("an idle session is refused and the browser lands on the expired banner (R-
 
   await signInThroughKeycloak(page, { email });
 
+  // The landing page's own mount call must not slide the session after the staging below.
+  await page.waitForLoadState("networkidle");
+
   const current = await currentSessionId(page, email);
 
+  await page.clock.install();
+
+  const mounted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/session/activity")
+  );
+
   await page.goto("/");
+
+  expect((await mounted).status()).toBe(200);
 
   // The tenant's real 15 minute window, staged past: the next enforced read refuses the row.
   await queryDatabase(
     `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
   );
+
+  // Half the window passes in the browser, so the next input makes a leading call (R-15).
+  await page.clock.fastForward(IDLE_MINUTES * 30_000 + 1_000);
 
   // Real input drives the activity call; the unauthenticated answer lands the browser on the
   // sign-in page's session-expired state, and the banner names the idle minutes.
