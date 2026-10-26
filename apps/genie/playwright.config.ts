@@ -22,7 +22,7 @@ const RESOLVER_ARGS = [
 /** The DEC-25 tag of a test that renders no screen; the phone project leaves it out. */
 const NO_SCREEN = /@no-screen/;
 
-export default defineConfig({
+const config = defineConfig({
   testDir: "./e2e",
   // The failed/invalid-provider browser proof needs the fixture image
   // (`genie-s005:fixture`, built by `build-fixture-image`) and runs through
@@ -82,3 +82,11 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
 });
+
+// Unset means Playwright's default of half the cores, which on a large machine is
+// many browsers at once, so a memory-bound run sets PLAYWRIGHT_WORKERS (xok3.24).
+if (process.env.PLAYWRIGHT_WORKERS) {
+  config.workers = Number(process.env.PLAYWRIGHT_WORKERS);
+}
+
+export default config;

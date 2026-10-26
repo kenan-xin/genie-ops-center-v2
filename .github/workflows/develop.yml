@@ -27,6 +27,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# A hosted runner has 4 vCPUs and limited memory. nx.json allows 4 tasks at once, which
+# can put the Next build, the Storybook build and the Storybook browser tests on the
+# runner together, so CI runs at most 2 (xok3.24).
+env:
+  NX_PARALLEL: 2
+
 jobs:
   gates:
     # The fast gates, exactly what ci:pr runs before its integration layer. No
