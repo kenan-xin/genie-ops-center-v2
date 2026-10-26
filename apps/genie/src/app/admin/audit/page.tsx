@@ -1,4 +1,4 @@
-import { type PermissionKey } from "@genie/core";
+import { coreAdminPermission } from "@genie/core";
 import { EMPTY_AUDIT_FILTERS } from "@genie/core/features/audit";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
@@ -9,9 +9,6 @@ import { ShellFrame } from "../../../shell-frame.tsx";
 import { AuditLogRoute } from "./audit-log-route.tsx";
 
 export const dynamic = "force-dynamic";
-
-/** The one key the route opens behind (R-67, DEC-16). */
-const AUDIT_READ_PERMISSION: PermissionKey = "core:audit:read";
 
 /**
  * The Audit log screen, behind `core:audit:read` (R-67, DEC-16). The one authorization seam
@@ -26,7 +23,7 @@ const AUDIT_READ_PERMISSION: PermissionKey = "core:audit:read";
  */
 export default async function AuditLogPage() {
   const content = await renderIfPermitted(
-    AUDIT_READ_PERMISSION,
+    coreAdminPermission("core-audit"),
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
       const t = await getTranslations("pages");

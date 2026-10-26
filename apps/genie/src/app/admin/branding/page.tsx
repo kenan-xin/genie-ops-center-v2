@@ -1,4 +1,4 @@
-import { type PermissionKey } from "@genie/core";
+import { coreAdminPermission } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -9,29 +9,29 @@ import { BrandingRoute } from "./branding-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-/** The one key the route opens behind (R-43, R-93). Every procedure re-checks it. */
-const BRANDING_MANAGE: PermissionKey = "core:branding:manage";
-
 /**
  * The Branding screen, behind `core:branding:manage`. The one authorization seam refuses an
  * anonymous or unpermitted request before the screen mounts. The time zone is the deployment's
  * default until a person has a preference.
  */
 export default async function BrandingPage() {
-  const content = await renderIfPermitted(BRANDING_MANAGE, async () => {
-    const branding = await requireContext().tenant.branding.get();
-    const t = await getTranslations("pages");
+  const content = await renderIfPermitted(
+    coreAdminPermission("core-branding"),
+    async () => {
+      const branding = await requireContext().tenant.branding.get();
+      const t = await getTranslations("pages");
 
-    return (
-      <main>
-        <PageHeader
-          title={t("branding.title")}
-          description={t("branding.description")}
-        />
-        <BrandingRoute timeZone={branding.defaultTimeZone} />
-      </main>
-    );
-  });
+      return (
+        <main>
+          <PageHeader
+            title={t("branding.title")}
+            description={t("branding.description")}
+          />
+          <BrandingRoute timeZone={branding.defaultTimeZone} />
+        </main>
+      );
+    }
+  );
 
   return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

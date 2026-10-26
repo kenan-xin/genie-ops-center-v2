@@ -1,4 +1,4 @@
-import { type PermissionKey } from "@genie/core";
+import { coreAdminPermission } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -9,9 +9,6 @@ import { PeopleRoute } from "./people-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-/** The one key the route opens behind (R-37). */
-const PEOPLE_MANAGE: PermissionKey = "core:people:manage";
-
 /**
  * The People screen, behind `core:people:manage`. The one authorization seam refuses an anonymous
  * or unpermitted request before the screen mounts, so the route reveals nothing it would show. The
@@ -19,30 +16,33 @@ const PEOPLE_MANAGE: PermissionKey = "core:people:manage";
  * (DEC-46) and handed to the Add person dialog; the server re-checks every write.
  */
 export default async function PeoplePage() {
-  const content = await renderIfPermitted(PEOPLE_MANAGE, async (caller) => {
-    const tenant = requireContext().tenant;
-    const t = await getTranslations("pages");
+  const content = await renderIfPermitted(
+    coreAdminPermission("core-people"),
+    async (caller) => {
+      const tenant = requireContext().tenant;
+      const t = await getTranslations("pages");
 
-    const branding = await tenant.branding.get();
-    const settings = await tenant.settings.get();
+      const branding = await tenant.branding.get();
+      const settings = await tenant.settings.get();
 
-    return (
-      <main>
-        <PageHeader
-          title={t("people.title")}
-          description={t("people.description")}
-        />
-        <PeopleRoute
-          viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
-          settings={{
-            onboardingMode:
-              settings.onboardingMode === "jit" ? "jit" : "invite",
-            localAccountsEnabled: settings.localAccountsEnabled,
-          }}
-        />
-      </main>
-    );
-  });
+      return (
+        <main>
+          <PageHeader
+            title={t("people.title")}
+            description={t("people.description")}
+          />
+          <PeopleRoute
+            viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
+            settings={{
+              onboardingMode:
+                settings.onboardingMode === "jit" ? "jit" : "invite",
+              localAccountsEnabled: settings.localAccountsEnabled,
+            }}
+          />
+        </main>
+      );
+    }
+  );
 
   return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

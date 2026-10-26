@@ -1,3 +1,4 @@
+import type { PermissionKey } from "../module-contract/keys.ts";
 import type { NavigationEntry } from "../module-contract/module.ts";
 
 export type CoreAdminGroupId = "people-and-access" | "tenant" | "catalog";
@@ -6,10 +7,7 @@ export type CoreAdminGroupId = "people-and-access" | "tenant" | "catalog";
  * Core's own admin pages (D3-6), grouped as the admin block shows them. They pass the same `can()`
  * filter as module entries in `permittedNavigation`, and no entitlement gates them.
  */
-export const CORE_ADMIN_NAVIGATION: readonly {
-  readonly id: CoreAdminGroupId;
-  readonly entries: readonly NavigationEntry[];
-}[] = [
+const CORE_ADMIN_GROUPS = [
   {
     id: "people-and-access",
     entries: [
@@ -81,4 +79,29 @@ export const CORE_ADMIN_NAVIGATION: readonly {
       },
     ],
   },
-];
+] as const satisfies readonly {
+  readonly id: CoreAdminGroupId;
+  readonly entries: readonly NavigationEntry[];
+}[];
+
+export const CORE_ADMIN_NAVIGATION: readonly {
+  readonly id: CoreAdminGroupId;
+  readonly entries: readonly NavigationEntry[];
+}[] = CORE_ADMIN_GROUPS;
+
+export type CoreAdminEntryId =
+  (typeof CORE_ADMIN_GROUPS)[number]["entries"][number]["id"];
+
+/**
+ * The permission a core admin page opens behind, read from the table above so that the page and
+ * its navigation entry cannot disagree (ARCH-2). An unknown id fails the compile.
+ */
+export function coreAdminPermission(id: CoreAdminEntryId): PermissionKey {
+  const entry = CORE_ADMIN_NAVIGATION.flatMap((group) => group.entries).find(
+    (candidate) => candidate.id === id
+  );
+
+  if (entry === undefined) throw new Error(`No core admin entry ${id}`);
+
+  return entry.requiredPermission;
+}

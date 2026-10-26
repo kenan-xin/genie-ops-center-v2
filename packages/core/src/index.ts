@@ -283,6 +283,8 @@ export {
 
 export {
   CORE_ADMIN_NAVIGATION,
+  coreAdminPermission,
+  type CoreAdminEntryId,
   type CoreAdminGroupId,
 } from "./lib/entitlement/core-admin.ts";
 

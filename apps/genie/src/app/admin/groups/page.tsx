@@ -1,4 +1,4 @@
-import { type PermissionKey } from "@genie/core";
+import { coreAdminPermission } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -9,9 +9,6 @@ import { GroupsRoute } from "./groups-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-/** The one key the route opens behind (R-37). */
-const GROUPS_MANAGE: PermissionKey = "core:groups:manage";
-
 /**
  * The Groups screen, behind `core:groups:manage`. The one authorization seam refuses an anonymous
  * or unpermitted request before the screen mounts, so the route reveals nothing it would show.
@@ -19,22 +16,25 @@ const GROUPS_MANAGE: PermissionKey = "core:groups:manage";
  * gives each person a preference.
  */
 export default async function GroupsPage() {
-  const content = await renderIfPermitted(GROUPS_MANAGE, async (caller) => {
-    const branding = await requireContext().tenant.branding.get();
-    const t = await getTranslations("pages");
+  const content = await renderIfPermitted(
+    coreAdminPermission("core-groups"),
+    async (caller) => {
+      const branding = await requireContext().tenant.branding.get();
+      const t = await getTranslations("pages");
 
-    return (
-      <main>
-        <PageHeader
-          title={t("groups.title")}
-          description={t("groups.description")}
-        />
-        <GroupsRoute
-          viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
-        />
-      </main>
-    );
-  });
+      return (
+        <main>
+          <PageHeader
+            title={t("groups.title")}
+            description={t("groups.description")}
+          />
+          <GroupsRoute
+            viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
+          />
+        </main>
+      );
+    }
+  );
 
   return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }
