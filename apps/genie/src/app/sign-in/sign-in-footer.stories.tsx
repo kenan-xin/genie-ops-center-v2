@@ -57,3 +57,7 @@ export const DangerousUrls: Story = {
     await expect(canvasElement.innerHTML).not.toContain("javascript:");
   },
 };
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+};

@@ -1,4 +1,4 @@
-import { httpUrl, supportContact } from "@genie/core/branding-support";
+import { httpUrl, supportContact } from "@genie/core/features/branding";
 import { focusRing } from "@genie/ui";
 
 export type SignInFooterProps = {

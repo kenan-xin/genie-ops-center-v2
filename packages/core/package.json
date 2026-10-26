@@ -5,7 +5,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./branding-support": "./src/lib/branding/support.ts",
     "./errors": "./src/lib/errors/index.ts",
     "./features/account": "./src/features/account/index.ts",
     "./features/audit": "./src/features/audit/index.ts",
