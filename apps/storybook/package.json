@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts .storybook stories testing",
     "test": "vitest run --project=unit",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:selection-matrix": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -69,6 +69,18 @@
         "options": {
           "command": "node testing/test-storybook.ts"
         }
+      },
+      "test:selection-matrix": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^default",
+          "storybookOwners",
+          "{workspaceRoot}/apps/genie/package.json",
+          "{workspaceRoot}/apps/genie/tools/**/*",
+          "{workspaceRoot}/package.json",
+          "{workspaceRoot}/pnpm-workspace.yaml"
+        ]
       }
     },
     "tags": [
