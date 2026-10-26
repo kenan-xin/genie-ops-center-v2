@@ -512,6 +512,40 @@ export const SaveRefused: Story = {
   },
 };
 
+/** On a phone the failure line wraps, and the warning icon stays on the line it starts. */
+export const SaveRefusedOnPhone: Story = {
+  globals: phone,
+  args: {
+    target: { section: "sessions" },
+    onSaveSessions: fn(async () => {
+      throw { message: "Something went wrong." };
+    }),
+  },
+  play: async ({ canvas }) => {
+    const idle = canvas.getByRole("spinbutton", { name: "Idle timeout" });
+
+    await userEvent.clear(idle);
+    await userEvent.type(idle, "30");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    const alert = await canvas.findByRole("alert");
+    const icon = alert.querySelector("svg");
+
+    if (icon === null)
+      throw new Error("The failure line shows no warning icon.");
+
+    const text = document.createRange();
+
+    text.selectNodeContents(alert);
+    text.setStartAfter(icon);
+
+    const iconTop = icon.getBoundingClientRect().top;
+    const firstLineTop = text.getClientRects()[0]?.top ?? Number.NaN;
+
+    await expect(Math.abs(iconTop - firstLineTop)).toBeLessThan(8);
+  },
+};
+
 export const ModuleIssueOnField: Story = {
   args: {
     target: { section: "placeholder" },

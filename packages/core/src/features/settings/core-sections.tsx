@@ -75,8 +75,11 @@ export function SectionFooter(props: {
           role="alert"
           className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive"
         >
-          <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
-          Not saved. {props.failure} Your changes are still here.
+          {/* The icon stays on the first line of the text when the text wraps on a phone. */}
+          <span className="flex items-start gap-1.5">
+            <AlertTriangle aria-hidden className="mt-px size-3.5 shrink-0" />
+            <span>Not saved. {props.failure} Your changes are still here.</span>
+          </span>
           {props.retryable ? (
             <Button variant="link" size="sm" onClick={state.submit}>
               Retry
