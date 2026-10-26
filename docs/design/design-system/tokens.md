@@ -171,6 +171,8 @@ What the design tree measures: a real wheel event over the page and a keyboard p
 
 Bottom center on phones, bottom right on desktop; success, neutral, and error tones; auto-dismiss after 4 seconds with a manual close; at most three stacked; `role="status"`.
 
+A failed one-click action, such as signing out a session or creating a category, shows an error toast. A failed form save shows the error inline, at the field or at the form (U-1, 2026-10-25).
+
 ## Empty state
 
 Centered block: icon or letter tile, one heading, one sentence, at most one primary action. Filter empty states offer Clear filters.
