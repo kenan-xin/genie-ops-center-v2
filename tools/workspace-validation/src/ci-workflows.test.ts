@@ -1293,7 +1293,9 @@ describe("the Spec 0 CI gates", () => {
         );
 
         const browser = before.findLastIndex((line) =>
-          line.includes("pnpm exec playwright install --with-deps chromium")
+          line.includes(
+            "pnpm exec playwright install --with-deps --only-shell chromium"
+          )
         );
 
         expect(
@@ -1327,7 +1329,7 @@ describe("the Spec 0 CI gates", () => {
       const install = job.indexOf("pnpm install --frozen-lockfile");
 
       const browser = job.indexOf(
-        "pnpm exec playwright install --with-deps chromium"
+        "pnpm exec playwright install --with-deps --only-shell chromium"
       );
 
       const firstGate = Math.min(

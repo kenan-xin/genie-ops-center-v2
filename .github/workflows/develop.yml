@@ -54,7 +54,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The runner has no browser; the Storybook component tests launch the
       # pinned Chromium.
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
       # Base the affected range on the last successful develop run, not the
       # pushed commit's parent. With `cancel-in-progress: true`, push B cancels
       # the run for push A and gates only A→B, so if A's run was cancelled or
@@ -137,7 +137,7 @@ jobs:
       # repository never uses, or the runner runs out of disk.
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The suite drives the pinned Chromium through Playwright.
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
       # The shard runs only the project the discover job handed it. A bail
       # stops the run once the project fails, and the projects never compete
       # for the runner's 4 vCPUs.
@@ -201,7 +201,7 @@ jobs:
       # repository never uses, or the runner runs out of disk.
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The runner has no browser; both suites launch the pinned Chromium.
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
       # The fixture suite runs in the app's integration shard, because the app's
       # test:integration depends on test:e2e:fixture, so this job does not repeat it.
       - run: pnpm exec nx run-many -t test:e2e -p @genie/app

@@ -138,7 +138,7 @@ jobs:
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       # The app integration gate drives the pinned Chromium (its target depends
       # on the fixture and dev E2E suites); the runner has no browser.
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
       - run: mkdir -p candidate
       # The gates, the build and the smoke run with no registry credential on
       # disk (genie-ops-center-v2-sl1). The smoked identity is recorded on disk
@@ -231,7 +231,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
       - run: mkdir -p candidate
       - env:
           RELEASE_VERSION: ${{ github.ref_name }}
