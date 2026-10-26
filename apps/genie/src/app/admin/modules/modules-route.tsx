@@ -4,18 +4,12 @@ import {
   type ModuleRefusal,
   ModulesScreen,
 } from "@genie/core/features/modules";
-import { toast } from "@genie/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
-import { refusalOf, rpc } from "../../../rpc/client.ts";
-
-const SAVED = "Saved. Written to the audit log.";
-
-// A network failure or a non-catalogue answer carries no safe message of its own.
-const NOT_SAVED = "That change could not be saved. Try again.";
+import { savedIfChanged, useAdminWrite } from "../../../rpc/admin-write.ts";
+import { rpc } from "../../../rpc/client.ts";
 
 /**
  * The browser half of the Modules route. The server refused a caller without
@@ -23,8 +17,6 @@ const NOT_SAVED = "That change could not be saved. Try again.";
  * both lists and the server-rendered navigation, because a switch changes what members see.
  */
 export function ModulesRoute() {
-  const queryClient = useQueryClient();
-  const router = useRouter();
   const t = useTranslations("pages");
   const [refusal, setRefusal] = useState<ModuleRefusal | undefined>(undefined);
 
@@ -38,42 +30,26 @@ export function ModulesRoute() {
     queryFn: () => rpc.categories.list(),
   });
 
-  const reload = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["modules"] });
-    await queryClient.invalidateQueries({ queryKey: ["categories"] });
-    // The navigation is rendered on the server; no client query holds it.
-    router.refresh();
-  };
-
-  const switchModule = useMutation({
-    mutationFn: (input: { moduleId: string; enabled: boolean }) =>
+  const switchModule = useAdminWrite({
+    write: (input: { moduleId: string; enabled: boolean }) =>
       rpc.modules.setEnabled(input),
-    onMutate: () => setRefusal(undefined),
+    invalidate: [["modules"], ["categories"]],
+    // A switch changes what members see in the server-rendered navigation.
+    refresh: true,
     // A switch that changed nothing wrote no audit row (Decision 3), so it claims no save.
-    onSuccess: (result) => {
-      if (result.changed) toast({ tone: "success", title: SAVED });
-    },
-    onError: (cause, input) => {
-      const { message, issues = [] } = refusalOf(cause);
-      setRefusal({
-        moduleId: input.moduleId,
-        message: message || NOT_SAVED,
-        issues,
-      });
-    },
-    onSettled: reload,
+    saved: savedIfChanged,
+    // The refusal stays on the module's row with the configuration issues it names.
+    refused: ({ message, issues = [] }, input) =>
+      setRefusal({ moduleId: input.moduleId, message, issues }),
   });
 
-  const placeModule = useMutation({
-    mutationFn: (input: { moduleId: string; categoryId: string | null }) =>
+  const placeModule = useAdminWrite({
+    write: (input: { moduleId: string; categoryId: string | null }) =>
       rpc.modules.setCategory(input),
+    invalidate: [["modules"], ["categories"]],
+    refresh: true,
     // The same category again wrote no audit row (R-90), so it claims no save.
-    onSuccess: (result) => {
-      if (result.changed) toast({ tone: "success", title: SAVED });
-    },
-    onError: (cause) =>
-      toast({ tone: "error", title: refusalOf(cause).message || NOT_SAVED }),
-    onSettled: reload,
+    saved: savedIfChanged,
   });
 
   const pending = switchModule.isPending
@@ -88,9 +64,10 @@ export function ModulesRoute() {
       categories={categories.data?.categories ?? []}
       pending={pending}
       refusal={refusal}
-      onSwitch={(moduleId, enabled) =>
-        switchModule.mutate({ moduleId, enabled })
-      }
+      onSwitch={(moduleId, enabled) => {
+        setRefusal(undefined);
+        switchModule.mutate({ moduleId, enabled });
+      }}
       onCategory={(moduleId, categoryId) =>
         placeModule.mutate({ moduleId, categoryId })
       }

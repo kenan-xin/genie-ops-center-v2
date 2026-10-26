@@ -6,12 +6,12 @@ import {
   type PeopleSettings,
   type PeopleViewer,
 } from "@genie/core/features/people";
-import { toast } from "@genie/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
-import { refusalOf, rpc } from "../../../rpc/client.ts";
+import { SAVED, useAdminWrite } from "../../../rpc/admin-write.ts";
+import { type Refusal, rpc } from "../../../rpc/client.ts";
 
 /** What a write returns: an id for a create, nothing for the rest. */
 type WriteResult = void | {
@@ -21,19 +21,14 @@ type WriteResult = void | {
 };
 
 /**
- * The catalogue message for a refused write, with the whole minutes on a rate-limit refusal
- * (R-21). The transport's error interceptor already carried the safe message and the minutes, so
- * the screen shows the same reason the server refused with.
+ * The refusal of a write, with the whole minutes on a rate-limit refusal (R-21). The transport's
+ * error interceptor already carried the safe message and the minutes, so the screen shows the
+ * same reason the server refused with.
  */
-function refusalMessage(cause: Error): string {
-  const refusal = refusalOf(cause);
-  const minutes = refusal.retryAfterMinutes;
-
-  const message =
-    refusal.message === ""
-      ? "The action could not be completed."
-      : refusal.message;
-
+function refusalMessage({
+  message,
+  retryAfterMinutes: minutes,
+}: Refusal): string {
   return minutes === undefined
     ? message
     : `${message} Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
@@ -49,7 +44,6 @@ export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
 }) {
-  const queryClient = useQueryClient();
   // An audit target link opens the screen with its person selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
@@ -79,14 +73,19 @@ export function PeopleRoute(props: {
     queryFn: () => rpc.people.capabilities(),
   });
 
-  const action = useMutation<WriteResult, Error, () => Promise<WriteResult>>({
-    mutationFn: (work) => work(),
-    onSuccess: async () => {
-      setError(undefined);
-      await queryClient.invalidateQueries({ queryKey: ["people"] });
-      await queryClient.invalidateQueries({ queryKey: ["person", selectedId] });
-    },
-    onError: (refusal) => setError(refusalMessage(refusal)),
+  const action = useAdminWrite({
+    write: (work: () => Promise<WriteResult>) => work(),
+    invalidate: [["people"], ["person", selectedId]],
+    // A committed add whose email did not go out is a partial success: a status notice points at
+    // Resend instead (N1). Only a full add gets its own toast (PD-13).
+    saved: (result) =>
+      result === undefined
+        ? SAVED
+        : result.emailSent === false
+          ? undefined
+          : "Person added",
+    // The refusal shows in the screen, inside the Add person dialog while it is open.
+    refused: (refusal) => setError(refusalMessage(refusal)),
   });
 
   // The status writes return nothing the screen reads, so their answer is dropped here.
@@ -99,8 +98,7 @@ export function PeopleRoute(props: {
   };
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
-  // committed add whose email did not go out is a partial success: the dialog closes and a status
-  // notice points at Resend (N1). Only a full success gets the toast (PD-13).
+  // partial success closes the dialog and shows the notice.
   const addPerson = (input: NewPersonInput): Promise<void> => {
     setError(undefined);
     setNotice(undefined);
@@ -110,15 +108,8 @@ export function PeopleRoute(props: {
         rpc.people.add({ ...input, roleIds: [...input.roleIds] })
       )
       .then((result) => {
-        if (
-          result !== undefined &&
-          "emailSent" in result &&
-          result.emailSent === false
-        ) {
+        if (result?.emailSent === false)
           setNotice("Person added; the email was not sent. Use Resend.");
-        } else {
-          toast({ tone: "success", title: "Person added" });
-        }
       });
   };
 

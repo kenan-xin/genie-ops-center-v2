@@ -1,10 +1,11 @@
 "use client";
 
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
+import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
 
 /**
@@ -14,7 +15,6 @@ import { rpc } from "../../../rpc/client.ts";
  * list through TanStack Query after each one.
  */
 export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
-  const queryClient = useQueryClient();
   const [includeArchived, setIncludeArchived] = useState(false);
   // An audit target link opens the screen with its group selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
@@ -45,14 +45,10 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     queryFn: () => rpc.groups.assignableRoles(),
   });
 
-  // One mutation runs any write and reloads the list and the open detail; the server is the
-  // authority for every change, so the client never edits its cache by hand.
-  const action = useMutation({
-    mutationFn: (work: () => Promise<void>) => work(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["groups"] });
-      await queryClient.invalidateQueries({ queryKey: ["group", selectedId] });
-    },
+  // One write runs any change and reloads the list and the open detail.
+  const action = useAdminWrite({
+    write: (work: () => Promise<void>) => work(),
+    invalidate: [["groups"], ["group", selectedId]],
   });
 
   // A write's answer is not read: the screen reloads instead.

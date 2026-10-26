@@ -1,0 +1,104 @@
+import { toast } from "@genie/ui";
+import {
+  type MutationObserverOptions,
+  type QueryClient,
+  type QueryKey,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useRouter } from "next/navigation.js";
+
+import { type Refusal, refusalOf } from "./client.ts";
+
+/** Every admin write records an audit row, so its success says so. */
+export const SAVED = "Saved. Written to the audit log.";
+
+// A network failure or a non-catalogue answer carries no safe message of its own.
+export const NOT_SAVED = "That change could not be saved. Try again.";
+
+/** A write that answers whether it changed a row: only a change wrote an audit row. */
+export const savedIfChanged = (result: { readonly changed: boolean }) =>
+  result.changed ? SAVED : undefined;
+
+/** One admin write: the call, what it reloads, and how the route reports it. */
+export type AdminWrite<TInput, TResult> = {
+  readonly write: (input: TInput) => Promise<TResult>;
+  /** The queries the write can change. They reload together after it, refused or not. */
+  readonly invalidate: readonly QueryKey[];
+  /** Reload the server-rendered navigation too; no client query holds it. */
+  readonly refresh?: boolean;
+  /** The success toast, or `undefined` for none. Default: SAVED. */
+  readonly saved?: (result: TResult, input: TInput) => string | undefined;
+  /** Shows a refusal in place of the error toast, for example under its field. */
+  readonly refused?: (refusal: Refusal, input: TInput) => void;
+};
+
+/**
+ * The mutation options behind `useAdminWrite`. A refused write rejects with its `Refusal`, whose
+ * message falls back to NOT_SAVED, so a screen that awaits the write reads the same message. The
+ * reload runs before the report, so a toast never names a save the screen does not show yet.
+ */
+export function adminWriteOptions<TInput, TResult>(
+  write: AdminWrite<TInput, TResult>,
+  host: {
+    readonly queryClient: QueryClient;
+    readonly refresh: () => void;
+    readonly toast: typeof toast;
+  }
+): MutationObserverOptions<TResult, Refusal, TInput> {
+  const reload = async () => {
+    await Promise.all(
+      write.invalidate.map((queryKey) =>
+        host.queryClient.invalidateQueries({ queryKey })
+      )
+    );
+
+    if (write.refresh === true) host.refresh();
+  };
+
+  return {
+    mutationFn: async (input) => {
+      try {
+        return await write.write(input);
+      } catch (cause) {
+        const refusal = refusalOf(cause);
+
+        throw { ...refusal, message: refusal.message || NOT_SAVED };
+      }
+    },
+    onSuccess: async (result, input) => {
+      await reload();
+
+      const title =
+        write.saved === undefined ? SAVED : write.saved(result, input);
+
+      if (title !== undefined) host.toast({ tone: "success", title });
+    },
+    onError: async (refusal, input) => {
+      await reload();
+
+      if (write.refused === undefined)
+        host.toast({ tone: "error", title: refusal.message });
+      else write.refused(refusal, input);
+    },
+  };
+}
+
+/**
+ * Runs one admin write: the reload, then the Saved toast or the refusal. The server is the
+ * authority for every change, so the client never edits its cache by hand.
+ */
+export function useAdminWrite<TInput, TResult>(
+  write: AdminWrite<TInput, TResult>
+) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation(
+    adminWriteOptions(write, {
+      queryClient,
+      refresh: () => router.refresh(),
+      toast,
+    })
+  );
+}

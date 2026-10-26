@@ -2,10 +2,10 @@
 
 import type { BrandingDraft } from "@genie/core";
 import { BrandingScreen } from "@genie/core/features/branding";
-import { toast } from "@genie/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
+import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { refusalOf, rpc } from "../../../rpc/client.ts";
 
 /**
@@ -14,7 +14,6 @@ import { refusalOf, rpc } from "../../../rpc/client.ts";
  * the screen; this holds the server state.
  */
 export function BrandingRoute(props: { readonly timeZone: string }) {
-  const queryClient = useQueryClient();
   const t = useTranslations("signIn");
 
   const branding = useQuery({
@@ -22,11 +21,15 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
     queryFn: () => rpc.branding.read(),
   });
 
-  const publish = useMutation({
-    mutationFn: (draft: Partial<BrandingDraft>) =>
-      rpc.branding.publish({ draft }),
+  const publish = useAdminWrite({
+    write: (draft: Partial<BrandingDraft>) => rpc.branding.publish({ draft }),
+    invalidate: [["branding"]],
+    saved: (result) => (result.changed ? "Published" : undefined),
+    // The screen places the refusal's issues under their fields (DR-20 S3-07).
+    refused: () => undefined,
   });
 
+  // An upload stores a file and saves nothing: Publish names its slot later (R-44).
   const upload = useMutation({
     mutationFn: (file: File) => rpc.branding.upload({ file }),
   });
@@ -44,16 +47,7 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
       timeZone={props.timeZone}
       welcomeFallback={(productName) => t("welcomeFallback", { productName })}
       onPublish={async (draft) => {
-        try {
-          const result = await publish.mutateAsync(draft);
-
-          if (result.changed) toast({ tone: "success", title: "Published" });
-        } catch (cause) {
-          // The screen places the refusal's issues under their fields (DR-20 S3-07).
-          throw refusalOf(cause);
-        }
-
-        await queryClient.invalidateQueries({ queryKey: ["branding"] });
+        await publish.mutateAsync(draft);
       }}
       // The slot stays in the screen; the server stores a file and Publish names its slot (R-44).
       onUpload={async (_slot, file) => {

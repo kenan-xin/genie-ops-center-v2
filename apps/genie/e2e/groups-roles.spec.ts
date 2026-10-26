@@ -230,7 +230,8 @@ test("a closed or deleted group's detail is not read again", async ({
         .click(),
     ]);
 
-    return page.getByRole("dialog", { name });
+    // Exact, so that the closing "Delete <name>?" confirmation never matches too.
+    return page.getByRole("dialog", { name, exact: true });
   };
 
   const detailReads: number[] = [];

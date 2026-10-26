@@ -1,10 +1,11 @@
 "use client";
 
 import { RolesScreen, type RolesViewer } from "@genie/core/features/roles";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
+import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
 
 /**
@@ -13,7 +14,6 @@ import { rpc } from "../../../rpc/client.ts";
  * form; each write reloads the list and the open detail through TanStack Query.
  */
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
-  const queryClient = useQueryClient();
   const router = useRouter();
   // An audit target link opens the screen with its role selected.
   const linkedRoleId = useSearchParams().get("selected");
@@ -36,14 +36,9 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     queryFn: () => rpc.roles.catalogue(),
   });
 
-  const action = useMutation({
-    mutationFn: (work: () => Promise<void>) => work(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["roles"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["role", selectedRoleId],
-      });
-    },
+  const action = useAdminWrite({
+    write: (work: () => Promise<void>) => work(),
+    invalidate: [["roles"], ["role", selectedRoleId]],
   });
 
   // A write's answer is not read: the screen reloads instead.
