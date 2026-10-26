@@ -1,7 +1,7 @@
 /**
- * Error-cause helpers shared by the operator command line. A driver error reaches a caller
- * wrapped by drizzle, whose own message carries the SQL and its parameters; the operator needs
- * the cause underneath it instead.
+ * Error-cause helpers shared by the operator command line and the services. A driver error
+ * reaches a caller wrapped by drizzle, whose own message carries the SQL and its parameters; the
+ * caller needs the cause underneath it instead.
  */
 
 /**
@@ -25,6 +25,28 @@ export function causeChain(error: Error | undefined): string {
   }
 
   return messages.join(": ");
+}
+
+/**
+ * The Postgres error code of a failed write, or `undefined` for anything else. drizzle-orm
+ * 0.45.2 wraps a failed query in `DrizzleQueryError`, which carries no `code` of its own; the
+ * driver's pg error, and its `code`, sits on `.cause`. So the chain is walked, not just the top
+ * error. Only the code reaches the fallback line: the message and every value (drizzle's
+ * wrapper message holds the SQL and the parameters) stay in the server log (R-45, R-66).
+ */
+export function pgErrorCode(error: Error | undefined): string | undefined {
+  for (let current = error; current !== undefined;) {
+    if ("code" in current) {
+      const code: unknown = current.code;
+
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of a driver error
+      if (typeof code === "string") return code;
+    }
+
+    current = current.cause instanceof Error ? current.cause : undefined;
+  }
+
+  return undefined;
 }
 
 /**

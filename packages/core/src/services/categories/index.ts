@@ -9,7 +9,8 @@ import {
   withTransaction,
 } from "../../lib/tenant-context/with-transaction.ts";
 import { category, tenantModule } from "../../schema.ts";
-import { pgErrorCode, writeAdminAuditEvent } from "../audit/index.ts";
+import { pgErrorCode } from "../../utils/error-cause.ts";
+import { writeAdminAuditEvent } from "../audit/index.ts";
 
 /** One row of the Categories page, with the number of placeable modules it holds (R-88). */
 export type CategoryRow = {
