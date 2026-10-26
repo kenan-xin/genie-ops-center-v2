@@ -40,10 +40,10 @@ One command starts Postgres 18 in Docker and the application with `next dev` on 
 2. Create your settings file from the template, then fill in the two secrets:
 
    ```bash
-   cp apps/genie/.env.example apps/genie/.env.local
+   cp apps/genie/.env.example apps/genie/.env.development.local
    ```
 
-   Git ignores `.env.local`, and `next dev` reads it. `docs/architecture/environment-contract.md` lists the optional variables and their defaults.
+   Git ignores the file, and `next dev` reads it. Do not name it `.env.local`: Nx loads a project's `.env.local` into every task, so the integration and end-to-end tests would pick up your database and `sso.001.gs` and fail. The comments in `.env.example` say what each value does.
 
 3. Start the database only, the first time, so that you can load the dump before the application runs:
 
