@@ -26,6 +26,13 @@ Spec R-65 to R-70, R-92 to R-95. The page tickets build these, and this ticket p
 - AC-19a structure checks. The inline-string check uses the catalogue coverage test seam in `apps/genie/src/i18n/catalogue-coverage.ts`.
 - The final anti-slop scan of every Section 3 story. Close epic 6wz1.
 
+## Known limits
+
+These limits come from DR-15 (2026-10-25). They are recorded here, not closed.
+
+- The Keycloak axe check filters to serious and critical findings. Keycloak fixes are limited to settings and built-in themes (owner, 2026-10-22).
+- The dark and keyboard sweeps cover first views only. Dialogs and tabs rely on their stories.
+
 ## Acceptance
 
 AC-9, AC-11b, AC-12 to AC-19 rerun through the pages, AC-19a, and gate S3-G3.
