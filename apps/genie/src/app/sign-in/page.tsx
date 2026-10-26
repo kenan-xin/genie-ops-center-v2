@@ -1,9 +1,9 @@
-import { focusRing } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
 import { SignInAction } from "./sign-in-action.tsx";
+import { SignInFooter } from "./sign-in-footer.tsx";
 
 export const dynamic = "force-dynamic";
 
@@ -60,16 +60,6 @@ export default async function SignInPage(props: {
     cause === "signed_out"
       ? await clientOnlyProductName(branding.productName)
       : undefined;
-
-  const supportEmail = present(branding.supportEmail);
-
-  const supportUrl = present(branding.supportUrl);
-
-  const termsUrl = present(branding.termsUrl);
-
-  const privacyUrl = present(branding.privacyUrl);
-
-  const linkClass = `rounded-sm hover:text-foreground hover:underline ${focusRing}`;
 
   // Each cause is its own catalogue call rather than a computed key, so the catalogue-coverage
   // check can read the literal key out of this file.
@@ -130,30 +120,15 @@ export default async function SignInPage(props: {
           acknowledgeLabel={t("acknowledge")}
         />
       </section>
-      <footer className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
-        <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
-          {supportEmail !== null ? (
-            <a href={`mailto:${supportEmail}`} className={linkClass}>
-              {supportEmail}
-            </a>
-          ) : supportUrl !== null ? (
-            <a href={supportUrl} className={linkClass}>
-              {supportUrl}
-            </a>
-          ) : null}
-          {termsUrl === null ? null : (
-            <a href={termsUrl} className={linkClass}>
-              {t("terms")}
-            </a>
-          )}
-          {privacyUrl === null ? null : (
-            <a href={privacyUrl} className={linkClass}>
-              {t("privacy")}
-            </a>
-          )}
-        </nav>
-        <p>{branding.productName}</p>
-      </footer>
+      <SignInFooter
+        productName={branding.productName}
+        supportEmail={branding.supportEmail}
+        supportUrl={branding.supportUrl}
+        termsUrl={branding.termsUrl}
+        privacyUrl={branding.privacyUrl}
+        termsLabel={t("terms")}
+        privacyLabel={t("privacy")}
+      />
     </main>
   );
 }

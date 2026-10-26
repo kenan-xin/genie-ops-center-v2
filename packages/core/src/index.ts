@@ -109,7 +109,11 @@ export {
 
 export { CorrelationScope } from "./lib/correlation/index.ts";
 
-export { supportContact, type SupportContact } from "./lib/branding/support.ts";
+export {
+  httpUrl,
+  supportContact,
+  type SupportContact,
+} from "./lib/branding/support.ts";
 
 export { brandingTokens } from "./lib/branding/tokens.ts";
 
