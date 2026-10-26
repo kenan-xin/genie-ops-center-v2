@@ -71,6 +71,10 @@ export const Phone: Story = {
     const list = within(canvas.getByRole("list", { name: "Roles" }));
 
     await expect(canvas.queryByRole("table")).toBeNull();
+    // One assignment reads in the singular.
+    await expect(
+      list.getByText("2 permissions · 1 assignment")
+    ).toBeInTheDocument();
 
     await userEvent.click(
       list.getByRole("button", { name: /Tenant administrator/ })
@@ -187,12 +191,28 @@ export const DeleteCustomRoleConfirms: Story = {
     );
 
     await expect(
-      confirm.getByText(/1 assignment go with it/)
+      confirm.getByText(/1 assignment goes with it/)
     ).toBeInTheDocument();
 
     await userEvent.click(confirm.getByRole("button", { name: "Delete role" }));
 
     expect(onDeleteRole).toHaveBeenCalledWith(FIXTURE_CUSTOM_DETAIL.id);
+  },
+};
+
+export const DeleteUnassignedRoleCountsNothing: Story = {
+  args: {
+    selectedRoleId: FIXTURE_TWO_UNAVAILABLE_DETAIL.id,
+    detail: FIXTURE_TWO_UNAVAILABLE_DETAIL,
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Delete role/ }));
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: "Delete Two retired keys?" })
+    );
+
+    await expect(confirm.queryByText(/go with it/)).toBeNull();
   },
 };
 

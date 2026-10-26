@@ -99,6 +99,9 @@ export const Phone: Story = {
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth
     );
+    // One member and one role read in the singular.
+    await expect(list.getByText("1 member · 0 roles")).toBeInTheDocument();
+    await expect(list.getByText("0 members · 1 role")).toBeInTheDocument();
 
     await userEvent.click(
       list.getByRole("button", { name: /Finance managers/ })
@@ -291,6 +294,27 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
     );
 
     expect(onDeleteLocalGroup).toHaveBeenCalledWith(FIXTURE_LOCAL.id);
+  },
+};
+
+export const EmptyLocalGroupDeleteConfirmCountsNothing: Story = {
+  args: {
+    groups: [{ ...FIXTURE_LOCAL, memberCount: 0, assignmentCount: 0 }],
+    details: { [FIXTURE_LOCAL.id]: { members: [], assignments: [] } },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Operations" })
+      ).getByRole("button", { name: "Delete group" })
+    );
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: "Delete Operations?" })
+    );
+
+    await expect(confirm.queryByText(/go with it/)).toBeNull();
   },
 };
 

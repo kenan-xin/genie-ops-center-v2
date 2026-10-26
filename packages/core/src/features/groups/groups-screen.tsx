@@ -556,13 +556,15 @@ export function GroupInspector(
           open={confirm === "delete"}
           title={`Delete ${groupLabel(group)}?`}
           description={
-            group.source === "local"
-              ? `${props.members.length} member${
-                  props.members.length === 1 ? "" : "s"
-                } and ${group.assignmentCount} role assignment${
-                  group.assignmentCount === 1 ? "" : "s"
-                } go with it.`
-              : "It has not been seen in a sign-in, so it can be deleted. Its assignments go with it."
+            group.source !== "local"
+              ? "It has not been seen in a sign-in, so it can be deleted. Its assignments go with it."
+              : props.members.length + group.assignmentCount === 0
+                ? "It has no members and no role assignments."
+                : `${props.members.length} member${
+                    props.members.length === 1 ? "" : "s"
+                  } and ${group.assignmentCount} role assignment${
+                    group.assignmentCount === 1 ? "" : "s"
+                  } go with it.`
           }
           confirmLabel="Delete group"
           danger
@@ -731,7 +733,11 @@ export function GroupsScreen(props: GroupsScreenProps) {
             status={(group) => syncBadge(group, props.viewer)}
             facts={(group) => [
               sourcePill(group),
-              `${group.memberCount} members · ${group.assignmentCount} roles`,
+              `${group.memberCount} member${
+                group.memberCount === 1 ? "" : "s"
+              } · ${group.assignmentCount} role${
+                group.assignmentCount === 1 ? "" : "s"
+              }`,
             ]}
           />
         </div>

@@ -846,7 +846,9 @@ export function PeopleScreen(props: PeopleScreenProps) {
             status={(person) => statusPill(person.status)}
             facts={(person) => [
               groupPills(person),
-              `${person.roleCount} roles · last sign-in ${lastSignIn(person)}`,
+              `${person.roleCount} role${
+                person.roleCount === 1 ? "" : "s"
+              } · last sign-in ${lastSignIn(person)}`,
             ]}
             actions={rowActions}
           />

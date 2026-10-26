@@ -378,9 +378,13 @@ function RoleDetailView(props: {
       <ConfirmDialog
         open={confirmDelete}
         title={`Delete ${detail.name}?`}
-        description={`Its ${detail.assignmentCount} assignment${
-          detail.assignmentCount === 1 ? "" : "s"
-        } go with it.`}
+        description={
+          detail.assignmentCount === 0
+            ? "It has no assignments."
+            : detail.assignmentCount === 1
+              ? "Its 1 assignment goes with it."
+              : `Its ${detail.assignmentCount} assignments go with it.`
+        }
         confirmLabel="Delete role"
         danger
         onConfirm={() => {
@@ -592,7 +596,11 @@ export function RolesScreen(props: RolesScreenProps) {
             ]}
             facts={(role) => [
               kindPill(role),
-              `${role.permissions.length} permissions · ${role.assignmentCount} assignments`,
+              `${role.permissions.length} permission${
+                role.permissions.length === 1 ? "" : "s"
+              } · ${role.assignmentCount} assignment${
+                role.assignmentCount === 1 ? "" : "s"
+              }`,
             ]}
           />
         </div>

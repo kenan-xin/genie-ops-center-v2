@@ -93,6 +93,8 @@ export const Phone: Story = {
     await expect(
       list.getByRole("button", { name: "Actions for ada@example.com" })
     ).toBeInTheDocument();
+    // One role reads in the singular.
+    await expect(list.getAllByText(/^1 role · /).length).toBeGreaterThan(0);
 
     await userEvent.click(list.getByRole("button", { name: /Leo Local/ }));
 
