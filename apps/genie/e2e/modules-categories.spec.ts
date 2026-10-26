@@ -65,9 +65,14 @@ async function placeholderLinks(page: Page): Promise<number> {
     .count();
 }
 
-/** Polls an audit count until it is one above `before`: one row per change (R-90a). */
+/**
+ * Exactly one new row per change (R-90a): polls until the count leaves `before`, then reads it once
+ * more. A poll for `before + 1` alone passes on the way to a second row, and times out on a double
+ * write rather than naming it.
+ */
 async function expectOneMore(action: string, before: number): Promise<void> {
-  await expect.poll(() => auditCount(action), POLL).toBe(before + 1);
+  await expect.poll(() => auditCount(action), POLL).not.toBe(before);
+  expect(await auditCount(action), action).toBe(before + 1);
 }
 
 test("lists every compiled module and switches one off through the confirm dialog; Access stays read-only and keeps its holders muted (R-82 to R-86)", async ({
@@ -326,9 +331,7 @@ test("a category is created, renamed, reordered, assigned to a module and delete
             page.getByRole("listitem", { name, exact: true })
           ).toBeVisible();
           // oxlint-disable-next-line no-await-in-loop -- as above.
-          await expect
-            .poll(() => auditCount("core:category_created"), POLL)
-            .toBe(createdBefore + index + 1);
+          await expectOneMore("core:category_created", createdBefore + index);
         }
 
         await expect(page.getByText(SAVED).first()).toBeVisible();

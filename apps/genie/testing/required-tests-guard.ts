@@ -164,6 +164,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/categories-rpc.integration.test.ts",
+    reason:
+      "Spec 3 R-87 to R-90a require every Categories procedure to work over the RPC transport behind the core:settings:manage gate",
+    cases: [
+      "the categories RPC creates, renames, reorders, lists and removes a category, each with its one audit row",
+      "the categories RPC refuses every procedure at 403 to a caller without core:settings:manage, before it parses the input",
+    ],
+  },
+  {
     file: "testing/module-parallel.integration.test.ts",
     cases: [
       "module procedures in two parallel calls answers the enabled module call while refusing only the disabled module call",

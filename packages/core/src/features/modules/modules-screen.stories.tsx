@@ -71,6 +71,11 @@ export const Default: Story = {
     await expect(args.onCategory).toHaveBeenCalledWith("fixture", "c-fin");
     // The popup's focus guards stay until it has closed; axe runs after the play function.
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+
+    // A module under no category names that in its trigger, not a blank value.
+    await expect(
+      table.getByRole("combobox", { name: "Category for Dormant" })
+    ).toHaveTextContent("No category");
   },
 };
 
@@ -168,28 +173,37 @@ export const SwitchOnSavesAtOnce: Story = {
   },
 };
 
+const enableRefused: Story["play"] = async ({ canvas }) => {
+  const alert = within(canvas.getByRole("alert"));
+
+  await expect(
+    alert.getByText("The module configuration is not valid.")
+  ).toBeInTheDocument();
+  await expect(alert.getByText("apiUrl")).toBeInTheDocument();
+  await expect(alert.getByText("Required")).toBeInTheDocument();
+  await expect(alert.getByText("queue.name")).toBeInTheDocument();
+  await expect(
+    alert.getByText("Must be at least 3 characters")
+  ).toBeInTheDocument();
+  await expect(alert.getByRole("link", { name: /settings/i })).toHaveAttribute(
+    "href",
+    "/admin/settings"
+  );
+  // The refused module stays off.
+  await expect(
+    canvas.getByRole("switch", { name: "Ticketing enabled" })
+  ).not.toBeChecked();
+};
+
 export const EnableRefused: Story = {
   args: { refusal: FIXTURE_CONFIG_REFUSAL },
-  play: async ({ canvas }) => {
-    const alert = within(canvas.getByRole("alert"));
+  play: enableRefused,
+};
 
-    await expect(
-      alert.getByText("The module configuration is not valid.")
-    ).toBeInTheDocument();
-    await expect(alert.getByText("apiUrl")).toBeInTheDocument();
-    await expect(alert.getByText("Required")).toBeInTheDocument();
-    await expect(alert.getByText("queue.name")).toBeInTheDocument();
-    await expect(
-      alert.getByText("Must be at least 3 characters")
-    ).toBeInTheDocument();
-    await expect(
-      alert.getByRole("link", { name: /settings/i })
-    ).toHaveAttribute("href", "/admin/settings");
-    // The refused module stays off.
-    await expect(
-      canvas.getByRole("switch", { name: "Ticketing enabled" })
-    ).not.toBeChecked();
-  },
+export const EnableRefusedOnPhone: Story = {
+  args: { refusal: FIXTURE_CONFIG_REFUSAL },
+  globals: phone,
+  play: enableRefused,
 };
 
 export const NoPickerWithoutWorkspaceEntry: Story = {

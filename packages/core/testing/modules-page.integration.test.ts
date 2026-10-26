@@ -390,7 +390,7 @@ describe("the modules page service against a real database", () => {
     expect(rows[2]?.holders).toEqual([]);
   });
 
-  it("setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module, writes one core:module_category_set row", async () => {
+  it("setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module and takes it out again, writes one core:module_category_set row per change", async () => {
     const [category] = await query(
       "insert into category (name, position) values ('Operations', 1) returning id"
     );

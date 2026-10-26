@@ -417,7 +417,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the modules page service against a real database a repeated switch writes no audit row",
       "the modules page service against a real database an enable with an invalid stored config refuses with issues, leaves the row off, writes no audit row",
       "the modules page service against a real database listModules lists compiled modules in image order, maps a dangling category id to null, lists only the holders of <id>:use that the grant reader grants and keeps them for a disabled module",
-      "the modules page service against a real database setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module, writes one core:module_category_set row",
+      "the modules page service against a real database setModuleCategory refuses a module with no workspace entry and an unknown category, places a disabled module and takes it out again, writes one core:module_category_set row per change",
       "the modules page service against a real database a repeated placement changes nothing and writes no audit row",
     ],
   },
@@ -431,6 +431,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the categories page service against a real database delete leaves members ungrouped and changes no row outside category and tenant_module",
       "the categories page service against a real database a duplicate or blank name refuses and writes no row",
       "the categories page service against a real database reorder refuses a list that misses or adds an id as changed, and a repeated id as invalid",
+      "the categories page service against a real database a reorder in the current order writes nothing and adds no audit row",
     ],
   },
   {

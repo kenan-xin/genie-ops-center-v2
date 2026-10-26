@@ -113,6 +113,10 @@ async function categoryNames(): Promise<string[]> {
   );
 }
 
+/** Each category's order and last change, so a test can see that a call wrote nothing. */
+const stamps = () =>
+  query("select id, position, updated_at from category order by position");
+
 /** Every public table's exact row count, so a test can see that a write touched nothing else. */
 async function rowCounts(): Promise<Record<string, number | undefined>> {
   const tables = await query<{ name: string }>(
@@ -384,6 +388,22 @@ describe("the categories page service against a real database", () => {
     ).rejects.toMatchObject({ code: "not-found" });
 
     expect(await categoryNames()).toEqual(["A", "B"]);
+    expect(await auditRows()).toEqual([]);
+  });
+
+  it("a reorder in the current order writes nothing and adds no audit row", async () => {
+    const a = await create("A");
+    const b = await create("B");
+
+    const before = await stamps();
+
+    await markAudit();
+    await reorderCategories(deployment.context, {
+      actorUserId,
+      orderedIds: [a, b],
+    });
+
+    expect(await stamps()).toEqual(before);
     expect(await auditRows()).toEqual([]);
   });
 
