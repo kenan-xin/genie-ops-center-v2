@@ -1,7 +1,8 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type TestInfo } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { queryDatabase } from "./support/database.ts";
+import { currentSessionId, sessionRowCount } from "./support/sessions.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -37,35 +38,6 @@ async function insertOtherSession(
 
   if (id === undefined)
     throw new Error("the other session insert returned no row");
-
-  return id;
-}
-
-async function sessionRowCount(id: string): Promise<string> {
-  const [count] = await queryDatabase(
-    `select count(*) from session where id = '${id}'`
-  );
-
-  return count ?? "0";
-}
-
-/** The current browser session's row id, read through the cookie the sign-in set. */
-async function currentSessionId(page: Page, email: string): Promise<string> {
-  const cookie = (await page.context().cookies()).find(
-    (entry) => entry.name === "genie-session"
-  );
-
-  if (cookie === undefined)
-    throw new Error("the browser holds no session cookie");
-
-  const token = decodeURIComponent(cookie.value).split(".")[0] ?? "";
-
-  const [id] = await queryDatabase(
-    `select id from session where token = '${token}' and user_id = (select id from "user" where email = '${email}')`
-  );
-
-  if (id === undefined)
-    throw new Error("no session row for the browser cookie");
 
   return id;
 }

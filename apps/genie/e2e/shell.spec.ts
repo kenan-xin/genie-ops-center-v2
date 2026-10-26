@@ -283,9 +283,6 @@ test("the idle warning appears before the server expiry and Stay signed in keeps
   await page.keyboard.press("Escape");
   await expect(warning).toBeVisible();
 
-  // The server keeps real time, so the browser clock returns to it before the session extends.
-  await page.clock.setSystemTime(new Date());
-
   const [activity] = await Promise.all([
     page.waitForResponse(
       (response) =>
