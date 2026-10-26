@@ -445,6 +445,7 @@ export {
   type FetchedFile,
   FILE_DOWNLOAD_PATH,
   type FetchFileLinkInput,
+  FileLinkRefusedError,
   type FileLinkInput,
   type FileStorage,
   type StoredFile,

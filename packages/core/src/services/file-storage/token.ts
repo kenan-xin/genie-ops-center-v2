@@ -51,11 +51,19 @@ export function createFileLinkSecret(): Buffer {
 }
 
 /**
+ * A refused link: a bad or expired token, or a principal the link does not admit. The download
+ * route answers it with a 404 and logs nothing; any other error is a real failure it logs.
+ */
+export class FileLinkRefusedError extends Error {}
+
+/**
  * One message covers a bad signature, a malformed payload and an expiry, so a caller learns
  * nothing about which check failed.
  */
 function invalidToken(): Error {
-  return new Error("The file link token is invalid or has expired.");
+  return new FileLinkRefusedError(
+    "The file link token is invalid or has expired."
+  );
 }
 
 /**

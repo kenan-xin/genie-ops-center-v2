@@ -22,12 +22,15 @@ import type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
 import { sanitizeUploadedSvg } from "./sanitize-svg.ts";
 import {
   createFileLinkSecret,
+  FileLinkRefusedError,
   type FileLinkScope,
   readFileLink,
   signFileLink,
 } from "./token.ts";
 
 export type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
+
+export { FileLinkRefusedError } from "./token.ts";
 
 /** The SVG type that goes through the sanitizer before it is stored (R-37). */
 const SVG_MIME_TYPE = "image/svg+xml";
@@ -206,7 +209,9 @@ async function assertCan(
 ): Promise<void> {
   const allowed = await can(principal, permission, resource);
 
-  if (!allowed) throw new Error("Permission denied for this file link.");
+  if (!allowed) {
+    throw new FileLinkRefusedError("Permission denied for this file link.");
+  }
 }
 
 /**
@@ -324,7 +329,9 @@ export function createFileStorage(
 
       if (scope.kind === "branding") {
         if (!input.principal.authenticated) {
-          throw new Error("Permission denied for this file link.");
+          throw new FileLinkRefusedError(
+            "Permission denied for this file link."
+          );
         }
       } else {
         await assertCan(input.principal, scope.permission, scope.resource);

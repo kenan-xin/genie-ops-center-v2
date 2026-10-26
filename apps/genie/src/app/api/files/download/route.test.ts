@@ -2,10 +2,11 @@ import {
   type AuthMember,
   createTenantContext,
   type FetchedFile,
+  FileLinkRefusedError,
   type FileStorage,
 } from "@genie/core";
 import { DOWNLOAD_POLICY } from "@genie/core/security";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type AppContext, publishContext } from "../../../../context.ts";
 import { GET } from "./route.ts";
@@ -49,8 +50,19 @@ const fileStorage: FileStorage = {
   fetchLink: () => served(),
 };
 
-// SAFETY: the route reads only `tenant`; the remaining members are unused by this one handler.
-publishContext({ tenant: { ...tenant, auth, fileStorage } } as AppContext);
+const logError = vi.fn<AppContext["logError"]>();
+
+const app: Pick<AppContext, "tenant" | "logError"> = {
+  tenant: { ...tenant, auth, fileStorage },
+  logError,
+};
+
+// SAFETY: the route reads only `tenant` and `logError`; the rest is unused by this one handler.
+publishContext(app as AppContext);
+
+beforeEach(() => {
+  logError.mockClear();
+});
 
 afterAll(async () => {
   await tenant.db.$client.end();
@@ -78,15 +90,35 @@ describe("GET /api/files/download (Spec 1 R-38)", () => {
     );
   });
 
-  it("answers 404 with an empty body when the file store refuses", async () => {
+  it("answers 404 with an empty body and logs nothing when the file store refuses", async () => {
     served = () =>
-      Promise.reject(new Error("Permission denied for this file link."));
+      Promise.reject(
+        new FileLinkRefusedError(
+          "The file link token is invalid or has expired."
+        )
+      );
 
     const response = await visit();
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.text()).toBe("");
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it("answers the same 404 for a missing blob, and logs it once without the token", async () => {
+    const cause = new Error('The bytes of file "f1" are missing.');
+    served = () => Promise.reject(cause);
+
+    const response = await visit("?token=secret-token-value");
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("");
+    expect(logError).toHaveBeenCalledOnce();
+    expect(logError.mock.calls[0]?.[0]).toBe(cause);
+    expect(JSON.stringify(logError.mock.calls)).not.toContain(
+      "secret-token-value"
+    );
   });
 
   it("serves an image inline with a private cache", async () => {
