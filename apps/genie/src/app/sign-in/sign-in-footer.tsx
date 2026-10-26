@@ -32,25 +32,29 @@ export function SignInFooter({
 
   const privacy = httpUrl(privacyUrl);
 
+  const hasLinks = support !== null || terms !== null || privacy !== null;
+
   return (
     <footer className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
-      <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
-        {support === null ? null : (
-          <a href={support.href} className={LINK_CLASS}>
-            {support.label}
-          </a>
-        )}
-        {terms === null ? null : (
-          <a href={terms} className={LINK_CLASS}>
-            {termsLabel}
-          </a>
-        )}
-        {privacy === null ? null : (
-          <a href={privacy} className={LINK_CLASS}>
-            {privacyLabel}
-          </a>
-        )}
-      </nav>
+      {hasLinks ? (
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {support === null ? null : (
+            <a href={support.href} className={LINK_CLASS}>
+              {support.label}
+            </a>
+          )}
+          {terms === null ? null : (
+            <a href={terms} className={LINK_CLASS}>
+              {termsLabel}
+            </a>
+          )}
+          {privacy === null ? null : (
+            <a href={privacy} className={LINK_CLASS}>
+              {privacyLabel}
+            </a>
+          )}
+        </div>
+      ) : null}
       <p>{productName}</p>
     </footer>
   );

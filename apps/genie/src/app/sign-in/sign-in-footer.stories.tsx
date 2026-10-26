@@ -42,6 +42,21 @@ export const SupportAndLegalLinks: Story = {
       "href",
       "https://example.invalid/privacy"
     );
+    await expect(canvas.queryByRole("navigation")).toBeNull();
+  },
+};
+
+export const NoLinks: Story = {
+  args: {
+    supportEmail: null,
+    supportUrl: null,
+    termsUrl: null,
+    privacyUrl: null,
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.queryByRole("navigation")).toBeNull();
+    await expect(canvasElement.querySelector("footer > div")).toBeNull();
+    await expect(canvas.getByText("Genie Ops Center")).toBeVisible();
   },
 };
 
