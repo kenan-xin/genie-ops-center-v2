@@ -481,7 +481,7 @@ Amended 2026-10-23 (Spec 3 R-28, S3-04a): the core `category` rows are a changin
 
 Question: `tenant_branding` carried three colors, primary, secondary, and accent, each with a computed foreground. The shell design found no surface that uses a secondary color, and an accent with no named surface cannot be contrast-checked, because a check needs the pair that is rendered. Which colors does a tenant set?
 
-Decision: one color. `primary_color` fills the `--primary` variables and `primary_foreground` is computed and stored. It shows as small accents (the active navigation row, primary buttons, the focus ring, count pills), on the sign-in page, and in emails; the sidebar and the page chrome stay neutral. Two typography fields join it. `font_size` is a preset, `compact` (14 px), `default` (15 px), or `large` (16 px), that sets the root font size; the type scale is rem-based, so every size follows. `text_color` is the heading and body color on light surfaces, checked at 4.5:1 against white and the subtle surface; the dark theme keeps its fixed value. Publish is blocked when a branding contrast pair is below 3:1. A text pair between 3:1 and 4.5:1 shows a warning and Publish continues. No automatic fix offers a shade (Spec 3 R-46, amended 2026-10-25).
+Decision: one color. `primary_color` fills the `--primary` variables and `primary_foreground` is computed and stored. It shows as small accents (the active navigation row, primary buttons, the focus ring, count pills), on the sign-in page, and in emails; the sidebar and the page chrome stay neutral. One typography field joins it. `font_size` is a preset, `compact` (14 px), `default` (15 px), or `large` (16 px), that sets the root font size; the type scale is rem-based, so every size follows. A text color for light surfaces was decided here too. It is deferred with the Typography tab (owner decision 2026-10-22, see the amendment below). Publish is blocked when a branding contrast pair is below 3:1. A text pair between 3:1 and 4.5:1 shows a warning and Publish continues. No automatic fix offers a shade (Spec 3 R-46, amended 2026-10-25).
 
 Why not three colors: a color with no surface is a value nothing reads, and a contrast check cannot protect a pair that no screen renders. Why not a free font size: three presets keep every rem-based control at a size the design checked, and a customer asks for larger or smaller, not for 15.5 px.
 
@@ -490,6 +490,8 @@ Amended 2026-09-17, solid surfaces only: the tenant primary color fills solid su
 Trade-off: a brand with two colors expresses one. The `compact` preset lowers rem-based control heights below the 44 px touch target; the design owns that rule and its resolution.
 
 Guard: the token layer is emitted from `tenant_branding` alone and the branding save goes through the one `applyBranding` step of `DEC-40`, so a second color is one column, one variable, and one contrast pair.
+
+Amended 2026-10-25 (DR-18): the text color for light surfaces is not built. Spec 3 R-14 and C-2 deferred it with the Typography tab, so the Branding page does not read a text color and it has no contrast pair. The one stored color besides `primary_color` is the sign-in background, `login_background_color`. It fills the sign-in page only, and it has a named surface and its own contrast pair, as the Revisit line asks of a second color (Spec 3 R-13, R-46).
 
 Research behind this decision: `../design/research/theming-2026-09-17.md`.
 
