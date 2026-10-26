@@ -1,4 +1,5 @@
 import { implementModule, type Module } from "@genie/core";
+import { PageHeader } from "@genie/core/features/shell";
 import { createElement } from "react";
 
 /** The fixture's empty API. The declaration and the router must name this one object. */
@@ -53,7 +54,7 @@ const landingFixtureModule = {
         createElement(
           "main",
           null,
-          createElement("h1", null, "Landing fixture")
+          createElement(PageHeader, { title: "Landing fixture" })
         ),
     },
     admin: {},

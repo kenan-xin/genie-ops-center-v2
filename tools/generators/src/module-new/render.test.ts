@@ -267,7 +267,8 @@ describe("the rendered user interface", () => {
 
       expect(code, path).not.toMatch(/\bcan\(/);
       expect(code, path).not.toMatch(/permitted|canUse|forbidden/i);
-      expect(code, path).not.toContain("@genie/core");
+      // The root entry carries the seam; the browser-safe shell entry (PageHeader) does not.
+      expect(code, path).not.toContain('"@genie/core"');
     }
   });
 
@@ -331,6 +332,21 @@ describe("the display name guard", () => {
     ).toThrow(/display name/);
   });
 
+  it("titles each page through PageHeader, never an own h1, so a phone shows one title (6wz1.32)", () => {
+    const rendered = renderModule({ id: "demo", displayName: "Demo" });
+
+    for (const page of ["workspace-page.tsx", "admin-page.tsx"]) {
+      const source = rendered.get(
+        `packages/modules/demo/src/presentation/${page}`
+      );
+
+      expect(source).toContain(
+        'import { PageHeader } from "@genie/core/features/shell";'
+      );
+      expect(source).not.toContain("<h1");
+    }
+  });
+
   it("renders a name holding a named entity as a literal, not as JSX text", () => {
     // `&copy;` is a real named entity, so JSX text would decode it to `©` and the
     // label would stop saying what was asked for. A name such as `R&D; Ops`
@@ -347,10 +363,8 @@ describe("the display name guard", () => {
 
     // JSX text decodes an HTML entity, so a bare name between tags would render
     // as something other than what was asked for.
-    expect(workspace).toContain('<h1>{"R&copy; Ops"}</h1>');
-    expect(workspace).not.toContain("<h1>R&copy; Ops</h1>");
-    expect(admin).toContain('<h1>{"R&copy; Ops settings"}</h1>');
-    expect(admin).not.toContain("<h1>R&copy; Ops settings</h1>");
+    expect(workspace).toContain('<PageHeader title={"R&copy; Ops"} />');
+    expect(admin).toContain('<PageHeader title={"R&copy; Ops settings"} />');
     expect(admin).toContain('{"R&copy; Ops"} records.');
   });
 

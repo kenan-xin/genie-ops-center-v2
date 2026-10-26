@@ -261,6 +261,59 @@ test("the drawer opens below lg and closes on route change, and the sidebar show
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
+test("each workspace entry opens its own page with one page title (6wz1.32, 6wz1.37)", async ({
+  page,
+}) => {
+  await page.goto("/account");
+
+  for (const [label, path] of [
+    ["Placeholder", /\/placeholder$/],
+    ["Archive", /\/placeholder\/archive$/],
+    ["Retired", /\/placeholder\/retired$/],
+  ] as const) {
+    // oxlint-disable-next-line no-await-in-loop -- each entry is opened after the previous one.
+    const navigation = await openNavigation(page);
+
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await navigation
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: label, exact: true })
+      .click();
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(page).toHaveURL(path);
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(page.getByText("This page could not be found.")).toHaveCount(
+      0
+    );
+
+    // The one level-one heading is the page header's.
+    const heading = page.getByRole("heading", { level: 1 });
+
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(heading).toHaveCount(1);
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(heading).toHaveText(label);
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(
+      page.locator("[data-shell-page-header]").getByRole("heading")
+    ).toHaveCount(1);
+
+    // Below lg the top bar shows the title, so the page's own heading is visually hidden.
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    const box = await heading.boundingBox();
+
+    if (atLg(page)) {
+      expect(box?.height ?? 0).toBeGreaterThan(1);
+    } else {
+      expect(box?.height ?? 0).toBeLessThanOrEqual(1);
+      // oxlint-disable-next-line no-await-in-loop -- see above.
+      await expect(page.locator("[data-shell-top-bar]")).toContainText(label);
+    }
+  }
+
+  await expectNoAxeViolations(page, "placeholder entry page");
+});
+
 test("the user menu offers the workspace items, and Sign out ends the session (R-32)", async ({
   page,
 }) => {

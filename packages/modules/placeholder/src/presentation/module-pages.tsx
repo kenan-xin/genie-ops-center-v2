@@ -1,4 +1,7 @@
+import type { ComponentType } from "react";
+
 import { AdminPage } from "./admin-page.tsx";
+import { EntryPage } from "./entry-page.tsx";
 import { WorkspacePage } from "./workspace-page.tsx";
 
 /**
@@ -13,4 +16,11 @@ export function PlaceholderWorkspacePage() {
 
 export function PlaceholderAdminPage() {
   return <AdminPage recordCount={0} />;
+}
+
+/** The shared page of one further workspace entry, titled with the entry's label. */
+export function placeholderEntryPage(label: string): ComponentType {
+  return function PlaceholderEntryPage() {
+    return <EntryPage label={label} />;
+  };
 }

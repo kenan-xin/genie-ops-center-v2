@@ -1,3 +1,5 @@
+import { PageHeader } from "@genie/core/features/shell";
+
 export type AdminPageProps = {
   /** How many records the workspace holds, read by the page that renders this. */
   readonly recordCount: number;
@@ -10,7 +12,7 @@ export type AdminPageProps = {
 export function AdminPage(props: AdminPageProps) {
   return (
     <main>
-      <h1>Placeholder settings</h1>
+      <PageHeader title="Placeholder settings" />
       <p>This deployment holds {props.recordCount} placeholder records.</p>
     </main>
   );

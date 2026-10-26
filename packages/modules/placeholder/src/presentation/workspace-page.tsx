@@ -1,3 +1,4 @@
+import { PageHeader } from "@genie/core/features/shell";
 import { Disclosure } from "@genie/ui";
 
 import type { PlaceholderRecordView } from "./__fixtures__/records.ts";
@@ -9,7 +10,7 @@ export type WorkspacePageProps = {
 export function WorkspacePage(props: WorkspacePageProps) {
   return (
     <main>
-      <h1>Placeholder</h1>
+      <PageHeader title="Placeholder" />
       {props.records.length === 0 ? (
         <p>No records yet.</p>
       ) : (

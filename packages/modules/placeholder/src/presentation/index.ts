@@ -5,6 +5,8 @@
 
 export { AdminPage, type AdminPageProps } from "./admin-page.tsx";
 
+export { EntryPage, type EntryPageProps } from "./entry-page.tsx";
+
 export { WorkspacePage, type WorkspacePageProps } from "./workspace-page.tsx";
 
 export type { PlaceholderRecordView } from "./__fixtures__/records.ts";

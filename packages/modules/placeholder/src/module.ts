@@ -10,6 +10,7 @@ import { z } from "zod";
 import { placeholderContract } from "./contract.ts";
 import {
   PlaceholderAdminPage,
+  placeholderEntryPage,
   PlaceholderWorkspacePage,
 } from "./presentation/module-pages.tsx";
 import { placeholderRouter } from "./router.ts";
@@ -182,7 +183,13 @@ export const placeholderModule = {
   },
 
   pages: {
-    workspace: { home: PlaceholderWorkspacePage },
+    // Each further entry's page key is the last segment of its path, which `/placeholder/[entry]`
+    // looks up.
+    workspace: {
+      home: PlaceholderWorkspacePage,
+      archive: placeholderEntryPage(archive.label),
+      retired: placeholderEntryPage(retired.label),
+    },
     admin: { settings: PlaceholderAdminPage },
   },
 

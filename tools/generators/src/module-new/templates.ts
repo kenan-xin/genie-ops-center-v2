@@ -688,7 +688,8 @@ export const ${names.camel}Records: readonly ${names.pascal}RecordView[] = [
 `;
 
 const workspacePage: Template = (names) =>
-  `import { Disclosure } from "@genie/ui";
+  `import { PageHeader } from "@genie/core/features/shell";
+import { Disclosure } from "@genie/ui";
 
 import type { ${names.pascal}RecordView } from "./__fixtures__/records.ts";
 
@@ -706,9 +707,10 @@ export type WorkspacePageProps = {
 export function WorkspacePage(props: WorkspacePageProps) {
   return (
     <main>
-      {/* The name is a string literal, not JSX text: text decodes a named HTML
+      {/* The page header is the one title: inside the shell the top bar shows it on a phone.
+          The name is a string literal, not attribute text: attribute text decodes a named HTML
           entity, so a name such as \`R&copy; Ops\` would render as \`R© Ops\`. */}
-      <h1>{"${names.displayName}"}</h1>
+      <PageHeader title={"${names.displayName}"} />
       {props.records.length === 0 ? (
         <p>No records yet.</p>
       ) : (
@@ -726,7 +728,9 @@ export function WorkspacePage(props: WorkspacePageProps) {
 `;
 
 const adminPage: Template = (names) =>
-  `export type AdminPageProps = {
+  `import { PageHeader } from "@genie/core/features/shell";
+
+export type AdminPageProps = {
   /** How many records the workspace holds, read by the page that renders this. */
   readonly recordCount: number;
 };
@@ -740,7 +744,7 @@ export function AdminPage(props: AdminPageProps) {
     <main>
       {/* Each name is a string literal, not JSX text: text decodes a named HTML
           entity, so a name such as \`R&copy; Ops\` would render as \`R© Ops\`. */}
-      <h1>{"${names.displayName} settings"}</h1>
+      <PageHeader title={"${names.displayName} settings"} />
       <p data-testid="${names.id}-record-count">
         This deployment holds {props.recordCount} {"${names.displayName}"} records.
       </p>
@@ -1227,7 +1231,8 @@ this folder.
 
 ## What it imports
 
-\`@genie/ui\`, \`react\`, and its own fixtures. The story file also imports the Storybook types.
+\`@genie/ui\`, \`react\`, \`PageHeader\` from \`@genie/core/features/shell\`, and its own fixtures. The
+story file also imports the Storybook types.
 `;
 
 const fixturesReadme: Template = () =>
