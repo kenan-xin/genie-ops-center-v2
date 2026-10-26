@@ -429,14 +429,14 @@ function actorCell(event: AuditEvent): JSX.Element {
   );
 }
 
-/** The target cell. The table names the record and marks a removed one; the sheet carries the link. */
+/** The target. The table and the card mark a removed one; the sheet carries the link. */
 function TargetCell(props: { readonly event: AuditEvent }): JSX.Element {
   if (props.event.targetType === "") {
-    return <span className="block text-muted-foreground">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   return (
-    <span className="block wrap-anywhere">
+    <span className="wrap-anywhere">
       {props.event.targetLabel}
       {props.event.targetExists ? null : (
         <span className="ml-1.5 text-xs font-medium text-muted-foreground">
@@ -566,7 +566,14 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                   className="flex flex-wrap items-center gap-1.5"
                 >
                   <ActionPill action={event.action} />
-                  <span className="text-xs">{event.targetLabel}</span>
+                  <span className="text-xs">
+                    {event.targetType === "" ? null : (
+                      <span className="text-muted-foreground">
+                        {humanize(event.targetType)}
+                      </span>
+                    )}{" "}
+                    <TargetCell event={event} />
+                  </span>
                 </span>,
               ]}
             />

@@ -134,6 +134,9 @@ export const Phone: Story = {
     const first = within(cards[0]!);
 
     await expect(first.getByText("core:person_added")).toBeVisible();
+    // The card names the target's type and marks a removed target, as the table does (R-69).
+    await expect(first.getByText("User")).toBeVisible();
+    await expect(within(cards[2]!).getByText("(removed)")).toBeVisible();
     await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
 
     await userEvent.click(
