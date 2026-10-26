@@ -34,9 +34,24 @@ const nextConfig: NextConfig = {
   async headers() {
     // R-47 on every path. The viewer response replaces the policy in the proxy, and the setup
     // gate sets the same list on its own responses; one source in `@genie/core/security` keeps
-    // them from drifting. Keeping the baseline on every path means a proxy that failed to run
+    // them from drifting. Keeping the baseline on every other path means a proxy that failed to run
     // leaves frames denied instead of leaving no policy at all.
-    return [{ source: "/(.*)", headers: [...STANDARD_HEADERS] }];
+    //
+    // The one exception is the download route, which sends `DOWNLOAD_POLICY` itself (DR-27). A
+    // route cannot replace a header set here: Next.js copies a route header only when this list
+    // did not set it (`server/send-response.js`). So the policy skips that path, both spellings.
+    const policy = STANDARD_HEADERS.filter(
+      ({ key }) => key === "Content-Security-Policy"
+    );
+
+    const others = STANDARD_HEADERS.filter(
+      ({ key }) => key !== "Content-Security-Policy"
+    );
+
+    return [
+      { source: "/(.*)", headers: others },
+      { source: "/((?!api/files/download/?$).*)", headers: policy },
+    ];
   },
 };
 

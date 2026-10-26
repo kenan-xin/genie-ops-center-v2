@@ -1,3 +1,5 @@
+import { DOWNLOAD_POLICY } from "@genie/core/security";
+
 import { requireContext } from "../../../../context.ts";
 import { requestPrincipal } from "../../../../request-principal.ts";
 
@@ -6,7 +8,10 @@ export const dynamic = "force-dynamic";
 function notFound(): Response {
   return new Response(null, {
     status: 404,
-    headers: { "cache-control": "no-store" },
+    headers: {
+      "cache-control": "no-store",
+      "content-security-policy": DOWNLOAD_POLICY,
+    },
   });
 }
 
@@ -44,9 +49,7 @@ export async function GET(request: Request): Promise<Response> {
       "content-type": served.mimeType,
       "cache-control": "private, max-age=300",
       "content-disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(served.fileName)}`,
-      // An inline SVG opened directly runs as a document on the app origin: no script, no sniffing.
-      "content-security-policy":
-        "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      "content-security-policy": DOWNLOAD_POLICY,
       "x-content-type-options": "nosniff",
     },
   });

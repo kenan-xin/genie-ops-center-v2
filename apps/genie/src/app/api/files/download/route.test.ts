@@ -4,6 +4,7 @@ import {
   type FetchedFile,
   type FileStorage,
 } from "@genie/core";
+import { DOWNLOAD_POLICY } from "@genie/core/security";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { type AppContext, publishContext } from "../../../../context.ts";
@@ -71,6 +72,10 @@ describe("GET /api/files/download (Spec 1 R-38)", () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    // The global baseline skips this path, so the refusal carries the download policy itself.
+    expect(response.headers.get("content-security-policy")).toBe(
+      DOWNLOAD_POLICY
+    );
   });
 
   it("answers 404 with an empty body when the file store refuses", async () => {
@@ -103,11 +108,8 @@ describe("GET /api/files/download (Spec 1 R-38)", () => {
 
     const response = await visit();
 
-    expect(response.headers.get("content-security-policy")).toContain(
-      "sandbox"
-    );
-    expect(response.headers.get("content-security-policy")).toContain(
-      "default-src 'none'"
+    expect(response.headers.get("content-security-policy")).toBe(
+      DOWNLOAD_POLICY
     );
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });

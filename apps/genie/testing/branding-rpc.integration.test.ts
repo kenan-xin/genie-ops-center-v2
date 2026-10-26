@@ -1,4 +1,5 @@
 import { type BrandingContract, CORE_ERROR_MESSAGES } from "@genie/core";
+import { DOWNLOAD_POLICY } from "@genie/core/security";
 import {
   insertCredentialPerson,
   insertSession,
@@ -122,6 +123,16 @@ describe("the branding RPC", () => {
       scanStatus: "skipped",
     });
     expect(view.url).toContain("/api/files/download?token=");
+
+    // DR-27: the served file carries exactly one policy, the download policy.
+    const { pathname, search } = new URL(view.url!);
+
+    const served = await fetch(`${server.baseUrl}${pathname}${search}`, {
+      headers: { cookie: managerCookie },
+    });
+
+    expect(served.status).toBe(200);
+    expect(served.headers.get("content-security-policy")).toBe(DOWNLOAD_POLICY);
   });
 
   it("refuses a png over 1 MB and a pdf with branding-upload-refused at 400", async () => {

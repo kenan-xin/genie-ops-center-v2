@@ -7,6 +7,14 @@ export const BASELINE_POLICY =
   "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'";
 
 /**
+ * The one policy of a file download response (DEC-31, amended 2026-10-26). An inline SVG opened
+ * directly runs as a document on the app origin, so it gets no script, no fetch and a sandbox, and
+ * keeps the baseline's `frame-ancestors 'none'`. It replaces the baseline on that path only.
+ */
+export const DOWNLOAD_POLICY =
+  "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox";
+
+/**
  * The standard security headers (R-47) in one place, so the configuration that puts them on every
  * response and the proxy that creates its own responses (a redirect, a refusal, the setup gate)
  * cannot drift apart. The CSP starts as the baseline; the viewer override replaces `frame-src`

@@ -1,5 +1,6 @@
 import { request } from "node:http";
 
+import { DOWNLOAD_POLICY } from "@genie/core/security";
 import {
   enableModules,
   markSetupDone,
@@ -126,6 +127,27 @@ describe("header coverage on the built application", () => {
       }
 
       expect(response.headers.get("content-security-policy")).toBe(BASELINE);
+    });
+  }
+
+  // DR-27: the download route owns its policy, so the configuration baseline must not reach it.
+  // An exact match also proves one header, because a second one would join the value with ", ".
+  for (const path of [
+    "/api/files/download?token=unknown",
+    "/api/files/download/?token=unknown",
+  ]) {
+    it(`${path} carries all five headers and only the download policy`, async () => {
+      const response = await raw(path);
+
+      expect(response.status).toBe(404);
+
+      for (const header of FIVE) {
+        expect(response.headers.get(header)).not.toBeNull();
+      }
+
+      expect(response.headers.get("content-security-policy")).toBe(
+        DOWNLOAD_POLICY
+      );
     });
   }
 
