@@ -111,9 +111,27 @@ export async function startIdentityStandins(): Promise<IdentityStandins> {
     // test never races Keycloak's realm import.
     await compose(["up", "-d", "--wait"]);
   } catch (error) {
+    // `down` removes the container and its log, and Keycloak's exit reason is only in
+    // that log (xok3.21), so read it first and carry it in the error.
+    const logs = await compose([
+      "logs",
+      "--no-color",
+      "--tail",
+      "80",
+      "keycloak",
+    ]).then(
+      ({ stdout, stderr }) => `${stdout}${stderr}`,
+      () => "(could not read the Keycloak log)"
+    );
+
     await stop();
 
-    throw error;
+    throw new Error(
+      `The identity stand-ins did not start. Last Keycloak log lines:\n${logs}`,
+      {
+        cause: error,
+      }
+    );
   }
 
   return {
