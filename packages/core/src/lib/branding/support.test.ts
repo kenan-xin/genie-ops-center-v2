@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { supportContact } from "./support.ts";
+import { httpUrl, supportContact } from "./support.ts";
+
+describe("httpUrl", () => {
+  it("keeps a trimmed http(s) URL and drops any other scheme (tokens L-2)", () => {
+    expect(httpUrl(" https://acme.example/terms ")).toBe(
+      "https://acme.example/terms"
+    );
+    expect(httpUrl("javascript:alert(1)")).toBeNull();
+    expect(httpUrl("not a url")).toBeNull();
+    expect(httpUrl(null)).toBeNull();
+  });
+});
 
 describe("supportContact", () => {
   it("lets a valid email win over a URL", () => {

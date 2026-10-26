@@ -250,6 +250,20 @@ describe("mailer templates", () => {
     expect(text).toContain("help@globex.invalid");
   });
 
+  it("drops a terms or privacy link that is not http(s) (tokens L-2)", async () => {
+    const { html, text } = await renderMailTemplate("role-granted", VARIABLES, {
+      ...GLOBEX,
+      termsUrl: "javascript:alert(1)",
+    });
+
+    for (const part of [html, text]) {
+      expect(part).not.toContain("javascript:");
+      expect(part).not.toContain("Terms");
+    }
+
+    expect(html).toContain(`href="${GLOBEX.privacyUrl}"`);
+  });
+
   it("leaves out every optional line the branding does not set", async () => {
     const { html, text } = await renderMailTemplate(
       "role-granted",

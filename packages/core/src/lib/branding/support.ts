@@ -11,6 +11,15 @@ export function isSupportEmail(value: string): boolean {
   return EMAIL.test(value);
 }
 
+/** The one branding link rule: a trimmed http(s) URL, else null, so no other scheme becomes a link. */
+export function httpUrl(value: string | null): string | null {
+  const url = value?.trim() ?? "";
+
+  return URL.canParse(url) && /^https?:$/.test(new URL(url).protocol)
+    ? url
+    : null;
+}
+
 /**
  * The one support link branding offers: a valid email wins, else an http(s) page, else none. Both
  * values are trimmed, so a blank or a `javascript:` value never becomes a link.
@@ -25,11 +34,7 @@ export function supportContact(values: {
     return { label: email, href: `mailto:${email}` };
   }
 
-  const url = values.supportUrl?.trim() ?? "";
+  const url = httpUrl(values.supportUrl);
 
-  if (URL.canParse(url) && /^https?:$/.test(new URL(url).protocol)) {
-    return { label: url, href: url };
-  }
-
-  return null;
+  return url === null ? null : { label: url, href: url };
 }

@@ -26,7 +26,7 @@ import {
   render,
 } from "@react-email/components";
 
-import { supportContact } from "../../lib/branding/support.ts";
+import { httpUrl, supportContact } from "../../lib/branding/support.ts";
 import type {
   MailBrandingTheme,
   MailTemplateId,
@@ -248,6 +248,8 @@ function MailLayout({
   readonly theme: MailBrandingTheme;
 }) {
   const support = supportContact(theme);
+  const termsUrl = httpUrl(theme.termsUrl);
+  const privacyUrl = httpUrl(theme.privacyUrl);
 
   return (
     <Html lang="en">
@@ -293,18 +295,16 @@ function MailLayout({
                 </Link>
               </Text>
             )}
-            {theme.termsUrl === null && theme.privacyUrl === null ? null : (
+            {termsUrl === null && privacyUrl === null ? null : (
               <Text style={STYLES.footer}>
-                {theme.termsUrl === null ? null : (
-                  <Link href={theme.termsUrl} style={STYLES.footerLink}>
+                {termsUrl === null ? null : (
+                  <Link href={termsUrl} style={STYLES.footerLink}>
                     Terms
                   </Link>
                 )}
-                {theme.termsUrl !== null && theme.privacyUrl !== null
-                  ? " · "
-                  : null}
-                {theme.privacyUrl === null ? null : (
-                  <Link href={theme.privacyUrl} style={STYLES.footerLink}>
+                {termsUrl !== null && privacyUrl !== null ? " · " : null}
+                {privacyUrl === null ? null : (
+                  <Link href={privacyUrl} style={STYLES.footerLink}>
                     Privacy
                   </Link>
                 )}
@@ -324,13 +324,15 @@ function MailLayout({
  */
 function renderText(content: MailContent, theme: MailBrandingTheme): string {
   const support = supportContact(theme);
+  const termsUrl = httpUrl(theme.termsUrl);
+  const privacyUrl = httpUrl(theme.privacyUrl);
 
   const footer = [
     content.footer,
     theme.footerText,
     support === null ? null : `Support: ${support.label}`,
-    theme.termsUrl === null ? null : `Terms: ${theme.termsUrl}`,
-    theme.privacyUrl === null ? null : `Privacy: ${theme.privacyUrl}`,
+    termsUrl === null ? null : `Terms: ${termsUrl}`,
+    privacyUrl === null ? null : `Privacy: ${privacyUrl}`,
     theme.productName,
   ].filter((line) => line !== null);
 
