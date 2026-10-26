@@ -89,7 +89,7 @@ The theme is a `data-theme` attribute on `<html>`. The server writes it from the
 
 ## Tables and card lists
 
-Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. A clickable row is reachable by keyboard: the row carries `tabindex="0"` and a `role`, Enter and Space open it, and it takes the shared focus ring. A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
+Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
 
 ## Transfer list
 
@@ -141,7 +141,7 @@ Components in this tree: `HelpNote` in `src/sections/access/components/ui.tsx`, 
 
 ## Buttons
 
-Variants: primary (brand fill, `--primary-foreground` text), secondary (white fill, gray-300 border, gray-800 text), danger (red-600 fill, white text), ghost (no fill, no border, gray-700 text), and icon-only, which is a square of the same height with an `aria-label`. No variant carries a resting shadow; the fill and the hairline do the work.
+Variants: primary (brand fill, `--primary-foreground` text), secondary (white fill, a border from the `--input` token that meets the 3:1 boundary of WCAG 1.4.11, gray-800 text; amended 2026-10-25, S3-03 plan decision PD-11), danger (red-600 fill, white text), ghost (no fill, no border, gray-700 text), and icon-only, which is a square of the same height with an `aria-label`. No variant carries a resting shadow; the fill and the hairline do the work.
 
 A switch is a visually hidden input under a drawn track, so the track is only pressable inside a label. Either use the labelled switch row, or wrap the bare switch in a label of its own. Sizes follow the control scale: sm 32px, md 40px, lg 44px, md being the default.
 
