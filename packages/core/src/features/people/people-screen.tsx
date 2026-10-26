@@ -778,7 +778,8 @@ export function PeopleScreen(props: PeopleScreenProps) {
         </div>
       )}
 
-      {props.error === undefined ? null : (
+      {/* While Add person is open, its dialog shows the error, so the page does not repeat it. */}
+      {props.error === undefined || adding ? null : (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {props.error}
         </p>

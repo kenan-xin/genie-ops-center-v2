@@ -596,6 +596,8 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
       screen.getByRole("dialog", { name: "Add person" })
     ).toBeInTheDocument();
     await expect(dialog.getByLabelText("Email")).toHaveValue("ada@example.com");
+    // The page does not repeat it behind the dialog.
+    await expect(screen.getAllByText(/already exists/)).toHaveLength(1);
   },
 };
 
