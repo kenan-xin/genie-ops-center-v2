@@ -9,3 +9,5 @@ The shadcn primitives on Base UI (`@base-ui/react`). The shadcn command line wri
 Composed parts go in `../parts/`.
 
 Do not put composed components, business screens or hand-written primitives here.
+
+`buttonVariants` lives in `button-variants.ts`, outside the generated `button.tsx`, so that server components can import it. After any `shadcn add --overwrite` of Button, move it out again (U-10, 2026-10-25).
