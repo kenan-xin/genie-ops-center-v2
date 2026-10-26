@@ -29,6 +29,14 @@ const GLOBEX = mailBrandingTheme(
 
 const BARE = mailBrandingTheme(mailBranding());
 
+const RENAMED = mailBrandingTheme(
+  mailBranding({
+    companyName: "Renamed Co",
+    productName: "Renamed Ops",
+    supportEmail: "help@renamed.invalid",
+  })
+);
+
 /** The HTML part as readable text, so a test can check reading order. */
 function htmlText(html: string): string {
   return html
@@ -53,7 +61,6 @@ function inOrder(haystack: string, needles: readonly string[]): boolean {
 }
 
 const VARIABLES = {
-  companyName: "Acme Security",
   deviceName: "Firefox on Linux",
   email: "ada@example.invalid",
   invitationUrl: "https://genie.example.invalid/invite?token=invite-token",
@@ -62,9 +69,7 @@ const VARIABLES = {
   message: "A new update is available.",
   moduleName: "Records",
   name: "Ada Lovelace",
-  productName: "Genie Ops Center",
   roleName: "Administrator",
-  supportEmail: "support@example.invalid",
 };
 
 const TEXT_PARTS = {
@@ -74,11 +79,11 @@ const TEXT_PARTS = {
   },
   "role-granted": {
     heading: "Role granted",
-    action: `Open ${VARIABLES.productName}: ${VARIABLES.link}`,
+    action: `Open ${ACME.productName}: ${VARIABLES.link}`,
   },
   "role-removed": {
     heading: "Role removed",
-    action: `Open ${VARIABLES.productName}: ${VARIABLES.link}`,
+    action: `Open ${ACME.productName}: ${VARIABLES.link}`,
   },
   "new-device-sign-in": {
     heading: "New device sign-in",
@@ -91,6 +96,42 @@ const TEXT_PARTS = {
 } satisfies Record<
   (typeof MAIL_TEMPLATE_IDS)[number],
   { readonly heading: string; readonly action: string }
+>;
+
+/** Where each template names the product, the company or support, rendered with RENAMED. */
+const NAMED = {
+  "invitation-brokered": {
+    subject: "You are invited to Renamed Ops",
+    action: "Accept invitation",
+    body: "Grace Hopper invited you to join Renamed Co on Renamed Ops.",
+  },
+  "role-granted": {
+    subject: "You were granted the Administrator role",
+    action: "Open Renamed Ops",
+    body: "You now have the Administrator role at Renamed Co.",
+  },
+  "role-removed": {
+    subject: "Your Administrator role was removed",
+    action: "Open Renamed Ops",
+    body: "If you believe this is a mistake, contact help@renamed.invalid.",
+  },
+  "new-device-sign-in": {
+    subject: "New sign-in to Renamed Ops",
+    action: "Review your account",
+    body: "You received this email because Renamed Ops saw a sign-in from a new device.",
+  },
+  "module-notification": {
+    subject: "Records has an update",
+    action: "Open Records",
+    body: "You received this email because Renamed Co enabled Records.",
+  },
+} satisfies Record<
+  (typeof MAIL_TEMPLATE_IDS)[number],
+  {
+    readonly subject: string;
+    readonly action: string;
+    readonly body: string;
+  }
 >;
 
 describe("mailer templates", () => {
@@ -121,6 +162,22 @@ describe("mailer templates", () => {
           .replace(/\s+/g, " ")
           .trim()
       ).not.toBe(text.replace(/\s+/g, " ").trim());
+    });
+
+    it(`takes the names in the subject, button and body of ${id} from branding (DR-06)`, async () => {
+      const { subject, html, text } = await renderMailTemplate(
+        id,
+        VARIABLES,
+        RENAMED
+      );
+
+      expect(subject).toBe(NAMED[id].subject);
+      expect(text).toContain(`${NAMED[id].action}: `);
+      expect(text).toContain(NAMED[id].body);
+
+      for (const part of [subject, html, text]) {
+        expect(part).not.toContain("Genie Ops Center");
+      }
     });
 
     it(`renders ${id} with the branding object, not fixed colors or names (R-59a)`, async () => {
@@ -203,6 +260,8 @@ describe("mailer templates", () => {
     for (const part of [html, text]) {
       expect(part).not.toMatch(/\bnull\b|\bundefined\b|Terms|Privacy/);
     }
+
+    expect(text).toContain("contact your administrator.");
   });
 
   it("renders a link on another origin, which only the mailer may refuse", async () => {

@@ -44,8 +44,6 @@ const MAIL = {
   variables: {
     name: "Ada Lovelace",
     email: "ada@example.invalid",
-    companyName: BRANDING.companyName,
-    productName: BRANDING.productName,
     invitationUrl:
       "https://genie.example.invalid/invite?token=invite-token-secret",
     link: "https://genie.example.invalid/invite?token=invite-token-secret",

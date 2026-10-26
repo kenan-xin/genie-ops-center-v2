@@ -26,16 +26,12 @@ export function registerSessionNewHandler(tenant: TenantContext): void {
 
     if (context.mailer.provider === "none") return;
 
-    const branding = await context.branding.get();
     await context.mailer.send({
       templateId: "new-device-sign-in",
       to: payload.email,
       variables: {
         name: payload.name,
-        companyName: branding.companyName,
-        productName: "Genie Ops Center",
         deviceName: payload.deviceName,
-        supportEmail: branding.supportEmail ?? "your administrator",
         link: context.publicUrl("/account"),
       },
     });

@@ -72,16 +72,22 @@ function greeting(variables: MailTemplateVariables): string {
   return `Hello ${value(variables, "name")},`;
 }
 
-function invitationBrokered(variables: MailTemplateVariables): MailContent {
-  const productName = value(variables, "productName");
+/** Who a reader contacts: the branded support contact, else a neutral label. */
+function supportLabel(theme: MailBrandingTheme): string {
+  return supportContact(theme)?.label ?? "your administrator";
+}
 
+function invitationBrokered(
+  variables: MailTemplateVariables,
+  { companyName, productName }: MailBrandingTheme
+): MailContent {
   return {
     subject: `You are invited to ${productName}`,
     heading: "You are invited",
     preview: `${value(variables, "inviterName")} invited you to ${productName}.`,
     paragraphs: [
       greeting(variables),
-      `${value(variables, "inviterName")} invited you to join ${value(variables, "companyName")} on ${productName}.`,
+      `${value(variables, "inviterName")} invited you to join ${companyName} on ${productName}.`,
       "Accept the invitation to finish setting up your account.",
     ],
     action: {
@@ -95,8 +101,11 @@ function invitationBrokered(variables: MailTemplateVariables): MailContent {
   };
 }
 
-function roleGranted(variables: MailTemplateVariables): MailContent {
-  const companyName = value(variables, "companyName");
+function roleGranted(
+  variables: MailTemplateVariables,
+  theme: MailBrandingTheme
+): MailContent {
+  const { companyName } = theme;
   const roleName = value(variables, "roleName");
 
   return {
@@ -108,15 +117,18 @@ function roleGranted(variables: MailTemplateVariables): MailContent {
       `You now have the ${roleName} role at ${companyName}.`,
     ],
     action: {
-      label: `Open ${value(variables, "productName")}`,
+      label: `Open ${theme.productName}`,
       url: value(variables, "link"),
     },
-    footer: `If you did not expect this change, contact ${value(variables, "supportEmail")}.`,
+    footer: `If you did not expect this change, contact ${supportLabel(theme)}.`,
   };
 }
 
-function roleRemoved(variables: MailTemplateVariables): MailContent {
-  const companyName = value(variables, "companyName");
+function roleRemoved(
+  variables: MailTemplateVariables,
+  theme: MailBrandingTheme
+): MailContent {
+  const { companyName } = theme;
   const roleName = value(variables, "roleName");
 
   return {
@@ -126,18 +138,21 @@ function roleRemoved(variables: MailTemplateVariables): MailContent {
     paragraphs: [
       greeting(variables),
       `The ${roleName} role at ${companyName} was removed from your account.`,
-      `If you believe this is a mistake, contact ${value(variables, "supportEmail")}.`,
+      `If you believe this is a mistake, contact ${supportLabel(theme)}.`,
     ],
     action: {
-      label: `Open ${value(variables, "productName")}`,
+      label: `Open ${theme.productName}`,
       url: value(variables, "link"),
     },
     footer: `You received this email because your role at ${companyName} changed.`,
   };
 }
 
-function newDeviceSignIn(variables: MailTemplateVariables): MailContent {
-  const productName = value(variables, "productName");
+function newDeviceSignIn(
+  variables: MailTemplateVariables,
+  theme: MailBrandingTheme
+): MailContent {
+  const { productName } = theme;
 
   return {
     subject: `New sign-in to ${productName}`,
@@ -146,7 +161,7 @@ function newDeviceSignIn(variables: MailTemplateVariables): MailContent {
     paragraphs: [
       greeting(variables),
       `Your account signed in from ${value(variables, "deviceName")}.`,
-      `If this was not you, contact ${value(variables, "supportEmail")}.`,
+      `If this was not you, contact ${supportLabel(theme)}.`,
     ],
     action: {
       label: "Review your account",
@@ -156,7 +171,10 @@ function newDeviceSignIn(variables: MailTemplateVariables): MailContent {
   };
 }
 
-function moduleNotification(variables: MailTemplateVariables): MailContent {
+function moduleNotification(
+  variables: MailTemplateVariables,
+  { companyName }: MailBrandingTheme
+): MailContent {
   const moduleName = value(variables, "moduleName");
 
   return {
@@ -174,13 +192,19 @@ function moduleNotification(variables: MailTemplateVariables): MailContent {
       ),
     ],
     action: { label: `Open ${moduleName}`, url: value(variables, "link") },
-    footer: `You received this email because ${value(variables, "companyName")} enabled ${moduleName}.`,
+    footer: `You received this email because ${companyName} enabled ${moduleName}.`,
   };
 }
 
-/** One content builder per catalogue id, so a new id is a compile error until it has a builder. */
+/**
+ * One content builder per catalogue id, so a new id is a compile error until it has a builder.
+ * Names and the support contact come from branding, never from the variables (R-59a).
+ */
 const BUILDERS: Readonly<
-  Record<MailTemplateId, (variables: MailTemplateVariables) => MailContent>
+  Record<
+    MailTemplateId,
+    (variables: MailTemplateVariables, theme: MailBrandingTheme) => MailContent
+  >
 > = {
   "invitation-brokered": invitationBrokered,
   "role-granted": roleGranted,
@@ -332,7 +356,7 @@ export async function renderMailTemplate(
   variables: MailTemplateVariables,
   theme: MailBrandingTheme
 ): Promise<RenderedMail> {
-  const content = BUILDERS[id](variables);
+  const content = BUILDERS[id](variables, theme);
 
   return {
     subject: content.subject,

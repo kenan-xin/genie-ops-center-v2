@@ -491,16 +491,12 @@ async function sendInvitation(
     readonly resend: boolean;
   }
 ): Promise<void> {
-  const branding = await tenant.branding.get();
-
   await tenant.mailer.send({
     templateId: "invitation-brokered",
     to: input.email,
     variables: {
       name: input.name,
       email: input.email,
-      companyName: branding.companyName,
-      productName: branding.productName,
       inviterName: await inviterName(tenant, input.actorUserId),
       invitationUrl: tenant.publicUrl("/sign-in"),
     },

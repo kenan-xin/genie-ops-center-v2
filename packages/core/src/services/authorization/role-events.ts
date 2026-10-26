@@ -34,17 +34,12 @@ function register(
 
     if (context.mailer.provider === "none") return;
 
-    const branding = await context.branding.get();
-
     await context.mailer.send({
       templateId: content.templateId,
       to: payload.email,
       variables: {
         name: payload.name,
-        companyName: branding.companyName,
-        productName: "Genie Ops Center",
         roleName: payload.roleName,
-        supportEmail: branding.supportEmail ?? "your administrator",
         link: context.publicUrl("/account"),
       },
     });
