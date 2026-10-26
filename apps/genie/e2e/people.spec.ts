@@ -39,6 +39,26 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   const publicUrl = new URL(page.url()).origin;
 
+  // Open and close a person first, so the save below proves the closed person is not read again.
+  await page.getByLabel("Search people").fill(adminEmail);
+  await page
+    .getByRole("button", { name: new RegExp(adminEmail.replace(".", "\\.")) })
+    .first()
+    .click();
+
+  const closedInspector = page.getByRole("dialog", { name: "E2E Person" });
+
+  await closedInspector.getByRole("button", { name: "Close" }).click();
+  await expect(closedInspector).toBeHidden();
+  await page.getByLabel("Search people").fill("");
+
+  const detailReads: string[] = [];
+
+  page.on("request", (request) => {
+    if (request.url().includes("/api/rpc/people/get"))
+      detailReads.push(request.url());
+  });
+
   // Add person: the invitation checkbox is checked by default (R-40a).
   await page.getByRole("button", { name: "Add person" }).click();
 
@@ -81,6 +101,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
       .getByRole("status")
       .filter({ has: page.getByText("Person added", { exact: true }) })
   ).toBeVisible();
+
+  // The toast follows the reloads, so a read of the closed person would be sent by now (6wz1.20).
+  expect(detailReads).toEqual([]);
 
   // The table and the phone card list both hold the row, and only one of them shows.
   await expect(

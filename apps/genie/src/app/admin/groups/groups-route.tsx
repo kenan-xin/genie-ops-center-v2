@@ -19,6 +19,8 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   // An audit target link opens the screen with its group selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
+  // The detail is read only while the sheet is open; a close keeps `selectedId` for the exit.
+  const [open, setOpen] = useState(initialSelectedId !== undefined);
 
   const list = useQuery({
     queryKey: ["groups", includeArchived],
@@ -28,7 +30,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   const detail = useQuery({
     queryKey: ["group", selectedId],
     queryFn: () => rpc.groups.get({ groupId: selectedId ?? "" }),
-    enabled: selectedId !== null,
+    enabled: selectedId !== null && open,
   });
 
   // The local-group member picker reads the narrow active-people read the People router owns,
@@ -60,6 +62,18 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     });
   };
 
+  // A delete closes the detail before the write, so the reload never reads the removed group. A
+  // refusal keeps the group, so it opens the detail again.
+  const remove = <TResult,>(work: () => Promise<TResult>) => {
+    setOpen(false);
+    action.mutate(
+      async () => {
+        await work();
+      },
+      { onError: () => setOpen(true) }
+    );
+  };
+
   const selected = selectedId ?? "";
 
   return (
@@ -76,6 +90,8 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       initialSelectedId={initialSelectedId}
       // A close keeps the last detail, so the sheet keeps its members and roles while it closes.
       onSelectGroup={(groupId) => {
+        setOpen(groupId !== null);
+
         if (groupId !== null) setSelectedId(groupId);
       }}
       details={
@@ -103,7 +119,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
         run(() => rpc.groups.archiveDirectoryGroup({ groupId }))
       }
       onDeleteGroup={(groupId) =>
-        run(() => rpc.groups.deleteDirectoryGroup({ groupId }))
+        remove(() => rpc.groups.deleteDirectoryGroup({ groupId }))
       }
       onEditLabel={(groupId, displayLabel) =>
         run(() => rpc.groups.editLabel({ groupId, displayLabel }))
@@ -115,7 +131,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
         run(() => rpc.groups.updateLocalGroup({ groupId, name, description }))
       }
       onDeleteLocalGroup={(groupId) =>
-        run(() => rpc.groups.deleteLocalGroup({ groupId }))
+        remove(() => rpc.groups.deleteLocalGroup({ groupId }))
       }
       onAddMembers={(groupId, userIds) =>
         run(() => rpc.groups.addMembers({ groupId, userIds: [...userIds] }))

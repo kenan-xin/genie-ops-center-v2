@@ -181,6 +181,104 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await refusedContext.close();
 });
 
+test("a closed or deleted group's detail is not read again", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const kept = `6wz1.20 kept ${project}`;
+  const deleted = `6wz1.20 deleted ${project}`;
+
+  await queryDatabase(
+    `delete from "group" where source = 'local' and name in ('${kept}', '${deleted}')`
+  );
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("groups", project),
+  });
+  await page.goto("/admin/groups");
+
+  const newLocalGroup = page.getByRole("button", { name: "New local group" });
+
+  // The opener stays busy until the write's reloads finish, so a detail read would be over too.
+  const settled = () =>
+    expect(newLocalGroup).not.toHaveAttribute("aria-busy", "true");
+
+  const createLocalGroup = async (name: string) => {
+    await newLocalGroup.click();
+
+    const dialog = page.getByRole("dialog", { name: "New local group" });
+
+    await dialog.getByLabel("Name").fill(name);
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes("/api/rpc/groups/createLocalGroup")
+      ),
+      dialog.getByRole("button", { name: "Create group" }).click(),
+    ]);
+    await settled();
+  };
+
+  // Opening waits for the group's detail, so no read of the open itself lands in a later check.
+  const openGroup = async (name: string) => {
+    await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes("/api/rpc/groups/get")
+      ),
+      page
+        .getByRole("button", { name: new RegExp(name) })
+        .first()
+        .click(),
+    ]);
+
+    return page.getByRole("dialog", { name });
+  };
+
+  const detailReads: number[] = [];
+
+  page.on("response", (response) => {
+    if (response.url().includes("/api/rpc/groups/get"))
+      detailReads.push(response.status());
+  });
+
+  await createLocalGroup(kept);
+
+  const keptInspector = await openGroup(kept);
+
+  await keptInspector.getByRole("button", { name: "Close" }).click();
+  await expect(keptInspector).toBeHidden();
+
+  // A save after the sheet closed reloads the list and never the closed group.
+  detailReads.length = 0;
+  await createLocalGroup(deleted);
+  await expect(
+    page.getByText(deleted, { exact: true }).filter({ visible: true })
+  ).toBeVisible();
+  expect(detailReads).toEqual([]);
+
+  // Deleting the open group reads no detail of the removed group, so no read fails.
+  const deletedInspector = await openGroup(deleted);
+
+  await expect(deletedInspector).toBeVisible();
+  await deletedInspector.getByRole("button", { name: "Delete group" }).click();
+  detailReads.length = 0;
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes("/api/rpc/groups/deleteLocalGroup")
+    ),
+    page
+      .getByRole("dialog", { name: `Delete ${deleted}?` })
+      .getByRole("button", { name: "Delete group" })
+      .click(),
+  ]);
+  await expect(deletedInspector).toBeHidden();
+  await settled();
+  expect(detailReads).toEqual([]);
+
+  await queryDatabase(
+    `delete from "group" where source = 'local' and name = '${kept}'`
+  );
+});
+
 test("the role editor warns on an unavailable key and offers its removal", async ({
   page,
 }, testInfo) => {

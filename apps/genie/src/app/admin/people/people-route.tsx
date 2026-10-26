@@ -53,6 +53,8 @@ export function PeopleRoute(props: {
   // An audit target link opens the screen with its person selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
+  // The detail is read only while the sheet is open; a close keeps `selectedId` for the exit.
+  const [open, setOpen] = useState(initialSelectedId !== undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
 
@@ -64,7 +66,7 @@ export function PeopleRoute(props: {
   const detail = useQuery({
     queryKey: ["person", selectedId],
     queryFn: () => rpc.people.get({ personId: selectedId ?? "" }),
-    enabled: selectedId !== null,
+    enabled: selectedId !== null && open,
   });
 
   const roles = useQuery({
@@ -145,6 +147,8 @@ export function PeopleRoute(props: {
       // A close keeps the last detail, so the sheet closes through `open` and returns focus (R-22).
       // Opening another person switches the key, and the screen shows nothing until it loads.
       onSelectPerson={(personId) => {
+        setOpen(personId !== null);
+
         if (personId !== null) setSelectedId(personId);
       }}
       onAddPerson={addPerson}
