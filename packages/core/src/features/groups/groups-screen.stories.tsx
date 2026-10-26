@@ -313,7 +313,7 @@ export const AssignsARoleToAPreAddedGroup: Story = {
 
     await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
     await userEvent.click(
-      inspector.getByRole("combobox", { name: "Role to assign" })
+      inspector.getByRole("combobox", { name: "Give this group a role" })
     );
     await userEvent.click(
       await screen.findByRole("option", { name: "Auditor" })

@@ -153,7 +153,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   const group = page.getByRole("dialog", { name: grantGroup });
 
   await group.getByRole("tab", { name: /^Roles/ }).click();
-  await chooseOption(page, "Role to assign", "S2-13 reader");
+  await chooseOption(page, "Give this group a role", "S2-13 reader");
 
   const [assigned] = await Promise.all([
     page.waitForResponse((response) =>

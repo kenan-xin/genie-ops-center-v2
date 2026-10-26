@@ -80,7 +80,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const inspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
-  await chooseOption(page, "Role to assign", "E2E reader");
+  await chooseOption(page, "Give this group a role", "E2E reader");
 
   const [assignResponse] = await Promise.all([
     page.waitForResponse((response) =>

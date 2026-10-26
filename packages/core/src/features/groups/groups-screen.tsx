@@ -377,10 +377,7 @@ export function GroupInspector(
                         value={roleToAssign === "" ? null : roleToAssign}
                         onValueChange={(value) => setRoleToAssign(value ?? "")}
                       >
-                        <SelectTrigger
-                          id={roleAssignId}
-                          aria-label="Role to assign"
-                        >
+                        <SelectTrigger id={roleAssignId}>
                           <SelectValue placeholder="Choose a role" />
                         </SelectTrigger>
                         <SelectContent>
