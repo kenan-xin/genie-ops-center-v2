@@ -148,14 +148,18 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
             )
           ).toBe(`${companyName} ${color} #ffffff ${theme} Welcome ${theme}`);
 
-          // AC-13 and AC-15: the shell takes the new color and theme within the reader window.
+          // AC-13 and AC-15: the shell takes the new color, theme and company name within the reader
+          // window. The poll waits for the navigation name too, the state the next assertion reads.
           await expect
             .poll(async () => {
               await page.goto("/");
 
-              return `${await rootPrimary(page)} ${await page.locator("html").getAttribute("data-theme")}`;
+              const navigation = await openNavigation(page);
+              const named = await navigation.getByText(companyName).isVisible();
+
+              return `${await rootPrimary(page)} ${await page.locator("html").getAttribute("data-theme")} ${named}`;
             }, POLL)
-            .toBe(`${color} ${theme}`);
+            .toBe(`${color} ${theme} true`);
           await expect(
             (await openNavigation(page)).getByText(companyName)
           ).toBeVisible();
