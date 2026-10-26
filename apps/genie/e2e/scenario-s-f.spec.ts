@@ -199,8 +199,6 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
       email: personEmail,
       password: E2E_LOCAL_PERSON_PASSWORD,
     });
-
-    expect(new URL(personPage.url()).pathname).toBe("/");
   } finally {
     await personContext.close();
   }

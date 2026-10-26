@@ -14,6 +14,7 @@ import {
   realmResetCredentialsUrl,
   type ShellLabels,
   shellNavigation,
+  workspaceHome,
 } from "./index.ts";
 
 const core = (
@@ -172,6 +173,32 @@ describe("administration", () => {
 
   it("People comes first when permitted", () => {
     expect(administration(full).adminHome).toBe("/admin/people");
+  });
+});
+
+const entry = (path: string): PermittedEntry => ({
+  ...moduleEntry("workspace"),
+  path,
+});
+
+describe("workspaceHome", () => {
+  it("follows the rail: ungrouped entries, then pinned, then categories", () => {
+    const empty = { ...tree([]), pinned: [], workspace: [], categories: [] };
+    const finance = { id: "c1", name: "Finance", entries: [entry("/c")] };
+
+    expect(workspaceHome(empty)).toBeUndefined();
+    expect(workspaceHome({ ...empty, categories: [finance] })).toBe("/c");
+    expect(
+      workspaceHome({ ...empty, pinned: [entry("/p")], categories: [finance] })
+    ).toBe("/p");
+    expect(
+      workspaceHome({
+        ...empty,
+        workspace: [entry("/w")],
+        pinned: [entry("/p")],
+        categories: [finance],
+      })
+    ).toBe("/w");
   });
 });
 

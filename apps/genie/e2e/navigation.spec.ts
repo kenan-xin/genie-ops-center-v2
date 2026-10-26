@@ -5,6 +5,7 @@ import { expectNoAxeViolations } from "./support/axe.ts";
 import {
   brokeredGenieOps,
   brokeredRunning,
+  inviteBaseUrl,
   LANDING_DB,
   landingBaseUrl,
   queryBrokerDatabase,
@@ -125,6 +126,29 @@ test("a person with no grants sees the empty state and no entry (R-34)", async (
   ).toHaveAttribute("href", "mailto:support@example.invalid");
 
   await expectNoAxeViolations(page, "no-grants empty state");
+});
+
+test("with no landing route, home opens the first workspace entry (R-34)", async ({
+  page,
+}, testInfo) => {
+  // The invite deployment runs the standard image, where no module flags a landing route. The
+  // lock keeps the Placeholder entitlement on, which `done-when.spec.ts` turns off and back on.
+  await withDeploymentLock(
+    "s2-16-entitlement",
+    async () => {
+      await signInThroughBroker(page, {
+        baseUrl: inviteBaseUrl(),
+        email: scenarioEmail("invite", "mixed", testInfo.project.name),
+        landing: "/placeholder",
+      });
+
+      await page.goto(`${inviteBaseUrl()}/`);
+
+      await expect(page).toHaveURL(`${inviteBaseUrl()}/placeholder`);
+      await expect(page.getByText("No solutions yet")).toHaveCount(0);
+    },
+    300_000
+  );
 });
 
 test("a member refused on an admin page sees the no-access state in the workspace chrome (shell L-4)", async ({

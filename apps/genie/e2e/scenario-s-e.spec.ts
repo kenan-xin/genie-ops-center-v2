@@ -24,8 +24,6 @@ test(
 
     await signInThroughBroker(page, { baseUrl: samlBaseUrl(), email });
 
-    expect(new URL(page.url()).pathname).toBe("/");
-
     const [person] = await queryBrokerDatabase(
       SAML_DB,
       `select status || ':' || onboarding from "user" where email = '${email}'`

@@ -13,9 +13,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * The home route (Spec 3 R-34). A signed-in person whose navigation tree resolves a landing route
- * goes there, so Back to workspace and a typed `/` land on the same page. A signed-out visitor goes
- * to the sign-in page, and any other signed-in person sees the shell around the no-grants empty
- * state (CR-PRIMITIVES-M1). The shell's sidebar is the navigation;
+ * goes there, so Back to workspace and a typed `/` land on the same page; without one, they go to
+ * the first workspace entry of the tree. A signed-out visitor goes to the sign-in page, and a
+ * signed-in person with no workspace entry sees the shell around the no-grants empty state
+ * (CR-PRIMITIVES-M1). The shell's sidebar is the navigation;
  * hiding an entry is not the enforcement, each route still refuses in its own `can()` check.
  *
  * AC-26, across real bundles. This page's own server bundle stamps the id it read onto the
@@ -39,9 +40,11 @@ export default async function HomePage(props: {
   // Before the landing redirect, so break-glass goes to the admin home in one hop (U-3).
   await keepBreakGlassInAdmin();
 
-  const { landing } = await shellModel();
+  const { landing, workspaceHome } = await shellModel();
 
-  if (landing !== undefined) redirect(landing);
+  const home = landing ?? workspaceHome;
+
+  if (home !== undefined) redirect(home);
 
   const tShell = await getTranslations("shell");
   const tNoGrants = await getTranslations("noGrants");

@@ -12,7 +12,7 @@ import {
   clientOnlyBaseUrl,
   clientOnlyEmail,
 } from "./support/client-only.ts";
-import { signInThroughRealmForm } from "./support/sign-in.ts";
+import { expectLanded, signInThroughRealmForm } from "./support/sign-in.ts";
 
 /** One query against the S-C deployment's own database, as unaligned text rows. */
 async function queryClientOnly(sql: string): Promise<readonly string[]> {
@@ -61,8 +61,6 @@ test("S-C: client-only setup, sign-in, and sign-out that keeps the company sessi
     email,
     password: companyPassword(),
   });
-
-  expect(new URL(page.url()).pathname).toBe("/");
 
   // The claim arrived as the plain group name, and the sync turned it into one idp membership.
   expect(
@@ -123,9 +121,7 @@ test("S-C: client-only setup, sign-in, and sign-out that keeps the company sessi
   // The next sign-in completes without a login form, because the company session lasts.
   await page.goto(`${baseUrl}/api/auth/sign-in/keycloak`);
 
-  await expect
-    .poll(() => new URL(page.url()).pathname, { timeout: 45000 })
-    .toBe("/");
+  await expectLanded(page, undefined, 45000);
 
   expect(
     await queryClientOnly(

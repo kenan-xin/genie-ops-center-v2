@@ -31,8 +31,6 @@ test(
 
     await signInThroughBroker(page, { baseUrl: brokeredBaseUrl(), email });
 
-    expect(new URL(page.url()).pathname).toBe("/");
-
     // The pre-added row is the same row the sync filled, and every group the claim carried became
     // an idp membership, as plain names.
     const [preAdded] = await queryBrokerDatabase(

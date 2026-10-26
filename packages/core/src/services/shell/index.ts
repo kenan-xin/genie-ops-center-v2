@@ -36,6 +36,7 @@ export type ShellLabels = {
 export type ShellModel = {
   readonly navigation: ShellNavigation;
   readonly landing: string | undefined;
+  readonly workspaceHome: string | undefined;
   readonly isAdministrator: boolean;
   readonly adminHome: string | undefined;
   readonly identity: ShellIdentity;
@@ -97,6 +98,18 @@ export function administration(
     isAdministrator: first !== undefined,
     adminHome: first?.entries[0]?.path,
   };
+}
+
+/**
+ * Where home sends a person when no landing route resolves (R-34): the first workspace entry in the
+ * navigation rail's order, the same rule as `adminHome`. Undefined means no grants.
+ */
+export function workspaceHome(tree: NavigationTree): string | undefined {
+  return [
+    ...tree.workspace,
+    ...tree.pinned,
+    ...tree.categories.flatMap((category) => category.entries),
+  ][0]?.path;
 }
 
 type RealmPageInput = {
@@ -202,6 +215,7 @@ export async function loadShell(input: {
   return {
     navigation: shellNavigation(tree, modules, input.labels),
     landing: tree.landing,
+    workspaceHome: workspaceHome(tree),
     ...administration(tree),
     identity: {
       companyName: branding.companyName,
