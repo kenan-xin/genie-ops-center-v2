@@ -25,6 +25,11 @@ Spec R-54 to R-59a.
 - Tests write the branding row through the end-to-end seed, because Publish arrives in S3-07. S3-09 reruns them through the page.
 - A phone and desktop end-to-end check of the Keycloak sign-in, set-password, reset-password and verify-email pages on the realm theme (bead `6wz1.2`). A fix inside this ticket is limited to a realm setting or a switch to a built-in Keycloak theme. A custom Keycloak theme becomes a new bead (owner, 2026-10-22).
 
+## Accepted decisions
+
+- The system-use notice acknowledgement is enforced in the browser only. `/api/auth/sign-in/keycloak` does not check it (U-9, owner, 2026-10-25).
+- The dark sign-in page keeps `--background`. The sign-in background pair answers this (DR-05, DR-20 S3-08 part, 2026-10-25).
+
 ## Acceptance
 
 AC-6. AC-12 and AC-14, each once light and once dark (the AC-15 part). The phone and desktop Keycloak page check.
