@@ -146,6 +146,16 @@ describe("GET /api/files/download (Spec 1 R-38)", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
+  it("encodes the RFC 8187 reserved characters in the file name", async () => {
+    served = () => Promise.resolve(file("application/pdf", "Q1 (Jane's)*.pdf"));
+
+    const response = await visit();
+
+    expect(response.headers.get("content-disposition")).toBe(
+      "attachment; filename*=UTF-8''Q1%20%28Jane%27s%29%2A.pdf"
+    );
+  });
+
   it("serves a document as an attachment", async () => {
     served = () => Promise.resolve(file("application/pdf", "report.pdf"));
 

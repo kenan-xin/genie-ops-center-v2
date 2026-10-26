@@ -17,6 +17,14 @@ function notFound(): Response {
   });
 }
 
+/** RFC 8187 `ext-value` encoding: `encodeURIComponent` leaves `'`, `(`, `)` and `*` bare. */
+function encodeFileName(name: string): string {
+  return encodeURIComponent(name).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
 /**
  * Serves a tokenized download link (Spec 1 R-38): the file service's one generic route for every
  * link kind, record and branding alike. It is not an image route (D3-7). The file store checks the
@@ -56,7 +64,7 @@ export async function GET(request: Request): Promise<Response> {
     headers: {
       "content-type": served.mimeType,
       "cache-control": "private, max-age=300",
-      "content-disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(served.fileName)}`,
+      "content-disposition": `${disposition}; filename*=UTF-8''${encodeFileName(served.fileName)}`,
       "content-security-policy": DOWNLOAD_POLICY,
       "x-content-type-options": "nosniff",
     },
