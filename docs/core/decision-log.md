@@ -471,7 +471,7 @@ Why not `pg_notify`: instant invalidation needs one long-lived listener connecti
 
 Trade-off: a save can take up to 10 seconds to show in another process, and a save is visible in one process before another. A session cookie that was already issued keeps its old expiry until the next refresh, so a lower idle value applies on the next request, not on the cookie.
 
-Guard: the readers are the only members of the context that reach `tenant_settings`, `tenant_branding`, and `tenant_module`, and the isolation test from `DEC-34` builds two contexts in one process and proves that each reader caches its own tenant.
+Guard: the readers are the only members of the context that reach `tenant_settings`, `tenant_branding`, and `tenant_module`, and the isolation test from `DEC-34` builds two contexts in one process and proves that each reader caches its own tenant. Amended 2026-10-25 (DR-09): the core admin services that own these rows, `services/settings`, `services/branding`, `services/modules` and `services/categories`, read and write them through `tenant.db` on the tenant context, uncached, so a save shows at once. Every other reader uses the cached readers.
 
 Designed in: Section 0. Implemented: the readers in Section 1 item 1 with their tables; the settings reader is first read by the sessions of Section 2 item 4. Revisit when a customer needs a change to show within a second, or when a deployment runs several application replicas; the change is then a `pg_notify` channel that every save fires and that clears the same caches, and the 10 second expiry stays as the fallback.
 
