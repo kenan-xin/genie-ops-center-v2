@@ -11,9 +11,36 @@ import { newRequestId } from "../request-id.ts";
 import { RPC_PREFIX, type RequestContext } from "./handler.ts";
 
 /**
+ * The largest request body `/api/rpc` reads (DR-23): the 1 MB branding image of R-49 with its
+ * multipart overhead, and room to spare. A larger body is refused before oRPC parses it, so no
+ * caller, signed in or not, makes oRPC decode one (DEC-44). Next.js has still read it by then:
+ * while `proxy.ts` runs, the framework buffers up to `proxyClientMaxBodySize` of every body.
+ */
+const RPC_BODY_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * True for a body declared over the cap, or for a multipart body that declares no length, whose
+ * size is unknown until it is read. Only the headers are read. A media type ignores case, so any
+ * spelling of multipart counts.
+ */
+function bodyTooLarge(request: Request): boolean {
+  const declared = request.headers.get("content-length");
+
+  if (declared !== null) return Number(declared) > RPC_BODY_MAX_BYTES;
+
+  return (
+    request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .startsWith("multipart/") ?? false
+  );
+}
+
+/**
  * Answers one `/api/rpc` request. The route exports only `POST`, so a `GET` never reaches here
- * (decision 5). The order is fixed: the origin check first, then the procedure inside the request's
- * correlation scope, then the context header on whatever answer leaves.
+ * (decision 5). The order is fixed: the body-size guard first, then the origin check, then the
+ * procedure inside the request's correlation scope, then the context header on whatever answer
+ * leaves.
  */
 export async function serveRpc(input: {
   readonly request: Request;
@@ -45,6 +72,13 @@ async function answer(input: {
   readonly requestId: string;
 }): Promise<Response> {
   const { request, app, requestId } = input;
+
+  // DR-23: decided from the headers alone, so a refused body is never read or parsed.
+  if (bodyTooLarge(request))
+    return errorResponse(
+      new AppError(CORE_ERRORS["request-too-large"]),
+      requestId
+    );
 
   // Every procedure call is a POST, so every one is a state change for the CSRF boundary.
   if (!stateChangeOriginAllowed(request, app.tenant.env.publicUrl))

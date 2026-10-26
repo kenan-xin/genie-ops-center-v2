@@ -55,12 +55,21 @@ function setup(options: { readonly principalFails?: boolean } = {}) {
     },
   } as AppContext;
 
-  const serve = (path: string, headers: Record<string, string>) =>
-    serveRpc({
-      request: new Request(`${PUBLIC_URL}/api/rpc${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json", ...headers },
-      }),
+  const serve = (
+    path: string,
+    headers: Record<string, string>,
+    body: ReadableStream<Uint8Array> | null = null
+  ) => {
+    // Node's fetch refuses a stream body without `duplex`, which the DOM type does not declare.
+    const init: RequestInit & { readonly duplex: "half" } = {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body,
+      duplex: "half",
+    };
+
+    return serveRpc({
+      request: new Request(`${PUBLIC_URL}/api/rpc${path}`, init),
       app,
       handler: createRpcHandler({ reports: router }, () => undefined),
       principal: () =>
@@ -73,6 +82,7 @@ function setup(options: { readonly principalFails?: boolean } = {}) {
               )
             ),
     });
+  };
 
   return { serve, scopes, reads, logged };
 }
@@ -141,5 +151,65 @@ describe("serveRpc", () => {
       requestId: "req-unknown",
     });
     expect(response.headers.get(CONTEXT_HEADER)).toBe("context-1");
+  });
+
+  it.each([
+    ["declares one byte over 2 MB", { "content-length": "2097153" }],
+    // A media type ignores case, and oRPC parses only the lower-case spelling as multipart, so
+    // this one would reach it as a binary body and be read whole.
+    [
+      "is multipart and declares no length",
+      { "content-type": "Multipart/Form-Data; boundary=b" },
+    ],
+  ])(
+    "refuses a body that %s at 413 without reading it (DR-23)",
+    async (_case, headers) => {
+      const { serve, reads } = setup();
+      let pulled = false;
+
+      // A high-water mark of 0: the stream is pulled only when a reader asks for its bytes.
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull: (controller) => {
+            pulled = true;
+            controller.close();
+          },
+        },
+        { highWaterMark: 0 }
+      );
+
+      const response = await serve(
+        "/reports/read",
+        {
+          "sec-fetch-site": "same-origin",
+          "x-request-id": "req-large",
+          ...headers,
+        },
+        body
+      );
+
+      expect(response.status).toBe(413);
+      expect(await response.json()).toEqual({
+        code: "request-too-large",
+        message: CORE_ERROR_MESSAGES["request-too-large"],
+        requestId: "req-large",
+      });
+      expect(pulled).toBe(false);
+      expect(reads).toEqual([]);
+      expect(response.headers.get(CONTEXT_HEADER)).toBe("context-1");
+    }
+  );
+
+  it("reads a body declared at exactly 2 MB (DR-23)", async () => {
+    const { serve, reads } = setup();
+
+    const response = await serve("/reports/read", {
+      "sec-fetch-site": "same-origin",
+      "x-request-id": "req-edge",
+      "content-length": "2097152",
+    });
+
+    expect(response.status).toBe(200);
+    expect(reads).toEqual(["req-edge"]);
   });
 });

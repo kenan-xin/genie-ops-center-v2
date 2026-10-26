@@ -1,4 +1,4 @@
-import type { BrandingContract } from "@genie/core";
+import { type BrandingContract, CORE_ERROR_MESSAGES } from "@genie/core";
 import {
   insertCredentialPerson,
   insertSession,
@@ -22,7 +22,8 @@ import { startBuiltApp } from "./start-built-app.ts";
  * The Branding procedures over the built application's `/api/rpc` with the browser's own encoding
  * (R-49, R-93): an upload is one multipart request, the 1 MB cap and the type list answer 400
  * `branding-upload-refused`, a failing color answers 400 `branding-invalid` with its issue, and
- * the `core:branding:manage` gate answers before the body is read.
+ * the `core:branding:manage` gate answers before the body is read. A request over the 2 MB cap of
+ * `/api/rpc` answers 413 before oRPC reads it, and a 900 KB upload stays under it (DR-23).
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -144,6 +145,38 @@ describe("the branding RPC", () => {
         })
       )
     ).toMatchObject({ status: 400, appCode: "branding-upload-refused" });
+  });
+
+  it("refuses an anonymous 5 MB request at 413 before any procedure runs (DR-23)", async () => {
+    const form = new FormData();
+
+    form.set(
+      "0",
+      new File([new Uint8Array(5_242_880)], "big.png", { type: "image/png" })
+    );
+
+    const response = await fetch(`${server.baseUrl}/api/rpc/branding/upload`, {
+      method: "POST",
+      headers: { "sec-fetch-site": "same-origin" },
+      body: form,
+    });
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      code: "request-too-large",
+      message: CORE_ERROR_MESSAGES["request-too-large"],
+      requestId: response.headers.get("x-request-id"),
+    });
+  });
+
+  it("stores a 900 KB upload, which stays under the request cap (DR-23)", async () => {
+    const view = await client(managerCookie).branding.upload({
+      file: new File([new Uint8Array(921_600)], "logo.png", {
+        type: "image/png",
+      }),
+    });
+
+    expect(view).toMatchObject({ fileName: "logo.png", sizeBytes: 921_600 });
   });
 
   it("refuses a failing color with branding-invalid and the primaryColor issue", async () => {

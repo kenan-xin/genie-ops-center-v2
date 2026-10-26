@@ -19,6 +19,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "forbidden": "You may not do that.",
   "unauthenticated": "You need to sign in to do that.",
   "invalid-input": "The request was not valid.",
+  "request-too-large": "The request is too large.",
   "module-disabled": "That module is switched off for this deployment.",
   "mail-not-configured":
     "Email is not configured for this deployment, so this action cannot send a notification.",
