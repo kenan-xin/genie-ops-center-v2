@@ -207,11 +207,28 @@ describe("realmAccountUrl", () => {
       settings: { ...local, keycloakUrlAtSetup: "https://id.example.com" },
       publicUrl: "https://ops.example.com",
       realm: "acme",
+      localAccountExists: false,
     };
 
     expect(realmResetCredentialsUrl(input)).toBe(
       "https://id.example.com/realms/acme/login-actions/reset-credentials"
     );
+    // The setting is off, but a local account remains.
+    expect(
+      realmResetCredentialsUrl({
+        ...input,
+        settings: { ...input.settings, localAccountsEnabled: false },
+        localAccountExists: true,
+      })
+    ).toBe(
+      "https://id.example.com/realms/acme/login-actions/reset-credentials"
+    );
+    expect(
+      realmResetCredentialsUrl({
+        ...input,
+        settings: { ...input.settings, localAccountsEnabled: false },
+      })
+    ).toBeNull();
     expect(
       realmResetCredentialsUrl({
         ...input,

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   afterAll,
   afterEach,
@@ -11,16 +13,21 @@ import {
 import { withTransaction } from "../src/index.ts";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { TENANT_ADMINISTRATOR_ROLE } from "../src/lib/module-contract/system-roles.ts";
-import { tenantBranding } from "../src/schema.ts";
+import { account, tenantBranding } from "../src/schema.ts";
 import {
   principalFor,
   seedRoles,
 } from "../src/services/authorization/index.ts";
-import { loadShell, type ShellLabels } from "../src/services/shell/index.ts";
+import {
+  loadShell,
+  localAccountExists,
+  type ShellLabels,
+} from "../src/services/shell/index.ts";
 import {
   assignRole,
   type DisposableDeployment,
   enableModules,
+  insertCredentialPerson,
   insertUser,
   markSetupDone,
   startDisposableDeployment,
@@ -111,6 +118,37 @@ function storePixel(): Promise<string> {
       ).id
   );
 }
+
+describe("localAccountExists (Spec 2 R-51a)", () => {
+  it("counts a local password account, but not a brokered one or the break-glass account", async () => {
+    const { context } = deployment;
+    const brokered = await insertUser(context);
+
+    await context.db.insert(account).values({
+      id: randomUUID(),
+      accountId: brokered,
+      providerId: "keycloak",
+      userId: brokered,
+    });
+
+    await expect(localAccountExists(context)).resolves.toBe(false);
+
+    await insertCredentialPerson(context, {
+      email: "break-glass@example.invalid",
+      password: "unused-password-1",
+    });
+
+    await expect(localAccountExists(context)).resolves.toBe(false);
+
+    await insertCredentialPerson(context, {
+      email: "local@example.invalid",
+      password: "unused-password-1",
+      isBreakGlass: false,
+    });
+
+    await expect(localAccountExists(context)).resolves.toBe(true);
+  });
+});
 
 describe("loadShell against a real database", () => {
   it("a signed-in member with no grants sees no navigation and is no administrator", async () => {

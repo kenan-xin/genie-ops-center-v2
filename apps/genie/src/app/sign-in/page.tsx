@@ -1,4 +1,4 @@
-import { realmResetCredentialsUrl } from "@genie/core";
+import { localAccountExists, realmResetCredentialsUrl } from "@genie/core";
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
@@ -57,11 +57,13 @@ export default async function SignInPage(props: {
 
   const branding = await tenant.branding.get();
 
-  // R-51a: a local-accounts realm gets its own button label and the realm's reset-password link.
+  // R-51a: a local-accounts realm gets its own button label and the realm's reset-password link,
+  // kept after the setting is turned off while any local account exists.
   const forgotPasswordUrl = realmResetCredentialsUrl({
     settings: await tenant.settings.get(),
     publicUrl: tenant.env.publicUrl,
     realm: tenant.env.auth?.keycloakRealm,
+    localAccountExists: await localAccountExists(tenant),
   });
 
   const productName =

@@ -108,23 +108,51 @@ type RealmPageInput = {
   readonly realm: string | undefined;
 };
 
-/** A page of the tenant realm, linked only while the realm holds local accounts. */
-function localRealmPage(input: RealmPageInput, path: string): string | null {
+/** A page of the tenant realm, linked only while the realm supports local accounts and `open` holds. */
+function localRealmPage(
+  input: RealmPageInput,
+  path: string,
+  open: boolean
+): string | null {
   const { settings } = input;
 
-  return settings.localAccountsEnabled && settings.realmSupportsLocalAccounts
+  return open && settings.realmSupportsLocalAccounts
     ? `${settings.keycloakUrlAtSetup ?? input.publicUrl}/realms/${input.realm ?? "genie"}/${path}`
     : null;
 }
 
 /** The realm's own account page, which only a local-account tenant links (Spec 2 R-18). */
 export function realmAccountUrl(input: RealmPageInput): string | null {
-  return localRealmPage(input, "account");
+  return localRealmPage(input, "account", input.settings.localAccountsEnabled);
 }
 
-/** The realm's reset-password page, the sign-in page's "Forgot your password?" link (Spec 2 R-51a). */
-export function realmResetCredentialsUrl(input: RealmPageInput): string | null {
-  return localRealmPage(input, "login-actions/reset-credentials");
+/**
+ * The realm's reset-password page, the sign-in page's "Forgot your password?" link. It stays after
+ * the setting is turned off while any local account exists (Spec 2 R-51a).
+ */
+export function realmResetCredentialsUrl(
+  input: RealmPageInput & { readonly localAccountExists: boolean }
+): string | null {
+  return localRealmPage(
+    input,
+    "login-actions/reset-credentials",
+    input.settings.localAccountsEnabled || input.localAccountExists
+  );
+}
+
+/**
+ * Whether any person other than the break-glass account holds a local password account (Spec 2
+ * R-51a). Better Auth's provider id for an email and password account is `credential` (D2-5).
+ */
+export async function localAccountExists(
+  tenant: Pick<TenantContext, "db">
+): Promise<boolean> {
+  const { rows } = await tenant.db.$client.query<{ readonly found: boolean }>(
+    `select exists(select 1 from account a join "user" u on u.id = a.user_id
+                    where a.provider_id = 'credential' and not u.is_break_glass) as found`
+  );
+
+  return rows[0]?.found === true;
 }
 
 /**

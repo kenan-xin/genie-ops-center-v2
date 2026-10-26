@@ -299,6 +299,7 @@ export {
   DEFAULT_FAVICON_URL,
   faviconHref,
   loadShell,
+  localAccountExists,
   realmAccountUrl,
   realmResetCredentialsUrl,
   type ShellLabels,
