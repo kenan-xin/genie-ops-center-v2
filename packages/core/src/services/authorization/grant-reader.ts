@@ -8,6 +8,7 @@ import type {
   RecordDescriptor,
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { CORE_RECORD_TYPES } from "./core-record-types.ts";
 import { eligibility } from "./eligibility.ts";
 import {
   type GrantReader,
@@ -166,9 +167,9 @@ export function createGrantReader(
 }
 
 /**
- * The descriptor of one resource, from the record type a compiled module declares under that type,
- * resolved through the request's own tenant context (DEC-34). A type no module declares, or a
- * record its resolver does not find, answers `undefined` (no label, no path, no parents), and a
+ * The descriptor of one resource, from the record type core or a compiled module declares under
+ * that type, resolved through the request's own tenant context (DEC-34). Core's own types (person,
+ * group, role) come first. A type nobody declares, or a record its resolver does not find, answers `undefined` (no label, no path, no parents), and a
  * parent of a type the record type does not declare is dropped (module contract, Record types).
  *
  * The `parents` and the label and path come from one resolution, and `can()` reads the same
@@ -179,9 +180,10 @@ export function createRecordResolver(
   tenant: TenantContext
 ): RecordResolver {
   return async (resource) => {
-    const recordType = modules
-      .flatMap((module) => module.recordTypes)
-      .find((candidate) => candidate.type === resource.type);
+    const recordType = [
+      ...CORE_RECORD_TYPES,
+      ...modules.flatMap((module) => module.recordTypes),
+    ].find((candidate) => candidate.type === resource.type);
 
     if (recordType === undefined) return undefined;
 

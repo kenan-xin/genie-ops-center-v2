@@ -327,7 +327,9 @@ export const DetailSheetOpensAnAuthorizedTarget: Story = {
 
     await userEvent.click(dialog.getByRole("button", { name: /Open/ }));
 
-    expect(onOpenAuditTarget).toHaveBeenCalledWith("/admin/people/p-1");
+    expect(onOpenAuditTarget).toHaveBeenCalledWith(
+      "/admin/people?selected=p-1"
+    );
   },
 };
 

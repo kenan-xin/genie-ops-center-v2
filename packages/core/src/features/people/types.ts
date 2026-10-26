@@ -133,6 +133,8 @@ export type PeopleScreenProps = {
   readonly pending?: boolean | undefined;
   /** Fires when a row opens or the inspector closes, so the host can load that person's detail. */
   readonly onSelectPerson?: (personId: string | null) => void;
+  /** A person to open on mount, for a link such as an audit target (`?selected=`). */
+  readonly initialSelectedId?: string | undefined;
   /**
    * Adds a person. The dialog stays open until this resolves; a rejection leaves it open and the
    * refusal shows in the alert (the host maps the RPC error to its catalogue message).

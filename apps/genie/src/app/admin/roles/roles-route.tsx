@@ -2,7 +2,7 @@
 
 import { RolesScreen, type RolesViewer } from "@genie/core/features/roles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation.js";
+import { useRouter, useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
 import { rpc } from "../../../rpc/client.ts";
@@ -15,7 +15,9 @@ import { rpc } from "../../../rpc/client.ts";
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  // An audit target link opens the screen with its role selected.
+  const linkedRoleId = useSearchParams().get("selected");
+  const [selectedRoleId, setSelectedRoleId] = useState(linkedRoleId);
 
   const list = useQuery({
     queryKey: ["roles"],

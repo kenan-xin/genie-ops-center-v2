@@ -8,6 +8,7 @@ import {
 } from "@genie/core/features/people";
 import { toast } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
 import { refusalOf, rpc } from "../../../rpc/client.ts";
@@ -49,7 +50,9 @@ export function PeopleRoute(props: {
   readonly settings: PeopleSettings;
 }) {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // An audit target link opens the screen with its person selected.
+  const initialSelectedId = useSearchParams().get("selected") ?? undefined;
+  const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
 
@@ -138,6 +141,7 @@ export function PeopleRoute(props: {
       details={
         detail.data === undefined ? {} : { [detail.data.id]: detail.data }
       }
+      initialSelectedId={initialSelectedId}
       // A close keeps the last detail, so the sheet closes through `open` and returns focus (R-22).
       // Opening another person switches the key, and the screen shows nothing until it loads.
       onSelectPerson={(personId) => {

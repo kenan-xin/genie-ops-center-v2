@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -10,8 +11,14 @@ import {
   type RequestPrincipal,
 } from "../src/index.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
-import { auditEvent } from "../src/schema.ts";
-import { insertPersonWith, startDisposableDeployment } from "./index.ts";
+import { auditEvent, user } from "../src/schema.ts";
+import {
+  insertGroup,
+  insertPersonWith,
+  insertRole,
+  insertUser,
+  startDisposableDeployment,
+} from "./index.ts";
 
 /**
  * The audit reader against a real Postgres, with the real core history applied. No part of the
@@ -140,6 +147,19 @@ async function insertAuditReader(): Promise<string> {
   ]);
 
   return userId;
+}
+
+/**
+ * The core-target rows of one read, by target type. A fresh principal per read, so the
+ * per-request memo never hides a change made in between.
+ */
+async function targetsFor(userId: string) {
+  const page = await read({
+    caller: request(userId),
+    filters: filters({ query: "Core record target" }),
+  });
+
+  return new Map(page.events.map((event) => [event.targetType, event]));
 }
 
 describe("the audit reader against a real database", () => {
@@ -593,5 +613,83 @@ describe("the audit reader against a real database", () => {
     expect(page.filterOptions?.actions).toContain(
       "core:permission_transformation"
     );
+  });
+
+  it("resolves core people, groups and roles through their own manage key", async () => {
+    const personId = await insertUser(deployment.context, {
+      name: "Core Target Person",
+    });
+
+    const groupId = await insertGroup(deployment.context, [], {
+      name: "Core Target Group",
+    });
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: [],
+      name: "Core Target Role",
+    });
+
+    for (const [targetType, targetId] of [
+      ["user", personId],
+      ["group", groupId],
+      ["role", roleId],
+    ]) {
+      // oxlint-disable-next-line no-await-in-loop -- three rows, order does not matter.
+      await insertEvent({
+        action: "core:person_added",
+        targetType,
+        targetId,
+        summary: "Core record target",
+      });
+    }
+
+    const admin = await insertPersonWith(deployment.context, [
+      "core:audit:read",
+      "core:people:manage",
+      "core:groups:manage",
+      "core:roles:manage",
+    ]);
+
+    const asAdmin = await targetsFor(admin.userId);
+
+    expect(asAdmin.get("user")).toMatchObject({
+      targetLabel: "Core Target Person",
+      targetExists: true,
+      targetPath: `/admin/people?selected=${personId}`,
+    });
+
+    expect(asAdmin.get("group")).toMatchObject({
+      targetLabel: "Core Target Group",
+      targetExists: true,
+      targetPath: `/admin/groups?selected=${groupId}`,
+    });
+
+    expect(asAdmin.get("role")).toMatchObject({
+      targetLabel: "Core Target Role",
+      targetExists: true,
+      targetPath: `/admin/roles?selected=${roleId}`,
+    });
+
+    // An auditor without core:people:manage keeps the stored type and id only (R-69).
+    const auditor = await targetsFor(await insertAuditReader());
+
+    expect(auditor.get("user")).toMatchObject({
+      targetId: personId,
+      targetLabel: "",
+      targetExists: false,
+      targetPath: null,
+    });
+
+    // An erased person reads as removed, even for the administrator.
+    await deployment.context.db
+      .update(user)
+      .set({ erasedAt: new Date() })
+      .where(eq(user.id, personId));
+
+    expect((await targetsFor(admin.userId)).get("user")).toMatchObject({
+      targetLabel: "",
+      targetExists: false,
+      targetPath: null,
+    });
   });
 });

@@ -2,6 +2,7 @@
 
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
 import { rpc } from "../../../rpc/client.ts";
@@ -15,7 +16,9 @@ import { rpc } from "../../../rpc/client.ts";
 export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   const queryClient = useQueryClient();
   const [includeArchived, setIncludeArchived] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // An audit target link opens the screen with its group selected.
+  const initialSelectedId = useSearchParams().get("selected") ?? undefined;
+  const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
 
   const list = useQuery({
     queryKey: ["groups", includeArchived],
@@ -70,6 +73,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       lastAdministratorGroupIds={
         detail.data?.lastAdministrator === true ? [selected] : []
       }
+      initialSelectedId={initialSelectedId}
       // A close keeps the last detail, so the sheet keeps its members and roles while it closes.
       onSelectGroup={(groupId) => {
         if (groupId !== null) setSelectedId(groupId);

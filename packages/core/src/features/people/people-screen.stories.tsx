@@ -141,6 +141,16 @@ export const Dark: Story = {
   },
 };
 
+/** An audit target link opens the screen with that person selected (6wz1.26). */
+export const OpensTheLinkedPerson: Story = {
+  args: { initialSelectedId: "u-leo" },
+  play: async () => {
+    const inspector = await screen.findByRole("dialog", { name: "Leo Local" });
+
+    await waitFor(() => expect(inspector).toBeVisible());
+  },
+};
+
 export const RowMenuNamesTheRefusal: Story = {
   play: async ({ canvas }) => {
     onRemovePerson.mockClear();

@@ -35,7 +35,7 @@ export const FIXTURE_FILTER_OPTIONS: AuditFilterOptions = {
     "core:role_assignment_removed",
     "core:group_label_changed",
   ],
-  targetTypes: ["person", "group", "fixture-record"],
+  targetTypes: ["user", "group", "fixture-record"],
 };
 
 export const FIXTURE_EVENTS: readonly AuditEvent[] = [
@@ -49,11 +49,11 @@ export const FIXTURE_EVENTS: readonly AuditEvent[] = [
       anonymized: false,
     },
     action: "core:person_added",
-    targetType: "person",
+    targetType: "user",
     targetId: "p-1",
     targetLabel: "Ada Lovelace",
     targetExists: true,
-    targetPath: "/admin/people/p-1",
+    targetPath: "/admin/people?selected=p-1",
     summary: "Added Ada Lovelace and assigned Tenant administrator.",
     metadata: { role: "Tenant administrator" },
   },
@@ -85,7 +85,7 @@ export const FIXTURE_EVENTS: readonly AuditEvent[] = [
       anonymized: true,
     },
     action: "core:person_added",
-    targetType: "person",
+    targetType: "user",
     targetId: "p-gone",
     targetLabel: "Removed person",
     targetExists: false,

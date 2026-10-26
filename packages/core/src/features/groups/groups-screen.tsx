@@ -600,10 +600,13 @@ export function GroupInspector(
  */
 export function GroupsScreen(props: GroupsScreenProps) {
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState(props.initialSelectedId ?? null);
 
   // The inspector stays mounted while it closes, so its exit and its focus return run.
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(
+    props.initialSelectedId !== undefined
+  );
+
   const [dialog, setDialog] = useState<null | "directory" | "local">(null);
   const [externalId, setExternalId] = useState("");
   const [labelDraft, setLabelDraft] = useState("");

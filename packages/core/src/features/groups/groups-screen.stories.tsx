@@ -90,6 +90,16 @@ export const Default: Story = {
   },
 };
 
+/** An audit target link opens the screen with that group selected (6wz1.26). */
+export const OpensTheLinkedGroup: Story = {
+  args: { initialSelectedId: "g-local" },
+  play: async () => {
+    const inspector = await screen.findByRole("dialog", { name: "Operations" });
+
+    await waitFor(() => expect(inspector).toBeVisible());
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {

@@ -300,7 +300,8 @@ type ResolvedTarget = {
 /**
  * Resolves each distinct target once, through the principal's own record resolver, and keeps the
  * live label, existence and path only when the viewer may open the record under `can()` on the
- * path's declared permission (defaulting to the owning module's `<id>:use`). A target the viewer
+ * path's declared permission (defaulting to the owning module's `<id>:use`). Core's people, groups
+ * and roles resolve through the same resolver and name their own manage key. A target the viewer
  * may not open is returned exactly like a target that no longer resolves: only the stored type and
  * id remain, so an auditor entitled to the event but not the record learns nothing live (R-69).
  *
@@ -318,26 +319,25 @@ async function resolveTargets(
 
     if (resolved.has(key)) continue;
 
-    const module = moduleForRecordType(input.modules, target.type);
-
-    if (module === undefined) {
-      resolved.set(key, HIDDEN_TARGET);
-      continue;
-    }
-
     // oxlint-disable-next-line no-await-in-loop -- one target at a time; the principal memoises each.
     const descriptor = await input.caller.recordOf({
       type: target.type,
       id: target.id,
     });
 
-    if (descriptor === undefined) {
+    const module = moduleForRecordType(input.modules, target.type);
+
+    // Core's own record types always name their permission; a module's default to `<id>:use`.
+    const permission =
+      descriptor?.permission ??
+      (module === undefined
+        ? undefined
+        : permissionKeyFor(module.identity.id, "use"));
+
+    if (descriptor === undefined || permission === undefined) {
       resolved.set(key, HIDDEN_TARGET);
       continue;
     }
-
-    const permission =
-      descriptor.permission ?? permissionKeyFor(module.identity.id, "use");
 
     // oxlint-disable-next-line no-await-in-loop -- the check belongs to this target's resolution.
     const allowed = await can(input.caller, permission, {

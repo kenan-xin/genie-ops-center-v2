@@ -77,6 +77,8 @@ export type GroupsScreenProps = {
   readonly onChangeIncludeArchived: (includeArchived: boolean) => void;
   /** Fires when a row opens or the inspector closes, so the host can load that group's detail. */
   readonly onSelectGroup?: (groupId: string | null) => void;
+  /** A group to open on mount, for a link such as an audit target (`?selected=`). */
+  readonly initialSelectedId?: string | undefined;
   readonly people: readonly PersonOption[];
   /** The roles the inspector can assign to a group (R-24b). */
   readonly roles?: readonly AssignableRole[] | undefined;

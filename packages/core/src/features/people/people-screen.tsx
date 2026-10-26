@@ -512,10 +512,13 @@ export function PeopleScreen(props: PeopleScreenProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [groupFilter, setGroupFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState(props.initialSelectedId ?? null);
 
   // The inspector stays mounted while it closes, so its exit and its focus return run.
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(
+    props.initialSelectedId !== undefined
+  );
+
   const [adding, setAdding] = useState(false);
   const [addSubmitting, setAddSubmitting] = useState(false);
   const searchId = useId();
