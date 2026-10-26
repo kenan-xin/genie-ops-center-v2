@@ -25,6 +25,10 @@ Spec R-19, R-19a, R-20 to R-26. Plan D3-4.
 - Switch every screen that imports a kit: People, Groups, Roles, Audit, Account and Break-glass.
 - Add the lint check of R-19a that refuses a second `ConfirmDialog` or `focusRing`.
 
+## Accepted decisions
+
+- The Audit detail sheet stays full height. The owner chose option A on 2026-10-25 (DR-20). No code change.
+
 ## Acceptance
 
 AC-3, primitives part.
