@@ -12,8 +12,7 @@ export const dynamic = "force-dynamic";
 /**
  * The browser activity call (R-15, R-15a): the one writer of `session.last_active_at`, made by
  * the SessionActivity client on real pointer, keyboard, or touch input, throttled to half the
- * idle window on its side. A live session answers the new absolute idle expiry; an
- * unauthenticated request answers 401 and expires the session cookie, so a browser whose
+ * idle window on its side. A live session answers 200 with no body; an unauthenticated request answers 401 and expires the session cookie, so a browser whose
  * session the idle rule refused lands on the sign-in page's session-expired state instead of
  * retrying forever against a cookie that names no live session.
  */
@@ -24,9 +23,9 @@ async function handler(request: Request): Promise<Response> {
   if (!stateChangeOriginAllowed(request, app.tenant.env.publicUrl))
     return crossOriginRefusal();
 
-  const result = await auth.recordActivity({ headers: request.headers });
+  const slid = await auth.recordActivity({ headers: request.headers });
 
-  if (result === null) {
+  if (!slid) {
     // The cookie is cleared below, so an idle row ends here too; a missing row is a no-op.
     await auth.endIdleSession({ headers: request.headers });
 
@@ -41,10 +40,7 @@ async function handler(request: Request): Promise<Response> {
     );
   }
 
-  return Response.json(
-    { idleExpiresAt: result.idleExpiresAt.toISOString() },
-    { headers: { "cache-control": "no-store" } }
-  );
+  return new Response(null, { headers: { "cache-control": "no-store" } });
 }
 
 export { handler as POST };

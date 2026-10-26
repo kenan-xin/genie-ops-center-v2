@@ -23,7 +23,6 @@ export {
   activityThrottleWaitMs,
   APPLICATION_SESSION_FIELDS,
   APPLICATION_USER_FIELDS,
-  type AuthActivityResult,
   type AuthDiscoveryCause,
   type AuthDiscoveryState,
   type AuthMember,

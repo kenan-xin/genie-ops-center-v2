@@ -37,7 +37,7 @@ import {
   TOTP_ISSUER_DEFAULT,
 } from "./config.ts";
 import { createDiscoveryProbe } from "./discovery.ts";
-import { idleExpiry, isIdleExpired } from "./idle.ts";
+import { isIdleExpired } from "./idle.ts";
 import { syncGroupMemberships, validateOAuthUser } from "./onboarding.ts";
 import { recordOAuthSignIn } from "./session-events.ts";
 import type {
@@ -52,7 +52,6 @@ import type {
 import { describeUserAgent } from "./user-agent.ts";
 
 export type {
-  AuthActivityResult,
   AuthDiscoveryCause,
   AuthDiscoveryState,
   AuthMember,
@@ -1138,7 +1137,7 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
     async recordActivity({ headers }) {
       const state = await enforcedSession(headers);
 
-      if (state.status !== "authenticated") return null;
+      if (state.status !== "authenticated") return false;
 
       const at = new Date(now());
       const { sessionIdleMinutes } = await input.settings.get();
@@ -1160,15 +1159,7 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
         )
         .returning({ id: session.id });
 
-      if (slid.length === 0) return null;
-
-      // R-15a: the absolute expiry computed from the activity just recorded.
-      return {
-        idleExpiresAt: idleExpiry({
-          lastActivityAt: at,
-          idleMinutes: sessionIdleMinutes,
-        }),
-      };
+      return slid.length > 0;
     },
 
     async endIdleSession({ headers }) {

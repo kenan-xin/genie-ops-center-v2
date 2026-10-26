@@ -360,9 +360,7 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
   // The activity call answers live without reaching the server, so it can neither slide the
   // session nor land the browser on the banner itself. Only the page's redirect can.
   await page.route("**/api/session/activity", (route) =>
-    route.fulfill({
-      json: { idleExpiresAt: new Date(Date.now() + 3_600_000).toISOString() },
-    })
+    route.fulfill({ status: 200 })
   );
 
   await page.goto("/");

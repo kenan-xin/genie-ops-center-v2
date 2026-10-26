@@ -215,7 +215,7 @@ describe("the session idle rule", () => {
     expect([...parallel, later]).toEqual(
       Array.from({ length: 4 }, () => ({ status: "idle-expired" }))
     );
-    expect(activity).toBeNull();
+    expect(activity).toBe(false);
     expect(
       await auth.getSession({ headers: new Headers({ cookie }) })
     ).toBeNull();
@@ -321,7 +321,7 @@ describe("the session idle rule", () => {
     expect(after.expires_at.getTime()).toBe(before.expires_at.getTime());
   });
 
-  it("the activity call is the one writer of last activity and answers the idle expiry (R-15, R-15a)", async () => {
+  it("the activity call is the one writer of last activity (R-15)", async () => {
     const auth = authOf(deployment);
 
     await insertCredentialPerson(deployment.context, {
@@ -339,21 +339,11 @@ describe("the session idle rule", () => {
       headers: new Headers({ cookie }),
     });
 
-    expect(result).not.toBeNull();
+    expect(result).toBe(true);
 
     const written = await sessionRow(client, sessionId);
 
     expect(written.last_active_at).not.toBeNull();
-
-    // R-15a: the absolute expiry is computed from the activity just written.
-    // SAFETY: the assertion above `expect(written.last_active_at).not.toBeNull()` leaves a
-    // non-null Date, which is the only branch this cast serves.
-    const expected =
-      (written.last_active_at as Date).getTime() + IDLE_MINUTES * 60_000;
-
-    expect(
-      Math.abs((result?.idleExpiresAt.getTime() ?? 0) - expected)
-    ).toBeLessThan(1_000);
 
     // The session inside the window survives the call that slid it (AC-5).
     const state = await auth.sessionState({ headers: new Headers({ cookie }) });
@@ -400,7 +390,7 @@ describe("the session idle rule", () => {
 
     expect(
       await member.recordActivity({ headers: new Headers({ cookie }) })
-    ).toBeNull();
+    ).toBe(false);
     expect((await sessionRow(client, sessionId)).last_active_at).toEqual(
       before.last_active_at
     );
@@ -556,14 +546,14 @@ describe("the session idle rule", () => {
     }
   });
 
-  it("an anonymous activity call answers null and writes nothing", async () => {
+  it("an anonymous activity call answers false and writes nothing", async () => {
     const auth = authOf(deployment);
 
     expect(
       await auth.recordActivity({
         headers: new Headers({ cookie: "genie-session=none" }),
       })
-    ).toBeNull();
+    ).toBe(false);
   });
 
   it("lists a session older than a day, hides idle-dead rows, and puts the current session first (R-13, R-18, AC-5)", async () => {

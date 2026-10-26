@@ -89,9 +89,6 @@ export type AuthOwnSession = {
   readonly isCurrent: boolean;
 };
 
-/** The activity call's answer: the absolute idle expiry the call just wrote (R-15a). */
-export type AuthActivityResult = { readonly idleExpiresAt: Date };
-
 /** What one per-row sign-out answers. */
 export type AuthRevokeSessionResult =
   | "revoked"
@@ -138,12 +135,10 @@ export type AuthMember = {
   readonly sessionState: (input: AuthSessionInput) => Promise<AuthSessionState>;
   /**
    * The browser activity call (R-15): the one writer of `session.last_active_at`, throttled to
-   * half the idle window by the client. Answers the new absolute idle expiry (R-15a), or null
-   * when the request holds no live session.
+   * half the idle window by the client. Answers true when it slid the session, or false when the
+   * request holds no live session.
    */
-  readonly recordActivity: (
-    input: AuthSessionInput
-  ) => Promise<AuthActivityResult | null>;
+  readonly recordActivity: (input: AuthSessionInput) => Promise<boolean>;
   /**
    * Deletes the session row this request's cookie names, only while that session is past the
    * idle window, and answers whether a row went (R-14). The routes that clear an idle browser's
