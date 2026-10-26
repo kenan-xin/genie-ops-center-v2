@@ -61,6 +61,7 @@ const strings: ShellStrings = {
   closeNavigation: "Close navigation",
   offline:
     "You are offline. Changes will not be saved until the connection returns.",
+  pageContent: "Page content",
   account: "Account",
   changePassword: "Change password",
   opensInNewTab: "Opens in a new tab",
@@ -153,6 +154,9 @@ export const WorkspaceDesktop: Story = {
       canvas.queryByRole("button", { name: "Open navigation" })
     ).toBeNull();
     await expect(canvas.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    await expect(
+      canvas.getByRole("group", { name: "Page content" })
+    ).toHaveAttribute("tabindex", "0");
     await expect(canvas.queryByRole("searchbox")).toBeNull();
     await expect(
       canvas.queryByRole("link", { name: /notifications/i })

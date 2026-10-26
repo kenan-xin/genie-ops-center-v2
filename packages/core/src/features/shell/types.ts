@@ -59,6 +59,7 @@ export type ShellStrings = {
   readonly openNavigation: string;
   readonly closeNavigation: string;
   readonly offline: string;
+  readonly pageContent: string;
   readonly account: string;
   readonly changePassword: string;
   readonly opensInNewTab: string;

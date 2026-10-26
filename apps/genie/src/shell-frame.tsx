@@ -82,6 +82,7 @@ export async function ShellFrame(props: {
         openNavigation: t("openNavigation"),
         closeNavigation: t("closeNavigation"),
         offline: t("offline"),
+        pageContent: t("pageContent"),
         account: t("account"),
         changePassword: t("changePassword"),
         opensInNewTab: t("opensInNewTab"),

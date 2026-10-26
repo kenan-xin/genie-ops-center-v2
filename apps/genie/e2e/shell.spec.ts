@@ -152,6 +152,42 @@ test("the header keeps an empty search slot and shows no bell (R-40)", async ({
   await expectNoAxeViolations(page, "shell header");
 });
 
+test("the content area is a named group that a keyboard reaches and scrolls (6wz1.70)", async ({
+  page,
+}) => {
+  await page.goto("/account");
+
+  const account = page.getByTestId("account-page");
+
+  await expect(account).toBeVisible();
+  // The taller session card of DR-17, which overflowed the area with nothing in it to focus, stood
+  // in for by extra height: the case axe `scrollable-region-focusable` guards.
+  await account.evaluate((main) => {
+    main.style.paddingBottom = "100vh";
+  });
+
+  const content = page.getByRole("group", { name: "Page content" });
+
+  await expect(content).toBeVisible();
+  expect(
+    await content.evaluate((area) => area.scrollHeight > area.clientHeight)
+  ).toBe(true);
+  await expectNoAxeViolations(page, "overflowing content area");
+
+  await expect(async () => {
+    await page.keyboard.press("Tab");
+    await expect(content).toBeFocused({ timeout: 100 });
+  }).toPass({ timeout: 15_000 });
+
+  await expect
+    .poll(async () => {
+      await page.keyboard.press("ArrowDown");
+
+      return content.evaluate((area) => area.scrollTop);
+    }, POLL)
+    .toBeGreaterThan(0);
+});
+
 test("the offline bar spans the viewport above the sidebar and leaves on online (R-35)", async ({
   page,
   context,

@@ -53,6 +53,7 @@ const meta = {
       openNavigation: "Open navigation",
       closeNavigation: "Close navigation",
       offline: "You are offline.",
+      pageContent: "Page content",
       account: "Account",
       changePassword: "Change password",
       opensInNewTab: "Opens in a new tab",

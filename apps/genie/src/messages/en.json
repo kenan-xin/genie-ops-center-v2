@@ -11,6 +11,7 @@
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
     "offline": "You are offline. Changes will not be saved until the connection returns.",
+    "pageContent": "Page content",
     "account": "Account",
     "changePassword": "Change password",
     "opensInNewTab": "Opens in a new tab",

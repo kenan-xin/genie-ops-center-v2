@@ -109,9 +109,15 @@ export function AppShell(props: AppShellProps) {
             </p>
             <div data-shell-slot="search" aria-hidden="true" />
           </header>
+          {/* Focusable, so a keyboard scrolls a page that holds no control of its own (6wz1.70).
+              A group, not a region: a named region is a landmark, and the page's <main> must not
+              sit inside one. */}
           <div
             data-shell-content=""
-            className="min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20"
+            role="group"
+            aria-label={strings.pageContent}
+            tabIndex={0}
+            className={`min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20 ${focusRing}`}
           >
             <ShellContext.Provider value={{ chrome: props.chrome }}>
               {props.children}
