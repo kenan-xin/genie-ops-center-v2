@@ -178,6 +178,10 @@ test("the content area is a named group that a keyboard reaches and scrolls (6wz
     await page.keyboard.press("Tab");
     await expect(content).toBeFocused({ timeout: 100 });
   }).toPass({ timeout: 15_000 });
+  // The area fills the viewport, so a ring drawn outside it would be off screen.
+  expect(
+    await content.evaluate((area) => getComputedStyle(area).boxShadow)
+  ).toContain("inset");
 
   await expect
     .poll(async () => {

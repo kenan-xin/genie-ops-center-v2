@@ -111,13 +111,13 @@ export function AppShell(props: AppShellProps) {
           </header>
           {/* Focusable, so a keyboard scrolls a page that holds no control of its own (6wz1.70).
               A group, not a region: a named region is a landmark, and the page's <main> must not
-              sit inside one. */}
+              sit inside one. The ring is inset, because the area fills the viewport. */}
           <div
             data-shell-content=""
             role="group"
             aria-label={strings.pageContent}
             tabIndex={0}
-            className={`min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20 ${focusRing}`}
+            className={`min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider value={{ chrome: props.chrome }}>
               {props.children}
