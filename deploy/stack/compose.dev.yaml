@@ -1,0 +1,32 @@
+# The local development database. `pnpm nx run @genie/app:dev` starts it before `next dev`.
+#
+# Unlike `compose.dev-e2e.yaml`, which test runs create and destroy, this database keeps its data in
+# a named volume, so `docker compose down` and a restart leave it in place. Only
+# `docker compose -f deploy/stack/compose.dev.yaml down -v` deletes it.
+#
+# Local and never reachable off-host (bound to 127.0.0.1), so the fixed credential below is a
+# throwaway for this database and not a secret. `apps/genie/.env.example` uses the same values.
+name: genie-ops-local
+
+services:
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: genie
+      POSTGRES_PASSWORD: genie
+      POSTGRES_DB: genie
+    ports:
+      - "127.0.0.1:${GENIE_DEV_DB_PORT:-5433}:5432"
+    # The Postgres 18 image keeps its data under /var/lib/postgresql/18/docker.
+    volumes:
+      - database:/var/lib/postgresql
+    # Probe TCP, not the socket: the image's temporary init server answers a socket probe before
+    # the real server listens (the same probe as compose.e2e.yaml).
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "genie"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  database:

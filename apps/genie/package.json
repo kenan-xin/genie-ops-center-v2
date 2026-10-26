@@ -7,6 +7,7 @@
     "build": "node tools/build.ts",
     "build-image": "node tools/build-image.ts",
     "build-fixture-image": "node tools/build-fixture-image.ts",
+    "dev": "docker compose -f ../../deploy/stack/compose.dev.yaml up -d --wait && next dev --port 3000",
     "generate-registry": "node tools/generate-registry.ts",
     "generate-openapi": "node tools/generate-openapi.ts",
     "check-openapi": "node tools/generate-openapi.ts --check",
@@ -75,6 +76,13 @@
         "outputs": [
           "{projectRoot}/src/modules.ts",
           "{projectRoot}/src/styles/module-sources.generated.css"
+        ]
+      },
+      "dev": {
+        "cache": false,
+        "continuous": true,
+        "dependsOn": [
+          "generate-registry"
         ]
       },
       "generate-openapi": {
