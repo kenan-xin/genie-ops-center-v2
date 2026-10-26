@@ -430,7 +430,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the categories page service against a real database counts come from tenant_module.category_id of compiled placeable modules, and the ungrouped count includes a dangling id",
       "the categories page service against a real database delete leaves members ungrouped and changes no row outside category and tenant_module",
       "the categories page service against a real database a duplicate or blank name refuses and writes no row",
-      "the categories page service against a real database reorder refuses a list that misses or adds an id",
+      "the categories page service against a real database reorder refuses a list that misses or adds an id as changed, and a repeated id as invalid",
     ],
   },
   {
