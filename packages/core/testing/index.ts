@@ -26,7 +26,11 @@ export { insertCredentialPerson } from "./auth-fixtures.ts";
 
 export { insertSession, signedSessionCookie } from "./session-fixtures.ts";
 
-export { type DevSessionCookie, mintDevSession } from "./dev-session.ts";
+export {
+  type DevSessionCookie,
+  type DevSessionSubject,
+  mintDevSession,
+} from "./dev-session.ts";
 
 export { totpCodeForUri, totpSecretOf } from "./totp-fixture.ts";
 

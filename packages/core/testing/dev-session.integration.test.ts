@@ -2,18 +2,23 @@ import type { PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { AuthMember } from "../src/services/auth/index.ts";
-import type { DisposableDeployment } from "./index.ts";
+import type {
+  DevSessionCookie,
+  DevSessionSubject,
+  DisposableDeployment,
+} from "./index.ts";
 import {
   insertCredentialPerson,
+  insertRole,
   insertUser,
   mintDevSession,
   startDisposableDeployment,
 } from "./index.ts";
 
 /**
- * The dev session mint (genie-ops-center-v2-xok3.25) against a real Postgres: the cookie it answers
- * passes the application's own enforced session read, and it never mints for the break-glass
- * account or for a deployment that is not local.
+ * The dev session mint (genie-ops-center-v2-xok3.25, xok3.10) against a real Postgres: the cookie
+ * it answers passes the application's own enforced session read, a role's test person holds that
+ * role, and it never mints for the break-glass account or for a deployment that is not local.
  */
 const PUBLIC_URL = "http://localhost:3000";
 
@@ -54,27 +59,53 @@ describe("mintDevSession", () => {
     await deployment?.stop();
   });
 
-  function mint(email: string, publicUrl = PUBLIC_URL) {
+  function mint(subject: DevSessionSubject, publicUrl = PUBLIC_URL) {
     return mintDevSession({
       databaseUrl: deployment.context.env.databaseUrl,
       publicUrl,
       secret: SECRET,
-      email,
+      subject,
     });
   }
+
+  async function sessionUser(cookie: DevSessionCookie) {
+    const session = await auth.getSession({
+      headers: new Headers({ cookie: `${cookie.name}=${cookie.value}` }),
+    });
+
+    return session?.user;
+  }
+
+  it("signs in one test person per role, which holds that role, on every run", async () => {
+    const roleId = await insertRole(deployment.context, {
+      name: "Case reviewer",
+      permissions: ["core:audit_read"],
+    });
+
+    const first = await sessionUser(await mint({ role: "Case reviewer" }));
+    const second = await sessionUser(await mint({ role: "Case reviewer" }));
+
+    expect(first?.email).toBe("test-case-reviewer@example.invalid");
+    expect(second?.id).toBe(first?.id);
+
+    const grants = await client.query(
+      "select 1 from role_assignment where role_id = $1 and principal_type = 'user' and principal_id = $2",
+      [roleId, first?.id]
+    );
+
+    expect(grants.rowCount).toBe(1);
+  });
 
   it("answers a cookie that the application reads as that person's live session", async () => {
     const userId = await insertUser(deployment.context, {
       email: "tester@example.com",
     });
 
-    const cookie = await mint("tester@example.com");
+    const person = await sessionUser(
+      await mint({ email: "tester@example.com" })
+    );
 
-    const session = await auth.getSession({
-      headers: new Headers({ cookie: `${cookie.name}=${cookie.value}` }),
-    });
-
-    expect(session?.user.id).toBe(userId);
+    expect(person?.id).toBe(userId);
   });
 
   it("refuses the break-glass account and writes no session", async () => {
@@ -83,7 +114,7 @@ describe("mintDevSession", () => {
       password: "break-glass-password-14",
     });
 
-    await expect(mint("break-glass@example.com")).rejects.toThrow(
+    await expect(mint({ email: "break-glass@example.com" })).rejects.toThrow(
       /break-glass/
     );
 
@@ -97,7 +128,7 @@ describe("mintDevSession", () => {
 
   it("refuses a PUBLIC_URL that is not local", async () => {
     await expect(
-      mint("tester@example.com", "https://ops.example.com")
+      mint({ email: "tester@example.com" }, "https://ops.example.com")
     ).rejects.toThrow(/not a local address/);
   });
 });

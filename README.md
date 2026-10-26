@@ -80,36 +80,24 @@ From then on, step 5 alone starts everything. Press Ctrl+C to stop the applicati
 
 ### Sign in without the identity provider (agents and unattended checks)
 
-The `genie-dev` realm sends every sign-in to the identity provider, which needs a person at the keyboard. An agent instead gets a real session for a test person straight from the dev database. The session passes the same checks as a normal one, and the person's roles decide what the agent can do. Sign-in itself is skipped, so no group sync runs. A test person therefore holds roles through local groups only.
+The `genie-dev` realm sends every sign-in to the identity provider, which needs a person at the keyboard. An agent instead gets a real session for a test person straight from the dev database. The session passes the same checks as a normal one, and the person's roles decide what the agent can do. Sign-in itself is skipped, so no group sync runs. A person signed in this way holds only the grants already stored in the database.
 
-1. Add the test administrator to the dev database once. It joins the local `Genie Administrators` group:
-
-   ```bash
-   docker compose -f deploy/stack/compose.dev.yaml exec -T database psql -U genie -d genie -c "
-     with person as (
-       insert into \"user\" (id, name, email, email_verified, status, onboarding, first_sign_in_at, last_sign_in_at)
-       values (gen_random_uuid()::text, 'Agent Test Admin', 'agent-admin@example.invalid', true, 'active', 'invited', now(), now())
-       on conflict (email) do update set status = 'active'
-       returning id)
-     insert into group_member (group_id, user_id, source)
-     select g.id, person.id, 'local' from person, \"group\" g where g.name = 'Genie Administrators'
-     on conflict do nothing;"
-   ```
-
-2. Print a session cookie for that person:
+1. Print a session cookie for the test person of one role:
 
    ```bash
-   pnpm nx run @genie/app:dev-session -- agent-admin@example.invalid
+   pnpm nx run @genie/app:dev-session -- --role "Tenant administrator"
    ```
+
+   The first run creates the person `test-tenant-administrator@example.invalid` and grants it that role directly. Later runs reuse the person. Use the exact role name from the Roles screen, for a core role or a module role. An unknown name prints the list of roles. To sign in an existing person instead, pass the email: `pnpm nx run @genie/app:dev-session -- <email>`.
 
    The command prints one line of JSON: `name`, `value`, `url`, `path`, `httpOnly`, `sameSite` and `expires`. It reads `apps/genie/.env.development.local`. It refuses a `PUBLIC_URL` that is not a local address, and it refuses the break-glass account.
 
-3. Give the cookie to the browser. Playwright takes the JSON as is, through `context.addCookies`. In BrowserOS Neo, which does not allow `Network.setCookie`, open `http://localhost:3000/sign-in` and write the cookie from the page:
+2. Give the cookie to the browser. Playwright takes the JSON as is, through `context.addCookies`. BrowserOS Neo does not allow `Network.setCookie`, so use the page instead. Open `http://localhost:3000/api/auth/session-expired`, which clears a cookie that names no live session and lands on `/sign-in`. Then write the cookie from that page:
 
    ```js
    document.cookie = `genie-session=${value}; path=/; max-age=86400; samesite=lax`;
    ```
 
-   If the browser already holds a `genie-session` cookie from a real sign-in, the page cannot replace it. Clear the cookies for `localhost` first.
+   If the browser holds a live session from a real sign-in, the page cannot replace its cookie. Use a browser profile that you never sign in to by hand. For Neo, that profile is `genie-agent`.
 
-The session ends after 24 hours, or earlier at the tenant's idle limit. When a page sends you to `/sign-in`, run step 2 again. Use another test person to check another role.
+The session ends after 24 hours, or earlier at the tenant's idle limit. When a page sends you to `/sign-in`, run step 1 again. To check another role, run step 1 with that role.
