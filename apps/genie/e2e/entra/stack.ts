@@ -226,7 +226,7 @@ export async function startEntraStack(tenant: EntraTenant): Promise<void> {
     "POSTGRES_PASSWORD=genie",
     "-e",
     "POSTGRES_DB=genie",
-    "postgres:18-alpine",
+    "postgres:18",
   ]);
 
   await waitFor(

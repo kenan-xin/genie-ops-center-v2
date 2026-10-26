@@ -3,7 +3,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { startWithPortBindRetry } from "./container-start.ts";
 
 /** The Postgres the image is built against (tech stack, Database row). */
-export const POSTGRES_IMAGE = "postgres:18-alpine";
+export const POSTGRES_IMAGE = "postgres:18";
 
 export type DisposablePostgres = {
   /** The connection string of a database with nothing in it. */

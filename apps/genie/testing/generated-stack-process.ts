@@ -11,7 +11,7 @@ const run = promisify(execFile);
 
 const PROXY_NETWORK = "proxy";
 
-export const POSTGRES_IMAGE = "postgres:18-alpine";
+export const POSTGRES_IMAGE = "postgres:18";
 
 /** The realm `genie-ops setup` creates in the bundled Keycloak for the smoke test. */
 export const SMOKE_REALM = "smoke";

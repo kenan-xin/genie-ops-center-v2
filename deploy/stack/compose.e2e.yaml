@@ -6,7 +6,7 @@
 # this file.
 services:
   database:
-    image: postgres:18-alpine
+    image: postgres:18
     environment:
       POSTGRES_USER: genie
       POSTGRES_PASSWORD: genie
