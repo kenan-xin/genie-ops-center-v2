@@ -8,7 +8,7 @@ import { expectNoAxeViolations } from "./support/axe.ts";
 import { publishBranding } from "./support/branding-page.ts";
 import { queryDatabase } from "./support/database.ts";
 import { withDeploymentLock } from "./support/lock.ts";
-import { linksIn, waitForMessageTo } from "./support/mailpit.ts";
+import { clearMailpit, linksIn, waitForMessageTo } from "./support/mailpit.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -182,6 +182,8 @@ test("a branding change reaches the sign-in page and the email, light and dark",
                   sessions as (delete from session where user_id in (select id from old))
              delete from "user" where id in (select id from old)`
           );
+          // A message from an earlier run must not pass as this one (acceptance fix 2).
+          expect(await clearMailpit(personEmail)).toBe(true);
 
           await signInThroughKeycloak(page, {
             email: e2eReaderEmail("branding", project),

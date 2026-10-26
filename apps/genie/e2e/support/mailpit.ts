@@ -30,12 +30,15 @@ export type MailpitMessage = {
 /**
  * Deletes the messages addressed to `email`, so a spec reads only the messages its own action sent.
  * Only that recipient's: parallel specs share the sink, and emptying it drops their mail (xok3.12).
+ * Answers whether Mailpit accepted the delete, so a spec that must not read stale mail can check it.
  */
-export async function clearMailpit(email: string): Promise<void> {
-  await fetch(
+export async function clearMailpit(email: string): Promise<boolean> {
+  const response = await fetch(
     `${standinMailpitUrl()}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
     { method: "DELETE" }
-  ).catch(() => undefined);
+  ).catch(() => null);
+
+  return response?.ok ?? false;
 }
 
 async function summariesTo(email: string): Promise<readonly MailpitSummary[]> {
