@@ -102,6 +102,8 @@
   "signIn": {
     "title": "Sign in",
     "action": "Sign in with your company account",
+    "actionLocal": "Continue to sign in",
+    "forgotPassword": "Forgot your password?",
     "welcomeFallback": "Welcome to {productName}",
     "acknowledge": "I acknowledge these conditions.",
     "terms": "Terms of use",

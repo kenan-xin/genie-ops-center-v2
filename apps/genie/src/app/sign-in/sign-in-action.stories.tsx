@@ -83,6 +83,33 @@ export const AcknowledgementWithoutNotice: Story = {
   },
 };
 
+const RESET_URL =
+  "https://id.example.invalid/realms/acme/login-actions/reset-credentials";
+
+export const LocalAccounts: Story = {
+  args: {
+    label: "Continue to sign in",
+    forgotPasswordUrl: RESET_URL,
+    forgotPasswordLabel: "Forgot your password?",
+  },
+  play: async (context) => {
+    await assertOpenAction(context);
+    await expect(
+      context.canvas.getByRole("link", { name: "Forgot your password?" })
+    ).toHaveAttribute("href", RESET_URL);
+  },
+};
+
+export const NoForgotPasswordWithoutLocalAccounts: Story = {
+  args: { forgotPasswordLabel: "Forgot your password?" },
+  play: async (context) => {
+    await assertOpenAction(context);
+    await expect(
+      context.canvas.queryByRole("link", { name: "Forgot your password?" })
+    ).not.toBeInTheDocument();
+  },
+};
+
 export const Dark: Story = {
   args: { notice: NOTICE, requiresAcknowledgement: true },
   globals: { theme: "dark" },

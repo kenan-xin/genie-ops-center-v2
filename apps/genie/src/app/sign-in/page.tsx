@@ -1,3 +1,4 @@
+import { realmResetCredentialsUrl } from "@genie/core";
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
@@ -55,6 +56,13 @@ export default async function SignInPage(props: {
   const { contextId, tenant } = requireContext();
 
   const branding = await tenant.branding.get();
+
+  // R-51a: a local-accounts realm gets its own button label and the realm's reset-password link.
+  const forgotPasswordUrl = realmResetCredentialsUrl({
+    settings: await tenant.settings.get(),
+    publicUrl: tenant.env.publicUrl,
+    realm: tenant.env.auth?.keycloakRealm,
+  });
 
   const productName =
     cause === "signed_out"
@@ -116,8 +124,10 @@ export default async function SignInPage(props: {
         <SignInAction
           notice={branding.loginNoticeText}
           requiresAcknowledgement={branding.loginNoticeRequiresAcknowledgement}
-          label={t("action")}
+          label={forgotPasswordUrl === null ? t("action") : t("actionLocal")}
           acknowledgeLabel={t("acknowledge")}
+          forgotPasswordUrl={forgotPasswordUrl}
+          forgotPasswordLabel={t("forgotPassword")}
         />
       </section>
       <SignInFooter

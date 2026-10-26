@@ -11,6 +11,7 @@ import {
   DEFAULT_FAVICON_URL,
   faviconHref,
   realmAccountUrl,
+  realmResetCredentialsUrl,
   type ShellLabels,
   shellNavigation,
 } from "./index.ts";
@@ -199,6 +200,24 @@ describe("realmAccountUrl", () => {
         realm: undefined,
       })
     ).toBe("https://ops.example.com/realms/genie/account");
+  });
+
+  it("links the reset-credentials page of the same realm (Spec 2 R-51a)", () => {
+    const input = {
+      settings: { ...local, keycloakUrlAtSetup: "https://id.example.com" },
+      publicUrl: "https://ops.example.com",
+      realm: "acme",
+    };
+
+    expect(realmResetCredentialsUrl(input)).toBe(
+      "https://id.example.com/realms/acme/login-actions/reset-credentials"
+    );
+    expect(
+      realmResetCredentialsUrl({
+        ...input,
+        settings: { ...input.settings, realmSupportsLocalAccounts: false },
+      })
+    ).toBeNull();
   });
 
   it("gives null without local accounts", () => {

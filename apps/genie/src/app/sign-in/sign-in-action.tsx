@@ -8,6 +8,9 @@ export type SignInActionProps = {
   readonly requiresAcknowledgement: boolean;
   readonly label: string;
   readonly acknowledgeLabel: string;
+  /** The realm's reset-password page, set only while the realm holds local accounts (R-51a). */
+  readonly forgotPasswordUrl?: string | null;
+  readonly forgotPasswordLabel?: string;
 };
 
 const ACTION_CLASS = `inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground ${focusRing}`;
@@ -21,6 +24,8 @@ export function SignInAction({
   requiresAcknowledgement,
   label,
   acknowledgeLabel,
+  forgotPasswordUrl = null,
+  forgotPasswordLabel,
 }: SignInActionProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
@@ -57,6 +62,14 @@ export function SignInAction({
       ) : (
         <a href="/api/auth/sign-in/keycloak" className={ACTION_CLASS}>
           {label}
+        </a>
+      )}
+      {forgotPasswordUrl === null ? null : (
+        <a
+          href={forgotPasswordUrl}
+          className={`self-center rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline ${focusRing}`}
+        >
+          {forgotPasswordLabel}
         </a>
       )}
     </div>

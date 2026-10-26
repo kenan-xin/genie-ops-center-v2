@@ -301,6 +301,7 @@ export {
   faviconHref,
   loadShell,
   realmAccountUrl,
+  realmResetCredentialsUrl,
   type ShellLabels,
   type ShellModel,
   shellNavigation,

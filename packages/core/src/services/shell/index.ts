@@ -99,20 +99,32 @@ export function administration(
   };
 }
 
-/** The realm's own account page, which only a local-account tenant links (Spec 2 R-18). */
-export function realmAccountUrl(input: {
+type RealmPageInput = {
   readonly settings: Pick<
     TenantSettings,
     "localAccountsEnabled" | "realmSupportsLocalAccounts" | "keycloakUrlAtSetup"
   >;
   readonly publicUrl: string;
   readonly realm: string | undefined;
-}): string | null {
+};
+
+/** A page of the tenant realm, linked only while the realm holds local accounts. */
+function localRealmPage(input: RealmPageInput, path: string): string | null {
   const { settings } = input;
 
   return settings.localAccountsEnabled && settings.realmSupportsLocalAccounts
-    ? `${settings.keycloakUrlAtSetup ?? input.publicUrl}/realms/${input.realm ?? "genie"}/account`
+    ? `${settings.keycloakUrlAtSetup ?? input.publicUrl}/realms/${input.realm ?? "genie"}/${path}`
     : null;
+}
+
+/** The realm's own account page, which only a local-account tenant links (Spec 2 R-18). */
+export function realmAccountUrl(input: RealmPageInput): string | null {
+  return localRealmPage(input, "account");
+}
+
+/** The realm's reset-password page, the sign-in page's "Forgot your password?" link (Spec 2 R-51a). */
+export function realmResetCredentialsUrl(input: RealmPageInput): string | null {
+  return localRealmPage(input, "login-actions/reset-credentials");
 }
 
 /**
