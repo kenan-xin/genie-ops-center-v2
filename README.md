@@ -77,3 +77,39 @@ From then on, step 5 alone starts everything. Press Ctrl+C to stop the applicati
 - Do not run `genie-ops setup` against an empty database with these values. The command runs only inside the built image today, and its realm step writes the shared `genie-dev` realm. Bead `genie-ops-center-v2-xok3.20` tracks one command that sets up an empty database without touching the realm.
 - To work on components without a database, run Storybook with `pnpm nx run @genie/storybook:storybook` and open `http://localhost:6006`.
 - Before you push, run `pnpm gate:fast`. Before a merge into `develop`, run `pnpm gate:merge`.
+
+### Sign in without the identity provider (agents and unattended checks)
+
+The `genie-dev` realm sends every sign-in to the identity provider, which needs a person at the keyboard. An agent instead gets a real session for a test person straight from the dev database. The session passes the same checks as a normal one, and the person's roles decide what the agent can do. Sign-in itself is skipped, so no group sync runs. A test person therefore holds roles through local groups only.
+
+1. Add the test administrator to the dev database once. It joins the local `Genie Administrators` group:
+
+   ```bash
+   docker compose -f deploy/stack/compose.dev.yaml exec -T database psql -U genie -d genie -c "
+     with person as (
+       insert into \"user\" (id, name, email, email_verified, status, onboarding, first_sign_in_at, last_sign_in_at)
+       values (gen_random_uuid()::text, 'Agent Test Admin', 'agent-admin@example.invalid', true, 'active', 'invited', now(), now())
+       on conflict (email) do update set status = 'active'
+       returning id)
+     insert into group_member (group_id, user_id, source)
+     select g.id, person.id, 'local' from person, \"group\" g where g.name = 'Genie Administrators'
+     on conflict do nothing;"
+   ```
+
+2. Print a session cookie for that person:
+
+   ```bash
+   pnpm nx run @genie/app:dev-session -- agent-admin@example.invalid
+   ```
+
+   The command prints one line of JSON: `name`, `value`, `url`, `path`, `httpOnly`, `sameSite` and `expires`. It reads `apps/genie/.env.development.local`. It refuses a `PUBLIC_URL` that is not a local address, and it refuses the break-glass account.
+
+3. Give the cookie to the browser. Playwright takes the JSON as is, through `context.addCookies`. In BrowserOS Neo, which does not allow `Network.setCookie`, open `http://localhost:3000/sign-in` and write the cookie from the page:
+
+   ```js
+   document.cookie = `genie-session=${value}; path=/; max-age=86400; samesite=lax`;
+   ```
+
+   If the browser already holds a `genie-session` cookie from a real sign-in, the page cannot replace it. Clear the cookies for `localhost` first.
+
+The session ends after 24 hours, or earlier at the tenant's idle limit. When a page sends you to `/sign-in`, run step 2 again. Use another test person to check another role.
