@@ -16,6 +16,9 @@ const REPO = join(import.meta.dirname, "../../..");
 
 const SEAMS = new Set(["can", "scopesFor"]);
 
+/** The barrel that re-exports the authorization service, so a whole-module import reaches every helper. */
+const PERMISSION_BARREL = "@genie/core";
+
 /** Every value the authorization service exports except the two seams, and the assignment table. */
 function permissionHelpers(): ReadonlySet<string> {
   const path = join(REPO, "packages/core/src/services/authorization/index.ts");
@@ -73,12 +76,14 @@ function permissionViolations(
 
     const named = statement.importClause?.namedBindings;
 
-    if (
-      statement.importClause?.isTypeOnly ||
-      named === undefined ||
-      !ts.isNamedImports(named)
-    )
+    if (statement.importClause?.isTypeOnly || named === undefined) continue;
+
+    if (ts.isNamespaceImport(named)) {
+      if (from === PERMISSION_BARREL)
+        violations.push(`${path}: imports * from ${from}`);
+
       continue;
+    }
 
     for (const element of named.elements) {
       const imported = (element.propertyName ?? element.name).text;
@@ -87,6 +92,25 @@ function permissionViolations(
         violations.push(`${path}: imports ${imported} from ${from}`);
     }
   }
+
+  // `await import()` hands back the whole module, so the barrel and the service are refused whole.
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined &&
+      ts.isStringLiteralLike(node.arguments[0])
+    ) {
+      const from = node.arguments[0].text;
+
+      if (from === PERMISSION_BARREL || from.includes("services/authorization"))
+        violations.push(`${path}: dynamically imports ${from}`);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(source);
 
   return violations;
 }
@@ -131,6 +155,25 @@ const sql = "select * from role_assignment";
       "screen.tsx: imports roleAssignment from ../../schema.ts",
       "screen.tsx: imports ../../services/authorization/grant-reader.ts",
       "screen.tsx: imports principalFor from ../../services/authorization/grant-reader.ts",
+    ]);
+  });
+
+  it("refuses a planted namespace import and a planted dynamic import of the core barrel", () => {
+    expect(
+      permissionViolations(
+        "screen.tsx",
+        `import type * as Types from "@genie/core";
+import * as core from "@genie/core";
+export async function load() {
+  const { createGrantReader } = await import("@genie/core");
+  return createGrantReader;
+}
+`,
+        helpers
+      )
+    ).toEqual([
+      "screen.tsx: imports * from @genie/core",
+      "screen.tsx: dynamically imports @genie/core",
     ]);
   });
 
