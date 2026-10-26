@@ -24,6 +24,12 @@ Spec R-81 to R-91a, except R-84b (moved to Section 5) and R-86a (S3-04a).
 - The Categories page with whole-module assignment. This ticket writes its own R-90a audit events. The keys exist from S3-04a.
 - Bead `4xz` carries the refusal codes through the RPC error envelope, with the `issues` field from S3-04a. R-92 to R-95 apply to every screen of this ticket (R-93 server refusal, R-94 TanStack Query, R-95 can()).
 
+## Accepted deviations
+
+- The per-row select on Categories "Assign items" stays for modules. Spec 4 builds the transfer list when records join (DR-07, 2026-10-25).
+- Modules has no search, no member counts, and a fixed "Status" column heading (DR-16, 2026-10-25).
+- Categories keeps the phone Add in the form, uses a footnote instead of the help disclosure, and has no per-row save state (DR-16, 2026-10-25).
+
 ## Acceptance
 
 AC-11, and the whole-module part of AC-19. AC-11b moved to S3-09, because it needs the S3-06 save path.
