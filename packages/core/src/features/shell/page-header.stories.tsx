@@ -91,6 +91,29 @@ export const InShellPhoneActionsMoveToBottomBar: Story = {
   },
 };
 
+export const InShellPhoneTakesNoRoom: Story = {
+  decorators: [
+    inShell,
+    (Story) => (
+      <div data-testid="page" className="flex flex-col gap-10">
+        <Story />
+        <p>First section</p>
+      </div>
+    ),
+  ],
+  args: { actions: <Button>Add person</Button> },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const pageTop = canvas.getByTestId("page").getBoundingClientRect().top;
+    await expect(
+      canvas.getByText("First section").getBoundingClientRect().top
+    ).toBe(pageTop);
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: "People" })
+    ).toBeInTheDocument();
+  },
+};
+
 export const InShellPhoneOwnBottomBar: Story = {
   decorators: [inShell],
   args: {

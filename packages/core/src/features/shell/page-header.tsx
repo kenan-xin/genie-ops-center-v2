@@ -20,11 +20,19 @@ export function PageHeader(props: PageHeaderProps) {
   const hideBelowLg = inShell ? "max-lg:sr-only" : "";
   const bar = props.bottomBar ?? props.actions;
 
+  // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
+  // leave an empty band under the top bar.
+  const emptyBelow = !inShell
+    ? ""
+    : props.actions === undefined
+      ? "max-lg:sr-only"
+      : "max-md:sr-only";
+
   return (
     <>
       <header
         data-shell-page-header=""
-        className="flex items-center justify-between gap-4"
+        className={`flex items-center justify-between gap-4 ${emptyBelow}`}
       >
         <div className="min-w-0">
           <h1 className={`text-xl font-bold ${hideBelowLg}`}>{props.title}</h1>
