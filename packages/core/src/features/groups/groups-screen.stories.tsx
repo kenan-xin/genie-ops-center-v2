@@ -86,6 +86,7 @@ export const Default: Story = {
 
     // The archived group stays behind the Show archived toggle.
     await expect(canvas.queryByText("Ex-contractors")).not.toBeInTheDocument();
+    await expect(canvas.getByPlaceholderText("Search groups")).toBeVisible();
   },
 };
 

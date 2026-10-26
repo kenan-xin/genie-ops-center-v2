@@ -62,6 +62,7 @@ export const Default: Story = {
     await expect(table.getByText("Invoice approver")).toBeInTheDocument();
     await expect(table.getByText("System · core")).toBeInTheDocument();
     await expect(table.getByText("Custom")).toBeInTheDocument();
+    await expect(canvas.getByPlaceholderText("Search roles")).toBeVisible();
   },
 };
 

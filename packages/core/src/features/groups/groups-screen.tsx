@@ -635,6 +635,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
           <Input
             id={searchId}
             className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            placeholder="Search groups"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

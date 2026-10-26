@@ -526,6 +526,7 @@ export function RolesScreen(props: RolesScreenProps) {
             id={searchId}
             className="w-72 max-w-full"
             aria-label="Search roles"
+            placeholder="Search roles"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
