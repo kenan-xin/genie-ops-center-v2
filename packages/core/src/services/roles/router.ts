@@ -1,6 +1,5 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
-import { can } from "../authorization/index.ts";
+import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
 import {
   assignRole,
   removeAssignment,
@@ -17,21 +16,11 @@ import {
   updateRole,
 } from "./index.ts";
 
-const MANAGE_PERMISSION = "core:roles:manage";
-
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
 // `forbidden` at 403, however malformed the input is; only then does the handler read
 // (Spec 2 R-14, R-37).
-const os = implementCoreArea(rolesContract);
-
-const managed = os.use(async ({ context, next }) => {
-  if (!(await can(context.caller, MANAGE_PERMISSION))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  return next();
-});
+const managed = gatedArea(rolesContract, "core:roles:manage");
 
 /**
  * The Roles screen's one router (R-37), built from its contract. Every procedure is behind
@@ -41,7 +30,7 @@ const managed = os.use(async ({ context, next }) => {
  * catalogue audit action.
  */
 export function createRolesRouter(modules: readonly RolesModule[]) {
-  return os.router({
+  return managed.router({
     list: managed.list.handler(({ context }) =>
       listRoles(context.tenant, modules)
     ),

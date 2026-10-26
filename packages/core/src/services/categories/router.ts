@@ -1,7 +1,5 @@
-import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
-import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
-import { can } from "../authorization/index.ts";
+import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
 import { categoriesContract } from "./contract.ts";
 import {
   createCategory,
@@ -11,23 +9,13 @@ import {
   reorderCategories,
 } from "./index.ts";
 
-const MANAGE_PERMISSION = "core:settings:manage";
-
 // The session check, then the permission gate, both before input is parsed, as in the Roles
 // router: a caller without the key answers `forbidden` at 403 however malformed the input is.
-const os = implementCoreArea(categoriesContract);
-
-const managed = os.use(async ({ context, next }) => {
-  if (!(await can(context.caller, MANAGE_PERMISSION))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  return next();
-});
+const managed = gatedArea(categoriesContract, "core:settings:manage");
 
 /** The Categories page router, behind `core:settings:manage` through the one `can()` seam (R-87). */
 export function createCategoriesRouter(modules: readonly Module[]) {
-  return os.router({
+  return managed.router({
     list: managed.list.handler(({ context }) =>
       listCategories(context.tenant, modules)
     ),

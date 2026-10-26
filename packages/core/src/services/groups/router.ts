@@ -1,5 +1,5 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
+import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
 import { can } from "../authorization/index.ts";
 import {
   assignRole,
@@ -22,23 +22,13 @@ import {
   updateLocalGroup,
 } from "./index.ts";
 
-const MANAGE_PERMISSION = "core:groups:manage";
-
 const ASSIGN_PERMISSION = "core:roles:manage";
 
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
 // `forbidden` at 403, however malformed the input is; only then does the handler read
 // (Spec 2 R-14, R-37).
-const os = implementCoreArea(groupsContract);
-
-const managed = os.use(async ({ context, next }) => {
-  if (!(await can(context.caller, MANAGE_PERMISSION))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  return next();
-});
+const managed = gatedArea(groupsContract, "core:groups:manage");
 
 /**
  * A role-assignment write is a grant edit, which the design puts behind `core:roles:manage`
@@ -59,7 +49,7 @@ const assigning = managed.use(async ({ context, next }) => {
  * through it, and every writer records a catalogue audit action.
  */
 export function createGroupsRouter() {
-  return os.router({
+  return managed.router({
     list: managed.list.handler(({ context, input }) =>
       listGroups(context.tenant, { includeArchived: input.includeArchived })
     ),

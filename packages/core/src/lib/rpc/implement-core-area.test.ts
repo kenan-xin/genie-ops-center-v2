@@ -20,7 +20,7 @@ import {
   type TenantContext,
 } from "../../index.ts";
 import { contractRouteProblems } from "./conformance.ts";
-import { implementCoreArea } from "./implement-core-area.ts";
+import { gatedArea, implementCoreArea } from "./implement-core-area.ts";
 import { oc } from "./index.ts";
 
 /** A core area must never consult entitlements, so reading one fails the test. */
@@ -79,6 +79,39 @@ describe("the core area implementer", () => {
     });
 
     expect(parserRan).toBe(false);
+  });
+
+  it("gives a gated area's invalid input from a caller without the key the permission refusal", async () => {
+    let parserRan = false;
+
+    const contract = {
+      value: oc.route({ method: "POST", path: "/groups/value" }).input(
+        z.custom(() => {
+          parserRan = true;
+
+          return false;
+        })
+      ),
+    };
+
+    const os = gatedArea(contract, "core:groups:manage");
+
+    const router = os.router({
+      value: os.value.handler(() => "should not run"),
+    });
+
+    await expect(
+      callProcedure(router, contextFor(["core:roles:manage"])).value("bad")
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    expect(parserRan).toBe(false);
+
+    // A holder of the key passes the gate and reaches validation, which refuses the input.
+    await expect(
+      callProcedure(router, contextFor(["core:groups:manage"])).value("bad")
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(parserRan).toBe(true);
   });
 
   it("runs an area's permission gate before input validation", async () => {

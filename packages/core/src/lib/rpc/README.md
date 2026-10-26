@@ -14,8 +14,9 @@ contract's procedures, each starts with both gates, and no lazy router or root `
 allowed), and `callProcedure`, the one server-side caller. `implementCoreArea` builds the
 implementer of one of core's own areas (`audit`, `groups`, `people`, `roles`): only the session
 check before input validation, never the entitlement gate, because a core area has no entitlement
-row. A core service builds its router through it, since it may not import `@orpc/*`; the area's
-tests hold its contract to decision 7 with `contractRouteProblems`.
+row. `gatedArea` adds the area's one `can()` gate, also before input validation, so no core router
+copies the gate. A core service builds its router through these, since it may not import
+`@orpc/*`; the area's tests hold its contract to decision 7 with `contractRouteProblems`.
 
 ## What must not go here
 
@@ -25,4 +26,5 @@ the browser client, which live in the app's `src/rpc/`.
 
 ## What it imports
 
-`@orpc/contract`, `@orpc/server`, zod, and core's error catalogue and module contract types.
+`@orpc/contract`, `@orpc/server`, zod, core's error catalogue and module contract types, and
+`can()` from the authorization service.

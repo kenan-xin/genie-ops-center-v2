@@ -1,5 +1,8 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import { implementCoreArea } from "../../lib/rpc/implement-core-area.ts";
+import {
+  gatedArea,
+  implementCoreArea,
+} from "../../lib/rpc/implement-core-area.ts";
 import { can } from "../authorization/index.ts";
 import { peopleContract } from "./contract.ts";
 import {
@@ -15,8 +18,6 @@ import {
   resendSetPassword,
 } from "./index.ts";
 
-const MANAGE_PERMISSION = "core:people:manage";
-
 /**
  * Picking roles in Add person is a grant edit, which the design puts behind `core:roles:manage`
  * (DEC-39, the Access screen). A holder of only `core:people:manage` may add a person but not give
@@ -28,28 +29,17 @@ const ASSIGN_PERMISSION = "core:roles:manage";
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
 // `forbidden` at 403, however malformed the input is; only then does the handler read
 // (Spec 2 R-14, R-37).
+// The router itself carries only the session check, because the picker read has its own gate.
 const os = implementCoreArea(peopleContract);
 
-const managed = os.use(async ({ context, next }) => {
-  if (!(await can(context.caller, MANAGE_PERMISSION))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  return next();
-});
+const managed = gatedArea(peopleContract, "core:people:manage");
 
 /**
  * The narrow active-people read the Groups screen's local-member picker uses. It stays behind
  * `core:groups:manage`, because a holder of that key and not `core:people:manage` may still edit a
  * local group's members; the People router owns the read so it is defined once (S2-10).
  */
-const picker = os.use(async ({ context, next }) => {
-  if (!(await can(context.caller, "core:groups:manage"))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  return next();
-});
+const picker = gatedArea(peopleContract, "core:groups:manage");
 
 /**
  * The People screen's one router (R-37), built from its contract. Every procedure but the picker
