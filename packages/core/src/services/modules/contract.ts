@@ -22,7 +22,7 @@ export const modulesContract = {
     .output(z.custom<ModuleEnableResult>()),
 
   setCategory: oc
-    .route({ method: "PUT", path: "/modules/{moduleId}/category" })
+    .route({ method: "PATCH", path: "/modules/{moduleId}/category" })
     .input(z.object({ moduleId, categoryId: z.uuid().nullable() }))
     .output(z.custom<{ readonly changed: boolean }>()),
 };

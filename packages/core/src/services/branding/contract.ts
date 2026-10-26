@@ -15,7 +15,7 @@ export const brandingContract = {
     .output(z.custom<BrandingView>()),
 
   publish: oc
-    .route({ method: "PUT", path: "/branding" })
+    .route({ method: "PATCH", path: "/branding" })
     .input(z.object({ draft: z.record(z.string(), z.unknown()) }))
     .output(
       z.custom<{

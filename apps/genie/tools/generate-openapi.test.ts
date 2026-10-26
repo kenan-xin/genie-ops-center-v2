@@ -31,4 +31,25 @@ describe("the generated OpenAPI document", () => {
       "placeholder.read"
     );
   });
+
+  it("lists every core area, and an update of fields is a PATCH (DR-08)", async () => {
+    const document = await openApiDocument();
+
+    for (const path of [
+      "/branding",
+      "/categories/order",
+      "/modules/{moduleId}/category",
+      "/settings/sign-in",
+      "/settings/sessions",
+      "/settings/modules/{moduleId}",
+    ]) {
+      const operations = Object.keys(document.paths?.[path] ?? {});
+
+      expect(operations, path).toContain("patch");
+      expect(operations, path).not.toContain("put");
+    }
+
+    expect(document.paths?.["/categories"]?.get).toBeDefined();
+    expect(document.paths?.["/modules"]?.get).toBeDefined();
+  });
 });

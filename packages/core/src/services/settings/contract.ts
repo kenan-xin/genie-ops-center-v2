@@ -21,7 +21,7 @@ export const settingsContract = {
     .output(z.custom<SettingsView>()),
 
   saveSignIn: oc
-    .route({ method: "PUT", path: "/settings/sign-in" })
+    .route({ method: "PATCH", path: "/settings/sign-in" })
     .input(
       z.object({
         onboardingMode: z.string().optional(),
@@ -31,12 +31,12 @@ export const settingsContract = {
     .output(saved),
 
   saveSessions: oc
-    .route({ method: "PUT", path: "/settings/sessions" })
+    .route({ method: "PATCH", path: "/settings/sessions" })
     .input(z.object({ sessionIdleMinutes: z.number() }))
     .output(saved),
 
   saveModule: oc
-    .route({ method: "PUT", path: "/settings/modules/{moduleId}" })
+    .route({ method: "PATCH", path: "/settings/modules/{moduleId}" })
     .input(
       z.object({
         moduleId,

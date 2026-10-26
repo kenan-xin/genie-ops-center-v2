@@ -26,7 +26,7 @@ export const categoriesContract = {
 
   // The full ordered id list; the service refuses one that is not the current set (Decision 8).
   reorder: oc
-    .route({ method: "PUT", path: "/categories/order" })
+    .route({ method: "PATCH", path: "/categories/order" })
     .input(z.object({ orderedIds: z.array(z.uuid()) })),
 
   remove: oc
