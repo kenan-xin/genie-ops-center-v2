@@ -557,10 +557,12 @@ describe("the rendered deployment folder", () => {
     );
 
     expect(existsSync(stackDirectory)).toBe(true);
-    // The test stacks only: the generated customer stack stays a template here,
-    // and the identity stand-ins of D2-2 are test-only as well.
+    // The test stacks and the local development database only: the generated
+    // customer stack stays a template here, and the identity stand-ins of D2-2
+    // are test-only as well.
     expect(readdirSync(stackDirectory).toSorted()).toEqual([
       "compose.dev-e2e.yaml",
+      "compose.dev.yaml",
       "compose.e2e.yaml",
       "compose.identity-standins.yaml",
       "identity-standins",

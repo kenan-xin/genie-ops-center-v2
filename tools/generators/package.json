@@ -31,7 +31,8 @@
         "inputs": [
           "default",
           "^production",
-          "{workspaceRoot}/package.json"
+          "{workspaceRoot}/package.json",
+          "{workspaceRoot}/deploy/stack/**/*"
         ]
       }
     }
