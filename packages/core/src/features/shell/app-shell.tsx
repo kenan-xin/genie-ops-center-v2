@@ -134,7 +134,7 @@ export function AppShell(props: AppShellProps) {
         >
           <SheetTitle className="sr-only">{strings.navigation}</SheetTitle>
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex justify-end p-1">
+            <div className="flex justify-end px-2 pt-2">
               <button
                 type="button"
                 aria-label={strings.closeNavigation}

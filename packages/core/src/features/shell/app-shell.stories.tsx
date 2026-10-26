@@ -204,9 +204,18 @@ export const WorkspacePhone: Story = {
       Math.ceil(window.innerWidth * 0.84)
     );
 
-    await userEvent.click(
-      within(drawer).getByRole("button", { name: "Close navigation" })
-    );
+    const close = within(drawer).getByRole("button", {
+      name: "Close navigation",
+    });
+
+    // The focus ring (2px ring, 2px offset) must fit inside the drawer, which clips it.
+    const edge = drawer.getBoundingClientRect();
+    const box = close.getBoundingClientRect();
+
+    await expect(box.top - edge.top).toBeGreaterThan(4);
+    await expect(edge.right - box.right).toBeGreaterThan(4);
+
+    await userEvent.click(close);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
     await userEvent.click(open);
