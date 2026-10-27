@@ -179,7 +179,7 @@ Centered block: icon or letter tile, one heading, one sentence, at most one prim
 
 ## Loading
 
-Skeleton blocks match the shape they replace and animate only when motion is allowed. A spinner carries `role="status"` and a visually hidden label.
+Skeleton blocks match the shape they replace and animate only when motion is allowed. They fill with `--border` (gray-200, dark gray-800), because `--muted` (gray-50) does not show on a white page. A spinner carries `role="status"` and a visually hidden label.
 
 ## Icons
 
