@@ -34,6 +34,14 @@ so hashing it would let one selection restore the other's build. A
 story, component, token, provider or fixture change invalidates the host. The
 development and watch targets are never cached.
 
+`test:selection-matrix` does not take `storybookOwners`. It proves the
+selection mechanism with its own fixtures in a staged copy, so its inputs are
+the Storybook project, the module packages, the package manifests and
+TypeScript configuration, the shared Storybook, TypeScript and Vitest
+configuration, the generators, and the two real files the suite names by path.
+A change inside a core or ui component leaves it cached; `build-storybook` and
+`test-storybook` still rerun for that change.
+
 ## Testing
 
 - `testing/targets.test.ts` is a fast configuration assertion over the resolved
