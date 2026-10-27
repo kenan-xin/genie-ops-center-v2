@@ -21,8 +21,9 @@ import {
   Switch,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
+import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccessLabels,
   ModuleHolderView,
@@ -86,9 +87,11 @@ function Access(props: {
   const { module, labels } = props;
 
   const name = (holder: ModuleHolderView) =>
-    holder.principalType === "group"
-      ? labels.group(holder.label)
-      : holder.label;
+    holder.principalType === "group" ? (
+      <GroupName value={holder.label} format={labels.group} />
+    ) : (
+      holder.label
+    );
 
   // A principal holding the key through two roles is named once in the cell.
   const principals = uniqBy(
@@ -111,7 +114,14 @@ function Access(props: {
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-2">
-          <span>{principals.slice(0, NAMED).map(name).join(", ")}</span>
+          <span>
+            {principals.slice(0, NAMED).map((holder, index) => (
+              <Fragment key={`${holder.principalType}:${holder.principalId}`}>
+                {index === 0 ? null : ", "}
+                {name(holder)}
+              </Fragment>
+            ))}
+          </span>
           {hidden > 0 ? (
             <Popover>
               <PopoverTrigger

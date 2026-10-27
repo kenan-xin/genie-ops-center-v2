@@ -5,6 +5,8 @@
  */
 export { GroupInspector, GroupsScreen } from "./groups-screen.tsx";
 
+export { GroupName, looksLikeId } from "./group-name.tsx";
+
 export {
   groupLabel,
   type Group,

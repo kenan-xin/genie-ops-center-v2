@@ -2,6 +2,7 @@
 
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
@@ -15,6 +16,7 @@ import { rpc } from "../../../rpc/client.ts";
  * list through TanStack Query after each one.
  */
 export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
+  const t = useTranslations("pages");
   const [includeArchived, setIncludeArchived] = useState(false);
   // An audit target link opens the screen with its group selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
@@ -76,6 +78,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     <GroupsScreen
       groups={list.data ?? []}
       viewer={props.viewer}
+      labelHint={t("groups.addLabelHint")}
       includeArchived={includeArchived}
       onChangeIncludeArchived={setIncludeArchived}
       people={people.data ?? []}

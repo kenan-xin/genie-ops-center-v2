@@ -79,6 +79,32 @@ export const Default: Story = {
   },
 };
 
+/** UI-1 People finding 2: an unlabelled object-id group holder shows a short name (R-24c). */
+export const UnlabelledGroupIdHolder: Story = {
+  args: {
+    modules: [
+      {
+        ...FIXTURE_MODULES[0]!,
+        holders: [
+          {
+            principalType: "group",
+            principalId: "g-oid",
+            label: "39545f73-134e-49ac-9731-0e96df8ea218",
+            roleName: "Fixture user",
+          },
+        ],
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Modules" }));
+
+    await expect(
+      table.getByText("39545f73… (group)").parentElement
+    ).toHaveAttribute("title", "39545f73-134e-49ac-9731-0e96df8ea218 (group)");
+  },
+};
+
 export const Phone: Story = {
   globals: phone,
   play: async ({ args, canvas }) => {

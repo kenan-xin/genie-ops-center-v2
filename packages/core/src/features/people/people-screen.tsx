@@ -41,6 +41,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
 import { initials } from "../audit/helpers.ts";
+import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccountType,
   AssignableRole,
@@ -118,7 +119,9 @@ function groupPills(person: Person) {
   return (
     <span className="flex flex-wrap items-center gap-1">
       {person.groups.slice(0, 2).map((group) => (
-        <LabelPill key={group.id}>{group.label}</LabelPill>
+        <LabelPill key={group.id}>
+          <GroupName value={group.label} />
+        </LabelPill>
       ))}
       {person.groups.length > 2 ? (
         <span className="text-xs text-muted-foreground">
@@ -366,7 +369,9 @@ export function PersonInspector(props: {
               <ul className="divide-y divide-input">
                 {person.groups.map((group) => (
                   <li key={group.id} className="py-2 text-sm text-foreground">
-                    <span className="font-medium">{group.label}</span>{" "}
+                    <span className="font-medium">
+                      <GroupName value={group.label} />
+                    </span>{" "}
                     <span className="text-xs text-muted-foreground">
                       {group.source === "idp" ? "Directory" : "Local"}
                       {group.syncedAt === null
@@ -394,9 +399,16 @@ export function PersonInspector(props: {
                     <span className="text-muted-foreground">
                       {" "}
                       ·{" "}
-                      {assignment.source === "direct"
-                        ? "Direct"
-                        : `via ${assignment.groupName ?? "a group"}`}
+                      {assignment.source === "direct" ? (
+                        "Direct"
+                      ) : (
+                        <>
+                          via{" "}
+                          <GroupName
+                            value={assignment.groupName ?? "a group"}
+                          />
+                        </>
+                      )}
                       {assignment.scopeType === null
                         ? ""
                         : ` · ${assignment.scopeType} ${assignment.scopeId}`}

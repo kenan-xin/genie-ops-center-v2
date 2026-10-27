@@ -58,6 +58,8 @@ export type GroupsScreenProps = {
       }
     >
   >;
+  /** The catalogue hint under an unlabelled group whose value looks like an id (R-24c). */
+  readonly labelHint: string;
   /** R-38: group ids where archiving or removing a member would leave no administrator. */
   readonly lastAdministratorGroupIds: readonly string[];
   /** The claims-managed failure, shown instead of the list. */

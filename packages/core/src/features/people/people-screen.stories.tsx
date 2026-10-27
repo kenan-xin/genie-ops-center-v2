@@ -80,6 +80,65 @@ export const Default: Story = {
   },
 };
 
+const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
+
+/** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */
+export const UnlabelledGroupIdShowsAShortPill: Story = {
+  args: {
+    people: [
+      {
+        ...FIXTURE_PEOPLE[0]!,
+        groups: [
+          ...FIXTURE_PEOPLE[0]!.groups,
+          { id: "g-oid", label: OBJECT_ID },
+        ],
+      },
+      ...FIXTURE_PEOPLE.slice(1),
+    ],
+    details: {
+      ...FIXTURE_DETAILS,
+      "u-viewer": {
+        ...FIXTURE_DETAILS["u-viewer"],
+        groups: [
+          ...FIXTURE_DETAILS["u-viewer"].groups,
+          {
+            id: "g-oid",
+            name: OBJECT_ID,
+            label: OBJECT_ID,
+            source: "idp",
+            syncedAt: null,
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    // The pill shows 8 characters and an ellipsis; the tooltip and screen readers get the value.
+    await expect(table.getByText("39545f73…").parentElement).toHaveAttribute(
+      "title",
+      OBJECT_ID
+    );
+    await expect(table.getByText(OBJECT_ID)).toHaveClass("sr-only");
+    // A labelled group shows its label in full.
+    await expect(table.getByText("Genie Administrators")).not.toHaveAttribute(
+      "title"
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Ada Admin" })
+    );
+
+    await userEvent.click(inspector.getByRole("tab", { name: /Groups/ }));
+    await expect(
+      inspector.getByText("39545f73…").parentElement
+    ).toHaveAttribute("title", OBJECT_ID);
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {

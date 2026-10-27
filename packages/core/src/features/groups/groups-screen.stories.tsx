@@ -68,6 +68,7 @@ const meta = {
     onDeleteLocalGroup,
     onCreateLocalGroup,
     onAssignRole,
+    labelHint: "Add a display label",
   } satisfies GroupsScreenProps,
 } satisfies Meta<typeof GroupsScreen>;
 
@@ -87,6 +88,32 @@ export const Default: Story = {
     // The archived group stays behind the Show archived toggle.
     await expect(canvas.queryByText("Ex-contractors")).not.toBeInTheDocument();
     await expect(canvas.getByPlaceholderText("Search groups")).toBeVisible();
+  },
+};
+
+/** UI-1 People finding 2: an unlabelled object-id group shows a short pill and the label hint (R-24c). */
+export const UnlabelledGroupIdAsksForALabel: Story = {
+  args: {
+    groups: [
+      ...FIXTURE_GROUPS,
+      {
+        ...FIXTURE_DIRECTORY,
+        id: "g-oid",
+        name: "39545f73-134e-49ac-9731-0e96df8ea218",
+        externalId: "39545f73-134e-49ac-9731-0e96df8ea218",
+        displayLabel: null,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Groups" }));
+
+    await expect(table.getByText("39545f73…").parentElement).toHaveAttribute(
+      "title",
+      "39545f73-134e-49ac-9731-0e96df8ea218"
+    );
+    // Only the unlabelled id asks for a label; a labelled group and a readable name do not.
+    await expect(table.getAllByText("Add a display label")).toHaveLength(1);
   },
 };
 

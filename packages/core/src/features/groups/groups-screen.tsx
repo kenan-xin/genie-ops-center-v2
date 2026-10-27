@@ -45,6 +45,7 @@ import {
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
+import { GroupName, looksLikeId } from "./group-name.tsx";
 import {
   groupLabel,
   type Group,
@@ -716,7 +717,14 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 header: "Group",
                 cell: (group) => (
                   <span className="flex flex-col items-start">
-                    <span>{groupLabel(group)}</span>
+                    <span>
+                      <GroupName value={groupLabel(group)} />
+                    </span>
+                    {group.displayLabel === null && looksLikeId(group.name) ? (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {props.labelHint}
+                      </span>
+                    ) : null}
                     <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
                       {group.description}
                     </span>
