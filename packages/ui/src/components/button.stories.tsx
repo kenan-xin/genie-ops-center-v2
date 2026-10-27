@@ -168,6 +168,35 @@ export const LoadingSubmitDoesNotSubmit: Story = {
   },
 };
 
+// 6wz1.21: focusableWhenDisabled drops the native disabled attribute, so Enter in a
+// field still clicks the button as the form's default; neither path may submit.
+export const FocusableWhenDisabledSubmitDoesNotSubmit: Story = {
+  args: { disabled: true, focusableWhenDisabled: true },
+  render: (args) => (
+    <form>
+      <input aria-label="Name" />
+      <Button {...args} type="submit">
+        Save changes
+      </Button>
+    </form>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const onSubmit = fn((event: Event) => event.preventDefault());
+    canvasElement.querySelector("form")?.addEventListener("submit", onSubmit);
+    const button = canvas.getByRole("button", { name: "Save changes" });
+
+    await userEvent.click(button, { pointerEventsCheck: 0 });
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Name" }),
+      "Ada{Enter}"
+    );
+    await expect(onSubmit).not.toHaveBeenCalled();
+
+    await userEvent.tab();
+    await expect(button).toHaveFocus();
+  },
+};
+
 export const Sizes: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
   render: (args) => (
