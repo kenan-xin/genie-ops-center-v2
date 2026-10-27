@@ -24,6 +24,7 @@ const REFRESH_MARGIN_MS = 1_000;
  */
 export function BrandingRoute(props: { readonly timeZone: string }) {
   const t = useTranslations("signIn");
+  const pages = useTranslations("pages");
   const router = useRouter();
 
   const branding = useQuery({
@@ -39,6 +40,7 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
     saved: (result) => (result.changed ? "Published" : undefined),
     // The screen places the refusal's issues under their fields (DR-20 S3-07).
     refused: () => undefined,
+    notSaved: () => pages("branding.notPublished"),
   });
 
   // An upload stores a file and saves nothing: Publish names its slot later (R-44).

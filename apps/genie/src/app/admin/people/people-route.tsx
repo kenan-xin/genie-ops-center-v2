@@ -11,29 +11,8 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
-import { SAVED, useAdminWrite } from "../../../rpc/admin-write.ts";
+import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { type Refusal, rpc } from "../../../rpc/client.ts";
-
-/** What a write returns: an id for a create, nothing for the rest. */
-type WriteResult = void | {
-  readonly id: string;
-  /** False on Add person when the expected email did not go out (N1). */
-  readonly emailSent?: boolean;
-};
-
-/**
- * The refusal of a write, with the whole minutes on a rate-limit refusal (R-21). The transport's
- * error interceptor already carried the safe message and the minutes, so the screen shows the
- * same reason the server refused with.
- */
-function refusalMessage({
-  message,
-  retryAfterMinutes: minutes,
-}: Refusal): string {
-  return minutes === undefined
-    ? message
-    : `${message} Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
-}
 
 /**
  * The browser half of the People route. The server has already refused a caller without
@@ -75,19 +54,26 @@ export function PeopleRoute(props: {
     queryFn: () => rpc.people.capabilities(),
   });
 
+  // The refusal shows in the screen, inside the Add person dialog while it is open. Its message
+  // already carries the wait of a rate-limit refusal (R-21).
+  const refused = (refusal: Refusal) => setError(refusal.message);
+
   const action = useAdminWrite({
-    write: (work: () => Promise<WriteResult>) => work(),
+    write: (work: () => Promise<void>) => work(),
     invalidate: [["people"], ["person", selectedId]],
+    refused,
+  });
+
+  const add = useAdminWrite({
+    write: (input: NewPersonInput) =>
+      rpc.people.add({ ...input, roleIds: [...input.roleIds] }),
+    invalidate: [["people"]],
     // A committed add whose email did not go out is a partial success: a status notice points at
     // Resend instead (N1). Only a full add gets its own toast (PD-13).
     saved: (result) =>
-      result === undefined
-        ? SAVED
-        : result.emailSent === false
-          ? undefined
-          : "Person added",
-    // The refusal shows in the screen, inside the Add person dialog while it is open.
-    refused: (refusal) => setError(refusalMessage(refusal)),
+      result.emailSent === false ? undefined : "Person added",
+    refused,
+    notSaved: () => t("people.notAdded"),
   });
 
   // The status writes return nothing the screen reads, so their answer is dropped here.
@@ -105,14 +91,10 @@ export function PeopleRoute(props: {
     setError(undefined);
     setNotice(undefined);
 
-    return action
-      .mutateAsync(() =>
-        rpc.people.add({ ...input, roleIds: [...input.roleIds] })
-      )
-      .then((result) => {
-        if (result?.emailSent === false)
-          setNotice("Person added; the email was not sent. Use Resend.");
-      });
+    return add.mutateAsync(input).then((result) => {
+      if (result.emailSent === false)
+        setNotice("Person added; the email was not sent. Use Resend.");
+    });
   };
 
   return (
@@ -124,7 +106,7 @@ export function PeopleRoute(props: {
       roles={roles.data ?? []}
       canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}
-      pending={action.isPending}
+      pending={action.isPending || add.isPending}
       error={
         error ?? (list.isError ? "The people could not be read." : undefined)
       }

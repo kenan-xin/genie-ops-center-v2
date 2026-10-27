@@ -45,7 +45,8 @@
     "people": {
       "title": "People",
       "description": "Everyone who can sign in. Add a person, give them roles, and revoke access when they leave. A pending person becomes active at their first sign-in.",
-      "searchLabel": "Search people"
+      "searchLabel": "Search people",
+      "notAdded": "The person was not added."
     },
     "groups": {
       "title": "Groups",
@@ -87,8 +88,18 @@
     },
     "branding": {
       "title": "Branding",
-      "description": "How Genie Ops Center looks for the people of this tenant. Changes stay in this browser until you publish."
+      "description": "How Genie Ops Center looks for the people of this tenant. Changes stay in this browser until you publish.",
+      "notPublished": "The branding was not published."
     }
+  },
+  "saveFailure": {
+    "network": "The server could not be reached. Check your connection.",
+    "timeout": "The server did not answer in time.",
+    "refused": "You do not have permission to make this change.",
+    "conflict": "Someone else changed this in the meantime. Reload the page to see it.",
+    "invalid": "Some values are not valid. Fix the marked fields.",
+    "retryAfter": "Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+    "kept": "Your change is kept."
   },
   "noGrants": {
     "title": "No solutions yet",

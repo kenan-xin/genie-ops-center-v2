@@ -190,15 +190,32 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   const refusedDialog = page.getByRole("dialog", { name: "Add person" });
 
-  await refusedDialog.getByLabel("Email", { exact: true }).fill(adminEmail);
+  const email = refusedDialog.getByLabel("Email", { exact: true });
+  const addPath = "**/api/rpc/people/add";
+
+  await email.fill(adminEmail);
   await refusedDialog
     .getByLabel("Display name", { exact: true })
     .fill("E2E refused");
+
+  // A save that never reaches the server says so in the dialog's action bar, takes focus, and
+  // keeps the typed values: Add person is the retry.
+  await page.route(addPath, (route) => route.abort());
   await refusedDialog.getByRole("button", { name: "Add person" }).click();
-  await expect(
-    refusedDialog
-      .getByRole("alert")
-      .filter({ hasText: "A person with that email already exists." })
-  ).toBeVisible();
+
+  const failure = refusedDialog.getByRole("alert");
+
+  await expect(failure).toHaveText(
+    "The person was not added. The server could not be reached. Check your connection. Your change is kept."
+  );
+  await expect(failure).toBeFocused();
+  await expect(email).toHaveValue(adminEmail);
+  await page.unroute(addPath);
+
+  await refusedDialog.getByRole("button", { name: "Add person" }).click();
+  await expect(failure).toHaveText(
+    "The person was not added. A person with that email already exists. Your change is kept."
+  );
+  await expect(failure).toBeFocused();
   await expectNoAxeViolations(page, "Add person refused, dark");
 });

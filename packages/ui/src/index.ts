@@ -159,6 +159,8 @@ export { EmptyState } from "./parts/empty-state.tsx";
 
 export { HelpDisclosure } from "./parts/help-disclosure.tsx";
 
+export { FormActionBar } from "./parts/form-action-bar.tsx";
+
 export { FilterDisclosure } from "./parts/filter-disclosure.tsx";
 
 export { InfoNote, WarningNote } from "./parts/warning-note.tsx";

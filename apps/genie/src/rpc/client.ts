@@ -57,11 +57,21 @@ const link = new RPCLink({
 export const rpc: ContractRouterClient<BrowserContract> =
   createORPCClient(link);
 
+/** Why a call failed, as the save copy names it. `unknown` names no cause. */
+export type FailureKind =
+  | "network"
+  | "timeout"
+  | "refused"
+  | "conflict"
+  | "invalid"
+  | "unknown";
+
 /**
- * A refusal as a screen shows it: the catalogue message, when rate-limited the wait, and for an
- * invalid module configuration its issues.
+ * A refusal as a screen shows it: its kind, the server's own reason (empty when it gave none a
+ * person can act on), when rate-limited the wait, and for an invalid write its issues.
  */
 export type Refusal = {
+  readonly kind: FailureKind;
   readonly message: string;
   readonly retryAfterMinutes?: number;
   readonly issues?: readonly {
@@ -70,6 +80,21 @@ export type Refusal = {
   }[];
 };
 
+// Catalogue texts that name no reason of their own; the save copy of their kind replaces them.
+const GENERIC_CODES = new Set(["forbidden", "invalid-input", "internal-error"]);
+
+function kindOfStatus(status: number): FailureKind {
+  if (status === 408 || status === 504) return "timeout";
+
+  if (status === 400 || status === 413 || status === 422) return "invalid";
+
+  if (status === 401 || status === 403 || status === 429) return "refused";
+
+  if (status === 404 || status === 409) return "conflict";
+
+  return status === 500 ? "unknown" : "network";
+}
+
 /**
  * Reads a failed call. A transport refusal carries the catalogue's safe message and the data
  * `appErrorData` describes. Anything else has no message a person can use: a network failure, or
@@ -77,14 +102,33 @@ export type Refusal = {
  * `ORPCError` holds only oRPC's fallback text.
  */
 export function refusalOf(cause: unknown): Refusal {
-  if (!(cause instanceof ORPCError)) return { message: "" };
+  if (!(cause instanceof ORPCError)) {
+    const timedOut =
+      cause instanceof DOMException &&
+      (cause.name === "TimeoutError" || cause.name === "AbortError");
+
+    return { kind: timedOut ? "timeout" : "network", message: "" };
+  }
 
   const data = appErrorData.safeParse(cause.data);
 
-  if (!data.success) return { message: "" };
+  if (!data.success) return { kind: kindOfStatus(cause.status), message: "" };
 
-  const { retryAfterMinutes, issues } = data.data;
-  let refusal: Refusal = { message: cause.message };
+  const { appCode, retryAfterMinutes, issues } = data.data;
+  const status = kindOfStatus(cause.status);
+
+  // Some catalogue refusals (`last-administrator`) are missing from the status table and answer 500.
+  const kind =
+    appCode === "internal-error"
+      ? "unknown"
+      : status === "unknown" || status === "network"
+        ? "refused"
+        : status;
+
+  let refusal: Refusal = {
+    kind,
+    message: GENERIC_CODES.has(appCode) ? "" : cause.message,
+  };
 
   if (retryAfterMinutes !== undefined)
     refusal = { ...refusal, retryAfterMinutes };

@@ -14,6 +14,18 @@ import {
 } from "./admin-write.ts";
 import type { Refusal } from "./client.ts";
 
+const copy = {
+  causes: {
+    network: "The server could not be reached.",
+    timeout: "The server did not answer in time.",
+    refused: "You do not have permission.",
+    conflict: "Someone else changed this.",
+    invalid: "Some values are not valid.",
+  },
+  retryAfter: (minutes: number) => `Try again in ${minutes} minutes.`,
+  kept: "Your change is kept.",
+};
+
 /** Runs one write through the real mutation lifecycle, as `useMutation` would. */
 async function run<TResult>(write: AdminWrite<string, TResult>) {
   const queryClient = new QueryClient();
@@ -29,7 +41,7 @@ async function run<TResult>(write: AdminWrite<string, TResult>) {
 
   const outcome = await new MutationObserver(
     queryClient,
-    adminWriteOptions(write, { queryClient, refresh, toast })
+    adminWriteOptions(write, { queryClient, refresh, toast, copy })
   )
     .mutate("input")
     .then(
@@ -78,7 +90,7 @@ describe("adminWriteOptions", () => {
           write: async () => undefined,
           invalidate: [["people"], ["person", "p-1"]],
         },
-        { queryClient, refresh: vi.fn(), toast: vi.fn() }
+        { queryClient, refresh: vi.fn(), toast: vi.fn(), copy }
       )
     ).mutate("input");
 
@@ -116,7 +128,10 @@ describe("adminWriteOptions", () => {
     });
 
     expect(outcome).toEqual({
-      refusal: { message: "The last administrator cannot be removed." },
+      refusal: {
+        kind: "conflict",
+        message: "The last administrator cannot be removed.",
+      },
     });
     expect(invalidated).toEqual([["groups"]]);
     expect(toast).toHaveBeenCalledWith({
@@ -125,26 +140,61 @@ describe("adminWriteOptions", () => {
     });
   });
 
-  it("falls back to NOT_SAVED when the failure carries no safe message", async () => {
+  it("falls back to NOT_SAVED when the failure has no known cause", async () => {
     const { outcome, toast } = await run({
-      write: () => Promise.reject(new TypeError("Failed to fetch")),
+      write: () => Promise.reject(new ORPCError("INTERNAL_SERVER_ERROR")),
       invalidate: [],
     });
 
-    expect(outcome).toEqual({ refusal: { message: NOT_SAVED } });
+    expect(outcome).toEqual({
+      refusal: { kind: "unknown", message: NOT_SAVED },
+    });
     expect(toast).toHaveBeenCalledWith({ tone: "error", title: NOT_SAVED });
   });
 
-  it("hands a refusal to the route instead of a toast when the route places it", async () => {
+  it("names what was not saved, the cause and that the edit is kept", async () => {
     const place = vi.fn();
 
     const { toast } = await run({
       write: () => Promise.reject(new TypeError("Failed to fetch")),
       invalidate: [],
+      notSaved: (input) => `The ${input} was not saved.`,
       refused: place,
     });
 
-    expect(place).toHaveBeenCalledWith({ message: NOT_SAVED }, "input");
+    expect(place).toHaveBeenCalledWith(
+      {
+        kind: "network",
+        message:
+          "The input was not saved. The server could not be reached. Your change is kept.",
+      },
+      "input"
+    );
     expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("puts the rate-limit wait before the sentence that keeps the edit", async () => {
+    const limited = new ORPCError("rate-limited", {
+      status: 429,
+      message: "Too many attempts.",
+      data: {
+        appCode: "rate-limited",
+        requestId: "req-2",
+        retryAfterMinutes: 3,
+      },
+    });
+
+    const { outcome } = await run({
+      write: () => Promise.reject(limited),
+      invalidate: [],
+      notSaved: () => "The person was not added.",
+    });
+
+    expect(outcome).toMatchObject({
+      refusal: {
+        message:
+          "The person was not added. Too many attempts. Try again in 3 minutes. Your change is kept.",
+      },
+    });
   });
 });

@@ -9,7 +9,6 @@ import {
   DataTable,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   EmptyState,
@@ -17,6 +16,7 @@ import {
   FieldLabel,
   FilterDisclosure,
   focusRing,
+  FormActionBar,
   HelpDisclosure,
   Input,
   LabelPill,
@@ -1088,17 +1088,9 @@ export function AddPersonDialog(props: {
               ? "People in a group mapped to a role can also sign in without being added here."
               : "Pending until first sign-in."}
           </p>
-
-          {props.error === undefined ? null : (
-            <p
-              role="alert"
-              className="text-sm font-medium text-destructive dark:text-destructive-on-dark"
-            >
-              {props.error}
-            </p>
-          )}
         </div>
-        <DialogFooter>
+        {/* A refused add reports in the action bar, beside the buttons, and keeps the form. */}
+        <FormActionBar failure={props.error ?? null} separated>
           <Button variant="secondary" onClick={props.onCancel}>
             Cancel
           </Button>
@@ -1117,7 +1109,7 @@ export function AddPersonDialog(props: {
           >
             Add person
           </Button>
-        </DialogFooter>
+        </FormActionBar>
       </DialogContent>
     </Dialog>
   );

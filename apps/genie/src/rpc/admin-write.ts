@@ -6,15 +6,23 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
 
-import { type Refusal, refusalOf } from "./client.ts";
+import { type FailureKind, type Refusal, refusalOf } from "./client.ts";
 
 /** Every admin write records an audit row, so its success says so. */
 export const SAVED = "Saved. Written to the audit log.";
 
-// A network failure or a non-catalogue answer carries no safe message of its own.
+// A failure with no known cause, reported by a toast that names no form.
 export const NOT_SAVED = "That change could not be saved. Try again.";
+
+/** The catalogue's save-failure copy: one cause per kind, the rate-limit wait, the kept edit. */
+export type SaveFailureCopy = {
+  readonly causes: Readonly<Record<Exclude<FailureKind, "unknown">, string>>;
+  readonly retryAfter: (minutes: number) => string;
+  readonly kept: string;
+};
 
 /** A write that answers whether it changed a row: only a change wrote an audit row. */
 export const savedIfChanged = (result: { readonly changed: boolean }) =>
@@ -31,12 +39,18 @@ export type AdminWrite<TInput, TResult> = {
   readonly saved?: (result: TResult, input: TInput) => string | undefined;
   /** Shows a refusal in place of the error toast, for example under its field. */
   readonly refused?: (refusal: Refusal, input: TInput) => void;
+  /**
+   * The sentence that names what a form did not save, for example "The idle timeout was not
+   * saved.". With it the refusal's message reads: that sentence, the cause, and that the edit is kept.
+   */
+  readonly notSaved?: (input: TInput) => string;
 };
 
 /**
  * The mutation options behind `useAdminWrite`. A refused write rejects with its `Refusal`, whose
- * message falls back to NOT_SAVED, so a screen that awaits the write reads the same message. The
- * reload runs before the report, so a toast never names a save the screen does not show yet.
+ * message is the copy every form shows for that kind of failure, so a screen that awaits the write
+ * reads the same message. The reload runs before the report, so a toast never names a save the
+ * screen does not show yet.
  */
 export function adminWriteOptions<TInput, TResult>(
   write: AdminWrite<TInput, TResult>,
@@ -44,8 +58,31 @@ export function adminWriteOptions<TInput, TResult>(
     readonly queryClient: QueryClient;
     readonly refresh: () => void;
     readonly toast: typeof toast;
+    readonly copy: SaveFailureCopy;
   }
 ): MutationObserverOptions<TResult, Refusal, TInput> {
+  const { copy } = host;
+
+  const messageOf = (refusal: Refusal, input: TInput): string => {
+    const cause =
+      refusal.message ||
+      (refusal.kind === "unknown" ? "" : copy.causes[refusal.kind]);
+
+    const reason = [
+      cause,
+      refusal.retryAfterMinutes === undefined
+        ? ""
+        : copy.retryAfter(refusal.retryAfterMinutes),
+    ];
+
+    if (write.notSaved === undefined)
+      return reason.filter(Boolean).join(" ") || NOT_SAVED;
+
+    return [write.notSaved(input), ...reason, copy.kept]
+      .filter(Boolean)
+      .join(" ");
+  };
+
   const reload = async () => {
     await Promise.all(
       write.invalidate.map((queryKey) =>
@@ -63,7 +100,7 @@ export function adminWriteOptions<TInput, TResult>(
       } catch (cause) {
         const refusal = refusalOf(cause);
 
-        throw { ...refusal, message: refusal.message || NOT_SAVED };
+        throw { ...refusal, message: messageOf(refusal, input) };
       }
     },
     onSuccess: async (result, input) => {
@@ -93,12 +130,24 @@ export function useAdminWrite<TInput, TResult>(
 ) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const t = useTranslations("saveFailure");
 
   return useMutation(
     adminWriteOptions(write, {
       queryClient,
       refresh: () => router.refresh(),
       toast,
+      copy: {
+        causes: {
+          network: t("network"),
+          timeout: t("timeout"),
+          refused: t("refused"),
+          conflict: t("conflict"),
+          invalid: t("invalid"),
+        },
+        retryAfter: (minutes) => t("retryAfter", { minutes }),
+        kept: t("kept"),
+      },
     })
   );
 }
