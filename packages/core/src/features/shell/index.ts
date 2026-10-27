@@ -11,6 +11,8 @@ export { PageHeader, type PageHeaderProps } from "./page-header.tsx";
 
 export { PageSkeleton, type PageSkeletonProps } from "./page-skeleton.tsx";
 
+export { RouteFocus } from "./route-focus.tsx";
+
 export { AppShell, type AppShellProps } from "./app-shell.tsx";
 
 export { activeHref } from "./active-link.ts";
