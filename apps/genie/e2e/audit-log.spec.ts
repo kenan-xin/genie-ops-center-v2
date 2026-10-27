@@ -13,7 +13,8 @@ const IDLE_MINUTES = 15;
 /**
  * The browser proof for the Audit log route.
  *
- * The anonymous case stays as a control: the route stays mounted and refuses on the server (R-35).
+ * The anonymous case stays as a control: the route stays mounted, and the page's session check
+ * sends an anonymous request to the sign-in page (ARCH-1).
  * The list procedure's anonymous `unauthenticated` refusal at 401 (Spec 2 R-14) is proved by
  * `testing/rpc-unauthenticated.integration.test.ts`. The signed-in success path at both viewports is the
  * AC-16 case at the end; the expired-session case proves the RPC refusal lands the browser on the
@@ -24,7 +25,11 @@ test("the audit route refuses an anonymous request and reveals nothing", async (
 }) => {
   await page.goto("/admin/audit");
 
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/sign-in");
+  await expect(page.locator("main")).toHaveAttribute(
+    "data-sign-in-state",
+    "default"
+  );
   // The refused page reveals nothing it would have rendered.
   await expect(page.getByRole("heading", { name: "Audit log" })).toHaveCount(0);
   await expect(page.getByText(/Who did what/)).toHaveCount(0);

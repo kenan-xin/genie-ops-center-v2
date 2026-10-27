@@ -16,11 +16,10 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
  * `tools/generators/scripts/prove-generated-module.ts`, which builds the image,
  * sets the variable and fails if these cases do not execute.
  *
- * The proof is refusal. Sign-in arrives with S2-04, so the browser is anonymous
- * and the real evaluator grants it nothing: every entry a generated module
- * declares is omitted from navigation and its route still refuses. The
- * application's page loader answers `can()` and returns its own denied response;
- * nothing the module would have rendered appears. The generated module's
+ * The proof is refusal. The browser is anonymous, so each page's session check
+ * sends it to the sign-in page before `can()` runs (ARCH-1): no entry the
+ * generated module declares shows, and nothing the module would have rendered
+ * appears. The generated module's
  * authorized read through a real role assignment is proved by its own
  * integration suite.
  *
@@ -52,7 +51,7 @@ test.skip(
 test("the generated module's admin page is refused", async ({ page }) => {
   await page.goto(`/admin/m/${id}`);
 
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/sign-in");
   await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
   await expect(page.getByText(/records\./)).toHaveCount(0);
 });
@@ -68,14 +67,16 @@ test("its navigation entry is omitted and its route still refuses", async ({
 
   await page.goto(`/m/${id}`);
 
-  await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/sign-in");
 
-  // The refusal is `can()`'s, not R-8's module-disabled gate landing first.
+  // The refusal is the session check's, not R-8's module-disabled gate landing first.
   await expect(page.getByText(MODULE_DISABLED_MESSAGE)).toHaveCount(0);
 
   // The refused page reveals nothing the module would have rendered.
   await expect(page.getByText("No records yet.")).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { level: 1, name: displayName })
+  ).toHaveCount(0);
 });
 
 // S2-04 restores the signed-in success proof: a person who signed in through the real Keycloak

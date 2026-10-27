@@ -9,6 +9,9 @@ import type { Page } from "@playwright/test";
 export async function pushInApp(page: Page, path: string): Promise<void> {
   const pathname = new URL(path, page.url()).pathname;
 
+  // A push before the document hydrates is lost under load, and a person cannot click before then.
+  await page.waitForLoadState("networkidle");
+
   const payload = page.waitForRequest(
     (request) =>
       new URL(request.url()).pathname === pathname &&
