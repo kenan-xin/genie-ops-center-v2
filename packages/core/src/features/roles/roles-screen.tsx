@@ -518,13 +518,13 @@ export function RolesScreen(props: RolesScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
           <label htmlFor={searchId} className="sr-only">
             Search roles
           </label>
           <Input
             id={searchId}
-            className="w-72 max-w-full"
+            className="sm:w-72 sm:flex-none"
             aria-label="Search roles"
             placeholder="Search roles"
             value={query}
