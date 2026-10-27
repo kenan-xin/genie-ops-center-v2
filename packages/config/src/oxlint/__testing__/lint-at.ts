@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmdirSync,
   rmSync,
   symlinkSync,
@@ -54,6 +55,13 @@ const ISOLATED_ROOT_ANCHORS: readonly string[] = [
   "packages",
   "node_modules",
 ];
+
+/**
+ * The anchor a fixture may sit under. A fixture there gets its ancestors as real
+ * directories, so it never lands in the checkout (`overlayCheckout`). The other
+ * anchors are the config file and the dependency tree, which no fixture replaces.
+ */
+const OVERLAID_ANCHOR = "packages";
 
 /**
  * Names every isolated root this process owns, and no other process's. One
@@ -603,6 +611,39 @@ export function lintAt(
 }
 
 /**
+ * Links the checkout into `root` around one fixture path. At the top the entries
+ * are the anchors. While the path runs through a checkout directory, that
+ * directory becomes a real one in `root` holding a symlink to each of its other
+ * children, so every file the lint reads is the checkout's own and the fixture
+ * still lands in `root`. Below the first segment the checkout lacks, nothing is
+ * linked, because the fixture's own directories are new.
+ */
+function overlayCheckout(root: string, safePath: string): void {
+  const segments = safePath.split(sep);
+  let level = "";
+  let entries: readonly string[] = ISOLATED_ROOT_ANCHORS;
+
+  for (const [index, segment] of segments.entries()) {
+    for (const entry of entries) {
+      if (entry !== segment) {
+        symlinkSync(
+          join(WORKSPACE_ROOT, level, entry),
+          join(root, level, entry)
+        );
+      }
+    }
+
+    const isDirectory = index < segments.length - 1;
+
+    if (!isDirectory || !entries.includes(segment)) return;
+
+    level = join(level, segment);
+    mkdirSync(join(root, level));
+    entries = readdirSync(join(WORKSPACE_ROOT, level));
+  }
+}
+
+/**
  * Lints one source string at a chosen path inside a throwaway root that stands in
  * for the repository. Use this, and not `lintAt`, when the path under test is one
  * the product also owns, such as the Storybook host's `main.ts`. The checkout is
@@ -617,10 +658,10 @@ export function lintAt(
  * path; only the slot pool bounds their load. A bad path throws synchronously,
  * before anything is queued.
  *
- * No path under `packages/` can be served, because `packages` is one of those
- * symlinks. Most boundary rules key there, so if such a path ever needs a
- * fixture, reopen this by making `root/packages` a real directory holding one
- * symlink per child: only the symlinked children then stay off-limits.
+ * A path under `packages/` is served through `overlayCheckout`: each ancestor of
+ * the fixture is a real directory in the root, so the fixture never reaches the
+ * checkout, where the app's source scans would read it. A path under the other
+ * anchors is refused.
  */
 export function lintAtIsolated(
   relativePath: string,
@@ -641,7 +682,10 @@ export function lintAtIsolated(
 
   // Each anchor is a symlink into the checkout, so a fixture below one would be
   // written into the real tree. The fixture must land in the root's own storage.
-  if (ISOLATED_ROOT_ANCHORS.includes(firstSegment)) {
+  if (
+    firstSegment !== OVERLAID_ANCHOR &&
+    ISOLATED_ROOT_ANCHORS.includes(firstSegment)
+  ) {
     throw new Error(
       `An isolated fixture path must not start with a symlinked anchor: ${relativePath}`
     );
@@ -651,9 +695,7 @@ export function lintAtIsolated(
 
   return withLintSlot(async () => {
     try {
-      for (const anchor of ISOLATED_ROOT_ANCHORS) {
-        symlinkSync(join(WORKSPACE_ROOT, anchor), join(root, anchor));
-      }
+      overlayCheckout(root, safePath);
 
       return await lintFixtureAt(root, planFixture(root, safePath), source);
     } finally {

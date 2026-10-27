@@ -210,13 +210,11 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
   });
 
   // A guard that compares the raw first segment is bypassed by every spelling
-  // below, and each one resolves through an anchor symlink into the checkout.
+  // below. Each one resolves through an anchor symlink into the checkout.
   const UNDER_AN_ANCHOR = [
-    "packages/config/__written__.ts",
-    "./packages/config/__written__.ts",
-    ".//packages/config/__written__.ts",
-    "a/../packages/config/__written__.ts",
     "node_modules/__written__.ts",
+    "./node_modules/__written__.ts",
+    "a/../node_modules/__written__.ts",
     "packages/../oxlint.config.ts",
   ];
 
@@ -228,11 +226,37 @@ describe("lintAtIsolated over a path the checkout already owns", () => {
       );
 
       expect(
-        existsSync(join(WORKSPACE_ROOT, "packages/config/__written__.ts"))
-      ).toBe(false);
-      expect(
         existsSync(join(WORKSPACE_ROOT, "node_modules/__written__.ts"))
       ).toBe(false);
+    }
+  );
+
+  // The app's source scans read packages/*/src, so a fixture written there races
+  // them (6wz1.16). A sentinel holds the checkout path: a fixture that reached
+  // the checkout would meet it and fail with EEXIST, or overwrite it.
+  it.each(["", "./", "a/../"])(
+    "lints a path under packages spelled %j from the root, not the checkout",
+    async (prefix) => {
+      const name = `packages/config/__written__-${process.pid}-${prefix.length}.ts`;
+      const sentinel = "export const sentinel = true;\n";
+      const checkoutPath = join(WORKSPACE_ROOT, name);
+
+      writeFileSync(checkoutPath, sentinel, { flag: "wx" });
+
+      try {
+        const result = await lintAtIsolated(
+          `${prefix}${name}`,
+          `import "pg";\n`
+        );
+
+        expect(result.failed).toBe(true);
+        expect(result.output).toContain(
+          "config opens no database connection (DEC-34)."
+        );
+        expect(readFileSync(checkoutPath, "utf8")).toBe(sentinel);
+      } finally {
+        rmSync(checkoutPath, { force: true });
+      }
     }
   );
 

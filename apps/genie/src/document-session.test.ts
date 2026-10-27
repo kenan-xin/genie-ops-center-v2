@@ -67,11 +67,16 @@ function mayReadDirectly(path: string): boolean {
 }
 
 function serverSources(): string[] {
-  return globSync(SOURCES, { cwd: ROOT })
-    .map((path) => path.split("\\").join("/"))
-    .filter((path) => !/\.(?:test|stories)\.tsx?$/.test(path))
-    .filter((path) => !path.includes("/__fixtures__/"))
-    .filter((path) => !mayReadDirectly(path));
+  return (
+    globSync(SOURCES, { cwd: ROOT })
+      .map((path) => path.split("\\").join("/"))
+      // A lint suite's transient fixture can vanish between the glob and the read
+      // (6wz1.16). The markers are the ones every other scan excludes.
+      .filter((path) => !/__(?:boundary|wiring|antislop|shadcn)__/.test(path))
+      .filter((path) => !/\.(?:test|stories)\.tsx?$/.test(path))
+      .filter((path) => !path.includes("/__fixtures__/"))
+      .filter((path) => !mayReadDirectly(path))
+  );
 }
 
 /** Every place a source names an enforced read, as `line:name`. */
