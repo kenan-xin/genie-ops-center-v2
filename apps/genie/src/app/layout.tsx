@@ -11,6 +11,7 @@ import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
 import { documentSessionState } from "../document-session.ts";
+import { NextRouteFocus } from "../next-app-shell.tsx";
 import { QueryProvider } from "../providers.tsx";
 import { principalForSession } from "../request-principal.ts";
 import { SETUP_REQUIRED_HEADER } from "../setup-required-header.ts";
@@ -113,6 +114,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>{children}</QueryProvider>
         </NextIntlClientProvider>
+        <NextRouteFocus />
         <Toaster />
         {diagnostics === undefined ? null : (
           <DevtoolsMount {...deploymentDiagnostics(diagnostics)} />

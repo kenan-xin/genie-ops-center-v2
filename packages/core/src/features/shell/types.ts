@@ -6,9 +6,16 @@ import type { ComponentPropsWithRef, ComponentType } from "react";
  */
 export type ShellChrome = "workspace" | "admin";
 
-/** The anchor an internal shell link renders through: the host's router link, such as `next/link`. */
+/**
+ * The anchor an internal shell link renders through: the host's router link, such as `next/link`.
+ * It takes the props the shell sets. A menu item also passes its own props at run time, which a
+ * router link forwards to its anchor.
+ */
 export type ShellLinkComponent = ComponentType<
-  ComponentPropsWithRef<"a"> & { readonly href: string }
+  Pick<
+    ComponentPropsWithRef<"a">,
+    "aria-current" | "children" | "className" | "ref" | "title"
+  > & { readonly href: string }
 >;
 
 export type ShellLink = {

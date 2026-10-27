@@ -1,5 +1,4 @@
 import {
-  AppShell,
   shellChrome,
   shellMenu,
   type ShellChrome,
@@ -11,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { requireContext } from "./context.ts";
 import { requireSession } from "./document-session.ts";
+import { NextAppShell } from "./next-app-shell.tsx";
 import { PATHNAME_HEADER } from "./pathname-header.ts";
 import { SessionActivityMount } from "./session-activity-mount.tsx";
 import { shellModel } from "./shell-model.ts";
@@ -29,7 +29,8 @@ export async function keepBreakGlassInAdmin(): Promise<void> {
  * The signed-in frame every shell page wraps its output in (Spec 3 R-27). It checks the session
  * first through `requireSession()` (ARCH-1). The tree is already permitted, so this frame makes no
  * authorization decision of its own (R-30). The activity client lives here, so it exists only on
- * signed-in shell pages and ends on any navigation away from them (R-15a).
+ * signed-in shell pages and ends on any navigation away from them (R-15a). Internal shell links
+ * navigate with `next/link` (NAV-1).
  */
 export async function ShellFrame(props: {
   readonly chrome: ShellChrome;
@@ -54,7 +55,7 @@ export async function ShellFrame(props: {
   return (
     <>
       <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
-      <AppShell
+      <NextAppShell
         chrome={chrome}
         {...(props.title === undefined ? {} : { title: props.title })}
         currentPath={requestHeaders.get(PATHNAME_HEADER) ?? "/"}
@@ -97,7 +98,7 @@ export async function ShellFrame(props: {
         }}
       >
         {props.children}
-      </AppShell>
+      </NextAppShell>
     </>
   );
 }
