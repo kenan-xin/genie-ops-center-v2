@@ -8,5 +8,6 @@ Bounded technical approaches supporting the numbered specifications. Specificati
 | [Spec 1: Deployment and setup](01-deployment-and-setup.md) | Approved for implementation 2026-09-24; all tickets under epic 1ia implemented and the epic closed |
 | [Spec 2: Identity and access](02-identity-and-access.md) | Drafted 2026-09-27 and reviewed; tickets under epic d8l5 implemented; S2-G3 passes 2026-10-06 except the AC-14 operator confirmation and the first green scheduled Entra run (owner beads d8l5.23, d8l5.24) |
 | [Spec 3: Shell, branding and design system](03-shell-branding-and-design-system.md) | Drafted 2026-10-22 after the breakdown approval; all tickets under epic 6wz1 integrated into local develop 2026-10-24; S3-G3 passes; the anti-slop scan of every story on 2026-10-26 found no `tiny-text` finding, so the text-size exception is closed, and the edge and overlay findings are known skips in bead `6wz1.17`; not pushed |
+| [Spec 7: Invoice and payments](07-invoice-and-payments.md) | Drafted 2026-10-27, critiqued twice; spec and tickets under epic czjw approved 2026-10-27; S7-01 documents recorded |
 
 Module naming amendment: [propagation and implemented-ticket rework](module-naming-revision.md), 2026-09-20. Naming is approved, and the rework is implemented and integrated at `19bdf39` (bead `ygn`, closed 2026-09-22).

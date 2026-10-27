@@ -12,6 +12,7 @@ One specification per core roadmap section, named `NN-<section>.md`. A specifica
 | `03-shell-branding-and-design-system.md` | Section 3: Shell, branding, and design system | Approved 2026-10-19, revised and re-approved 2026-10-22; tickets under epic `6wz1` not started | 8.1 |
 | `04-solutions-module.md` | Section 4: Solutions module | Approved 2026-10-19 | 8.0 |
 | `05-operations.md` | Section 5: Operations | Draft, reworked 2026-10-20, awaiting approval | 7.1 |
+| `07-invoice-and-payments.md` | Section 7: Invoice and payments, with chat, dashboards and slides | Approved 2026-10-27; ticket breakdown approved 2026-10-27 | 7.4 |
 
 Customer modules (contracts, approvals) have no specification here. They are deferred on customer discovery (`../modules/README.md`) and get a specification per module phase when their discovery closes.
 
