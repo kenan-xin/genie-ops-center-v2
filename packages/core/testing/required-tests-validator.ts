@@ -140,6 +140,28 @@ export function requiredViolations(
       continue;
     }
 
+    // A renamed case is one of the collected names no manifest entry of this
+    // file names, so those are offered as "did you mean" candidates (ARCH-6).
+    const listed = new Set(
+      required
+        .filter((other) => other.file === file)
+        .flatMap((other) => other.cases)
+    );
+
+    const unlisted = [
+      ...new Set(
+        assertions
+          .map((assertion) => assertion.fullName)
+          .filter(isNonEmptyString)
+          .filter((name) => !listed.has(name))
+      ),
+    ];
+
+    const suggestion =
+      unlisted.length === 0
+        ? ""
+        : ` Did you mean: ${unlisted.map((name) => JSON.stringify(name)).join(", ")}?`;
+
     // A mandatory case is proven only by a reported result whose status is
     // exactly "passed". Any other state — failed, skipped, todo, pending, an
     // unrecognized value, or no status at all — is a violation, so a report the
@@ -152,7 +174,7 @@ export function requiredViolations(
 
       if (matches.length === 0) {
         violations.push(
-          `${file}: mandatory case was never collected: ${name}.`
+          `${file}: mandatory case was never collected: ${name}.${suggestion}`
         );
 
         continue;

@@ -124,6 +124,38 @@ describe("the core integration manifest validator", () => {
     );
   });
 
+  // ARCH-6: a renamed case is one of the file's unlisted names, so the
+  // violation offers them and the manifest fix is a copy and paste.
+  it("suggests the file's unlisted names for a missing mandatory case", () => {
+    const [first, second] = migrator.cases;
+    const renamed = `${first} (renamed)`;
+
+    const renamedReport = reportOf([
+      {
+        file: migrator.file,
+        assertions: [
+          { fullName: renamed, status: "passed" },
+          { fullName: second ?? "", status: "passed" },
+        ],
+      },
+    ]);
+
+    const halfMigrator = reportOf([
+      {
+        file: migrator.file,
+        assertions: [{ fullName: second ?? "", status: "passed" }],
+      },
+    ]);
+
+    expect(violationFor(renamedReport)).toContain(
+      `mandatory case was never collected: ${first}. Did you mean: ${JSON.stringify(renamed)}?`
+    );
+    expect(violationFor(renamedReport)).not.toContain(
+      `Did you mean: ${JSON.stringify(second)}`
+    );
+    expect(violationFor(halfMigrator)).not.toContain("Did you mean");
+  });
+
   it("fails a mandatory case a filter removed from execution", () => {
     const filtered = reportOf(
       REQUIRED_TESTS.map((entry) => ({
