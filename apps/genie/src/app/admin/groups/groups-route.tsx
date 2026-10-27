@@ -79,6 +79,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       groups={list.data ?? []}
       viewer={props.viewer}
       labelHint={t("groups.addLabelHint")}
+      searchLabel={t("groups.searchLabel")}
       includeArchived={includeArchived}
       onChangeIncludeArchived={setIncludeArchived}
       people={people.data ?? []}

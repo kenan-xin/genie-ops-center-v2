@@ -44,16 +44,19 @@
     },
     "people": {
       "title": "People",
-      "description": "Everyone who can sign in. Add a person, give them roles, and revoke access when they leave. A pending person becomes active at their first sign-in."
+      "description": "Everyone who can sign in. Add a person, give them roles, and revoke access when they leave. A pending person becomes active at their first sign-in.",
+      "searchLabel": "Search people"
     },
     "groups": {
       "title": "Groups",
       "description": "Directory groups from the identity provider, and local groups you manage here. A role assigned to a group reaches every member.",
-      "addLabelHint": "Add a display label"
+      "addLabelHint": "Add a display label",
+      "searchLabel": "Search groups"
     },
     "roles": {
       "title": "Roles",
-      "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access."
+      "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access.",
+      "searchLabel": "Search roles"
     },
     "audit": {
       "title": "Audit log",

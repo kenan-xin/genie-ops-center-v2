@@ -45,6 +45,7 @@ const meta = {
     a11y: { test: "error" },
   },
   args: {
+    searchLabel: "Search groups",
     groups: FIXTURE_GROUPS,
     viewer: FIXTURE_VIEWER,
     includeArchived: false,

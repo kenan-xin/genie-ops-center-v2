@@ -46,6 +46,7 @@ const meta = {
     a11y: { test: "error" },
   },
   args: {
+    searchLabel: "Search people",
     people: FIXTURE_PEOPLE,
     viewer: FIXTURE_VIEWER,
     settings: FIXTURE_SETTINGS,

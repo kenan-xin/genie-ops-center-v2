@@ -55,6 +55,8 @@ export type PeopleScreenProps = {
   readonly people: readonly Person[];
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
+  /** The search field's label and placeholder, from the host catalogue (DEC-13). */
+  readonly searchLabel: string;
   readonly roles: readonly AssignableRole[];
   /**
    * Whether the caller may pick roles in Add person. False hides the picker; the server refuses

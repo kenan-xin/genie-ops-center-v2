@@ -7,6 +7,7 @@ import {
   type PeopleViewer,
 } from "@genie/core/features/people";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
@@ -44,6 +45,7 @@ export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
 }) {
+  const t = useTranslations("pages");
   // An audit target link opens the screen with its person selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
@@ -118,6 +120,7 @@ export function PeopleRoute(props: {
       people={list.data ?? []}
       viewer={props.viewer}
       settings={props.settings}
+      searchLabel={t("people.searchLabel")}
       roles={roles.data ?? []}
       canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}

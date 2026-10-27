@@ -39,6 +39,7 @@ const meta = {
     a11y: { test: "error" },
   },
   args: {
+    searchLabel: "Search roles",
     roles: FIXTURE_ROLES,
     viewer: FIXTURE_VIEWER,
     catalogue: FIXTURE_CATALOGUE,

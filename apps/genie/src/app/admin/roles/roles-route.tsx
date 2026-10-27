@@ -2,6 +2,7 @@
 
 import { RolesScreen, type RolesViewer } from "@genie/core/features/roles";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
@@ -14,6 +15,7 @@ import { rpc } from "../../../rpc/client.ts";
  * form; each write reloads the list and the open detail through TanStack Query.
  */
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
+  const t = useTranslations("pages");
   const router = useRouter();
   // An audit target link opens the screen with its role selected.
   const linkedRoleId = useSearchParams().get("selected");
@@ -52,6 +54,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     <RolesScreen
       roles={list.data ?? []}
       catalogue={catalogue.data ?? []}
+      searchLabel={t("roles.searchLabel")}
       viewer={props.viewer}
       selectedRoleId={selectedRoleId}
       onSelectRole={setSelectedRoleId}

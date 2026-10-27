@@ -39,6 +39,8 @@ export function groupLabel(group: Group): string {
 export type GroupsScreenProps = {
   readonly groups: readonly Group[];
   readonly viewer: GroupsViewer;
+  /** The search field's label and placeholder, from the host catalogue (DEC-13). */
+  readonly searchLabel: string;
   readonly includeArchived: boolean;
   readonly onChangeIncludeArchived: (includeArchived: boolean) => void;
   /** Fires when a row opens or the inspector closes, so the host can load that group's detail. */

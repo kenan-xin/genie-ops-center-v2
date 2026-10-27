@@ -39,6 +39,8 @@ export type RoleInput = {
 export type RolesScreenProps = {
   readonly roles: readonly Role[];
   readonly viewer: RolesViewer;
+  /** The search field's label and placeholder, from the host catalogue (DEC-13). */
+  readonly searchLabel: string;
   /**
    * The declared permission catalogue the role form picks from, grouped by module with each
    * module's entitlement state (R-33). A new role is built from this, never from a stored role.
