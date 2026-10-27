@@ -328,11 +328,11 @@ Amended 2026-09-18: the `realm` step records the variant it applied in `tenant_s
 Amended 2026-10-27 (owner decision): reopened. The first customer, and any brokered customer that asks, may use local accounts beside the identity provider in the same realm. An administrator then chooses brokered or local for each person in Add person, which already supports both. The operator command `genie-ops realm local-accounts enable` is built for this. It needs the bootstrap credential, as the realm step does (`DEC-37`). In one run it does four things:
 
 1. It changes the realm's browser flow so that the login page shows the password form beside the provider button, instead of forwarding every sign-in to the provider.
-2. It writes the local-accounts parts of the realm template: email verification, the password policy, the realm SMTP settings, and the Group Membership mapper.
+2. It writes the local-accounts parts of the realm template: email verification, the password policy, the optional authenticator-app action, and the realm SMTP settings. It keeps the realm's one `groups` mapper. A local person holds no realm group, so that person's roles come from local groups and direct grants.
 3. It records the identity provider's email domains from `--sso-domain`, which can repeat, in `tenant_settings`, and sets `realm_supports_local_accounts` to true.
 4. It writes one audit event.
 
-An administrator then turns on the Local accounts switch on the Tenant Settings page. The application's sign-in page passes `kc_idp_hint` on its provider button, so a brokered person still goes straight to the provider.
+A later `genie-ops setup` run keeps these changes and does not restore the forward to the provider. An administrator then turns on the Local accounts switch on the Tenant Settings page. The application's sign-in page passes `kc_idp_hint` on its provider button, so a brokered person still goes straight to the provider.
 
 Add person refuses a local account for an email on one of the recorded domains. Without that refusal, a person added as local can later link the provider to the same realm user. That user then holds a password that still signs in after the company disables the person at the provider, and that skips the provider's second factor and conditional access. A company address therefore stays under the provider's control, and local accounts serve people outside it, such as contractors and partners. The command is refused in client-only mode, where the realm belongs to the customer (ADR 0010).
 
