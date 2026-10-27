@@ -26,7 +26,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The action bar of a form that saves: a failed save shows here, left of the buttons on desktop and above them on a phone, as an alert that takes focus. There is no Retry: Save is the retry. `sticky` keeps the bar at the bottom of the screen on a phone.",
+          "The action bar of a form that saves: a failed save shows here, left of the buttons on desktop and above them on a phone, as an alert that takes focus. There is no Retry: Save is the retry. `placement` adds the rule of a dialog or section footer; a section footer stays at the bottom of the screen on a phone.",
       },
     },
   },
@@ -68,7 +68,13 @@ export const Invalid: Story = {
 /** Inside a dialog, a rule separates the bar from the fields above it. */
 export const InDialog: Story = {
   ...Network,
-  args: { ...Network.args, separated: true },
+  args: { ...Network.args, placement: "dialog" },
+};
+
+/** Under a form section, the bar stays at the bottom of the screen on a phone. */
+export const InSection: Story = {
+  ...Network,
+  args: { ...Network.args, placement: "section" },
 };
 
 export const NetworkOnPhone: Story = {

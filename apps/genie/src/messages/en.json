@@ -84,6 +84,11 @@
       "localAccounts": {
         "managed": "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm.",
         "customer": "Local accounts are not available because sign-in uses the company's own realm."
+      },
+      "notSaved": {
+        "signIn": "The sign-in settings were not saved.",
+        "sessions": "The idle timeout was not saved.",
+        "module": "The {module} settings were not saved."
       }
     },
     "branding": {

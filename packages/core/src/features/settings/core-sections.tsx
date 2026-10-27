@@ -5,6 +5,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FormActionBar,
+  HelpDisclosure,
   Input,
   RadioGroup,
   RadioGroupItem,
@@ -16,19 +18,13 @@ import {
   useForm,
   useStore,
 } from "@tanstack/react-form";
-import { AlertTriangle } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
 import {
   sessionSettingsSchema,
   signInSettingsSchema,
 } from "../../services/settings/schemas.ts";
-import type {
-  LastChangedView,
-  SessionsInput,
-  SettingsIssue,
-  SignInInput,
-} from "./types.ts";
+import type { SessionsInput, SettingsIssue, SignInInput } from "./types.ts";
 
 export type FooterState = {
   readonly dirty: boolean;
@@ -38,77 +34,29 @@ export type FooterState = {
   readonly reset: () => void;
 };
 
-function formatInstant(value: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(value));
-}
-
-function lastChangedText(
-  lastChanged: LastChangedView,
-  timeZone: string
-): string {
-  if (lastChanged === null) return "Never changed";
-
-  const by = lastChanged.by === null ? "provisioning" : lastChanged.by;
-
-  return `Last changed by ${by} · ${formatInstant(lastChanged.at, timeZone)}`;
-}
-
-/** Last change, the save failure line, Discard and Save: the same under every section. */
+/**
+ * The save failure, Discard and Save: the same under every section. The failure is the host's
+ * whole copy (what was not saved, the cause, that the edit is kept); Save is the retry.
+ */
 export function SectionFooter(props: {
   readonly state: FooterState;
-  readonly lastChanged: LastChangedView;
-  readonly timeZone: string;
   readonly failure: string | null;
-  /** False when a field issue refused the save: editing the field is the way forward. */
-  readonly retryable: boolean;
 }) {
   const { state } = props;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-border px-5 py-3">
-      {props.failure === null ? null : (
-        <p
-          role="alert"
-          className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive dark:text-destructive-on-dark"
-        >
-          {/* The icon stays on the first line of the text when the text wraps on a phone. */}
-          <span className="flex items-start gap-1.5">
-            <AlertTriangle aria-hidden className="mt-px size-3.5 shrink-0" />
-            <span>Not saved. {props.failure} Your changes are still here.</span>
-          </span>
-          {props.retryable ? (
-            <Button variant="link" size="sm" onClick={state.submit}>
-              Retry
-            </Button>
-          ) : null}
-        </p>
-      )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {lastChangedText(props.lastChanged, props.timeZone)}
-        </p>
-        <div className="flex gap-2 *:flex-1 sm:*:flex-none">
-          <Button
-            variant="secondary"
-            disabled={!state.dirty}
-            onClick={state.reset}
-          >
-            Discard
-          </Button>
-          <Button
-            disabled={!state.canSubmit && !state.submitting}
-            loading={state.submitting}
-            onClick={state.submit}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-    </div>
+    <FormActionBar failure={props.failure} placement="section">
+      <Button variant="secondary" disabled={!state.dirty} onClick={state.reset}>
+        Discard
+      </Button>
+      <Button
+        disabled={!state.canSubmit && !state.submitting}
+        loading={state.submitting}
+        onClick={state.submit}
+      >
+        Save
+      </Button>
+    </FormActionBar>
   );
 }
 
@@ -330,14 +278,19 @@ export function SessionsSection(props: SectionProps<SessionsInput>) {
                 </div>
                 {message === undefined ? (
                   <FieldDescription id="core-sessionIdleMinutes-help">
-                    5 to 480 minutes, default 15. Applies to new sessions and to
-                    existing sessions on their next activity.
+                    5 to 480 minutes. Default 15.
                   </FieldDescription>
                 ) : (
                   <FieldError id="core-sessionIdleMinutes-error">
                     {message}
                   </FieldError>
                 )}
+                <HelpDisclosure label="When a new timeout applies">
+                  <p>
+                    A new timeout applies to new sessions, and to existing
+                    sessions on their next activity.
+                  </p>
+                </HelpDisclosure>
               </div>
             );
           }}

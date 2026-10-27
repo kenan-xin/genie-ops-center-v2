@@ -5,6 +5,7 @@ import {
   ConfigForm,
   ConfirmDialog,
   focusRing,
+  HelpDisclosure,
   StatusPill,
   WarningNote,
 } from "@genie/ui";
@@ -65,17 +66,37 @@ const changedOnly = <T extends Record<string, unknown>>(
   loaded: T
 ): Partial<T> => pickBy(values, (value, key) => !isEqual(value, loaded[key]));
 
+function lastChangedText(
+  lastChanged: LastChangedView,
+  timeZone: string
+): string {
+  if (lastChanged === null) return "Never changed";
+
+  const by = lastChanged.by === null ? "provisioning" : lastChanged.by;
+
+  const at = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone,
+  }).format(new Date(lastChanged.at));
+
+  return `Last changed by ${by} · ${at}`;
+}
+
 function SectionCard(props: {
   readonly title: string;
   readonly description: string | null;
+  /** The last change, as quiet metadata under the title. */
+  readonly lastChanged: string;
   readonly headingRef: React.Ref<HTMLHeadingElement>;
   readonly extra?: ReactNode;
   readonly children: ReactNode;
 }) {
   return (
+    // Clip, not hide: a hidden overflow is a scroll box, and the footer's phone sticky needs none.
     <section
       aria-labelledby="settings-section-title"
-      className="overflow-hidden rounded-xl border border-border bg-card"
+      className="overflow-clip rounded-xl border border-border bg-card"
     >
       <div className="flex flex-col gap-3 px-5 pt-5">
         <div>
@@ -92,6 +113,9 @@ function SectionCard(props: {
               {props.description}
             </p>
           )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {props.lastChanged}
+          </p>
         </div>
         {props.extra}
       </div>
@@ -228,21 +252,16 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
     }
   };
 
-  const footer = (lastChanged: LastChangedView) => (state: FooterState) => {
-    const shown =
-      failure !== null && failure.sectionId === current?.id ? failure : null;
-
-    return (
-      <SectionFooter
-        state={state}
-        lastChanged={lastChanged}
-        timeZone={props.timeZone}
-        failure={shown?.message ?? null}
-        // A field issue is fixed by editing that field, so Retry cannot succeed.
-        retryable={shown === null || shown.issues.length === 0}
-      />
-    );
-  };
+  const footer = (state: FooterState) => (
+    <SectionFooter
+      state={state}
+      failure={
+        failure !== null && failure.sectionId === current?.id
+          ? failure.message
+          : null
+      }
+    />
+  );
 
   if (props.error !== undefined)
     return (
@@ -310,10 +329,14 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           </div>
         );
       })}
-      <p className="mt-4 border-t border-border px-3 pt-3 text-xs text-muted-foreground">
-        A module appears here only when it declares settings. Switching a module
-        on or off happens on the Modules page.
-      </p>
+      <div className="mt-4 border-t border-border pt-2">
+        <HelpDisclosure label="Which modules appear here">
+          <p>
+            A module appears here only when it declares settings. Switching a
+            module on or off happens on the Modules page.
+          </p>
+        </HelpDisclosure>
+      </div>
     </nav>
   );
 
@@ -330,6 +353,10 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         <SectionCard
           title="Sign-in & accounts"
           description="Who can sign in to this tenant, and how an account is created."
+          lastChanged={lastChangedText(
+            settings.core.lastChanged,
+            props.timeZone
+          )}
           headingRef={heading}
         >
           <SignInSection
@@ -352,7 +379,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
                 props.onSaveSignIn(changedOnly(values, signIn))
               )()
             }
-            footer={footer(settings.core.lastChanged)}
+            footer={footer}
           />
         </SectionCard>
       );
@@ -362,6 +389,10 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         <SectionCard
           title="Sessions"
           description="How long a signed-in browser stays signed in without activity."
+          lastChanged={lastChangedText(
+            settings.core.lastChanged,
+            props.timeZone
+          )}
           headingRef={heading}
         >
           <SessionsSection
@@ -376,7 +407,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             onSubmit={(values) =>
               save(SESSIONS, () => props.onSaveSessions(values))()
             }
-            footer={footer(settings.core.lastChanged)}
+            footer={footer}
           />
         </SectionCard>
       );
@@ -389,6 +420,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       <SectionCard
         title={module.title}
         description={module.description}
+        lastChanged={lastChangedText(module.lastChanged, props.timeZone)}
         headingRef={heading}
         extra={
           module.enabled ? null : (
@@ -442,7 +474,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
                 )
               )()
             }
-            footer={footer(module.lastChanged)}
+            footer={footer}
           />
         </div>
       </SectionCard>

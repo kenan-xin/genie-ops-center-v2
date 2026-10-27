@@ -91,7 +91,7 @@ export const Default: Story = {
       canvas.getByRole("spinbutton", { name: "Idle timeout" })
     ).toHaveValue(15);
     await expect(
-      canvas.getByText(/5 to 480 minutes, default 15\. Applies to new sessions/)
+      canvas.getByText("5 to 480 minutes. Default 15.")
     ).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
   },
@@ -488,11 +488,15 @@ export const PhoneListDetail: Story = {
   },
 };
 
+const REFUSED =
+  "The idle timeout was not saved. You do not have permission to make this change. Your change is kept.";
+
+/** The host's whole failure copy shows as given, takes focus, and Save is the retry. */
 export const SaveRefused: Story = {
   args: {
     target: { section: "sessions" },
     onSaveSessions: fn(async () => {
-      throw { message: "Something went wrong." };
+      throw { message: REFUSED };
     }),
   },
   play: async ({ args, canvas }) => {
@@ -502,12 +506,14 @@ export const SaveRefused: Story = {
     await userEvent.type(idle, "30");
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "Not saved. Something went wrong. Your changes are still here."
-    );
-    await expect(idle).toHaveValue(30);
+    const alert = await canvas.findByRole("alert");
 
-    await userEvent.click(canvas.getByRole("button", { name: "Retry" }));
+    await expect(alert).toHaveTextContent(REFUSED);
+    await expect(alert).toHaveFocus();
+    await expect(idle).toHaveValue(30);
+    await expect(canvas.queryByRole("button", { name: "Retry" })).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(args.onSaveSessions).toHaveBeenCalledTimes(2));
   },
 };
@@ -518,7 +524,7 @@ export const SaveRefusedOnPhone: Story = {
   args: {
     target: { section: "sessions" },
     onSaveSessions: fn(async () => {
-      throw { message: "Something went wrong." };
+      throw { message: REFUSED };
     }),
   },
   play: async ({ canvas }) => {
@@ -546,6 +552,71 @@ export const SaveRefusedOnPhone: Story = {
   },
 };
 
+const TWO_LINE_FAILURE =
+  "The idle timeout was not saved. The server could not be reached. Check your connection. Your change is kept.";
+
+/**
+ * On a phone a failure that wraps to two lines overlaps nothing: no button, grown by its 4 px focus
+ * ring, touches a line of the text (fix list, "Save failures").
+ */
+export const TwoLineFailureOnPhone: Story = {
+  globals: phone,
+  args: {
+    target: { section: "sessions" },
+    onSaveSessions: fn(async () => {
+      throw { message: TWO_LINE_FAILURE };
+    }),
+  },
+  play: async ({ canvas }) => {
+    const idle = canvas.getByRole("spinbutton", { name: "Idle timeout" });
+
+    await userEvent.clear(idle);
+    await userEvent.type(idle, "30");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    const alert = await canvas.findByRole("alert");
+
+    const text = [...alert.querySelectorAll("span")].find(
+      (span) =>
+        span.children.length === 0 &&
+        span.textContent.includes("could not be reached")
+    );
+
+    if (text === undefined) throw new Error("The failure text is missing.");
+
+    const range = document.createRange();
+
+    range.selectNodeContents(text);
+
+    const lines = [...range.getClientRects()];
+
+    await expect(
+      new Set(lines.map((line) => Math.round(line.top))).size
+    ).toBeGreaterThan(1);
+
+    const ring = 4;
+    const section = alert.closest("section") ?? document.body;
+
+    const overlapping = [...section.querySelectorAll("button")].flatMap(
+      (button) => {
+        const box = button.getBoundingClientRect();
+
+        const touches = lines.some(
+          (line) =>
+            box.left - ring < line.right &&
+            box.right + ring > line.left &&
+            box.top - ring < line.bottom &&
+            box.bottom + ring > line.top
+        );
+
+        return touches ? [button.textContent] : [];
+      }
+    );
+
+    await expect(overlapping).toEqual([]);
+  },
+};
+
 export const ModuleIssueOnField: Story = {
   args: {
     target: { section: "placeholder" },
@@ -569,7 +640,7 @@ export const ModuleIssueOnField: Story = {
     // The edits stay and the summary line stays.
     await expect(pageSize).toHaveValue(40);
     await expect(
-      canvas.getByText(/Not saved\. The server refused the change\./)
+      canvas.getByText("The server refused the change.")
     ).toBeVisible();
   },
 };
@@ -597,15 +668,14 @@ export const UnmatchedIssueStaysInSummary: Story = {
 
     // The server's own message survives a root issue path.
     await expect(
-      await canvas.findByText(/Not saved\. The server refused the root\./)
+      await canvas.findByText("The server refused the root.")
     ).toBeVisible();
-    // Neither issue names a field, so no field shows it and neither blocks Retry.
+    // Neither issue names a field, so no field shows it and neither blocks Save.
     await expect(canvas.queryByText("Root says no.")).toBeNull();
     await expect(canvas.queryByText("Unknown says no.")).toBeNull();
     await expect(pageSize).not.toBeInvalid();
     await expect(pageSize).toHaveValue(40);
     await expect(canvas.getByRole("button", { name: "Save" })).toBeEnabled();
-    await expect(canvas.getByRole("button", { name: "Retry" })).toBeVisible();
   },
 };
 
@@ -631,9 +701,9 @@ export const CoreIssueOnField: Story = {
     await expect(idle).toBeInvalid();
     await expect(idle).toHaveAccessibleDescription("Server says no.");
     await expect(idle).toHaveValue(30);
-    await expect(canvas.getByText(/Not saved\./)).toBeVisible();
-    // A field refusal is fixed by editing the field, so Retry is not offered.
-    await expect(canvas.queryByRole("button", { name: "Retry" })).toBeNull();
+    await expect(
+      canvas.getByText("The server refused the change.")
+    ).toBeVisible();
 
     // Editing the field clears the server error it carried.
     await userEvent.clear(idle);

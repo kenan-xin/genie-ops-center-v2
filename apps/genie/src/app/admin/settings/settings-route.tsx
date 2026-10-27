@@ -41,6 +41,7 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     invalidate: [["settings"]],
     saved: savedIn("Sign-in & accounts"),
     refused: onScreen,
+    notSaved: () => t("settings.notSaved.signIn"),
   });
 
   const sessions = useAdminWrite({
@@ -48,7 +49,12 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     invalidate: [["settings"]],
     saved: savedIn("Sessions"),
     refused: onScreen,
+    notSaved: () => t("settings.notSaved.sessions"),
   });
+
+  const moduleTitle = (moduleId: string) =>
+    settings.data?.modules.find((section) => section.moduleId === moduleId)
+      ?.title ?? moduleId;
 
   const module = useAdminWrite({
     write: (input: {
@@ -56,13 +62,10 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       readonly values: Record<string, ConfigValue | null>;
     }) => rpc.settings.saveModule(input),
     invalidate: [["settings"]],
-    saved: (result, input) =>
-      savedIn(
-        settings.data?.modules.find(
-          (section) => section.moduleId === input.moduleId
-        )?.title ?? input.moduleId
-      )(result),
+    saved: (result, input) => savedIn(moduleTitle(input.moduleId))(result),
     refused: onScreen,
+    notSaved: (input) =>
+      t("settings.notSaved.module", { module: moduleTitle(input.moduleId) }),
   });
 
   return (

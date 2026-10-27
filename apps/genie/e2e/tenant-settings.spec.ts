@@ -194,9 +194,17 @@ test("changes onboarding mode, local accounts and idle minutes, one core:setting
         await idle.fill("20");
         await page.route(saveSessions, (route) => route.abort());
         await save.click();
-        await expect(
-          page.getByRole("alert").filter({ hasText: "Not saved." })
-        ).toBeVisible();
+
+        // The failure names what was not saved, the cause and the kept edit, and takes focus.
+        const failure = page
+          .getByRole("alert")
+          .filter({ hasText: "The idle timeout was not saved." });
+
+        await expect(failure).toHaveText(
+          "The idle timeout was not saved. The server could not be reached. Check your connection. Your change is kept."
+        );
+        await expect(failure).toBeFocused();
+        await expect(idle).toHaveValue("20");
         await page.emulateMedia({ colorScheme: "dark" });
         await expect(page.locator("html")).toHaveAttribute(
           "data-theme",
@@ -204,6 +212,30 @@ test("changes onboarding mode, local accounts and idle minutes, one core:setting
         );
         await expectNoAxeViolations(page, "Sessions not saved, dark");
         await page.emulateMedia({ colorScheme: "light" });
+        await page.unroute(saveSessions);
+
+        // A refusal names its reason. The body is the transport's own `forbidden` answer.
+        await page.route(saveSessions, (route) =>
+          route.fulfill({
+            status: 403,
+            contentType: "application/json",
+            body: JSON.stringify({
+              json: {
+                defined: false,
+                code: "forbidden",
+                status: 403,
+                message: "You may not do that.",
+                data: { appCode: "forbidden", requestId: "e2e-refused" },
+              },
+              meta: [],
+            }),
+          })
+        );
+        await save.click();
+        await expect(failure).toHaveText(
+          "The idle timeout was not saved. You do not have permission to make this change. Your change is kept."
+        );
+        await expect(failure).toBeFocused();
         await page.unroute(saveSessions);
 
         for (const accepted of ["5", "480", "15"]) {

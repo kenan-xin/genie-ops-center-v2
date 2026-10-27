@@ -1090,7 +1090,7 @@ export function AddPersonDialog(props: {
           </p>
         </div>
         {/* A refused add reports in the action bar, beside the buttons, and keeps the form. */}
-        <FormActionBar failure={props.error ?? null} separated>
+        <FormActionBar failure={props.error ?? null} placement="dialog">
           <Button variant="secondary" onClick={props.onCancel}>
             Cancel
           </Button>

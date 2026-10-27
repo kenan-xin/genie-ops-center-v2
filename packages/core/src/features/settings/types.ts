@@ -52,8 +52,8 @@ export type TenantSettingsScreenProps = {
   };
   /**
    * Each save rejects with `{ message, issues? }` when the server refuses; the edits stay. The
-   * message shows in the section's summary line, and each issue shows under the field whose id
-   * equals its `path` (DR-20 S3-06). A save carries only the fields the person changed, and a
+   * message is the whole failure copy and shows as given in the section's action bar, and each
+   * issue shows under the field whose id equals its `path` (DR-20 S3-06). A save carries only the fields the person changed, and a
    * cleared module field is null, so a stale form never writes back another administrator's
    * change (admin M-1).
    */
