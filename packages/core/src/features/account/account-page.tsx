@@ -292,32 +292,35 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
 
   return (
     <main
-      className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
+      className="mx-auto w-full max-w-3xl px-4 pb-8"
       data-testid="account-page"
     >
+      {/* The header keeps its own 24 px gap; the blocks keep 40 px between them. */}
       <PageHeader title="Account" />
 
-      <ProfileBlock
-        profile={props.profile}
-        groups={props.groups}
-        accountManagementUrl={props.accountManagementUrl}
-      />
+      <div className="flex flex-col gap-10">
+        <ProfileBlock
+          profile={props.profile}
+          groups={props.groups}
+          accountManagementUrl={props.accountManagementUrl}
+        />
 
-      <SessionsBlock
-        sessions={props.sessions}
-        timeZone={props.timeZone}
-        revoking={props.revoking}
-        onAskRevoke={(session) => setPending({ kind: "one", session })}
-        onAskRevokeOthers={() =>
-          setPending({
-            kind: "others",
-            count: props.sessions.filter((session) => !session.isCurrent)
-              .length,
-          })
-        }
-      />
+        <SessionsBlock
+          sessions={props.sessions}
+          timeZone={props.timeZone}
+          revoking={props.revoking}
+          onAskRevoke={(session) => setPending({ kind: "one", session })}
+          onAskRevokeOthers={() =>
+            setPending({
+              kind: "others",
+              count: props.sessions.filter((session) => !session.isCurrent)
+                .length,
+            })
+          }
+        />
 
-      <RolesBlock roleGrants={props.roleGrants} />
+        <RolesBlock roleGrants={props.roleGrants} />
+      </div>
 
       <ConfirmDialog
         open={pending !== null}

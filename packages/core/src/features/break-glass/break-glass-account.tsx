@@ -266,59 +266,64 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
   return (
     <main
       data-testid="break-glass-account"
-      className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-8"
+      className="mx-auto w-full max-w-3xl px-4 pb-8"
     >
+      {/* The header keeps its own 24 px gap; the blocks keep 40 px between them. */}
       <PageHeader title="Account" />
 
-      <Block
-        title="Profile"
-        description="Local administrator account. Password and authenticator are managed on this page."
-      >
-        <p className="text-base font-semibold text-foreground">{props.name}</p>
-        <p className="text-sm text-muted-foreground">{props.email}</p>
-        <p className="text-sm text-muted-foreground">
-          Identity source: Genie (local password and authenticator)
-        </p>
-      </Block>
-
-      <Block
-        title="Change password"
-        description="The shared rule applies. Your current password is required."
-      >
-        {props.error !== null && props.enrollment == null ? (
-          <p role="alert" className="text-sm text-destructive">
-            {props.error}
+      <div className="flex flex-col gap-10">
+        <Block
+          title="Profile"
+          description="Local administrator account. Password and authenticator are managed on this page."
+        >
+          <p className="text-base font-semibold text-foreground">
+            {props.name}
           </p>
-        ) : null}
-        <BreakGlassPasswordForm
-          email={props.email}
+          <p className="text-sm text-muted-foreground">{props.email}</p>
+          <p className="text-sm text-muted-foreground">
+            Identity source: Genie (local password and authenticator)
+          </p>
+        </Block>
+
+        <Block
+          title="Change password"
+          description="The shared rule applies. Your current password is required."
+        >
+          {props.error !== null && props.enrollment == null ? (
+            <p role="alert" className="text-sm text-destructive">
+              {props.error}
+            </p>
+          ) : null}
+          <BreakGlassPasswordForm
+            email={props.email}
+            pending={props.pending === true}
+            rateLimited={props.rateLimited === true}
+            retryAfterMinutes={props.retryAfterMinutes ?? 15}
+            onChangePassword={(current, next) =>
+              props.onChangePassword?.(current, next)
+            }
+          />
+        </Block>
+
+        <AuthenticatorBlock
+          enrolledAt={props.authenticatorEnrolledAt}
+          timeZone={props.timeZone}
+          enrollment={props.enrollment ?? null}
           pending={props.pending === true}
+          error={props.error ?? null}
           rateLimited={props.rateLimited === true}
           retryAfterMinutes={props.retryAfterMinutes ?? 15}
-          onChangePassword={(current, next) =>
-            props.onChangePassword?.(current, next)
-          }
+          onStartReenroll={props.onStartReenroll}
+          onConfirmReenroll={props.onConfirmReenroll}
         />
-      </Block>
 
-      <AuthenticatorBlock
-        enrolledAt={props.authenticatorEnrolledAt}
-        timeZone={props.timeZone}
-        enrollment={props.enrollment ?? null}
-        pending={props.pending === true}
-        error={props.error ?? null}
-        rateLimited={props.rateLimited === true}
-        retryAfterMinutes={props.retryAfterMinutes ?? 15}
-        onStartReenroll={props.onStartReenroll}
-        onConfirmReenroll={props.onConfirmReenroll}
-      />
-
-      <SessionsBlock
-        sessions={props.sessions}
-        timeZone={props.timeZone}
-        onRevokeSession={props.onRevokeSession}
-        onRevokeOtherSessions={props.onRevokeOtherSessions}
-      />
+        <SessionsBlock
+          sessions={props.sessions}
+          timeZone={props.timeZone}
+          onRevokeSession={props.onRevokeSession}
+          onRevokeOtherSessions={props.onRevokeOtherSessions}
+        />
+      </div>
     </main>
   );
 }

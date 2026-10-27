@@ -95,6 +95,28 @@ export const DesktopSessionRowsDoNotWrap: Story = {
   },
 };
 
+/** The page header keeps the 24 px gap of every admin page, not the 40 px gap between blocks. */
+export const HeaderGapMatchesTheAdminPages: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const main = within(canvasElement).getByTestId("account-page");
+
+    const header = main.querySelector("header[data-shell-page-header]");
+
+    if (header === null) throw new Error("No page header");
+
+    const profile = within(main).getByRole("heading", { name: "Profile" });
+
+    await expect(
+      profile.getBoundingClientRect().top -
+        header.getBoundingClientRect().bottom
+    ).toBe(24);
+    await expect(
+      header.getBoundingClientRect().top - main.getBoundingClientRect().top
+    ).toBe(0);
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
