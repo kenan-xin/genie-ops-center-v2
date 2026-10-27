@@ -70,6 +70,25 @@ const meta = {
   },
 } satisfies Meta<typeof AuditLog>;
 
+/**
+ * A story that ends with the filter panel open lets axe measure the filter controls. Base UI's
+ * focus guards are `aria-hidden` on purpose (they hand focus on), so only they skip
+ * `aria-hidden-focus`.
+ */
+const OPEN_PANEL_A11Y = {
+  a11y: {
+    test: "error",
+    config: {
+      rules: [
+        {
+          id: "aria-hidden-focus",
+          selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+        },
+      ],
+    },
+  },
+};
+
 export default meta;
 
 type Story = StoryObj<typeof meta>;
@@ -195,9 +214,13 @@ export const LoadingNextPage: Story = {
 };
 
 export const Filtering: Story = {
+  parameters: OPEN_PANEL_A11Y,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /^Filters/ }));
-    await userEvent.click(canvas.getByRole("combobox", { name: "Actor" }));
+    // The filter panel is a popover, so it renders outside the canvas.
+    await userEvent.click(
+      await screen.findByRole("combobox", { name: "Actor" })
+    );
     await userEvent.click(
       await screen.findByRole("option", { name: "System" })
     );
@@ -208,10 +231,10 @@ export const Filtering: Story = {
     ).toBeInTheDocument();
     // The trigger shows the label, not the stored value.
     await expect(
-      canvas.getByRole("combobox", { name: "Actor" })
+      screen.getByRole("combobox", { name: "Actor" })
     ).toHaveTextContent("System");
 
-    await userEvent.click(canvas.getByRole("combobox", { name: "Action" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Action" }));
     await userEvent.click(
       await screen.findByRole("option", { name: "auth:sign_in" })
     );
@@ -287,10 +310,11 @@ export const FilterChipFocusOnDark: Story = {
 };
 
 export const OperatorFilter: Story = {
+  parameters: OPEN_PANEL_A11Y,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /^Filters/ }));
 
-    const checkbox = canvas.getByRole("checkbox", {
+    const checkbox = await screen.findByRole("checkbox", {
       name: "Operator rows only",
     });
 

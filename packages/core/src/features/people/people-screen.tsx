@@ -15,6 +15,7 @@ import {
   EmptyState,
   Field,
   FieldLabel,
+  FilterDisclosure,
   focusRing,
   HelpDisclosure,
   Input,
@@ -515,7 +516,6 @@ function ProfileRow(props: { readonly label: string; readonly value: string }) {
 export function PeopleScreen(props: PeopleScreenProps) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
-  const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [selectedId, setSelectedId] = useState(props.initialSelectedId ?? null);
@@ -696,22 +696,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            variant="secondary"
-            aria-expanded={showFilters}
-            onClick={() => setShowFilters((value) => !value)}
-          >
-            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </Button>
-          <Button onClick={() => setAdding(true)}>
-            <PlusIcon /> Add person
-          </Button>
-        </div>
-      </div>
-
-      {showFilters ? (
-        <div className="mt-2 flex flex-wrap gap-3 rounded-lg border border-input p-3">
-          <div className="w-44">
+          <FilterDisclosure count={activeFilterCount} onClear={clearFilters}>
             <Field>
               <FieldLabel htmlFor={statusId}>Status</FieldLabel>
               <Select
@@ -736,8 +721,6 @@ export function PeopleScreen(props: PeopleScreenProps) {
                 </SelectContent>
               </Select>
             </Field>
-          </div>
-          <div className="w-44">
             <Field>
               <FieldLabel htmlFor={groupId}>Group</FieldLabel>
               <Select
@@ -757,9 +740,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
                 </SelectContent>
               </Select>
             </Field>
-          </div>
+          </FilterDisclosure>
+          <Button onClick={() => setAdding(true)}>
+            <PlusIcon /> Add person
+          </Button>
         </div>
-      ) : null}
+      </div>
 
       {activeFilterCount === 0 ? null : (
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -853,6 +839,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
                 id: "roles",
                 header: "Roles",
                 cell: (person) => person.roleCount,
+                align: "end",
               },
               { id: "lastSignIn", header: "Last sign-in", cell: lastSignIn },
             ]}

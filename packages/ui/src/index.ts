@@ -159,6 +159,8 @@ export { EmptyState } from "./parts/empty-state.tsx";
 
 export { HelpDisclosure } from "./parts/help-disclosure.tsx";
 
+export { FilterDisclosure } from "./parts/filter-disclosure.tsx";
+
 export { WarningNote } from "./parts/warning-note.tsx";
 
 export type { WarningNoteProps } from "./parts/warning-note.tsx";

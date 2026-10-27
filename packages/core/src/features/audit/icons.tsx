@@ -46,14 +46,6 @@ export function CloseIcon(props: IconProps): JSX.Element {
   );
 }
 
-export function FiltersIcon(props: IconProps): JSX.Element {
-  return (
-    <Icon className={props.className}>
-      <path d="M4 6h16M7 12h10M10 18h4" />
-    </Icon>
-  );
-}
-
 export function SystemIcon(props: IconProps): JSX.Element {
   return (
     <Icon className={props.className}>

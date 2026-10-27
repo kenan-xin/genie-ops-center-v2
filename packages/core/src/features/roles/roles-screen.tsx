@@ -588,11 +588,13 @@ export function RolesScreen(props: RolesScreenProps) {
                 id: "permissions",
                 header: "Permissions",
                 cell: (role) => role.permissions.length,
+                align: "end",
               },
               {
                 id: "assignments",
                 header: "Assignments",
                 cell: (role) => role.assignmentCount,
+                align: "end",
               },
             ]}
             facts={(role) => [

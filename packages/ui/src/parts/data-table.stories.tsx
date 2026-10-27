@@ -12,6 +12,7 @@ type Person = {
   readonly role: string;
   readonly status: string;
   readonly lastSeen: string;
+  readonly signIns: number;
 };
 
 const people: readonly Person[] = [
@@ -22,6 +23,7 @@ const people: readonly Person[] = [
     role: "Administrator",
     status: "Active",
     lastSeen: "Today",
+    signIns: 12,
   },
   {
     id: "p-2",
@@ -30,6 +32,7 @@ const people: readonly Person[] = [
     role: "Reviewer",
     status: "Active",
     lastSeen: "Yesterday",
+    signIns: 4,
   },
   {
     id: "p-3",
@@ -38,6 +41,7 @@ const people: readonly Person[] = [
     role: "Reviewer",
     status: "Invited",
     lastSeen: "Never",
+    signIns: 0,
   },
 ];
 
@@ -51,7 +55,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The composed table of Spec 3 R-23. From 768 px it is a table. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, and shows its reason as visible text that is the item's description. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them.",
+          'The composed table of Spec 3 R-23. From 768 px it is a table in a bordered card, with the header band on top and the edge columns inset 20 px. A column with `align: "end"` lines its header and cells up at the end, for counts. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, and shows its reason as visible text that is the item\'s description. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them.',
       },
     },
   },
@@ -64,6 +68,12 @@ const meta = {
       { id: "email", header: "Email", cell: (row) => row.email },
       { id: "name", header: "Name", cell: (row) => row.name },
       { id: "role", header: "Role", cell: (row) => row.role },
+      {
+        id: "signIns",
+        header: "Sign-ins",
+        cell: (row) => row.signIns,
+        align: "end",
+      },
     ],
     status: (row) => row.status,
     facts: (row) => [row.name, row.role, row.lastSeen],
@@ -88,8 +98,34 @@ type Story = StoryObj<typeof meta>;
 
 export const Desktop: Story = {
   play: async ({ args, canvas }) => {
-    await expect(canvas.getByRole("table", { name: "People" })).toBeVisible();
+    const table = canvas.getByRole("table", { name: "People" });
+
+    await expect(table).toBeVisible();
     await expect(canvas.queryByRole("list", { name: "People" })).toBeNull();
+
+    // UI-1 finding 5: a bordered card holds the table, so the header band does not float.
+    const card = table.closest("[data-slot=data-table]");
+
+    await expect(card).not.toBeNull();
+    await expect(getComputedStyle(card!).borderTopWidth).toBe("1px");
+    await expect(getComputedStyle(card!).borderTopLeftRadius).toBe("12px");
+    await expect(
+      getComputedStyle(canvas.getByRole("columnheader", { name: "Email" }))
+        .paddingLeft
+    ).toBe("20px");
+
+    // A count lines up at the end of its column, header and cells alike.
+    await expect(
+      getComputedStyle(canvas.getByRole("columnheader", { name: "Sign-ins" }))
+        .textAlign
+    ).toBe("right");
+    await expect(
+      getComputedStyle(
+        within(
+          canvas.getByRole("row", { name: /avery@example.com/ })
+        ).getByRole("cell", { name: "12" })
+      ).textAlign
+    ).toBe("right");
 
     await expect(
       canvas.getByRole("columnheader", { name: "Status" })
@@ -162,6 +198,8 @@ export const Phone: Story = {
 
     await expect(list).toBeVisible();
     await expect(canvas.queryByRole("table")).toBeNull();
+    // The card list is one bordered card, like the table above 768 px.
+    await expect(getComputedStyle(list).borderTopLeftRadius).toBe("12px");
 
     const cards = within(list).getAllByRole("listitem");
 

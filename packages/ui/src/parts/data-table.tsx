@@ -25,6 +25,8 @@ export type DataTableColumn<Row> = {
   readonly id: string;
   readonly header: string;
   readonly cell: (row: Row) => ReactNode;
+  /** `end` lines the header and the cells up at the end of the column, for a count. */
+  readonly align?: "end";
 };
 
 export type DataTableAction = {
@@ -142,42 +144,58 @@ export function DataTable<Row>({
 
   return (
     <>
-      <Table className="hidden md:table">
-        <TableCaption className="sr-only">{label}</TableCaption>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.id}>{column.header}</TableHead>
-            ))}
-            {status ? <TableHead>Status</TableHead> : null}
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={rowKey(row)}>
+      {/* A bordered card holds the header band and the rows, so the band does not float (UI-1). */}
+      <div
+        data-slot="data-table"
+        className="hidden overflow-hidden rounded-xl border border-border md:block"
+      >
+        <Table>
+          <TableCaption className="sr-only">{label}</TableCaption>
+          <TableHeader>
+            <TableRow>
               {columns.map((column) => (
-                <TableCell key={column.id}>
-                  {column === identityColumn
-                    ? identity(row, column.cell(row))
-                    : column.cell(row)}
-                </TableCell>
+                <TableHead
+                  key={column.id}
+                  className={column.align === "end" ? "text-right" : undefined}
+                >
+                  {column.header}
+                </TableHead>
               ))}
-              {status ? <TableCell>{status(row)}</TableCell> : null}
-              <TableCell className="text-right">{menu(row)}</TableCell>
+              {status ? <TableHead>Status</TableHead> : null}
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={rowKey(row)}>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    className={
+                      column.align === "end" ? "text-right" : undefined
+                    }
+                  >
+                    {column === identityColumn
+                      ? identity(row, column.cell(row))
+                      : column.cell(row)}
+                  </TableCell>
+                ))}
+                {status ? <TableCell>{status(row)}</TableCell> : null}
+                <TableCell className="text-right">{menu(row)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       <ul
         role="list"
         aria-label={label}
-        className="divide-y divide-border border-y border-border md:hidden"
+        className="divide-y divide-border rounded-xl border border-border md:hidden"
       >
         {rows.map((row) => (
-          <li key={rowKey(row)} className="flex items-start gap-2 py-4 text-sm">
+          <li key={rowKey(row)} className="flex items-start gap-2 p-4 text-sm">
             <div className="grid min-w-0 flex-1 gap-1">
               {identityColumn ? identity(row, identityColumn.cell(row)) : null}
               {status ? <div>{status(row)}</div> : null}

@@ -736,11 +736,13 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 id: "members",
                 header: "Members",
                 cell: (group) => group.memberCount,
+                align: "end",
               },
               {
                 id: "roles",
                 header: "Roles",
                 cell: (group) => group.assignmentCount,
+                align: "end",
               },
             ]}
             status={(group) => syncBadge(group, props.viewer)}

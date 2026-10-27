@@ -3,10 +3,10 @@
 import {
   Button,
   Checkbox,
-  CountPill,
   DataTable,
   Field,
   FieldLabel,
+  FilterDisclosure,
   focusRing,
   HelpDisclosure,
   Input,
@@ -33,7 +33,7 @@ import {
   RANGE_ORDER,
   relativeTime,
 } from "./helpers.ts";
-import { CloseIcon, FiltersIcon, SystemIcon } from "./icons.tsx";
+import { CloseIcon, SystemIcon } from "./icons.tsx";
 import {
   EMPTY_AUDIT_FILTERS,
   type AuditActor,
@@ -280,8 +280,9 @@ function FilterPanel(props: {
     })),
   ];
 
+  // The shared panel names the group and stacks these controls.
   return (
-    <div role="group" aria-label="Filters" className="flex flex-col gap-3">
+    <>
       <FilterSelect
         label="Actor"
         value={filters.actorId}
@@ -363,58 +364,7 @@ function FilterPanel(props: {
         />
         Operator rows only
       </label>
-    </div>
-  );
-}
-
-function FilterButton(props: {
-  readonly count: number;
-  readonly filters: AuditFilters;
-  readonly filterOptions: AuditLogProps["filterOptions"];
-  readonly onChange: (filters: AuditFilters) => void;
-}): JSX.Element {
-  const [open, setOpen] = useState(false);
-  const id = useId();
-
-  return (
-    <span className="relative inline-flex shrink-0">
-      <Button
-        variant="secondary"
-        aria-expanded={open}
-        aria-controls={`${id}-panel`}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <FiltersIcon className="size-4" />
-        Filters
-        {props.count > 0 ? <CountPill>{props.count}</CountPill> : null}
-      </Button>
-      {open ? (
-        <div
-          id={`${id}-panel`}
-          className="absolute left-0 top-full z-30 mt-1 w-72 max-w-full rounded-md border border-border bg-card p-4 text-left shadow-lg"
-        >
-          <FilterPanel
-            filters={props.filters}
-            filterOptions={props.filterOptions}
-            onChange={props.onChange}
-          />
-          <div className="mt-3 flex items-center gap-3">
-            {props.count > 0 ? (
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
-              >
-                Clear filters
-              </Button>
-            ) : null}
-            <Button variant="link" size="sm" onClick={() => setOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </span>
+    </>
   );
 }
 
@@ -491,12 +441,18 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
           />
           <HelpNote />
         </div>
-        <FilterButton
-          count={count}
-          filters={props.filters}
-          filterOptions={props.filterOptions}
-          onChange={change}
-        />
+        <span className="inline-flex shrink-0">
+          <FilterDisclosure
+            count={count}
+            onClear={() => change(EMPTY_AUDIT_FILTERS)}
+          >
+            <FilterPanel
+              filters={props.filters}
+              filterOptions={props.filterOptions}
+              onChange={change}
+            />
+          </FilterDisclosure>
+        </span>
       </div>
 
       <FilterChips

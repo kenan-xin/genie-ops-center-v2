@@ -605,8 +605,9 @@ export const RemoveConfirmsBeforeItFires: Story = {
 export const StatusFilterNarrowsTheList: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Filters" }));
+    // The filter panel is a popover, so it renders outside the canvas.
     await userEvent.click(
-      canvas.getByRole("combobox", { name: "Filter by status" })
+      await screen.findByRole("combobox", { name: "Filter by status" })
     );
     await userEvent.click(
       await screen.findByRole("option", { name: "Pending" })
