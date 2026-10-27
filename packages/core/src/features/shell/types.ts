@@ -1,8 +1,15 @@
+import type { ComponentPropsWithRef, ComponentType } from "react";
+
 /**
  * The shell's view model as the browser receives it. Links carry no permission key: the server
  * already filtered them (Spec 3 R-30).
  */
 export type ShellChrome = "workspace" | "admin";
+
+/** The anchor an internal shell link renders through: the host's router link, such as `next/link`. */
+export type ShellLinkComponent = ComponentType<
+  ComponentPropsWithRef<"a"> & { readonly href: string }
+>;
 
 export type ShellLink = {
   readonly id: string;

@@ -21,11 +21,18 @@ import {
 import { useRef, type ComponentProps } from "react";
 
 import { initials } from "../audit/helpers.ts";
-import type { ShellMenu, ShellStrings, ShellUser } from "./types.ts";
+import { linkFor } from "./shell-link.ts";
+import type {
+  ShellLinkComponent,
+  ShellMenu,
+  ShellStrings,
+  ShellUser,
+} from "./types.ts";
 
 export type UserMenuProps = {
   readonly user: ShellUser;
   readonly menu: ShellMenu;
+  readonly linkComponent?: ShellLinkComponent | undefined;
   readonly strings: Pick<
     ShellStrings,
     | "account"
@@ -50,12 +57,20 @@ function FooterButton(props: ComponentProps<"button">) {
 }
 
 /**
- * The user footer (R-32). The menu opens upward; Account, Change password, the chrome switch and
- * Help and support are plain links, and Sign out posts the controlled sign-out form.
+ * The user footer (R-32). The menu opens upward. Account and the chrome switch render through the
+ * host's link component (NAV-1); Change password and Help and support are plain links, and Sign
+ * out posts the controlled sign-out form.
  */
 export function UserMenu(props: UserMenuProps) {
   const { user, menu, strings } = props;
   const signOutForm = useRef<HTMLFormElement>(null);
+
+  const AccountLink = linkFor(menu.accountHref, props.linkComponent);
+
+  const SwitchLink =
+    menu.switchTarget === null
+      ? "a"
+      : linkFor(menu.switchTarget.href, props.linkComponent);
 
   return (
     <>
@@ -83,7 +98,7 @@ export function UserMenu(props: UserMenuProps) {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start">
-          <DropdownMenuItem render={<a href={menu.accountHref} />}>
+          <DropdownMenuItem render={<AccountLink href={menu.accountHref} />}>
             <UserRound aria-hidden strokeWidth={1.75} className={icon} />
             {strings.account}
           </DropdownMenuItem>
@@ -104,7 +119,9 @@ export function UserMenu(props: UserMenuProps) {
             </DropdownMenuItem>
           )}
           {menu.switchTarget === null ? null : (
-            <DropdownMenuItem render={<a href={menu.switchTarget.href} />}>
+            <DropdownMenuItem
+              render={<SwitchLink href={menu.switchTarget.href} />}
+            >
               <ArrowLeftRight aria-hidden strokeWidth={1.75} className={icon} />
               {menu.switchTarget.label}
             </DropdownMenuItem>

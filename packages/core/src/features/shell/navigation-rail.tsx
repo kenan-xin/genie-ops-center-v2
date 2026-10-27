@@ -17,10 +17,12 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { activeHref } from "./active-link.ts";
 import { readCollapsed, writeCollapsed } from "./collapsed-categories.ts";
+import { linkFor } from "./shell-link.ts";
 import type {
   ShellCategory,
   ShellChrome,
   ShellLink,
+  ShellLinkComponent,
   ShellNavigation,
   ShellStrings,
 } from "./types.ts";
@@ -30,6 +32,7 @@ export type NavigationRailProps = {
   readonly navigation: ShellNavigation;
   readonly currentPath: string;
   readonly strings: Pick<ShellStrings, "workspace" | "pinned" | "categories">;
+  readonly linkComponent?: ShellLinkComponent | undefined;
 };
 
 // Roles is ShieldCheck, not Shield: the admin capture draws the check.
@@ -81,12 +84,14 @@ function Row(props: {
   readonly active: string | undefined;
   readonly height: string;
   readonly idle?: string;
+  readonly linkComponent: ShellLinkComponent | undefined;
 }) {
   const isActive = props.link.href === props.active;
   const Icon = CORE_ICONS.get(props.link.id);
+  const Anchor = linkFor(props.link.href, props.linkComponent);
 
   return (
-    <a
+    <Anchor
       href={props.link.href}
       title={props.link.label}
       aria-current={isActive ? "page" : undefined}
@@ -100,7 +105,7 @@ function Row(props: {
         />
       )}
       <span className="min-w-0 flex-1 truncate">{props.link.label}</span>
-    </a>
+    </Anchor>
   );
 }
 
@@ -110,6 +115,7 @@ function Category(props: {
   readonly open: boolean;
   readonly onToggle: () => void;
   readonly active: string | undefined;
+  readonly linkComponent: ShellLinkComponent | undefined;
 }) {
   const { category } = props;
 
@@ -155,6 +161,7 @@ function Category(props: {
               active={props.active}
               height={treeRow}
               idle={rowChild}
+              linkComponent={props.linkComponent}
             />
           ))}
         </div>
@@ -166,7 +173,9 @@ function Category(props: {
 /**
  * The shell's navigation rail (R-27, R-29, R-31). The workspace chrome shows the workspace links,
  * the pinned rail, and one disclosure per category; the admin chrome shows one captioned group per
- * admin group, never indented. Rows are plain anchors, so every navigation loads a document.
+ * admin group, never indented. A row renders through the host's link component for a path of the
+ * app, so a client router opens it without a document load. A row under `/viewer/` stays a plain
+ * anchor, so a viewer's own policy is installed before its frame renders (R-42).
  */
 export function NavigationRail(props: NavigationRailProps) {
   const { navigation, strings } = props;
@@ -208,6 +217,7 @@ export function NavigationRail(props: NavigationRailProps) {
                   link={entry}
                   active={active}
                   height={navRow}
+                  linkComponent={props.linkComponent}
                 />
               ))}
             </nav>
@@ -226,7 +236,13 @@ export function NavigationRail(props: NavigationRailProps) {
         <nav aria-label={strings.workspace} className="flex flex-col gap-0.5">
           <Caption>{strings.workspace}</Caption>
           {navigation.workspace.map((link) => (
-            <Row key={link.id} link={link} active={active} height={navRow} />
+            <Row
+              key={link.id}
+              link={link}
+              active={active}
+              height={navRow}
+              linkComponent={props.linkComponent}
+            />
           ))}
         </nav>
       )}
@@ -234,7 +250,13 @@ export function NavigationRail(props: NavigationRailProps) {
         <nav aria-label={strings.pinned} className="flex flex-col gap-0.5">
           <Caption>{strings.pinned}</Caption>
           {navigation.pinned.map((link) => (
-            <Row key={link.id} link={link} active={active} height={treeRow} />
+            <Row
+              key={link.id}
+              link={link}
+              active={active}
+              height={treeRow}
+              linkComponent={props.linkComponent}
+            />
           ))}
         </nav>
       )}
@@ -249,6 +271,7 @@ export function NavigationRail(props: NavigationRailProps) {
               open={!collapsed.has(category.id)}
               onToggle={() => toggle(category.id)}
               active={active}
+              linkComponent={props.linkComponent}
             />
           ))}
         </nav>

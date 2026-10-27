@@ -12,6 +12,7 @@ import { ShellContext } from "./shell-context.ts";
 import type {
   ShellChrome,
   ShellIdentity,
+  ShellLinkComponent,
   ShellMenu,
   ShellNavigation,
   ShellStrings,
@@ -29,6 +30,7 @@ export type AppShellProps = {
   readonly menu: ShellMenu;
   readonly strings: ShellStrings;
   readonly children: ReactNode;
+  readonly linkComponent?: ShellLinkComponent;
 };
 
 const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 motion-safe:transition-colors ${focusRing}`;
@@ -48,10 +50,16 @@ function Panel(props: AppShellProps) {
           navigation={props.navigation}
           currentPath={props.currentPath}
           strings={props.strings}
+          linkComponent={props.linkComponent}
         />
       </div>
       <div className="border-t border-border p-2">
-        <UserMenu user={props.user} menu={props.menu} strings={props.strings} />
+        <UserMenu
+          user={props.user}
+          menu={props.menu}
+          strings={props.strings}
+          linkComponent={props.linkComponent}
+        />
       </div>
     </>
   );
@@ -61,6 +69,7 @@ function Panel(props: AppShellProps) {
  * The signed-in frame (R-27, R-35, R-38, R-40). From `lg` the panel is an aside beside the
  * content; below `lg` a top bar shows the title and opens the same panel in a drawer, the only
  * navigation there. The page brings its own `<main>` and `<h1>`; the shell adds neither.
+ * Internal links render through `linkComponent`, and a plain anchor is the default (NAV-1).
  */
 export function AppShell(props: AppShellProps) {
   const { strings } = props;

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { ComponentPropsWithRef } from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AppShell } from "./app-shell.tsx";
@@ -161,6 +162,70 @@ export const WorkspaceDesktop: Story = {
     await expect(
       canvas.queryByRole("link", { name: /notifications/i })
     ).toBeNull();
+
+    // No link component: every row is a plain anchor (NAV-1).
+    const orders = within(aside).getByRole("link", { name: "Orders" });
+
+    await expect(orders).toHaveAttribute("href", "/operations/orders");
+    await expect(orders).not.toHaveAttribute("data-link-component");
+  },
+};
+
+/** A host's router link for the story: it marks each anchor it renders. */
+function MarkedLink(props: ComponentPropsWithRef<"a">) {
+  return <a {...props} data-link-component="" />;
+}
+
+export const WithLinkComponent: Story = {
+  globals: desktop,
+  args: {
+    linkComponent: MarkedLink,
+    navigation: {
+      ...navigation,
+      workspace: [
+        ...navigation.workspace,
+        { id: "reports-viewer", label: "Viewer", href: "/viewer/reports" },
+      ],
+    },
+    menu: {
+      accountHref: "/account",
+      changePasswordHref: "https://id.acme.example/realms/acme/account",
+      switchTarget: { label: "Administration", href: "/admin/people" },
+      supportHref: "mailto:help@acme.example",
+      signOutAction: "/api/auth/sign-out",
+    },
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const aside = canvas.getByRole("complementary", { name: "Navigation" });
+
+    await expect(
+      within(aside).getByRole("link", { name: "Orders" })
+    ).toHaveAttribute("data-link-component");
+    // R-42: a viewer loads a document, so its own policy is installed before its frame renders.
+    await expect(
+      within(aside).getByRole("link", { name: "Viewer" })
+    ).not.toHaveAttribute("data-link-component");
+
+    await userEvent.click(
+      element(canvasElement, "aside [data-shell-user-menu]")
+    );
+
+    const menu = await within(document.body).findByRole("menu");
+
+    await Promise.all(
+      ["Account", "Administration"].map((name) =>
+        expect(within(menu).getByRole("menuitem", { name })).toHaveAttribute(
+          "data-link-component"
+        )
+      )
+    );
+    await Promise.all(
+      [/Change password/, "Help and support"].map((name) =>
+        expect(
+          within(menu).getByRole("menuitem", { name })
+        ).not.toHaveAttribute("data-link-component")
+      )
+    );
   },
 };
 

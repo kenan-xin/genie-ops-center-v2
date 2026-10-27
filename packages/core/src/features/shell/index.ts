@@ -48,6 +48,7 @@ export type {
   ShellChrome,
   ShellIdentity,
   ShellLink,
+  ShellLinkComponent,
   ShellMenu,
   ShellNavigation,
   ShellStrings,
