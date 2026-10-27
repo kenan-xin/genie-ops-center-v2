@@ -232,13 +232,21 @@ test("AC-2: three routes switch from not-set-up to normal at phone and desktop s
 
       const expectedContent = new Map([
         ["/", "Genie Ops Center"],
-        ["/placeholder", "You may not view this page."],
+        // ARCH-1: the page's session check sends an anonymous request to sign-in before `can()`.
+        ["/placeholder", "Sign in with your company account"],
         ["/viewer/placeholder", "Placeholder viewer"],
       ]).get(path);
 
       expect(body, `${viewport.name} ${path} content`).toContain(
         expectedContent
       );
+
+      if (path === "/placeholder") {
+        expect(
+          new URL(page.url()).pathname,
+          `${viewport.name} ${path} lands`
+        ).toBe("/sign-in");
+      }
 
       if (path === "/") {
         // R-12, R-14: the unlayered tenant style beats the layered default.

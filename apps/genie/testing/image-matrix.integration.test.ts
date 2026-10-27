@@ -108,22 +108,21 @@ describe(RELEASE_MATRIX_DESCRIBE, () => {
             expect(health.headers.get(key), `health ${key}`).toBe(value);
           }
 
-          // The placeholder route is a rendered document with the standard
-          // headers. Its workspace entry requires `placeholder:use`, and the
-          // request is anonymous until sign-in exists (S2-04), so the real
-          // evaluator refuses it and the result is the denial body.
+          // The placeholder route is mounted and answers with a rendered
+          // document with the standard headers. The request is anonymous, so
+          // the page's session check sends it to the sign-in page before
+          // `can()` runs (ARCH-1).
           const page = await fetch(
             `http://127.0.0.1:${imageHostPort(3420)}/placeholder`
           );
 
+          expect(new URL(page.url).pathname).toBe("/sign-in");
           expect(page.status).toBe(200);
           expect(page.headers.get("content-type")).toContain("text/html");
           expect(page.headers.get("content-security-policy")).toBe(
             REQUIRED_HEADERS["content-security-policy"]
           );
-          expect(await page.text()).toContain(
-            'data-testid="permission-denied"'
-          );
+          expect(await page.text()).toContain('data-sign-in-state="default"');
 
           // The viewer is the placeholder page whose content renders without a
           // permission, and it is the R-49 fixture.
