@@ -1,4 +1,10 @@
-import { Button, ConfirmDialog, DataTable, focusRing } from "@genie/ui";
+import {
+  Button,
+  ConfirmDialog,
+  DataTable,
+  focusRing,
+  MonoChip,
+} from "@genie/ui";
 import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
@@ -115,14 +121,6 @@ function ProfileBlock(props: {
   );
 }
 
-function currentChip(): JSX.Element {
-  return (
-    <span className="inline-flex items-center rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">
-      THIS DEVICE
-    </span>
-  );
-}
-
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
@@ -161,7 +159,11 @@ function SessionsBlock(props: {
             header: "Device",
             cell: (session) => (
               <span className="flex flex-col">
-                <span>{session.device}</span>
+                {/* The design puts the chip beside the device, so no Status column takes width. */}
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>{session.device}</span>
+                  {session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null}
+                </span>
                 <span className="font-normal text-muted-foreground">
                   {session.browser}
                 </span>
@@ -176,15 +178,22 @@ function SessionsBlock(props: {
           {
             id: "signedInAt",
             header: "Signed in",
-            cell: (session) => instant(session.signedInAt),
+            cell: (session) => (
+              <span className="whitespace-nowrap">
+                {instant(session.signedInAt)}
+              </span>
+            ),
           },
           {
             id: "lastActiveAt",
             header: "Last active",
-            cell: (session) => instant(session.lastActiveAt),
+            cell: (session) => (
+              <span className="whitespace-nowrap">
+                {instant(session.lastActiveAt)}
+              </span>
+            ),
           },
         ]}
-        status={(session) => (session.isCurrent ? currentChip() : null)}
         // One fact keeps the card at the height of the earlier hand-built card: the identity
         // already shows the browser, and the table keeps the sign-in time.
         facts={(session) => [

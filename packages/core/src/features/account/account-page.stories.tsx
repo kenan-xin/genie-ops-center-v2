@@ -60,6 +60,41 @@ function phoneRowActions(canvasElement: HTMLElement) {
   });
 }
 
+/** The number of line boxes the text of an element takes. */
+function lines(element: Element): number {
+  const range = document.createRange();
+
+  range.selectNodeContents(element);
+
+  return new Set(
+    [...range.getClientRects()].map((rect) => Math.round(rect.top))
+  ).size;
+}
+
+/**
+ * At desktop width each session row keeps one line per fact: the chip sits beside the device, as
+ * in the design, so no Status column takes the width that would wrap the dates.
+ */
+export const DesktopSessionRowsDoNotWrap: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const table = sessionTable(canvasElement);
+
+    await expect(
+      table.queryByRole("columnheader", { name: "Status" })
+    ).toBeNull();
+
+    await expect(lines(table.getByText("THIS DEVICE"))).toBe(1);
+
+    const dated = table
+      .getAllByRole("cell")
+      .filter((cell) => /\d{4}/.test(cell.textContent ?? ""));
+
+    await expect(dated.length).toBeGreaterThan(0);
+    await expect(dated.map(lines)).toEqual(dated.map(() => 1));
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
