@@ -52,6 +52,19 @@ test("each sign-in page state carries the headers and passes axe, and the door i
       state === undefined ? 0 : 1
     );
 
+    // A refusal is an alert; an ended session only explains the state (design banner tone).
+    if (state !== undefined) {
+      const role =
+        state === "signed_out" || state === "session_expired"
+          ? "status"
+          : "alert";
+
+      // oxlint-disable-next-line no-await-in-loop -- one state at a time on one page.
+      await expect(
+        page.getByTestId("sign-in-banner").getByRole(role)
+      ).toBeVisible();
+    }
+
     // oxlint-disable-next-line no-await-in-loop -- one state at a time on one page.
     await expectNoAxeViolations(page, path);
   }

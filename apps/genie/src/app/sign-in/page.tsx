@@ -1,4 +1,5 @@
 import { localAccountExists, realmResetCredentialsUrl } from "@genie/core";
+import { InfoNote, WarningNote } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { signInCause } from "../../auth.ts";
@@ -26,6 +27,14 @@ export const dynamic = "force-dynamic";
  * `--sign-in-background`. No logo and no background image (F-1).
  */
 const DEFAULT_STATE = "default";
+
+/** Causes that refuse or fail the sign-in; the rest only explain a state (design `tone`). */
+const WARNING_CAUSES = new Set([
+  "keycloak_unavailable",
+  "keycloak_issuer_mismatch",
+  "not_registered",
+  "access_disabled",
+]);
 
 /**
  * The product name for the client-only signed-out copy, or undefined in managed mode. In
@@ -110,13 +119,18 @@ export default async function SignInPage(props: {
       </div>
       <section className="flex w-full max-w-md flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm sm:p-8">
         {banner === undefined ? null : (
-          <p
-            role="alert"
-            data-testid="sign-in-banner"
-            className="rounded-lg border bg-muted p-3 text-sm text-foreground"
-          >
-            {banner}
-          </p>
+          // A refusal is an amber alert; an expired or signed-out session is a blue status.
+          <div data-testid="sign-in-banner">
+            {cause !== undefined && WARNING_CAUSES.has(cause) ? (
+              <WarningNote size="md" role="alert">
+                {banner}
+              </WarningNote>
+            ) : (
+              <InfoNote size="md" role="status">
+                {banner}
+              </InfoNote>
+            )}
+          </div>
         )}
         <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
         <p data-testid="sign-in-welcome" className="text-muted-foreground">
