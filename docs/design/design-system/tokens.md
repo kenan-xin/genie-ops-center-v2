@@ -43,7 +43,7 @@ Radius: menus 6px (`rounded-md`), controls, navigation rows, and informational o
 
 ## Focus ring
 
-2px solid ring with a 2px offset on every focusable control, including icon buttons, links, menu items, and close controls. Never `outline: none` without the ring. The ring is opaque because it is the keyboard focus indicator and must hold 3:1 against the surface behind it (WCAG 2.1 AA, 1.4.11). At 60% opacity it measured 2.11:1 on white and 2.06:1 on gray-50 and failed.
+2px solid ring with a 2px offset on every focusable control, including icon buttons, links, menu items, and close controls. Never `outline: none` without the ring. One exception: after a client navigation, core moves focus to the new page's `h1` (or its `main`) with `tabindex="-1"` so that a screen reader reads it. That element is not a control, so it draws no ring, and the token layer sets `outline: none` on a focused `h1` or `main` with `tabindex="-1"` only. The ring is opaque because it is the keyboard focus indicator and must hold 3:1 against the surface behind it (WCAG 2.1 AA, 1.4.11). At 60% opacity it measured 2.11:1 on white and 2.06:1 on gray-50 and failed.
 
 The ring color is the `--ring` variable (owner decision 2026-10-22). In the light theme `--ring` is `var(--primary)`, so the tenant color fills it and the Branding contrast check covers the ring pair at 3:1 against white and gray-50. The default blue-600 measures 5.17:1 on white. In the dark theme `--ring` is the fixed `--brand-on-dark`, blue-400, which measures 7.92:1 on gray-950. It is never derived from the tenant color.
 
@@ -74,9 +74,12 @@ The export carries these roles as the shadcn variables the platform code already
 | `--primary` | tenant color, default blue-600 | same as light |
 | `--primary-foreground` | stored tenant foreground, default white | same as light |
 | `--destructive` | red-600 | red-600 |
+| `--destructive-on-dark` | red-400 | red-400 (#f87171): 7.28:1 on gray-950, 6.41:1 on gray-900 |
 | `--brand-on-dark` | blue-400 | blue-400 |
 
 The app stylesheet maps each variable to a Tailwind color of the same name in `@theme inline`, for example `--color-primary: var(--primary)`. That is what makes `bg-primary`, `ring-ring`, `border-input`, and `text-muted-foreground` resolve. `--brand-on-dark` is read only under the dark variant.
+
+Dark theme error text, one fixed token (2026-10-28, `6wz1.71`). Red-600 as text fails in dark: it measures 4.17:1 on gray-950 and 3.67:1 on gray-900, below AA at `text-sm`. In the dark theme, error text and error icons use `--destructive-on-dark`, red-400, which measures 7.28:1 on gray-950 and 6.41:1 on gray-900. A component that shows error text writes `text-destructive dark:text-destructive-on-dark`, in the same pattern as the brand text. `--destructive` stays red-600 for the solid danger button in both themes, with white text. Like `--brand-on-dark`, the token is fixed and is read only under the dark variant.
 
 The theme is a `data-theme` attribute on `<html>`. The server writes it from the organization's default theme, and the client corrects it before paint when that default is `system`. The app stylesheet declares `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *))`, so every `dark:` class follows the attribute and not the operating system setting. Theme belongs to the organization, and a person has no theme preference (owner decision 2026-10-19).
 
@@ -89,7 +92,11 @@ The theme is a `data-theme` attribute on `<html>`. The server writes it from the
 
 ## Tables and card lists
 
-Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
+Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. In the dark theme the body rows sit on the page color (`--background`, gray-950) and the header row is the lighter `--muted` band (gray-900) (owner, 2026-10-27, L273). A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
+
+## Breadcrumbs
+
+`PageHeader` carries a breadcrumb slot above the page title (owner, 2026-10-27). The trail shows only on a page that sits under a list, for example "Roles › Tenant administrator". A top-level page never shows one. The last crumb is the record label, it is not a link, and it truncates with its full text in `title`. Under 768 px the trail collapses to one back link to the parent, for example "‹ Roles", at least 44 px tall. Core builds the trail from the route parent and the record label, so a module page gets it with no code of its own. The slot uses the shadcn Breadcrumb in the base style, and each link takes the shared focus ring.
 
 ## Transfer list
 
@@ -170,7 +177,16 @@ Every control carries its own accessible name. A label that wraps its control na
 
 Warning note: the one amber block, `WarningNote` in this tree. Amber-800 on amber-50 (amber-200 on amber-900/30 in dark), one alert icon, `rounded-lg`, the control radius. `sm` is the inline note under a control (`text-xs`, 10px by 6px padding); `md` is the block at the top of a card or a sheet (`text-sm`, 14px by 12px padding). It carries `role="status"` when it explains a state and nothing when it is static prose. Amber is only ever a real warning.
 
-Label above the control, helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. An input border is gray-500, which measures 4.89:1 on white, because the border is the boundary of a component and 1.4.11 asks for 3:1. The hairline gray-200 elsewhere stays, because a row divider or a card edge is decoration and the rule does not reach it. Form-level error block with `role="alert"`; informational notice block with `role="status"`. A changed field carries a small blue dot on its label while unsaved. Required fields are marked in the label.
+Label above the control, helper text below in small gray-600, field error below in small red-700 (`--destructive-on-dark` in dark) with `aria-describedby`. An input border is gray-500, which measures 4.89:1 on white, because the border is the boundary of a component and 1.4.11 asks for 3:1. The hairline gray-200 elsewhere stays, because a row divider or a card edge is decoration and the rule does not reach it. Form-level error block with `role="alert"`; informational notice block with `role="status"`. A changed field carries a small blue dot on its label while unsaved. Required fields are marked in the label.
+
+## Drop zone
+
+One pattern for every drop target, for example the Branding image slots (owner, 2026-10-27). The zone must read as a drop target in light and in dark, with no new hue and no tint ramp.
+
+- Idle: a 2 px dashed border in `--input`, a quiet `--muted` fill, and a minimum height of about 120 px. The upload icon sits in a neutral gray tile and is larger than a text icon. The action line comes first and is stronger, "Drop an image or browse". The limits and the scan line sit below it in muted text.
+- Hover and keyboard focus: the shared focus ring.
+- Drag-over: the border turns solid `--primary` (`--brand-on-dark` in dark), the fill turns the blue informational tint, and the action line changes to "Drop to upload". The tint carries state, so it stays blue and is not brand.
+- Refused file: the destructive state, with the reason as error text.
 
 ## Overlays
 

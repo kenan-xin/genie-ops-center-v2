@@ -10,7 +10,7 @@
     "relationships": [
       "tenantBranding belongs to the one tenant this deployment serves and is read by every auth page; the app never inspects the hostname",
       "signInState is one of several variants of the same sign-in page",
-      "breakGlassAdmin belongs to one tenant and has no relation to members; mustChangePassword and mustEnrollAuthenticator decide the door steps and gate the limited-session page",
+      "breakGlassAdmin belongs to one tenant and has no relation to members; mustChangePassword and mustEnrollAuthenticator decide the door steps; a limited session is sent back to the door",
       "setupSteps are written by the operator CLI, not by the app; the not-set-up page only reads them"
     ]
   },

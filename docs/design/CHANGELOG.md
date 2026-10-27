@@ -2,6 +2,17 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-10-28
+
+### Changed, the batch 5 design rules
+
+- Dark tables put the body rows on the page color and the header row on the lighter `--muted` band (owner, 2026-10-27).
+- New token `--destructive-on-dark` (red-400) for error text in dark. `--destructive` stays red-600 for solid buttons.
+- New Drop zone and Breadcrumbs rules in `tokens.md`. The shell spec points to the breadcrumb rule.
+- The sign-in page is one centered stack with "Sign in with SSO" and, when the realm allows local accounts, "Sign in with email and password". Notices use the shared `Alert`. The break-glass sign-in uses the same stack.
+- Removed the limited-session page and its two captures. The shell spec names the core `PageSkeleton`, `tokens.md` gains the skeleton fill rule, and a heading that receives focus after navigation draws no ring (`6wz1.74`).
+- Files: `product/design-system/tokens.md`, `product/shell/spec.md`, `product/sections/sign-in-and-tenant-pages/{spec.md,data.json,limited-session.png,limited-session-mobile.png}`. Record: `imports/2026-10-28-batch-5-rules.md`.
+
 ## 2026-10-22
 
 ### Added, the Notifications page has an admin variant at `/admin/notifications`

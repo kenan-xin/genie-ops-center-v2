@@ -205,6 +205,8 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 **The State-vs-Label Rule.** A tint that carries state or meaning keeps its blue and is not brand: a selected table row, an informational notice. A pill that labels a thing (Admin portal, Notice, counts, type labels, kind, source) is gray or blue, never a status color. The test is whether the tenant's color would be wrong there.
 
+**Exception: event categories (owner, 2026-10-27).** An event-category chip or marker in a table or list may carry a fixed category color. The category comes from the event prefix, for example sign-in and sessions (`auth:`), people, groups, roles and access, branding and settings, modules, and module events. The category colors are part of the fixed layer and never derive from the tenant color, so the No-Ramp Rule holds. They differ from the status colors (green, amber, red) and from the default `--primary` blue, so a category never reads as a status. The chip keeps its text label, so color is never the only code, and avatars stay neutral gray. Light and dark each get their own checked values: at least 4.5:1 for chip text and 3:1 for a marker against its surface. The values live in `docs/design/design-system/tokens.md`, "Category colors".
+
 ## Typography
 
 **Display Font:** Plus Jakarta Sans (system-ui fallback)
