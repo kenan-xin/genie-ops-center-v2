@@ -196,6 +196,8 @@ Amended 2026-10-20, the boss agent is core (owner decision): every customer gets
 - Generated files are saved through `FileStorage` as files owned by the user (`DEC-20`).
 - The three reserved seams are the capability catalog above, the one message-part renderer, and the model connection setting.
 
+Amended 2026-10-27 (owner, Section 7). The capabilities registry gains a list form that returns every provider of one interface and skips a provider whose module is disabled, and modules provide agent tools through one `agent-tools` interface. A tool-call audit row stores the user, the tool, the dataset, the query and the row count, never the returned records, because an audit row outlives a person's access. A write tool runs only on an explicit request in the person's own message and its change has Undo, instead of an approval part. Core tools over people, groups and the audit log, and helper agents, are deferred. Revisit when a customer asks the agent about core data, or a question needs more than one agent. Section 7 builds the agent with OpenUI `react-lang` as the renderer of rich answers, with a catalog of our own components (`DEC-55`).
+
 Trade-off: the document generation libraries enter every image, and every module author must write agent tools with clear descriptions and read-only defaults. In return, one agent answers across modules without any module knowing another.
 
 Designed in: the seams, now. Implemented: none; the agent needs its own specification before work starts. Revisit if a customer needs the agent to act without a signed-in user, for example on a schedule. That needs its own decision on whose rights it uses.
@@ -643,3 +645,27 @@ Trade-off, accepted risk: anyone who can read the database, a backup file, or a 
 Guard: keys live only in the one core table, never in a module table, `tenant_integration.config`, a log line, an error, an export, or the health endpoint. Only the core integrations service reads and writes them. Encryption at rest is then one change inside that service plus one migration, with no module change.
 
 Designed in: now. Implemented: roadmap Section 6, item 4, with the outbound HTTP service. Revisit when a customer's security review asks for encryption at rest, or when the first key for a customer-owned system is stored. The change is AES-256-GCM in the integrations service with a master key from the environment.
+
+## DEC-54. A module publishes datasets through a contract point, and core queries them
+
+Question (`OPEN-11`): how does a module publish data that Analytics, Slides and the boss agent read for one person, without anyone reading the module's tables?
+
+Decision (owner, 2026-10-27): datasets are a new point of the module contract. A dataset declares described fields, a time field, a record key, a currency field when it holds money, and an async `source(ctx, asOf)` that returns a select already filtered by `scopesFor()`. Core offers one generic query shape over that select (filters, group by with month, week and range buckets, aggregates, order, limit) and a multi-series form that joins several datasets on one x value. Core caps a result at 1,000 rows and 5 seconds and never names a module table.
+
+Why a contract point and not a capability interface: one capability name holds one provider, and every module publishes datasets. Why one generic shape and not a query handler per module: every module would repeat filtering, grouping and totals, and their bugs. Why general now: Analytics and Slides must serve any module (owner).
+
+Trade-off: core owns a small query compiler, and a measure that the shape cannot express must become a field of the dataset.
+
+Designed in: Section 7. Revisit when a dataset needs a join that the multi-series form cannot express.
+
+## DEC-55. The boss agent's model connection, PowerPoint library and test model
+
+Question (`OPEN-12` a and b): which model provider, where its key lives, and which library writes PowerPoint files.
+
+Decision (owner, 2026-10-27): OpenRouter through `@openrouter/ai-sdk-provider`. An administrator types the key on the write-only screen of `DEC-53`, picks the allowed models, a chat default and a document-reading default, and a person picks an allowed model per chat session. One core function builds every model with an allowed host, a timeout and provider preferences that deny data collection. Gate and end-to-end tests use a recorded test model, and only the evaluation script and the dry run call a live model. PowerPoint files come from pptxgenjs in the app process, with native editable charts. The models are chosen by an evaluation on the demo pack.
+
+Why: no new environment variable, models switch without a restart, and the tests stay deterministic and free.
+
+Trade-off: OpenRouter passes prompts to third-party model providers. Real customer data needs Management approval first.
+
+Designed in: Section 7. Revisit when a customer requires a model inside its own network: the base URL becomes a setting.

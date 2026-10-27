@@ -160,6 +160,22 @@ Work items:
 
 Done when: the placeholder module shows a page with a route parameter, calls its own procedure from the browser with types, lists only the records a relation grants, makes one allowed outbound call, writes a notification that the bell counts, and stores a file through the `s3` adapter, at a phone and a desktop viewport.
 
+## Section 7: Invoice and payments, with chat, dashboards and slides
+
+Goal: an AI-assisted invoice and payment tracker whose records a person can question, chart and present by chat, built inside the platform for a demo at a fintech festival in November 2026 (owner decision 2026-10-27: full scope, no slip order). Specification: `../specs/07-invoice-and-payments.md`.
+
+Work items:
+
+1. Section 6 items 1 and 2 (module pages, typed browser client), taken into this section as its requirements R-1 and R-2.
+2. The dataset seam (`DEC-54`, closes `OPEN-11`), the chart write gate, the reporting-date setting, the module audit call, job retries and a job principal.
+3. The model connection with the typed key store of `DEC-53` (the model part of Section 6 item 4) and a recorded test model (`DEC-55`).
+4. The Invoice and Payments module, its Documents inbox and review, and a demo tenant seeded from the demo pack.
+5. The boss agent of `DEC-29`: the Ask page, the chat bubble, and answers over published datasets.
+6. The Analytics and Slides modules.
+7. An evaluation suite that picks the models.
+
+Done when: the ten demo-script steps run end to end on a seeded demo deployment at a phone and a desktop viewport, and the owner signs off a live dry run.
+
 ## Order and parallelism
 
-Sections 0, 1, and 2 are sequential and are the foundation. Section 3 starts when Section 1 is done. Its items 1, 2, 3, 6, 8, and 9 run in parallel with Section 2; items 4, 5, 7, 10, and 11 need the access seam and the account page from Section 2 and follow it. Section 4 starts when Sections 2 and 3 are done. Section 5 runs alongside from Section 1 onward. Section 6 starts when Section 4 is done, and its items can run in parallel. Customer modules start after Section 4 and their own discovery, in the order their module READMEs state, and a module that needs a Section 6 item waits for it.
+Sections 0, 1, and 2 are sequential and are the foundation. Section 3 starts when Section 1 is done. Its items 1, 2, 3, 6, 8, and 9 run in parallel with Section 2; items 4, 5, 7, 10, and 11 need the access seam and the account page from Section 2 and follow it. Section 4 starts when Sections 2 and 3 are done. Section 5 runs alongside from Section 1 onward. Section 7 runs before Section 4 (owner decision 2026-10-27), with Section 6 items 1 and 2 and the model part of item 4 inside it. The rest of Section 6 starts when Section 4 is done, and its items can run in parallel. Customer modules start after Section 4 and their own discovery, in the order their module READMEs state, and a module that needs a Section 6 item waits for it.
