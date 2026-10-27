@@ -39,6 +39,9 @@ export function scopedProject(base: string): string {
   return `${base}-${worktreeId()}`;
 }
 
+/** The size of the range the per-worktree port offset is drawn from. */
+export const PORT_OFFSET_SPAN = 2000;
+
 /**
  * How far a fixed host port moves aside for this worktree.
  *
@@ -53,7 +56,7 @@ function worktreePortOffset(): number {
     Number.parseInt(
       createHash("sha256").update(worktreeId()).digest("hex").slice(0, 8),
       16
-    ) % 2000
+    ) % PORT_OFFSET_SPAN
   );
 }
 
@@ -66,11 +69,16 @@ const FETCH_BLOCKED_PORTS = new Set([
   6667, 6668, 6669, 6679, 6697, 10080,
 ]);
 
-/** The fixed host port `base`, moved aside for this worktree and past any port fetch refuses. */
-export function scopedPort(base: number): number {
-  let port = base + worktreePortOffset();
+/** The host port `base` moved by `offset` and past any port fetch refuses. */
+export function shiftedPort(base: number, offset: number): number {
+  let port = base + offset;
 
   while (FETCH_BLOCKED_PORTS.has(port)) port += 1;
 
   return port;
+}
+
+/** The fixed host port `base`, moved aside for this worktree and past any port fetch refuses. */
+export function scopedPort(base: number): number {
+  return shiftedPort(base, worktreePortOffset());
 }

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { FIXTURE_IMAGE } from "../../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
@@ -23,7 +24,7 @@ export const PROJECT = scopedProject("genie-s005-fixture");
 export const IMAGE = process.env.GENIE_IMAGE ?? FIXTURE_IMAGE;
 
 export const HOST_PORT = Number(
-  process.env.GENIE_HOST_PORT ?? scopedPort(7400)
+  process.env.GENIE_HOST_PORT ?? scopedPort(BASE_PORTS.fixture)
 );
 
 /** Walk up from this file until the repository root's compose file appears. */

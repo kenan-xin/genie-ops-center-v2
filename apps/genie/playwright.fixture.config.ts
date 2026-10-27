@@ -1,9 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { BASE_PORTS } from "./testing/e2e-ports.ts";
 import { scopedPort } from "./testing/worktree-scope.ts";
 
 const PORT = Number(
-  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? scopedPort(7400)
+  process.env.GENIE_HOST_PORT ??
+    process.env.E2E_PORT ??
+    scopedPort(BASE_PORTS.fixture)
 );
 
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;

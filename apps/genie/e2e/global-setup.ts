@@ -38,6 +38,7 @@ import {
   startE2eKeycloak,
   type E2eKeycloak,
 } from "../testing/e2e-keycloak.ts";
+import { BASE_PORTS } from "../testing/e2e-ports.ts";
 import { stopIdentityStandins } from "../testing/identity-standins-process.ts";
 import { IMAGE } from "../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
@@ -50,7 +51,9 @@ export { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 const run = promisify(execFile);
 
 const READY_PORT = Number(
-  process.env.GENIE_HOST_PORT ?? process.env.E2E_PORT ?? scopedPort(3400)
+  process.env.GENIE_HOST_PORT ??
+    process.env.E2E_PORT ??
+    scopedPort(BASE_PORTS.sharedStack)
 );
 
 const PUBLIC_URL = `http://127.0.0.1:${READY_PORT}`;

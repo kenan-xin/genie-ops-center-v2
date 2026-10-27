@@ -34,6 +34,7 @@ export default defineConfig({
       "testing/image-scan.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
+      "testing/e2e-ports.test.ts",
       "testing/standin-network.test.ts",
       "testing/image-process.test.ts",
     ],

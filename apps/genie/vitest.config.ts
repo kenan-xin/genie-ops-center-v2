@@ -27,6 +27,7 @@ export default defineConfig({
       "testing/image-scan.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
+      "testing/e2e-ports.test.ts",
       "testing/worktree-scope.test.ts",
       // The stand-in network sweep's name filter and in-use guard are pure.
       "testing/standin-network.test.ts",

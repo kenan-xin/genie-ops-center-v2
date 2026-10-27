@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { SETUP_STEPS } from "@genie/core";
 
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
+import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
 const run = promisify(execFile);
@@ -45,10 +46,12 @@ export const COMPOSE = [
  * so the leak assertion stays about this run's real port.
  */
 export const DEV_DB_PORT = Number(
-  process.env.GENIE_DEV_DB_PORT ?? scopedPort(11400)
+  process.env.GENIE_DEV_DB_PORT ?? scopedPort(BASE_PORTS.devDatabase)
 );
 
-export const DEV_PORT = Number(process.env.GENIE_DEV_PORT ?? scopedPort(5400));
+export const DEV_PORT = Number(
+  process.env.GENIE_DEV_PORT ?? scopedPort(BASE_PORTS.devApp)
+);
 
 /** Where the server's process id is left, so teardown can stop it. */
 export const PID_FILE = resolve(import.meta.dirname, ".dev-server.pid");

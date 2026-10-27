@@ -3,6 +3,7 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { BASE_PORTS } from "./e2e-ports.ts";
 import { standinNetworkName, sweepStandinNetwork } from "./standin-network.ts";
 import { scopedPort } from "./worktree-scope.ts";
 
@@ -62,9 +63,9 @@ function standinStack() {
   // never share a network.
   const projectName = standinNetworkName();
   const networkName = projectName;
-  const keycloakPort = standinPort(15080);
-  const smtpPort = standinPort(15025);
-  const mailpitPort = standinPort(18025);
+  const keycloakPort = standinPort(BASE_PORTS.standinKeycloak);
+  const smtpPort = standinPort(BASE_PORTS.standinSmtp);
+  const mailpitPort = standinPort(BASE_PORTS.standinMailpit);
 
   const compose = (args: readonly string[]) =>
     run("docker", ["compose", "-p", projectName, "-f", COMPOSE_FILE, ...args], {

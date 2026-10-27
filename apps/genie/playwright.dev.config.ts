@@ -1,8 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { BASE_PORTS } from "./testing/e2e-ports.ts";
 import { scopedPort } from "./testing/worktree-scope.ts";
 
-const PORT = Number(process.env.GENIE_DEV_PORT ?? scopedPort(5400));
+const PORT = Number(
+  process.env.GENIE_DEV_PORT ?? scopedPort(BASE_PORTS.devApp)
+);
 
 /**
  * The development browser run.

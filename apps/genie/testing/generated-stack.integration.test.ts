@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { BASE_PORTS } from "./e2e-ports.ts";
 import {
   SMOKE_REALM,
   generateTenantDeploy,
@@ -77,7 +78,7 @@ describe("the generated customer stack smoke", () => {
         // The one browser-visible Keycloak address (Spec 2 R-54c/d): the app container reaches it
         // through the host-gateway alias, and the smoke publishes the bundled Keycloak on this host
         // port and points KC_HOSTNAME at the same address.
-        KEYCLOAK_URL: `http://host.docker.internal:${scopedPort(16080)}`,
+        KEYCLOAK_URL: `http://host.docker.internal:${scopedPort(BASE_PORTS.generatedStackKeycloak)}`,
         KEYCLOAK_REALM: SMOKE_REALM,
         KEYCLOAK_CLIENT_ID: "genie-ops-center",
         BETTER_AUTH_SECRET: "smoke-better-auth-secret-at-least-32-chars",

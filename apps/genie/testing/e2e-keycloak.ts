@@ -1,5 +1,6 @@
 import { type JsonObject } from "@genie/core";
 
+import { BASE_PORTS } from "./e2e-ports.ts";
 import {
   startIdentityStandins,
   type IdentityStandins,
@@ -169,7 +170,7 @@ export const E2E_BOOTSTRAP_PASSWORD = "admin";
 
 /** The one fixed host port the stand-in Keycloak publishes, the same value its process uses. */
 export function standinKeycloakPort(): number {
-  return scopedPort(15080);
+  return scopedPort(BASE_PORTS.standinKeycloak);
 }
 
 /** The browser-visible, container-reachable Keycloak address (never an internal compose alias). */
@@ -179,12 +180,12 @@ export function standinKeycloakUrl(port = standinKeycloakPort()): string {
 
 /** The Mailpit stand-in's HTTP API on loopback, for a spec that reads a sent message. */
 export function standinMailpitUrl(): string {
-  return `http://127.0.0.1:${scopedPort(18025)}`;
+  return `http://127.0.0.1:${scopedPort(BASE_PORTS.standinMailpit)}`;
 }
 
 /** The published SMTP port Mailpit listens on, reachable by a container through the host. */
 export function standinSmtpPort(): number {
-  return scopedPort(15025);
+  return scopedPort(BASE_PORTS.standinSmtp);
 }
 
 /**
@@ -194,12 +195,9 @@ export function standinSmtpPort(): number {
  */
 export const E2E_LOCAL_REALM = "genie-e2e-local";
 
-/**
- * The S-F app's own host port, in its own band: 3400 is the shared local sign-in stack, 3500 and
- * 3600 are the S2-13 brokered scenarios, so S-F sits at 3700.
- */
+/** The S-F app's own host port, in its own band of `BASE_PORTS`. */
 export function e2eLocalHostPort(): number {
-  return scopedPort(3700);
+  return scopedPort(BASE_PORTS.localAccounts);
 }
 
 /** The S-F app's browser address. */

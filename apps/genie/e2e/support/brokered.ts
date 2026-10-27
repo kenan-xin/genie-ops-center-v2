@@ -10,6 +10,7 @@ import {
   E2E_BOOTSTRAP_PASSWORD,
   E2E_BOOTSTRAP_USER,
 } from "../../testing/e2e-keycloak.ts";
+import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { IMAGE } from "../../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
@@ -43,20 +44,20 @@ export const BROKER_IDP_ALIAS = "company-login";
 
 /** The base host ports, moved aside for this worktree so two runs never collide. */
 export function brokeredPort(): number {
-  return scopedPort(3500);
+  return scopedPort(BASE_PORTS.brokered);
 }
 
 export function samlPort(): number {
-  return scopedPort(3600);
+  return scopedPort(BASE_PORTS.saml);
 }
 
-/** The S2-16 invite-mode broker: its own realm, database and band (client-only uses 3800). */
+/** The S2-16 invite-mode broker: its own realm, database and band. */
 export const INVITE_REALM = "genie-invite";
 
 export const INVITE_DB = "genie_broker_invite";
 
 export function invitePort(): number {
-  return scopedPort(3900);
+  return scopedPort(BASE_PORTS.invite);
 }
 
 export function inviteBaseUrl(): string {
@@ -69,7 +70,7 @@ export const LANDING_REALM = "genie-landing";
 export const LANDING_DB = "genie_broker_landing";
 
 export function landingPort(): number {
-  return scopedPort(4000);
+  return scopedPort(BASE_PORTS.landing);
 }
 
 export function landingBaseUrl(): string {

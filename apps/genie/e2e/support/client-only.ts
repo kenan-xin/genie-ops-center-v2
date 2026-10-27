@@ -24,6 +24,7 @@ import {
   setRealmUserGroupMemberships,
   type E2eKeycloak,
 } from "../../testing/e2e-keycloak.ts";
+import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { IMAGE } from "../../testing/image-tag.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { COMPOSE } from "./compose.ts";
@@ -50,8 +51,7 @@ export const CLIENT_ONLY_GROUP = "genie-admins";
 
 /** The base host port, moved aside for this worktree so two runs never collide. */
 export function clientOnlyPort(): number {
-  // A distinct band from the other scenario stacks: brokered 3500, SAML 3600, S-F local 3700.
-  return scopedPort(3800);
+  return scopedPort(BASE_PORTS.clientOnly);
 }
 
 export function clientOnlyBaseUrl(): string {

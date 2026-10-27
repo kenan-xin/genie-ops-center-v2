@@ -7,6 +7,7 @@ import {
 import { markSetupDone, startDisposablePostgres } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { BASE_PORTS } from "./e2e-ports.ts";
 import { startDiscoveryStub } from "./identity-discovery-stub.ts";
 import {
   startIdentityStandins,
@@ -100,7 +101,7 @@ describe("the R-54c address guard refuses to start the application", () => {
     try {
       const result = await runBuiltAppUntilExit(
         database.url,
-        scopedPort(3460),
+        scopedPort(BASE_PORTS.keycloakIssuerMismatch),
         { KEYCLOAK_URL: "https://other.example.com" }
       );
 
@@ -126,9 +127,13 @@ describe("the R-54c address guard refuses to start the application", () => {
     });
 
     try {
-      const app = await startBuiltApp(database.url, scopedPort(3463), {
-        KEYCLOAK_URL: realm.hostUrl,
-      });
+      const app = await startBuiltApp(
+        database.url,
+        scopedPort(BASE_PORTS.keycloakIssuerHealthy),
+        {
+          KEYCLOAK_URL: realm.hostUrl,
+        }
+      );
 
       try {
         const health = await fetch(`${app.baseUrl}/api/health`);
@@ -166,9 +171,13 @@ describe("the R-54d unreachable realm from a built app", () => {
     }
 
     // A closed port that is not the default test address, so no discovery stub answers for it.
-    const app = await startBuiltApp(database.url, scopedPort(3464), {
-      KEYCLOAK_URL: "http://127.0.0.1:2",
-    });
+    const app = await startBuiltApp(
+      database.url,
+      scopedPort(BASE_PORTS.keycloakIssuerUnreachable),
+      {
+        KEYCLOAK_URL: "http://127.0.0.1:2",
+      }
+    );
 
     try {
       const health = await fetch(`${app.baseUrl}/api/health`);
@@ -217,7 +226,7 @@ describe("the R-54d issuer mismatch against a real Keycloak", () => {
     try {
       const result = await runBuiltAppUntilExit(
         database.url,
-        scopedPort(3461),
+        scopedPort(BASE_PORTS.keycloakIssuerRealMismatch),
         {
           KEYCLOAK_URL: standins?.keycloakUrl ?? "",
           KEYCLOAK_REALM: REALM,
@@ -239,10 +248,14 @@ describe("the R-54d issuer mismatch against a real Keycloak", () => {
       setupSatisfied: false,
     });
 
-    const app = await startBuiltApp(database.url, scopedPort(3462), {
-      KEYCLOAK_URL: standins?.keycloakUrl ?? "",
-      KEYCLOAK_REALM: REALM,
-    });
+    const app = await startBuiltApp(
+      database.url,
+      scopedPort(BASE_PORTS.keycloakIssuerRealRuntime),
+      {
+        KEYCLOAK_URL: standins?.keycloakUrl ?? "",
+        KEYCLOAK_REALM: REALM,
+      }
+    );
 
     try {
       // Setup completes while the app is running, so the process did not run the start check; the

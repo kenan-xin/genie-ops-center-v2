@@ -2,12 +2,13 @@ import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
 const run = promisify(execFile);
 
 export const HOST_PORT = Number(
-  process.env.GENIE_SETUP_GATE_PORT ?? scopedPort(9400)
+  process.env.GENIE_SETUP_GATE_PORT ?? scopedPort(BASE_PORTS.setupGate)
 );
 
 // The project name and host port are scoped to this worktree, so two worktrees
