@@ -32,7 +32,7 @@ export function PageHeader(props: PageHeaderProps) {
     <>
       <header
         data-shell-page-header=""
-        className={`flex items-center justify-between gap-4 ${emptyBelow}`}
+        className={`mb-6 flex items-center justify-between gap-4 ${emptyBelow}`}
       >
         <div className="min-w-0">
           <h1 className={`text-xl font-bold ${hideBelowLg}`}>{props.title}</h1>

@@ -129,6 +129,36 @@ export const PhoneSearchTakesTheRow: Story = {
   },
 };
 
+/** UI-1 People findings 1 and 4: the initials sit beside the name, and the placeholder shows on desktop. */
+export const DesktopRowShowsTheAvatarBesideTheName: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        desktop1440: {
+          name: "Desktop 1440",
+          styles: { width: "1440px", height: "900px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(window.innerWidth).toBe(1440);
+    await expect(
+      canvas.getByRole("textbox", { name: "Search people" })
+    ).toHaveAttribute("placeholder", "Search people");
+
+    const table = within(canvas.getByRole("table", { name: "People" }));
+    const avatar = table.getByText("AA").getBoundingClientRect();
+    const name = table.getByText("Ada Admin").getBoundingClientRect();
+
+    await expect(avatar.right).toBeLessThanOrEqual(name.left);
+    await expect(avatar.bottom).toBeGreaterThan(name.top);
+    await expect(avatar.top).toBeLessThan(name.bottom);
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
   play: async ({ canvas }) => {

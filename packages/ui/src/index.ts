@@ -145,6 +145,8 @@ export { SwitchField } from "./parts/switch-field.tsx";
 
 export type { SwitchFieldProps } from "./parts/switch-field.tsx";
 
+export { Avatar, AvatarFallback } from "./components/avatar.tsx";
+
 export { Badge } from "./components/badge.tsx";
 
 export { Spinner } from "./components/spinner.tsx";

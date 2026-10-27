@@ -114,6 +114,30 @@ export const InShellPhoneTakesNoRoom: Story = {
   },
 };
 
+/** A page renders its toolbar straight after the header, so the header owns the gap (UI-1 People 3). */
+export const InShellDesktopKeepsTheToolbarClear: Story = {
+  decorators: [
+    inShell,
+    (Story) => (
+      <main>
+        <Story />
+        <p>Toolbar</p>
+      </main>
+    ),
+  ],
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    const header = canvasElement.querySelector("[data-shell-page-header]");
+
+    if (header === null) throw new Error("the page header is missing");
+
+    await expect(
+      canvas.getByText("Toolbar").getBoundingClientRect().top -
+        header.getBoundingClientRect().bottom
+    ).toBeGreaterThanOrEqual(24);
+  },
+};
+
 export const InShellPhoneOwnBottomBar: Story = {
   decorators: [inShell],
   args: {

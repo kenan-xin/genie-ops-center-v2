@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   Checkbox,
   ConfirmDialog,
@@ -38,6 +40,7 @@ import {
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
+import { initials } from "../audit/helpers.ts";
 import type {
   AccountType,
   AssignableRole,
@@ -124,15 +127,6 @@ function groupPills(person: Person) {
       ) : null}
     </span>
   );
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter((part) => part !== "")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 function accountTypeLabel(accountType: AccountType): string {
@@ -829,13 +823,15 @@ export function PeopleScreen(props: PeopleScreenProps) {
                 id: "person",
                 header: "Person",
                 cell: (person) => (
-                  <span className="flex flex-col items-start">
-                    <span className="font-semibold">
-                      {initials(person.name)}
-                    </span>
-                    <span>{person.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
-                      {person.email}
+                  <span className="flex items-center gap-3">
+                    <Avatar aria-hidden="true">
+                      <AvatarFallback>{initials(person.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex min-w-0 flex-col items-start">
+                      <span>{person.name}</span>
+                      <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
+                        {person.email}
+                      </span>
                     </span>
                   </span>
                 ),

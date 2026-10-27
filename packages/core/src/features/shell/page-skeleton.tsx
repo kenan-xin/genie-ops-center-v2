@@ -21,7 +21,7 @@ function Block(props: { readonly className: string }) {
 export function PageSkeleton(props: PageSkeletonProps) {
   return (
     <main aria-busy="true">
-      <div role="status" className="flex flex-col gap-4">
+      <div role="status" className="flex flex-col gap-6">
         <span className="sr-only">{props.label}</span>
         {/* Below lg the top bar holds the title, as in PageHeader. */}
         <div
