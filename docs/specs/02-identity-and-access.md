@@ -258,7 +258,9 @@ R-63. The Better Auth two-factor plugin is enabled and is used by this account o
 
 R-64. The password rule is shared by the client meter and the server check: at least 14 characters, three of the four character classes, not the provisioning password, and not the account email. The provisioning-password rule is checked on save only (`DEC-24`).
 
-R-65. First sign-in, and any sign-in after a rotation, forces a password change and then authenticator enrollment. Until both are done the session is limited as R-30 states, and every other route answers with the limited-session page. Completing both revokes the account's other sessions (`DEC-24`).
+R-65. First sign-in, and any sign-in after a rotation, forces a password change and then authenticator enrollment. Until both are done the session is limited as R-30 states, and every other page sends the session to the break-glass door `/admin/login`, which shows the next unmet step. Routers still refuse as R-30 states. Completing both revokes the account's other sessions (`DEC-24`).
+
+Amended 2026-10-26 (owner, ARCH-1): the root layout drew a limited-session page on every other route. A layout does not render again on a client-side navigation, so such a navigation showed the refusal of `can()` instead. Each page now checks the session once through `requireSession()`, and the limited-session page is removed.
 
 R-66. The account page variant at `/admin/account` offers change password with the current password required, re-enroll authenticator, and sessions, and offers no preferences and no roles summary (`../design/sections/account-and-inbox/spec.md`, "UI Requirements").
 
@@ -274,7 +276,7 @@ R-69. The reader links a target only when the owning module's record-type resolv
 
 R-70. Keycloak hardening is an operator deliverable, not application code: replace the temporary bootstrap administrator, run Keycloak against an external backed-up database, run more than one node, and add monitoring. The steps and the checklist live in `../runbooks/keycloak-realm.md` (`../core/roadmap.md`, Section 2 item 10).
 
-R-71. The security headers set once in the app in Section 0 item 11 now cover the sign-in page, `/admin/login`, the limited-session page, and the not-set-up page (`DEC-31`, `README.md`, "Section boundaries").
+R-71. The security headers set once in the app in Section 0 item 11 now cover the sign-in page, `/admin/login`, and the not-set-up page (`DEC-31`, `README.md`, "Section boundaries").
 
 ## Acceptance criteria
 
@@ -310,13 +312,13 @@ AC-13 (roadmap item 9a, commands). `idp set`, `admin add`, and `break-glass rota
 
 AC-14 (roadmap item 10, manual check). The Keycloak hardening checklist exists in `../runbooks/keycloak-realm.md`, names the bootstrap administrator replacement, the external database, the node count, and the monitoring, and is confirmed by an operator on a real deployment. Proves R-70.
 
-AC-15 (roadmap item 11). A first break-glass sign-in forces a password change and then enrollment, every other route answers with the limited-session page until both are done, `can()` refuses everything during that time, completing both revokes the account's other sessions, and the password rule is enforced identically by the meter and the server. The `/admin/account` variant offers change password, re-enroll, and sessions only. Proves R-30, R-63, R-64, R-65, R-66.
+AC-15 (roadmap item 11). A first break-glass sign-in forces a password change and then enrollment, every other page sends the session to `/admin/login`, which shows the next unmet step, until both are done, `can()` refuses everything during that time, completing both revokes the account's other sessions, and the password rule is enforced identically by the meter and the server. The `/admin/account` variant offers change password, re-enroll, and sessions only. Proves R-30, R-63, R-64, R-65, R-66.
 
 AC-16 (roadmap item 12). The Audit log screen is reachable only with `core:audit:read`, filters on all five controls, pages newest first with Load more, offers the operator filter, links a target only when the resolver returns a path the viewer may open, and offers no export. Proves R-67, R-68, R-69.
 
 AC-17 (migration, Section 1 boundary). The core migration applies to a database that holds only the Section 1 history, creates every identity, group, role, and notification table, and adds the foreign keys to `tenant_settings`, `tenant_branding`, `audit_event`, `tenant_api_key`, `file`, and `tenant_integration`. Squawk and `drizzle-kit check` pass on it. Proves R-1, R-2, R-3.
 
-AC-18 (Section 0 item 11 extension). The security headers of Section 0 are present on the sign-in page, `/admin/login`, the limited-session page, and the not-set-up page. Each of the five sign-in page states is reached by its own cause, and the not-set-up page lists the identity steps until setup completes. Proves R-17a, R-17b, R-71.
+AC-18 (Section 0 item 11 extension). The security headers of Section 0 are present on the sign-in page, `/admin/login`, and the not-set-up page. Each of the five sign-in page states is reached by its own cause, and the not-set-up page lists the identity steps until setup completes. Proves R-17a, R-17b, R-71.
 
 AC-19 (done when). In managed mode, `genie-ops setup` on a fresh stack completes every step, the not-set-up page clears, and the first administrator from `tenant.yaml` signs in through the identity provider, is activated, lands in the workspace, and sees the admin switch. Proves R-52 to R-54, R-55 to R-57, R-10, R-36.
 

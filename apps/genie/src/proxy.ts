@@ -290,8 +290,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const requestHeaders = new Headers(request.headers);
 
   // The proxy is the only writer of these two headers. A client that sends them cannot make the
-  // layout withhold the catalogue on a set-up deployment, nor route a limited break-glass session
-  // past the limited-session page (finding 4, R-30).
+  // layout withhold the catalogue on a set-up deployment, nor set the shell's current path
+  // (finding 4).
   requestHeaders.delete(SETUP_REQUIRED_HEADER);
   requestHeaders.set("x-request-id", requestId);
   requestHeaders.set(PATHNAME_HEADER, pathname);

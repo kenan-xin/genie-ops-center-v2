@@ -1,6 +1,6 @@
 /**
  * The limited-session rule of R-30 and R-65, shared by the request path (which refuses a limited
- * break-glass session) and the pages (which show the limited-session page and pick the next
+ * break-glass session) and the pages (which send the session to the door and pick the next
  * break-glass card). It is pure, so both the server and the browser feature can read it.
  */
 
@@ -13,8 +13,9 @@ export type BreakGlassFacts = {
 
 /**
  * True while the break-glass account still has to change its password or enroll an authenticator.
- * Until both are done its session is limited: `can()` refuses everything and every route answers
- * the limited-session page except the two endpoints that clear the conditions (R-30, R-65).
+ * Until both are done its session is limited: `can()` refuses everything, every page sends the
+ * session to the door, and every router refuses except the two endpoints that clear the
+ * conditions (R-30, R-65).
  */
 export function isLimitedBreakGlass(input: BreakGlassFacts): boolean {
   if (!input.isBreakGlass) return false;

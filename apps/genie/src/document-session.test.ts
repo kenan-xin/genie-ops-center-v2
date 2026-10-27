@@ -1,8 +1,16 @@
 import { globSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type {
+  AuthSession,
+  AuthSessionState,
+  AuthSessionUser,
+} from "@genie/core";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
+
+import { requireSession } from "./document-session.ts";
 
 /**
  * genie-ops-center-v2-pt9d and genie-ops-center-v2-zzjg. The root layout and the page render in
@@ -198,5 +206,77 @@ describe("the document session read", () => {
     ].join("\n");
 
     expect(enforcedReadsIn("page.tsx", text)).toEqual([]);
+  });
+});
+
+function sessionOf(user: Partial<AuthSessionUser> = {}): AuthSession {
+  return {
+    user: {
+      id: "user-1",
+      email: "person@example.invalid",
+      name: "Person",
+      emailVerified: true,
+      isBreakGlass: false,
+      mustChangePassword: false,
+      twoFactorEnabled: false,
+      ...user,
+    },
+    session: {
+      id: "session-1",
+      userId: "user-1",
+      expiresAt: new Date("2026-10-28T00:00:00Z"),
+      createdAt: new Date("2026-10-27T00:00:00Z"),
+      lastActiveAt: null,
+    },
+  };
+}
+
+/** What `requireSession()` does with one read: the session it returns, or where it redirects. */
+async function outcomeOf(
+  state: AuthSessionState
+): Promise<{ readonly returned: AuthSession } | { readonly redirect: string }> {
+  try {
+    return { returned: await requireSession(() => Promise.resolve(state)) };
+  } catch (error) {
+    // Next's `redirect()` throws an error whose digest is `NEXT_REDIRECT;<type>;<path>;<status>;`.
+    const { digest } = z
+      .object({ digest: z.string().startsWith("NEXT_REDIRECT;") })
+      .parse(error);
+
+    return { redirect: digest.split(";")[2] ?? "" };
+  }
+}
+
+describe("requireSession (ARCH-1)", () => {
+  const member = sessionOf();
+  const complete = sessionOf({ isBreakGlass: true, twoFactorEnabled: true });
+
+  it.each<[string, AuthSessionState, Awaited<ReturnType<typeof outcomeOf>>]>([
+    [
+      "an idle-expired session",
+      { status: "idle-expired" },
+      { redirect: "/api/auth/session-expired" },
+    ],
+    ["an anonymous request", { status: "anonymous" }, { redirect: "/sign-in" }],
+    [
+      "a limited break-glass session",
+      {
+        status: "authenticated",
+        session: sessionOf({ isBreakGlass: true, mustChangePassword: true }),
+      },
+      { redirect: "/admin/login" },
+    ],
+    [
+      "a member's session",
+      { status: "authenticated", session: member },
+      { returned: member },
+    ],
+    [
+      "a complete break-glass session",
+      { status: "authenticated", session: complete },
+      { returned: complete },
+    ],
+  ])("answers %s", async (_, state, expected) => {
+    expect(await outcomeOf(state)).toEqual(expected);
   });
 });

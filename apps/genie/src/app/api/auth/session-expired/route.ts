@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Clears the cookie of a session the idle rule refused, then shows the expired banner (R-14,
- * R-17a). The layout and the account pages send an idle browser here. A visitor whose cookie
+ * R-17a). `requireSession()` sends an idle browser here. A visitor whose cookie
  * names no session at all - none sent, revoked, or past the 24 hour cap - is cleared too but
  * lands on the plain sign-in page, because no idle window ended for them.
  *

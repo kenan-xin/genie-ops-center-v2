@@ -1,45 +1,21 @@
-import {
-  DEFAULT_FAVICON_URL,
-  faviconHref,
-  isLimitedBreakGlass,
-  readCookie,
-  sessionCookieName,
-} from "@genie/core";
+import { DEFAULT_FAVICON_URL, faviconHref } from "@genie/core";
 import { brandingHead, BrandingHeadElements } from "@genie/core/features/shell";
 import { Toaster } from "@genie/ui";
 import defaultFontHref from "@genie/ui/fonts/plus-jakarta-sans-latin-wght-normal.woff2?url";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { headers } from "next/headers.js";
-import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
 import { readContext } from "../context.ts";
 import { DevtoolsMount } from "../devtools/devtools-mount.tsx";
 import { deploymentDiagnostics } from "../devtools/diagnostics.ts";
-import {
-  documentPrincipal,
-  documentSessionState,
-} from "../document-session.ts";
-import { LimitedSessionMount } from "../limited-session-mount.tsx";
-import { PATHNAME_HEADER } from "../pathname-header.ts";
+import { documentSessionState } from "../document-session.ts";
 import { QueryProvider } from "../providers.tsx";
-import { SessionActivityMount } from "../session-activity-mount.tsx";
+import { principalForSession } from "../request-principal.ts";
 import { SETUP_REQUIRED_HEADER } from "../setup-required-header.ts";
 
 import "../styles/globals.css";
-
-/**
- * The routes a limited break-glass session may render. Every other route answers the
- * limited-session page (R-30, R-65): the door itself, where the first unmet step is shown.
- */
-const LIMITED_SESSION_EXEMPT = ["/admin/login"];
-
-function limitedSessionExempt(pathname: string): boolean {
-  return LIMITED_SESSION_EXEMPT.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  );
-}
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
@@ -52,12 +28,22 @@ export async function generateMetadata() {
   const context = readContext();
   const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
 
-  const icon =
+  // A principal without a redirect: this layout also renders `/sign-in` and the door, where
+  // `requireSession()` would redirect to the page itself.
+  const state =
     setupRequired || context === undefined
+      ? undefined
+      : await documentSessionState();
+
+  const icon =
+    context === undefined || state === undefined
       ? DEFAULT_FAVICON_URL
       : await faviconHref(
           context.tenant.fileStorage,
-          await documentPrincipal()
+          principalForSession(
+            context.tenant,
+            state.status === "authenticated" ? state.session : null
+          )
         );
 
   return { title: t("title"), icons: { icon } };
@@ -83,10 +69,8 @@ export default async function RootLayout({
   const setupRequired = (await headers()).get(SETUP_REQUIRED_HEADER) === "1";
   const messages = setupRequired ? {} : await getMessages();
 
-  // The activity client mounts for a live browser session and makes one activity call, so a
-  // document load starts the browser's idle count and the server window together (R-15a). The
-  // enforced session read also decides the limited-session page below, and the page rendering
-  // in parallel shares it, so a document pays for one session read and makes one idle decision.
+  // No auth check here: a layout does not render again on a client-side navigation, so each page
+  // checks the session itself through `requireSession()` (ARCH-1).
   const context = readContext();
 
   // R-12a, D3-5: a fresh deployment has no branding row and the reader throws on a missing row,
@@ -96,51 +80,6 @@ export default async function RootLayout({
       ? undefined
       : await context.tenant.branding.get()
   );
-
-  const cookieName =
-    context === undefined
-      ? undefined
-      : sessionCookieName(context.tenant.env.publicUrl);
-
-  // Read with the same name rule as Better Auth's cookie parser, so `name =token` counts too.
-  const carriesSessionCookie =
-    cookieName !== undefined &&
-    readCookie((await headers()).get("cookie") ?? "", cookieName) !== undefined;
-
-  const requestHeaders = await headers();
-
-  const session =
-    context === undefined || !carriesSessionCookie
-      ? undefined
-      : await documentSessionState();
-
-  if (session?.status === "idle-expired") redirect("/api/auth/session-expired");
-
-  const activity =
-    context === undefined || session?.status !== "authenticated"
-      ? undefined
-      : {
-          idleMinutes: (await context.tenant.settings.get()).sessionIdleMinutes,
-        };
-
-  // R-30, R-65: a limited break-glass session renders the limited-session page on every route
-  // except the door itself, whatever the route asked for. The activity client stays mounted, so
-  // the session can still expire normally.
-  const limited =
-    context === undefined ||
-    session?.status !== "authenticated" ||
-    !isLimitedBreakGlass(session.session.user) ||
-    limitedSessionExempt(requestHeaders.get(PATHNAME_HEADER) ?? "")
-      ? undefined
-      : await (async () => {
-          const limitedBranding = await context.tenant.branding.get();
-
-          return {
-            productName: limitedBranding.productName,
-            passwordChanged: !session.session.user.mustChangePassword,
-            authenticatorEnrolled: session.session.user.twoFactorEnabled,
-          };
-        })();
 
   // Read, not required. A page that renders before the bootstrap published has
   // nothing true to report, and this layout is not the place to decide that a
@@ -172,16 +111,7 @@ export default async function RootLayout({
       </head>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <QueryProvider>
-            {activity === undefined ? null : (
-              <SessionActivityMount {...activity} />
-            )}
-            {limited === undefined ? (
-              children
-            ) : (
-              <LimitedSessionMount {...limited} />
-            )}
-          </QueryProvider>
+          <QueryProvider>{children}</QueryProvider>
         </NextIntlClientProvider>
         <Toaster />
         {diagnostics === undefined ? null : (

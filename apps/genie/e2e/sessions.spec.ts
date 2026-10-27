@@ -1,6 +1,7 @@
 import { expect, test, type TestInfo } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import { pushInApp } from "./support/client-navigation.ts";
 import { queryDatabase } from "./support/database.ts";
 import { currentSessionId, sessionRowCount } from "./support/sessions.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
@@ -342,29 +343,9 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
     `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
   );
 
-  // An in-app navigation: the client router fetches the page's server payload, and the root
-  // layout does not run again, so the page's own idle redirect is the one the browser follows.
-  // No link to the account page exists yet, so the test drives Next's client router directly.
-  const payload = page.waitForRequest(
-    (request) =>
-      new URL(request.url()).pathname === "/account" &&
-      request.headers()["rsc"] === "1"
-  );
-
-  await page.evaluate(() => {
-    // SAFETY: Next sets `window.next.router` to the app router instance in every build; the test
-    // calls its `push` and nothing else, and fails loudly below if the router is not there.
-    const { next } = window as {
-      readonly next?: { readonly router?: { push(href: string): void } };
-    };
-
-    if (next?.router === undefined)
-      throw new Error("Next's client router is not on window.next");
-
-    next.router.push("/account");
-  });
-
-  await payload;
+  // An in-app navigation, so the page's own idle redirect is the one the browser follows. No link
+  // to the account page exists yet, so the test drives Next's client router directly.
+  await pushInApp(page, "/account");
 
   await expect
     .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
@@ -385,3 +366,68 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
     .poll(() => sessionRowCount(current), { timeout: 10_000 })
     .toBe("0");
 });
+
+for (const [label, stage, state] of [
+  [
+    "an idle session",
+    (id: string) =>
+      `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${id}'`,
+    "session_expired",
+  ],
+  [
+    "a session signed out elsewhere",
+    (id: string) => `delete from session where id = '${id}'`,
+    "default",
+  ],
+] as const) {
+  test(`${label} that moves in-app to an admin page lands on the sign-in page, which sends no activity call (ARCH-1)`, async ({
+    page,
+  }, testInfo) => {
+    const email = sessionsEmail(testInfo);
+
+    await signInThroughKeycloak(page, { email });
+
+    const current = await currentSessionId(page, email);
+
+    // The activity call answers live without reaching the server, so only the page's own check
+    // can land the browser on the sign-in page.
+    let activityCalls = 0;
+
+    await page.route("**/api/session/activity", (route) => {
+      activityCalls += 1;
+
+      return route.fulfill({ status: 200 });
+    });
+
+    await page.clock.install();
+    await page.goto("/account");
+
+    // The mount call of the shell's activity client.
+    await expect.poll(() => activityCalls).toBe(1);
+
+    await queryDatabase(stage(current));
+
+    // The reader holds `core:people:manage`, so a "denied" here could only come from the session.
+    await pushInApp(page, "/admin/people");
+
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+      .toBe("/sign-in");
+    await expect(page.locator("main")).toHaveAttribute(
+      "data-sign-in-state",
+      state
+    );
+    await expect(page.getByTestId("sign-in-banner")).toHaveCount(
+      state === "default" ? 0 : 1
+    );
+
+    // Past the throttle wait, input would make a call if an activity client were still mounted.
+    const before = activityCalls;
+
+    await page.clock.fastForward(IDLE_MINUTES * 30_000 + 1_000);
+    await page.keyboard.press("Shift");
+    await page.waitForTimeout(1_000);
+
+    expect(activityCalls).toBe(before);
+  });
+}

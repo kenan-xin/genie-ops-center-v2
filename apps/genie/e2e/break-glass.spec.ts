@@ -14,6 +14,7 @@ import { workerImagePort } from "../testing/image-ports.ts";
 import { startImage, type RunningImage } from "../testing/image-process.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { fillAuthenticatorCode, totpCode } from "./support/break-glass.ts";
+import { pushInApp } from "./support/client-navigation.ts";
 import { expectSecurityHeaders } from "./support/headers.ts";
 import { openUserMenu } from "./support/shell.ts";
 
@@ -108,7 +109,7 @@ async function completeFirstSignIn(page: Page, url: string): Promise<void> {
     .toBe("/admin/account");
 }
 
-test("a limited break-glass session stays limited across navigation (S1, R-30)", async ({
+test("a limited break-glass session is sent to the door from every other page (R-30, R-65, ARCH-1)", async ({
   page,
 }, testInfo) => {
   const email = e2eBreakGlassEmail(testInfo.project.name);
@@ -127,19 +128,27 @@ test("a limited break-glass session stays limited across navigation (S1, R-30)",
   await expect(page.getByLabel("Current password")).toBeVisible();
   await expectNoAxeViolations(page, "forced password change");
 
-  // Every other route answers the limited-session page, with the Section 0 headers (R-71).
-  expectSecurityHeaders(await page.goto("/"), "limited-session page");
-  await expect(page.getByTestId("limited-session-page")).toBeVisible();
-  await expectNoAxeViolations(page, "limited-session page");
+  // Every other page sends the limited session to the door, which shows the next unmet step (R-65).
+  for (const path of ["/", "/account", "/admin/people", "/admin/account"]) {
+    // oxlint-disable-next-line no-await-in-loop -- one page at a time on one tab.
+    await page.goto(path);
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect.poll(() => new URL(page.url()).pathname).toBe("/admin/login");
+    // oxlint-disable-next-line no-await-in-loop -- see above.
+    await expect(page.getByLabel("Current password")).toBeVisible();
+  }
 
-  // "Continue setup" is a full navigation back to the door.
-  await page.getByRole("link", { name: "Continue setup" }).click();
-  await expect(page.getByLabel("Current password")).toBeVisible();
-  await expect(page.getByTestId("limited-session-page")).toHaveCount(0);
-
-  // The door's member-sign-in transition is a full navigation too, so the limited page returns.
+  // The sign-in page reads no session, so the door's member sign-in link leaves the door.
   await page.getByRole("link", { name: "Member sign-in" }).click();
-  await expect(page.getByTestId("limited-session-page")).toBeVisible();
+  await expect(page.locator("main")).toHaveAttribute(
+    "data-sign-in-state",
+    "default"
+  );
+
+  // A client-side navigation meets each page's own check, which the root layout no longer makes.
+  await pushInApp(page, "/admin/people");
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/admin/login");
+  await expect(page.getByLabel("Current password")).toBeVisible();
 });
 
 test("a first break-glass sign-in changes the password and enrolls an authenticator (AC-15)", async ({
@@ -175,11 +184,10 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
     .getByRole("button", { name: "Confirm and open the console" })
     .click();
 
-  // The limited session is gone: the account page answers, not the limited-session page.
+  // The limited session is gone: the account page answers, not the door.
   await expect
     .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
     .toBe("/admin/account");
-  await expect(page.getByTestId("limited-session-page")).toHaveCount(0);
   await expectNoAxeViolations(page, "/admin/account");
 });
 

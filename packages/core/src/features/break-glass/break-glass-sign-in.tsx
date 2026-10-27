@@ -766,9 +766,8 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
           </form>
         ) : null}
 
-        {/* An anchor, so the member sign-in transition is a native hard navigation: the root
-            layout decides the limited page and is not re-rendered on a soft navigation (S1). A
-            host that passes `onGoToMemberSignIn` (a story) observes the click instead. */}
+        {/* A plain anchor, because core imports nothing from `next/*`. A host that passes
+            `onGoToMemberSignIn` (a story) observes the click instead. */}
         <a
           href={props.memberSignInHref ?? "/sign-in"}
           onClick={(event) => {

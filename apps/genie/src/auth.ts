@@ -23,6 +23,12 @@ export function requireAuth(tenant: TenantContext): AuthMember {
 /** The sign-in page a refusal or a signed-out browser lands on (R-17a). */
 export const SIGN_IN_PATH = "/sign-in";
 
+/**
+ * The route that clears an idle session's cookie and then lands on the expired banner (R-14,
+ * R-17a). `requireSession()` sends an idle browser there.
+ */
+export const SESSION_EXPIRED_ROUTE = "/api/auth/session-expired";
+
 /** The path the identity provider returns the browser to, which then lands the person (R-36). */
 export const AUTH_COMPLETE_PATH = "/auth/complete";
 

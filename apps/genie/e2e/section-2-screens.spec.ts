@@ -17,8 +17,8 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 /**
  * Section 2 acceptance across its screens (Spec 2 AC-3, AC-18, R-17a, R-62, R-71, DEC-21): every
  * sign-in page state, and every signed-in screen this section adds, carries the Section 0 headers
- * and passes axe at the phone and the desktop viewport. The break-glass door, the limited-session
- * page and the not-set-up page are checked in their own specs, where their state is reached.
+ * and passes axe at the phone and the desktop viewport. The break-glass door and the not-set-up
+ * page are checked in their own specs, where their state is reached.
  */
 
 /** The sign-in page states by their `?error=` cause; `undefined` is the default state. */

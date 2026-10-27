@@ -1,37 +1,23 @@
-import {
-  principalFor,
-  readOwnGroups,
-  readRoleSummaries,
-  realmAccountUrl,
-} from "@genie/core";
+import { readOwnGroups, readRoleSummaries, realmAccountUrl } from "@genie/core";
 import { getTranslations } from "next-intl/server";
-import { redirect } from "next/navigation.js";
 
-import { requireAuth, SIGN_IN_PATH } from "../../auth.ts";
+import { requireAuth } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
-import { documentSessionState } from "../../document-session.ts";
-import { modules } from "../../registry.ts";
+import { documentPrincipal, requireSession } from "../../document-session.ts";
 import { ShellFrame } from "../../shell-frame.tsx";
 import { AccountRoute } from "./account-route.tsx";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Where an idle session goes: the route that clears its cookie and shows the expired banner (R-14,
- * R-17a). The root layout redirects there too. On an in-app navigation the layout does not run
- * again, so this page's redirect is the one the browser follows, and it must clear the cookie as
- * well (genie-ops-center-v2-jfq9).
- */
-const EXPIRED_PATH = "/api/auth/session-expired";
-
-/**
  * The account page (R-18): the person's own Profile, Sessions with per-session sign-out and sign
  * out everywhere, and the read-only Roles and access. Any signed-in person may read it; no
  * permission key guards a person's own account, and the page edits nothing.
  *
- * The one enforced session read decides where an unauthenticated visitor goes: a session past
- * the idle window lands on the session-expired banner, and a request that never carried one
- * lands on the plain sign-in page. The roles summary reads through the R-27 loader's seam -
+ * `requireSession()` decides where a visitor without a live session goes: a session past the idle
+ * window lands on the session-expired banner, also on an in-app navigation
+ * (genie-ops-center-v2-jfq9), and a request that never carried one lands on the plain sign-in
+ * page (ARCH-1). The roles summary reads through the R-27 loader's seam -
  * the same per-request principal the rest of the application builds - with each scoped row's
  * label resolved by the record type's owning module (R-28).
  */
@@ -39,31 +25,21 @@ export default async function AccountPage() {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
 
-  const state = await documentSessionState();
-
-  if (state.status === "idle-expired") redirect(EXPIRED_PATH);
-
-  if (state.status === "anonymous") redirect(SIGN_IN_PATH);
+  const signedIn = await requireSession();
 
   const t = await getTranslations("account");
   const tPages = await getTranslations("pages");
 
-  const userId = state.session.user.id;
+  const userId = signedIn.user.id;
 
   const tenant = app.tenant;
 
-  const principal = principalFor({
-    tenant,
-    modules,
-    userId,
-    // The enforced read above returned an authenticated state, or this page redirected away.
-    authenticated: true,
-  });
+  const principal = await documentPrincipal();
 
   const [groups, summaries, sessions, branding] = await Promise.all([
     readOwnGroups(tenant, userId),
     readRoleSummaries(principal),
-    auth.listOwnSessions({ session: state.session }),
+    auth.listOwnSessions({ session: signedIn }),
     tenant.branding.get(),
   ]);
 
@@ -97,8 +73,8 @@ export default async function AccountPage() {
     <ShellFrame chrome="workspace" title={tPages("account.title")}>
       <AccountRoute
         profile={{
-          name: state.session.user.name,
-          email: state.session.user.email,
+          name: signedIn.user.name,
+          email: signedIn.user.email,
         }}
         groups={groups.map((group) => ({
           id: group.id,

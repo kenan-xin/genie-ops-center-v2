@@ -9,8 +9,10 @@ import { headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
-import { documentSessionState } from "./document-session.ts";
+import { requireContext } from "./context.ts";
+import { requireSession } from "./document-session.ts";
 import { PATHNAME_HEADER } from "./pathname-header.ts";
+import { SessionActivityMount } from "./session-activity-mount.tsx";
 import { shellModel } from "./shell-model.ts";
 
 /**
@@ -19,78 +21,83 @@ import { shellModel } from "./shell-model.ts";
  * its own account page is the fallback all the same.
  */
 export async function keepBreakGlassInAdmin(): Promise<void> {
-  const state = await documentSessionState();
-
-  if (state.status === "authenticated" && state.session.user.isBreakGlass)
+  if ((await requireSession()).user.isBreakGlass)
     redirect((await shellModel()).adminHome ?? "/admin/account");
 }
 
 /**
- * The signed-in frame every shell page wraps its output in (Spec 3 R-27). A request without an
- * authenticated session gets the page unchanged. The tree is already permitted, so this frame
- * makes no authorization decision of its own (R-30).
+ * The signed-in frame every shell page wraps its output in (Spec 3 R-27). It checks the session
+ * first through `requireSession()` (ARCH-1). The tree is already permitted, so this frame makes no
+ * authorization decision of its own (R-30). The activity client lives here, so it exists only on
+ * signed-in shell pages and ends on any navigation away from them (R-15a).
  */
 export async function ShellFrame(props: {
   readonly chrome: ShellChrome;
   readonly title?: string;
   readonly children: ReactNode;
 }): Promise<ReactNode> {
-  const state = await documentSessionState();
-
-  if (state.status !== "authenticated") return props.children;
+  const session = await requireSession();
 
   if (props.chrome === "workspace") await keepBreakGlassInAdmin();
 
   const t = await getTranslations("shell");
-  const [model, requestHeaders] = await Promise.all([shellModel(), headers()]);
 
-  const person = state.session.user;
+  const [model, requestHeaders, settings] = await Promise.all([
+    shellModel(),
+    headers(),
+    requireContext().tenant.settings.get(),
+  ]);
+
+  const person = session.user;
   const chrome = shellChrome(props.chrome, model.isAdministrator);
 
   return (
-    <AppShell
-      chrome={chrome}
-      {...(props.title === undefined ? {} : { title: props.title })}
-      currentPath={requestHeaders.get(PATHNAME_HEADER) ?? "/"}
-      navigation={model.navigation}
-      identity={model.identity}
-      user={{
-        name: person.name.trim() || person.email,
-        roleLabel: model.isAdministrator
-          ? t("roleAdministrator")
-          : t("roleMember"),
-      }}
-      menu={shellMenu({
-        chrome,
-        isAdministrator: model.isAdministrator,
-        isBreakGlass: person.isBreakGlass,
-        landing: model.landing,
-        adminHome: model.adminHome,
-        changePasswordHref: model.changePasswordUrl,
-        supportHref: model.support?.href ?? null,
-        labels: {
-          backToWorkspace: t("backToWorkspace"),
-          administration: t("administration"),
-        },
-      })}
-      strings={{
-        workspace: t("workspace"),
-        adminPortal: t("adminPortal"),
-        pinned: t("pinned"),
-        categories: t("categories"),
-        navigation: t("navigation"),
-        openNavigation: t("openNavigation"),
-        closeNavigation: t("closeNavigation"),
-        offline: t("offline"),
-        pageContent: t("pageContent"),
-        account: t("account"),
-        changePassword: t("changePassword"),
-        opensInNewTab: t("opensInNewTab"),
-        helpAndSupport: t("helpAndSupport"),
-        signOut: t("signOut"),
-      }}
-    >
-      {props.children}
-    </AppShell>
+    <>
+      <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
+      <AppShell
+        chrome={chrome}
+        {...(props.title === undefined ? {} : { title: props.title })}
+        currentPath={requestHeaders.get(PATHNAME_HEADER) ?? "/"}
+        navigation={model.navigation}
+        identity={model.identity}
+        user={{
+          name: person.name.trim() || person.email,
+          roleLabel: model.isAdministrator
+            ? t("roleAdministrator")
+            : t("roleMember"),
+        }}
+        menu={shellMenu({
+          chrome,
+          isAdministrator: model.isAdministrator,
+          isBreakGlass: person.isBreakGlass,
+          landing: model.landing,
+          adminHome: model.adminHome,
+          changePasswordHref: model.changePasswordUrl,
+          supportHref: model.support?.href ?? null,
+          labels: {
+            backToWorkspace: t("backToWorkspace"),
+            administration: t("administration"),
+          },
+        })}
+        strings={{
+          workspace: t("workspace"),
+          adminPortal: t("adminPortal"),
+          pinned: t("pinned"),
+          categories: t("categories"),
+          navigation: t("navigation"),
+          openNavigation: t("openNavigation"),
+          closeNavigation: t("closeNavigation"),
+          offline: t("offline"),
+          pageContent: t("pageContent"),
+          account: t("account"),
+          changePassword: t("changePassword"),
+          opensInNewTab: t("opensInNewTab"),
+          helpAndSupport: t("helpAndSupport"),
+          signOut: t("signOut"),
+        }}
+      >
+        {props.children}
+      </AppShell>
+    </>
   );
 }

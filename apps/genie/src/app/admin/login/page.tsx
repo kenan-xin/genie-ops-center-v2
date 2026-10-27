@@ -17,16 +17,15 @@ const ANONYMOUS_STEPS: readonly BreakGlassStep[] = [
  * The hidden break-glass door at `/admin/login` (R-62 to R-65). It is not linked from the sign-in
  * page. The server reads this request's enforced session and decides the card: credentials for a
  * visitor, the forced password change or the enrollment for a limited break-glass session, and a
- * redirect away for an unlimited one or for anyone who is not the break-glass account.
+ * redirect away for an unlimited one or for anyone who is not the break-glass account. It reads
+ * the session itself and never calls `requireSession()`, which sends a limited session here. An
+ * idle session sees the credentials card like a visitor, and its row goes at the next sign-in
+ * (R-14, ARCH-1).
  */
 export default async function AdminLoginPage() {
   const app = requireContext();
 
   const state = await documentSessionState();
-
-  // The route clears the idle session's cookie, whichever of this redirect and the layout's the
-  // browser follows (R-14, R-17a).
-  if (state.status === "idle-expired") redirect("/api/auth/session-expired");
 
   let step: BreakGlassStep = "credentials";
   let steps: readonly BreakGlassStep[] = ANONYMOUS_STEPS;

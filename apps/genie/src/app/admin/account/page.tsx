@@ -1,44 +1,34 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 
-import { requireAuth, SIGN_IN_PATH } from "../../../auth.ts";
+import { requireAuth } from "../../../auth.ts";
 import { requireContext } from "../../../context.ts";
-import { documentSessionState } from "../../../document-session.ts";
+import { requireSession } from "../../../document-session.ts";
 import { ShellFrame } from "../../../shell-frame.tsx";
 import { AdminAccountRoute } from "./admin-account-route.tsx";
 
 export const dynamic = "force-dynamic";
 
-/** The route that clears an idle session's cookie and shows the expired banner (R-14, R-17a). */
-const EXPIRED_PATH = "/api/auth/session-expired";
-
 /**
  * The break-glass account page at `/admin/account` (R-66): change password with the current one,
- * re-enroll the authenticator, and sessions. No Preferences and no Roles and access. A limited
- * session is sent back to the door, where the next unmet step is shown; anyone who is not the
- * break-glass account goes to their own account page.
+ * re-enroll the authenticator, and sessions. No Preferences and no Roles and access.
+ * `requireSession()` sends a limited session back to the door, where the next unmet step is shown
+ * (ARCH-1). Anyone who is not the break-glass account goes to their own account page.
  */
 export default async function AdminAccountPage() {
   const app = requireContext();
   const auth = requireAuth(app.tenant);
 
-  const state = await documentSessionState();
+  const signedIn = await requireSession();
 
-  if (state.status === "idle-expired") redirect(EXPIRED_PATH);
-
-  if (state.status === "anonymous") redirect(SIGN_IN_PATH);
-
-  const person = state.session.user;
+  const person = signedIn.user;
 
   if (!person.isBreakGlass) redirect("/account");
-
-  if (person.mustChangePassword || !person.twoFactorEnabled)
-    redirect("/admin/login");
 
   const tPages = await getTranslations("pages");
 
   const [sessions, branding] = await Promise.all([
-    auth.listOwnSessions({ session: state.session }),
+    auth.listOwnSessions({ session: signedIn }),
     app.tenant.branding.get(),
   ]);
 
