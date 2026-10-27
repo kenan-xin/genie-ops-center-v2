@@ -37,9 +37,11 @@ export function HelpDisclosure(props: {
               size="icon"
               aria-label={props.label}
               title={props.label}
+              className="justify-self-start"
             />
           ) : (
-            <Button variant="ghost" />
+            // A grid parent would stretch the button and center its label.
+            <Button variant="ghost" className="justify-self-start" />
           )
         }
       >

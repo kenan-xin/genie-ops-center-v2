@@ -167,6 +167,26 @@ export const IconOnlyOnPhone: Story = {
   },
 };
 
+/** A page puts the button in a grid column; it keeps its own width at the start of the row. */
+export const InAGridColumn: Story = {
+  render: (args) => (
+    <div data-testid="column" className="grid gap-4">
+      <HelpDisclosure {...args} />
+      <p>The table follows.</p>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const column = canvas.getByTestId("column").getBoundingClientRect();
+
+    const trigger = canvas
+      .getByRole("button", { name: "How access works" })
+      .getBoundingClientRect();
+
+    await expect(trigger.left).toBe(column.left);
+    await expect(trigger.width).toBeLessThan(column.width / 2);
+  },
+};
+
 export const InsideASheet: Story = {
   render: (args) => (
     <Sheet>
