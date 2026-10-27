@@ -1,8 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import type { ComponentPropsWithRef } from "react";
+import {
+  createContext,
+  use,
+  useState,
+  type ComponentPropsWithRef,
+} from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { AppShell } from "./app-shell.tsx";
+import { AppShell, type AppShellProps } from "./app-shell.tsx";
+import { COLLAPSED_CATEGORIES_KEY } from "./collapsed-categories.ts";
 import { PageHeader } from "./page-header.tsx";
 import type { ShellNavigation, ShellStrings } from "./types.ts";
 
@@ -286,6 +292,86 @@ export const WorkspacePhone: Story = {
     await userEvent.click(open);
     await screen.findByRole("dialog", { name: "Navigation" });
     await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
+};
+
+/** The story's client router: a link click changes the path state in place of a document load. */
+const Navigate = createContext<(href: string) => void>(() => undefined);
+
+function RouterLink(props: ComponentPropsWithRef<"a">) {
+  const navigate = use(Navigate);
+
+  return (
+    <a
+      {...props}
+      onClick={(event) => {
+        props.onClick?.(event);
+
+        if (event.defaultPrevented || props.href === undefined) return;
+
+        event.preventDefault();
+        navigate(props.href);
+      }}
+    />
+  );
+}
+
+function ClientRouted(args: AppShellProps) {
+  const [path, setPath] = useState(args.currentPath);
+
+  return (
+    <Navigate value={setPath}>
+      <AppShell {...args} currentPath={path} linkComponent={RouterLink} />
+    </Navigate>
+  );
+}
+
+export const ClientRoutedPhone: Story = {
+  globals: phone,
+  render: (args) => <ClientRouted {...args} />,
+  args: {
+    children: (
+      <main>
+        <PageHeader title="Orders" description="Every open order." />
+        <div className="h-dvh" />
+        <div className="h-dvh" />
+      </main>
+    ),
+  },
+  // Another story's collapsed category must not hide Shipments.
+  beforeEach: () => window.localStorage.removeItem(COLLAPSED_CATEGORIES_KEY),
+  play: async ({ canvas, canvasElement }) => {
+    const content = element(canvasElement, "[data-shell-content]");
+
+    content.scrollTop = content.scrollHeight;
+    await expect(content.scrollTop).toBeGreaterThan(0);
+
+    const openDrawer = async () => {
+      await userEvent.click(
+        canvas.getByRole("button", { name: "Open navigation" })
+      );
+
+      return screen.findByRole("dialog", { name: "Navigation" });
+    };
+
+    await userEvent.click(
+      within(await openDrawer()).getByRole("link", { name: "Shipments" })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(
+      within(element(canvasElement, "[data-shell-top-bar]")).getByText(
+        "Shipments"
+      )
+    ).toBeVisible();
+    await expect(element(canvasElement, "[data-shell-content]").scrollTop).toBe(
+      0
+    );
+
+    // The current page's row changes no path, and the drawer still closes.
+    await userEvent.click(
+      within(await openDrawer()).getByRole("link", { name: "Shipments" })
+    );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   },
 };

@@ -2,7 +2,7 @@
 
 import { focusRing, Sheet, SheetContent, SheetTitle } from "@genie/ui";
 import { Menu, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { activeHref, shellLinks } from "./active-link.ts";
 import { IdentityBlock, TenantMark } from "./identity-block.tsx";
@@ -70,10 +70,30 @@ function Panel(props: AppShellProps) {
  * content; below `lg` a top bar shows the title and opens the same panel in a drawer, the only
  * navigation there. The page brings its own `<main>` and `<h1>`; the shell adds neither.
  * Internal links render through `linkComponent`, and a plain anchor is the default (NAV-1).
+ * A new `currentPath` closes the drawer and starts the content area at the top, so a host that
+ * keeps the shell in a layout gets the behavior of a document load (R-38).
  */
 export function AppShell(props: AppShellProps) {
   const { strings } = props;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [shownPath, setShownPath] = useState(props.currentPath);
+  const content = useRef<HTMLDivElement>(null);
+  const scrolledPath = useRef(props.currentPath);
+
+  // React's pattern for state that follows a prop: adjust it during render.
+  if (shownPath !== props.currentPath) {
+    setShownPath(props.currentPath);
+    setDrawerOpen(false);
+  }
+
+  // Not on the first render, so a document load keeps the browser's own scroll.
+  useEffect(() => {
+    if (scrolledPath.current === props.currentPath) return;
+
+    scrolledPath.current = props.currentPath;
+    content.current?.scrollTo({ top: 0 });
+  }, [props.currentPath]);
+
   const active = activeHref(props.navigation, props.currentPath);
 
   const title =
@@ -122,6 +142,7 @@ export function AppShell(props: AppShellProps) {
               A group, not a region: a named region is a landmark, and the page's <main> must not
               sit inside one. The ring is inset, because the area fills the viewport. */}
           <div
+            ref={content}
             data-shell-content=""
             role="group"
             aria-label={strings.pageContent}
@@ -142,7 +163,18 @@ export function AppShell(props: AppShellProps) {
           className="max-w-80 data-[side=left]:w-5/6"
         >
           <SheetTitle className="sr-only">{strings.navigation}</SheetTitle>
-          <div className="flex min-h-0 flex-1 flex-col">
+          {/* A tap on the current page's row changes no path, and a document load used to close
+              the drawer, so any link inside closes it. */}
+          <div
+            className="flex min-h-0 flex-1 flex-col"
+            onClick={(event) => {
+              if (
+                event.target instanceof Element &&
+                event.target.closest("a") !== null
+              )
+                setDrawerOpen(false);
+            }}
+          >
             <div className="flex justify-end px-2 pt-2">
               <button
                 type="button"
