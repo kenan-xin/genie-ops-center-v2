@@ -5,13 +5,13 @@ Bead: `d8l5.26`. Status and claims live in Beads, not in this document.
 ## Governing documents
 
 - [Decision log](../../../core/decision-log.md), `DEC-36`, amendment of 2026-10-27, which this ticket implements. Also `DEC-10`, `DEC-37` and `DEC-40`.
-- [Spec 2](../../../specs/02-identity-and-access.md), amendment of 2026-10-27: R-17c, R-40b, R-50 (added paragraph), R-53a, R-58a and AC-27. The owner must approve the amendment before the code starts.
+- [Spec 2](../../../specs/02-identity-and-access.md), amendment of 2026-10-27: R-17c, R-40b, R-50 (added paragraph), R-53a, R-58a and AC-27. The owner approved the amendment on 2026-10-27.
 - [Realm runbook](../../../runbooks/keycloak-realm.md) and [ADR 0010](../../../adr/0010-client-only-mode-in-an-existing-realm.md).
 - The [Spec 2 ticket index](../README.md).
 
 ## Dependencies
 
-Depends on: decision bead `cvij.1` (closed). It needs no other open ticket.
+Depends on: decision bead `cvij.1` (closed). It needs no other open ticket. It starts after the Spec 3 pending-fixes Auto Run, because both use the dev app, port 3000 and the merge gate.
 
 ## Scope
 
