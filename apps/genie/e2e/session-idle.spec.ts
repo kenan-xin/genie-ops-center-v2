@@ -3,6 +3,7 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { queryDatabase } from "./support/database.ts";
 import { currentSessionId, sessionRowCount } from "./support/sessions.ts";
+import { openNavigation, openUserMenu } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -332,3 +333,75 @@ test("a reload starts both counts together (R-15a)", async ({
   await page.clock.fastForward(10_000);
   await expect(warningOf(page)).toBeVisible();
 });
+
+for (const [label, end, state] of [
+  [
+    "the idle count ends",
+    async (page: Page, { leadMs, promptMs }: IdleTimes) => {
+      await page.clock.fastForward(promptMs + 1_000);
+      await expect(warningOf(page)).toBeVisible();
+      await page.clock.fastForward(leadMs + 1_000);
+    },
+    "session_expired",
+  ],
+  [
+    "Sign out is chosen",
+    async (page: Page) => {
+      const menu = await openUserMenu(page);
+
+      await menu
+        .getByRole("menuitem", { name: "Sign out", exact: true })
+        .click();
+    },
+    "signed_out",
+  ],
+] as const) {
+  test(`when ${label} on a page that a shell link opened, the sign-in page follows and sends no activity call (NAV-1)`, async ({
+    page,
+  }, testInfo) => {
+    const times = await idleTimes();
+
+    await signIn(page, testInfo);
+    await page.clock.install();
+    await openAccount(page);
+
+    let activityCalls = 0;
+
+    page.on("request", (request) => {
+      if (isActivity(request.url())) activityCalls += 1;
+    });
+
+    // The fake clock fakes `performance.timeOrigin` too, so a window value marks the document.
+    await page.evaluate(() => Object.assign(window, { nav1Document: true }));
+
+    const remounted = page.waitForResponse((response) =>
+      isActivity(response.url())
+    );
+
+    await (
+      await openNavigation(page)
+    )
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: "Placeholder", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/placeholder$/);
+    // The new page's shell mounts its own activity client, in the same document.
+    expect((await remounted).status()).toBe(200);
+    expect(await page.evaluate(() => "nav1Document" in window)).toBe(true);
+
+    await end(page, times);
+
+    await expect
+      .poll(() => new URL(page.url()).pathname, POLL)
+      .toBe("/sign-in");
+    expect(new URL(page.url()).searchParams.get("error")).toBe(state);
+
+    // Past the throttle wait, input makes a call if an activity client is still mounted.
+    const before = activityCalls;
+
+    await page.clock.fastForward(times.idleMs / 2 + 1_000);
+    await touch(page);
+    await page.waitForTimeout(1_000);
+    expect(activityCalls).toBe(before);
+  });
+}

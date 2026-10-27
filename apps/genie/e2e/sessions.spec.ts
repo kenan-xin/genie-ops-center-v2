@@ -1,9 +1,9 @@
 import { expect, test, type TestInfo } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
-import { pushInApp } from "./support/client-navigation.ts";
 import { queryDatabase } from "./support/database.ts";
 import { currentSessionId, sessionRowCount } from "./support/sessions.ts";
+import { openUserMenu } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -343,9 +343,11 @@ test("an idle in-app navigation to the account page clears the cookie and lands 
     `update session set last_active_at = now() - interval '${IDLE_MINUTES + 1} minutes' where id = '${current}'`
   );
 
-  // An in-app navigation, so the page's own idle redirect is the one the browser follows. No link
-  // to the account page exists yet, so the test drives Next's client router directly.
-  await pushInApp(page, "/account");
+  // A client-side navigation through the user menu's Account link, so the page's own idle redirect
+  // is the one the browser follows (NAV-1).
+  const menu = await openUserMenu(page);
+
+  await menu.getByRole("menuitem", { name: "Account", exact: true }).click();
 
   await expect
     .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
@@ -408,7 +410,15 @@ for (const [label, stage, state] of [
     await queryDatabase(stage(current));
 
     // The reader holds `core:people:manage`, so a "denied" here could only come from the session.
-    await pushInApp(page, "/admin/people");
+    const menu = await openUserMenu(page);
+
+    const administration = menu.getByRole("menuitem", {
+      name: "Administration",
+      exact: true,
+    });
+
+    await expect(administration).toHaveAttribute("href", "/admin/people");
+    await administration.click();
 
     await expect
       .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })

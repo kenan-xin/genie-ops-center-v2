@@ -75,7 +75,7 @@ const rootPrimary = (page: Page) =>
       .trim()
   );
 
-test("edits each tab, publishes once, writes one core:branding_published row, and the shell follows light and dark (AC-5, AC-13, AC-15)", async ({
+test("edits each tab, publishes once, writes one core:branding_published row, and the shell follows light and dark without a reload (AC-5, AC-13, AC-15, NAV-1)", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -93,6 +93,7 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
           ["dark", "#1d4ed8"],
         ] as const) {
           // oxlint-disable no-await-in-loop -- one theme at a time, under one lock.
+          const origin = await page.evaluate(() => performance.timeOrigin);
           const companyName = `Branded ${theme} ${project}`;
           const before = await publishedCount();
 
@@ -147,6 +148,19 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
               "select company_name || ' ' || primary_color || ' ' || primary_foreground || ' ' || default_theme || ' ' || login_welcome_text from tenant_branding"
             )
           ).toBe(`${companyName} ${color} #ffffff ${theme} Welcome ${theme}`);
+
+          // NAV-1: no client navigation renders the root layout again, so the route refreshes it after
+          // Publish, and again after the 10-second reader window (DEC-46). Nothing reloads here.
+          await expect
+            .poll(
+              async () =>
+                `${await rootPrimary(page)} ${await page.locator("html").getAttribute("data-theme")}`,
+              POLL
+            )
+            .toBe(`${color} ${theme}`);
+          expect(await page.evaluate(() => performance.timeOrigin)).toBe(
+            origin
+          );
 
           // AC-13 and AC-15: the shell takes the new color, theme and company name within the reader
           // window. The poll waits for the navigation name too, the state the next assertion reads.

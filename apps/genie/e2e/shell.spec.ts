@@ -265,6 +265,61 @@ test("the drawer opens below lg and closes on route change, and the sidebar show
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
+test("a shell link opens its page in the same document: new row and title, drawer closed, content at the top, focus on the heading (NAV-1)", async ({
+  page,
+}) => {
+  const mounted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/session/activity")
+  );
+
+  await page.goto("/account");
+  // The activity client posts on mount, so the page is hydrated and the click goes to the router.
+  await mounted;
+
+  const content = page.getByRole("group", { name: "Page content" });
+
+  await page.getByTestId("account-page").evaluate((main) => {
+    main.style.paddingBottom = "100vh";
+  });
+  await content.evaluate((area) => {
+    area.scrollTop = area.scrollHeight;
+  });
+  expect(await content.evaluate((area) => area.scrollTop)).toBeGreaterThan(0);
+
+  const origin = await page.evaluate(() => performance.timeOrigin);
+
+  await (
+    await openNavigation(page)
+  )
+    .getByRole("navigation", { name: "Workspace", exact: true })
+    .getByRole("link", { name: "Archive", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
+
+  await expect(page).toHaveURL(/\/placeholder\/archive$/);
+
+  const heading = page.getByRole("heading", { level: 1 });
+
+  await expect(heading).toHaveText("Archive");
+  // The same document: a load starts a new performance timeline.
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin);
+  await expect(heading).toBeFocused();
+  expect(await content.evaluate((area) => area.scrollTop)).toBe(0);
+
+  if (!atLg(page)) {
+    await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(
+      0
+    );
+    await expect(page.locator("[data-shell-top-bar]")).toContainText("Archive");
+  }
+
+  await expect(
+    (await openNavigation(page))
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: "Archive", exact: true })
+  ).toHaveAttribute("aria-current", "page");
+});
+
 test("each workspace entry opens its own page with one page title (6wz1.32, 6wz1.37)", async ({
   page,
 }) => {
