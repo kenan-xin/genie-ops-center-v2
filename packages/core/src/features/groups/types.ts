@@ -1,59 +1,25 @@
+import type {
+  AssignableRole,
+  GroupAssignmentRow as GroupAssignment,
+  GroupMemberRow as GroupMember,
+  GroupRow as Group,
+} from "../../services/groups/index.ts";
+import type { AssignablePerson as PersonOption } from "../../services/people/index.ts";
+
 /**
- * The presentation types of the Groups screen. A browser-safe feature folder may not import the
- * design repository, so these mirror `docs/design/sections/people-groups-and-roles/types.ts` for
- * the group part, and are structurally compatible with the core service's read rows, so a host
- * maps one to the other without re-deriving a label.
+ * The presentation types of the Groups screen. The row views come from the groups and people
+ * services through type-only imports, which the browser-safety guard skips. The source name, the
+ * viewer and the screen and inspector props are screen-only.
  */
-
-export type GroupSource = "idp" | "local";
-
-export type Group = {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly source: GroupSource;
-  /** R-24b: the exact claim value, present for a directory group. */
-  readonly externalId: string | null;
-  /** R-24c: shown in place of the value in lists and Access; the value stays in the inspector. */
-  readonly displayLabel: string | null;
-  readonly memberCount: number;
-  readonly assignmentCount: number;
-  /** R-24b: null until a sign-in lists the group ("Not seen yet"). */
-  readonly lastSeenAt: string | null;
-  readonly archived: boolean;
-  /** R-24a: computed on read, never stored. */
-  readonly stale: boolean;
+export type {
+  AssignableRole,
+  Group,
+  GroupAssignment,
+  GroupMember,
+  PersonOption,
 };
 
-export type GroupMember = {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-  readonly source: GroupSource;
-  readonly syncedAt: string | null;
-};
-
-export type GroupAssignment = {
-  readonly id: string;
-  readonly roleId: string;
-  readonly roleName: string;
-  readonly scopeType: string | null;
-  readonly scopeId: string | null;
-};
-
-/** One person a local group's member picker can offer. */
-export type PersonOption = {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-};
-
-/** One role the inspector can assign to a group. */
-export type AssignableRole = {
-  readonly id: string;
-  readonly name: string;
-  readonly moduleId: string | null;
-};
+export type GroupSource = Group["source"];
 
 export type GroupsViewer = {
   readonly id: string;

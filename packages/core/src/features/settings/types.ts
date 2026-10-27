@@ -1,40 +1,22 @@
-import type { ConfigFormField, ConfigFormSchema, ConfigValue } from "@genie/ui";
+import type { ConfigValue } from "@genie/ui";
+
+import type {
+  CoreSettingsView,
+  LastChanged as LastChangedView,
+  ModuleSettingsView,
+  SettingsView,
+} from "../../services/settings/index.ts";
 
 /**
- * The presentation types of the Tenant Settings screen. A browser-safe feature folder may not import
- * the server service, so these mirror the views of `services/settings/index.ts` and stay
- * structurally compatible with them.
+ * The presentation types of the Tenant Settings screen. The views come from the settings service
+ * through a type-only import, which the browser-safety guard skips. The save inputs, the field issue
+ * and the screen props are screen-only, because they describe what the form sends and draws.
  */
-
-/** Who changed a section last, and when. `by` is null for a write no person made. */
-export type LastChangedView = {
-  readonly by: string | null;
-  readonly at: string;
-} | null;
-
-export type CoreSettingsView = {
-  readonly onboardingMode: "invite" | "jit";
-  readonly localAccountsEnabled: boolean;
-  readonly realmMode: "managed" | "customer";
-  readonly realmSupportsLocalAccounts: boolean;
-  readonly sessionIdleMinutes: number;
-  readonly lastChanged: LastChangedView;
-};
-
-export type ModuleSettingsView = {
-  readonly moduleId: string;
-  readonly title: string;
-  readonly description: string | null;
-  readonly enabled: boolean;
-  readonly schema: ConfigFormSchema;
-  readonly fields: readonly ConfigFormField[];
-  readonly values: Record<string, ConfigValue>;
-  readonly lastChanged: LastChangedView;
-};
-
-export type SettingsView = {
-  readonly core: CoreSettingsView;
-  readonly modules: readonly ModuleSettingsView[];
+export type {
+  CoreSettingsView,
+  LastChangedView,
+  ModuleSettingsView,
+  SettingsView,
 };
 
 export type SignInInput = {

@@ -1,91 +1,34 @@
-/**
- * The presentation types of the People screen. A browser-safe feature folder may not import the
- * design repository, so these mirror `docs/design/sections/people-groups-and-roles/types.ts` for
- * the people part, and are structurally compatible with the core service's read rows, so a host
- * maps one to the other without re-deriving a label. The one deliberate addition is a person's
- * `groups` as labelled pairs, because a pill needs the group's label and the design's `groupIds`
- * carries only ids.
- */
-
-export type PersonStatus = "active" | "pending" | "disabled";
-
-export type AccountType = "brokered" | "local";
-
-/** One group pill of a person, with the label the screen renders (R-24c). */
-export type PersonGroupChip = {
-  readonly id: string;
-  readonly label: string;
-};
-
-export type Person = {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-  readonly status: PersonStatus;
-  /** R-51a: fixed at creation and read from the account's own provider row. */
-  readonly accountType: AccountType;
-  /** Server-derived: the identity provider label, or "Genie (local password)". */
-  readonly identitySource: string;
-  readonly groups: readonly PersonGroupChip[];
-  readonly roleCount: number;
-  readonly firstSignInAt: string | null;
-  readonly lastSignInAt: string | null;
-  readonly onboarding: "invited" | "jit" | null;
-  /** R-41: the latest `core:set_password_sent` audit time, for a pending local account. */
-  readonly setPasswordSentAt: string | null;
-  /** R-41: the latest `core:invitation_sent` audit time, for a pending brokered person. */
-  readonly invitationSentAt: string | null;
-};
-
-/** One group a person belongs to, as the inspector's Groups tab reads it. */
-export type PersonGroup = {
-  readonly id: string;
-  readonly name: string;
-  readonly label: string;
-  readonly source: "idp" | "local";
-  readonly syncedAt: string | null;
-};
-
-/** One assignment a person holds, direct or through a group, as the Roles tab reads it. */
-export type PersonAssignment = {
-  readonly id: string;
-  readonly roleId: string;
-  readonly roleName: string;
-  readonly moduleId: string | null;
-  readonly scopeType: string | null;
-  readonly scopeId: string | null;
-  readonly source: "direct" | "group";
-  readonly groupId: string | null;
-  readonly groupName: string | null;
-};
-
-/** One session of a person, as the Sessions tab reads it. */
-export type PersonSession = {
-  readonly id: string;
-  readonly device: string;
-  readonly browser: string;
-  readonly ipAddress: string;
-  readonly signedInAt: string;
-  readonly lastActiveAt: string;
-};
+import type {
+  AccountType,
+  AssignableRole,
+  PersonAssignmentRow as PersonAssignment,
+  PersonDetail as PersonDetailRow,
+  PersonGroupChipRow as PersonGroupChip,
+  PersonGroupRow as PersonGroup,
+  PersonRow as Person,
+  PersonSessionRow as PersonSession,
+  PersonStatus,
+} from "../../services/people/index.ts";
 
 /**
- * One person with their groups, assignments and sessions, as the inspector reads them. `groups`
- * is replaced with the full group rows (the summary's lighter chips are not needed here), so the
- * two `groups` shapes do not intersect.
+ * The presentation types of the People screen. The row views come from the people service through
+ * a type-only import, which the browser-safety guard skips. `PersonDetail` drops the service's
+ * `lastAdministrator`, because the screen reads `lastAdministratorPersonIds` instead. The settings,
+ * viewer, Add person input and screen props are screen-only.
  */
-export type PersonDetail = Omit<Person, "groups"> & {
-  readonly groups: readonly PersonGroup[];
-  readonly assignments: readonly PersonAssignment[];
-  readonly sessions: readonly PersonSession[];
+export type {
+  AccountType,
+  AssignableRole,
+  Person,
+  PersonAssignment,
+  PersonGroup,
+  PersonGroupChip,
+  PersonSession,
+  PersonStatus,
 };
 
-/** One role Add person may assign now. */
-export type AssignableRole = {
-  readonly id: string;
-  readonly name: string;
-  readonly moduleId: string | null;
-};
+/** One person with their groups, assignments and sessions, as the inspector reads them. */
+export type PersonDetail = Omit<PersonDetailRow, "lastAdministrator">;
 
 /** The tenant settings the Add person dialog reads (S2-10: onboarding mode, local accounts). */
 export type PeopleSettings = {

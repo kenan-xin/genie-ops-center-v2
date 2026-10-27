@@ -1,23 +1,14 @@
+import type {
+  CategoryList as CategoryListView,
+  CategoryRow as CategoryRowView,
+} from "../../services/categories/index.ts";
+
 /**
- * The presentation types of the Categories screen. A browser-safe feature folder may not import the
- * server service, so these mirror `CategoryRow` and `CategoryList` of `services/categories/index.ts`
- * and stay structurally compatible with them.
+ * The presentation types of the Categories screen. The list views come from the categories service
+ * through a type-only import, which the browser-safety guard skips. `AssignableModuleView` and the
+ * screen props are screen-only, because the screen needs only four fields of a module row.
  */
-
-export type CategoryRowView = {
-  readonly id: string;
-  readonly name: string;
-  readonly position: number;
-  /** Placeable modules in this category; never a solution (R-88). */
-  readonly moduleCount: number;
-};
-
-export type CategoryListView = {
-  /** In display order. */
-  readonly categories: readonly CategoryRowView[];
-  /** Placeable modules under no category, or under one that no longer exists: the Other row (R-91). */
-  readonly ungroupedCount: number;
-};
+export type { CategoryListView, CategoryRowView };
 
 /** A module with a workspace entry, on or off (Decision 6, R-91a). */
 export type AssignableModuleView = {

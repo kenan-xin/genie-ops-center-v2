@@ -1,80 +1,31 @@
-/**
- * The presentation types of the Audit log screen. They mirror the approved design's
- * `docs/design/sections/audit-and-tenant-settings/types.ts`, because a browser-safe feature
- * folder may not import the design repository. The one addition is `operatorOnly`, the filter
- * R-68 requires and the design's sketch did not carry.
- *
- * These are the screen's inputs, not a server contract: the server view (`AuditEventView` in
- * `../../services/audit/reader.ts`) is structurally compatible, so a host maps one to the other
- * without re-deriving a target label or a link.
- */
+import type {
+  AuditActorView as AuditActor,
+  AuditDateRange as DateRangePreset,
+  AuditEventView as AuditEvent,
+  AuditEventFilters as AuditFilters,
+  AuditFilterOptions,
+  AuditMetadataValue,
+} from "../../services/audit/index.ts";
 
-export type DateRangePreset = "today" | "7d" | "30d" | "custom";
+/**
+ * The presentation types of the Audit log screen. The event, actor, filter and option views come
+ * from the audit service through a type-only import, which the browser-safety guard skips. The
+ * viewer, the empty filter state and the screen props are screen-only, because only the screen
+ * renders them.
+ */
+export type {
+  AuditActor,
+  AuditEvent,
+  AuditFilterOptions,
+  AuditFilters,
+  AuditMetadataValue,
+  DateRangePreset,
+};
 
 /** The signed-in administrator reading the screen; only the time zone reaches the rendering. */
 export type AuditViewer = {
   readonly id: string;
   readonly timeZone: string;
-};
-
-export type AuditActor = {
-  readonly id: string;
-  readonly name: string;
-  /** Empty for an anonymized (erased) person. */
-  readonly email: string;
-  /** True after personal-data erasure; the name is a placeholder. */
-  readonly anonymized: boolean;
-};
-
-export type AuditMetadataValue =
-  | string
-  | number
-  | boolean
-  | null
-  | readonly AuditMetadataValue[]
-  | { readonly [name: string]: AuditMetadataValue };
-
-/** One row of the reader, newest first. */
-export type AuditEvent = {
-  readonly id: string;
-  /** ISO instant. */
-  readonly occurredAt: string;
-  /** Null for a system event (a job, provisioning, the operator CLI). */
-  readonly actor: AuditActor | null;
-  /** `module:verb` key, for example `core:person_added`. */
-  readonly action: string;
-  readonly targetType: string;
-  readonly targetId: string;
-  /** Resolved at read time; the stored id when the record no longer resolves. */
-  readonly targetLabel: string;
-  /** False when the target was removed since; the sheet shows Removed and no link. */
-  readonly targetExists: boolean;
-  /**
-   * Where Open goes, supplied by the owning module's resolver and authorized for this reader, or
-   * null. The screen never builds a route from the target type.
-   */
-  readonly targetPath: string | null;
-  readonly summary: string;
-  readonly metadata: Readonly<Record<string, AuditMetadataValue>>;
-};
-
-export type AuditFilterOptions = {
-  readonly actors: readonly AuditActor[];
-  /** The fixed R-45 catalogue; the screen groups it by the prefix before the first colon. */
-  readonly actions: readonly string[];
-  readonly targetTypes: readonly string[];
-};
-
-/** The five filters of R-67 plus the operator filter of R-68. */
-export type AuditFilters = {
-  readonly query: string;
-  readonly actorId: string;
-  readonly action: string;
-  readonly targetType: string;
-  readonly range: DateRangePreset;
-  readonly from: string | null;
-  readonly to: string | null;
-  readonly operatorOnly: boolean;
 };
 
 /** The no-narrowing filter state: everything, and the default 30-day range. */

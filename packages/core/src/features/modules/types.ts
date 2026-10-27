@@ -1,27 +1,14 @@
+import type {
+  ModuleHolder as ModuleHolderView,
+  ModuleRow as ModuleView,
+} from "../../services/modules/index.ts";
+
 /**
- * The presentation types of the Modules screen. A browser-safe feature folder may not import the
- * server service, so these mirror `ModuleRow` of `services/modules/index.ts` and stay structurally
- * compatible with it.
+ * The presentation types of the Modules screen. The row views come from the modules service through
+ * a type-only import, which the browser-safety guard skips. The category option, the refusal, the
+ * Access labels and the screen props are screen-only, because the host builds them for this screen.
  */
-
-/** A principal that holds `<id>:use` through one role. One principal may appear once per role. */
-export type ModuleHolderView = {
-  readonly principalType: "user" | "group";
-  readonly principalId: string;
-  readonly label: string;
-  readonly roleName: string;
-};
-
-export type ModuleView = {
-  readonly id: string;
-  readonly displayName: string;
-  readonly enabled: boolean;
-  /** Null when the module has no category, or one that no longer exists (R-91). */
-  readonly categoryId: string | null;
-  /** Whether the module declares a workspace entry, so a category can place it (R-84). */
-  readonly placeable: boolean;
-  readonly holders: readonly ModuleHolderView[];
-};
+export type { ModuleHolderView, ModuleView };
 
 export type CategoryOption = {
   readonly id: string;

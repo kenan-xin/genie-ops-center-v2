@@ -1,63 +1,29 @@
+import type {
+  RoleAssignmentRow as RoleAssignment,
+  RoleDetail,
+  RolePermissionGroup,
+  RolePermissionKey,
+  RoleRow as Role,
+  UnavailableKey,
+  UnavailableReason,
+} from "../../services/roles/index.ts";
+
 /**
- * The presentation types of the Roles screen. A browser-safe feature folder may not import the
- * design repository, so these mirror `docs/design/sections/people-groups-and-roles/types.ts` for
- * the role part, and are structurally compatible with the core service's read rows.
+ * The presentation types of the Roles screen. The role, key and assignment views come from the roles
+ * service through a type-only import, which the browser-safety guard skips. The kind name, the
+ * viewer, the form input and the screen props are screen-only.
  */
-
-export type RoleKind = "system" | "custom";
-
-/** Why a stored key no longer grants: its module is switched off, or the key is retired/unknown. */
-export type UnavailableReason = "module-disabled" | "retired";
-
-/** One stored key outside the selectable catalogue, with why it is unavailable. */
-export type UnavailableKey = {
-  readonly key: string;
-  readonly reason: UnavailableReason;
+export type {
+  Role,
+  RoleAssignment,
+  RoleDetail,
+  RolePermissionGroup,
+  RolePermissionKey,
+  UnavailableKey,
+  UnavailableReason,
 };
 
-export type Role = {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly kind: RoleKind;
-  readonly moduleId: string | null;
-  readonly permissions: readonly string[];
-  readonly assignmentCount: number;
-  /** R-31: keys appended automatically when a module was entitled. */
-  readonly entitlementAdded: readonly string[];
-  /** R-33b: stored keys the entitled catalogue does not offer, each with why. */
-  readonly unavailableKeys: readonly UnavailableKey[];
-};
-
-export type RolePermissionKey = {
-  readonly key: string;
-  readonly label: string;
-  /** R-33b: the key is retired, or its module is switched off; it never grants. */
-  readonly unavailable: boolean;
-  /** Present exactly when `unavailable` is true. */
-  readonly unavailableReason?: UnavailableReason | undefined;
-};
-
-export type RolePermissionGroup = {
-  readonly moduleId: string;
-  readonly moduleName: string;
-  readonly entitled: boolean;
-  readonly keys: readonly RolePermissionKey[];
-};
-
-export type RoleAssignment = {
-  readonly id: string;
-  readonly principalType: "user" | "group";
-  readonly principalId: string;
-  readonly principalLabel: string;
-  readonly scopeType: string | null;
-  readonly scopeId: string | null;
-};
-
-export type RoleDetail = Role & {
-  readonly permissionGroups: readonly RolePermissionGroup[];
-  readonly assignments: readonly RoleAssignment[];
-};
+export type RoleKind = Role["kind"];
 
 export type RolesViewer = {
   readonly id: string;
