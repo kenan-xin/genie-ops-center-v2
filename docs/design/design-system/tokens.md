@@ -125,6 +125,23 @@ The panel is 320 px wide and never wider than the viewport less 32 px. From 640 
 
 In a toolbar the disclosure drops to its icon and sits 4 px from the right edge of the search field it follows, at 44 px square under `sm` and 40 px from `sm`. A six-word blue label inside a row of controls both steals width from the search field and reads as a second action beside the primary button. The label moves to `aria-label` and to `title`, so the name is still spoken and still reachable on hover. Outside a toolbar, for example under a card's guidance line or beside a settings field, the disclosure keeps its written label.
 
+## What helper text stays visible
+
+Keep the screen as clean as possible, but never hide what a person must always be reminded of. This rule decides, on every screen, which text stays visible and which moves into the screen's Help disclosure.
+
+| Stays visible | Moves into the Help disclosure |
+| --- | --- |
+| What the person must do to finish the current step, for example the password rules while they type | How a feature works, and background, for example where names and groups come from |
+| Errors, warnings and the current state, for example "Changes stay in this browser until you publish" | Why a rule exists, and policy explanations |
+| The consequence of a destructive or irreversible action, in its confirm dialog | Tips, examples, and what counts mean |
+| Security and compliance notices, for example the system-use notice or "It never grants access" | Long descriptions under a page title: one short subtitle line stays, the rest moves |
+
+Text that repeats something already on the screen is removed, not moved. Example: a strength bar that repeats a password checklist goes.
+
+## Rendered prose (Typeset)
+
+Markdown that the product renders as reading text, for example the prose of an agent answer, is styled by the shadcn Typeset file (`typeset.css`, owned in the app stylesheet folder) with one preset, `typeset-chat`. The preset uses the body font, size and line height of this type scale, so prose and interface text match. Interface text (labels, tables, forms, page headers) never uses Typeset. A component placed inside prose, for example a chart or a records table, carries `not-typeset` and keeps its own design.
+
 ## Filter disclosure
 
 When a list carries more than two narrowing controls, they sit behind one Filters button and not in the toolbar row. The button is the secondary button with a sliders icon, and it carries a blue count pill of the filters now narrowing the list. Its panel is 288 px wide, hangs from the left edge of the button, and stacks one labelled control per filter with a Clear filters control at the foot when the count is above zero.

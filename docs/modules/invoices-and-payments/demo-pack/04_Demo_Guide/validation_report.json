@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "as_of_date": "2026-10-27",
+  "customers": 6,
+  "historical_invoices": 36,
+  "historical_payments": 30,
+  "allocations": 30,
+  "live_documents": 7,
+  "total_pdfs": 74,
+  "checks": [
+    "unique IDs",
+    "foreign key relationships",
+    "no future historical payments",
+    "allocation sums equal payment totals",
+    "no negative balances",
+    "invoice total minus payments equals outstanding",
+    "source PDF identifiers and amounts",
+    "missing due dates truly absent from PDFs",
+    "live duplicate is byte-identical",
+    "transaction PDFs have one page"
+  ]
+}

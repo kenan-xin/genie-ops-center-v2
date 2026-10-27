@@ -1,0 +1,111 @@
+{
+  "totals": {
+    "as_of_date": "2026-10-27",
+    "invoice_count": 36,
+    "payment_count": 30,
+    "total_invoiced": 236400,
+    "total_collected": 195200,
+    "outstanding": 41200,
+    "overdue": 27350,
+    "due_date_unspecified": 4350,
+    "october": {
+      "month": "2026-10",
+      "invoiced_sales": 43900,
+      "payments_collected": 18150
+    }
+  },
+  "customer_payment_behaviour": [
+    {
+      "customer_id": "C001",
+      "company_name": "ABC Trading",
+      "settled_with_known_due_date": 5,
+      "settled_late_count": 4,
+      "late_payment_rate": 0.8,
+      "outstanding_amount": 6500,
+      "overdue_amount": 6500,
+      "unknown_due_date_amount": 0
+    },
+    {
+      "customer_id": "C002",
+      "company_name": "Apex Digital",
+      "settled_with_known_due_date": 6,
+      "settled_late_count": 0,
+      "late_payment_rate": 0.0,
+      "outstanding_amount": 0,
+      "overdue_amount": 0,
+      "unknown_due_date_amount": 0
+    },
+    {
+      "customer_id": "C003",
+      "company_name": "Harbor Foods",
+      "settled_with_known_due_date": 4,
+      "settled_late_count": 4,
+      "late_payment_rate": 1.0,
+      "outstanding_amount": 12600,
+      "overdue_amount": 12600,
+      "unknown_due_date_amount": 0
+    },
+    {
+      "customer_id": "C004",
+      "company_name": "Orchid Retail",
+      "settled_with_known_due_date": 3,
+      "settled_late_count": 3,
+      "late_payment_rate": 1.0,
+      "outstanding_amount": 12600,
+      "overdue_amount": 8250,
+      "unknown_due_date_amount": 4350
+    },
+    {
+      "customer_id": "C005",
+      "company_name": "Lumi Design",
+      "settled_with_known_due_date": 6,
+      "settled_late_count": 0,
+      "late_payment_rate": 0.0,
+      "outstanding_amount": 0,
+      "overdue_amount": 0,
+      "unknown_due_date_amount": 0
+    },
+    {
+      "customer_id": "C006",
+      "company_name": "Meridian Labs",
+      "settled_with_known_due_date": 5,
+      "settled_late_count": 2,
+      "late_payment_rate": 0.4,
+      "outstanding_amount": 9500,
+      "overdue_amount": 0,
+      "unknown_due_date_amount": 0
+    }
+  ],
+  "monthly_totals": [
+    {
+      "month": "2026-05",
+      "invoiced_sales": 34900,
+      "payments_collected": 31300
+    },
+    {
+      "month": "2026-06",
+      "invoiced_sales": 36700,
+      "payments_collected": 36550
+    },
+    {
+      "month": "2026-07",
+      "invoiced_sales": 38500,
+      "payments_collected": 38350
+    },
+    {
+      "month": "2026-08",
+      "invoiced_sales": 40300,
+      "payments_collected": 40150
+    },
+    {
+      "month": "2026-09",
+      "invoiced_sales": 42100,
+      "payments_collected": 30700
+    },
+    {
+      "month": "2026-10",
+      "invoiced_sales": 43900,
+      "payments_collected": 18150
+    }
+  ]
+}

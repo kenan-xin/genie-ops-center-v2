@@ -1,0 +1,37 @@
+invoice_id,customer_id,invoice_date,document_due_date,due_date,due_date_source,payment_terms,currency,subtotal,tax_amount,total_amount,description,source_pdf
+INV-2026-05-01,C001,2026-05-01,2026-05-15,2026-05-15,document,Payment due within 14 days of invoice date.,SGD,5000,0,5000,Business consulting services - May 2026,02_History_PDFs/Invoices/INV-2026-05-01.pdf
+INV-2026-05-02,C002,2026-05-02,2026-05-16,2026-05-16,document,Payment due within 14 days of invoice date.,SGD,8200,0,8200,Software implementation services - May 2026,02_History_PDFs/Invoices/INV-2026-05-02.pdf
+INV-2026-05-03,C003,2026-05-03,2026-05-17,2026-05-17,document,Payment due within 14 days of invoice date.,SGD,6400,0,6400,Operations support services - May 2026,02_History_PDFs/Invoices/INV-2026-05-03.pdf
+INV-2026-05-04,C004,2026-05-04,2026-05-18,2026-05-18,document,Payment due within 14 days of invoice date.,SGD,3600,0,3600,Retail analytics services - May 2026,02_History_PDFs/Invoices/INV-2026-05-04.pdf
+INV-2026-05-05,C005,2026-05-05,2026-05-19,2026-05-19,document,Payment due within 14 days of invoice date.,SGD,4200,0,4200,Design services - May 2026,02_History_PDFs/Invoices/INV-2026-05-05.pdf
+INV-2026-05-06,C006,2026-05-06,2026-05-20,2026-05-20,document,Payment due within 14 days of invoice date.,SGD,7500,0,7500,Data integration services - May 2026,02_History_PDFs/Invoices/INV-2026-05-06.pdf
+INV-2026-06-01,C001,2026-06-01,2026-06-15,2026-06-15,document,Payment due within 14 days of invoice date.,SGD,5300,0,5300,Business consulting services - June 2026,02_History_PDFs/Invoices/INV-2026-06-01.pdf
+INV-2026-06-02,C002,2026-06-02,2026-06-16,2026-06-16,document,Payment due within 14 days of invoice date.,SGD,8700,0,8700,Software implementation services - June 2026,02_History_PDFs/Invoices/INV-2026-06-02.pdf
+INV-2026-06-03,C003,2026-06-03,2026-06-17,2026-06-17,document,Payment due within 14 days of invoice date.,SGD,6600,0,6600,Operations support services - June 2026,02_History_PDFs/Invoices/INV-2026-06-03.pdf
+INV-2026-06-04,C004,2026-06-04,2026-06-18,2026-06-18,document,Payment due within 14 days of invoice date.,SGD,3750,0,3750,Retail analytics services - June 2026,02_History_PDFs/Invoices/INV-2026-06-04.pdf
+INV-2026-06-05,C005,2026-06-05,2026-06-19,2026-06-19,document,Payment due within 14 days of invoice date.,SGD,4450,0,4450,Design services - June 2026,02_History_PDFs/Invoices/INV-2026-06-05.pdf
+INV-2026-06-06,C006,2026-06-06,2026-06-20,2026-06-20,document,Payment due within 14 days of invoice date.,SGD,7900,0,7900,Data integration services - June 2026,02_History_PDFs/Invoices/INV-2026-06-06.pdf
+INV-2026-07-01,C001,2026-07-01,2026-07-15,2026-07-15,document,Payment due within 14 days of invoice date.,SGD,5600,0,5600,Business consulting services - July 2026,02_History_PDFs/Invoices/INV-2026-07-01.pdf
+INV-2026-07-02,C002,2026-07-02,2026-07-16,2026-07-16,document,Payment due within 14 days of invoice date.,SGD,9200,0,9200,Software implementation services - July 2026,02_History_PDFs/Invoices/INV-2026-07-02.pdf
+INV-2026-07-03,C003,2026-07-03,2026-07-17,2026-07-17,document,Payment due within 14 days of invoice date.,SGD,6800,0,6800,Operations support services - July 2026,02_History_PDFs/Invoices/INV-2026-07-03.pdf
+INV-2026-07-04,C004,2026-07-04,2026-07-18,2026-07-18,document,Payment due within 14 days of invoice date.,SGD,3900,0,3900,Retail analytics services - July 2026,02_History_PDFs/Invoices/INV-2026-07-04.pdf
+INV-2026-07-05,C005,2026-07-05,2026-07-19,2026-07-19,document,Payment due within 14 days of invoice date.,SGD,4700,0,4700,Design services - July 2026,02_History_PDFs/Invoices/INV-2026-07-05.pdf
+INV-2026-07-06,C006,2026-07-06,2026-07-20,2026-07-20,document,Payment due within 14 days of invoice date.,SGD,8300,0,8300,Data integration services - July 2026,02_History_PDFs/Invoices/INV-2026-07-06.pdf
+INV-2026-08-01,C001,2026-08-01,2026-08-15,2026-08-15,document,Payment due within 14 days of invoice date.,SGD,5900,0,5900,Business consulting services - August 2026,02_History_PDFs/Invoices/INV-2026-08-01.pdf
+INV-2026-08-02,C002,2026-08-02,2026-08-16,2026-08-16,document,Payment due within 14 days of invoice date.,SGD,9700,0,9700,Software implementation services - August 2026,02_History_PDFs/Invoices/INV-2026-08-02.pdf
+INV-2026-08-03,C003,2026-08-03,2026-08-17,2026-08-17,document,Payment due within 14 days of invoice date.,SGD,7000,0,7000,Operations support services - August 2026,02_History_PDFs/Invoices/INV-2026-08-03.pdf
+INV-2026-08-04,C004,2026-08-04,2026-08-18,2026-08-18,document,Payment due within 14 days of invoice date.,SGD,4050,0,4050,Retail analytics services - August 2026,02_History_PDFs/Invoices/INV-2026-08-04.pdf
+INV-2026-08-05,C005,2026-08-05,2026-08-19,2026-08-19,document,Payment due within 14 days of invoice date.,SGD,4950,0,4950,Design services - August 2026,02_History_PDFs/Invoices/INV-2026-08-05.pdf
+INV-2026-08-06,C006,2026-08-06,2026-08-20,2026-08-20,document,Payment due within 14 days of invoice date.,SGD,8700,0,8700,Data integration services - August 2026,02_History_PDFs/Invoices/INV-2026-08-06.pdf
+INV-2026-09-01,C001,2026-09-01,2026-09-15,2026-09-15,document,Payment due within 14 days of invoice date.,SGD,6200,0,6200,Business consulting services - September 2026,02_History_PDFs/Invoices/INV-2026-09-01.pdf
+INV-2026-09-02,C002,2026-09-02,2026-09-16,2026-09-16,document,Payment due within 14 days of invoice date.,SGD,10200,0,10200,Software implementation services - September 2026,02_History_PDFs/Invoices/INV-2026-09-02.pdf
+INV-2026-09-03,C003,2026-09-03,2026-09-17,2026-09-17,document,Payment due within 14 days of invoice date.,SGD,7200,0,7200,Operations support services - September 2026,02_History_PDFs/Invoices/INV-2026-09-03.pdf
+INV-2026-09-04,C004,2026-09-04,,2026-09-30,user,,SGD,4200,0,4200,Retail analytics services - September 2026,02_History_PDFs/Invoices/INV-2026-09-04.pdf
+INV-2026-09-05,C005,2026-09-05,2026-09-19,2026-09-19,document,Payment due within 14 days of invoice date.,SGD,5200,0,5200,Design services - September 2026,02_History_PDFs/Invoices/INV-2026-09-05.pdf
+INV-2026-09-06,C006,2026-09-06,2026-09-20,2026-09-20,document,Payment due within 14 days of invoice date.,SGD,9100,0,9100,Data integration services - September 2026,02_History_PDFs/Invoices/INV-2026-09-06.pdf
+INV-2026-10-01,C001,2026-10-01,2026-10-15,2026-10-15,document,Payment due within 14 days of invoice date.,SGD,6500,0,6500,Business consulting services - October 2026,02_History_PDFs/Invoices/INV-2026-10-01.pdf
+INV-2026-10-02,C002,2026-10-02,2026-10-16,2026-10-16,document,Payment due within 14 days of invoice date.,SGD,10700,0,10700,Software implementation services - October 2026,02_History_PDFs/Invoices/INV-2026-10-02.pdf
+INV-2026-10-03,C003,2026-10-03,2026-10-17,2026-10-17,document,Payment due within 14 days of invoice date.,SGD,7400,0,7400,Operations support services - October 2026,02_History_PDFs/Invoices/INV-2026-10-03.pdf
+INV-2026-10-04,C004,2026-10-04,,,unspecified,,SGD,4350,0,4350,Retail analytics services - October 2026,02_History_PDFs/Invoices/INV-2026-10-04.pdf
+INV-2026-10-05,C005,2026-10-05,2026-10-19,2026-10-19,document,Payment due within 14 days of invoice date.,SGD,5450,0,5450,Design services - October 2026,02_History_PDFs/Invoices/INV-2026-10-05.pdf
+INV-2026-10-06,C006,2026-10-06,2026-11-05,2026-11-05,document,Payment due by 5 November 2026.,SGD,9500,0,9500,Data integration services - October 2026,02_History_PDFs/Invoices/INV-2026-10-06.pdf

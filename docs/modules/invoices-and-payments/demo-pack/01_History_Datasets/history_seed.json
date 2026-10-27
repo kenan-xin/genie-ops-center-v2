@@ -1,0 +1,1079 @@
+{
+  "metadata": {
+    "as_of_date": "2026-10-27",
+    "currency": "SGD",
+    "timezone": "Asia/Singapore",
+    "seller": "Northstar Studio (fictional)",
+    "amount_convention": "Invoice totals; tax_amount is zero for all synthetic records. Not recognised accounting revenue.",
+    "import_order": [
+      "customers",
+      "invoices",
+      "payments",
+      "payment_allocations"
+    ]
+  },
+  "customers": [
+    {
+      "customer_id": "C001",
+      "company_name": "ABC Trading",
+      "email": "accounts.abc@example.com",
+      "currency": "SGD"
+    },
+    {
+      "customer_id": "C002",
+      "company_name": "Apex Digital",
+      "email": "accounts.apex@example.com",
+      "currency": "SGD"
+    },
+    {
+      "customer_id": "C003",
+      "company_name": "Harbor Foods",
+      "email": "finance.harbor@example.com",
+      "currency": "SGD"
+    },
+    {
+      "customer_id": "C004",
+      "company_name": "Orchid Retail",
+      "email": "finance.orchid@example.com",
+      "currency": "SGD"
+    },
+    {
+      "customer_id": "C005",
+      "company_name": "Lumi Design",
+      "email": "accounts.lumi@example.com",
+      "currency": "SGD"
+    },
+    {
+      "customer_id": "C006",
+      "company_name": "Meridian Labs",
+      "email": "accounts.meridian@example.com",
+      "currency": "SGD"
+    }
+  ],
+  "invoices": [
+    {
+      "invoice_id": "INV-2026-05-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-05-01",
+      "document_due_date": "2026-05-15",
+      "due_date": "2026-05-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5000,
+      "tax_amount": 0,
+      "total_amount": 5000,
+      "description": "Business consulting services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-05-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-05-02",
+      "document_due_date": "2026-05-16",
+      "due_date": "2026-05-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 8200,
+      "tax_amount": 0,
+      "total_amount": 8200,
+      "description": "Software implementation services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-05-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-05-03",
+      "document_due_date": "2026-05-17",
+      "due_date": "2026-05-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 6400,
+      "tax_amount": 0,
+      "total_amount": 6400,
+      "description": "Operations support services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-05-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-05-04",
+      "document_due_date": "2026-05-18",
+      "due_date": "2026-05-18",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 3600,
+      "tax_amount": 0,
+      "total_amount": 3600,
+      "description": "Retail analytics services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-05-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-05-05",
+      "document_due_date": "2026-05-19",
+      "due_date": "2026-05-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 4200,
+      "tax_amount": 0,
+      "total_amount": 4200,
+      "description": "Design services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-05-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-05-06",
+      "document_due_date": "2026-05-20",
+      "due_date": "2026-05-20",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 7500,
+      "tax_amount": 0,
+      "total_amount": 7500,
+      "description": "Data integration services - May 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-05-06.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-06-01",
+      "document_due_date": "2026-06-15",
+      "due_date": "2026-06-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5300,
+      "tax_amount": 0,
+      "total_amount": 5300,
+      "description": "Business consulting services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-06-02",
+      "document_due_date": "2026-06-16",
+      "due_date": "2026-06-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 8700,
+      "tax_amount": 0,
+      "total_amount": 8700,
+      "description": "Software implementation services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-06-03",
+      "document_due_date": "2026-06-17",
+      "due_date": "2026-06-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 6600,
+      "tax_amount": 0,
+      "total_amount": 6600,
+      "description": "Operations support services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-06-04",
+      "document_due_date": "2026-06-18",
+      "due_date": "2026-06-18",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 3750,
+      "tax_amount": 0,
+      "total_amount": 3750,
+      "description": "Retail analytics services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-06-05",
+      "document_due_date": "2026-06-19",
+      "due_date": "2026-06-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 4450,
+      "tax_amount": 0,
+      "total_amount": 4450,
+      "description": "Design services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-06-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-06-06",
+      "document_due_date": "2026-06-20",
+      "due_date": "2026-06-20",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 7900,
+      "tax_amount": 0,
+      "total_amount": 7900,
+      "description": "Data integration services - June 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-06-06.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-07-01",
+      "document_due_date": "2026-07-15",
+      "due_date": "2026-07-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5600,
+      "tax_amount": 0,
+      "total_amount": 5600,
+      "description": "Business consulting services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-07-02",
+      "document_due_date": "2026-07-16",
+      "due_date": "2026-07-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 9200,
+      "tax_amount": 0,
+      "total_amount": 9200,
+      "description": "Software implementation services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-07-03",
+      "document_due_date": "2026-07-17",
+      "due_date": "2026-07-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 6800,
+      "tax_amount": 0,
+      "total_amount": 6800,
+      "description": "Operations support services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-07-04",
+      "document_due_date": "2026-07-18",
+      "due_date": "2026-07-18",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 3900,
+      "tax_amount": 0,
+      "total_amount": 3900,
+      "description": "Retail analytics services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-07-05",
+      "document_due_date": "2026-07-19",
+      "due_date": "2026-07-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 4700,
+      "tax_amount": 0,
+      "total_amount": 4700,
+      "description": "Design services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-07-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-07-06",
+      "document_due_date": "2026-07-20",
+      "due_date": "2026-07-20",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 8300,
+      "tax_amount": 0,
+      "total_amount": 8300,
+      "description": "Data integration services - July 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-07-06.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-08-01",
+      "document_due_date": "2026-08-15",
+      "due_date": "2026-08-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5900,
+      "tax_amount": 0,
+      "total_amount": 5900,
+      "description": "Business consulting services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-08-02",
+      "document_due_date": "2026-08-16",
+      "due_date": "2026-08-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 9700,
+      "tax_amount": 0,
+      "total_amount": 9700,
+      "description": "Software implementation services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-08-03",
+      "document_due_date": "2026-08-17",
+      "due_date": "2026-08-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 7000,
+      "tax_amount": 0,
+      "total_amount": 7000,
+      "description": "Operations support services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-08-04",
+      "document_due_date": "2026-08-18",
+      "due_date": "2026-08-18",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 4050,
+      "tax_amount": 0,
+      "total_amount": 4050,
+      "description": "Retail analytics services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-08-05",
+      "document_due_date": "2026-08-19",
+      "due_date": "2026-08-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 4950,
+      "tax_amount": 0,
+      "total_amount": 4950,
+      "description": "Design services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-08-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-08-06",
+      "document_due_date": "2026-08-20",
+      "due_date": "2026-08-20",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 8700,
+      "tax_amount": 0,
+      "total_amount": 8700,
+      "description": "Data integration services - August 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-08-06.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-09-01",
+      "document_due_date": "2026-09-15",
+      "due_date": "2026-09-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 6200,
+      "tax_amount": 0,
+      "total_amount": 6200,
+      "description": "Business consulting services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-09-02",
+      "document_due_date": "2026-09-16",
+      "due_date": "2026-09-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 10200,
+      "tax_amount": 0,
+      "total_amount": 10200,
+      "description": "Software implementation services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-09-03",
+      "document_due_date": "2026-09-17",
+      "due_date": "2026-09-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 7200,
+      "tax_amount": 0,
+      "total_amount": 7200,
+      "description": "Operations support services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-09-04",
+      "document_due_date": null,
+      "due_date": "2026-09-30",
+      "due_date_source": "user",
+      "payment_terms": null,
+      "currency": "SGD",
+      "subtotal": 4200,
+      "tax_amount": 0,
+      "total_amount": 4200,
+      "description": "Retail analytics services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-09-05",
+      "document_due_date": "2026-09-19",
+      "due_date": "2026-09-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5200,
+      "tax_amount": 0,
+      "total_amount": 5200,
+      "description": "Design services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-09-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-09-06",
+      "document_due_date": "2026-09-20",
+      "due_date": "2026-09-20",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 9100,
+      "tax_amount": 0,
+      "total_amount": 9100,
+      "description": "Data integration services - September 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-09-06.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-01",
+      "customer_id": "C001",
+      "invoice_date": "2026-10-01",
+      "document_due_date": "2026-10-15",
+      "due_date": "2026-10-15",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 6500,
+      "tax_amount": 0,
+      "total_amount": 6500,
+      "description": "Business consulting services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-01.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-02",
+      "customer_id": "C002",
+      "invoice_date": "2026-10-02",
+      "document_due_date": "2026-10-16",
+      "due_date": "2026-10-16",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 10700,
+      "tax_amount": 0,
+      "total_amount": 10700,
+      "description": "Software implementation services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-02.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-03",
+      "customer_id": "C003",
+      "invoice_date": "2026-10-03",
+      "document_due_date": "2026-10-17",
+      "due_date": "2026-10-17",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 7400,
+      "tax_amount": 0,
+      "total_amount": 7400,
+      "description": "Operations support services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-03.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-04",
+      "customer_id": "C004",
+      "invoice_date": "2026-10-04",
+      "document_due_date": null,
+      "due_date": null,
+      "due_date_source": "unspecified",
+      "payment_terms": null,
+      "currency": "SGD",
+      "subtotal": 4350,
+      "tax_amount": 0,
+      "total_amount": 4350,
+      "description": "Retail analytics services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-04.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-05",
+      "customer_id": "C005",
+      "invoice_date": "2026-10-05",
+      "document_due_date": "2026-10-19",
+      "due_date": "2026-10-19",
+      "due_date_source": "document",
+      "payment_terms": "Payment due within 14 days of invoice date.",
+      "currency": "SGD",
+      "subtotal": 5450,
+      "tax_amount": 0,
+      "total_amount": 5450,
+      "description": "Design services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-05.pdf"
+    },
+    {
+      "invoice_id": "INV-2026-10-06",
+      "customer_id": "C006",
+      "invoice_date": "2026-10-06",
+      "document_due_date": "2026-11-05",
+      "due_date": "2026-11-05",
+      "due_date_source": "document",
+      "payment_terms": "Payment due by 5 November 2026.",
+      "currency": "SGD",
+      "subtotal": 9500,
+      "tax_amount": 0,
+      "total_amount": 9500,
+      "description": "Data integration services - October 2026",
+      "source_pdf": "02_History_PDFs/Invoices/INV-2026-10-06.pdf"
+    }
+  ],
+  "payments": [
+    {
+      "payment_id": "PAY-2026-001",
+      "customer_id": "C001",
+      "payment_date": "2026-05-22",
+      "currency": "SGD",
+      "amount": 5000,
+      "payment_reference": "TXN-PAY-2026-001",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-001.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-002",
+      "customer_id": "C002",
+      "payment_date": "2026-05-13",
+      "currency": "SGD",
+      "amount": 8200,
+      "payment_reference": "TXN-PAY-2026-002",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-002.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-003",
+      "customer_id": "C003",
+      "payment_date": "2026-05-22",
+      "currency": "SGD",
+      "amount": 6400,
+      "payment_reference": "TXN-PAY-2026-003",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-003.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-004",
+      "customer_id": "C004",
+      "payment_date": "2026-06-07",
+      "currency": "SGD",
+      "amount": 3600,
+      "payment_reference": "TXN-PAY-2026-004",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-004.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-005",
+      "customer_id": "C005",
+      "payment_date": "2026-05-17",
+      "currency": "SGD",
+      "amount": 4200,
+      "payment_reference": "TXN-PAY-2026-005",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-005.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-006",
+      "customer_id": "C006",
+      "payment_date": "2026-05-20",
+      "currency": "SGD",
+      "amount": 7500,
+      "payment_reference": "TXN-PAY-2026-006",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-006.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-007",
+      "customer_id": "C001",
+      "payment_date": "2026-06-25",
+      "currency": "SGD",
+      "amount": 5300,
+      "payment_reference": "TXN-PAY-2026-007",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-007.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-008",
+      "customer_id": "C002",
+      "payment_date": "2026-06-13",
+      "currency": "SGD",
+      "amount": 8700,
+      "payment_reference": "TXN-PAY-2026-008",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-008.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-009",
+      "customer_id": "C003",
+      "payment_date": "2026-06-23",
+      "currency": "SGD",
+      "amount": 6600,
+      "payment_reference": "TXN-PAY-2026-009",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-009.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-010",
+      "customer_id": "C004",
+      "payment_date": "2026-07-08",
+      "currency": "SGD",
+      "amount": 3750,
+      "payment_reference": "TXN-PAY-2026-010",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-010.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-011",
+      "customer_id": "C005",
+      "payment_date": "2026-06-17",
+      "currency": "SGD",
+      "amount": 4450,
+      "payment_reference": "TXN-PAY-2026-011",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-011.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-012",
+      "customer_id": "C006",
+      "payment_date": "2026-06-24",
+      "currency": "SGD",
+      "amount": 7900,
+      "payment_reference": "TXN-PAY-2026-012",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-012.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-013",
+      "customer_id": "C001",
+      "payment_date": "2026-07-15",
+      "currency": "SGD",
+      "amount": 5600,
+      "payment_reference": "TXN-PAY-2026-013",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-013.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-014",
+      "customer_id": "C002",
+      "payment_date": "2026-07-13",
+      "currency": "SGD",
+      "amount": 9200,
+      "payment_reference": "TXN-PAY-2026-014",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-014.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-015",
+      "customer_id": "C003",
+      "payment_date": "2026-07-24",
+      "currency": "SGD",
+      "amount": 6800,
+      "payment_reference": "TXN-PAY-2026-015",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-015.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-016",
+      "customer_id": "C004",
+      "payment_date": "2026-08-07",
+      "currency": "SGD",
+      "amount": 3900,
+      "payment_reference": "TXN-PAY-2026-016",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-016.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-017",
+      "customer_id": "C005",
+      "payment_date": "2026-07-17",
+      "currency": "SGD",
+      "amount": 4700,
+      "payment_reference": "TXN-PAY-2026-017",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-017.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-018",
+      "customer_id": "C006",
+      "payment_date": "2026-07-20",
+      "currency": "SGD",
+      "amount": 8300,
+      "payment_reference": "TXN-PAY-2026-018",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-018.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-019",
+      "customer_id": "C001",
+      "payment_date": "2026-08-27",
+      "currency": "SGD",
+      "amount": 5900,
+      "payment_reference": "TXN-PAY-2026-019",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-019.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-020",
+      "customer_id": "C002",
+      "payment_date": "2026-08-13",
+      "currency": "SGD",
+      "amount": 9700,
+      "payment_reference": "TXN-PAY-2026-020",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-020.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-021",
+      "customer_id": "C003",
+      "payment_date": "2026-08-25",
+      "currency": "SGD",
+      "amount": 7000,
+      "payment_reference": "TXN-PAY-2026-021",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-021.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-022",
+      "customer_id": "C005",
+      "payment_date": "2026-08-17",
+      "currency": "SGD",
+      "amount": 4950,
+      "payment_reference": "TXN-PAY-2026-022",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-022.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-023",
+      "customer_id": "C006",
+      "payment_date": "2026-08-24",
+      "currency": "SGD",
+      "amount": 8700,
+      "payment_reference": "TXN-PAY-2026-023",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-023.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-024",
+      "customer_id": "C001",
+      "payment_date": "2026-09-23",
+      "currency": "SGD",
+      "amount": 6200,
+      "payment_reference": "TXN-PAY-2026-024",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-024.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-025",
+      "customer_id": "C002",
+      "payment_date": "2026-09-13",
+      "currency": "SGD",
+      "amount": 10200,
+      "payment_reference": "TXN-PAY-2026-025",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-025.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-026",
+      "customer_id": "C003",
+      "payment_date": "2026-10-10",
+      "currency": "SGD",
+      "amount": 2000,
+      "payment_reference": "TXN-PAY-2026-026",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-026.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-027",
+      "customer_id": "C005",
+      "payment_date": "2026-09-17",
+      "currency": "SGD",
+      "amount": 5200,
+      "payment_reference": "TXN-PAY-2026-027",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-027.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-028",
+      "customer_id": "C006",
+      "payment_date": "2026-09-20",
+      "currency": "SGD",
+      "amount": 9100,
+      "payment_reference": "TXN-PAY-2026-028",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-028.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-029",
+      "customer_id": "C002",
+      "payment_date": "2026-10-13",
+      "currency": "SGD",
+      "amount": 10700,
+      "payment_reference": "TXN-PAY-2026-029",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-029.pdf"
+    },
+    {
+      "payment_id": "PAY-2026-030",
+      "customer_id": "C005",
+      "payment_date": "2026-10-16",
+      "currency": "SGD",
+      "amount": 5450,
+      "payment_reference": "TXN-PAY-2026-030",
+      "method": "Bank transfer",
+      "source_pdf": "02_History_PDFs/Payments/PAY-2026-030.pdf"
+    }
+  ],
+  "payment_allocations": [
+    {
+      "allocation_id": "AL-001",
+      "payment_id": "PAY-2026-001",
+      "invoice_id": "INV-2026-05-01",
+      "allocated_amount": 5000
+    },
+    {
+      "allocation_id": "AL-002",
+      "payment_id": "PAY-2026-002",
+      "invoice_id": "INV-2026-05-02",
+      "allocated_amount": 8200
+    },
+    {
+      "allocation_id": "AL-003",
+      "payment_id": "PAY-2026-003",
+      "invoice_id": "INV-2026-05-03",
+      "allocated_amount": 6400
+    },
+    {
+      "allocation_id": "AL-004",
+      "payment_id": "PAY-2026-004",
+      "invoice_id": "INV-2026-05-04",
+      "allocated_amount": 3600
+    },
+    {
+      "allocation_id": "AL-005",
+      "payment_id": "PAY-2026-005",
+      "invoice_id": "INV-2026-05-05",
+      "allocated_amount": 4200
+    },
+    {
+      "allocation_id": "AL-006",
+      "payment_id": "PAY-2026-006",
+      "invoice_id": "INV-2026-05-06",
+      "allocated_amount": 7500
+    },
+    {
+      "allocation_id": "AL-007",
+      "payment_id": "PAY-2026-007",
+      "invoice_id": "INV-2026-06-01",
+      "allocated_amount": 5300
+    },
+    {
+      "allocation_id": "AL-008",
+      "payment_id": "PAY-2026-008",
+      "invoice_id": "INV-2026-06-02",
+      "allocated_amount": 8700
+    },
+    {
+      "allocation_id": "AL-009",
+      "payment_id": "PAY-2026-009",
+      "invoice_id": "INV-2026-06-03",
+      "allocated_amount": 6600
+    },
+    {
+      "allocation_id": "AL-010",
+      "payment_id": "PAY-2026-010",
+      "invoice_id": "INV-2026-06-04",
+      "allocated_amount": 3750
+    },
+    {
+      "allocation_id": "AL-011",
+      "payment_id": "PAY-2026-011",
+      "invoice_id": "INV-2026-06-05",
+      "allocated_amount": 4450
+    },
+    {
+      "allocation_id": "AL-012",
+      "payment_id": "PAY-2026-012",
+      "invoice_id": "INV-2026-06-06",
+      "allocated_amount": 7900
+    },
+    {
+      "allocation_id": "AL-013",
+      "payment_id": "PAY-2026-013",
+      "invoice_id": "INV-2026-07-01",
+      "allocated_amount": 5600
+    },
+    {
+      "allocation_id": "AL-014",
+      "payment_id": "PAY-2026-014",
+      "invoice_id": "INV-2026-07-02",
+      "allocated_amount": 9200
+    },
+    {
+      "allocation_id": "AL-015",
+      "payment_id": "PAY-2026-015",
+      "invoice_id": "INV-2026-07-03",
+      "allocated_amount": 6800
+    },
+    {
+      "allocation_id": "AL-016",
+      "payment_id": "PAY-2026-016",
+      "invoice_id": "INV-2026-07-04",
+      "allocated_amount": 3900
+    },
+    {
+      "allocation_id": "AL-017",
+      "payment_id": "PAY-2026-017",
+      "invoice_id": "INV-2026-07-05",
+      "allocated_amount": 4700
+    },
+    {
+      "allocation_id": "AL-018",
+      "payment_id": "PAY-2026-018",
+      "invoice_id": "INV-2026-07-06",
+      "allocated_amount": 8300
+    },
+    {
+      "allocation_id": "AL-019",
+      "payment_id": "PAY-2026-019",
+      "invoice_id": "INV-2026-08-01",
+      "allocated_amount": 5900
+    },
+    {
+      "allocation_id": "AL-020",
+      "payment_id": "PAY-2026-020",
+      "invoice_id": "INV-2026-08-02",
+      "allocated_amount": 9700
+    },
+    {
+      "allocation_id": "AL-021",
+      "payment_id": "PAY-2026-021",
+      "invoice_id": "INV-2026-08-03",
+      "allocated_amount": 7000
+    },
+    {
+      "allocation_id": "AL-022",
+      "payment_id": "PAY-2026-022",
+      "invoice_id": "INV-2026-08-05",
+      "allocated_amount": 4950
+    },
+    {
+      "allocation_id": "AL-023",
+      "payment_id": "PAY-2026-023",
+      "invoice_id": "INV-2026-08-06",
+      "allocated_amount": 8700
+    },
+    {
+      "allocation_id": "AL-024",
+      "payment_id": "PAY-2026-024",
+      "invoice_id": "INV-2026-09-01",
+      "allocated_amount": 6200
+    },
+    {
+      "allocation_id": "AL-025",
+      "payment_id": "PAY-2026-025",
+      "invoice_id": "INV-2026-09-02",
+      "allocated_amount": 10200
+    },
+    {
+      "allocation_id": "AL-026",
+      "payment_id": "PAY-2026-026",
+      "invoice_id": "INV-2026-09-03",
+      "allocated_amount": 2000
+    },
+    {
+      "allocation_id": "AL-027",
+      "payment_id": "PAY-2026-027",
+      "invoice_id": "INV-2026-09-05",
+      "allocated_amount": 5200
+    },
+    {
+      "allocation_id": "AL-028",
+      "payment_id": "PAY-2026-028",
+      "invoice_id": "INV-2026-09-06",
+      "allocated_amount": 9100
+    },
+    {
+      "allocation_id": "AL-029",
+      "payment_id": "PAY-2026-029",
+      "invoice_id": "INV-2026-10-02",
+      "allocated_amount": 10700
+    },
+    {
+      "allocation_id": "AL-030",
+      "payment_id": "PAY-2026-030",
+      "invoice_id": "INV-2026-10-05",
+      "allocated_amount": 5450
+    }
+  ]
+}

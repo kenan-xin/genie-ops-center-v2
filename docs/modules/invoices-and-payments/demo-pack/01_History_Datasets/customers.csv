@@ -1,0 +1,7 @@
+customer_id,company_name,email,currency
+C001,ABC Trading,accounts.abc@example.com,SGD
+C002,Apex Digital,accounts.apex@example.com,SGD
+C003,Harbor Foods,finance.harbor@example.com,SGD
+C004,Orchid Retail,finance.orchid@example.com,SGD
+C005,Lumi Design,accounts.lumi@example.com,SGD
+C006,Meridian Labs,accounts.meridian@example.com,SGD

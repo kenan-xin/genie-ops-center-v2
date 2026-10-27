@@ -1,0 +1,74 @@
+{
+  "new_invoice": {
+    "invoice_id": "INV-LIVE-001",
+    "customer_id": "C001",
+    "invoice_date": "2026-10-26",
+    "document_due_date": null,
+    "due_date": null,
+    "due_date_source": "unspecified",
+    "payment_terms": null,
+    "currency": "SGD",
+    "subtotal": 5000,
+    "tax_amount": 0,
+    "total_amount": 5000,
+    "description": "Additional consulting project - October 2026",
+    "source_pdf": "03_Live_Upload_Documents/01_Invoice_Missing_Due_Date.pdf"
+  },
+  "new_payments": [
+    {
+      "payment_id": "PAY-LIVE-001",
+      "customer_id": "C003",
+      "payment_date": "2026-10-26",
+      "currency": "SGD",
+      "amount": 3000,
+      "payment_reference": "HF-SEP-FINAL-PART",
+      "method": "Bank transfer",
+      "source_pdf": "03_Live_Upload_Documents/02_Payment_Partial_Existing_Invoice.pdf"
+    },
+    {
+      "payment_id": "PAY-LIVE-002",
+      "customer_id": "C004",
+      "payment_date": "2026-10-27",
+      "currency": "SGD",
+      "amount": 8250,
+      "payment_reference": "OR-AUG-SEP-BUNDLE",
+      "method": "Bank transfer",
+      "source_pdf": "03_Live_Upload_Documents/03_Payment_Covers_Two_Invoices.pdf"
+    },
+    {
+      "payment_id": "PAY-LIVE-003",
+      "customer_id": "C006",
+      "payment_date": "2026-10-27",
+      "currency": "SGD",
+      "amount": 2222,
+      "payment_reference": "ML-UNREFERENCED",
+      "method": "Bank transfer",
+      "source_pdf": "03_Live_Upload_Documents/05_Payment_Unmatched.pdf"
+    }
+  ],
+  "new_allocations": [
+    {
+      "payment_id": "PAY-LIVE-001",
+      "invoice_id": "INV-2026-09-03",
+      "allocated_amount": 3000
+    },
+    {
+      "payment_id": "PAY-LIVE-002",
+      "invoice_id": "INV-2026-08-04",
+      "allocated_amount": 4050
+    },
+    {
+      "payment_id": "PAY-LIVE-002",
+      "invoice_id": "INV-2026-09-04",
+      "allocated_amount": 4200
+    }
+  ],
+  "paid_receipt": {
+    "receipt_id": "RCPT-LIVE-001",
+    "customer_id": "C005",
+    "date": "2026-10-27",
+    "amount": 1800,
+    "currency": "SGD",
+    "status": "paid"
+  }
+}

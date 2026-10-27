@@ -1,0 +1,76 @@
+{
+  "history_seed_excludes_these_documents": true,
+  "upload_in_numbered_order": true,
+  "scenarios": [
+    {
+      "file": "01_Invoice_Missing_Due_Date.pdf",
+      "expected": "Extract invoice INV-LIVE-001 for ABC Trading, SGD 5,000, dated 2026-10-26. Due date and payment terms must remain blank. Ask user to enter 2026-11-25 for the walkthrough. Save as unpaid/open, not overdue.",
+      "changes": {
+        "invoiced_sales": 5000,
+        "outstanding": 5000,
+        "payments_collected": 0,
+        "overdue": 0
+      }
+    },
+    {
+      "file": "02_Payment_Partial_Existing_Invoice.pdf",
+      "expected": "Match Harbor Foods payment of SGD 3,000 to INV-2026-09-03. Previous payment is SGD 2,000. Invoice total SGD 7,200; remaining SGD 2,200.",
+      "changes": {
+        "invoiced_sales": 0,
+        "payments_collected": 3000,
+        "outstanding": -3000,
+        "overdue": -3000
+      }
+    },
+    {
+      "file": "03_Payment_Covers_Two_Invoices.pdf",
+      "expected": "One SGD 8,250 Orchid Retail payment covers INV-2026-08-04 (4,050) and INV-2026-09-04 (4,200). Confirm allocations. Both settle late. Do not create two payments of 8,250.",
+      "changes": {
+        "invoiced_sales": 0,
+        "payments_collected": 8250,
+        "outstanding": -8250,
+        "overdue": -8250
+      }
+    },
+    {
+      "file": "04_Duplicate_of_Partial_Payment.pdf",
+      "expected": "Byte-for-byte duplicate of document 02. Do not create a second payment or reduce the balance again.",
+      "changes": {
+        "invoiced_sales": 0,
+        "payments_collected": 0,
+        "outstanding": 0,
+        "overdue": 0
+      }
+    },
+    {
+      "file": "05_Payment_Unmatched.pdf",
+      "expected": "Meridian Labs SGD 2,222 payment; no invoice reference, and no exact amount match. Keep unallocated. Recorded collections increase after user confirms evidence, but invoice outstanding balances do not change until allocated.",
+      "changes": {
+        "invoiced_sales": 0,
+        "payments_collected": 2222,
+        "outstanding": 0,
+        "overdue": 0
+      }
+    },
+    {
+      "file": "06_Paid_Sales_Receipt.pdf",
+      "expected": "Lumi Design paid sales receipt for SGD 1,800. Create one standalone sale and one corresponding payment if your model supports receipts. If invoices-only, represent it as one paid sales record with a shared receipt reference; never count the sale twice.",
+      "changes": {
+        "invoiced_sales": 1800,
+        "payments_collected": 1800,
+        "outstanding": 0,
+        "overdue": 0
+      }
+    },
+    {
+      "file": "07_Purchase_Order_Not_Proof_of_Payment.pdf",
+      "expected": "Supporting order document only. Does not establish an invoice or completed payment. No financial KPI changes.",
+      "changes": {
+        "invoiced_sales": 0,
+        "payments_collected": 0,
+        "outstanding": 0,
+        "overdue": 0
+      }
+    }
+  ]
+}

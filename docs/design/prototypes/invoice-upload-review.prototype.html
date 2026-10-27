@@ -1,0 +1,287 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway. Question: what should the invoice upload and completion screens look like?
+     Three variants of one flow (upload INV-LIVE-001, complete the missing due date, save as unpaid), switchable via ?variant=A|B|C.
+     Data: fictional demo pack, live upload 01. In-memory state only. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: invoice upload and completion</title>
+<style>
+  :root{--primary:#2563eb;--info:#eff6ff;--page:#fff;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--ctl:#d1d5db;--muted:#6b7280;--sec:#4b5563;--head:#111827;--ok:#047857;--okt:#ecfdf5;--warn:#92400e;--warnt:#fffbeb;--dang:#b91c1c;--dangt:#fef2f2}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 "Plus Jakarta Sans",system-ui,sans-serif;color:var(--head);background:var(--page)}
+  .shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+  nav{background:var(--panel);border-right:1px solid var(--hair);padding:16px 12px}
+  nav .brand{font-weight:700;margin:0 8px 16px}
+  nav a{display:block;padding:6px 8px;border-radius:6px;color:var(--sec);text-decoration:none}
+  nav a.on{background:var(--tile);color:var(--head);font-weight:600}
+  nav .grp{font-size:12px;color:var(--muted);margin:14px 8px 4px}
+  main{padding:20px 28px 90px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--sec);margin:0 0 18px}
+  .btn{border:1px solid var(--ctl);background:#fff;border-radius:6px;padding:6px 12px;font:inherit;cursor:pointer}
+  .btn.pri{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--tile);color:var(--sec);white-space:nowrap}
+  .pill.ok{background:var(--okt);color:var(--ok)} .pill.warn{background:var(--warnt);color:var(--warn)} .pill.info{background:var(--info);color:var(--primary)} .pill.dang{background:var(--dangt);color:var(--dang)}
+  .card{border:1px solid var(--hair);border-radius:8px;background:#fff}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  input,select{font:inherit;border:1px solid #6b7280;border-radius:6px;padding:5px 8px;background:#fff}
+  /* document mock */
+  .doc{background:#fff;border:1px solid var(--ctl);box-shadow:0 1px 3px #0001;padding:28px 30px;font-size:12.5px;line-height:1.7;position:relative}
+  .doc .h{font-weight:700;font-size:15px}
+  .doc .row{display:flex;justify-content:space-between}
+  .doc mark{background:transparent;border-radius:3px;outline:2px solid transparent;transition:.15s}
+  .doc mark.hl{background:#fef08a;outline-color:#eab308}
+  .doc .stamp{position:absolute;top:8px;right:10px;font-size:10px;color:var(--muted)}
+  /* field list */
+  .field{display:grid;grid-template-columns:130px 1fr;gap:4px 12px;padding:10px 12px;border-bottom:1px solid var(--hair);cursor:pointer}
+  .field:last-child{border-bottom:0}
+  .field:hover,.field.sel{background:var(--panel)}
+  .field .lbl{color:var(--sec)}
+  .field .val{font-weight:600}
+  .field .src{grid-column:2;font-size:12px;color:var(--muted)}
+  .field .src q{font-style:italic}
+  .check{border-left:3px solid #d97706;background:var(--warnt)}
+  .check:hover{background:var(--warnt)}
+  .choice{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .choice label{display:flex;gap:8px;align-items:center}
+  /* switcher + state */
+  #switcher{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;border-radius:999px;padding:6px 8px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 14px #0004;z-index:50;font-size:13px}
+  #switcher button{background:#374151;color:#fff;border:0;border-radius:999px;width:28px;height:28px;cursor:pointer}
+  #state{position:fixed;bottom:16px;left:16px;width:300px;max-height:40vh;overflow:auto;background:#0b1220;color:#a7f3d0;font:11px/1.4 ui-monospace,monospace;padding:8px 10px;border-radius:8px;z-index:40;white-space:pre}
+  #state b{color:#fff}
+  /* variant B */
+  .drop{border:2px dashed var(--ctl);border-radius:8px;padding:14px;text-align:center;color:var(--sec);margin-bottom:14px}
+  table{border-collapse:collapse;width:100%}
+  th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--hair)}
+  td{padding:9px 10px;border-bottom:1px solid var(--hair)}
+  tr.click{cursor:pointer} tr.click:hover,tr.sel{background:var(--panel)}
+  .sheet{position:fixed;top:0;right:0;bottom:0;width:440px;background:#fff;border-left:1px solid var(--hair);box-shadow:-6px 0 20px #0001;padding:18px 20px 80px;overflow:auto;z-index:30}
+  .steps{display:flex;gap:6px;margin:10px 0 14px}
+  .steps span{flex:1;font-size:12px;padding:4px 6px;border-radius:6px;background:var(--tile);color:var(--muted);text-align:center}
+  .steps span.on{background:var(--info);color:var(--primary);font-weight:600}
+  .steps span.done{background:var(--okt);color:var(--ok)}
+  /* variant C */
+  .chat{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .msg{max-width:85%}
+  .msg.me{align-self:flex-end;background:var(--info);padding:8px 12px;border-radius:10px}
+  .msg.bot{align-self:flex-start}
+  .attach{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--hair);border-radius:8px;padding:6px 10px;background:#fff}
+  .composer{position:sticky;bottom:70px;margin-top:20px;display:flex;gap:8px;border:1px solid var(--ctl);border-radius:10px;padding:8px;background:#fff}
+  .composer input{flex:1;border:0;outline:0}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav>
+    <div class="brand">Ops Center</div>
+    <div class="grp">Invoices and Payments</div>
+    <a class="on" href="#">Documents</a>
+    <a href="#">Invoices</a>
+    <a href="#">Payments</a>
+    <div class="grp">Insights</div>
+    <a href="#">Ask</a>
+    <a href="#">Dashboards</a>
+    <a href="#">Slides</a>
+  </nav>
+  <main id="app"></main>
+</div>
+<div id="state"></div>
+<div id="switcher"><button id="prev" aria-label="Previous variant">&larr;</button><span id="vlabel"></span><button id="next" aria-label="Next variant">&rarr;</button></div>
+
+<script>
+const VARIANTS = { A: "Split review beside the document", B: "Upload inbox with a review sheet", C: "Upload inside the chat", D: "RECOMMENDED: inbox, then split review, source only on the selected field", E: "Inbox, then split review, no source at all" };
+const KEYS = Object.keys(VARIANTS);
+
+// One draft record, shared by every variant. Each field keeps its value, origin and the quoted source text.
+function freshDraft() {
+  return {
+    type: "Invoice",
+    status: "draft",
+    fields: {
+      customer:  { label: "Customer",       value: "ABC Trading",   origin: "extracted", quote: "Bill to: ABC Trading", page: 1, span: "s-cust" },
+      number:    { label: "Invoice number", value: "INV-LIVE-001",  origin: "extracted", quote: "Invoice number INV-LIVE-001", page: 1, span: "s-num" },
+      date:      { label: "Invoice date",   value: "2026-10-26",    origin: "extracted", quote: "Invoice date 2026-10-26", page: 1, span: "s-date" },
+      amount:    { label: "Total",          value: "5,000.00",      origin: "extracted", quote: "TOTAL (SGD) 5,000.00", page: 1, span: "s-total" },
+      currency:  { label: "Currency",       value: "SGD",           origin: "extracted", quote: "Currency: SGD", page: 1, span: "s-cur" },
+      due:       { label: "Due date",       value: null,            origin: "missing",   quote: null },
+      terms:     { label: "Payment terms",  value: null,            origin: "missing",   quote: null },
+    },
+    dueChoice: null, // "date" | "unspecified"
+  };
+}
+let draft = freshDraft();
+let selected = null;
+let ui = { sheetRow: null, step: 1, chat: 0 };
+
+const ORIGIN = { extracted: ["info", "Extracted"], entered: ["ok", "Entered by you"], corrected: ["warn", "Corrected by you"], missing: ["warn", "Check this"], unspecified: ["", "Unspecified"] };
+const pill = (o) => `<span class="pill ${ORIGIN[o][0]}">${ORIGIN[o][1]}</span>`;
+const canSave = () => draft.dueChoice === "unspecified" || (draft.dueChoice === "date" && draft.fields.due.value);
+const outstanding = () => 41200 + (draft.status === "unpaid" ? 5000 : 0);
+
+function docHtml() {
+  return `<div class="doc" id="doc"><span class="stamp">page 1 of 1</span>
+    <div class="small muted">FICTIONAL DEMO DOCUMENT</div>
+    <div class="h">CUSTOMER INVOICE</div><div>NORTHSTAR STUDIO (DEMO)</div>
+    <div class="small muted">Singapore | <mark id="s-cur">Currency: SGD</mark></div><br>
+    <div><mark id="s-cust">Bill to: ABC Trading</mark></div><br>
+    <div class="row"><mark id="s-num"><span>Invoice number</span>&nbsp;&nbsp;&nbsp;<b>INV-LIVE-001</b></mark></div>
+    <div class="row"><mark id="s-date"><span>Invoice date</span>&nbsp;&nbsp;&nbsp;<b>2026-10-26</b></mark></div>
+    <div class="row"><span>Subtotal</span><span>SGD 5,000.00</span></div>
+    <div class="row"><span>Tax</span><span>SGD 0.00</span></div><br>
+    <div class="small muted">DESCRIPTION</div><div>Additional consulting project - October 2026</div><br>
+    <div class="row"><mark id="s-total"><b>TOTAL (SGD)&nbsp;&nbsp;&nbsp;5,000.00</b></mark></div><br>
+    <div class="small muted">Please quote the invoice reference in correspondence.</div></div>`;
+}
+
+// srcMode: "inline" = source under every field, "onselect" = only under the selected field, "none" = never.
+function fieldRows(compact, srcMode = "inline") {
+  return Object.entries(draft.fields).map(([k, f]) => {
+    if (k === "due") return dueRow(compact);
+    const origin = f.origin;
+    const val = f.value ?? `<span class="muted">Not on the document</span>`;
+    const show = srcMode === "inline" || (srcMode === "onselect" && selected === k);
+    const src = !show ? "" : f.quote ? `<div class="src">Found on page ${f.page}, highlighted on the document: <q>${f.quote}</q></div>`
+      : `<div class="src">Not on the document. Left blank; the system does not invent terms.</div>`;
+    return `<div class="field ${selected === k ? "sel" : ""} ${origin === "missing" ? "" : ""}" data-k="${k}">
+      <div class="lbl">${f.label}</div><div><span class="val" ${f.value ? `contenteditable data-edit="${k}"` : ""}>${val}</span> ${pill(origin === "missing" && k === "terms" ? "unspecified" : origin)}</div>${src}</div>`;
+  }).join("");
+}
+
+function dueRow() {
+  const f = draft.fields.due;
+  const done = canSave();
+  return `<div class="field ${done ? "" : "check"}" data-k="due">
+    <div class="lbl">Due date</div>
+    <div>${done ? `<span class="val">${draft.dueChoice === "date" ? f.value : "Unspecified"}</span> ${pill(draft.dueChoice === "date" ? "entered" : "unspecified")}` : pill("missing")}
+      <div class="small muted">The document states no due date and no payment terms. Choose one:</div>
+      <div class="choice">
+        <label><input type="radio" name="due" value="date" ${draft.dueChoice === "date" ? "checked" : ""}> Enter a due date <input type="date" id="dueinput" value="${f.value ?? ""}"></label>
+        <label><input type="radio" name="due" value="unspecified" ${draft.dueChoice === "unspecified" ? "checked" : ""}> Mark as unspecified <span class="small muted">(counts in outstanding, never overdue)</span></label>
+      </div></div></div>`;
+}
+
+function savedBanner() {
+  const due = draft.dueChoice === "date" ? `due ${draft.fields.due.value}` : "no due date";
+  return `<div class="card" style="padding:12px 14px;border-color:#a7f3d0;background:var(--okt)"><b>INV-LIVE-001 saved as unpaid</b>, ${due}. Not overdue.
+    Outstanding is now <b>SGD ${outstanding().toLocaleString()}</b> (was 41,200). <a href="#" id="reset">Start again</a></div>`;
+}
+
+// ---------- Variant A: split review beside the document ----------
+function A(srcMode = "inline", back = "") {
+  if (draft.status === "unpaid") return `${back}<h1>Invoice INV-LIVE-001</h1><p class="sub">ABC Trading · SGD 5,000.00</p>${savedBanner()}`;
+  const hint = srcMode === "none" ? "" : " · click a field to see where it came from";
+  return `${back}<h1>Review the invoice</h1><p class="sub">01_Invoice_Missing_Due_Date.pdf · classified as <span class="pill info">Invoice</span>${hint}</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+    <div>${docHtml()}</div>
+    <div><div class="card">${fieldRows(false, srcMode)}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn">Discard</button><button class="btn pri" id="save" ${canSave() ? "" : "disabled"}>Save as unpaid</button></div>
+      ${canSave() ? "" : `<p class="small muted" style="text-align:right">Choose a due date or mark it unspecified to save.</p>`}</div>
+  </div>`;
+}
+
+// ---------- Variant B: upload inbox with a review sheet ----------
+const INBOX = [
+  { f: "01_Invoice_Missing_Due_Date.pdf", t: ["info", "Invoice"], s: ["warn", "Needs your input"], who: "ABC Trading · SGD 5,000.00", live: true },
+  { f: "02_Payment_Partial_Existing_Invoice.pdf", t: ["", "Payment evidence"], s: ["ok", "Linked automatically"], who: "Harbor Foods · SGD 3,000.00 → INV-2026-09-03" },
+  { f: "03_Payment_Covers_Two_Invoices.pdf", t: ["", "Payment evidence"], s: ["warn", "Confirm the split"], who: "Orchid Retail · SGD 8,250.00 → 2 invoices" },
+  { f: "04_Duplicate_of_Partial_Payment.pdf", t: ["", "Payment evidence"], s: ["", "Duplicate, nothing added"], who: "Same file as 02" },
+  { f: "05_Payment_Unmatched.pdf", t: ["", "Payment evidence"], s: ["warn", "No matching invoice"], who: "Meridian Labs · SGD 2,222.00" },
+  { f: "06_Paid_Sales_Receipt.pdf", t: ["ok", "Paid receipt"], s: ["warn", "Needs your input"], who: "Lumi Design · SGD 1,800.00" },
+  { f: "07_Purchase_Order_Not_Proof_of_Payment.pdf", t: ["", "Purchase order"], s: ["", "Kept as a reference"], who: "No figure changes" },
+];
+function B() {
+  const rows = INBOX.map((d, i) => {
+    const s = d.live && draft.status === "unpaid" ? ["ok", "Saved as unpaid"] : d.s;
+    return `<tr class="click ${ui.sheetRow === i ? "sel" : ""}" data-row="${i}"><td>${d.f}</td><td><span class="pill ${d.t[0]}">${d.t[1]}</span></td><td>${d.who}</td><td><span class="pill ${s[0]}">${s[1]}</span></td></tr>`;
+  }).join("");
+  const sheet = ui.sheetRow === 0 ? sheetB() : ui.sheetRow !== null ? `<div class="sheet"><button class="btn" id="close">Close</button><p class="muted" style="margin-top:16px">Only document 01 is mocked in this prototype.</p></div>` : "";
+  return `<h1>Documents</h1><p class="sub">Drop invoices, receipts and payment evidence in any order. Each one is read, classified and matched.</p>
+    <div class="drop">Drop files here or <a href="#">choose files</a> · 7 uploaded just now</div>
+    <div class="card"><table><thead><tr><th>Document</th><th>Type</th><th>What we found</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>${sheet}`;
+}
+function sheetB() {
+  if (draft.status === "unpaid") return `<div class="sheet"><button class="btn" id="close">Close</button><div style="margin-top:14px">${savedBanner()}</div></div>`;
+  const st = (n) => (ui.step === n ? "on" : ui.step > n ? "done" : "");
+  let body;
+  if (ui.step === 1) body = `<div class="card">${fieldRows(true).replace(/<div class="field[^"]*" data-k="due">[\s\S]*?<\/div><\/div><\/div>/, "")}</div>
+      <p class="small muted">Click a field to open the document at its source.</p>
+      <div style="text-align:right;margin-top:10px"><button class="btn pri" id="stepnext">Fields are right</button></div>`;
+  else body = `<div class="card">${dueRow()}</div><div style="display:flex;justify-content:space-between;margin-top:12px"><button class="btn" id="stepback">Back</button><button class="btn pri" id="save" ${canSave() ? "" : "disabled"}>Save as unpaid</button></div>`;
+  return `<div class="sheet"><div style="display:flex;justify-content:space-between;align-items:center"><b>INV-LIVE-001</b><button class="btn" id="close">Close</button></div>
+    <div class="steps"><span class="${st(1)}">1 Check fields</span><span class="${st(2)}">2 Due date</span><span class="">3 Saved</span></div>${body}</div>`;
+}
+
+// ---------- Variants D and E: inbox first, the full split review when a document is opened ----------
+function inboxThenReview(srcMode) {
+  if (ui.review) return A(srcMode, `<p><a href="#" id="backinbox">← Documents</a></p>`);
+  const saved = ui.sheetRow; ui.sheetRow = null;
+  const html = B().replace(/<div class="sheet">[\s\S]*$/, "");
+  ui.sheetRow = saved;
+  return html + `<p class="small muted" style="margin-top:10px">Click the first row to open its review.</p>`;
+}
+const D = () => inboxThenReview("onselect");
+const E = () => inboxThenReview("none");
+
+// ---------- Variant C: upload inside the chat ----------
+function C() {
+  const f = draft.fields;
+  const extract = `<div class="card" style="padding:4px 0">${["customer", "number", "date", "amount"].map((k) => `<div class="field" data-k="${k}"><div class="lbl">${f[k].label}</div><div><span class="val">${f[k].value}</span> ${pill(f[k].origin)}</div><div class="src">p.1: <q>${f[k].quote}</q></div></div>`).join("")}</div>`;
+  const q = draft.status === "unpaid" ? "" : `<div class="msg bot"><div class="card check" style="padding:10px 12px">${pill("missing")} <b>The invoice has no due date and no payment terms.</b> I will not guess one.
+      <div class="choice"><label><input type="radio" name="due" value="date" ${draft.dueChoice === "date" ? "checked" : ""}> Due on <input type="date" id="dueinput" value="${f.due.value ?? ""}"></label>
+      <label><input type="radio" name="due" value="unspecified" ${draft.dueChoice === "unspecified" ? "checked" : ""}> Keep it unspecified</label></div>
+      <div style="margin-top:8px"><button class="btn pri" id="save" ${canSave() ? "" : "disabled"}>Save as unpaid</button></div></div></div>`;
+  const done = draft.status === "unpaid" ? `<div class="msg bot">${savedBanner()}</div>` : "";
+  return `<div class="chat"><h1>Ask</h1>
+    <div class="msg me"><span class="attach">📄 01_Invoice_Missing_Due_Date.pdf</span><div style="margin-top:6px">Record this invoice.</div></div>
+    <div class="msg bot">This is an <span class="pill info">Invoice</span> from <b>ABC Trading</b>. Here is what I read, with where each value came from:${extract}</div>
+    ${q}${done}
+    <div class="composer"><span>📎</span><input placeholder="Ask about invoices and payments, or drop a document"><button class="btn pri">Send</button></div></div>`;
+}
+
+// ---------- wiring ----------
+const params = new URLSearchParams(location.search);
+let v = KEYS.includes(params.get("variant")) ? params.get("variant") : "A";
+function go(nv) { v = nv; params.set("variant", v); history.replaceState(null, "", "?" + params); render(); }
+function render() {
+  document.getElementById("app").innerHTML = { A: () => A(), B, C, D, E }[v]();
+  document.getElementById("vlabel").textContent = `${v} (${VARIANTS[v]})`;
+  document.getElementById("state").innerHTML = "<b>record state</b>\n" + JSON.stringify({ variant: v, status: draft.status, dueChoice: draft.dueChoice,
+    fields: Object.fromEntries(Object.entries(draft.fields).map(([k, f]) => [k, `${f.value ?? "null"} (${f.origin})`])), outstanding_sgd: outstanding() }, null, 1);
+  if (v !== "E" && selected && draft.fields[selected]?.span) document.getElementById(draft.fields[selected].span)?.classList.add("hl");
+}
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.id === "prev") return go(KEYS[(KEYS.indexOf(v) + KEYS.length - 1) % KEYS.length]);
+  if (t.id === "next") return go(KEYS[(KEYS.indexOf(v) + 1) % KEYS.length]);
+  if (t.id === "save") { draft.status = "unpaid"; return render(); }
+  if (t.id === "reset") { e.preventDefault(); draft = freshDraft(); ui = { sheetRow: null, step: 1 }; selected = null; return render(); }
+  if (t.id === "close") { ui.sheetRow = null; return render(); }
+  if (t.id === "stepnext") { ui.step = 2; return render(); }
+  if (t.id === "stepback") { ui.step = 1; return render(); }
+  if (t.id === "backinbox") { e.preventDefault(); ui.review = false; return render(); }
+  const row = t.closest("tr[data-row]");
+  if (row && (v === "D" || v === "E")) { if (row.dataset.row === "0") { ui.review = true; selected = null; } return render(); }
+  if (row) { ui.sheetRow = +row.dataset.row; ui.step = 1; return render(); }
+  const fld = t.closest(".field[data-k]"); if (fld && !t.matches("input,[contenteditable]")) { selected = fld.dataset.k; render(); }
+});
+document.addEventListener("change", (e) => {
+  if (e.target.name === "due") { draft.dueChoice = e.target.value; if (draft.dueChoice === "date") { draft.fields.due.origin = "entered"; } render(); }
+  if (e.target.id === "dueinput") { draft.dueChoice = "date"; draft.fields.due.value = e.target.value || null; draft.fields.due.origin = "entered"; render(); }
+});
+document.addEventListener("focusout", (e) => {
+  const k = e.target.dataset?.edit; if (!k) return;
+  const nv = e.target.textContent.trim(); const f = draft.fields[k];
+  if (nv !== f.value) { f.value = nv; f.origin = "corrected"; render(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input,textarea,[contenteditable]")) return;
+  if (e.key === "ArrowLeft") document.getElementById("prev").click();
+  if (e.key === "ArrowRight") document.getElementById("next").click();
+});
+render();
+</script>
+</body>
+</html>

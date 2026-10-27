@@ -6,6 +6,8 @@ Open [Module and solution access](module-access.prototype.html) directly in a br
 
 Superseded on 2026-09-18. The product owner asked for one central access screen, and the design tree now carries it. This prototype is kept as the record of the experiment that led there. Read the canonical designs below, not this file.
 
+Open [Invoice upload and review](invoice-upload-review.prototype.html) directly in a browser. It holds five variants of the upload and completion screens, switched by `?variant=`. The owner chose variant D on 2026-10-27; the others are kept as the record of the comparison. Its data is the fictional demo pack.
+
 Canonical designs:
 
 - [Access](../sections/access/spec.md): the one screen that writes a role assignment, and the read-only Overview of who reaches what.

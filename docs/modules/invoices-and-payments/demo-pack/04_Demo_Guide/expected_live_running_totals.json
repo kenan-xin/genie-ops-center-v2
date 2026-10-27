@@ -1,0 +1,54 @@
+{
+  "note": "Assumes numbered order, new invoice due date entered as 2026-11-25, receipt represented as a single paid sale, and unmatched payment recorded as unallocated. Totals cover all months.",
+  "steps": [
+    {
+      "after_upload": "01_Invoice_Missing_Due_Date.pdf",
+      "total_invoiced_sales": 241400,
+      "total_collected": 195200,
+      "outstanding": 46200,
+      "overdue": 27350
+    },
+    {
+      "after_upload": "02_Payment_Partial_Existing_Invoice.pdf",
+      "total_invoiced_sales": 241400,
+      "total_collected": 198200,
+      "outstanding": 43200,
+      "overdue": 24350
+    },
+    {
+      "after_upload": "03_Payment_Covers_Two_Invoices.pdf",
+      "total_invoiced_sales": 241400,
+      "total_collected": 206450,
+      "outstanding": 34950,
+      "overdue": 16100
+    },
+    {
+      "after_upload": "04_Duplicate_of_Partial_Payment.pdf",
+      "total_invoiced_sales": 241400,
+      "total_collected": 206450,
+      "outstanding": 34950,
+      "overdue": 16100
+    },
+    {
+      "after_upload": "05_Payment_Unmatched.pdf",
+      "total_invoiced_sales": 241400,
+      "total_collected": 208672,
+      "outstanding": 34950,
+      "overdue": 16100
+    },
+    {
+      "after_upload": "06_Paid_Sales_Receipt.pdf",
+      "total_invoiced_sales": 243200,
+      "total_collected": 210472,
+      "outstanding": 34950,
+      "overdue": 16100
+    },
+    {
+      "after_upload": "07_Purchase_Order_Not_Proof_of_Payment.pdf",
+      "total_invoiced_sales": 243200,
+      "total_collected": 210472,
+      "outstanding": 34950,
+      "overdue": 16100
+    }
+  ]
+}

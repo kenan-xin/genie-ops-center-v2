@@ -1,0 +1,7 @@
+customer_id,company_name,settled_with_known_due_date,settled_late_count,late_payment_rate,outstanding_amount,overdue_amount,unknown_due_date_amount
+C001,ABC Trading,5,4,0.8,6500,6500,0
+C002,Apex Digital,6,0,0.0,0,0,0
+C003,Harbor Foods,4,4,1.0,12600,12600,0
+C004,Orchid Retail,3,3,1.0,12600,8250,4350
+C005,Lumi Design,6,0,0.0,0,0,0
+C006,Meridian Labs,5,2,0.4,9500,0,0
