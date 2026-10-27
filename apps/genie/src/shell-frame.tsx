@@ -1,6 +1,8 @@
 import {
+  PageSkeleton,
   shellChrome,
   shellMenu,
+  type AppShellProps,
   type ShellChrome,
 } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
@@ -37,68 +39,94 @@ export async function ShellFrame(props: {
   readonly title?: string;
   readonly children: ReactNode;
 }): Promise<ReactNode> {
-  const session = await requireSession();
-
-  if (props.chrome === "workspace") await keepBreakGlassInAdmin();
-
-  const t = await getTranslations("shell");
-
-  const [model, requestHeaders, settings] = await Promise.all([
-    shellModel(),
-    headers(),
-    requireContext().tenant.settings.get(),
-  ]);
-
-  const person = session.user;
-  const chrome = shellChrome(props.chrome, model.isAdministrator);
+  const shell = await shellProps(props.chrome);
+  const settings = await requireContext().tenant.settings.get();
 
   return (
     <>
       <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
       <NextAppShell
-        chrome={chrome}
+        {...shell}
         {...(props.title === undefined ? {} : { title: props.title })}
-        currentPath={requestHeaders.get(PATHNAME_HEADER) ?? "/"}
-        navigation={model.navigation}
-        identity={model.identity}
-        user={{
-          name: person.name.trim() || person.email,
-          roleLabel: model.isAdministrator
-            ? t("roleAdministrator")
-            : t("roleMember"),
-        }}
-        menu={shellMenu({
-          chrome,
-          isAdministrator: model.isAdministrator,
-          isBreakGlass: person.isBreakGlass,
-          landing: model.landing,
-          adminHome: model.adminHome,
-          changePasswordHref: model.changePasswordUrl,
-          supportHref: model.support?.href ?? null,
-          labels: {
-            backToWorkspace: t("backToWorkspace"),
-            administration: t("administration"),
-          },
-        })}
-        strings={{
-          workspace: t("workspace"),
-          adminPortal: t("adminPortal"),
-          pinned: t("pinned"),
-          categories: t("categories"),
-          navigation: t("navigation"),
-          openNavigation: t("openNavigation"),
-          closeNavigation: t("closeNavigation"),
-          offline: t("offline"),
-          pageContent: t("pageContent"),
-          account: t("account"),
-          changePassword: t("changePassword"),
-          opensInNewTab: t("opensInNewTab"),
-          helpAndSupport: t("helpAndSupport"),
-          signOut: t("signOut"),
-        }}
       >
         {props.children}
       </NextAppShell>
     </>
   );
+}
+
+/**
+ * The frame of a core admin page's `loading.tsx` (NAV-1 decision 4). It mounts no activity client,
+ * because the page's own frame mounts one when it replaces this, so one page never mounts two (the
+ * ARCH-1 follow-on).
+ */
+export async function ShellLoading(props: {
+  readonly chrome: ShellChrome;
+}): Promise<ReactNode> {
+  const shell = await shellProps(props.chrome);
+  const shellText = await getTranslations("shell");
+
+  return (
+    <NextAppShell {...shell}>
+      <PageSkeleton label={shellText("loading")} />
+    </NextAppShell>
+  );
+}
+
+/** The shell's props for a signed-in request, after the session check (ARCH-1). */
+async function shellProps(
+  requested: ShellChrome
+): Promise<Omit<AppShellProps, "linkComponent" | "children" | "title">> {
+  const session = await requireSession();
+
+  if (requested === "workspace") await keepBreakGlassInAdmin();
+
+  const t = await getTranslations("shell");
+
+  const [model, requestHeaders] = await Promise.all([shellModel(), headers()]);
+
+  const person = session.user;
+  const chrome = shellChrome(requested, model.isAdministrator);
+
+  return {
+    chrome,
+    currentPath: requestHeaders.get(PATHNAME_HEADER) ?? "/",
+    navigation: model.navigation,
+    identity: model.identity,
+    user: {
+      name: person.name.trim() || person.email,
+      roleLabel: model.isAdministrator
+        ? t("roleAdministrator")
+        : t("roleMember"),
+    },
+    menu: shellMenu({
+      chrome,
+      isAdministrator: model.isAdministrator,
+      isBreakGlass: person.isBreakGlass,
+      landing: model.landing,
+      adminHome: model.adminHome,
+      changePasswordHref: model.changePasswordUrl,
+      supportHref: model.support?.href ?? null,
+      labels: {
+        backToWorkspace: t("backToWorkspace"),
+        administration: t("administration"),
+      },
+    }),
+    strings: {
+      workspace: t("workspace"),
+      adminPortal: t("adminPortal"),
+      pinned: t("pinned"),
+      categories: t("categories"),
+      navigation: t("navigation"),
+      openNavigation: t("openNavigation"),
+      closeNavigation: t("closeNavigation"),
+      offline: t("offline"),
+      pageContent: t("pageContent"),
+      account: t("account"),
+      changePassword: t("changePassword"),
+      opensInNewTab: t("opensInNewTab"),
+      helpAndSupport: t("helpAndSupport"),
+      signOut: t("signOut"),
+    },
+  };
 }

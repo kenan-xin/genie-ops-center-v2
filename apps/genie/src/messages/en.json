@@ -12,6 +12,7 @@
     "closeNavigation": "Close navigation",
     "offline": "You are offline. Changes will not be saved until the connection returns.",
     "pageContent": "Page content",
+    "loading": "Loading the page…",
     "account": "Account",
     "changePassword": "Change password",
     "opensInNewTab": "Opens in a new tab",
