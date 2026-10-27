@@ -7,6 +7,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Hides the on-screen dev indicator. Next still reports compile and runtime errors.
+  devIndicators: false,
   // The framework's own trailing-slash redirect carries no headers at all, so
   // removing it makes both spellings of a route ordinary responses with full
   // coverage (R-47, as amended 2026-09-21).

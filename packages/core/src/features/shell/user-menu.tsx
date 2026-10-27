@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   focusRing,
-  MonoChip,
 } from "@genie/ui";
 import {
   ArrowLeftRight,
@@ -89,7 +88,9 @@ export function UserMenu(props: UserMenuProps) {
             >
               {user.name}
             </span>
-            <MonoChip>{user.roleLabel}</MonoChip>
+            <span className="block max-w-full truncate text-xs text-muted-foreground">
+              {user.roleLabel}
+            </span>
           </span>
           <ChevronsUpDown
             aria-hidden

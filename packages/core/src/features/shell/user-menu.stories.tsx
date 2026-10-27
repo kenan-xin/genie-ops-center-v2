@@ -59,6 +59,10 @@ export const Member: Story = {
       "title",
       "Alex Morgan"
     );
+    // The role reads as plain muted text under the name, not as a pill (UI-1 finding 6).
+    await expect(canvas.getByText("Member")).toHaveClass(
+      "text-muted-foreground"
+    );
     await userEvent.click(trigger(canvasElement));
 
     // The popup is portalled to the body, outside the canvas.
