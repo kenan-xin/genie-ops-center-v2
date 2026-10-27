@@ -63,12 +63,13 @@ export const MovesFocusToTheNewPage: Story = {
       canvas.getByRole("heading", { name: "Orders" })
     ).not.toHaveFocus();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Open Shipments" })
-    );
-    await waitFor(() =>
-      expect(canvas.getByRole("heading", { name: "Shipments" })).toHaveFocus()
-    );
+    // A keyboard press, because only then does the browser draw its own ring on the heading.
+    canvas.getByRole("button", { name: "Open Shipments" }).focus();
+    await userEvent.keyboard("{Enter}");
+    const heading = await canvas.findByRole("heading", { name: "Shipments" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    // The heading is not a control, so it draws no focus ring (UI-1, phase 08).
+    await expect(getComputedStyle(heading).outlineStyle).toBe("none");
 
     await userEvent.click(
       canvas.getByRole("button", { name: "Open a page with no heading" })

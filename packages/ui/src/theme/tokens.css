@@ -99,4 +99,12 @@
   ::file-selector-button {
     border-color: var(--border);
   }
+
+  /*
+   * After a client navigation, focus moves to the page heading or main (NAV-1). Neither is a
+   * control, so it draws no ring.
+   */
+  :is(h1, main)[tabindex="-1"]:focus {
+    outline: none;
+  }
 }
