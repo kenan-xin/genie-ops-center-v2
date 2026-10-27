@@ -32,3 +32,7 @@ export const Default: Story = {
     );
   },
 };
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+};

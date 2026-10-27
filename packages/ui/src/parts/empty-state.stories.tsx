@@ -51,3 +51,7 @@ export const WithMedia: Story = {
     await expect(media.closest('[data-variant="icon"]')).toBeNull();
   },
 };
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+};

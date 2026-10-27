@@ -78,3 +78,10 @@ export const Phone: Story = {
     await expect(rect.height).toBe(window.innerHeight);
   },
 };
+
+export const Dark: Story = {
+  globals: { theme: "dark" },
+  play: async () => {
+    await openFromKeyboard();
+  },
+};
