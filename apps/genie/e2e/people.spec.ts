@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { e2eBreakGlassEmail, e2eReaderEmail } from "../testing/e2e-keycloak.ts";
+import { expectNoAxeViolations } from "./support/axe.ts";
 import { queryDatabase } from "./support/database.ts";
 import { clearMailpit, linksIn, waitForMessageTo } from "./support/mailpit.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
@@ -181,4 +182,23 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await page.getByLabel("Search people").fill(e2eBreakGlassEmail(project));
 
   await expect(page.getByText(/No people match/)).toBeVisible();
+
+  // A refused add keeps its reason readable in dark (6wz1.71). The branding theme is `system`.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Add person" }).click();
+
+  const refusedDialog = page.getByRole("dialog", { name: "Add person" });
+
+  await refusedDialog.getByLabel("Email", { exact: true }).fill(adminEmail);
+  await refusedDialog
+    .getByLabel("Display name", { exact: true })
+    .fill("E2E refused");
+  await refusedDialog.getByRole("button", { name: "Add person" }).click();
+  await expect(
+    refusedDialog
+      .getByRole("alert")
+      .filter({ hasText: "A person with that email already exists." })
+  ).toBeVisible();
+  await expectNoAxeViolations(page, "Add person refused, dark");
 });

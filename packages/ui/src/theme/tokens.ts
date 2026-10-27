@@ -20,7 +20,8 @@ export type ColorRole =
   | "primary"
   | "primary-foreground"
   | "destructive"
-  | "brand-on-dark";
+  | "brand-on-dark"
+  | "destructive-on-dark";
 
 const lightRoles = {
   "background": "#ffffff",
@@ -35,6 +36,7 @@ const lightRoles = {
   "primary-foreground": "#ffffff",
   "destructive": "#dc2626",
   "brand-on-dark": "#60a5fa",
+  "destructive-on-dark": "#f87171",
 } as const satisfies Record<ColorRole, string>;
 
 export const colorRoles: Readonly<

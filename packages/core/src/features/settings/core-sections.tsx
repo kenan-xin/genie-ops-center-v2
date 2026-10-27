@@ -73,7 +73,7 @@ export function SectionFooter(props: {
       {props.failure === null ? null : (
         <p
           role="alert"
-          className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive"
+          className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive dark:text-destructive-on-dark"
         >
           {/* The icon stays on the first line of the text when the text wraps on a phone. */}
           <span className="flex items-start gap-1.5">

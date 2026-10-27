@@ -53,7 +53,10 @@ function Refusal(props: {
   readonly settingsHref: string;
 }) {
   return (
-    <div role="alert" className="grid gap-1 text-sm text-destructive">
+    <div
+      role="alert"
+      className="grid gap-1 text-sm text-destructive dark:text-destructive-on-dark"
+    >
       <p>{props.refusal.message}</p>
       {props.refusal.issues.length === 0 ? null : (
         <>
@@ -252,7 +255,10 @@ export function ModulesScreen(props: ModulesScreenProps) {
       </HelpDisclosure>
 
       {props.error !== undefined ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       ) : props.loading ? (

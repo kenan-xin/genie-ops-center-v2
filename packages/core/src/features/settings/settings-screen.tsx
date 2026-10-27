@@ -246,7 +246,10 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
 
   if (props.error !== undefined)
     return (
-      <p role="alert" className="text-sm text-destructive">
+      <p
+        role="alert"
+        className="text-sm text-destructive dark:text-destructive-on-dark"
+      >
         {props.error}
       </p>
     );

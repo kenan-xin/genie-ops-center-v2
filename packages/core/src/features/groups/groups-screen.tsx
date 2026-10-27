@@ -672,7 +672,10 @@ export function GroupsScreen(props: GroupsScreenProps) {
       </div>
 
       {props.error === undefined ? null : (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-3 text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       )}

@@ -115,7 +115,10 @@ export function BrandingScreen(props: BrandingScreenProps) {
 
   if (props.error !== undefined)
     return (
-      <p role="alert" className="text-sm text-destructive">
+      <p
+        role="alert"
+        className="text-sm text-destructive dark:text-destructive-on-dark"
+      >
         {props.error}
       </p>
     );
@@ -401,7 +404,10 @@ function BrandingEditor(
         <div className="ml-auto hidden gap-2 md:flex">{actions}</div>
       </div>
       {failure === null ? null : (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {failure}
         </p>
       )}

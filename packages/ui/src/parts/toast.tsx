@@ -33,7 +33,7 @@ export function toast({
       {tone === "error" ? (
         <CircleAlertIcon
           aria-hidden="true"
-          className="size-5 shrink-0 text-destructive"
+          className="size-5 shrink-0 text-destructive dark:text-destructive-on-dark"
         />
       ) : null}
       <div className="min-w-0 flex-1">

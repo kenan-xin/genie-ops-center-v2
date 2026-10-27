@@ -187,6 +187,25 @@ test("changes onboarding mode, local accounts and idle minutes, one core:setting
 
         await expectNoAxeViolations(page, "Sessions with an error");
 
+        // A failed save keeps its reason readable in dark (6wz1.71). The invite branding keeps
+        // `system`, so the emulated scheme switches the theme live.
+        const saveSessions = "**/api/rpc/settings/saveSessions";
+
+        await idle.fill("20");
+        await page.route(saveSessions, (route) => route.abort());
+        await save.click();
+        await expect(
+          page.getByRole("alert").filter({ hasText: "Not saved." })
+        ).toBeVisible();
+        await page.emulateMedia({ colorScheme: "dark" });
+        await expect(page.locator("html")).toHaveAttribute(
+          "data-theme",
+          "dark"
+        );
+        await expectNoAxeViolations(page, "Sessions not saved, dark");
+        await page.emulateMedia({ colorScheme: "light" });
+        await page.unroute(saveSessions);
+
         for (const accepted of ["5", "480", "15"]) {
           await idle.fill(accepted);
           await saveAndExpect(page, "Sessions", action);

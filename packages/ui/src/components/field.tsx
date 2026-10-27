@@ -210,7 +210,7 @@ function FieldError({
       role="alert"
       data-slot="field-error"
       className={cn(
-        "text-xs font-normal text-red-700 dark:text-red-300",
+        "text-xs font-normal text-red-700 dark:text-destructive-on-dark",
         className
       )}
       {...props}

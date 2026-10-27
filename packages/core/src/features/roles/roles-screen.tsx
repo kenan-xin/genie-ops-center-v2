@@ -160,7 +160,7 @@ function RoleFormBody(props: {
             </legend>
             {unavailable.map((entry) => (
               <div key={entry.key} className="flex items-center gap-2">
-                <WarningIcon className="size-4 text-destructive" />
+                <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
                 <code className="text-xs text-foreground">{entry.key}</code>
                 <span className="text-xs text-muted-foreground">
                   {unavailableReasonLabel(entry.reason)}
@@ -319,8 +319,8 @@ function RoleDetailView(props: {
                 <code className="text-xs">{entry.key}</code>
                 {entry.unavailable ? (
                   <>
-                    <WarningIcon className="size-4 text-destructive" />
-                    <span className="text-xs text-destructive">
+                    <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
+                    <span className="text-xs text-destructive dark:text-destructive-on-dark">
                       Unavailable,{" "}
                       {unavailableReasonLabel(
                         entry.unavailableReason ?? "retired"
@@ -551,7 +551,10 @@ export function RolesScreen(props: RolesScreenProps) {
       </div>
 
       {props.error === undefined ? null : (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-3 text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       )}

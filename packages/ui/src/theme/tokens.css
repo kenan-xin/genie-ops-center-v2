@@ -24,6 +24,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-destructive: var(--destructive);
   --color-brand-on-dark: var(--brand-on-dark);
+  --color-destructive-on-dark: var(--destructive-on-dark);
   --color-sign-in-background: var(--sign-in-background);
 }
 
@@ -69,6 +70,8 @@
     --primary-foreground: #ffffff;
     --destructive: #dc2626;
     --brand-on-dark: #60a5fa;
+    /* Error text in dark only (6wz1.71): red-600 measures 3.67:1 on the dark card. */
+    --destructive-on-dark: #f87171;
   }
 
   [data-theme="dark"] {

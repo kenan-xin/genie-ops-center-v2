@@ -14,7 +14,7 @@ const alertVariants = cva(
         // tokens.md: an informational callout keeps its fixed blue, never the tenant color.
         info: "border-0 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100",
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "bg-card text-destructive dark:text-destructive-on-dark *:data-[slot=alert-description]:text-destructive/90 dark:*:data-[slot=alert-description]:text-destructive-on-dark/90 *:[svg]:text-current",
       },
       // tokens.md, "Warning note": `sm` under a control, `md` at the top of a card or a sheet.
       size: {

@@ -150,7 +150,10 @@ function EnrollmentPanel(props: {
         </span>
       </div>
       {props.error === null ? null : (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       )}
@@ -290,7 +293,10 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
           description="The shared rule applies. Your current password is required."
         >
           {props.error !== null && props.enrollment == null ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p
+              role="alert"
+              className="text-sm text-destructive dark:text-destructive-on-dark"
+            >
               {props.error}
             </p>
           ) : null}

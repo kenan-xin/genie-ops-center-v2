@@ -772,7 +772,10 @@ export function PeopleScreen(props: PeopleScreenProps) {
 
       {/* While Add person is open, its dialog shows the error, so the page does not repeat it. */}
       {props.error === undefined || adding ? null : (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-3 text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       )}
@@ -1087,7 +1090,10 @@ export function AddPersonDialog(props: {
           </p>
 
           {props.error === undefined ? null : (
-            <p role="alert" className="text-sm font-medium text-destructive">
+            <p
+              role="alert"
+              className="text-sm font-medium text-destructive dark:text-destructive-on-dark"
+            >
               {props.error}
             </p>
           )}

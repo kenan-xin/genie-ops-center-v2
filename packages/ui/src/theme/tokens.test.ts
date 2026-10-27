@@ -65,6 +65,7 @@ describe("the fixed token layer against tokens.md", () => {
         "primary-foreground": "#ffffff",
         "destructive": "#dc2626",
         "brand-on-dark": "#60a5fa",
+        "destructive-on-dark": "#f87171",
       },
       dark: {
         "background": "#030712",
@@ -79,6 +80,7 @@ describe("the fixed token layer against tokens.md", () => {
         "primary-foreground": "#ffffff",
         "destructive": "#dc2626",
         "brand-on-dark": "#60a5fa",
+        "destructive-on-dark": "#f87171",
       },
     });
   });

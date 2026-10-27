@@ -61,7 +61,10 @@ export function IdleWarningDialog(props: {
           </p>
         </div>
         {props.failed ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p
+            role="alert"
+            className="text-sm text-destructive dark:text-destructive-on-dark"
+          >
             {props.strings.stayFailed}
           </p>
         ) : null}

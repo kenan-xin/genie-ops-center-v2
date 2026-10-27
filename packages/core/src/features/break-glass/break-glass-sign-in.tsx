@@ -159,7 +159,7 @@ function ErrorBlock({ message }: { readonly message: string }): JSX.Element {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3.5 py-3 text-sm text-foreground [&_svg]:text-destructive"
+      className="flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3.5 py-3 text-sm text-foreground [&_svg]:text-destructive dark:[&_svg]:text-destructive-on-dark"
     >
       <Icon path={ALERT_PATH} />
       <span>{message}</span>
@@ -463,7 +463,7 @@ export function BreakGlassPasswordForm(props: {
         onChange={setConfirm}
       />
       {confirm !== "" && !confirmOk ? (
-        <p className="-mt-2 text-xs text-destructive">
+        <p className="-mt-2 text-xs text-destructive dark:text-destructive-on-dark">
           Passwords do not match.
         </p>
       ) : null}

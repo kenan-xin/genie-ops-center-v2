@@ -228,7 +228,7 @@ function counter(count: number, limit: number | undefined) {
     <span
       className={
         count > limit
-          ? "text-xs text-destructive"
+          ? "text-xs text-destructive dark:text-destructive-on-dark"
           : "text-xs text-muted-foreground"
       }
     >

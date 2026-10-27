@@ -89,7 +89,7 @@ export function AssignItems(props: AssignItemsProps) {
           // The picker keeps the server's value, so a refused write never reads as saved.
           <p
             role="alert"
-            className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive"
+            className="flex flex-wrap items-center gap-x-1.5 text-xs text-destructive dark:text-destructive-on-dark"
           >
             Not saved. {props.failed.message} The row still reads{" "}
             {items.find((item) => item.value === current)?.label}.

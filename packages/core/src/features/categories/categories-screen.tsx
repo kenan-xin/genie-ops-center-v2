@@ -119,7 +119,10 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
       </form>
 
       {props.error !== undefined ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="text-sm text-destructive dark:text-destructive-on-dark"
+        >
           {props.error}
         </p>
       ) : props.loading ? (
