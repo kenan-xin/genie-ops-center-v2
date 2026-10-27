@@ -13,3 +13,5 @@ export {
   supportContact,
   type SupportContact,
 } from "../../lib/branding/support.ts";
+
+export { READER_WINDOW_MS } from "../../lib/tenant-context/reader-window.ts";

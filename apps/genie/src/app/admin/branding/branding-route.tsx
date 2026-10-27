@@ -1,7 +1,10 @@
 "use client";
 
 import type { BrandingDraft } from "@genie/core";
-import { BrandingScreen } from "@genie/core/features/branding";
+import {
+  BrandingScreen,
+  READER_WINDOW_MS,
+} from "@genie/core/features/branding";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
@@ -11,7 +14,8 @@ import { refusalOf, rpc } from "../../../rpc/client.ts";
 
 // DEC-46: the root layout reads branding through a reader that can serve the old row for 10 s
 // and that no save clears, so a refresh this long after Publish reads the new row.
-const READER_WINDOW_MS = 11_000;
+// A second past the window, so the refresh does not land on the edge of the cache.
+const REFRESH_MARGIN_MS = 1_000;
 
 /**
  * The browser half of the Branding route. The server refused a caller without
@@ -59,7 +63,10 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
 
         // Not cleared on unmount: a person who leaves the page within the window still gets the new head.
         if (result.changed)
-          window.setTimeout(() => router.refresh(), READER_WINDOW_MS);
+          window.setTimeout(
+            () => router.refresh(),
+            READER_WINDOW_MS + REFRESH_MARGIN_MS
+          );
       }}
       // The slot stays in the screen; the server stores a file and Publish names its slot (R-44).
       onUpload={async (_slot, file) => {

@@ -7,6 +7,7 @@ import {
   tenantModule,
   tenantSettings,
 } from "../../schema.ts";
+import { READER_WINDOW_MS } from "./reader-window.ts";
 
 /**
  * The four changing tenant readers: settings over `tenant_settings`, branding over
@@ -22,9 +23,6 @@ import {
 
 /** The Drizzle client every reader reads through. The pool and its `$client` stay on the context. */
 type TenantDatabase = NodePgDatabase<Record<string, never>>;
-
-/** How long a filled cache serves its value before the reader reads the row again (DEC-46). */
-const CACHE_TTL_MS = 10_000;
 
 /** The row the settings reader serves, exactly the shape `tenant_settings` selects. */
 export type TenantSettings = typeof tenantSettings.$inferSelect;
@@ -114,7 +112,10 @@ function createCachedReader<TValue>(
     async get(): Promise<TValue> {
       const cached = entry;
 
-      if (cached !== undefined && Date.now() - cached.filledAt < CACHE_TTL_MS) {
+      if (
+        cached !== undefined &&
+        Date.now() - cached.filledAt < READER_WINDOW_MS
+      ) {
         return cached.value;
       }
 
