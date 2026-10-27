@@ -2,7 +2,7 @@
 
 Spec: [Identity and access](../../specs/02-identity-and-access.md). Technical plan: [02-identity-and-access.md](../../tech-plans/02-identity-and-access.md). Beads epic: `genie-ops-center-v2-d8l5`. Beads owns live status, claims and blockers. This index records the ticket set and its scope, written from the beads on 2026-10-22.
 
-Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into these tickets. They are closed with a reason that names the new ticket, and their old titles keep the old numbers. All 16 tickets are closed. Three follow-up beads stay deferred: `d8l5.22`, and the owner beads `d8l5.23` and `d8l5.24`.
+Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into these tickets. They are closed with a reason that names the new ticket, and their old titles keep the old numbers. All 16 tickets are closed. Ticket S2-17 was added on 2026-10-27 by the `DEC-36` amendment of that day and is open. Three follow-up beads stay deferred: `d8l5.22`, and the owner beads `d8l5.23` and `d8l5.24`.
 
 ## Tickets
 
@@ -24,6 +24,7 @@ Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into t
 | S2-14 | `d8l5.18` | closed | Keycloak address guard and issuer check, with S-A |
 | S2-15 | `d8l5.19` | closed | Client-only mode, with S-C |
 | S2-16 | `d8l5.21` | closed | Section 2 acceptance and the scheduled Entra run (gate S2-G3) |
+| [S2-17](17-local-accounts-beside-sso/index.md) | `d8l5.26` | open | Local accounts beside SSO in a brokered realm |
 
 ## Follow-up beads under this epic
 
