@@ -128,8 +128,10 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   });
   await page.goto(`${baseUrl}/admin/people`);
   await page.getByLabel("Search people").fill(member);
+  // The row opens from the person's name; a phone card also holds "Actions for <email>".
   await page
-    .getByRole("button", { name: new RegExp(member.replaceAll(".", "\\.")) })
+    .getByRole("button", { name: /^E2E Person/ })
+    .filter({ visible: true })
     .first()
     .click();
 

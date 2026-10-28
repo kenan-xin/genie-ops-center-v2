@@ -125,9 +125,14 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
 
           const preview = page.getByRole("group", { name: "Preview" });
 
-          await expect(preview.getByText(companyName)).toBeVisible();
+          // The preview draws the page's stack: the company name names the default mark.
+          await expect(
+            preview.getByRole("img", { name: companyName })
+          ).toBeVisible();
           await expect(preview.getByText(`Welcome ${theme}`)).toBeVisible();
-          await expect(preview.getByText("Sign in", { exact: true })).toHaveCSS(
+          await expect(
+            preview.getByText("Sign in with SSO", { exact: true })
+          ).toHaveCSS(
             "background-color",
             `rgb(${[1, 3, 5].map((at) => Number.parseInt(color.slice(at, at + 2), 16)).join(", ")})`
           );
