@@ -9,6 +9,12 @@ import { GroupsRoute } from "./groups-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("groups.title") };
+}
+
 /**
  * The Groups screen, behind `core:groups:manage`. The one authorization seam refuses an anonymous
  * or unpermitted request before the screen mounts, so the route reveals nothing it would show.

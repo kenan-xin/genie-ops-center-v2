@@ -9,6 +9,12 @@ import { PeopleRoute } from "./people-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("people.title") };
+}
+
 /**
  * The People screen, behind `core:people:manage`. The one authorization seam refuses an anonymous
  * or unpermitted request before the screen mounts, so the route reveals nothing it would show. The

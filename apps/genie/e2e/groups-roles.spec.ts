@@ -8,6 +8,7 @@ import {
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
+import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
@@ -299,6 +300,40 @@ test("a closed or deleted group's detail is not read again", async ({
 
   await queryDatabase(
     `delete from "group" where source = 'local' and name = '${kept}'`
+  );
+});
+
+declare global {
+  interface Window {
+    /** Set before a click; it survives only a client navigation, not a full page load. */
+    genieClientNavigation?: boolean;
+  }
+}
+
+// The branding spec publishes other company names under its lock, so the company part is any
+// non-empty name here (DEC-21, WCAG 2.4.2). The announcer reads `document.title` when the new
+// tree commits, and the h1 when the streamed title has not arrived yet; either names the new
+// page. With one title for every page it announced nothing.
+test("a client navigation gives the new page its own title, and the route announcer reads it", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("groups", testInfo.project.name),
+  });
+  await page.goto("/admin/groups");
+  await expect(page).toHaveTitle(/^Groups · \S/);
+
+  await page.evaluate(() => {
+    window.genieClientNavigation = true;
+  });
+  const navigation = await openNavigation(page);
+
+  await navigation.getByRole("link", { name: "Roles", exact: true }).click();
+
+  await expect(page).toHaveTitle(/^Roles · \S/);
+  expect(await page.evaluate(() => window.genieClientNavigation)).toBe(true);
+  await expect(page.locator("#__next-route-announcer__")).toHaveText(
+    /^Roles( · \S.*)?$/
   );
 });
 

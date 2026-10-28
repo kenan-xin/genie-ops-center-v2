@@ -9,6 +9,12 @@ import { AccountRoute } from "./account-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("account.title") };
+}
+
 /**
  * The account page (R-18): the person's own Profile, Sessions with per-session sign-out and sign
  * out everywhere, and the read-only Roles and access. Any signed-in person may read it; no

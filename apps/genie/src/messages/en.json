@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Genie Ops Center"
+    "title": "Genie Ops Center",
+    "titleTemplate": "%s · {company}"
   },
   "shell": {
     "workspace": "Workspace",

@@ -10,6 +10,12 @@ import { AuditLogRoute } from "./audit-log-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("audit.title") };
+}
+
 /**
  * The Audit log screen, behind `core:audit:read` (R-67, DEC-16). The one authorization seam
  * refuses an anonymous request before the screen mounts, so the route renders a denied state that

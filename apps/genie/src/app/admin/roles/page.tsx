@@ -9,6 +9,12 @@ import { RolesRoute } from "./roles-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("roles.title") };
+}
+
 /**
  * The Roles screen, behind `core:roles:manage`. It edits role definitions only; who holds a role
  * is decided in Access, the one assignment writer (DEC-39). The one authorization seam refuses an

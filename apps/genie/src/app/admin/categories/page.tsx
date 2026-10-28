@@ -8,6 +8,12 @@ import { CategoriesRoute } from "./categories-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("categories.title") };
+}
+
 /**
  * The Categories screen, behind `core:settings:manage`. The one authorization seam refuses an
  * anonymous or unpermitted request before the screen mounts, and every procedure re-checks it.

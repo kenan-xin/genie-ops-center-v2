@@ -20,7 +20,9 @@ import "../styles/globals.css";
 
 /**
  * The title comes from the catalogue rather than from a literal here, so the
- * application's own strings have one home (DEC-13). The tab icon is the published
+ * application's own strings have one home (DEC-13). A page that sets its own title
+ * gets "page name · company name" through the template, so the route announcer reads
+ * the new page after a client navigation (DEC-21, WCAG 2.4.2). The tab icon is the published
  * favicon, else the Ops Center default (DR-03); the not-set-up page has no branding
  * row, so it takes the default.
  */
@@ -47,7 +49,18 @@ export async function generateMetadata() {
           )
         );
 
-  return { title: t("title"), icons: { icon } };
+  // The not-set-up page has no branding row, and the reader throws on a missing row (R-12a).
+  const title =
+    setupRequired || context === undefined
+      ? t("title")
+      : {
+          template: t("titleTemplate", {
+            company: (await context.tenant.branding.get()).companyName,
+          }),
+          default: t("title"),
+        };
+
+  return { title, icons: { icon } };
 }
 
 /**

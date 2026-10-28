@@ -9,6 +9,12 @@ import { BrandingRoute } from "./branding-route.tsx";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const tMeta = await getTranslations("pages");
+
+  return { title: tMeta("branding.title") };
+}
+
 /**
  * The Branding screen, behind `core:branding:manage`. The one authorization seam refuses an
  * anonymous or unpermitted request before the screen mounts. The time zone is the deployment's
