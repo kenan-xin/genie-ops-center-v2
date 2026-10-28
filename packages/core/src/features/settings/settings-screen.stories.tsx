@@ -785,6 +785,63 @@ export const ReportingSaveRefusedMarksTheField: Story = {
   },
 };
 
+/** AI without a key says why in both AI sections, because the key is the first step for both (R-20). */
+export const AiOffWithoutKey: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: {
+        ...FIXTURE_SETTINGS.core,
+        modelKeyStored: false,
+        aiState: "no-key",
+      },
+    },
+    target: { section: "ai-connection" },
+  },
+  play: async ({ canvas }) => {
+    const noKey =
+      "Store a model provider key in AI connection to turn on AI features.";
+
+    await expect(canvas.getByText("AI is off.")).toBeVisible();
+    await expect(canvas.getByText(noKey)).toBeVisible();
+
+    await userEvent.click(
+      within(
+        canvas.getByRole("navigation", { name: "Settings sections" })
+      ).getByRole("button", { name: "AI models" })
+    );
+
+    await expect(
+      canvas.getByRole("heading", { name: "AI models", level: 2 })
+    ).toBeVisible();
+    await expect(canvas.getByText("AI is off.")).toBeVisible();
+    await expect(canvas.getByText(noKey)).toBeVisible();
+  },
+};
+
+/** A stored key with no defaults is still off, and the note names the section to fix (R-20). */
+export const AiOffWithoutModels: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: {
+        ...FIXTURE_SETTINGS.core,
+        modelKeyStored: true,
+        aiState: "no-models",
+      },
+    },
+    target: { section: "ai-models" },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("AI is off.")).toBeVisible();
+    await expect(
+      canvas.getByText(
+        "Choose the allowed models and the two defaults in AI models to turn on AI features."
+      )
+    ).toBeVisible();
+  },
+};
+
 /** The key is write-only: it saves, then the field empties, and no value is ever shown (R-17). */
 export const AiKeySavesAndClearsTheField: Story = {
   args: { target: { section: "ai-connection" } },
@@ -885,8 +942,17 @@ const optionTexts = async () =>
 
 /** The textarea trims each line, drops blanks and repeats, and both defaults save with it (R-18). */
 export const AiModelsSave: Story = {
-  args: { target: { section: "ai-models" } },
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: { ...FIXTURE_SETTINGS.core, aiState: "on" },
+    },
+    target: { section: "ai-models" },
+  },
   play: async ({ args, canvas }) => {
+    // AI is on, so no section carries the switched-off note (R-20).
+    await expect(canvas.queryByText("AI is off.")).toBeNull();
+
     fireEvent.change(canvas.getByRole("textbox", { name: "Allowed models" }), {
       target: {
         value:

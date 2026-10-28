@@ -30,6 +30,7 @@ import {
 } from "./core-sections.tsx";
 import { resolveSettingsTarget } from "./settings-target.ts";
 import type {
+  CoreSettingsView,
   LastChangedView,
   ModuleSettingsView,
   SettingsIssue,
@@ -132,6 +133,27 @@ function SectionCard(props: {
       </div>
       {props.children}
     </section>
+  );
+}
+
+/** Why AI is off, or null while it is on: the same note leads both AI sections (R-20). */
+function AiOffNote(props: { readonly state: CoreSettingsView["aiState"] }) {
+  if (props.state === "on") return null;
+
+  return (
+    <WarningNote size="md" role="status">
+      <p className="font-semibold">AI is off.</p>
+      {props.state === "no-key" ? (
+        <p className="mt-0.5">
+          Store a model provider key in AI connection to turn on AI features.
+        </p>
+      ) : (
+        <p className="mt-0.5">
+          Choose the allowed models and the two defaults in AI models to turn on
+          AI features.
+        </p>
+      )}
+    </WarningNote>
   );
 }
 
@@ -467,6 +489,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           description="The model provider key that AI features use. A stored key is never shown again."
           lastChanged="Changes to the key are listed in the audit log."
           headingRef={heading}
+          extra={<AiOffNote state={settings.core.aiState} />}
         >
           <AiConnectionSection
             key={`${sectionKey}:${settings.core.modelKeyStored}`}
@@ -504,6 +527,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             props.timeZone
           )}
           headingRef={heading}
+          extra={<AiOffNote state={settings.core.aiState} />}
         >
           <AiModelsSection
             key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}

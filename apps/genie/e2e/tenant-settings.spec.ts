@@ -8,6 +8,7 @@ import {
   inviteBaseUrl,
   queryBrokerDatabase,
 } from "./support/brokered.ts";
+import { chooseOption } from "./support/choose-option.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { rpcPost } from "./support/rpc.ts";
 import { openNavigation } from "./support/shell.ts";
@@ -53,6 +54,13 @@ const settingsColumn = (column: string) =>
 
 const placeholderConfig = () =>
   sql("select config::text from tenant_module where module_id = 'placeholder'");
+
+/** The AI settings and the model key back to a fresh deployment: no key, no models. */
+const resetAiSettings = () =>
+  sql(
+    `delete from tenant_integration_key;
+     update tenant_settings set allowed_models = '{}', chat_model = null, document_model = null`
+  );
 
 const navigator = (page: Page) =>
   page.getByRole("navigation", { name: "Settings sections" });
@@ -419,6 +427,165 @@ test("the placeholder section renders five kinds, refuses an invalid value and s
           )) !== "true"
         )
           await brokeredGenieOps("invite", ["module", "enable", "placeholder"]);
+      }
+    },
+    LOCK_WAIT_MS
+  );
+});
+
+test("stores and removes the model key write-only, saves the AI models, and shows AI is off without them (Spec 7 R-17, R-18, R-20)", async ({
+  page,
+}, testInfo) => {
+  await withDeploymentLock(
+    "tenant-settings",
+    async () => {
+      const KEY =
+        "sk-or-v1-s7-05-e2e-not-a-real-key-0000000000000000000000000000000";
+
+      const CHAT = "openai/gpt-6.1-terra";
+      const DOCUMENT = "anthropic/claude-opus-5.5";
+
+      // Every answer the page receives, so the key can be proved absent from all of them. An
+      // answer that cannot be read fails the case rather than passing unread.
+      const answers: Promise<string>[] = [];
+      const unread: string[] = [];
+
+      page.on("response", (response) => {
+        if (!response.url().includes("/api/rpc/")) return;
+
+        answers.push(
+          response.text().catch(() => {
+            unread.push(response.url());
+
+            return "";
+          })
+        );
+      });
+
+      try {
+        await resetAiSettings();
+        await signInThroughBroker(page, {
+          baseUrl: BASE,
+          email: scenarioEmail("invite", "settings", testInfo.project.name),
+        });
+
+        await page.goto(`${BASE}/admin/settings?section=ai-connection`);
+        await expect(
+          page.getByRole("heading", { level: 2, name: "AI connection" })
+        ).toBeVisible();
+
+        // AI is off without a key, in both sections, and the section raises no axe violation.
+        await expect(
+          page.getByText("Not stored", { exact: true })
+        ).toBeVisible();
+        await expect(
+          page.getByText("AI is off.", { exact: true })
+        ).toBeVisible();
+        await expect(
+          page.getByText(
+            "Store a model provider key in AI connection to turn on AI features."
+          )
+        ).toBeVisible();
+        await expectNoAxeViolations(page, "AI connection");
+
+        // The key is write-only: it saves, the pill turns, and the field empties again.
+        const field = page.getByLabel("OpenRouter API key");
+        const storedBefore = await auditCount("core:integration_key_stored");
+
+        await field.fill(KEY);
+        await page.getByRole("button", { name: "Save", exact: true }).click();
+        await expect(
+          page.getByText("AI connection saved. Written to the audit log.")
+        ).toBeVisible();
+        await expect(page.getByText("Stored", { exact: true })).toBeVisible();
+        await expect(field).toHaveValue("");
+        await expectOneMore("core:integration_key_stored", storedBefore);
+        expect(
+          await sql(
+            "select value from tenant_integration_key where name = 'model-provider'"
+          )
+        ).toBe(KEY);
+
+        // The key alone is not on: the defaults are still missing.
+        await openSection(page, "AI models");
+        await expect(
+          page.getByText("AI is off.", { exact: true })
+        ).toBeVisible();
+        await expect(
+          page.getByText(
+            "Choose the allowed models and the two defaults in AI models to turn on AI features."
+          )
+        ).toBeVisible();
+
+        // The list and both defaults save together.
+        await page
+          .getByRole("textbox", { name: "Allowed models" })
+          .fill(`${CHAT}\n${DOCUMENT}`);
+        await chooseOption(page, "Chat default", CHAT);
+        await chooseOption(page, "Document reading", DOCUMENT);
+        await saveAndExpect(page, "AI models", "core:settings_updated");
+
+        expect(
+          await sql(
+            "select array_to_string(allowed_models, ',') from tenant_settings"
+          )
+        ).toBe(`${CHAT},${DOCUMENT}`);
+        expect(await settingsColumn("chat_model")).toBe(CHAT);
+        expect(await settingsColumn("document_model")).toBe(DOCUMENT);
+        await expect(page.getByText("AI is off.", { exact: true })).toHaveCount(
+          0
+        );
+        await expectNoAxeViolations(page, "AI models");
+
+        // "Stored" survives a reload, and the page never renders the key.
+        await page.reload();
+        await openSection(page, "AI connection");
+        await expect(page.getByText("Stored", { exact: true })).toBeVisible();
+        expect(await page.content()).not.toContain(KEY);
+
+        // The state survives the reload too: AI is still on, so no section shows the note.
+        await expect(page.getByText("AI is off.", { exact: true })).toHaveCount(
+          0
+        );
+
+        // Removing the key turns AI off again, and the removal is its own audit event.
+        const removedBefore = await auditCount("core:integration_key_removed");
+
+        await page.getByRole("button", { name: "Remove key" }).click();
+
+        const confirm = page.getByRole("dialog", {
+          name: "Remove the model provider key?",
+        });
+
+        await confirm.getByRole("button", { name: "Remove key" }).click();
+        await expect(
+          page.getByText(
+            "Model provider key removed. Written to the audit log."
+          )
+        ).toBeVisible();
+        await expect(
+          page.getByText("Not stored", { exact: true })
+        ).toBeVisible();
+        await expect(
+          page.getByText("AI is off.", { exact: true })
+        ).toBeVisible();
+        await expectOneMore("core:integration_key_removed", removedBefore);
+
+        // No answer the page received holds the key, and no audit row names or carries it.
+        const bodies = await Promise.all(answers);
+
+        expect(unread).toEqual([]);
+
+        for (const body of bodies) expect(body).not.toContain(KEY);
+        expect(
+          await sql(
+            `select count(*) from audit_event
+              where action like 'core:integration_key_%'
+                and (summary like '%${KEY}%' or metadata::text like '%${KEY}%')`
+          )
+        ).toBe("0");
+      } finally {
+        await resetAiSettings();
       }
     },
     LOCK_WAIT_MS

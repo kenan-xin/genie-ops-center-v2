@@ -499,7 +499,8 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     // +2 for the Reporting section's title and description (Spec 7 R-9).
     // +2 for the AI connection section's title and description (Spec 7 R-17).
     // +2 for the AI models section's title and description (Spec 7 R-18).
-    "packages/core/src/features/settings/settings-screen.tsx": 24,
+    // +3 for the "AI is off" note and its two reasons (Spec 7 R-20).
+    "packages/core/src/features/settings/settings-screen.tsx": 27,
     // Spec 7 R-17: the write-only key field's label and help, Remove key, and the remove confirm.
     // +2 for the AI models list's label and help (Spec 7 R-18).
     "packages/core/src/features/settings/ai-sections.tsx": 8,

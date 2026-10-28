@@ -45,6 +45,7 @@ import {
   removeIntegrationKey,
   storeIntegrationKey,
 } from "../integrations/keys.ts";
+import { type AiState, aiStateOf } from "../models/state.ts";
 import { ModuleManagementError } from "../module-management/index.ts";
 import {
   modelKeySchema,
@@ -77,6 +78,8 @@ export type CoreSettingsView = {
   readonly documentModel: string | null;
   /** Whether the model provider key is stored. The value is never part of a settings read (R-17). */
   readonly modelKeyStored: boolean;
+  /** Whether AI features work, and why not: the one rule `modelFor` shares (R-20). */
+  readonly aiState: AiState;
   readonly lastChanged: LastChanged;
 };
 
@@ -139,6 +142,8 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
 
   if (row === undefined) throw new Error("tenant_settings holds no row");
 
+  const keyStored = await integrationKeyStored(tenant, "model-provider");
+
   return {
     onboardingMode: row.onboardingMode === "jit" ? "jit" : "invite",
     localAccountsEnabled: row.localAccountsEnabled,
@@ -149,7 +154,12 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     allowedModels: row.allowedModels,
     chatModel: row.chatModel,
     documentModel: row.documentModel,
-    modelKeyStored: await integrationKeyStored(tenant, "model-provider"),
+    modelKeyStored: keyStored,
+    aiState: aiStateOf({
+      keyStored,
+      chatModel: row.chatModel,
+      documentModel: row.documentModel,
+    }),
     lastChanged: lastChangedOf(row.updatedAt, row.updatedBy),
   };
 }
