@@ -99,12 +99,16 @@ export function UserMenu(props: UserMenuProps) {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start">
-          <DropdownMenuItem render={<AccountLink href={menu.accountHref} />}>
+          <DropdownMenuItem
+            size="lg"
+            render={<AccountLink href={menu.accountHref} />}
+          >
             <UserRound aria-hidden strokeWidth={1.75} className={icon} />
             {strings.account}
           </DropdownMenuItem>
           {menu.changePasswordHref === null ? null : (
             <DropdownMenuItem
+              size="lg"
               render={
                 <a
                   href={menu.changePasswordHref}
@@ -121,6 +125,7 @@ export function UserMenu(props: UserMenuProps) {
           )}
           {menu.switchTarget === null ? null : (
             <DropdownMenuItem
+              size="lg"
               render={<SwitchLink href={menu.switchTarget.href} />}
             >
               <ArrowLeftRight aria-hidden strokeWidth={1.75} className={icon} />
@@ -128,13 +133,14 @@ export function UserMenu(props: UserMenuProps) {
             </DropdownMenuItem>
           )}
           {menu.supportHref === null ? null : (
-            <DropdownMenuItem render={<a href={menu.supportHref} />}>
+            <DropdownMenuItem size="lg" render={<a href={menu.supportHref} />}>
               <LifeBuoy aria-hidden strokeWidth={1.75} className={icon} />
               {strings.helpAndSupport}
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            size="lg"
             onClick={() => signOutForm.current?.requestSubmit()}
           >
             <LogOut aria-hidden strokeWidth={1.75} className={icon} />

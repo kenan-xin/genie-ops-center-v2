@@ -177,3 +177,97 @@ export const EscapeCloses: Story = {
 export const Dark: Story = {
   globals: { theme: "dark" },
 };
+
+const desktop = { viewport: { value: "desktop", isRotated: false } };
+
+const noFill = "rgba(0, 0, 0, 0)";
+
+/** The design source's rows: 40px high, icon 17px inside the popup's edge. */
+export const ItemsMatchTheCapture: Story = {
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(trigger(canvasElement));
+
+    const menu = await within(document.body).findByRole("menu");
+    const edge = menu.getBoundingClientRect().left;
+
+    const rows = within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => [
+        Math.round(item.getBoundingClientRect().height),
+        Math.round(
+          (item.querySelector("svg")?.getBoundingClientRect().left ?? 0) - edge
+        ),
+      ]);
+
+    await expect(rows).toEqual(rows.map(() => [40, 17]));
+  },
+};
+
+export const PointerOpenShowsNoRing: Story = {
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(trigger(canvasElement));
+
+    const menu = await within(document.body).findByRole("menu");
+    const items = within(menu).getAllByRole("menuitem");
+
+    await expect(
+      items.filter((item) => item.matches(":focus-visible"))
+    ).toEqual([]);
+    await Promise.all(
+      items.map((item) =>
+        expect(getComputedStyle(item).backgroundColor).toBe(noFill)
+      )
+    );
+
+    // A hovered item takes the quiet muted fill, with no ring.
+    const account = within(menu).getByRole("menuitem", { name: "Account" });
+
+    await userEvent.hover(account);
+    await waitFor(() =>
+      expect(getComputedStyle(account).backgroundColor).not.toBe(noFill)
+    );
+    await expect(getComputedStyle(account).boxShadow).toBe("none");
+
+    // A key after the pointer brings the ring back on the item it moves to.
+    await userEvent.keyboard("{ArrowDown}");
+
+    const next = items[1];
+
+    await waitFor(() => expect(next).toHaveFocus());
+    await expect(getComputedStyle(next ?? menu).boxShadow).not.toBe("none");
+  },
+};
+
+export const PointerOpenDark: Story = {
+  ...PointerOpenShowsNoRing,
+  globals: { ...desktop, theme: "dark" },
+  play: async (context) => {
+    await PointerOpenShowsNoRing.play?.(context);
+
+    // In dark the card is the muted color, so the fill must step up to show.
+    const menu = within(document.body).getByRole("menu");
+    const highlighted = document.activeElement ?? menu;
+
+    await expect(highlighted).toHaveAttribute("role", "menuitem");
+    await expect(getComputedStyle(highlighted).backgroundColor).not.toBe(
+      getComputedStyle(menu).backgroundColor
+    );
+  },
+};
+
+export const KeyboardOpenKeepsTheRing: Story = {
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    trigger(canvasElement).focus();
+    await userEvent.keyboard("{Enter}");
+
+    const menu = await within(document.body).findByRole("menu");
+    const [first] = within(menu).getAllByRole("menuitem");
+
+    await waitFor(() => expect(first).toHaveFocus());
+    await expect(first?.matches(":focus-visible")).toBe(true);
+    await expect(getComputedStyle(first ?? menu).boxShadow).not.toBe("none");
+  },
+};

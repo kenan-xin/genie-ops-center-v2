@@ -5,7 +5,13 @@ import { cn } from "cn";
 import { ChevronRightIcon, CheckIcon } from "lucide-react";
 import * as React from "react";
 
-import { focusRing } from "../theme/tokens.ts";
+/**
+ * Base UI focuses the item under the pointer, and Chrome then reports `:focus-visible`. The popup
+ * marks pointer use with `data-pointer` (cleared by a key), and the ring shows only without it, so
+ * it is a keyboard cue. In dark the card is the muted color, so the fill steps up to the border.
+ */
+const menuRowFocus =
+  "outline-none focus:bg-muted focus:text-foreground dark:focus:bg-border [&:not([data-pointer]_*)]:focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -25,6 +31,8 @@ function DropdownMenuContent({
   side = "bottom",
   sideOffset = 4,
   className,
+  onPointerMove,
+  onKeyDown,
   ...props
 }: MenuPrimitive.Popup.Props &
   Pick<
@@ -47,6 +55,14 @@ function DropdownMenuContent({
             className
           )}
           {...props}
+          onPointerMove={(event) => {
+            event.currentTarget.toggleAttribute("data-pointer", true);
+            onPointerMove?.(event);
+          }}
+          onKeyDown={(event) => {
+            event.currentTarget.removeAttribute("data-pointer");
+            onKeyDown?.(event);
+          }}
         />
       </MenuPrimitive.Positioner>
     </MenuPrimitive.Portal>
@@ -81,19 +97,24 @@ function DropdownMenuItem({
   className,
   inset,
   variant = "default",
+  size = "default",
   ...props
 }: MenuPrimitive.Item.Props & {
   inset?: boolean;
   variant?: "default" | "destructive";
+  /** `lg`: the user menu's 40px desktop rows from the shell capture. */
+  size?: "default" | "lg";
 }) {
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
+      data-size={size}
       className={cn(
-        "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none focus:bg-muted focus:text-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
-        focusRing,
+        "data-[size=lg]:gap-2.5 data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2 data-[size=lg]:lg:min-h-10",
+        "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
+        menuRowFocus,
         className
       )}
       {...props}
@@ -118,8 +139,8 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none focus:bg-muted focus:text-foreground data-inset:pl-7 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        focusRing,
+        "flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        menuRowFocus,
         className
       )}
       {...props}
@@ -165,8 +186,8 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none focus:bg-muted focus:text-foreground data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        focusRing,
+        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        menuRowFocus,
         className
       )}
       checked={checked}
@@ -207,8 +228,8 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none focus:bg-muted focus:text-foreground data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        focusRing,
+        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        menuRowFocus,
         className
       )}
       {...props}
