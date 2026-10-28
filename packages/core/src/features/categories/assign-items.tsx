@@ -160,35 +160,39 @@ export function AssignItems(props: AssignItemsProps) {
             : "No module matches."}
         </p>
       ) : (
-        <DataTable
-          label="Modules to file"
-          rows={shown}
-          rowKey={(module) => module.id}
-          rowLabel={(module) => module.displayName}
-          columns={[
-            {
-              id: "module",
-              header: "Module",
-              cell: (module) => (
-                <span className="flex flex-wrap items-center gap-2">
-                  {module.displayName}
-                  {offPill(module)}
-                </span>
+        // The list runs to the card's edges, as in the captures, never a card inside the card.
+        <div className="-mx-4 border-y border-border">
+          <DataTable
+            label="Modules to file"
+            framed={false}
+            rows={shown}
+            rowKey={(module) => module.id}
+            rowLabel={(module) => module.displayName}
+            columns={[
+              {
+                id: "module",
+                header: "Module",
+                cell: (module) => (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {module.displayName}
+                    {offPill(module)}
+                  </span>
+                ),
+              },
+              { id: "category", header: "Category", cell: picker },
+            ]}
+            card={{
+              media: () => (
+                <IconTile>
+                  <FolderIcon />
+                </IconTile>
               ),
-            },
-            { id: "category", header: "Category", cell: picker },
-          ]}
-          card={{
-            media: () => (
-              <IconTile>
-                <FolderIcon />
-              </IconTile>
-            ),
-            title: (module) => module.displayName,
-            badge: (module) => offPill(module),
-            content: (module) => picker(module),
-          }}
-        />
+              title: (module) => module.displayName,
+              badge: (module) => offPill(module),
+              content: (module) => picker(module),
+            }}
+          />
+        </div>
       )}
       <p className="text-xs text-muted-foreground">
         A module with no workspace entry is not listed, because it has nothing

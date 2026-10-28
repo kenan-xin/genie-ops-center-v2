@@ -135,6 +135,17 @@ const overview: Play = async ({ canvas }) => {
   await expect(
     canvas.getByRole("combobox", { name: "Category for Asset register" })
   ).toHaveTextContent("No category");
+
+  // The module list runs to the card's edges, never a second card inside it (captures).
+  const card = canvas.getByRole("region", { name: "Assign items" });
+
+  const files =
+    canvas.queryByRole("table", { name: "Modules to file" }) ??
+    canvas.getByRole("list", { name: "Modules to file" });
+
+  await expect(
+    files.getBoundingClientRect().left - card.getBoundingClientRect().left
+  ).toBeLessThan(2);
 };
 
 /** The same page at 390 px: the card list of Assign items leads each module with a tile. */
