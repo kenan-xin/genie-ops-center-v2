@@ -5,6 +5,7 @@ import type {
   DatasetDeclaration,
   DatasetFieldType,
   DatasetSource,
+  ModuleRequestContext,
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { pgErrorCode } from "../../utils/error-cause.ts";
@@ -19,6 +20,27 @@ import {
 /** Spec 7 R-8: a dataset query stops after 5 seconds. */
 export const DATASET_TIME_LIMIT_MS = 5000;
 
+/**
+ * The module's source, checked at the seam. An async function must answer `{ as }`, because a
+ * Drizzle select is thenable and would resolve to rows.
+ */
+export async function datasetSource(
+  ctx: ModuleRequestContext,
+  declaration: DatasetDeclaration,
+  asOf: string
+): Promise<DatasetSource> {
+  const source = await declaration.source(ctx, asOf);
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a module's answer, checked at the seam
+  if (typeof source?.as !== "function") {
+    throw new Error(
+      `Dataset "${declaration.name}" source() must answer an object with as(alias); a Drizzle select is thenable, so wrap it.`
+    );
+  }
+
+  return source;
+}
+
 /** Postgres `query_canceled`, which `statement_timeout` raises. */
 const QUERY_CANCELED = "57014";
 
@@ -29,6 +51,13 @@ const CAST: Readonly<Record<DatasetFieldType, string>> = {
   money: "numeric",
   boolean: "boolean",
 };
+
+// Every `sql.raw` piece comes from one of these fixed lookups, never from a caller's string.
+const TRUNCATION = { month: "month", week: "week" } as const;
+
+const AGGREGATE = { sum: "sum", avg: "avg", min: "min", max: "max" } as const;
+
+const DIRECTION = { asc: "asc", desc: "desc" } as const;
 
 /** One column of the answer: its metadata, its select expression and, for ranges, its labels. */
 type Output = {
@@ -122,7 +151,7 @@ export async function runDatasetQuery(
       return {
         column: { name: entry.field, type: "date", bucket: entry.bucket },
         // Postgres weeks start on Monday; the bucket answers its first day.
-        expression: sql`to_char(date_trunc(${sql.raw(`'${entry.bucket}'`)}, ${cast(entry.field)}::timestamp), 'YYYY-MM-DD')`,
+        expression: sql`to_char(date_trunc(${sql.raw(`'${TRUNCATION[entry.bucket]}'`)}, ${cast(entry.field)}::timestamp), 'YYYY-MM-DD')`,
       };
     }
 
@@ -184,7 +213,10 @@ export async function runDatasetQuery(
 
     return {
       column: { name: aggregate.as, type },
-      expression: answer(sql`${sql.raw(aggregate.fn)}(${cast(name)})`, type),
+      expression: answer(
+        sql`${sql.raw(AGGREGATE[aggregate.fn])}(${cast(name)})`,
+        type
+      ),
     };
   });
 
@@ -209,7 +241,8 @@ export async function runDatasetQuery(
     ? sql.raw(
         query.orderBy
           .map(
-            (order) => `${names.indexOf(order.column) + 1} ${order.direction}`
+            (order) =>
+              `${names.indexOf(order.column) + 1} ${DIRECTION[order.direction]}`
           )
           .join(", ")
       )

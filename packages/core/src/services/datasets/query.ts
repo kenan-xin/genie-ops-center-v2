@@ -235,6 +235,58 @@ function rangeIssues(
   return issues;
 }
 
+function joinPath(prefix: string, path: string): string {
+  if (prefix === "") return path;
+
+  return path === "" ? prefix : `${prefix}.${path}`;
+}
+
+/** The issues of a failed query schema check, with its paths under `prefix`. */
+export function schemaIssues(
+  error: z.ZodError,
+  prefix = ""
+): readonly AppErrorIssue[] {
+  return error.issues.map((issue) => ({
+    path: joinPath(prefix, issue.path.join(".")),
+    message: issue.message,
+  }));
+}
+
+/** The declared-field issues of one shape-checked query, with its paths under `prefix`. */
+export function fieldIssues(
+  fields: DatasetDeclaration["fields"],
+  query: DatasetQuery,
+  prefix = ""
+): readonly AppErrorIssue[] {
+  return validateDatasetQuery(fields, query).map((issue) => ({
+    path: joinPath(prefix, issue.path),
+    message: issue.message,
+  }));
+}
+
+export type DatasetQueryCheck = {
+  readonly query?: DatasetQuery;
+  readonly issues: readonly AppErrorIssue[];
+};
+
+/** The schema check and the declared-field check of one query (DEC-54). */
+export function checkDatasetQuery(
+  fields: DatasetDeclaration["fields"],
+  input: DatasetQuery,
+  prefix = ""
+): DatasetQueryCheck {
+  const parsed = datasetQuerySchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { issues: schemaIssues(parsed.error, prefix) };
+  }
+
+  return {
+    query: parsed.data,
+    issues: fieldIssues(fields, parsed.data, prefix),
+  };
+}
+
 /** Every way the query does not fit the declared fields, as issues with dotted paths. Empty means it fits. */
 export function validateDatasetQuery(
   fields: DatasetDeclaration["fields"],

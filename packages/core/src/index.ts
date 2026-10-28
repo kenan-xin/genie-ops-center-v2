@@ -458,11 +458,16 @@ export {
   DATASET_TIME_LIMIT_MS,
   type DatasetColumn,
   type DatasetResult,
+  type DatasetSeries,
+  type DatasetSeriesInput,
+  type DatasetSeriesResult,
   type DatasetSummary,
   type DatasetValue,
   findDataset,
   listDatasets,
   queryDataset,
+  queryDatasetSeries,
+  seriesIssues,
 } from "./services/datasets/index.ts";
 
 export {

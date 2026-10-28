@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DatasetDeclaration } from "../../lib/module-contract/module.ts";
 import { type DatasetQuery, validateDatasetQuery } from "./query.ts";
+import { type DatasetSeries, seriesIssues } from "./series.ts";
 
 const fields: DatasetDeclaration["fields"] = {
   id: { kind: "dimension", type: "text", description: "The id." },
@@ -14,8 +15,16 @@ const fields: DatasetDeclaration["fields"] = {
 
 const count = { fn: "count", as: "n" } as const;
 
+type SeriesEntry = DatasetSeries & {
+  readonly fields: DatasetDeclaration["fields"];
+};
+
 function paths(query: DatasetQuery): readonly string[] {
   return validateDatasetQuery(fields, query).map((issue) => issue.path);
+}
+
+function seriesPaths(series: readonly SeriesEntry[]): readonly string[] {
+  return seriesIssues(series).map((issue) => issue.path);
 }
 
 describe("validateDatasetQuery", () => {
@@ -312,4 +321,151 @@ describe("validateDatasetQuery", () => {
   ])("accepts $name", ({ query }) => {
     expect(paths(query)).toEqual([]);
   });
+});
+
+describe("seriesIssues", () => {
+  it.each<{
+    readonly name: string;
+    readonly series: readonly SeriesEntry[];
+    readonly path: string;
+  }>([
+    {
+      name: "series that bucket x differently",
+      series: [
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day", bucket: "month" }],
+            aggregates: [count],
+          },
+        },
+        {
+          name: "b",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day", bucket: "week" }],
+            aggregates: [count],
+          },
+        },
+      ],
+      path: "series.1.query.groupBy.0",
+    },
+    {
+      name: "series whose ranges differ",
+      series: [
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [
+              {
+                field: "quantity",
+                ranges: [
+                  { label: "low", max: 10 },
+                  { label: "high", min: 10 },
+                ],
+              },
+            ],
+            aggregates: [count],
+          },
+        },
+        {
+          name: "b",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [
+              {
+                field: "quantity",
+                ranges: [
+                  { label: "low", max: 5 },
+                  { label: "high", min: 5 },
+                ],
+              },
+            ],
+            aggregates: [count],
+          },
+        },
+      ],
+      path: "series.1.query.groupBy.0",
+    },
+    {
+      name: "a series with two groups",
+      series: [
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "label" }, { field: "day" }],
+            aggregates: [count],
+          },
+        },
+      ],
+      path: "series.0.query",
+    },
+    {
+      name: "a series with two aggregates",
+      series: [
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day" }],
+            aggregates: [count, { fn: "count", as: "m" }],
+          },
+        },
+      ],
+      path: "series.0.query",
+    },
+    {
+      name: "a series named x",
+      series: [
+        {
+          name: "x",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day", bucket: "month" }],
+            aggregates: [count],
+          },
+        },
+      ],
+      path: "series.0.name",
+    },
+    {
+      name: "two series with one name",
+      series: [
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day", bucket: "month" }],
+            aggregates: [count],
+          },
+        },
+        {
+          name: "a",
+          dataset: "placeholder.records",
+          fields,
+          query: {
+            groupBy: [{ field: "day", bucket: "month" }],
+            aggregates: [count],
+          },
+        },
+      ],
+      path: "series.1.name",
+    },
+  ])(
+    "refuses a series query without one shared x, naming the part: $name",
+    ({ series, path }) => {
+      expect(seriesPaths(series)).toEqual([path]);
+    }
+  );
 });

@@ -3,6 +3,7 @@ import {
   listDatasets,
   principalFor,
   queryDataset,
+  queryDatasetSeries,
   registerModuleRuntime,
   type ModuleRequestContext,
   type TenantContext,
@@ -504,5 +505,118 @@ describe("the placeholder dataset through queryDataset", () => {
         "update tenant_settings set reporting_date = null"
       );
     }
+  });
+});
+
+describe("the placeholder dataset through queryDatasetSeries", () => {
+  it("joins two series on the month and leaves a missing month empty", async () => {
+    const label = "series";
+
+    await insertRows(label, [
+      { recordedOn: "2026-01-10", amountCents: 100, currency: "EUR" },
+      { recordedOn: "2026-02-10", amountCents: 200, currency: "EUR" },
+      { recordedOn: "2026-02-15", currency: "USD" },
+      { recordedOn: "2026-03-15", currency: "USD" },
+    ]);
+
+    const result = await queryDatasetSeries(
+      contextFor(await person("placeholder:read")),
+      {
+        series: [
+          {
+            name: "eur",
+            dataset: RECORDS,
+            query: {
+              filters: [
+                ...labelled(label),
+                { field: "currency", op: "eq", value: "EUR" },
+              ],
+              groupBy: [{ field: "recordedOn", bucket: "month" }],
+              aggregates: [{ fn: "sum", field: "amountCents", as: "total" }],
+            },
+          },
+          {
+            name: "usd",
+            dataset: RECORDS,
+            query: {
+              filters: [
+                ...labelled(label),
+                { field: "currency", op: "eq", value: "USD" },
+              ],
+              groupBy: [{ field: "recordedOn", bucket: "month" }],
+              aggregates: [{ fn: "count", as: "n" }],
+            },
+          },
+        ],
+      }
+    );
+
+    expect(result.rows).toEqual([
+      { x: "2026-01-01", eur: 100, usd: null },
+      { x: "2026-02-01", eur: 200, usd: 1 },
+      { x: "2026-03-01", eur: null, usd: 1 },
+    ]);
+    expect(result.x).toEqual({ name: "x", type: "date", bucket: "month" });
+    expect(result.series).toEqual([
+      {
+        name: "eur",
+        dataset: RECORDS,
+        column: { name: "total", type: "money", currency: "EUR" },
+      },
+      { name: "usd", dataset: RECORDS, column: { name: "n", type: "number" } },
+    ]);
+  });
+
+  it("refuses the whole series query when the caller cannot read a series' dataset", async () => {
+    await expect(
+      queryDatasetSeries(contextFor(await person("placeholder:use")), {
+        series: [
+          {
+            name: "eur",
+            dataset: RECORDS,
+            query: {
+              filters: [
+                ...labelled("series-permission"),
+                { field: "currency", op: "eq", value: "EUR" },
+              ],
+              groupBy: [{ field: "recordedOn", bucket: "month" }],
+              aggregates: [{ fn: "sum", field: "amountCents", as: "total" }],
+            },
+          },
+        ],
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("refuses a series query whose aggregate is not a known function", async () => {
+    await expect(
+      queryDatasetSeries(contextFor(await person("placeholder:read")), {
+        series: [
+          {
+            name: "eur",
+            dataset: RECORDS,
+            query: {
+              filters: labelled("series-forged-fn"),
+              groupBy: [{ field: "recordedOn", bucket: "month" }],
+              aggregates: [
+                {
+                  // SAFETY: the query is forged at the runtime boundary, so fn is not a known aggregate.
+                  fn: "pg_sleep(1)) --" as never,
+                  field: "amountCents",
+                  as: "eur",
+                },
+              ],
+            },
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: "dataset-query-invalid",
+      issues: [
+        expect.objectContaining({
+          path: expect.stringMatching(/^series\.0\.query\.aggregates\.0/),
+        }),
+      ],
+    });
   });
 });
