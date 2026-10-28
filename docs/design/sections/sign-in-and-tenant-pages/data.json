@@ -2,7 +2,7 @@
   "_meta": {
     "models": {
       "tenantBranding": "The tenant's sign-in page branding: identity, colors, welcome text, notice, support contact, and links, as saved in the Branding admin pages.",
-      "signInState": "The reason banner shown at the top of the sign-in card, if any.",
+      "signInState": "The reason notice shown between the heading and the sign-in buttons, if any.",
       "breakGlassAdmin": "The break-glass administrator account state that drives the admin door steps and the rate-limit refusal.",
       "tenantSettings": "The tenant settings that change the sign-in page: local accounts and the idle timeout.",
       "setupSteps": "Progress of the `genie-ops setup` steps (`setup_step` in architecture/data-shape.md). Until all are done every route renders the not-set-up page and the health endpoint reports degraded."

@@ -4,6 +4,12 @@ One entry per design change in this repository, newest first. Each entry names w
 
 ## 2026-10-28
 
+### Changed, the sign-in and break-glass captures
+
+- The 29 sign-in and break-glass captures now come from the build, which follows direction D2: one centered 320px stack with the tenant mark, the heading, the notice and full-width buttons, and no card (owner, 2026-10-27). The sign-in buttons are 40px on desktop and 44px under 1024px.
+- The spec drops the break-glass strength meter and "Meets the rule", puts the setup note behind a "Why am I here?" help button, and names the welcome line that a tenant sets.
+- Files: `product/sections/sign-in-and-tenant-pages/{spec.md,data.json}` and the `sign-in-page*`, `signin*` and `break-glass*` captures there. Record: `imports/2026-10-28-sign-in-stack-captures.md`.
+
 ### Changed, the Modules phone capture
 
 - The Modules phone capture now comes from the build, which follows the approved phone mockup: the switch on the name's line, the id in muted mono, one description line, a labelled full-width category select, and a "Who can open it" row that links to Roles (owner, 2026-10-27).
