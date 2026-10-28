@@ -10,6 +10,19 @@
         ],
         "matcher": ""
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|mcp__plugin_woz_code__Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/oxlint-on-edit.sh\"",
+            "timeout": 30,
+            "statusMessage": "Linting edited files"
+          }
+        ]
+      }
     ]
   },
   "extraKnownMarketplaces": {
