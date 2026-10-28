@@ -1,4 +1,5 @@
 import { type PermissionKey, type RequestPrincipal, can } from "@genie/core";
+import { NoAccessState } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
@@ -25,7 +26,15 @@ export async function renderIfPermitted(
     const t = await getTranslations("access");
 
     // Denied pages say nothing about what they would have shown.
-    return <main data-testid="permission-denied">{t("denied")}</main>;
+    return (
+      <main data-testid="permission-denied">
+        <NoAccessState
+          title={t("title")}
+          description={t("description")}
+          home={{ href: "/", label: t("home") }}
+        />
+      </main>
+    );
   }
 
   return render(caller);

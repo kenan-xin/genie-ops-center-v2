@@ -1,11 +1,14 @@
 /**
  * The browser-safe shell feature: the empty state a viewer without a solution grant sees on the
- * home page. It imports no database and no environment value.
+ * home page, and the no-access state of a refused page. It imports no database and no environment
+ * value.
  */
 export {
   NoGrantsEmptyState,
   type NoGrantsEmptyStateProps,
 } from "./no-grants-empty-state.tsx";
+
+export { NoAccessState, type NoAccessStateProps } from "./no-access-state.tsx";
 
 export { PageHeader, type PageHeaderProps } from "./page-header.tsx";
 

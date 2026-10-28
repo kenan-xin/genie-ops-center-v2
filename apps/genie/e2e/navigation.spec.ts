@@ -167,6 +167,13 @@ test("a member refused on an admin page sees the no-access state in the workspac
       await page.goto(`${BASE}/admin/audit`);
 
       await expect(page.getByTestId("permission-denied")).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          level: 1,
+          name: "You do not have access to this page",
+        })
+      ).toBeVisible();
+      await expectNoAxeViolations(page, "no-access state");
 
       const navigation = await openNavigation(page);
 
@@ -174,6 +181,11 @@ test("a member refused on an admin page sees the no-access state in the workspac
         navigation.getByRole("link", { name: ENTRY, exact: true })
       ).toBeVisible();
       await expect(navigation.getByText("Admin portal")).toHaveCount(0);
+
+      // Go to home opens home, which sends the member on to the landing route.
+      await page.goto(`${BASE}/admin/audit`);
+      await page.getByRole("link", { name: "Go to home" }).click();
+      await expect(page).toHaveURL(`${BASE}${LANDING}`);
     },
     300_000
   );

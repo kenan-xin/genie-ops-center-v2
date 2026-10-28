@@ -119,7 +119,9 @@
     "frameTitle": "Embedded placeholder content"
   },
   "access": {
-    "denied": "You may not view this page."
+    "title": "You do not have access to this page",
+    "description": "Ask your administrator for access.",
+    "home": "Go to home"
   },
   "account": {
     "wholeTenant": "Whole tenant"
