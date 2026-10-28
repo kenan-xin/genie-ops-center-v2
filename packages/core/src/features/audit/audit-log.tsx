@@ -11,6 +11,10 @@ import {
   focusRing,
   HelpDisclosure,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   Select,
   SelectContent,
   SelectGroup,
@@ -25,6 +29,7 @@ import {
 import { useId, useState } from "react";
 import type { JSX, ReactNode } from "react";
 
+import { SearchIcon } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import { AuditEventSheet } from "./audit-event-sheet.tsx";
 import {
@@ -435,15 +440,22 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-1 md:max-w-md">
-          <Input
-            value={props.filters.query}
-            onChange={(event) =>
-              change({ ...props.filters, query: event.target.value })
-            }
-            aria-label="Search summary or target"
-            placeholder="Search summary or target"
-            className="min-w-48 flex-1"
-          />
+          {/* The captures draw a magnifier inside every list search. */}
+          <InputGroup className="min-w-48 flex-1">
+            <InputGroupInput
+              value={props.filters.query}
+              onChange={(event) =>
+                change({ ...props.filters, query: event.target.value })
+              }
+              aria-label="Search summary or target"
+              placeholder="Search summary or target"
+            />
+            <InputGroupAddon>
+              <InputGroupText>
+                <SearchIcon aria-hidden="true" />
+              </InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
           <HelpNote />
         </div>
         <span className="inline-flex shrink-0">

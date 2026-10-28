@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { eventCategory } from "./helpers.ts";
+import { eventCategory, humanize } from "./helpers.ts";
+
+describe("a metadata or target key as a label", () => {
+  it("splits snake, kebab and camel case into one sentence-case label", () => {
+    expect(humanize("role_assignment")).toBe("Role assignment");
+    expect(humanize("tenant-module")).toBe("Tenant module");
+    // The detail sheet showed "Userids" for the `userIds` metadata key (Phase 08 sweep).
+    expect(humanize("userIds")).toBe("User ids");
+  });
+});
 
 describe("the event category of an action key", () => {
   it("answers the domain the action belongs to, and none for an operator row", () => {

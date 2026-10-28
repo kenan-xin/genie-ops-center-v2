@@ -1,4 +1,5 @@
 import type { CategoryTone } from "@genie/ui";
+import { capitalize, lowerCase } from "es-toolkit";
 
 import type { AuditFilters } from "./types.ts";
 
@@ -118,9 +119,7 @@ export function eventCategory(action: string): CategoryTone | null {
 
 /** `role_assignment` to `Role assignment`. */
 export function humanize(key: string): string {
-  const spaced = key.replace(/[_-]+/g, " ").trim();
-
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  return capitalize(lowerCase(key));
 }
 
 /** The module prefix of an action key: `solutions:status:changed` to `solutions`. */
