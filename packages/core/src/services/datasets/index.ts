@@ -37,6 +37,8 @@ export type DatasetResult = {
 
 export type DatasetSummary = Omit<DatasetDeclaration, "source">;
 
+export { type RecordRoute, recordRoute } from "./record-route.ts";
+
 export {
   type DatasetSeries,
   type DatasetSeriesInput,

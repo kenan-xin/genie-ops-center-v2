@@ -9,7 +9,8 @@ The registry `registerModuleRuntime` fills from each module's `datasets` declara
 generic query over a declaration's `source(ctx, asOf)`: listing and finding the datasets of
 enabled modules, the browser-safe query shape and its check against the declared fields (zod and
 types only), and the runner that composes the SQL with Drizzle's builder, with the permission
-check, the row cap, the time limit, the money rule and the month, week and range buckets. Core
+check, the row cap, the time limit, the money rule and the month, week and range buckets, and the route from a dataset row to its record page under
+the page permission. Core
 reads data only through the select a module's `source()` returns.
 
 ## What must not go here

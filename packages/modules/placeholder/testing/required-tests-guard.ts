@@ -47,6 +47,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder dataset through queryDataset totals money per currency: none, one, two",
       "the placeholder dataset through queryDataset skips the dataset of a disabled module",
       "the placeholder dataset through queryDataset the reporting date moves the result",
+      "the placeholder dataset through recordRoute routes a dataset row to its record page only for a person allowed to open it",
       "the placeholder dataset through queryDatasetSeries joins two series on the month and leaves a missing month empty",
       "the placeholder dataset through queryDatasetSeries refuses the whole series query when the caller cannot read a series' dataset",
       "the placeholder dataset through queryDatasetSeries refuses a series query whose aggregate is not a known function",

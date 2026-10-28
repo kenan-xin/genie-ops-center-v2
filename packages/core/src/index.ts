@@ -470,6 +470,8 @@ export {
   listDatasets,
   queryDataset,
   queryDatasetSeries,
+  type RecordRoute,
+  recordRoute,
   seriesIssues,
 } from "./services/datasets/index.ts";
 

@@ -4,6 +4,7 @@ import {
   principalFor,
   queryDataset,
   queryDatasetSeries,
+  recordRoute,
   registerModuleRuntime,
   type ModuleRequestContext,
   type TenantContext,
@@ -505,6 +506,33 @@ describe("the placeholder dataset through queryDataset", () => {
         "update tenant_settings set reporting_date = null"
       );
     }
+  });
+});
+
+describe("the placeholder dataset through recordRoute", () => {
+  it("routes a dataset row to its record page only for a person allowed to open it", async () => {
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: "record-route",
+      recordedOn: "2026-01-01",
+    });
+
+    const route = (userId: string, dataset = RECORDS) =>
+      recordRoute(contextFor(userId), { dataset, id: record.id });
+
+    const reader = await person("placeholder:read");
+
+    const { userId: readerAndUser } = await insertPersonWith(
+      deployment.context,
+      ["placeholder:read", "placeholder:use"]
+    );
+
+    expect(await route(readerAndUser)).toEqual({
+      label: `Placeholder record ${record.id}`,
+      path: `/placeholder/${record.id}`,
+    });
+
+    expect(await route(reader)).toBeNull();
+    expect(await route(reader, "placeholder.nope")).toBeNull();
   });
 });
 
