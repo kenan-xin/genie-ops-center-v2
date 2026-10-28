@@ -13,6 +13,7 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["request-too-large", 413],
   ["email-taken", 400],
   ["local-accounts-unavailable", 400],
+  ["local-account-on-sso-domain", 400],
   ["rate-limited", 429],
   ["module-not-compiled", 404],
   ["module-not-registered", 409],

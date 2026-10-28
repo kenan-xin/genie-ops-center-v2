@@ -752,6 +752,53 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
   },
 };
 
+const SSO_DOMAIN_REFUSAL =
+  "This address uses the company sign-in. Add the person as a company account.";
+
+// R-40b: a refusal with an issue at `email` shows under the email field, not in the action bar.
+export const AddPersonLocalOnSsoDomainShowsAtEmail: Story = {
+  args: {
+    onAddPerson: fn(async () => {
+      throw {
+        message: `The person was not added. ${SSO_DOMAIN_REFUSAL} Your change is kept.`,
+        issues: [{ path: "email", message: SSO_DOMAIN_REFUSAL }],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add person" })
+    );
+
+    const email = dialog.getByLabelText("Email");
+
+    await userEvent.type(email, "ann@company.example");
+    await userEvent.click(
+      dialog.getByRole("radio", { name: "Local password" })
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+    await expect(email).toHaveAccessibleDescription(SSO_DOMAIN_REFUSAL);
+    await expect(email).toHaveFocus();
+    await expect(email).toHaveValue("ann@company.example");
+    await expect(
+      screen.getByRole("dialog", { name: "Add person" })
+    ).toBeInTheDocument();
+    // The field's text is the one alert; the action bar does not repeat it.
+    await expect(dialog.getAllByRole("alert")).toHaveLength(1);
+    await expect(dialog.queryByText(/was not added/)).toBeNull();
+
+    await userEvent.type(email, "m");
+
+    await expect(email).not.toHaveAttribute("aria-invalid", "true");
+    await expect(email).toHaveAccessibleDescription("");
+    await expect(dialog.queryByRole("alert")).toBeNull();
+  },
+};
+
 // Cancel drops the refusal, so neither the page nor the next open shows a stale one.
 export const AddPersonRefusalClearsOnCancel: Story = {
   render: (args) => <RefusingHost {...args} />,

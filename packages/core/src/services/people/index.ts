@@ -29,6 +29,7 @@ import {
 } from "../keycloak/client.ts";
 import { GENIE_ADMIN_CLIENT_ID } from "../keycloak/environment.ts";
 import { consumeRateLimit } from "../rate-limit/index.ts";
+import { onSsoDomain } from "./sso-domain.ts";
 
 /**
  * The People administration reads and writes (Spec 2 R-37 to R-43, R-40a, R-51a). The one People
@@ -626,6 +627,15 @@ export async function addPerson(
 
   if (requestedLocal && !local) {
     throw new AppError(CORE_ERRORS["local-accounts-unavailable"]);
+  }
+
+  // R-40b: an address on the identity provider's domain signs in through the provider.
+  if (local && onSsoDomain(email, settings.ssoEmailDomains)) {
+    const refusal = CORE_ERRORS["local-account-on-sso-domain"];
+
+    throw new AppError(refusal, {
+      issues: [{ path: "email", message: refusal.message }],
+    });
   }
 
   const shouldSendInvitation = input.sendInvitation ?? true;

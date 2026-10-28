@@ -42,6 +42,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "Too many attempts in a short time. Wait a few minutes and try again.",
   "local-accounts-unavailable":
     "Local accounts are not available in this realm, so this person cannot be created as a local account.",
+  "local-account-on-sso-domain":
+    "This address uses the company sign-in. Add the person as a company account.",
   "realm-account-failed":
     "The identity provider could not create the account. Try again, or check the realm.",
   "module-not-compiled": "That module is not part of this deployment.",

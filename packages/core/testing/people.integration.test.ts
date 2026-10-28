@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -65,7 +65,7 @@ beforeAll(async () => {
   // Local accounts on, so the local-account ordering and compensation paths run. Set before the
   // settings reader fills its ten-second cache.
   await deployment.context.db.$client.query(
-    "update tenant_settings set local_accounts_enabled = true, realm_supports_local_accounts = true"
+    "update tenant_settings set local_accounts_enabled = true, realm_supports_local_accounts = true, sso_email_domains = '{company.example}'"
   );
 
   // The realm target reads `env.auth`; the tests stub `fetch` for the realm calls. The auth member
@@ -995,6 +995,70 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
         .from(roleAssignment)
         .where(eq(roleAssignment.principalId, created.id))
     ).toHaveLength(1);
+  });
+});
+
+/** Every audit row, so a refusal can prove that it wrote none. */
+async function auditRowCount(): Promise<number> {
+  const result = await deployment.context.db.$client.query<{ count: number }>(
+    "select count(*)::int as count from audit_event"
+  );
+
+  return result.rows[0]?.count ?? 0;
+}
+
+describe("Add person on a recorded SSO domain (R-40b)", () => {
+  it("refuses a local account on the domain and its subdomain through the router, and accepts another domain and a brokered account", async () => {
+    const caller = callProcedure(createPeopleRouter(), {
+      tenant: deployment.context,
+      caller: request(await manager()),
+    });
+
+    const counters = installRealmStub();
+    const n = randomUUID();
+    const refused = [`x-${n}@company.example`, `x-${n}@eu.company.example`];
+    const auditBefore = await auditRowCount();
+
+    for (const email of refused) {
+      // oxlint-disable-next-line no-await-in-loop -- one refusal after the other, on one stub
+      await expect(
+        caller.add({ email, roleIds: [], accountType: "local" })
+      ).rejects.toMatchObject({
+        code: "local-account-on-sso-domain",
+        issues: [
+          {
+            path: "email",
+            message:
+              "This address uses the company sign-in. Add the person as a company account.",
+          },
+        ],
+      });
+    }
+
+    expect(counters.posts).toBe(0);
+    expect(
+      await deployment.context.db
+        .select({ id: user.id })
+        .from(user)
+        .where(inArray(user.email, refused))
+    ).toHaveLength(0);
+    expect(await auditRowCount()).toBe(auditBefore);
+
+    await caller.add({
+      email: `x-${n}@partner.example`,
+      roleIds: [],
+      accountType: "local",
+    });
+
+    expect(counters.posts).toBe(1);
+
+    await expect(
+      caller.add({
+        email: `y-${n}@company.example`,
+        roleIds: [],
+        sendInvitation: false,
+      })
+    ).resolves.toMatchObject({ id: expect.any(String) });
   });
 });
 

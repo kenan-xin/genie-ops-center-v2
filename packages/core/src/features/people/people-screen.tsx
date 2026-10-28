@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldError,
   FieldLabel,
   FilterDisclosure,
   focusRing,
@@ -38,7 +39,7 @@ import {
   TabsTrigger,
   type DataTableAction,
 } from "@genie/ui";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
@@ -859,6 +860,9 @@ export function PeopleScreen(props: PeopleScreenProps) {
         roles={props.roles}
         canAssignRoles={props.canAssignRoles}
         error={addForm.failure ?? undefined}
+        emailError={
+          addForm.issues.find((issue) => issue.path === "email")?.message
+        }
         submitting={addForm.submitting}
         onCancel={() => {
           addForm.clear();
@@ -952,12 +956,17 @@ export function AddPersonDialog(props: {
   readonly canAssignRoles?: boolean | undefined;
   /** The catalogue message of a refusal, shown in the alert; the dialog stays open. */
   readonly error?: string | undefined;
+  /** A refusal's issue at the email field (R-40b), shown under it in place of the alert. */
+  readonly emailError?: string | undefined;
   readonly submitting?: boolean | undefined;
   readonly onCancel: () => void;
   readonly onSubmit: (input: NewPersonInput) => void;
 }) {
   const open = props.open ?? true;
   const [email, setEmail] = useState("");
+  // The address the last submit sent, so an edit after a refusal drops its field error.
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const emailInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [accountType, setAccountType] = useState<AccountType>("brokered");
@@ -977,6 +986,17 @@ export function AddPersonDialog(props: {
     setAccountType("brokered");
     setSendInvitation(true);
   }, [open]);
+
+  const emailError =
+    email.trim() === submittedEmail ? props.emailError : undefined;
+
+  const emailErrorId =
+    emailError === undefined ? undefined : `${emailId}-error`;
+
+  // U-1: a refusal at the field takes the focus there.
+  useEffect(() => {
+    if (props.emailError !== undefined) emailInput.current?.focus();
+  }, [props.emailError]);
 
   const localAvailable = props.settings.localAccountsEnabled;
 
@@ -1004,10 +1024,16 @@ export function AddPersonDialog(props: {
           <Field>
             <FieldLabel htmlFor={emailId}>Email</FieldLabel>
             <Input
+              ref={emailInput}
               id={emailId}
               value={email}
+              aria-invalid={emailError !== undefined}
+              aria-describedby={emailErrorId}
               onChange={(event) => setEmail(event.target.value)}
             />
+            {emailError === undefined ? null : (
+              <FieldError id={emailErrorId}>{emailError}</FieldError>
+            )}
           </Field>
           <Field>
             <FieldLabel htmlFor={nameId}>Display name</FieldLabel>
@@ -1090,23 +1116,30 @@ export function AddPersonDialog(props: {
               : "Pending until first sign-in."}
           </p>
         </div>
-        {/* A refused add reports in the action bar, beside the buttons, and keeps the form. */}
-        <FormActionBar failure={props.error ?? null} placement="dialog">
+        {/* A refused add reports in the action bar, beside the buttons, and keeps the form. A
+            refusal at the email field reports there only. */}
+        <FormActionBar
+          failure={
+            props.emailError === undefined ? (props.error ?? null) : null
+          }
+          placement="dialog"
+        >
           <Button variant="secondary" onClick={props.onCancel}>
             Cancel
           </Button>
           <Button
             disabled={email.trim() === ""}
             loading={props.submitting === true}
-            onClick={() =>
+            onClick={() => {
+              setSubmittedEmail(email.trim());
               props.onSubmit({
                 email: email.trim(),
                 name: name.trim() === "" ? undefined : name.trim(),
                 roleIds: canAssignRoles ? roleIds : [],
                 accountType: localAvailable ? accountType : undefined,
                 sendInvitation: brokered ? sendInvitation : undefined,
-              })
-            }
+              });
+            }}
           >
             Add person
           </Button>
