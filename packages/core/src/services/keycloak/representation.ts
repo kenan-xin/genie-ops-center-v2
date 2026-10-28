@@ -181,29 +181,33 @@ export function fillRealmRepresentation(
     smtpServer !== undefined &&
     isJsonObject(smtpServer)
   ) {
-    const smtp = smtpServer;
-    smtp.host = fill.smtp.host;
-    smtp.port = fill.smtp.port;
-    smtp.user = fill.smtp.username;
-    smtp.password = fill.smtp.password;
-    smtp.from = fill.smtp.from;
-    smtp.ssl = fill.smtp.ssl ? "true" : "false";
-    smtp.starttls = fill.smtp.starttls ? "true" : "false";
-
-    if (fill.smtp.fromDisplayName !== undefined) {
-      smtp.fromDisplayName = fill.smtp.fromDisplayName;
-    }
-
-    if (fill.smtp.replyTo !== undefined) {
-      smtp.replyTo = fill.smtp.replyTo;
-    }
-
-    if (fill.smtp.replyToDisplayName !== undefined) {
-      smtp.replyToDisplayName = fill.smtp.replyToDisplayName;
-    }
+    fillSmtpServer(smtpServer, fill.smtp);
   }
 
   return realm;
+}
+
+/** Writes the SMTP values into a template's `smtpServer` block (R-53, R-58a). */
+export function fillSmtpServer(smtpServer: JsonObject, smtp: RealmSmtp): void {
+  smtpServer.host = smtp.host;
+  smtpServer.port = smtp.port;
+  smtpServer.user = smtp.username;
+  smtpServer.password = smtp.password;
+  smtpServer.from = smtp.from;
+  smtpServer.ssl = smtp.ssl ? "true" : "false";
+  smtpServer.starttls = smtp.starttls ? "true" : "false";
+
+  if (smtp.fromDisplayName !== undefined) {
+    smtpServer.fromDisplayName = smtp.fromDisplayName;
+  }
+
+  if (smtp.replyTo !== undefined) {
+    smtpServer.replyTo = smtp.replyTo;
+  }
+
+  if (smtp.replyToDisplayName !== undefined) {
+    smtpServer.replyToDisplayName = smtp.replyToDisplayName;
+  }
 }
 
 /**

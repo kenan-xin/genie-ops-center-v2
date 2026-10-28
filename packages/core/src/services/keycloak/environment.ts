@@ -47,9 +47,13 @@ export function readKeycloakBase(source: EnvironmentSource): KeycloakBase {
   return { keycloakUrl, keycloakRealm };
 }
 
-/** The one-run bootstrap credential (DEC-37), required by the pending realm step only. */
+/**
+ * The one-run bootstrap credential (DEC-37), read by the pending realm step and by
+ * `genie-ops realm local-accounts enable` (R-58a). The refusal names the command.
+ */
 export function readBootstrapCredentials(
-  source: EnvironmentSource
+  source: EnvironmentSource,
+  command = "the realm step"
 ): BootstrapCredentials {
   const user = source.KEYCLOAK_BOOTSTRAP_USER;
   const password = source.KEYCLOAK_BOOTSTRAP_PASSWORD;
@@ -60,8 +64,13 @@ export function readBootstrapCredentials(
     password === undefined ||
     password === ""
   ) {
+    const rerun =
+      command === "the realm step"
+        ? "; a rerun after the realm step completed does not need them"
+        : "";
+
     throw new Error(
-      "the realm step needs KEYCLOAK_BOOTSTRAP_USER and KEYCLOAK_BOOTSTRAP_PASSWORD, passed in the environment of this one command; a rerun after the realm step completed does not need them"
+      `${command} needs KEYCLOAK_BOOTSTRAP_USER and KEYCLOAK_BOOTSTRAP_PASSWORD, passed in the environment of this one command${rerun}`
     );
   }
 

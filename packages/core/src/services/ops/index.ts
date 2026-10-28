@@ -28,6 +28,7 @@ import {
 } from "../identity-provider/index.ts";
 import { assertKeycloakAddress } from "../keycloak/address-guard.ts";
 import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
+import { enableLocalAccounts, SSO_DOMAIN } from "../keycloak/local-accounts.ts";
 import {
   type LineSinks,
   createLogger,
@@ -80,17 +81,21 @@ export type GenieOpsCommandName =
   | "retire"
   | "break-glass-rotate"
   | "idp-set"
+  | "realm-local-accounts-enable"
   | "admin-add";
 
 /**
  * The commands that run the R-54c address guard before doing their work. The list is explicit and
  * does not depend on which authentication values the operator's shell happens to carry: a command
  * that talks to Keycloak adds its name here, and its validation profile must require `KEYCLOAK_URL`
- * so that a missing value refuses rather than skips the comparison. `idp set` is the command that
- * talks to Keycloak. `migrate`, `setup`, `module`, `retire`, `admin add` and `break-glass rotate`
+ * so that a missing value refuses rather than skips the comparison. `idp set` and
+ * `realm local-accounts enable` are the commands that talk to Keycloak. `migrate`, `setup`, `module`, `retire`, `admin add` and `break-glass rotate`
  * are exempt: they either reconcile the recorded values or write only the application database.
  */
-export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = ["idp-set"];
+export const IDENTITY_COMMANDS: readonly GenieOpsCommandName[] = [
+  "idp-set",
+  "realm-local-accounts-enable",
+];
 
 /** One parsed command: the action name, the arguments the audit row may carry (D-4), and the
  * command bound to the parsed option values. */
@@ -109,7 +114,7 @@ type ParsedCommand = {
  * value can be a secret an operator pasted by mistake (D-4, R-66).
  */
 const PARSE_REFUSAL =
-  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate, genie-ops idp set --protocol oidc|saml --alias <alias> ..., genie-ops admin add <email>";
+  "genie-ops: unknown or invalid command. Usage: genie-ops migrate, genie-ops setup --tenant-config <path> --branding-seed <path>, genie-ops module enable|disable <module-id>, genie-ops retire [--confirm], genie-ops break-glass rotate, genie-ops idp set --protocol oidc|saml --alias <alias> ..., genie-ops realm local-accounts enable --sso-domain <domain>..., genie-ops admin add <email>";
 
 /** `redact` answers the same string for a string, which is what every sink here writes. */
 function safe(text: string): string {
@@ -371,6 +376,47 @@ function parseCommand(
               values["first-name-attribute"] ?? DEFAULT_FIRST_NAME_ATTRIBUTE,
             lastNameAttribute:
               values["last-name-attribute"] ?? DEFAULT_LAST_NAME_ATTRIBUTE,
+            output: options.output,
+          }),
+      };
+    }
+
+    case "realm": {
+      const { values, positionals } = parseArgs({
+        args: [...rest],
+        options: { "sso-domain": { type: "string", multiple: true } },
+        strict: true,
+        allowPositionals: true,
+      });
+
+      const [group, subcommand, ...extra] = positionals;
+
+      if (
+        group !== "local-accounts" ||
+        subcommand !== "enable" ||
+        extra.length > 0
+      ) {
+        throw new Error("unknown realm subcommand");
+      }
+
+      // R-58a: at least one domain, each a lower-case domain name. A bad value is a parse failure,
+      // so the generic refusal never echoes it (D-4).
+      const ssoDomains = values["sso-domain"] ?? [];
+
+      if (
+        ssoDomains.length === 0 ||
+        !ssoDomains.every((domain) => SSO_DOMAIN.safeParse(domain).success)
+      ) {
+        throw new Error("realm local-accounts enable needs --sso-domain");
+      }
+
+      return {
+        name: "realm-local-accounts-enable",
+        args: ssoDomains,
+        run: (context, options) =>
+          enableLocalAccounts(context, {
+            source: options.source,
+            ssoDomains,
             output: options.output,
           }),
       };

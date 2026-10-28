@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 
 import type { EnvironmentSource } from "../../lib/environment/index.ts";
 import {
-  type BrandingSeed,
   GENIE_STUDIO_CALLBACK_PATH,
   normalizeGenieStudioUrl,
 } from "../../lib/tenant-config/index.ts";
@@ -38,9 +37,8 @@ import {
   isJsonObject,
   type JsonObject,
   type JsonValue,
-  type RealmSmtp,
 } from "./representation.ts";
-import { parseSmtpUrl } from "./smtp.ts";
+import { REALM_SMTP_REFUSAL, realmSmtp } from "./smtp.ts";
 import { loadRealmTemplate } from "./templates.ts";
 
 /** What the realm step reads from the raw environment, beside the context's validated values. */
@@ -91,31 +89,6 @@ async function loadRealmOverrides(path: string): Promise<JsonObject> {
   }
 
   return parsed;
-}
-
-/** The SMTP values the local variant carries, parsed from the mail configuration (R-53, DEC-40). */
-function realmSmtp(
-  context: TenantContext,
-  branding: BrandingSeed
-): RealmSmtp | undefined {
-  if (
-    context.env.mailProvider !== "smtp" ||
-    context.env.smtpUrl === undefined
-  ) {
-    return undefined;
-  }
-
-  const from = context.env.mailFrom;
-
-  if (from === undefined) return undefined;
-
-  return {
-    ...parseSmtpUrl(context.env.smtpUrl),
-    from,
-    fromDisplayName: branding.email_sender_name ?? undefined,
-    replyTo: branding.email_reply_to ?? undefined,
-    replyToDisplayName: branding.email_sender_name ?? undefined,
-  };
 }
 
 /** Writes the one source of `realm_supports_local_accounts` (R-52, DEC-36 amendment). */
@@ -214,7 +187,11 @@ export async function realmStep(
   const localAccounts = tenant.local_accounts ?? false;
   const template = loadRealmTemplate(localAccounts);
   const overrides = await loadRealmOverrides(files.realmOverrides);
-  const smtp = realmSmtp(context, branding);
+
+  const smtp = realmSmtp(context.env, {
+    name: branding.email_sender_name,
+    replyTo: branding.email_reply_to,
+  });
 
   // R-49a: the genie-studio origin tenant.yaml carries, normalized once here. Unset leaves the
   // genie-studio client with no redirect URIs.
@@ -224,9 +201,7 @@ export async function realmStep(
       : normalizeGenieStudioUrl(tenant.genie_studio_url);
 
   if (localAccounts && smtp === undefined) {
-    throw new Error(
-      "the local-accounts realm needs MAIL_PROVIDER=smtp with MAIL_FROM and SMTP_URL, because Keycloak sends its own set-password, reset-password and verify-email messages; set them in .env"
-    );
+    throw new Error(REALM_SMTP_REFUSAL);
   }
 
   const representation = buildRealmRepresentation(template, overrides, {
@@ -256,8 +231,22 @@ export async function realmStep(
     // write is idempotent, so a rerun after a failed write (a Keycloak restart between the create
     // and the writes, for example) lands the values it was missing, and the repair merges, so a
     // value the client already carried is kept.
+    //
+    // R-53a: after `genie-ops realm local-accounts enable` a brokered realm keeps its password
+    // form, so the redirector default is not restored. The profile review is still repaired. The
+    // step writes `realm_supports_local_accounts` only when it creates the realm (R-52).
+    const keepLocalAccounts =
+      !localAccounts && settings?.realmSupportsLocalAccounts === true;
+
     if (!localAccounts) {
-      await configureDefaultRedirector(target, base.keycloakRealm, accessToken);
+      if (!keepLocalAccounts) {
+        await configureDefaultRedirector(
+          target,
+          base.keycloakRealm,
+          accessToken
+        );
+      }
+
       await configureFirstBrokerLogin(target, base.keycloakRealm, accessToken);
     }
 
@@ -270,8 +259,6 @@ export async function realmStep(
             accessToken,
             genieStudioUrl
           );
-
-    await writeRealmSupportsLocalAccounts(context, localAccounts);
 
     options.output(existingRealmMessage(base.keycloakRealm, repair));
 

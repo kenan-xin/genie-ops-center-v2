@@ -1,6 +1,5 @@
 import type { EnvironmentSource } from "../../lib/environment/index.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
-import { tenantSettings } from "../../schema.ts";
 import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
 import {
   createIdentityProvider,
@@ -19,6 +18,7 @@ import {
   readKeycloakBase,
 } from "../keycloak/environment.ts";
 import { normalizeKeycloakUrl } from "../keycloak/normalize-url.ts";
+import { assertManagedRealm } from "../keycloak/realm-mode.ts";
 import type { JsonObject } from "../keycloak/representation.ts";
 
 /**
@@ -410,18 +410,6 @@ async function upsertProvider(
   );
 }
 
-/** Reads `realm_mode`; a client-only deployment has no `genie-admin` client (R-58, ADR 0010). */
-async function assertManagedRealm(context: TenantContext): Promise<void> {
-  const [settings] = await context.db
-    .select({ realmMode: tenantSettings.realmMode })
-    .from(tenantSettings)
-    .limit(1);
-
-  if ((settings?.realmMode ?? "managed") === "customer") {
-    throw new Error(CLIENT_ONLY_REFUSAL);
-  }
-}
-
 /**
  * The work of `genie-ops idp set`. It refuses in client-only mode before any network call, obtains
  * a realm-scoped token for `genie-admin`, writes or replaces the provider under the fixed alias,
@@ -440,7 +428,7 @@ export async function idpSet(
     );
   }
 
-  await assertManagedRealm(context);
+  await assertManagedRealm(context, CLIENT_ONLY_REFUSAL);
 
   const base = readKeycloakBase(options.source);
   const admin = readAdminClient(options.source);

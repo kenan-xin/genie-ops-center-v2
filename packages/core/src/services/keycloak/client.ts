@@ -133,6 +133,87 @@ export async function realmExists(
   return true;
 }
 
+/** Reads the realm representation, for the values a partial update keeps (R-58a). */
+export async function readRealm(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string
+): Promise<JsonObject> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  return isObject(body) ? body : {};
+}
+
+/**
+ * Writes the given top-level realm keys. Keycloak keeps every key the partial representation
+ * omits. The body can hold the SMTP password, so it is never logged.
+ */
+export async function updateRealm(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  partial: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(partial),
+    }
+  );
+
+  await parseResponse(response);
+}
+
+/** Reads one required action, such as `CONFIGURE_TOTP`, by its alias. */
+export async function readRequiredAction(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string
+): Promise<JsonObject> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/required-actions/${encodeURIComponent(alias)}`,
+    { headers: { authorization: `Bearer ${accessToken}` } }
+  );
+
+  const body = await parseResponse(response);
+
+  return isObject(body) ? body : {};
+}
+
+/** Writes one required action by its alias. */
+export async function updateRequiredAction(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string,
+  alias: string,
+  representation: JsonObject
+): Promise<void> {
+  const response = await target.fetch(
+    `${target.baseUrl}/admin/realms/${realm}/authentication/required-actions/${encodeURIComponent(alias)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(representation),
+    }
+  );
+
+  await parseResponse(response);
+}
+
 /** Creates the realm in one `POST /admin/realms` (D2-3). The representation is never logged. */
 export async function createRealm(
   target: KeycloakTarget,

@@ -292,8 +292,11 @@ async function recordMismatchedAddress(
 }
 
 describe("the R-54c identity-command guard", () => {
-  it("lists idp set, and only idp set, as an identity command", () => {
-    expect(IDENTITY_COMMANDS).toEqual(["idp-set"]);
+  it("lists idp set and realm local-accounts enable, and only those, as identity commands", () => {
+    expect(IDENTITY_COMMANDS).toEqual([
+      "idp-set",
+      "realm-local-accounts-enable",
+    ]);
   });
 
   it("refuses idp set on an address mismatch before any realm call", async () => {

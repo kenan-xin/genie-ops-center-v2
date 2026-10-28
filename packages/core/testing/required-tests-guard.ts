@@ -268,6 +268,19 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/realm-local-accounts.integration.test.ts",
+    reason:
+      "Spec 2 AC-27, R-53a and R-58a require the local-accounts enable command and the realm step rule against a real Keycloak 26.7.4",
+    cases: [
+      "genie-ops realm local-accounts enable applies the local parts, records the domains and writes one audit row on a brokered realm with a provider",
+      "genie-ops realm local-accounts enable changes nothing on a second run, keeps the switch and an override policy, and replaces the list on a rerun with other domains",
+      "genie-ops realm local-accounts enable refuses client-only mode before it reads the bootstrap credential",
+      "genie-ops realm local-accounts enable refuses a realm without a provider and leaves it unchanged",
+      "genie-ops realm local-accounts enable refuses without the SMTP values and leaves the realm unchanged",
+      "the realm step after realm local-accounts enable keeps the realm page and the settings, and still repairs the profile review (R-53a)",
+    ],
+  },
+  {
     file: "testing/worker.integration.test.ts",
     reason:
       "AC-11, R-4, R-5, R-27 and R-50 to R-52 require the pg-boss worker against real Postgres",

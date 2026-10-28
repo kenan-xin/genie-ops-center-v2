@@ -86,6 +86,52 @@ export async function configureDefaultRedirector(
   );
 }
 
+/**
+ * Removes the redirector's default provider, so the realm page shows its password form beside the
+ * provider button (R-58a step 1). The config keeps its other keys. A realm with no redirector, no
+ * config or no default is already in that state, so nothing is written.
+ */
+export async function clearDefaultRedirector(
+  target: KeycloakTarget,
+  realm: string,
+  accessToken: string
+): Promise<void> {
+  const executions = await authenticationFlowExecutions(
+    target,
+    realm,
+    accessToken,
+    "browser"
+  );
+
+  const configId = executions.find(
+    (execution) => execution.providerId === REDIRECTOR_PROVIDER_ID
+  )?.authenticationConfig;
+
+  if (configId === undefined) return;
+
+  const current = await readAuthenticationConfig(
+    target,
+    realm,
+    accessToken,
+    configId
+  );
+
+  if (
+    current.config === undefined ||
+    !isJsonObject(current.config) ||
+    !(REDIRECTOR_DEFAULT_PROVIDER in current.config)
+  ) {
+    return;
+  }
+
+  const { [REDIRECTOR_DEFAULT_PROVIDER]: _removed, ...config } = current.config;
+
+  await updateAuthenticationConfig(target, realm, accessToken, configId, {
+    ...current,
+    config,
+  });
+}
+
 /** The first-broker-login flow's review-profile execution and its update-policy config key. */
 export const REVIEW_PROFILE_PROVIDER_ID = "idp-review-profile";
 
