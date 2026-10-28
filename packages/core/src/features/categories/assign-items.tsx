@@ -7,7 +7,10 @@ import {
   DataTable,
   focusRing,
   IconTile,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   Select,
   SelectContent,
   SelectItem,
@@ -18,6 +21,7 @@ import {
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 
+import { SearchIcon } from "../admin/icons.tsx";
 import type { AssignableModuleView, CategoriesScreenProps } from "./types.ts";
 
 type AssignItemsProps = Pick<
@@ -139,14 +143,21 @@ export function AssignItems(props: AssignItemsProps) {
         under Other. Filing a module never changes who can open it.
       </p>
       <div className="grid gap-2 sm:flex sm:items-center">
-        <Input
-          type="search"
-          aria-label="Search modules"
-          placeholder="Search modules"
-          value={query}
-          onValueChange={setQuery}
-          className="sm:max-w-xs"
-        />
+        {/* The captures draw a magnifier inside every list search. */}
+        <InputGroup className="sm:max-w-xs">
+          <InputGroupInput
+            type="search"
+            aria-label="Search modules"
+            placeholder="Search modules"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <InputGroupAddon>
+            <InputGroupText>
+              <SearchIcon aria-hidden="true" />
+            </InputGroupText>
+          </InputGroupAddon>
+        </InputGroup>
         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-foreground">
           <Checkbox checked={onlyLoose} onCheckedChange={setOnlyLoose} />
           {props.copy.uncategorizedOnly}

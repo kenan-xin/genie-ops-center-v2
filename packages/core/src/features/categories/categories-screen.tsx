@@ -95,7 +95,8 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
     categories.findIndex((category) => category.id === id);
 
   return (
-    <div className="grid gap-4">
+    // The captures cap the page at a reading width, as the account page does (max-w-4xl).
+    <div className="grid max-w-4xl gap-4">
       <div className="grid gap-1">
         <p className="max-w-prose text-sm text-pretty text-muted-foreground">
           {props.copy.notice}
