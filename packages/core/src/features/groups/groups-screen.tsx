@@ -28,6 +28,10 @@ import {
   HelpDisclosure,
   IconTile,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   LabelPill,
   Select,
   SelectContent,
@@ -44,6 +48,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
 } from "@genie/ui";
 import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -56,6 +61,7 @@ import {
   LocalIcon,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   ShieldIcon,
   TrashIcon,
   WarningIcon,
@@ -159,8 +165,11 @@ export function GroupInspector(
   const [editing, setEditing] = useState<null | "label" | "local">(null);
 
   const [confirm, setConfirm] = useState<
-    null | "archive" | "delete" | "remove"
+    null | "archive" | "delete" | "remove" | "removeOne"
   >(null);
+
+  // The member a "Remove from group" asks about; kept after close so the dialog does not blank.
+  const [removing, setRemoving] = useState<string | null>(null);
 
   const [labelDraft, setLabelDraft] = useState(group.displayLabel ?? "");
   const [nameDraft, setNameDraft] = useState(group.name);
@@ -220,34 +229,44 @@ export function GroupInspector(
       <SheetContent>
         {/* The kind pill sits beside the name, so no second line repeats the kind (clarify row 1). */}
         <SheetHeader>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <SheetTitle className="min-w-0 wrap-anywhere">
-              {groupLabel(group)}
-            </SheetTitle>
-            {sourcePill(group)}
-            {group.lastSeenAt === null && group.source === "idp" ? (
-              <StatusPill tone="neutral">Not seen yet</StatusPill>
-            ) : null}
-          </div>
-          {group.description === "" ? null : (
-            <p className="text-sm text-muted-foreground">{group.description}</p>
-          )}
-          {group.source === "idp" ? (
-            <p className="text-xs text-muted-foreground wrap-anywhere">
-              {`Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
-                group.lastSeenAt,
-                viewer.timeZone,
-                "never"
-              )}`}
-            </p>
-          ) : null}
-          {asksForLabel && editing !== "label" ? (
-            <div>
-              <Button variant="link" onClick={() => setEditing("label")}>
-                {props.labelHint}
-              </Button>
+          {/* The captures put the kind icon tile left of the header. */}
+          <div className="flex items-start gap-3">
+            <IconTile>
+              {group.source === "idp" ? <DirectoryIcon /> : <LocalIcon />}
+            </IconTile>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <SheetTitle className="min-w-0 wrap-anywhere">
+                  {groupLabel(group)}
+                </SheetTitle>
+                {sourcePill(group)}
+                {group.lastSeenAt === null && group.source === "idp" ? (
+                  <StatusPill tone="neutral">Not seen yet</StatusPill>
+                ) : null}
+              </div>
+              {group.description === "" ? null : (
+                <p className="text-sm text-muted-foreground">
+                  {group.description}
+                </p>
+              )}
+              {group.source === "idp" ? (
+                <p className="text-xs text-muted-foreground wrap-anywhere">
+                  {`Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
+                    group.lastSeenAt,
+                    viewer.timeZone,
+                    "never"
+                  )}`}
+                </p>
+              ) : null}
+              {asksForLabel && editing !== "label" ? (
+                <div>
+                  <Button variant="link" onClick={() => setEditing("label")}>
+                    {props.labelHint}
+                  </Button>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </SheetHeader>
         <div className="flex min-w-0 flex-col gap-3 overflow-y-auto px-4 pb-4">
           {group.stale ? (
@@ -303,11 +322,12 @@ export function GroupInspector(
             }
           >
             <TabsList aria-label="Group detail">
+              {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="members">
-                Members ({props.members.length})
+                Members <LabelPill>{props.members.length}</LabelPill>
               </TabsTrigger>
               <TabsTrigger value="roles">
-                Roles ({props.assignments.length})
+                Roles <LabelPill>{props.assignments.length}</LabelPill>
               </TabsTrigger>
             </TabsList>
 
@@ -396,7 +416,10 @@ export function GroupInspector(
                             disabled={blocked}
                             title={blocked ? LAST_ADMIN_REASON : undefined}
                             loading={props.pending}
-                            onClick={() => props.onRemoveMembers([member.id])}
+                            onClick={() => {
+                              setRemoving(member.id);
+                              setConfirm("removeOne");
+                            }}
                           >
                             Remove from group
                           </Button>
@@ -523,8 +546,9 @@ export function GroupInspector(
               </Field>
               <Field>
                 <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
-                <Input
+                <Textarea
                   id={descriptionId}
+                  rows={2}
                   value={descriptionDraft}
                   onChange={(event) => setDescriptionDraft(event.target.value)}
                 />
@@ -633,16 +657,31 @@ export function GroupInspector(
               : props.members.length + group.assignmentCount === 0
                 ? "It has no members and no role assignments."
                 : `${props.members.length} member${
-                    props.members.length === 1 ? "" : "s"
-                  } and ${group.assignmentCount} role assignment${
-                    group.assignmentCount === 1 ? "" : "s"
-                  } go with it.`
+                    props.members.length === 1 ? " loses" : "s lose"
+                  } this membership and ${group.assignmentCount} role assignment${
+                    group.assignmentCount === 1 ? " is" : "s are"
+                  } removed. This cannot be undone.`
           }
           confirmLabel="Delete group"
           danger
           onConfirm={() => {
             setConfirm(null);
             props.onDelete();
+          }}
+          onClose={() => setConfirm(null)}
+        />
+
+        {/* The capture confirms one removal too: it ends every role the group carries for them. */}
+        <ConfirmDialog
+          open={confirm === "removeOne"}
+          title={`Remove one person from ${groupLabel(group)}?`}
+          description="That person loses every role this group carries. Their direct roles and other group memberships still give access; this does not remove them."
+          confirmLabel="Remove"
+          danger
+          onConfirm={() => {
+            setConfirm(null);
+
+            if (removing !== null) props.onRemoveMembers([removing]);
           }}
           onClose={() => setConfirm(null)}
         />
@@ -712,13 +751,20 @@ export function GroupsScreen(props: GroupsScreenProps) {
           <label htmlFor={searchId} className="sr-only">
             {props.searchLabel}
           </label>
-          <Input
-            id={searchId}
-            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
-            placeholder={props.searchLabel}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {/* The captures draw a magnifier inside every list search. */}
+          <InputGroup className="min-w-0 flex-1 sm:w-72 sm:flex-none">
+            <InputGroupInput
+              id={searchId}
+              placeholder={props.searchLabel}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <InputGroupAddon>
+              <InputGroupText>
+                <SearchIcon aria-hidden="true" />
+              </InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
           <HelpDisclosure label="Directory and local groups" iconOnly>
             A directory group&apos;s value and members come from the identity
             provider; only its label is editable here. A group not seen yet can
@@ -809,13 +855,23 @@ export function GroupsScreen(props: GroupsScreenProps) {
               {
                 id: "group",
                 header: "Group",
+                // The capture's row: the kind tile, then the name over the description.
                 cell: (group) => (
-                  <span className="flex flex-col items-start">
-                    <span>
-                      <GroupName value={groupLabel(group)} />
-                    </span>
-                    <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
-                      {group.description}
+                  <span className="flex items-center gap-3">
+                    <IconTile>
+                      {group.source === "idp" ? (
+                        <DirectoryIcon />
+                      ) : (
+                        <LocalIcon />
+                      )}
+                    </IconTile>
+                    <span className="flex min-w-0 flex-col items-start">
+                      <span>
+                        <GroupName value={groupLabel(group)} />
+                      </span>
+                      <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
+                        {group.description}
+                      </span>
                     </span>
                   </span>
                 ),

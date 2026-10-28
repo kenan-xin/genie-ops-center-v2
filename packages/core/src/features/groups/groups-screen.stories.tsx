@@ -561,7 +561,9 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
     );
 
     await expect(
-      confirm.getByText(/2 members and 1 role assignment go with it/)
+      confirm.getByText(
+        "2 members lose this membership and 1 role assignment is removed. This cannot be undone."
+      )
     ).toBeInTheDocument();
 
     await userEvent.click(
@@ -589,7 +591,7 @@ export const EmptyLocalGroupDeleteConfirmCountsNothing: Story = {
       await screen.findByRole("dialog", { name: "Delete Operations?" })
     );
 
-    await expect(confirm.queryByText(/go with it/)).toBeNull();
+    await expect(confirm.queryByText(/lose this membership/)).toBeNull();
   },
 };
 
@@ -760,6 +762,17 @@ export const RemovesOneMemberFromTheGroup: Story = {
 
     await userEvent.click(
       grace.getByRole("button", { name: "Remove from group" })
+    );
+
+    // The capture confirms one removal first: nothing is written until the confirm agrees.
+    await expect(args.onRemoveMembers).not.toHaveBeenCalled();
+
+    const confirm = await screen.findByRole("dialog", {
+      name: "Remove one person from Operations?",
+    });
+
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Remove" })
     );
 
     await expect(args.onRemoveMembers).toHaveBeenCalledWith("g-local", ["p-2"]);

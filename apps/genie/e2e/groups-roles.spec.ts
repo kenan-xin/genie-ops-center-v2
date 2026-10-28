@@ -380,11 +380,16 @@ test("a local group adds a member from one search and removes them from the row"
   expect(await memberCount()).toBe("1");
   await expectNoAxeViolations(page, "Group inspector with one member");
 
+  // One removal confirms first, as the capture shows.
+  await row.getByRole("button", { name: "Remove from group" }).click();
   await Promise.all([
     page.waitForResponse((response) =>
       response.url().includes("/api/rpc/groups/removeMembers")
     ),
-    row.getByRole("button", { name: "Remove from group" }).click(),
+    page
+      .getByRole("dialog", { name: /^Remove one person from/ })
+      .getByRole("button", { name: "Remove" })
+      .click(),
   ]);
 
   await expect(row).toBeHidden();
