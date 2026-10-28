@@ -184,6 +184,20 @@ describe("the placeholder touch job through the worker", () => {
     if (jobId === null) throw new Error("the enqueue returned no job");
     await waitUntil(async () => (await jobRow(jobId))?.state === "completed");
     expect(await touchedBy(record.id)).toEqual([]);
+
+    // A schedule stores its data for every later run, so the forged key is dropped there too.
+    const key = `forged-starter-${record.id}`;
+    await deployment.context.jobQueue.schedule(
+      touchRecordJob.name,
+      "0 0 1 1 *",
+      { id: record.id, [JOB_STARTER_KEY]: readerId },
+      { key }
+    );
+    const stored = await deployment.context.db.$client.query(
+      "delete from pgboss.schedule where name = $1 and key = $2 returning data",
+      [touchRecordJob.name, key]
+    );
+    expect(stored.rows).toEqual([{ data: { id: record.id } }]);
   });
 
   it("a failed run is retried by the declared policy, then completes", async () => {

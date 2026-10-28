@@ -52,7 +52,9 @@ const CAST: Readonly<Record<DatasetFieldType, string>> = {
   boolean: "boolean",
 };
 
-// Every `sql.raw` piece comes from one of these fixed lookups, never from a caller's string.
+// `sql.raw` gets only fixed lookups (CAST, the filter operator map, TRUNCATION, AGGREGATE,
+// DIRECTION), integer output positions checked against the validated query, and the time limit
+// core computes. No text a caller sent reaches it.
 const TRUNCATION = { month: "month", week: "week" } as const;
 
 const AGGREGATE = { sum: "sum", avg: "avg", min: "min", max: "max" } as const;
@@ -80,14 +82,17 @@ function answer(expression: SQL, type: DatasetFieldType): SQL<DatasetValue> {
 /**
  * Runs one validated query over the aliased select a dataset's `source()` answered (DEC-54). Core
  * names no module table: every field is read as `ds.<name>` of that subquery. The read is one
- * read-only transaction with a 5 second statement timeout (R-8).
+ * read-only transaction, and all its statements together stop after `timeLimitMs` (R-8): each one
+ * gets the time that remains. A series passes what remains of its own shared limit.
  */
 export async function runDatasetQuery(
   tenant: TenantContext,
   declaration: DatasetDeclaration,
   source: DatasetSource,
-  query: DatasetQuery
+  query: DatasetQuery,
+  timeLimitMs: number = DATASET_TIME_LIMIT_MS
 ): Promise<Pick<DatasetResult, "columns" | "rows" | "truncated">> {
+  const deadline = performance.now() + timeLimitMs;
   const ds = source.as("ds");
 
   const typeOf = (name: string): DatasetFieldType => {
@@ -287,9 +292,19 @@ export async function runDatasetQuery(
   try {
     return await tenant.db.transaction(
       async (tx) => {
-        await tx.execute(
-          sql.raw(`set local statement_timeout = ${DATASET_TIME_LIMIT_MS}`)
-        );
+        const limitNextStatement = async () => {
+          const remaining = Math.ceil(deadline - performance.now());
+
+          // A statement_timeout of 0 means no limit, so a spent deadline answers the timeout here.
+          if (remaining <= 0)
+            throw new AppError(CORE_ERRORS["dataset-timeout"]);
+
+          await tx.execute(
+            sql.raw(`set local statement_timeout = ${remaining}`)
+          );
+        };
+
+        await limitNextStatement();
 
         const currencyOf = new Map<string, string>();
 
@@ -361,6 +376,9 @@ export async function runDatasetQuery(
         if (groupBy !== "") base.groupBy(sql.raw(groupBy));
 
         if (orderBy !== undefined) base.orderBy(orderBy);
+
+        // A currency check above spent part of the limit; the main read gets only what remains.
+        if (moneyFields.length > 0) await limitNextStatement();
 
         const fetched = await base.limit(limit + 1);
 

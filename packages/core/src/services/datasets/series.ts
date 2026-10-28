@@ -14,6 +14,7 @@ import { can } from "../authorization/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
 import type { DatasetColumn, DatasetResult, DatasetValue } from "./index.ts";
 import {
+  DATASET_ROW_CAP,
   type DatasetQuery,
   type DatasetRange,
   datasetQuerySchema,
@@ -21,7 +22,11 @@ import {
   schemaIssues,
 } from "./query.ts";
 import { findDataset } from "./registry.ts";
-import { datasetSource, runDatasetQuery } from "./run-query.ts";
+import {
+  DATASET_TIME_LIMIT_MS,
+  datasetSource,
+  runDatasetQuery,
+} from "./run-query.ts";
 
 export type DatasetSeries = {
   readonly name: string;
@@ -51,13 +56,16 @@ type SeriesEntry = DatasetSeries & {
 };
 
 const seriesInputSchema = z.strictObject({
-  series: z.array(
-    z.strictObject({
-      name: z.string(),
-      dataset: z.string(),
-      query: datasetQuerySchema,
-    })
-  ),
+  series: z
+    .array(
+      z.strictObject({
+        name: z.string(),
+        dataset: z.string(),
+        query: datasetQuerySchema,
+      })
+    )
+    .min(1)
+    .max(10),
 });
 
 type XGrouping =
@@ -252,6 +260,8 @@ export async function queryDatasetSeries(
   const asOf = await reportingDate(ctx.tenant);
   const readAt = new Date().toISOString();
   const runs: SeriesRun[] = [];
+  // The series share one time limit (R-8): each run gets what remains of it.
+  const deadline = performance.now() + DATASET_TIME_LIMIT_MS;
 
   // oxlint-disable no-await-in-loop -- the series run in order, one read at a time.
   for (const { series, declaration } of resolved) {
@@ -263,7 +273,8 @@ export async function queryDatasetSeries(
         ctx.tenant,
         declaration,
         source,
-        series.query
+        series.query,
+        deadline - performance.now()
       ),
     });
   }
@@ -354,9 +365,11 @@ function joinSeries(
     }
   }
 
-  const ordered = xValues.toSorted((left, right) =>
+  const sorted = xValues.toSorted((left, right) =>
     compareX(left, right, x, rangeOrder)
   );
+
+  const ordered = sorted.slice(0, DATASET_ROW_CAP);
 
   const points = columns.map(({ series, result, column }) => ({
     name: series.name,
@@ -385,6 +398,8 @@ function joinSeries(
         ),
       ])
     ),
-    truncated: runs.some(({ result }) => result.truncated),
+    truncated:
+      sorted.length > ordered.length ||
+      runs.some(({ result }) => result.truncated),
   };
 }
