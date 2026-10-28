@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   focusRing,
+  StickyActionBar,
 } from "@genie/ui";
 import { ChevronLeft } from "lucide-react";
 import { use, type ReactNode } from "react";
@@ -131,12 +132,7 @@ export function PageHeader(props: PageHeaderProps) {
         )}
       </header>
       {inShell && bar !== undefined ? (
-        <div
-          data-shell-bottom-bar=""
-          className="fixed inset-x-0 bottom-0 z-10 flex items-center justify-end gap-2 border-t bg-background px-4 py-3 md:hidden"
-        >
-          {bar}
-        </div>
+        <StickyActionBar>{bar}</StickyActionBar>
       ) : null}
     </>
   );
