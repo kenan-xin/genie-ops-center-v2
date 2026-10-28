@@ -127,6 +127,35 @@ export const DesktopSessionRowsDoNotWrap: Story = {
 };
 
 /**
+ * On a phone the Sessions header stacks as in the mobile capture: the description under the
+ * title at the same left edge, then Sign out all other sessions under the description.
+ */
+export const SessionsHeaderStacksOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const title = canvas.getByRole("heading", { name: "Sessions" });
+
+    const description = canvas.getByText(/^Where you are signed in/);
+
+    const action = canvas.getByRole("button", {
+      name: "Sign out all other sessions",
+    });
+
+    await expect(description.getBoundingClientRect().left).toBe(
+      title.getBoundingClientRect().left
+    );
+    await expect(
+      description.getBoundingClientRect().top
+    ).toBeGreaterThanOrEqual(title.getBoundingClientRect().bottom);
+    await expect(action.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      description.getBoundingClientRect().bottom
+    );
+  },
+};
+
+/**
  * The page header sits as on every admin page: at the content's left edge, not centered, with the
  * 24 px gap above the first card, and the subtitle names what the page holds.
  */

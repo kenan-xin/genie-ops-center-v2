@@ -48,7 +48,10 @@ export function AccountCard(props: {
         >
           {props.title}
         </h2>
-        <CardDescription>{props.description}</CardDescription>
+        {/* Pinned to the title's column: on a phone the action leaves column 2 empty. */}
+        <CardDescription className="col-start-1">
+          {props.description}
+        </CardDescription>
         {props.action === undefined ? null : (
           // On a phone the action drops under the description, as in the mobile capture.
           <CardAction className="max-md:col-start-1 max-md:row-span-1 max-md:row-start-3 max-md:mt-2 max-md:justify-self-start">
