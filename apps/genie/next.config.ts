@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
   // repeated-slash/backslash normalization still runs in `base-server` before
   // any proxy code.
   skipProxyUrlNormalize: true,
+  // `forbidden()` and `forbidden.tsx` are the framework's way to answer a page with 403. The proxy
+  // rewrites a switched-off module's document to `/module-disabled`, which calls it, so the
+  // refusal keeps its 403 (R-8) and renders the no-access state in the shell (6wz1.85).
+  experimental: { authInterrupts: true },
   // The build type-checks shipped source only. Test files import module
   // packages the image builder stage prunes for a selection that excludes them
   // (pg4); the typecheck target still checks them through tsconfig.json.

@@ -118,17 +118,20 @@ describe("the application redirect", () => {
 // SAFETY: the proxy reads only the members below and the entitlement reader
 // the gate calls; the rest of the tenant is the opaque value it hands the
 // provider, so the partial object is never otherwise dereferenced. The reader
-// answers enabled, so these viewer cases exercise the provider path.
-function viewerAppWith(provider: {
-  frameOrigins: () => Promise<string[]>;
-}): AppContext {
+// answers `enabled`, true by default, so most viewer cases exercise the provider path.
+function viewerAppWith(
+  provider: {
+    frameOrigins: () => Promise<string[]>;
+  },
+  enabled = true
+): AppContext {
   // SAFETY: the proxy reads only the members below and the entitlement reader
   // the gate calls; the rest of the tenant is the opaque value it hands the
   // provider, so the partial object is never otherwise dereferenced.
   return {
     tenant: {
       entitlements: {
-        isEnabled: async (_moduleId: string): Promise<boolean> => true,
+        isEnabled: async (_moduleId: string): Promise<boolean> => enabled,
       },
     } as AppContext["tenant"],
     startedAt: 0,
@@ -193,6 +196,27 @@ describe("background requests at the viewer url", () => {
       ).toBe(BASELINE_POLICY);
     }
   );
+
+  // R-8 and R-49a: a switched-off module's viewer document is rewritten to the refusal page, which
+  // renders the no-access state in the shell (6wz1.85), and its provider never runs.
+  it("rewrites a disabled module's viewer document to the refusal page without invoking the provider", async () => {
+    const provider = {
+      frameOrigins: vi.fn(async () => [
+        "https://embed.placeholder.example.com",
+      ]),
+    };
+
+    publishContext(viewerAppWith(provider, false));
+
+    const response = await proxy(
+      new NextRequest("https://example.invalid/viewer/placeholder")
+    );
+
+    expect(provider.frameOrigins).not.toHaveBeenCalled();
+    expect(response.headers.get("x-middleware-rewrite") ?? "").toContain(
+      "/module-disabled"
+    );
+  });
 
   // The positive control: an ordinary document at the viewer url is the one
   // request class that may reach the provider, exactly once, and it is the one

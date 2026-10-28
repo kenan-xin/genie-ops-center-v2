@@ -23,19 +23,29 @@ export async function renderIfPermitted(
   const caller = await documentPrincipal();
 
   if (!(await can(caller, permission))) {
-    const t = await getTranslations("access");
-
-    // Denied pages say nothing about what they would have shown.
-    return (
-      <main data-testid="permission-denied">
-        <NoAccessState
-          title={t("title")}
-          description={t("description")}
-          home={{ href: "/", label: t("home") }}
-        />
-      </main>
-    );
+    return <NoAccessMain testId="permission-denied" />;
   }
 
   return render(caller);
+}
+
+/**
+ * The page body of every refusal: a `can()` denial here and a switched-off module (R-8). The test
+ * id tells the two apart; the person sees the same state for both. Denied pages say nothing about
+ * what they would have shown.
+ */
+export async function NoAccessMain(props: {
+  readonly testId: "permission-denied" | "module-disabled";
+}): Promise<ReactNode> {
+  const t = await getTranslations("access");
+
+  return (
+    <main data-testid={props.testId}>
+      <NoAccessState
+        title={t("title")}
+        description={t("description")}
+        home={{ href: "/", label: t("home") }}
+      />
+    </main>
+  );
 }

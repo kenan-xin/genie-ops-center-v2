@@ -196,6 +196,12 @@ test("lists every compiled module and switches one off through the confirm dialo
             .getByText("Off", { exact: true })
         ).toBeVisible();
 
+        // Home opens at once, inside the reader window, and lands in the shell whichever answer the
+        // module route gives: the module page while the cached reader still says on, the no-access
+        // state once it says off, never the raw refusal body (6wz1.85).
+        await member.goto(`${BASE}/`);
+        await openNavigation(member);
+
         // The member loses the entry and the route refuses, once the cached reader expires.
         await expect.poll(() => placeholderLinks(member), POLL).toBe(0);
         await expect
@@ -204,6 +210,15 @@ test("lists every compiled module and switches one off through the confirm dialo
             POLL
           )
           .toBe(403);
+
+        // The refused module page is the no-access state inside the shell, not JSON (6wz1.85).
+        await expect(
+          member.getByRole("heading", {
+            level: 1,
+            name: "You do not have access to this page",
+          })
+        ).toBeVisible();
+        await openNavigation(member);
 
         // On saves at once, without a dialog.
         const enabledBefore = await auditCount("core:module_enabled");

@@ -8,7 +8,6 @@
 import { type Dirent, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { AppError, CORE_ERRORS, safeBodyFor } from "@genie/core/errors";
 import {
   STANDARD_HEADERS,
   type FrameOriginProvider,
@@ -189,23 +188,31 @@ function notSetUpPageResponse(
 const APPLICATION_REDIRECTS = new Map([["/home", "/"]]);
 
 /**
- * R-8: the refusal for a declared route whose module is switched off. It carries the catalogue
- * code, its fixed safe message and this request's id, at HTTP 403, so it reads exactly like the
- * RPC gate's refusal and the ordinary route helper's body. The module stays mounted; it refuses
- * rather than disappearing, which is what keeps it distinguishable from an excluded module whose
- * route does not exist.
+ * R-8: the refusal for a declared route whose module is switched off. The proxy rewrites it to the
+ * `/module-disabled` document, which answers 403 and shows the no-access state in the shell, so a
+ * person never sees a raw JSON body (6wz1.85). The decision stays here, before any page renders.
+ * Home can still redirect to the route with a reading taken just before the reader window ended;
+ * the person then lands on this state, not on a broken page. The module stays mounted; it refuses
+ * rather than disappearing, which keeps it distinguishable from an excluded module whose route
+ * does not exist. Its procedures refuse with JSON at the RPC gate.
  */
-function moduleDisabledResponse(requestId: string): NextResponse {
-  const body = safeBodyFor(
-    new AppError(CORE_ERRORS["module-disabled"]),
-    requestId
-  );
+function moduleDisabledPageResponse(
+  request: NextRequest,
+  requestHeaders: Headers,
+  requestId: string
+): NextResponse {
+  const target = request.nextUrl.clone();
 
-  const refusal = NextResponse.json(body, { status: 403 });
+  target.pathname = "/module-disabled";
+  target.search = "";
 
-  applyStandardHeaders(refusal, requestId);
+  const response = NextResponse.rewrite(target, {
+    request: { headers: requestHeaders },
+  });
 
-  return refusal;
+  applyStandardHeaders(response, requestId);
+
+  return response;
 }
 
 /**
@@ -349,7 +356,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     owner !== undefined &&
     !(await app.tenant.entitlements.isEnabled(owner))
   ) {
-    return moduleDisabledResponse(requestId);
+    return moduleDisabledPageResponse(request, requestHeaders, requestId);
   }
 
   // R-49a: a background navigation request must not invoke a provider either,
