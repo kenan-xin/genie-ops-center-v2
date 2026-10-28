@@ -234,9 +234,9 @@ export const Default: Story = {
     await expect(canvas.getAllByText("Directory").length).toBeGreaterThan(0);
     await expect(canvas.getByText("Local")).toBeInTheDocument();
 
-    // The muted note names where changes happen.
+    // Where changes happen sits behind help (helper-text rule).
     await expect(
-      canvas.getByText(/changes are made in the company directory/i)
+      canvas.getByRole("button", { name: "Where your profile comes from" })
     ).toBeInTheDocument();
 
     // Sessions: the current row carries the chip and no menu; the others an actions menu. The
@@ -259,9 +259,9 @@ export const Default: Story = {
       canvas.getByText("Through Field engineers")
     ).toBeInTheDocument();
 
-    // Read-only: the note says who changes roles.
+    // Read-only: the help says who changes roles.
     await expect(
-      canvas.getByText(/contact an administrator/i)
+      canvas.getByRole("button", { name: "How your roles change" })
     ).toBeInTheDocument();
   },
 };
@@ -418,7 +418,7 @@ export const WithoutRoles: Story = {
     const canvas = within(canvasElement);
 
     await expect(
-      canvas.getByText(/contact an administrator/i)
+      canvas.getByRole("button", { name: "How your roles change" })
     ).toBeInTheDocument();
 
     // No groups reads as its own line, not as a missing block.

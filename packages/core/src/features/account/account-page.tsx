@@ -3,6 +3,7 @@ import {
   ConfirmDialog,
   DataTable,
   focusRing,
+  HelpDisclosure,
   MonoChip,
 } from "@genie/ui";
 import { useState } from "react";
@@ -97,11 +98,14 @@ function ProfileBlock(props: {
           </ul>
         )}
       </AccountCardRow>
-      <AccountCardRow className="md:flex-row md:items-start md:justify-between md:gap-4">
-        <p className="text-sm text-muted-foreground">
-          Name, email, and groups come from the company directory; changes are
-          made in the company directory, not in Genie.
-        </p>
+      {/* Background, so it sits behind help (tokens.md, "What helper text stays visible"). */}
+      <AccountCardRow className="md:flex-row md:items-center md:justify-between md:gap-4">
+        <HelpDisclosure label="Where your profile comes from">
+          <p>
+            Name, email, and groups come from the company directory; changes are
+            made in the company directory, not in Genie.
+          </p>
+        </HelpDisclosure>
         {props.accountManagementUrl === null ? null : (
           <a
             className={`w-fit shrink-0 text-sm font-medium text-primary dark:text-brand-on-dark hover:underline ${focusRing}`}
@@ -271,10 +275,12 @@ function RolesBlock(props: {
         </ul>
       )}
       <AccountCardRow>
-        <p className="text-sm text-muted-foreground">
-          Roles are assigned by administrators; contact an administrator for
-          changes.
-        </p>
+        <HelpDisclosure label="How your roles change">
+          <p>
+            Roles are assigned by administrators; contact an administrator for
+            changes.
+          </p>
+        </HelpDisclosure>
       </AccountCardRow>
     </AccountCard>
   );
