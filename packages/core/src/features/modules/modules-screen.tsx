@@ -6,7 +6,10 @@ import {
   DataTable,
   focusRing,
   HelpDisclosure,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   Popover,
   PopoverContent,
   PopoverTitle,
@@ -27,6 +30,7 @@ import { uniqBy } from "es-toolkit";
 import { ChevronRightIcon } from "lucide-react";
 import { Fragment, useId, useState, type ReactNode } from "react";
 
+import { SearchIcon } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import { GroupName } from "../groups/group-name.tsx";
 import type {
@@ -73,11 +77,12 @@ function Description({ module }: { readonly module: ModuleView }) {
 function Identity({ module }: { readonly module: ModuleView }) {
   return (
     <span className="grid max-w-sm min-w-0 gap-0.5">
+      {/* The desktop capture sets the id in quiet mono beside the name. */}
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span>{module.displayName}</span>
+        <ModuleId module={module} />
         {offPill(module)}
       </span>
-      <ModuleId module={module} />
       <Description module={module} />
     </span>
   );
@@ -365,13 +370,20 @@ export function ModulesScreen(props: ModulesScreenProps) {
         <label htmlFor={searchId} className="sr-only">
           {props.searchLabel}
         </label>
-        <Input
-          id={searchId}
-          className="min-w-0 flex-1 sm:w-72 sm:flex-none"
-          placeholder={props.searchLabel}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        {/* The captures draw a magnifier inside every list search. */}
+        <InputGroup className="min-w-0 flex-1 sm:w-72 sm:flex-none">
+          <InputGroupInput
+            id={searchId}
+            placeholder={props.searchLabel}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <InputGroupAddon>
+            <InputGroupText>
+              <SearchIcon aria-hidden="true" />
+            </InputGroupText>
+          </InputGroupAddon>
+        </InputGroup>
         <HelpDisclosure label="What a module is here" iconOnly>
           Every module compiled into this deployment is listed, on or off.
           Switching one off hides it and refuses its routes; its data stays.
@@ -405,10 +417,11 @@ export function ModulesScreen(props: ModulesScreenProps) {
               header: "Module",
               cell: (module) => <Identity module={module} />,
             },
+            // The capture puts the switch right after the module, under "Enabled".
+            { id: "enabled", header: "Enabled", cell: enabledControl },
             { id: "category", header: "Category", cell: categoryPicker },
             { id: "access", header: "Access", cell: access },
           ]}
-          status={enabledControl}
           // The approved phone card (`modules-phone.png`): no tile, the switch on the name's line.
           card={{
             title: (module) => (
