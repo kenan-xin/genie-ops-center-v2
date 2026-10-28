@@ -40,7 +40,7 @@ export default async function HomePage(props: {
   // Before the landing redirect, so break-glass goes to the admin home in one hop (U-3).
   await keepBreakGlassInAdmin();
 
-  const { landing, workspaceHome } = await shellModel();
+  const { identity, landing, workspaceHome } = await shellModel();
 
   const home = landing ?? workspaceHome;
 
@@ -58,6 +58,7 @@ export default async function HomePage(props: {
       <main data-context-id={contextId}>
         <PageHeader title={tShell("workspace")} />
         <NoGrantsEmptyState
+          identity={identity}
           title={tNoGrants("title")}
           description={tNoGrants("description")}
           {...(contact && {

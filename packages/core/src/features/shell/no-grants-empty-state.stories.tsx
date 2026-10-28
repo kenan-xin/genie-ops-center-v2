@@ -3,17 +3,27 @@ import { expect } from "storybook/test";
 
 import { NoGrantsEmptyState } from "./no-grants-empty-state.tsx";
 
+const MARK_URL = "/brand/icon-blue.svg?tenant";
+
 /**
- * The home page when the viewer holds no solution grant (R-34): one title, one sentence, and a
- * support contact only when branding has a valid one.
+ * The home page when the viewer has no workspace entry (R-34): the framed empty state with the
+ * company mark tile, one title, one sentence, and a support contact only when branding has a valid
+ * one.
  */
 const meta = {
   title: "Core/No-grants empty state",
   component: NoGrantsEmptyState,
   tags: ["autodocs"],
   args: {
-    title: "No solutions yet",
-    description: "Ask your administrator to grant you access to a solution.",
+    identity: {
+      companyName: "Acme Health",
+      productName: "Genie Ops Center",
+      logoLightUrl: null,
+      logoDarkUrl: null,
+      markUrl: MARK_URL,
+    },
+    title: "Nothing to open yet",
+    description: "Ask your administrator for access.",
   },
 } satisfies Meta<typeof NoGrantsEmptyState>;
 
@@ -28,13 +38,17 @@ const SUPPORT_EMAIL = {
 
 export const WithSupportEmail: Story = {
   args: { contact: SUPPORT_EMAIL },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByText("No solutions yet")).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
     await expect(
-      canvas.getByText(
-        "Ask your administrator to grant you access to a solution."
-      )
+      canvas.getByRole("heading", { level: 2, name: "Nothing to open yet" })
     ).toBeVisible();
+    await expect(
+      canvas.getByText("Ask your administrator for access.")
+    ).toBeVisible();
+    // The tile carries the tenant's own mark, not the default one.
+    await expect(
+      canvasElement.querySelector('[data-slot="empty-icon"] img')
+    ).toHaveAttribute("src", MARK_URL);
 
     const link = canvas.getByRole("link", {
       name: "Contact Acme Health support",
@@ -68,6 +82,10 @@ export const WithoutSupportContact: Story = {
 
 export const Dark: Story = {
   args: { contact: SUPPORT_EMAIL },
+  globals: { theme: "dark" },
+};
+
+export const DarkWithoutSupportContact: Story = {
   globals: { theme: "dark" },
 };
 

@@ -110,8 +110,8 @@
     "kept": "Your change is kept."
   },
   "noGrants": {
-    "title": "No solutions yet",
-    "description": "Ask your administrator to grant you access to a solution.",
+    "title": "Nothing to open yet",
+    "description": "Ask your administrator for access.",
     "contact": "Contact {companyName} support"
   },
   "viewer": {

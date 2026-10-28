@@ -80,9 +80,11 @@ async function homeBlocks(page: Page): Promise<readonly number[]> {
 }
 
 async function expectEmptyState(page: Page): Promise<void> {
-  await expect(page.getByText("No solutions yet")).toBeVisible();
   await expect(
-    page.getByText("Ask your administrator to grant you access to a solution.")
+    page.getByRole("heading", { name: "Nothing to open yet" })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Ask your administrator for access.")
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: ENTRY, exact: true })
@@ -145,7 +147,7 @@ test("with no landing route, home opens the first workspace entry (R-34)", async
       await page.goto(`${inviteBaseUrl()}/`);
 
       await expect(page).toHaveURL(`${inviteBaseUrl()}/placeholder`);
-      await expect(page.getByText("No solutions yet")).toHaveCount(0);
+      await expect(page.getByText("Nothing to open yet")).toHaveCount(0);
     },
     300_000
   );

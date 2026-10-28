@@ -8,10 +8,12 @@ import type { ShellChrome, ShellIdentity } from "./types.ts";
 /** The Ops Center icon, a static file of the app's `public/brand/` folder (DR-03, DR-19). */
 export const DEFAULT_MARK_URL = "/brand/icon-blue.svg";
 
-// The mark tile (tokens.md): 6px small, 8px medium. The mark fills about 70 percent.
+// The mark tile (tokens.md): 6px small, 8px medium, and the 12px tile of the framed empty state.
+// The mark fills about 70 percent.
 const TILE = {
   sm: { tile: "size-8 rounded-md", mark: "size-5.5" },
   md: { tile: "size-10 rounded-lg", mark: "size-7" },
+  lg: { tile: "size-13 rounded-xl", mark: "size-9" },
 } as const;
 
 /**
@@ -41,7 +43,7 @@ function useBrandingImage(url: string | null) {
 /** The branding square mark, or the Ops Center icon when there is none or it fails to load. */
 export function TenantMark(props: {
   readonly identity: ShellIdentity;
-  readonly size: "sm" | "md";
+  readonly size: keyof typeof TILE;
 }) {
   const mark = useBrandingImage(props.identity.markUrl);
 
