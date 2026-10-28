@@ -9,6 +9,7 @@ import {
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
+import { withDeploymentLock } from "./support/lock.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -37,9 +38,13 @@ async function openAddDirectoryGroup(page: Page) {
  * projects share one database, so the group claim value and the retired role are project-scoped.
  */
 
+// A branding proof holds the `branding` lock for up to 2.5 minutes in a full gate (shell.spec.ts
+// AC-4a at the phone viewport), and several of them can queue.
+const BRANDING_LOCK_WAIT_MS = 300_000;
+
 // The proof signs in twice through the real realm and drives three contexts, so it needs more
-// than the 30 second default.
-test.describe.configure({ timeout: 180_000 });
+// than the 30 second default, plus the wait for the `branding` lock.
+test.describe.configure({ timeout: 180_000 + BRANDING_LOCK_WAIT_MS });
 
 test("pre-add a directory group, map it, admit a jit person, and archive to stop the grant", async ({
   page,
@@ -89,25 +94,34 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   ).toBeVisible();
 
   // A refused add keeps its dialog, the typed value and the reason, readable in dark (U-1,
-  // 6wz1.71). The branding theme is `system`.
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await openAddDirectoryGroup(page);
-  await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
-  await addDialog.getByRole("button", { name: "Add group" }).click();
+  // 6wz1.71). The branding theme is `system` only while no branding proof changes it, so this
+  // part holds the `branding` lock that those proofs take.
+  await withDeploymentLock(
+    "branding",
+    async () => {
+      await page.emulateMedia({ colorScheme: "dark" });
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+      await openAddDirectoryGroup(page);
+      await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
+      await addDialog.getByRole("button", { name: "Add group" }).click();
 
-  const refusal = addDialog.getByRole("alert");
+      const refusal = addDialog.getByRole("alert");
 
-  await expect(refusal).toHaveText(
-    "The group was not added. A directory group with that exact claim value already exists. Your change is kept."
+      await expect(refusal).toHaveText(
+        "The group was not added. A directory group with that exact claim value already exists. Your change is kept."
+      );
+      await expect(refusal).toBeFocused();
+      await expect(addDialog.getByLabel("Claim value")).toHaveValue(
+        GROUP_VALUE
+      );
+      await expectNoAxeViolations(page, "Add directory group refused, dark");
+
+      await addDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(addDialog).toBeHidden();
+      await page.emulateMedia({ colorScheme: "light" });
+    },
+    BRANDING_LOCK_WAIT_MS
   );
-  await expect(refusal).toBeFocused();
-  await expect(addDialog.getByLabel("Claim value")).toHaveValue(GROUP_VALUE);
-  await expectNoAxeViolations(page, "Add directory group refused, dark");
-
-  await addDialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(addDialog).toBeHidden();
-  await page.emulateMedia({ colorScheme: "light" });
 
   // Map the group to a role through the screen's own assign step (R-24b), not SQL.
   const groupRow = page
