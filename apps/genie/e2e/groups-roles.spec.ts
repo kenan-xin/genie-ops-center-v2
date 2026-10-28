@@ -5,6 +5,7 @@ import {
   e2eGroupsRolesGroup,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
@@ -69,6 +70,27 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await expect(
     page.getByText("Not seen yet").filter({ visible: true }).first()
   ).toBeVisible();
+
+  // A refused add keeps its dialog, the typed value and the reason, readable in dark (U-1,
+  // 6wz1.71). The branding theme is `system`.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Add directory group" }).click();
+  await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
+  await addDialog.getByRole("button", { name: "Add group" }).click();
+
+  const refusal = addDialog.getByRole("alert");
+
+  await expect(refusal).toHaveText(
+    "The group was not added. A directory group with that exact claim value already exists. Your change is kept."
+  );
+  await expect(refusal).toBeFocused();
+  await expect(addDialog.getByLabel("Claim value")).toHaveValue(GROUP_VALUE);
+  await expectNoAxeViolations(page, "Add directory group refused, dark");
+
+  await addDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(addDialog).toBeHidden();
+  await page.emulateMedia({ colorScheme: "light" });
 
   // Map the group to a role through the screen's own assign step (R-24b), not SQL.
   const groupRow = page

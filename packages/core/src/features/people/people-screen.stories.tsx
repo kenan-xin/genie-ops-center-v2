@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
@@ -643,21 +642,17 @@ export const SearchNarrowsTheList: Story = {
 };
 
 /**
- * A host that refuses Add person the way the People route does: it sets the catalogue message on
- * `error` and rejects the promise.
+ * A host that refuses Add person the way the People route does: the promise rejects with the
+ * catalogue message.
  */
 function RefusingHost(props: PeopleScreenProps) {
-  const [error, setError] = useState<string | undefined>(undefined);
-
   return (
     <PeopleScreen
       {...props}
-      error={error}
       onAddPerson={async (input) => {
         await props.onAddPerson?.(input);
-        setError("A person with that email already exists.");
 
-        throw new Error("email-taken");
+        throw new Error("A person with that email already exists.");
       }}
     />
   );
@@ -692,21 +687,27 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
   },
 };
 
-export const AddPersonRateLimitedNamesTheWait: Story = {
-  args: {
-    error:
-      "Too many attempts in a short time. Wait a few minutes and try again. Try again in 5 minutes.",
-  },
+// Cancel drops the refusal, so neither the page nor the next open shows a stale one.
+export const AddPersonRefusalClearsOnCancel: Story = {
+  render: (args) => <RefusingHost {...args} />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+    const open = async () => {
+      await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
 
-    const dialog = within(
-      await screen.findByRole("dialog", { name: "Add person" })
-    );
+      return within(await screen.findByRole("dialog", { name: "Add person" }));
+    };
 
-    await expect(dialog.getByRole("alert")).toHaveTextContent(
-      "Try again in 5 minutes."
-    );
+    const dialog = await open();
+
+    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+    await expect(await dialog.findByRole("alert")).toBeInTheDocument();
+
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(canvas.queryByRole("alert")).toBeNull();
+
+    await expect((await open()).queryByRole("alert")).toBeNull();
   },
 };
 

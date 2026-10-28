@@ -250,6 +250,58 @@ export const AddDirectoryGroup: Story = {
   },
 };
 
+const GROUP_EXISTS =
+  "The group was not added. A group with that claim value already exists. Your change is kept.";
+
+// U-1: a refused add keeps its dialog open, with the typed value and the refusal in its action bar.
+export const AddDirectoryGroupRefusedStaysOpen: Story = {
+  args: {
+    onAddDirectoryGroup: fn(() => Promise.reject(new Error(GROUP_EXISTS))),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Add directory group" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add directory group" })
+    );
+
+    await userEvent.type(dialog.getByLabelText("Claim value"), "0a1b");
+    await userEvent.click(dialog.getByRole("button", { name: "Add group" }));
+
+    await expect(await dialog.findByRole("alert")).toHaveTextContent(
+      GROUP_EXISTS
+    );
+    await expect(dialog.getByLabelText("Claim value")).toHaveValue("0a1b");
+  },
+};
+
+export const NewLocalGroupRefusedStaysOpen: Story = {
+  args: {
+    onCreateLocalGroup: fn(() =>
+      Promise.reject(new Error("The local group was not created."))
+    ),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "New local group" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New local group" })
+    );
+
+    await userEvent.type(dialog.getByLabelText("Name"), "Night shift");
+    await userEvent.click(dialog.getByRole("button", { name: "Create group" }));
+
+    await expect(await dialog.findByRole("alert")).toHaveTextContent(
+      "The local group was not created."
+    );
+    await expect(dialog.getByLabelText("Name")).toHaveValue("Night shift");
+  },
+};
+
 export const LabelShowsAndValueStaysInTheInspector: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(

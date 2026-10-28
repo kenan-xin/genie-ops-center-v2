@@ -69,15 +69,22 @@ export type GroupsScreenProps = {
   readonly loading?: boolean | undefined;
   /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */
   readonly pending?: boolean | undefined;
+  /**
+   * Resolves when the group is added. A refusal rejects with the copy to show as its `message`,
+   * and the dialog stays open with it (U-1). The same holds for `onCreateLocalGroup`.
+   */
   readonly onAddDirectoryGroup?: (
     externalId: string,
     displayLabel?: string
-  ) => void;
+  ) => Promise<void> | void;
   readonly onArchiveGroup?: (groupId: string) => void;
   readonly onRestoreGroup?: (groupId: string) => void;
   readonly onDeleteGroup?: (groupId: string) => void;
   readonly onEditLabel?: (groupId: string, displayLabel: string | null) => void;
-  readonly onCreateLocalGroup?: (name: string, description: string) => void;
+  readonly onCreateLocalGroup?: (
+    name: string,
+    description: string
+  ) => Promise<void> | void;
   readonly onUpdateLocalGroup?: (
     groupId: string,
     name: string,

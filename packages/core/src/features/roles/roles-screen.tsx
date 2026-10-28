@@ -7,11 +7,11 @@ import {
   DataTable,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
   FieldLabel,
+  FormActionBar,
   HelpDisclosure,
   Input,
   LabelPill,
@@ -20,6 +20,7 @@ import {
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   CopyIcon,
   PencilIcon,
@@ -65,6 +66,8 @@ function RoleFormDialog(props: {
   readonly catalogue: readonly RolePermissionGroup[];
   /** Stored keys outside the catalogue, shown as a removable set (R-33b). */
   readonly unavailableKeys: readonly UnavailableKey[];
+  readonly failure: string | null;
+  readonly submitting: boolean;
   readonly onCancel: () => void;
   readonly onSubmit: (input: RoleInput) => void;
 }) {
@@ -101,6 +104,8 @@ function RoleFormBody(props: {
   readonly state: FormState;
   readonly catalogue: readonly RolePermissionGroup[];
   readonly unavailableKeys: readonly UnavailableKey[];
+  readonly failure: string | null;
+  readonly submitting: boolean;
   readonly onCancel: () => void;
   readonly onSubmit: (input: RoleInput) => void;
 }) {
@@ -204,12 +209,14 @@ function RoleFormBody(props: {
         ))}
       </div>
 
-      <DialogFooter>
+      {/* A refused save reports in the action bar, beside the buttons, and keeps the form (U-1). */}
+      <FormActionBar failure={props.failure} placement="dialog">
         <Button variant="secondary" onClick={props.onCancel}>
           Cancel
         </Button>
         <Button
           disabled={!canSubmit}
+          loading={props.submitting}
           onClick={() =>
             props.onSubmit({
               name: name.trim(),
@@ -220,7 +227,7 @@ function RoleFormBody(props: {
         >
           {props.state.mode === "edit" ? "Save role" : "Create role"}
         </Button>
-      </DialogFooter>
+      </FormActionBar>
     </>
   );
 }
@@ -415,6 +422,7 @@ export function RolesScreen(props: RolesScreenProps) {
   });
 
   const [formOpen, setFormOpen] = useState(false);
+  const submission = useDialogSubmit();
   const searchId = useId();
 
   const openForm = (next: FormState) => {
@@ -442,17 +450,22 @@ export function RolesScreen(props: RolesScreenProps) {
           ? []
           : (props.detail?.unavailableKeys ?? [])
       }
-      onCancel={() => setFormOpen(false)}
-      onSubmit={(input) => {
+      failure={submission.failure}
+      submitting={submission.submitting}
+      onCancel={() => {
+        submission.clear();
         setFormOpen(false);
-
-        // An edit updates the selected role by id; a create or a copy makes a new row.
-        if (form.mode === "edit" && form.roleId !== undefined) {
-          props.onUpdateRole?.(form.roleId, input);
-        } else {
-          props.onCreateRole?.(input);
-        }
       }}
+      // An edit updates the selected role by id; a create or a copy makes a new row.
+      onSubmit={(input) =>
+        submission.submit(
+          () =>
+            form.mode === "edit" && form.roleId !== undefined
+              ? props.onUpdateRole?.(form.roleId, input)
+              : props.onCreateRole?.(input),
+          () => setFormOpen(false)
+        )
+      }
     />
   );
 
@@ -501,7 +514,7 @@ export function RolesScreen(props: RolesScreenProps) {
           onDelete={() => props.onDeleteRole?.(props.detail!.id)}
           onOpenInAccess={() => props.onOpenInAccess?.(props.detail!.id)}
           onRemoveUnavailable={(key) =>
-            props.onUpdateRole?.(props.detail!.id, {
+            props.onRemoveUnavailableKey?.(props.detail!.id, {
               name: props.detail!.name,
               description: props.detail!.description,
               permissions: props.detail!.permissions.filter(

@@ -81,8 +81,8 @@ export type PeopleScreenProps = {
   /** A person to open on mount, for a link such as an audit target (`?selected=`). */
   readonly initialSelectedId?: string | undefined;
   /**
-   * Adds a person. The dialog stays open until this resolves; a rejection leaves it open and the
-   * refusal shows in the alert (the host maps the RPC error to its catalogue message).
+   * Adds a person. The dialog stays open until this resolves; a refusal rejects with the copy to
+   * show as its `message`, and the dialog stays open with it (U-1).
    */
   readonly onAddPerson?: (input: NewPersonInput) => Promise<void> | void;
   readonly onDisablePerson?: (personId: string) => void;

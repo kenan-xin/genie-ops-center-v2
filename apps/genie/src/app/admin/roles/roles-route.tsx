@@ -1,6 +1,10 @@
 "use client";
 
-import { RolesScreen, type RolesViewer } from "@genie/core/features/roles";
+import {
+  RolesScreen,
+  type RoleInput,
+  type RolesViewer,
+} from "@genie/core/features/roles";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation.js";
@@ -43,12 +47,34 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     invalidate: [["roles"], ["role", selectedRoleId]],
   });
 
+  // The role form awaits its save and shows the refusal it rejects with (U-1), so it gets no
+  // toast. A success keeps its toast.
+  const save = useAdminWrite({
+    write: (work: () => Promise<void>) => work(),
+    invalidate: [["roles"], ["role", selectedRoleId]],
+    refused: () => undefined,
+    notSaved: () => t("roles.notSaved"),
+  });
+
   // A write's answer is not read: the screen reloads instead.
   const run = <TResult,>(work: () => Promise<TResult>) => {
     action.mutate(async () => {
       await work();
     });
   };
+
+  const saveRole = (roleId: string | null, input: RoleInput) =>
+    save.mutateAsync(async () => {
+      const fields = {
+        name: input.name,
+        description: input.description,
+        permissions: [...input.permissions],
+      };
+
+      await (roleId === null
+        ? rpc.roles.create(fields)
+        : rpc.roles.update({ roleId, ...fields }));
+    });
 
   return (
     <RolesScreen
@@ -60,18 +86,11 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       onSelectRole={setSelectedRoleId}
       detail={detail.data}
       loading={list.isPending}
-      pending={action.isPending}
+      pending={action.isPending || save.isPending}
       error={list.isError ? "The roles could not be read." : undefined}
-      onCreateRole={(input) =>
-        run(() =>
-          rpc.roles.create({
-            name: input.name,
-            description: input.description,
-            permissions: [...input.permissions],
-          })
-        )
-      }
-      onUpdateRole={(roleId, input) =>
+      onCreateRole={(input) => saveRole(null, input)}
+      onUpdateRole={(roleId, input) => saveRole(roleId, input)}
+      onRemoveUnavailableKey={(roleId, input) =>
         run(() =>
           rpc.roles.update({
             roleId,

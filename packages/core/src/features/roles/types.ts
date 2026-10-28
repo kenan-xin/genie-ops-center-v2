@@ -54,8 +54,17 @@ export type RolesScreenProps = {
   readonly loading?: boolean | undefined;
   /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */
   readonly pending?: boolean | undefined;
-  readonly onCreateRole?: (input: RoleInput) => void;
-  readonly onUpdateRole?: (roleId: string, input: RoleInput) => void;
+  /**
+   * The role form's saves. Each resolves when the role is saved; a refusal rejects with the copy to
+   * show as its `message`, and the form stays open with it (U-1).
+   */
+  readonly onCreateRole?: (input: RoleInput) => Promise<void> | void;
+  readonly onUpdateRole?: (
+    roleId: string,
+    input: RoleInput
+  ) => Promise<void> | void;
+  /** The detail's Remove on an unavailable key: the role saved without that key (R-33b). */
+  readonly onRemoveUnavailableKey?: (roleId: string, input: RoleInput) => void;
   readonly onDeleteRole?: (roleId: string) => void;
   readonly onOpenInAccess?: (roleId: string) => void;
 };

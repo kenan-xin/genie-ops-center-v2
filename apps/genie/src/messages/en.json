@@ -52,12 +52,15 @@
       "title": "Groups",
       "description": "Directory groups from the identity provider, and local groups you manage here. A role assigned to a group reaches every member.",
       "addLabelHint": "Add a display label",
-      "searchLabel": "Search groups"
+      "searchLabel": "Search groups",
+      "notAdded": "The group was not added.",
+      "notCreated": "The local group was not created."
     },
     "roles": {
       "title": "Roles",
       "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access.",
-      "searchLabel": "Search roles"
+      "searchLabel": "Search roles",
+      "notSaved": "The role was not saved."
     },
     "audit": {
       "title": "Audit log",

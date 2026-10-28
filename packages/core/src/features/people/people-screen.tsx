@@ -40,6 +40,7 @@ import {
 } from "@genie/ui";
 import { useEffect, useId, useMemo, useState } from "react";
 
+import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
 import { initials } from "../audit/helpers.ts";
 import { GroupName } from "../groups/group-name.tsx";
@@ -526,7 +527,8 @@ export function PeopleScreen(props: PeopleScreenProps) {
   );
 
   const [adding, setAdding] = useState(false);
-  const [addSubmitting, setAddSubmitting] = useState(false);
+  // The Add person dialog waits for the host and keeps a refusal inside it (U-1, R-38).
+  const addForm = useDialogSubmit();
   const searchId = useId();
   const statusId = useId();
   const groupId = useId();
@@ -536,21 +538,6 @@ export function PeopleScreen(props: PeopleScreenProps) {
     readonly kind: ConfirmKind | null;
     readonly person: Person;
   } | null>(null);
-
-  // The dialog stays open until the host's promise resolves; a refusal rejects it, the host sets
-  // the alert, and the dialog remains open with the reason visible (R-38, finding 4).
-  const submitAdd = async (input: NewPersonInput) => {
-    setAddSubmitting(true);
-
-    try {
-      await props.onAddPerson?.(input);
-      setAdding(false);
-    } catch {
-      // The host set the catalogue message on `error`; nothing else to do here.
-    } finally {
-      setAddSubmitting(false);
-    }
-  };
 
   const groupOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -863,11 +850,17 @@ export function PeopleScreen(props: PeopleScreenProps) {
         settings={props.settings}
         roles={props.roles}
         canAssignRoles={props.canAssignRoles}
-        error={props.error}
-        submitting={addSubmitting}
-        onCancel={() => setAdding(false)}
+        error={addForm.failure ?? undefined}
+        submitting={addForm.submitting}
+        onCancel={() => {
+          addForm.clear();
+          setAdding(false);
+        }}
         onSubmit={(input) => {
-          void submitAdd(input);
+          void addForm.submit(
+            () => props.onAddPerson?.(input),
+            () => setAdding(false)
+          );
         }}
       />
 

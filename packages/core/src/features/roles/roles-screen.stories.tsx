@@ -20,6 +20,8 @@ const onUpdateRole = fn();
 
 const onDeleteRole = fn();
 
+const onRemoveUnavailableKey = fn();
+
 /**
  * The Roles directory and detail (R-33, R-33b). System roles are read-only and copyable; custom
  * roles are editable. The detail warns on a key the catalogue no longer holds and lets a custom
@@ -48,6 +50,7 @@ const meta = {
     onCreateRole,
     onUpdateRole,
     onDeleteRole,
+    onRemoveUnavailableKey,
   } satisfies RolesScreenProps,
 } satisfies Meta<typeof RolesScreen>;
 
@@ -178,7 +181,7 @@ export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
     detail: FIXTURE_CUSTOM_DETAIL,
   },
   play: async ({ canvas }) => {
-    onUpdateRole.mockClear();
+    onRemoveUnavailableKey.mockClear();
 
     await expect(
       canvas.getByText("Unavailable, the key is retired")
@@ -187,11 +190,14 @@ export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove" }));
 
-    expect(onUpdateRole).toHaveBeenCalledWith(FIXTURE_CUSTOM_DETAIL.id, {
-      name: "Invoice approver",
-      description: "Approves invoices",
-      permissions: ["fixture:use"],
-    });
+    expect(onRemoveUnavailableKey).toHaveBeenCalledWith(
+      FIXTURE_CUSTOM_DETAIL.id,
+      {
+        name: "Invoice approver",
+        description: "Approves invoices",
+        permissions: ["fixture:use"],
+      }
+    );
   },
 };
 
@@ -287,6 +293,32 @@ export const NewRoleForm: Story = {
   },
 };
 
+// U-1: a refused role form keeps its dialog open, with the typed name and the refusal.
+export const NewRoleRefusedStaysOpen: Story = {
+  args: {
+    onCreateRole: fn(() =>
+      Promise.reject(new Error("The role was not saved."))
+    ),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /New role/ }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New role" })
+    );
+
+    await userEvent.type(dialog.getByLabelText("Role name"), "Support agent");
+    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+
+    await expect(await dialog.findByRole("alert")).toHaveTextContent(
+      "The role was not saved."
+    );
+    await expect(dialog.getByLabelText("Role name")).toHaveValue(
+      "Support agent"
+    );
+  },
+};
+
 /** Presses Tab until the target holds focus, so the ring shows as it does for a keyboard user. */
 async function tabTo(target: Element, stops = 40): Promise<void> {
   if (document.activeElement === target || stops === 0) return;
@@ -363,7 +395,7 @@ export const DisabledModuleKeyShowsTheReasonAndRemoves: Story = {
     detail: FIXTURE_DISABLED_MODULE_DETAIL,
   },
   play: async ({ canvas }) => {
-    onUpdateRole.mockClear();
+    onRemoveUnavailableKey.mockClear();
 
     await expect(
       canvas.getByText("Unavailable, the module is switched off")
@@ -371,7 +403,7 @@ export const DisabledModuleKeyShowsTheReasonAndRemoves: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove" }));
 
-    expect(onUpdateRole).toHaveBeenCalledWith(
+    expect(onRemoveUnavailableKey).toHaveBeenCalledWith(
       FIXTURE_DISABLED_MODULE_DETAIL.id,
       expect.objectContaining({ permissions: ["fixture:use"] })
     );
@@ -384,14 +416,14 @@ export const TwoUnavailableKeysRemoveOnlyTheClicked: Story = {
     detail: FIXTURE_TWO_UNAVAILABLE_DETAIL,
   },
   play: async ({ canvas }) => {
-    onUpdateRole.mockClear();
+    onRemoveUnavailableKey.mockClear();
 
     // Each unavailable key of a custom role carries its own Remove; the first is retired:one.
     await userEvent.click(
       canvas.getAllByRole("button", { name: "Remove" })[0]!
     );
 
-    expect(onUpdateRole).toHaveBeenCalledWith(
+    expect(onRemoveUnavailableKey).toHaveBeenCalledWith(
       FIXTURE_TWO_UNAVAILABLE_DETAIL.id,
       expect.objectContaining({
         permissions: ["fixture:use", "retired:two"],

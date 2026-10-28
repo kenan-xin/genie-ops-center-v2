@@ -7,13 +7,13 @@ import {
   DataTable,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   EmptyState,
   Field,
   FieldDescription,
   FieldLabel,
+  FormActionBar,
   HelpDisclosure,
   Input,
   LabelPill,
@@ -35,6 +35,7 @@ import {
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   ArchiveIcon,
   DirectoryIcon,
@@ -613,7 +614,13 @@ export function GroupsScreen(props: GroupsScreenProps) {
   const [labelDraft, setLabelDraft] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const form = useDialogSubmit();
   const searchId = useId();
+
+  const cancel = () => {
+    form.clear();
+    setDialog(null);
+  };
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -657,7 +664,6 @@ export function GroupsScreen(props: GroupsScreenProps) {
             />
             Show archived
           </label>
-          {/* The add dialogs close on submit, so their opener shows the running write. */}
           <Button
             variant="secondary"
             loading={props.pending}
@@ -766,16 +772,23 @@ export function GroupsScreen(props: GroupsScreenProps) {
         title="Add directory group"
         submitLabel="Add group"
         submitDisabled={externalId.trim() === ""}
-        onCancel={() => setDialog(null)}
-        onSubmit={() => {
-          props.onAddDirectoryGroup?.(
-            externalId.trim(),
-            labelDraft.trim() === "" ? undefined : labelDraft.trim()
-          );
-          setDialog(null);
-          setExternalId("");
-          setLabelDraft("");
-        }}
+        failure={form.failure}
+        submitting={form.submitting}
+        onCancel={cancel}
+        onSubmit={() =>
+          form.submit(
+            () =>
+              props.onAddDirectoryGroup?.(
+                externalId.trim(),
+                labelDraft.trim() === "" ? undefined : labelDraft.trim()
+              ),
+            () => {
+              setDialog(null);
+              setExternalId("");
+              setLabelDraft("");
+            }
+          )
+        }
       >
         <TextField
           label="Claim value"
@@ -796,13 +809,19 @@ export function GroupsScreen(props: GroupsScreenProps) {
         title="New local group"
         submitLabel="Create group"
         submitDisabled={name.trim() === ""}
-        onCancel={() => setDialog(null)}
-        onSubmit={() => {
-          props.onCreateLocalGroup?.(name.trim(), description.trim());
-          setDialog(null);
-          setName("");
-          setDescription("");
-        }}
+        failure={form.failure}
+        submitting={form.submitting}
+        onCancel={cancel}
+        onSubmit={() =>
+          form.submit(
+            () => props.onCreateLocalGroup?.(name.trim(), description.trim()),
+            () => {
+              setDialog(null);
+              setName("");
+              setDescription("");
+            }
+          )
+        }
       >
         <TextField label="Name" value={name} onChange={setName} />
         <TextField
@@ -890,12 +909,17 @@ function TextField(props: {
   );
 }
 
-/** A dialog with a form body and a submit, for the two add forms. */
+/**
+ * A dialog with a form body and a submit, for the two add forms. A refusal shows in its action
+ * bar and keeps the form open (U-1).
+ */
 function GroupFormDialog(props: {
   readonly open: boolean;
   readonly title: string;
   readonly submitLabel: string;
   readonly submitDisabled: boolean;
+  readonly failure: string | null;
+  readonly submitting: boolean;
   readonly onCancel: () => void;
   readonly onSubmit: () => void;
   readonly children: ReactNode;
@@ -912,14 +936,18 @@ function GroupFormDialog(props: {
           <DialogTitle>{props.title}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">{props.children}</div>
-        <DialogFooter>
+        <FormActionBar failure={props.failure} placement="dialog">
           <Button variant="secondary" onClick={props.onCancel}>
             Cancel
           </Button>
-          <Button disabled={props.submitDisabled} onClick={props.onSubmit}>
+          <Button
+            disabled={props.submitDisabled}
+            loading={props.submitting}
+            onClick={props.onSubmit}
+          >
             {props.submitLabel}
           </Button>
-        </DialogFooter>
+        </FormActionBar>
       </DialogContent>
     </Dialog>
   );

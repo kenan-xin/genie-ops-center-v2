@@ -53,6 +53,30 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     invalidate: [["groups"], ["group", selectedId]],
   });
 
+  // The add dialogs await their write and show the refusal it rejects with (U-1), so it gets no
+  // toast. A success keeps its toast.
+  const addDirectory = useAdminWrite({
+    write: (input: {
+      readonly externalId: string;
+      readonly displayLabel?: string | undefined;
+    }) =>
+      rpc.groups.addDirectoryGroup({
+        externalId: input.externalId,
+        displayLabel: input.displayLabel ?? null,
+      }),
+    invalidate: [["groups"]],
+    refused: () => undefined,
+    notSaved: () => t("groups.notAdded"),
+  });
+
+  const createLocal = useAdminWrite({
+    write: (input: { readonly name: string; readonly description: string }) =>
+      rpc.groups.createLocalGroup(input),
+    invalidate: [["groups"]],
+    refused: () => undefined,
+    notSaved: () => t("groups.notCreated"),
+  });
+
   // A write's answer is not read: the screen reloads instead.
   const run = <TResult,>(work: () => Promise<TResult>) => {
     action.mutate(async () => {
@@ -105,16 +129,13 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
             }
       }
       loading={list.isPending}
-      pending={action.isPending}
-      error={list.isError ? "The groups could not be read." : undefined}
-      onAddDirectoryGroup={(externalId, displayLabel) =>
-        run(() =>
-          rpc.groups.addDirectoryGroup({
-            externalId,
-            displayLabel: displayLabel ?? null,
-          })
-        )
+      pending={
+        action.isPending || addDirectory.isPending || createLocal.isPending
       }
+      error={list.isError ? "The groups could not be read." : undefined}
+      onAddDirectoryGroup={async (externalId, displayLabel) => {
+        await addDirectory.mutateAsync({ externalId, displayLabel });
+      }}
       onArchiveGroup={(groupId) =>
         run(() => rpc.groups.archiveDirectoryGroup({ groupId }))
       }
@@ -124,9 +145,9 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       onEditLabel={(groupId, displayLabel) =>
         run(() => rpc.groups.editLabel({ groupId, displayLabel }))
       }
-      onCreateLocalGroup={(name, description) =>
-        run(() => rpc.groups.createLocalGroup({ name, description }))
-      }
+      onCreateLocalGroup={async (name, description) => {
+        await createLocal.mutateAsync({ name, description });
+      }}
       onUpdateLocalGroup={(groupId, name, description) =>
         run(() => rpc.groups.updateLocalGroup({ groupId, name, description }))
       }

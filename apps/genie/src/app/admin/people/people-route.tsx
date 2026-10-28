@@ -54,14 +54,12 @@ export function PeopleRoute(props: {
     queryFn: () => rpc.people.capabilities(),
   });
 
-  // The refusal shows in the screen, inside the Add person dialog while it is open. Its message
-  // already carries the wait of a rate-limit refusal (R-21).
-  const refused = (refusal: Refusal) => setError(refusal.message);
-
+  // A status write's refusal shows on the page. Its message already carries the wait of a
+  // rate-limit refusal (R-21).
   const action = useAdminWrite({
     write: (work: () => Promise<void>) => work(),
     invalidate: [["people"], ["person", selectedId]],
-    refused,
+    refused: (refusal: Refusal) => setError(refusal.message),
   });
 
   const add = useAdminWrite({
@@ -72,7 +70,8 @@ export function PeopleRoute(props: {
     // Resend instead (N1). Only a full add gets its own toast (PD-13).
     saved: (result) =>
       result.emailSent === false ? undefined : "Person added",
-    refused,
+    // The Add person dialog awaits the write and shows the refusal it rejects with (U-1).
+    refused: () => undefined,
     notSaved: () => t("people.notAdded"),
   });
 
