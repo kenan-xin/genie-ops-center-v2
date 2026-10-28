@@ -140,9 +140,9 @@ function HelpNote(): JSX.Element {
   return (
     <HelpDisclosure label="Why a row can look incomplete" iconOnly>
       <p>
-        An event is never edited and never deleted. It keeps the words that were
-        true when it was written, so an old row can name something that has
-        since changed.
+        Events are kept for the tenant&apos;s lifetime. An event is never edited
+        and never deleted. It keeps the words that were true when it was
+        written, so an old row can name something that has since changed.
       </p>
       <p>
         A target opens only while the record still exists and its module returns

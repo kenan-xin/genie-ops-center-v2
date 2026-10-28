@@ -77,7 +77,7 @@
     },
     "audit": {
       "title": "Audit log",
-      "description": "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited.",
+      "description": "Who did what, when, on which record.",
       "noMatch": {
         "title": "No events match",
         "description": "Widen the date range or remove a filter."
