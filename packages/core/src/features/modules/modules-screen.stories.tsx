@@ -6,6 +6,7 @@ import {
   FIXTURE_CONFIG_REFUSAL,
   FIXTURE_CROWDED,
   FIXTURE_MODULES,
+  FIXTURE_ON,
 } from "./__fixtures__/modules.ts";
 import { ModulesScreen } from "./modules-screen.tsx";
 import type { ModulesScreenProps } from "./types.ts";
@@ -36,12 +37,23 @@ const meta = {
     onCategory: fn(),
     rolesHref: "/admin/roles",
     settingsHref: "/admin/settings",
+    searchLabel: "Search modules",
+    noMatch: {
+      title: "No modules match",
+      description: "Clear the search to see every module.",
+      clearLabel: "Clear search and filters",
+    },
     accessLabels: {
       more: (count) => `+${count}`,
       showAll: (count, module) => `+${count} more holders of ${module}`,
       title: (module) => `Holders of ${module}`,
       group: (group) => `${group} (group)`,
       saving: (module) => `Saving ${module}`,
+      whoCanOpen: "Who can open it",
+      whoCanOpenFor: (module) => `for ${module}`,
+      nobody: "No one yet",
+      manage: "Manage in Roles",
+      category: "Category",
     },
   } satisfies ModulesScreenProps,
 } satisfies Meta<typeof ModulesScreen>;
@@ -105,19 +117,53 @@ export const UnlabelledGroupIdHolder: Story = {
   },
 };
 
+/** The approved phone card (fix list "Modules page on phones (adapt)", `modules-phone.png`). */
 export const Phone: Story = {
   globals: phone,
   play: async ({ args, canvas }) => {
     const list = within(canvas.getByRole("list", { name: "Modules" }));
+    const [first, unplaceable] = list.getAllByRole("listitem");
+    const card = within(first!);
 
     await expect(canvas.queryByRole("table")).toBeNull();
+
+    // (1) The switch shares the name's line; the id is quiet mono under it, not a chip; no tile.
+    const toggle = card.getByRole("switch", { name: "Fixture on" });
+    const title = card.getByText("Fixture", { exact: true });
+
+    await expect(toggle).toBeChecked();
     await expect(
-      list.getByRole("switch", { name: "Fixture enabled" })
-    ).toBeChecked();
-    // The shared card frame leads with a tile.
+      Math.abs(
+        toggle.getBoundingClientRect().top - title.getBoundingClientRect().top
+      )
+    ).toBeLessThan(12);
+    await expect(first!.querySelector("[data-slot=icon-tile]")).toBeNull();
+
+    const id = card.getByText("fixture", { exact: true });
+
+    await expect(id.closest("[data-slot=badge]")).toBeNull();
+    await expect(getComputedStyle(id).textTransform).not.toBe("uppercase");
+
+    // (2) One description line with an ellipsis; the full text stays on the line.
+    const description = card.getByText(FIXTURE_ON.description!);
+
+    await expect(getComputedStyle(description).textOverflow).toBe("ellipsis");
+    await expect(description.scrollWidth).toBeGreaterThan(
+      description.clientWidth
+    );
+    await expect(description).toHaveAttribute("title", FIXTURE_ON.description);
+
+    // (3) A labelled picker as wide as the card, or the nothing-to-place line.
+    await expect(card.getByText("Category", { exact: true })).toBeVisible();
     await expect(
-      list.getAllByRole("listitem")[0]!.querySelector("[data-slot=icon-tile]")
-    ).not.toBeNull();
+      card
+        .getByRole("combobox", { name: "Category for Fixture" })
+        .getBoundingClientRect().width
+    ).toBeGreaterThan(first!.getBoundingClientRect().width - 40);
+    await expect(within(unplaceable!).queryByRole("combobox")).toBeNull();
+    await expect(
+      within(unplaceable!).getByText("No workspace entry, so nothing to place")
+    ).toBeVisible();
 
     await userEvent.click(
       list.getByRole("combobox", { name: "Category for Dormant" })
@@ -141,9 +187,7 @@ export const PhoneDark: Story = {
 };
 
 const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {
-  await userEvent.click(
-    canvas.getByRole("switch", { name: "Fixture enabled" })
-  );
+  await userEvent.click(canvas.getByRole("switch", { name: "Fixture on" }));
 
   let dialog = within(
     await screen.findByRole("dialog", { name: "Switch off Fixture?" })
@@ -163,9 +207,7 @@ const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await expect(args.onSwitch).not.toHaveBeenCalled();
 
-  await userEvent.click(
-    canvas.getByRole("switch", { name: "Fixture enabled" })
-  );
+  await userEvent.click(canvas.getByRole("switch", { name: "Fixture on" }));
   dialog = within(
     await screen.findByRole("dialog", { name: "Switch off Fixture?" })
   );
@@ -183,7 +225,7 @@ export const SwitchInFlight: Story = {
 
     // DR-17: a switch has no loading state, so a spinner beside it shows its running call.
     await expect(
-      table.getByRole("switch", { name: "Fixture enabled" })
+      table.getByRole("switch", { name: "Fixture on" })
     ).toHaveAttribute("aria-busy", "true");
     await expect(table.getByRole("status")).toHaveTextContent("Saving Fixture");
   },
@@ -198,9 +240,7 @@ export const SwitchOffConfirmsOnPhone: Story = {
 
 export const SwitchOnSavesAtOnce: Story = {
   play: async ({ args, canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("switch", { name: "Dormant enabled" })
-    );
+    await userEvent.click(canvas.getByRole("switch", { name: "Dormant on" }));
 
     await expect(args.onSwitch).toHaveBeenCalledTimes(1);
     await expect(args.onSwitch).toHaveBeenCalledWith("dormant", true);
@@ -226,7 +266,7 @@ const enableRefused: Story["play"] = async ({ canvas }) => {
   );
   // The refused module stays off.
   await expect(
-    canvas.getByRole("switch", { name: "Ticketing enabled" })
+    canvas.getByRole("switch", { name: "Ticketing on" })
   ).not.toBeChecked();
 };
 
@@ -262,69 +302,100 @@ export const SwitchedOffKeepsHolders: Story = {
     await expect(row.getByText("Off")).toBeInTheDocument();
     await expect(row.getByText(/Night shift/)).toBeInTheDocument();
     await expect(
-      row.getByRole("switch", { name: "Dormant enabled" })
+      row.getByRole("switch", { name: "Dormant on" })
     ).not.toBeChecked();
   },
 };
 
 /**
- * Fifteen holders: the cell names three, groups first, and "+12" opens the full list with each
- * holder's role (DR-26). The keyboard reaches and opens it.
+ * Fifteen holders: the table cell names three, groups first, and "+12" opens the full list with
+ * each holder's role (DR-26). The keyboard reaches and opens it.
  */
-const crowdedCell = async (
-  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
-  // The table on a desktop, the list on a phone; the other one is hidden.
-  layout: "table" | "list"
-) => {
-  const area = within(canvas.getByRole(layout, { name: "Modules" }));
-
-  await expect(
-    area.getByText("Night shift (group), Finance managers (group), Person 1")
-  ).toBeInTheDocument();
-
-  const more = area.getByRole("button", {
-    name: "+12 more holders of Crowded",
-  });
-
-  await expect(more).toHaveTextContent("+12");
-
-  // The category picker comes just before the cell: one Tab reaches the trigger, Enter opens it.
-  area.getByRole("combobox", { name: "Category for Crowded" }).focus();
-  await userEvent.tab();
-  await expect(more).toHaveFocus();
-  await userEvent.keyboard("{Enter}");
-
-  const popup = within(
-    await screen.findByRole("dialog", { name: "Holders of Crowded" })
-  );
-
-  await expect(popup.getAllByRole("listitem")).toHaveLength(15);
-  await expect(popup.getByText("Person 13")).toBeInTheDocument();
-
-  await userEvent.keyboard("{Escape}");
-  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  await expect(more).toHaveFocus();
-
-  return more;
-};
-
 export const ManyHolders: Story = {
   args: { modules: [FIXTURE_CROWDED] },
   play: async ({ canvas }) => {
-    await crowdedCell(canvas, "table");
+    const area = within(canvas.getByRole("table", { name: "Modules" }));
+
+    await expect(
+      area.getByText("Night shift (group), Finance managers (group), Person 1")
+    ).toBeInTheDocument();
+
+    const more = area.getByRole("button", {
+      name: "+12 more holders of Crowded",
+    });
+
+    await expect(more).toHaveTextContent("+12");
+
+    // The category picker comes just before the cell: one Tab reaches the trigger, Enter opens it.
+    area.getByRole("combobox", { name: "Category for Crowded" }).focus();
+    await userEvent.tab();
+    await expect(more).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    const popup = within(
+      await screen.findByRole("dialog", { name: "Holders of Crowded" })
+    );
+
+    await expect(popup.getAllByRole("listitem")).toHaveLength(15);
+    await expect(popup.getByText("Person 13")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(more).toHaveFocus();
   },
 };
 
+/**
+ * (4) On a phone "Who can open it" is one row that links to Roles: three holders, groups first,
+ * and "+12". The full list lives on Roles, because a button inside the link is not allowed.
+ */
 export const ManyHoldersOnPhone: Story = {
   args: { modules: [FIXTURE_CROWDED] },
   globals: phone,
   play: async ({ canvas }) => {
-    const more = await crowdedCell(canvas, "list");
+    const list = within(canvas.getByRole("list", { name: "Modules" }));
 
-    // A thumb target on a phone (tokens.md, 44 px).
-    await expect(more.getBoundingClientRect().height).toBeGreaterThanOrEqual(
-      44
+    const who = list.getByRole("link", {
+      name: /^Who can open it for Crowded/,
+    });
+
+    await expect(who).toHaveAttribute("href", "/admin/roles");
+    await expect(who).toHaveTextContent(
+      "Night shift (group), Finance managers (group), Person 1 +12"
     );
+    // A thumb target as wide as the card (tokens.md, 44 px).
+    await expect(who.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(who.getBoundingClientRect().width).toBeGreaterThanOrEqual(
+      list.getByRole("listitem").getBoundingClientRect().width - 1
+    );
+  },
+};
+
+/** (5) The search narrows the list by name or id, and a query that matches nothing says so. */
+export const SearchNarrowsTheList: Story = {
+  play: async ({ canvas }) => {
+    const search = canvas.getByRole("textbox", { name: "Search modules" });
+
+    const rows = () =>
+      within(canvas.getByRole("table", { name: "Modules" })).getAllByRole(
+        "row"
+      );
+
+    await userEvent.type(search, "dorm");
+    // The header row and Dormant.
+    await expect(rows()).toHaveLength(2);
+    await expect(rows()[1]).toHaveTextContent("Dormant");
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "zzz");
+    await expect(canvas.getByText("No modules match")).toBeVisible();
+    await expect(canvas.queryByRole("table")).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear search and filters" })
+    );
+    await expect(search).toHaveValue("");
+    await expect(rows()).toHaveLength(FIXTURE_MODULES.length + 1);
   },
 };
 

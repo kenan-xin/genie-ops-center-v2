@@ -19,6 +19,8 @@ export type ModuleIdentity = {
   readonly id: string;
   readonly displayName: string;
   readonly version: string;
+  /** One line the Modules page shows under the name. */
+  readonly description?: string;
 };
 
 /** 2. Schema: one Drizzle schema and its own migration history. */

@@ -91,7 +91,17 @@
         "showAll": "+{count} more holders of {module}",
         "title": "Holders of {module}",
         "group": "{group} (group)",
-        "saving": "Saving {module}"
+        "saving": "Saving {module}",
+        "whoCanOpen": "Who can open it",
+        "whoCanOpenFor": "for {module}",
+        "nobody": "No one yet",
+        "manage": "Manage in Roles",
+        "category": "Category"
+      },
+      "searchLabel": "Search modules",
+      "noMatch": {
+        "title": "No modules match",
+        "description": "Clear the search to see every module."
       }
     },
     "categories": {

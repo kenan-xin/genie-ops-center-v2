@@ -18,6 +18,7 @@ import { rpc } from "../../../rpc/client.ts";
  */
 export function ModulesRoute() {
   const t = useTranslations("pages");
+  const tNoMatch = useTranslations("noMatch");
   const [refusal, setRefusal] = useState<ModuleRefusal | undefined>(undefined);
 
   const modules = useQuery({
@@ -80,6 +81,18 @@ export function ModulesRoute() {
         title: (module) => t("modules.access.title", { module }),
         group: (group) => t("modules.access.group", { group }),
         saving: (module) => t("modules.access.saving", { module }),
+        whoCanOpen: t("modules.access.whoCanOpen"),
+        whoCanOpenFor: (module) =>
+          t("modules.access.whoCanOpenFor", { module }),
+        nobody: t("modules.access.nobody"),
+        manage: t("modules.access.manage"),
+        category: t("modules.access.category"),
+      }}
+      searchLabel={t("modules.searchLabel")}
+      noMatch={{
+        title: t("modules.noMatch.title"),
+        description: t("modules.noMatch.description"),
+        clearLabel: tNoMatch("clear"),
       }}
       loading={modules.isPending || categories.isPending}
       // A failed background refetch keeps the rows already read; only a first read failure shows.

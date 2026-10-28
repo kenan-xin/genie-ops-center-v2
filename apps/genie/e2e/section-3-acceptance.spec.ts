@@ -422,7 +422,7 @@ test("first enable: a required value refuses the switch, a settings save keeps t
         await page.goto(`${LANDING}/admin/modules`);
 
         const toggle = page
-          .getByRole("switch", { name: "Required setting fixture enabled" })
+          .getByRole("switch", { name: "Required setting fixture on" })
           .filter({ visible: true });
 
         await expect(toggle).not.toBeChecked();

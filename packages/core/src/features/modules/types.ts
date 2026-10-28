@@ -2,6 +2,7 @@ import type {
   ModuleHolder as ModuleHolderView,
   ModuleRow as ModuleView,
 } from "../../services/modules/index.ts";
+import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
  * The presentation types of the Modules screen. The row views come from the modules service through
@@ -36,6 +37,16 @@ export type AccessLabels = {
   readonly group: (groupName: string) => string;
   /** The name of the spinner beside an enable switch while its call runs. */
   readonly saving: (moduleName: string) => string;
+  /** The phone row: its visible label, for example "Who can open it". */
+  readonly whoCanOpen: string;
+  /** Read after the label by a screen reader, for example "for Placeholder". */
+  readonly whoCanOpenFor: (moduleName: string) => string;
+  /** The phone row's summary when nobody holds the module. */
+  readonly nobody: string;
+  /** Read at the end of the phone row, which links to Roles. */
+  readonly manage: string;
+  /** The visible label over the phone card's category picker. */
+  readonly category: string;
 };
 
 export type ModulesScreenProps = {
@@ -50,6 +61,8 @@ export type ModulesScreenProps = {
   readonly rolesHref: string;
   readonly settingsHref: string;
   readonly accessLabels: AccessLabels;
+  readonly searchLabel: string;
+  readonly noMatch: NoMatchCopy;
   /** The list is still being read: no table and no empty state yet. */
   readonly loading?: boolean | undefined;
   /** The list could not be read: this text replaces the table. */

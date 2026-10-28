@@ -145,6 +145,7 @@ export const placeholderModule = {
     id: "placeholder",
     displayName: "Placeholder",
     version: "0.0.0",
+    description: "A sample module that proves the module contract end to end.",
   },
 
   schema: {

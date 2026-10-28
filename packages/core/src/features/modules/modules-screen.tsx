@@ -6,8 +6,7 @@ import {
   DataTable,
   focusRing,
   HelpDisclosure,
-  IconTile,
-  MonoChip,
+  Input,
   Popover,
   PopoverContent,
   PopoverTitle,
@@ -22,9 +21,10 @@ import {
   Switch,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
-import { BoxesIcon } from "lucide-react";
-import { Fragment, useState } from "react";
+import { ChevronRightIcon } from "lucide-react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 
+import { NoMatch } from "../admin/no-match.tsx";
 import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccessLabels,
@@ -44,12 +44,34 @@ function offPill(module: ModuleView) {
   return module.enabled ? null : <StatusPill tone="neutral">Off</StatusPill>;
 }
 
+/** The id in quiet mono under the name, not a chip (fix list "Modules page on phones" (1)). */
+function ModuleId({ module }: { readonly module: ModuleView }) {
+  return (
+    <span className="font-mono text-xs text-muted-foreground">{module.id}</span>
+  );
+}
+
+/** One line with an ellipsis; the full text stays in the line and its title (fix list (2)). */
+function Description({ module }: { readonly module: ModuleView }) {
+  return module.description === null ? null : (
+    <p
+      title={module.description}
+      className="truncate text-sm font-normal text-muted-foreground"
+    >
+      {module.description}
+    </p>
+  );
+}
+
 function Identity({ module }: { readonly module: ModuleView }) {
   return (
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span>{module.displayName}</span>
-      <MonoChip>{module.id}</MonoChip>
-      {offPill(module)}
+    <span className="grid max-w-sm min-w-0 gap-0.5">
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span>{module.displayName}</span>
+        {offPill(module)}
+      </span>
+      <ModuleId module={module} />
+      <Description module={module} />
     </span>
   );
 }
@@ -84,6 +106,88 @@ function Refusal(props: {
   );
 }
 
+function holderName(holder: ModuleHolderView, labels: AccessLabels) {
+  return holder.principalType === "group" ? (
+    <GroupName value={holder.label} format={labels.group} />
+  ) : (
+    holder.label
+  );
+}
+
+/** The holders the summary names, groups first, each principal once; `hidden` is the rest. */
+function namedHolders(module: ModuleView) {
+  // A principal holding the key through two roles is named once.
+  const principals = uniqBy(
+    module.holders.toSorted(
+      (a, b) =>
+        Number(a.principalType === "user") - Number(b.principalType === "user")
+    ),
+    (holder) => `${holder.principalType}:${holder.principalId}`
+  );
+
+  return { principals, hidden: principals.length - NAMED };
+}
+
+function holderList(
+  principals: readonly ModuleHolderView[],
+  labels: AccessLabels
+): ReactNode {
+  return principals.slice(0, NAMED).map((holder, index) => (
+    <Fragment key={`${holder.principalType}:${holder.principalId}`}>
+      {index === 0 ? null : ", "}
+      {holderName(holder, labels)}
+    </Fragment>
+  ));
+}
+
+/**
+ * The phone row (fix list (4)): "Who can open it" over the holder summary, the whole row one link
+ * to Roles and at least 44 px high. The full list lives on Roles: a button inside a link is invalid.
+ */
+function WhoCanOpen(props: {
+  readonly module: ModuleView;
+  readonly rolesHref: string;
+  readonly labels: AccessLabels;
+}) {
+  const { module, labels } = props;
+  const { principals, hidden } = namedHolders(module);
+
+  return (
+    // The negative margins take the band to the card's edges, as `modules-phone.png` draws it.
+    <a
+      href={props.rolesHref}
+      className={`-mx-4 -mb-3 flex min-h-12 items-center gap-2 border-t border-border bg-muted/50 px-4 py-2 text-sm ${focusRing}`}
+    >
+      <span className="grid min-w-0 flex-1">
+        <span className="text-xs font-semibold text-muted-foreground">
+          {labels.whoCanOpen}
+          <span className="sr-only">
+            {" "}
+            {labels.whoCanOpenFor(module.displayName)}
+          </span>
+        </span>
+        <span
+          className={`truncate ${module.enabled ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          {principals.length === 0 ? (
+            labels.nobody
+          ) : (
+            <>
+              {holderList(principals, labels)}
+              {hidden > 0 ? ` ${labels.more(hidden)}` : null}
+            </>
+          )}
+        </span>
+      </span>
+      <span className="sr-only">{labels.manage}</span>
+      <ChevronRightIcon
+        aria-hidden="true"
+        className="size-4 shrink-0 text-muted-foreground"
+      />
+    </a>
+  );
+}
+
 /**
  * Read-only: who holds a role carrying `<id>:use`. A switched-off module keeps them, muted (R-86).
  * The cell names three, groups first, and "+N" opens the full list with each role (DR-26).
@@ -95,24 +199,8 @@ function Access(props: {
   readonly labels: AccessLabels;
 }) {
   const { module, labels } = props;
-
-  const name = (holder: ModuleHolderView) =>
-    holder.principalType === "group" ? (
-      <GroupName value={holder.label} format={labels.group} />
-    ) : (
-      holder.label
-    );
-
-  // A principal holding the key through two roles is named once in the cell.
-  const principals = uniqBy(
-    module.holders.toSorted(
-      (a, b) =>
-        Number(a.principalType === "user") - Number(b.principalType === "user")
-    ),
-    (holder) => `${holder.principalType}:${holder.principalId}`
-  );
-
-  const hidden = principals.length - NAMED;
+  const { principals, hidden } = namedHolders(module);
+  const name = (holder: ModuleHolderView) => holderName(holder, labels);
 
   return (
     <div
@@ -124,14 +212,7 @@ function Access(props: {
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-2">
-          <span>
-            {principals.slice(0, NAMED).map((holder, index) => (
-              <Fragment key={`${holder.principalType}:${holder.principalId}`}>
-                {index === 0 ? null : ", "}
-                {name(holder)}
-              </Fragment>
-            ))}
-          </span>
+          <span>{holderList(principals, labels)}</span>
           {hidden > 0 ? (
             <Popover>
               <PopoverTrigger
@@ -184,6 +265,16 @@ export function ModulesScreen(props: ModulesScreenProps) {
   const closeConfirm = () =>
     setConfirm((current) => ({ ...current, open: false }));
 
+  const searchId = useId();
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+
+  const shown = props.modules.filter((module) =>
+    [module.displayName, module.id].some((text) =>
+      text.toLowerCase().includes(needle)
+    )
+  );
+
   const categoryItems = [
     { value: null, label: "No category" },
     ...props.categories.map((category) => ({
@@ -193,31 +284,38 @@ export function ModulesScreen(props: ModulesScreenProps) {
   ];
 
   // Switching on saves at once; switching off asks first (R-83).
+  const enabledSwitch = (module: ModuleView) => (
+    // A switch has no loading state, so a spinner sits beside it while its call runs.
+    <span className="flex items-center gap-2">
+      {props.pending === module.id ? (
+        <Spinner label={props.accessLabels.saving(module.displayName)} />
+      ) : null}
+      <Switch
+        aria-label={`${module.displayName} on`}
+        aria-busy={props.pending === module.id || undefined}
+        checked={module.enabled}
+        disabled={props.pending === module.id}
+        onCheckedChange={(on) =>
+          on ? props.onSwitch(module.id, true) : setConfirmId(module.id)
+        }
+      />
+    </span>
+  );
+
+  const refusal = (module: ModuleView) =>
+    props.refusal?.moduleId === module.id ? (
+      <Refusal refusal={props.refusal} settingsHref={props.settingsHref} />
+    ) : null;
+
   const enabledControl = (module: ModuleView) => (
     <div className="grid gap-2">
-      {/* A switch has no loading state, so a spinner sits beside it while its call runs. */}
-      <span className="flex items-center gap-2">
-        <Switch
-          aria-label={`${module.displayName} enabled`}
-          aria-busy={props.pending === module.id || undefined}
-          checked={module.enabled}
-          disabled={props.pending === module.id}
-          onCheckedChange={(on) =>
-            on ? props.onSwitch(module.id, true) : setConfirmId(module.id)
-          }
-        />
-        {props.pending === module.id ? (
-          <Spinner label={props.accessLabels.saving(module.displayName)} />
-        ) : null}
-      </span>
-      {props.refusal?.moduleId === module.id ? (
-        <Refusal refusal={props.refusal} settingsHref={props.settingsHref} />
-      ) : null}
+      {enabledSwitch(module)}
+      {refusal(module)}
     </div>
   );
 
   // A module with no workspace entry has nothing to place in the navigation (R-84).
-  const categoryPicker = (module: ModuleView) =>
+  const categoryPicker = (module: ModuleView, fullWidth = false) =>
     module.placeable ? (
       <Select
         items={categoryItems}
@@ -227,7 +325,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
       >
         <SelectTrigger
           aria-label={`Category for ${module.displayName}`}
-          className="w-48 max-w-full"
+          className={fullWidth ? "w-full" : "w-48 max-w-full"}
         >
           <SelectValue />
         </SelectTrigger>
@@ -255,11 +353,25 @@ export function ModulesScreen(props: ModulesScreenProps) {
 
   return (
     <div className="grid gap-4">
-      <HelpDisclosure label="What a module is here">
-        Every module compiled into this deployment is listed, on or off.
-        Switching one off hides it and refuses its routes; its data stays.
-        Access is read from role assignments, so nothing on this page grants it.
-      </HelpDisclosure>
+      {/* One row on every width: the search, then the icon-only help (fix list (5)). */}
+      <div className="flex w-full min-w-0 items-center gap-2">
+        <label htmlFor={searchId} className="sr-only">
+          {props.searchLabel}
+        </label>
+        <Input
+          id={searchId}
+          className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+          placeholder={props.searchLabel}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <HelpDisclosure label="What a module is here" iconOnly>
+          Every module compiled into this deployment is listed, on or off.
+          Switching one off hides it and refuses its routes; its data stays.
+          Access is read from role assignments, so nothing on this page grants
+          it.
+        </HelpDisclosure>
+      </div>
 
       {props.error !== undefined ? (
         <p
@@ -272,10 +384,12 @@ export function ModulesScreen(props: ModulesScreenProps) {
         <p role="status" className="text-sm text-muted-foreground">
           Loading modules…
         </p>
+      ) : shown.length === 0 && needle !== "" ? (
+        <NoMatch copy={props.noMatch} onClear={() => setQuery("")} />
       ) : (
         <DataTable
           label="Modules"
-          rows={props.modules}
+          rows={shown}
           rowKey={(module) => module.id}
           rowLabel={(module) => module.displayName}
           columns={[
@@ -288,20 +402,37 @@ export function ModulesScreen(props: ModulesScreenProps) {
             { id: "access", header: "Access", cell: access },
           ]}
           status={enabledControl}
+          // The approved phone card (`modules-phone.png`): no tile, the switch on the name's line.
           card={{
-            media: () => (
-              <IconTile>
-                <BoxesIcon />
-              </IconTile>
+            title: (module) => (
+              <span
+                className={`text-base font-semibold ${module.enabled ? "" : "text-muted-foreground"}`}
+              >
+                {module.displayName}
+              </span>
             ),
-            title: (module) => module.displayName,
-            detail: (module) => <MonoChip>{module.id}</MonoChip>,
             badge: (module) => offPill(module),
+            trailing: enabledSwitch,
+            detail: (module) => <ModuleId module={module} />,
             content: (module) => (
-              <div className="grid gap-2">
-                {enabledControl(module)}
-                {categoryPicker(module)}
-                {access(module)}
+              <div className="grid gap-3">
+                <Description module={module} />
+                {refusal(module)}
+                <div className="grid gap-1.5">
+                  {/* The trigger carries its own name; this label is the visible heading. */}
+                  <span
+                    aria-hidden="true"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    {props.accessLabels.category}
+                  </span>
+                  {categoryPicker(module, true)}
+                </div>
+                <WhoCanOpen
+                  module={module}
+                  rolesHref={props.rolesHref}
+                  labels={props.accessLabels}
+                />
               </div>
             ),
           }}

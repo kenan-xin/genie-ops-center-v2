@@ -234,6 +234,7 @@ export function DataTable<Row>({
           const facts = card.facts?.(row) ?? [];
           const content = card.content?.(row) ?? null;
           const trailing = card.trailing?.(row) ?? null;
+          const rowMenu = menu(row);
 
           return (
             <li
@@ -284,7 +285,10 @@ export function DataTable<Row>({
                   <div className="relative z-10">{content}</div>
                 )}
               </div>
-              <span className="relative z-10">{menu(row)}</span>
+              {/* No empty cell, so a card without actions keeps no gap at its end. */}
+              {rowMenu === null ? null : (
+                <span className="relative z-10">{rowMenu}</span>
+              )}
             </li>
           );
         })}

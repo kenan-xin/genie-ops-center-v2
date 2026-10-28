@@ -112,7 +112,7 @@ test("lists every compiled module and switches one off through the confirm dialo
         );
 
         const toggle = page
-          .getByRole("switch", { name: "Placeholder enabled" })
+          .getByRole("switch", { name: "Placeholder on" })
           .filter({ visible: true });
 
         await expect(
@@ -135,8 +135,23 @@ test("lists every compiled module and switches one off through the confirm dialo
           )
         );
 
-        // The cell names three holders; "+N" opens the full list, one line per role (DR-26).
+        // A desktop cell names three holders; "+N" opens the full list, one line per role (DR-26).
+        // A phone card has one "Who can open it" row instead, the whole row a link to Roles.
         const expectHolderList = async () => {
+          if (project === "phone") {
+            const who = page.getByRole("link", {
+              name: /^Who can open it for Placeholder/,
+            });
+
+            await expect(who).toHaveAttribute("href", "/admin/roles");
+            await expect(who).not.toContainText("No one yet");
+
+            return;
+          }
+
+          await expect(
+            page.getByRole("link", { name: "Manage in Roles for Placeholder" })
+          ).toHaveAttribute("href", "/admin/roles");
           await page
             .getByRole("button", { name: /more holders of Placeholder$/ })
             .filter({ visible: true })
@@ -153,11 +168,6 @@ test("lists every compiled module and switches one off through the confirm dialo
         };
 
         await expectHolderList();
-        await expect(
-          page
-            .getByRole("link", { name: "Manage in Roles for Placeholder" })
-            .filter({ visible: true })
-        ).toHaveAttribute("href", "/admin/roles");
         await expect(
           page.getByRole("button", { name: /assign|grant/i })
         ).toHaveCount(0);

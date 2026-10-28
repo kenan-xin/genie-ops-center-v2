@@ -9,6 +9,8 @@ export const FIXTURE_CATEGORIES: readonly CategoryOption[] = [
 export const FIXTURE_ON: ModuleView = {
   id: "fixture",
   displayName: "Fixture",
+  description:
+    "Fixture records that prove the module contract from the schema to the navigation entry.",
   enabled: true,
   categoryId: "c-ops",
   placeable: true,
@@ -38,6 +40,7 @@ export const FIXTURE_ON: ModuleView = {
 export const FIXTURE_UNPLACEABLE: ModuleView = {
   id: "exports",
   displayName: "Reporting exports",
+  description: "Scheduled exports for the finance team. Admin screens only.",
   enabled: true,
   categoryId: null,
   placeable: false,
@@ -48,6 +51,7 @@ export const FIXTURE_UNPLACEABLE: ModuleView = {
 export const FIXTURE_OFF: ModuleView = {
   id: "dormant",
   displayName: "Dormant",
+  description: "Night work orders, kept while the module is off.",
   enabled: false,
   categoryId: null,
   placeable: true,
@@ -65,6 +69,7 @@ export const FIXTURE_OFF: ModuleView = {
 export const FIXTURE_NEEDS_SETUP: ModuleView = {
   id: "setup",
   displayName: "Ticketing",
+  description: null,
   enabled: false,
   categoryId: null,
   placeable: true,
@@ -75,6 +80,7 @@ export const FIXTURE_NEEDS_SETUP: ModuleView = {
 export const FIXTURE_CROWDED: ModuleView = {
   id: "crowded",
   displayName: "Crowded",
+  description: null,
   enabled: true,
   categoryId: "c-ops",
   placeable: true,

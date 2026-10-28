@@ -23,6 +23,8 @@ export type ModuleHolder = PermissionHolder;
 export type ModuleRow = {
   readonly id: string;
   readonly displayName: string;
+  /** The module's one-line description, or null when it declares none. */
+  readonly description: string | null;
   readonly enabled: boolean;
   /** Null when the row names no category, or a category that no longer exists (R-91). */
   readonly categoryId: string | null;
@@ -68,6 +70,7 @@ export async function listModules(
     return {
       id,
       displayName: module.identity.displayName,
+      description: module.identity.description ?? null,
       enabled: row?.enabled ?? false,
       categoryId: row?.categoryId ?? null,
       placeable: hasWorkspaceEntry(module),
