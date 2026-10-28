@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ModelKeyInput,
   type ReportingInput,
   type SessionsInput,
   type SignInInput,
@@ -61,6 +62,25 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     notSaved: () => t("settings.notSaved.reporting"),
   });
 
+  const keySave = useAdminWrite({
+    write: (input: ModelKeyInput) => rpc.settings.saveModelKey(input),
+    invalidate: [["settings"]],
+    saved: savedIn("AI connection"),
+    refused: onScreen,
+    notSaved: () => t("settings.notSaved.modelKey"),
+  });
+
+  const keyRemoval = useAdminWrite({
+    write: () => rpc.settings.removeModelKey(),
+    invalidate: [["settings"]],
+    saved: (result) =>
+      result.changed
+        ? "Model provider key removed. Written to the audit log."
+        : undefined,
+    refused: onScreen,
+    notSaved: () => t("settings.notSaved.modelKeyRemoval"),
+  });
+
   const moduleTitle = (moduleId: string) =>
     settings.data?.modules.find((section) => section.moduleId === moduleId)
       ?.title ?? moduleId;
@@ -105,6 +125,12 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       }}
       onSaveReporting={async (input) => {
         await reporting.mutateAsync(input);
+      }}
+      onSaveModelKey={async (input) => {
+        await keySave.mutateAsync(input);
+      }}
+      onRemoveModelKey={async () => {
+        await keyRemoval.mutateAsync();
       }}
       onSaveModule={async (moduleId, values) => {
         await module.mutateAsync({ moduleId, values });

@@ -523,4 +523,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "tenant_integration_key access boundary catches a planted reference in a module source file",
     ],
   },
+  {
+    file: "testing/model-key.integration.test.ts",
+    reason:
+      "Spec 7 R-17 requires a key field that answers, reads and audits no key, and an empty field that keeps the stored key",
+    cases: [
+      "the model provider key in Tenant settings stores the key write-only: the answer, the settings read and the audit row never hold it",
+      "the model provider key in Tenant settings refuses an empty key and keeps the stored key",
+    ],
+  },
 ];

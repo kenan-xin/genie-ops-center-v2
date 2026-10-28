@@ -20,6 +20,7 @@ import {
 } from "react";
 import { z } from "zod";
 
+import { AiConnectionSection } from "./ai-sections.tsx";
 import {
   ReportingSection,
   SectionFooter,
@@ -41,10 +42,13 @@ const SESSIONS = "sessions";
 
 const REPORTING = "reporting";
 
+const AI_CONNECTION = "ai-connection";
+
 const CORE_FIELDS = new Map<string, readonly string[]>([
   [SIGN_IN, ["onboardingMode", "localAccountsEnabled"]],
   [SESSIONS, ["sessionIdleMinutes"]],
   [REPORTING, ["reportingDate"]],
+  [AI_CONNECTION, ["apiKey"]],
 ]);
 
 type Section = {
@@ -160,6 +164,12 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
     },
     { id: SESSIONS, title: "Sessions", group: "tenant", disabled: false },
     { id: REPORTING, title: "Reporting", group: "tenant", disabled: false },
+    {
+      id: AI_CONNECTION,
+      title: "AI connection",
+      group: "tenant",
+      disabled: false,
+    },
     ...(settings?.modules ?? []).map((module): Section => ({
       id: module.moduleId,
       title: module.title,
@@ -440,6 +450,34 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(REPORTING, () => props.onSaveReporting(values))()
+            }
+            footer={footer}
+          />
+        </SectionCard>
+      );
+
+    if (current.id === AI_CONNECTION)
+      return (
+        <SectionCard
+          title="AI connection"
+          description="The model provider key that AI features use. A stored key is never shown again."
+          lastChanged="Changes to the key are listed in the audit log."
+          headingRef={heading}
+        >
+          <AiConnectionSection
+            key={`${sectionKey}:${settings.core.modelKeyStored}`}
+            keyStored={settings.core.modelKeyStored}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
+            onDirtyChange={onDirtyChange}
+            onSubmit={(values) =>
+              save(AI_CONNECTION, () => props.onSaveModelKey(values))()
+            }
+            onRemove={() =>
+              save(AI_CONNECTION, () => props.onRemoveModelKey())()
             }
             footer={footer}
           />

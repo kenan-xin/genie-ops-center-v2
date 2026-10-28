@@ -1853,6 +1853,44 @@
         }
       }
     },
+    "/settings/ai/key": {
+      "put": {
+        "operationId": "settings.saveModelKey",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apiKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "apiKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      },
+      "delete": {
+        "operationId": "settings.removeModelKey",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/placeholder/records": {
       "get": {
         "operationId": "placeholder.read",

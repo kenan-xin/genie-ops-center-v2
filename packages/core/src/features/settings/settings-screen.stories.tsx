@@ -53,6 +53,8 @@ const meta = {
     onSaveSignIn: saved(),
     onSaveSessions: saved(),
     onSaveReporting: saved(),
+    onSaveModelKey: saved(),
+    onRemoveModelKey: saved(),
     onSaveModule: saved(),
     onTargetChange: fn(),
   } satisfies TenantSettingsScreenProps,
@@ -779,6 +781,88 @@ export const ReportingSaveRefusedMarksTheField: Story = {
     await expect(
       canvas.getByText("The reporting date was not saved. Your change is kept.")
     ).toBeVisible();
+  },
+};
+
+/** The key is write-only: it saves, then the field empties, and no value is ever shown (R-17). */
+export const AiKeySavesAndClearsTheField: Story = {
+  args: { target: { section: "ai-connection" } },
+  play: async ({ args, canvas }) => {
+    const field = canvas.getByLabelText("OpenRouter API key");
+
+    await expect(canvas.getByText("Not stored")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Remove key" })
+    ).toBeDisabled();
+    await expect(field).toHaveAttribute("type", "password");
+
+    await userEvent.type(field, "sk-or-v1-story");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(args.onSaveModelKey).toHaveBeenCalledWith({
+        apiKey: "sk-or-v1-story",
+      })
+    );
+    await expect(field).toHaveValue("");
+  },
+};
+
+/** An empty field keeps the stored key, so an empty or spaces-only field cannot save (DEC-53). */
+export const AiKeyEmptyFieldKeepsTheKey: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: { ...FIXTURE_SETTINGS.core, modelKeyStored: true },
+    },
+    target: { section: "ai-connection" },
+  },
+  play: async ({ args, canvas }) => {
+    const field = canvas.getByLabelText("OpenRouter API key");
+    const save = canvas.getByRole("button", { name: "Save" });
+
+    await expect(canvas.getByText("Stored")).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    await userEvent.type(field, "   ");
+    await expect(save).toBeDisabled();
+    expect(args.onSaveModelKey).not.toHaveBeenCalled();
+  },
+};
+
+/** The key leaves only through a danger confirm, and Cancel removes nothing (R-17). */
+export const AiKeyRemoveConfirms: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: { ...FIXTURE_SETTINGS.core, modelKeyStored: true },
+    },
+    target: { section: "ai-connection" },
+  },
+  play: async ({ args, canvas }) => {
+    const remove = canvas.getByRole("button", { name: "Remove key" });
+
+    await userEvent.click(remove);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove the model provider key?",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(args.onRemoveModelKey).not.toHaveBeenCalled();
+
+    await userEvent.click(remove);
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "Remove the model provider key?",
+        })
+      ).getByRole("button", { name: "Remove key" })
+    );
+    await waitFor(() => expect(args.onRemoveModelKey).toHaveBeenCalledTimes(1));
   },
 };
 

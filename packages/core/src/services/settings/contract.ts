@@ -49,6 +49,16 @@ export const settingsContract = {
       })
     )
     .output(saved),
+
+  // The write-only model provider key (R-17). `apiKey` is a name the logger redacts.
+  saveModelKey: oc
+    .route({ method: "PUT", path: "/settings/ai/key" })
+    .input(z.object({ apiKey: z.string() }))
+    .output(saved),
+
+  removeModelKey: oc
+    .route({ method: "DELETE", path: "/settings/ai/key" })
+    .output(saved),
 };
 
 export type SettingsContract = typeof settingsContract;

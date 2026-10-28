@@ -35,6 +35,9 @@ export type SessionsInput = { readonly sessionIdleMinutes: number };
 /** A blank reporting date is null: today in the tenant's default time zone (R-9). */
 export type ReportingInput = { readonly reportingDate: string | null };
 
+/** The key field is write-only: an empty field never reaches the service (R-17). */
+export type ModelKeyInput = { readonly apiKey: string };
+
 export type TenantSettingsScreenProps = {
   /** Undefined while the first read runs. */
   readonly settings: SettingsView | undefined;
@@ -63,6 +66,8 @@ export type TenantSettingsScreenProps = {
   readonly onSaveSignIn: (input: Partial<SignInInput>) => Promise<void>;
   readonly onSaveSessions: (input: SessionsInput) => Promise<void>;
   readonly onSaveReporting: (input: ReportingInput) => Promise<void>;
+  readonly onSaveModelKey: (input: ModelKeyInput) => Promise<void>;
+  readonly onRemoveModelKey: () => Promise<void>;
   readonly onSaveModule: (
     moduleId: string,
     values: Record<string, ConfigValue | null>

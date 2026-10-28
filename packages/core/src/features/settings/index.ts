@@ -9,6 +9,7 @@ export { resolveSettingsTarget } from "./settings-target.ts";
 export type {
   CoreSettingsView,
   LastChangedView,
+  ModelKeyInput,
   ModuleSettingsView,
   ReportingInput,
   SessionsInput,

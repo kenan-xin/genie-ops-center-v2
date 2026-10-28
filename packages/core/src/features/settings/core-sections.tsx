@@ -66,7 +66,7 @@ export function SectionFooter(props: {
   );
 }
 
-type SectionProps<T> = {
+export type SectionProps<T> = {
   readonly values: T;
   readonly onSubmit: (values: T) => Promise<void>;
   readonly onDirtyChange: (dirty: boolean) => void;
@@ -76,14 +76,18 @@ type SectionProps<T> = {
 };
 
 /** Editing a field clears the server error it carried (DR-20 S3-06). */
-const clearServerError = ({ fieldApi }: { readonly fieldApi: AnyFieldApi }) =>
+export const clearServerError = ({
+  fieldApi,
+}: {
+  readonly fieldApi: AnyFieldApi;
+}) =>
   fieldApi.setMeta((prev) => ({
     ...prev,
     errorMap: { ...prev.errorMap, onServer: undefined },
   }));
 
 /** A refused save's issues become each named field's `onServer` error; an edit clears it. */
-function useServerIssues(
+export function useServerIssues(
   form: AnyFormApi,
   issues: readonly SettingsIssue[] | undefined
 ): void {
@@ -97,7 +101,7 @@ function useServerIssues(
 }
 
 /** The form state every core section hands its footer, from the TanStack Form store. */
-function useFooterState(
+export function useFooterState(
   form: AnyFormApi,
   onDirtyChange: (dirty: boolean) => void
 ): FooterState {

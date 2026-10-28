@@ -27,3 +27,10 @@ export const reportingSettingsSchema = z.object({
     .date({ error: "Enter a whole date, or clear the field to use today." })
     .nullable(),
 });
+
+/** The model provider key (R-17). An empty field never reaches here: the screen keeps the stored key. */
+export const modelKeySchema = z.object({
+  apiKey: z.string().trim().min(1, {
+    error: "Enter the key, or leave the field empty to keep the stored key.",
+  }),
+});

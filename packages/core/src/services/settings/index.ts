@@ -40,8 +40,14 @@ import {
 } from "../audit/index.ts";
 import { can } from "../authorization/index.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
+import {
+  integrationKeyStored,
+  removeIntegrationKey,
+  storeIntegrationKey,
+} from "../integrations/keys.ts";
 import { ModuleManagementError } from "../module-management/index.ts";
 import {
+  modelKeySchema,
   reportingSettingsSchema,
   sessionSettingsSchema,
   signInSettingsSchema,
@@ -62,6 +68,8 @@ export type CoreSettingsView = {
   readonly sessionIdleMinutes: number;
   /** Null means today in the tenant's default time zone (R-9). */
   readonly reportingDate: string | null;
+  /** Whether the model provider key is stored. The value is never part of a settings read (R-17). */
+  readonly modelKeyStored: boolean;
   readonly lastChanged: LastChanged;
 };
 
@@ -128,6 +136,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     realmSupportsLocalAccounts: row.realmSupportsLocalAccounts,
     sessionIdleMinutes: row.sessionIdleMinutes,
     reportingDate: row.reportingDate,
+    modelKeyStored: await integrationKeyStored(tenant, "model-provider"),
     lastChanged: lastChangedOf(row.updatedAt, row.updatedBy),
   };
 }
@@ -361,6 +370,41 @@ export async function saveReportingSettings(
     parsed.data,
     () => {}
   );
+}
+
+/**
+ * The write-only model provider key (R-17, DEC-53). The schema trims the typed value, so the row
+ * holds the key itself; the store writes the one audit row, never with the value.
+ */
+export async function saveModelKey(
+  tenant: TenantContext,
+  input: { readonly actorUserId: string; readonly apiKey: string }
+): Promise<{ readonly changed: true }> {
+  const parsed = modelKeySchema.safeParse(input);
+
+  if (!parsed.success)
+    throw new AppError(CORE_ERRORS["settings-invalid"], {
+      issues: issuesOf(parsed.error),
+    });
+
+  await storeIntegrationKey(tenant, {
+    name: "model-provider",
+    value: parsed.data.apiKey,
+    actorUserId: input.actorUserId,
+  });
+
+  return { changed: true };
+}
+
+/** Removes the model provider key. Only a removed row is an audit event (DEC-53). */
+export async function removeModelKey(
+  tenant: TenantContext,
+  input: { readonly actorUserId: string }
+): Promise<{ readonly changed: boolean }> {
+  return removeIntegrationKey(tenant, {
+    name: "model-provider",
+    actorUserId: input.actorUserId,
+  });
 }
 
 /**

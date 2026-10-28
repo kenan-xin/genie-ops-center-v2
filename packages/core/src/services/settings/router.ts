@@ -6,6 +6,8 @@ import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
 import { settingsContract } from "./contract.ts";
 import {
   readSettings,
+  removeModelKey,
+  saveModelKey,
   saveModuleSettings,
   saveReportingSettings,
   saveSessionSettings,
@@ -53,6 +55,17 @@ export function createSettingsRouter(modules: readonly Module[]) {
         moduleId: input.moduleId,
         values: input.values,
       })
+    ),
+
+    saveModelKey: managed.saveModelKey.handler(({ context, input }) =>
+      saveModelKey(context.tenant, {
+        ...input,
+        actorUserId: context.caller.userId,
+      })
+    ),
+
+    removeModelKey: managed.removeModelKey.handler(({ context }) =>
+      removeModelKey(context.tenant, { actorUserId: context.caller.userId })
     ),
   });
 }
