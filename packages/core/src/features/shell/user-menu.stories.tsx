@@ -184,6 +184,24 @@ export const Dark: Story = {
   globals: { theme: "dark" },
 };
 
+/** A name longer than the rail cuts with an ellipsis before the chevron (Phase 08 sweep). */
+export const LongNameStopsBeforeTheChevron: Story = {
+  args: {
+    user: {
+      name: "Test Tenant administrator of the night shift",
+      roleLabel: "Administrator",
+    },
+  },
+  play: async ({ canvasElement, canvas }) => {
+    const name = canvas.getByText(/^Test Tenant administrator/);
+    const chevron = trigger(canvasElement).querySelector("svg:last-of-type");
+
+    await expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
+      chevron?.getBoundingClientRect().left ?? 0
+    );
+  },
+};
+
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const noFill = "rgba(0, 0, 0, 0)";

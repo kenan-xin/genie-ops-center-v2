@@ -86,7 +86,10 @@ export function UserMenu(props: UserMenuProps) {
           </span>
           <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
             <Tooltip>
-              <TooltipTrigger render={<span className="block min-w-0" />}>
+              {/* max-w-full: in an items-start column the trigger would size to its text. */}
+              <TooltipTrigger
+                render={<span className="block max-w-full min-w-0" />}
+              >
                 <span className="block max-w-full truncate text-sm font-semibold text-foreground">
                   {user.name}
                 </span>

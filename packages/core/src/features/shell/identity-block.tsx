@@ -129,7 +129,8 @@ export function IdentityBlock(props: {
       </span>
     ) : (
       <Tooltip>
-        <TooltipTrigger render={<span className="block min-w-0" />}>
+        {/* max-w-full: under a logo the column is items-start, so the trigger would size to its text. */}
+        <TooltipTrigger render={<span className="block max-w-full min-w-0" />}>
           <span className="block truncate text-xs text-muted-foreground">
             {identity.productName}
           </span>
