@@ -167,6 +167,17 @@ export const IconOnlyOnPhone: Story = {
   },
 };
 
+const keepsItsWidthAtTheStart: Story["play"] = async ({ canvas }) => {
+  const column = canvas.getByTestId("column").getBoundingClientRect();
+
+  const trigger = canvas
+    .getByRole("button", { name: "How access works" })
+    .getBoundingClientRect();
+
+  await expect(trigger.left).toBe(column.left);
+  await expect(trigger.width).toBeLessThan(column.width / 2);
+};
+
 /** A page puts the button in a grid column; it keeps its own width at the start of the row. */
 export const InAGridColumn: Story = {
   render: (args) => (
@@ -175,16 +186,18 @@ export const InAGridColumn: Story = {
       <p>The table follows.</p>
     </div>
   ),
-  play: async ({ canvas }) => {
-    const column = canvas.getByTestId("column").getBoundingClientRect();
+  play: keepsItsWidthAtTheStart,
+};
 
-    const trigger = canvas
-      .getByRole("button", { name: "How access works" })
-      .getBoundingClientRect();
-
-    await expect(trigger.left).toBe(column.left);
-    await expect(trigger.width).toBeLessThan(column.width / 2);
-  },
+/** A form field stacks its parts in a flex column; the button does not stretch across it. */
+export const InAFlexColumn: Story = {
+  render: (args) => (
+    <div data-testid="column" className="flex flex-col gap-1.5">
+      <p>5 to 480 minutes. Default 15.</p>
+      <HelpDisclosure {...args} />
+    </div>
+  ),
+  play: keepsItsWidthAtTheStart,
 };
 
 export const InsideASheet: Story = {

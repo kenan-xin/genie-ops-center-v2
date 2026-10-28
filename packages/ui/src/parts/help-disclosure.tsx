@@ -40,8 +40,8 @@ export function HelpDisclosure(props: {
               className="justify-self-start"
             />
           ) : (
-            // A grid parent would stretch the button and center its label.
-            <Button variant="ghost" className="justify-self-start" />
+            // A grid or flex-column parent would stretch the button and center its label.
+            <Button variant="ghost" className="w-fit justify-self-start" />
           )
         }
       >

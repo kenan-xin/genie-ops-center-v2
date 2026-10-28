@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect } from "storybook/test";
 
 import { NoAccessState } from "./no-access-state.tsx";
 
@@ -18,7 +19,17 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Light: Story = {};
+export const Light: Story = {
+  play: async ({ canvas }) => {
+    // A raw `buttonVariants` class list carries no tailwind-merge, so its base border must not hide
+    // the secondary border (tokens.md, "Buttons").
+    const link = canvas.getByRole("link", { name: "Go to home" });
+
+    await expect(getComputedStyle(link).borderTopColor).not.toBe(
+      "rgba(0, 0, 0, 0)"
+    );
+  },
+};
 
 export const Dark: Story = {
   globals: { theme: "dark" },

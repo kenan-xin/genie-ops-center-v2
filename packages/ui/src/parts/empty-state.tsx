@@ -45,8 +45,9 @@ export function EmptyState(props: EmptyStateProps) {
         <Heading
           data-slot="empty-title"
           className={cn(
-            "font-semibold tracking-tight text-balance",
-            framed ? "text-xl" : "text-sm"
+            "tracking-tight text-balance",
+            // The framed heading is the page title (tokens.md, type scale).
+            framed ? "text-xl font-bold" : "text-sm font-semibold"
           )}
         >
           {props.title}
