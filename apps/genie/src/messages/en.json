@@ -67,7 +67,7 @@
     },
     "roles": {
       "title": "Roles",
-      "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access.",
+      "description": "Named sets of permission keys.",
       "searchLabel": "Search roles",
       "noMatch": {
         "title": "No roles match",
