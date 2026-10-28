@@ -201,6 +201,16 @@ export const PhoneSearchTakesTheRow: Story = {
     await expect(search.getBoundingClientRect().width).toBeGreaterThanOrEqual(
       300
     );
+
+    // The icon-only help stays beside the search, not on a row of its own.
+    const field = search.getBoundingClientRect();
+
+    const help = canvas
+      .getByRole("button", { name: "Pending, disabled, removed" })
+      .getBoundingClientRect();
+
+    await expect(help.top + help.height / 2).toBeGreaterThan(field.top);
+    await expect(help.top + help.height / 2).toBeLessThan(field.bottom);
   },
 };
 

@@ -639,13 +639,13 @@ export function GroupsScreen(props: GroupsScreenProps) {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <label htmlFor={searchId} className="sr-only">
             {props.searchLabel}
           </label>
           <Input
             id={searchId}
-            className="sm:w-72 sm:flex-none"
+            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
             placeholder={props.searchLabel}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
