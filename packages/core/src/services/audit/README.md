@@ -1,12 +1,17 @@
 # packages/core/src/services/audit
 
-The audit capability: the one command-line writer, the action catalogue, and the reader.
+The audit capability: the command-line writer, the module audit call, the action catalogue, and
+the reader.
 
 ## What belongs here
 
 - `writeAuditEvent`, the helper the command runner calls around every command (R-64, DEC-45): one
   append-only `audit_event` row with a null actor, the `ops:<command>` action, and the
   operating-system user, the allow-listed arguments and the outcome in `metadata`.
+- `moduleAudit`, the module audit call (Spec 7 R-10): `moduleAudit(moduleId)` answers
+  `audit(ctx, action, target, summary, metadata)`, every action prefixed by the module id, with the
+  row written through `ctx.tx` when the caller passes its own transaction and a null actor for a
+  system job.
 - `AUDIT_ACTIONS`, the one catalogue of action strings core writes (R-45), so the reader's action
   filter has a fixed list to group. A writer that already exists references it; the reader never
   invents an action.
@@ -20,10 +25,12 @@ The audit capability: the one command-line writer, the action catalogue, and the
 
 ## What must not go here
 
-A second writer of `audit_event`, a pool of its own, and any command-specific argument or outcome
-shape. The writer takes the tenant context, never a pool, so the one context owns the one
+Another writer of `audit_event` beyond `writeAuditEvent`, `writeAuthAuditEvent`,
+`writeAdminAuditEvent` and `moduleAudit`, a pool of its own, and any command-specific argument or
+outcome shape. The writer takes the tenant context, never a pool, so the one context owns the one
 connection (DEC-34). The reader never writes a row and never edits one: the table is append-only.
 
 ## What it imports
 
-The tenant-context type beside it, the schema, and the one authorization seam (`can`). Nothing else.
+The tenant-context types beside it, the schema, the module-contract resource key (`ResourceRef`), and
+authorization's types: the seam (`can`) and the request principal. Nothing else.

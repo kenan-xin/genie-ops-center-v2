@@ -1,8 +1,8 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { auditEvent } from "../../schema.ts";
 import { pgErrorCode } from "../../utils/error-cause.ts";
 import type { AuditAction } from "./actions.ts";
+import { insertAuditRow } from "./insert.ts";
 
 export {
   AUDIT_ACTIONS,
@@ -10,6 +10,12 @@ export {
   auditActionGroup,
   isOperatorAction,
 } from "./actions.ts";
+
+export {
+  type ModuleAudit,
+  type ModuleAuditContext,
+  moduleAudit,
+} from "./module-audit.ts";
 
 export {
   type AuditActorView,
@@ -72,13 +78,13 @@ export async function writeAuthAuditEvent(
     readonly metadata?: Readonly<Record<string, AuditMetadataValue>>;
   }
 ): Promise<void> {
-  await context.db.insert(auditEvent).values({
+  await insertAuditRow(context.db, {
     actorUserId: input.actorUserId ?? null,
     action: input.action,
     targetType: "user",
     targetId: input.targetUserId ?? null,
     summary: input.summary,
-    metadata: input.metadata ?? {},
+    metadata: input.metadata,
   });
 }
 
@@ -102,13 +108,13 @@ export async function writeAdminAuditEvent(
   tx: TenantTransaction,
   input: AdminAuditInput
 ): Promise<void> {
-  await tx.insert(auditEvent).values({
+  await insertAuditRow(tx, {
     actorUserId: input.actorUserId,
     action: input.action,
-    targetType: input.targetType ?? null,
-    targetId: input.targetId ?? null,
+    targetType: input.targetType,
+    targetId: input.targetId,
     summary: input.summary,
-    metadata: input.metadata ?? {},
+    metadata: input.metadata,
   });
 }
 
@@ -131,7 +137,7 @@ export async function writeAuditEvent(
   input: AuditEventInput
 ): Promise<void> {
   try {
-    await context.db.insert(auditEvent).values({
+    await insertAuditRow(context.db, {
       actorUserId: null,
       action: input.action,
       summary: input.action,

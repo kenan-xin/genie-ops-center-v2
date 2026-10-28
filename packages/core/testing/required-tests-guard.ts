@@ -421,6 +421,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/module-audit.integration.test.ts",
+    reason:
+      "Spec 7 R-10 and AC-3 require the module audit call to name the caller, the target and the metadata, to record a null actor without a caller, and to commit with the caller's transaction",
+    cases: [
+      "the module audit call against a real database writes one row naming the caller, the target and the metadata, and a null actor without a caller",
+      "the module audit call against a real database a row written inside a transaction rolls back with it",
+    ],
+  },
+  {
     file: "testing/modules-page.integration.test.ts",
     reason:
       "Spec 3 R-82 to R-91a and R-90a require the Modules page service to share the enable procedure and write its own core audit row",
