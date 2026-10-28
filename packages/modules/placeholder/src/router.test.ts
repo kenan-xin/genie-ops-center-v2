@@ -115,6 +115,14 @@ function contextWith(
           throw new Error("the router looked up a capability");
         },
       },
+      datasets: {
+        register: () => {
+          throw new Error("the router registered a dataset");
+        },
+        all: () => {
+          throw new Error("the router listed datasets");
+        },
+      },
       fileStorage: {
         store: () => Promise.reject(new Error("the router stored a file")),
         fetch: () => Promise.reject(new Error("the router fetched a file")),

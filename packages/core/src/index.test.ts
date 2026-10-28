@@ -33,6 +33,7 @@ describe("the core package root", () => {
         "capabilities",
         "categories",
         "correlationScope",
+        "datasets",
         "db",
         "entitlements",
         "env",

@@ -14,6 +14,7 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { recordsDataset } from "../src/datasets.ts";
 import { placeholderModule } from "../src/module.ts";
 import { placeholderRouter } from "../src/router.ts";
 import { insertPlaceholderRecord } from "./factories.ts";
@@ -162,6 +163,28 @@ describe("the placeholder read procedure against a real database", () => {
     await expect(caller.read()).rejects.toMatchObject({
       code: "unauthenticated",
     });
+  });
+
+  it("answers a dataset source whose aliased subquery reads the seeded rows", async () => {
+    const row = await insertPlaceholderRecord(deployment.context, {
+      label: "A dataset row",
+      recordedOn: "2026-06-01",
+    });
+
+    // The source must resolve to the select, not to rows: core composes it only as an aliased
+    // subquery (DEC-54).
+    const source = await recordsDataset.source(
+      contextFor(await reader()),
+      "2026-12-31"
+    );
+
+    expect(source.as).toBeTypeOf("function");
+
+    const rows = await deployment.context.db.select().from(source.as("ds"));
+
+    expect(rows).toContainEqual(
+      expect.objectContaining({ id: row.id, label: "A dataset row" })
+    );
   });
 
   it("appends placeholder:admin to Tenant administrator on enable and removes it on disable", async () => {

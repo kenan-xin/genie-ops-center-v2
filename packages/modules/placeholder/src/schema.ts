@@ -1,6 +1,8 @@
 import { migrationsFromJournal } from "@genie/core";
 import { sql } from "drizzle-orm";
 import {
+  date,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -20,6 +22,11 @@ export const placeholderRecord = pgTable("placeholder_record", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   label: text("label").notNull(),
+  /** The fields the `placeholder.records` dataset publishes; all optional (DEC-54). */
+  recordedOn: date("recorded_on"),
+  amountCents: integer("amount_cents"),
+  currency: text("currency"),
+  quantity: integer("quantity"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -60,6 +67,10 @@ const MIGRATION_FILES = {
   ),
   "0001_placeholder-event-effect": new URL(
     "../drizzle/0001_placeholder-event-effect.sql",
+    import.meta.url
+  ),
+  "0002_placeholder-record-dataset-fields": new URL(
+    "../drizzle/0002_placeholder-record-dataset-fields.sql",
     import.meta.url
   ),
 };

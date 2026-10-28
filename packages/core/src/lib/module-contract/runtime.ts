@@ -35,6 +35,10 @@ export function registerModuleRuntime(
       context.capabilities.provide(provision.name, provision.implementation);
     }
 
+    for (const dataset of module.datasets ?? []) {
+      context.datasets.register(module.identity.id, dataset);
+    }
+
     for (const subscription of module.subscriptions ?? []) {
       registerSubscription(context.events, module.identity.id, subscription);
     }

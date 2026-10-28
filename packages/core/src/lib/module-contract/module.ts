@@ -1,3 +1,4 @@
+import type { Subquery } from "drizzle-orm";
 import type { MigrationMeta } from "drizzle-orm/migrator";
 import type { PgTable } from "drizzle-orm/pg-core";
 import type { ComponentType } from "react";
@@ -278,6 +279,34 @@ export type PermissionTransformation = {
   readonly change: PermissionChange;
 };
 
+/** 19. Datasets (DEC-54). */
+export type DatasetFieldType = "text" | "date" | "number" | "money" | "boolean";
+
+export type DatasetField = {
+  /** For the agent only. The type, not the kind, decides what a query can do. */
+  readonly kind: "dimension" | "measure";
+  /** A money field holds integer minor units (cents) of the row's currency. */
+  readonly type: DatasetFieldType;
+  readonly description: string;
+};
+
+/** The select that `source()` answers. Core uses it only as an aliased subquery. */
+export type DatasetSource = { as(alias: string): Subquery };
+
+export type DatasetDeclaration = {
+  /** `<moduleId>.<kebab-name>`, like a job name. */
+  readonly name: string;
+  /** What the dataset holds, for the agent. */
+  readonly description: string;
+  readonly permission: PermissionKey;
+  /** Keyed by the name that the source select gives each column. */
+  readonly fields: Readonly<Record<string, DatasetField>>;
+  readonly timeField: string;
+  readonly recordKey: { readonly type: string; readonly field: string };
+  readonly currencyField?: string;
+  source(ctx: ModuleRequestContext, asOf: string): Promise<DatasetSource>;
+};
+
 /** 17. Tests: the shared presets a module must use. */
 export type ModuleTests = { readonly presets: readonly string[] };
 
@@ -304,5 +333,6 @@ export type Module = {
   readonly integrationKinds: readonly string[];
   readonly contentSecurityPolicy?: ModuleFrameOriginProvider;
   readonly permissionTransformations?: readonly PermissionTransformation[];
+  readonly datasets?: readonly DatasetDeclaration[];
   readonly tests: ModuleTests;
 };

@@ -1,8 +1,8 @@
 import { AppError, CORE_ERRORS, implementModule, scopesFor } from "@genie/core";
-import { inArray, sql } from "drizzle-orm";
 
 import { placeholderContract } from "./contract.ts";
 import { placeholderRecord } from "./schema.ts";
+import { recordScope } from "./scope.ts";
 
 const os = implementModule("placeholder", placeholderContract);
 
@@ -23,16 +23,10 @@ export const placeholderRouter = os.router({
       throw new AppError(CORE_ERRORS.forbidden);
     }
 
-    const rows = context.tenant.db.select().from(placeholderRecord);
-
-    if (scopes.kind === "all") return rows;
-
-    const ids = scopes.scopes
-      .filter((scope) => scope.type === "placeholder-record")
-      .map((scope) => scope.id);
-
-    // Compared as text, so a scope id that is not a uuid matches nothing instead of failing.
-    return rows.where(inArray(sql`${placeholderRecord.id}::text`, ids));
+    return context.tenant.db
+      .select()
+      .from(placeholderRecord)
+      .where(recordScope(scopes));
   }),
 });
 

@@ -8,6 +8,7 @@ import { defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
 
 import { placeholderContract } from "./contract.ts";
+import { recordsDataset } from "./datasets.ts";
 import {
   PlaceholderAdminPage,
   placeholderEntryPage,
@@ -225,6 +226,9 @@ export const placeholderModule = {
   contentSecurityPolicy: {
     frameOrigins: async () => ["https://embed.placeholder.example.com"],
   },
+
+  // The one dataset of the contract point, which core queries generically (DEC-54).
+  datasets: [recordsDataset],
 
   tests: { presets: ["unit", "integration", "e2e"] },
 } satisfies Module;

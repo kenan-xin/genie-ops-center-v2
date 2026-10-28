@@ -17,6 +17,10 @@ import {
   type CapabilityRegistry,
 } from "../../services/capabilities/index.ts";
 import {
+  createDatasetRegistry,
+  type DatasetRegistry,
+} from "../../services/datasets/registry.ts";
+import {
   createEventBus,
   type EventBus,
 } from "../../services/event-bus/index.ts";
@@ -157,6 +161,8 @@ export type TenantContext = {
   readonly events: EventBus;
   /** The capabilities channel: a provider or nothing, never a module import (R-58). */
   readonly capabilities: CapabilityRegistry;
+  /** The datasets the compiled modules publish, empty until `registerModuleRuntime` runs (DEC-54). */
+  readonly datasets: DatasetRegistry;
   /** The file store of R-6, over the adapter `FILE_STORAGE_ADAPTER` selects. */
   readonly fileStorage: FileStorage;
   /** The mailer of R-43, built once from the validated environment; `provider` is `none` when `MAIL_PROVIDER` is unset (D-7). */
@@ -319,6 +325,7 @@ export function createTenantContext(
       tenant: () => context,
     }),
     capabilities,
+    datasets: createDatasetRegistry(),
     fileStorage: createFileStorage(db, env, publicUrl, readers.branding),
     mailer: createMailer(env, {
       branding: readers.branding,

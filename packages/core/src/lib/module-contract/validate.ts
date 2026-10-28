@@ -355,6 +355,66 @@ export function validateModule(module: Module): readonly string[] {
 
   const declared = new Set(module.permissions.map((entry) => entry.key));
 
+  // A dataset's name carries the module id, so two modules' datasets never collide in the one
+  // registry (DEC-54). Its permission and record type are the module's own, so core checks a
+  // key and resolves a record through the module that published it, and its time, key and
+  // currency fields are the declared fields a generic query would otherwise trust blindly.
+  const datasetNames = new Set<string>();
+  const recordTypes = new Set(module.recordTypes.map((entry) => entry.type));
+
+  for (const dataset of module.datasets ?? []) {
+    const name = dataset.name;
+
+    if (!name.startsWith(`${id}.`)) {
+      problems.push(`Dataset name "${name}" must start with "${id}.".`);
+    }
+
+    if (!declared.has(dataset.permission)) {
+      problems.push(
+        `Dataset "${name}" names permission "${dataset.permission}", which the module does not declare.`
+      );
+    }
+
+    if (dataset.fields[dataset.timeField]?.type !== "date") {
+      problems.push(
+        `Dataset "${name}" names time field "${dataset.timeField}", which is not a declared date field.`
+      );
+    }
+
+    if (!recordTypes.has(dataset.recordKey.type)) {
+      problems.push(
+        `Dataset "${name}" names record type "${dataset.recordKey.type}", which is not one of the module's record types.`
+      );
+    }
+
+    if (dataset.fields[dataset.recordKey.field]?.type !== "text") {
+      problems.push(
+        `Dataset "${name}" names record key field "${dataset.recordKey.field}", which is not a declared text field.`
+      );
+    }
+
+    const holdsMoney = Object.values(dataset.fields).some(
+      (field) => field.type === "money"
+    );
+
+    const currency =
+      dataset.currencyField === undefined
+        ? undefined
+        : dataset.fields[dataset.currencyField];
+
+    if (holdsMoney && currency?.type !== "text") {
+      problems.push(
+        `Dataset "${name}" holds a money field, so it must name a declared text currency field.`
+      );
+    }
+
+    if (datasetNames.has(name)) {
+      problems.push(`Dataset name "${name}" is declared more than once.`);
+    }
+
+    datasetNames.add(name);
+  }
+
   const workspace = module.navigation.entries.filter(
     (entry) => entry.surface === "workspace"
   );

@@ -88,6 +88,7 @@ describe("createTenantContext", () => {
         "capabilities",
         "categories",
         "correlationScope",
+        "datasets",
         "db",
         "entitlements",
         "env",

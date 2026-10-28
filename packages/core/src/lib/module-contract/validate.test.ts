@@ -15,7 +15,7 @@ import {
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
 import { fixtureApi, validModule } from "./__fixtures__/valid-module.ts";
-import type { NavigationEntry } from "./module.ts";
+import type { DatasetDeclaration, NavigationEntry } from "./module.ts";
 import { validateModule, validateRegistry } from "./validate.ts";
 
 /** The fixture with the given contract and the router `build` makes from core's implementer. */
@@ -994,6 +994,88 @@ describe("validateModule", () => {
 
     expect(validateModule(broken).join(" ")).toContain("landing");
   });
+
+  it("refuses a dataset declaration that breaks a contract rule", () => {
+    const validDataset: DatasetDeclaration = {
+      name: "fixture.records",
+      description: "The fixture's records.",
+      permission: "fixture:read",
+      fields: {
+        id: { kind: "dimension", type: "text", description: "The record id." },
+        label: { kind: "dimension", type: "text", description: "The label." },
+        recordedOn: {
+          kind: "dimension",
+          type: "date",
+          description: "The day the record was written.",
+        },
+        amountCents: {
+          kind: "measure",
+          type: "money",
+          description: "The amount in cents.",
+        },
+        currency: {
+          kind: "dimension",
+          type: "text",
+          description: "The currency.",
+        },
+      },
+      timeField: "recordedOn",
+      recordKey: { type: "fixture_record", field: "id" },
+      currencyField: "currency",
+      source: async () => {
+        throw new Error("validateModule does not call a dataset source");
+      },
+    };
+
+    expect(validateModule(withDatasets([validDataset]))).toEqual([]);
+
+    const { currencyField: _omitted, ...withoutCurrency } = validDataset;
+
+    const cases: readonly [readonly DatasetDeclaration[], string][] = [
+      [
+        [{ ...validDataset, name: "records" }],
+        'Dataset name "records" must start with "fixture.".',
+      ],
+      [
+        [{ ...validDataset, permission: "fixture:missing" }],
+        'Dataset "fixture.records" names permission "fixture:missing", which the module does not declare.',
+      ],
+      [
+        [{ ...validDataset, timeField: "label" }],
+        'Dataset "fixture.records" names time field "label", which is not a declared date field.',
+      ],
+      [
+        [
+          {
+            ...validDataset,
+            recordKey: { type: "placeholder-record", field: "id" },
+          },
+        ],
+        'Dataset "fixture.records" names record type "placeholder-record", which is not one of the module\'s record types.',
+      ],
+      [
+        [
+          {
+            ...validDataset,
+            recordKey: { type: "fixture_record", field: "amountCents" },
+          },
+        ],
+        'Dataset "fixture.records" names record key field "amountCents", which is not a declared text field.',
+      ],
+      [
+        [withoutCurrency],
+        'Dataset "fixture.records" holds a money field, so it must name a declared text currency field.',
+      ],
+      [
+        [validDataset, validDataset],
+        'Dataset name "fixture.records" is declared more than once.',
+      ],
+    ];
+
+    for (const [datasets, problem] of cases) {
+      expect(validateModule(withDatasets(datasets))).toContain(problem);
+    }
+  });
 });
 
 describe("validateRegistry", () => {
@@ -1054,6 +1136,11 @@ describe("validateRegistry", () => {
     );
   });
 });
+
+/** The valid fixture with the given dataset declarations. */
+function withDatasets(datasets: readonly DatasetDeclaration[]) {
+  return { ...validModule, datasets };
+}
 
 /**
  * `noUncheckedIndexedAccess` types `entries[0]` as possibly undefined; the plan's

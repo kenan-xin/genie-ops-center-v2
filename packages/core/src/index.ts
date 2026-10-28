@@ -336,6 +336,10 @@ export {
 
 export type {
   AnySubscription,
+  DatasetDeclaration,
+  DatasetField,
+  DatasetFieldType,
+  DatasetSource,
   JobContext,
   JobDeclaration,
   Module,
@@ -443,6 +447,12 @@ export type {
 } from "./services/event-bus/index.ts";
 
 export type { CapabilityRegistry } from "./services/capabilities/index.ts";
+
+export {
+  createDatasetRegistry,
+  type DatasetRegistry,
+  type RegisteredDataset,
+} from "./services/datasets/registry.ts";
 
 export {
   type FetchedFile,
