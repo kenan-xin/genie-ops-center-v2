@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  EmptyState,
   Field,
   FieldDescription,
   FieldLabel,
@@ -46,6 +45,7 @@ import {
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
+import { NoMatch } from "../admin/no-match.tsx";
 import { GroupName, looksLikeId } from "./group-name.tsx";
 import {
   groupLabel,
@@ -691,22 +691,13 @@ export function GroupsScreen(props: GroupsScreenProps) {
           Loading groups…
         </p>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          title="No groups match"
-          description="Clear the search and the archived filter to see every group."
-          action={
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => {
-                setQuery("");
+        <NoMatch
+          copy={props.noMatch}
+          onClear={() => {
+            setQuery("");
 
-                if (props.includeArchived) props.onChangeIncludeArchived(false);
-              }}
-            >
-              Clear filters
-            </Button>
-          }
+            if (props.includeArchived) props.onChangeIncludeArchived(false);
+          }}
         />
       ) : (
         <div className="mt-4">

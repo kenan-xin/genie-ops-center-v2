@@ -8,6 +8,7 @@ import {
   type AuditViewer,
 } from "@genie/core/features/audit";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
@@ -30,6 +31,8 @@ export type AuditLogRouteProps = {
  */
 export function AuditLogRoute(props: AuditLogRouteProps) {
   const router = useRouter();
+  const t = useTranslations("pages");
+  const tNoMatch = useTranslations("noMatch");
   const [filters, setFilters] = useState<AuditFilters>(props.initialFilters);
 
   const query = useInfiniteQuery({
@@ -72,6 +75,11 @@ export function AuditLogRoute(props: AuditLogRouteProps) {
       total={first?.total ?? 0}
       filterOptions={filterOptions}
       filters={filters}
+      noMatch={{
+        title: t("audit.noMatch.title"),
+        description: t("audit.noMatch.description"),
+        clearLabel: tNoMatch("clear"),
+      }}
       hasMore={query.hasNextPage}
       loading={query.isFetchingNextPage}
       refreshing={query.isPlaceholderData}

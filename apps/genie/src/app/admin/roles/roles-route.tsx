@@ -20,6 +20,7 @@ import { rpc } from "../../../rpc/client.ts";
  */
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   const t = useTranslations("pages");
+  const tNoMatch = useTranslations("noMatch");
   const router = useRouter();
   // An audit target link opens the screen with its role selected.
   const linkedRoleId = useSearchParams().get("selected");
@@ -81,6 +82,11 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       roles={list.data ?? []}
       catalogue={catalogue.data ?? []}
       searchLabel={t("roles.searchLabel")}
+      noMatch={{
+        title: t("roles.noMatch.title"),
+        description: t("roles.noMatch.description"),
+        clearLabel: tNoMatch("clear"),
+      }}
       viewer={props.viewer}
       selectedRoleId={selectedRoleId}
       onSelectRole={setSelectedRoleId}

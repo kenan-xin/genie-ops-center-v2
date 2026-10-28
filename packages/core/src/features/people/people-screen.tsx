@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  EmptyState,
   Field,
   FieldLabel,
   FilterDisclosure,
@@ -42,6 +41,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
+import { NoMatch } from "../admin/no-match.tsx";
 import { initials } from "../audit/helpers.ts";
 import { GroupName } from "../groups/group-name.tsx";
 import type {
@@ -778,21 +778,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
           Loading people…
         </p>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          title="No people match"
-          description="Clear the search and the filters to see everyone."
-          action={
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => {
-                setQuery("");
-                clearFilters();
-              }}
-            >
-              Clear filters
-            </Button>
-          }
+        <NoMatch
+          copy={props.noMatch}
+          onClear={() => {
+            setQuery("");
+            clearFilters();
+          }}
         />
       ) : (
         <div className="mt-4">

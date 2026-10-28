@@ -9,6 +9,7 @@ import type {
   PersonSessionRow as PersonSession,
   PersonStatus,
 } from "../../services/people/index.ts";
+import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
  * The presentation types of the People screen. The row views come from the people service through
@@ -57,6 +58,8 @@ export type PeopleScreenProps = {
   readonly settings: PeopleSettings;
   /** The search field's label and placeholder, from the host catalogue (DEC-13). */
   readonly searchLabel: string;
+  /** The copy when the search and filters match nobody. */
+  readonly noMatch: NoMatchCopy;
   readonly roles: readonly AssignableRole[];
   /**
    * Whether the caller may pick roles in Add person. False hides the picker; the server refuses

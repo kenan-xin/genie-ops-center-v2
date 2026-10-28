@@ -42,6 +42,11 @@ const meta = {
   },
   args: {
     searchLabel: "Search roles",
+    noMatch: {
+      title: "No roles match",
+      description: "Clear the search to see every role.",
+      clearLabel: "Clear search and filters",
+    },
     roles: FIXTURE_ROLES,
     viewer: FIXTURE_VIEWER,
     catalogue: FIXTURE_CATALOGUE,
@@ -435,6 +440,22 @@ export const TwoUnavailableKeysRemoveOnlyTheClicked: Story = {
 export const Empty: Story = {
   args: { roles: [] },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("No roles match.")).toBeInTheDocument();
+    await expect(canvas.getByText("No roles match")).toBeInTheDocument();
+  },
+};
+
+export const NoMatchClearsTheSearch: Story = {
+  play: async ({ canvas }) => {
+    const search = canvas.getByRole("textbox", { name: "Search roles" });
+
+    await userEvent.type(search, "no role is called this");
+    await expect(canvas.queryByRole("table", { name: "Roles" })).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear search and filters" })
+    );
+
+    await expect(search).toHaveValue("");
+    await expect(canvas.getByRole("table", { name: "Roles" })).toBeVisible();
   },
 };

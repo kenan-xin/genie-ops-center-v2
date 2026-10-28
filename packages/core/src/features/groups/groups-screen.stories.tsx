@@ -46,6 +46,12 @@ const meta = {
   },
   args: {
     searchLabel: "Search groups",
+    noMatch: {
+      title: "No groups match",
+      description:
+        "Clear the search and the archived filter to see every group.",
+      clearLabel: "Clear search and filters",
+    },
     groups: FIXTURE_GROUPS,
     viewer: FIXTURE_VIEWER,
     includeArchived: false,
@@ -466,6 +472,9 @@ export const Empty: Story = {
   args: { groups: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByText(/No groups match/)).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Clear search and filters" })
+    ).toBeInTheDocument();
   },
 };
 

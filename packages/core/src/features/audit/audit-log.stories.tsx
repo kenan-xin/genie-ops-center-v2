@@ -61,6 +61,11 @@ const meta = {
     total: 42,
     filterOptions: FIXTURE_FILTER_OPTIONS,
     filters: EMPTY_AUDIT_FILTERS,
+    noMatch: {
+      title: "No events match",
+      description: "Widen the date range or remove a filter.",
+      clearLabel: "Clear search and filters",
+    },
     hasMore: true,
     nowIso: FIXTURE_NOW,
     onChangeAuditFilters,
@@ -178,7 +183,7 @@ export const Empty: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No events match")).toBeInTheDocument();
     await expect(
-      canvas.getByRole("button", { name: "Clear filters" })
+      canvas.getByRole("button", { name: "Clear search and filters" })
     ).toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: "Load more" })

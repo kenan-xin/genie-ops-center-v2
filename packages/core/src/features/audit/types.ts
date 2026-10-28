@@ -6,6 +6,7 @@ import type {
   AuditFilterOptions,
   AuditMetadataValue,
 } from "../../services/audit/index.ts";
+import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
  * The presentation types of the Audit log screen. The event, actor, filter and option views come
@@ -47,6 +48,8 @@ export type AuditLogProps = {
   readonly total: number;
   readonly filterOptions: AuditFilterOptions;
   readonly filters: AuditFilters;
+  /** The copy when the filters match no event. */
+  readonly noMatch: NoMatchCopy;
   /** True while more events can load; the Load more control renders only then. */
   readonly hasMore: boolean;
   /** True while a page is loading. */

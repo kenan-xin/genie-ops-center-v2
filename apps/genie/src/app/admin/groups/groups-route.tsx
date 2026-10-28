@@ -17,6 +17,7 @@ import { rpc } from "../../../rpc/client.ts";
  */
 export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   const t = useTranslations("pages");
+  const tNoMatch = useTranslations("noMatch");
   const [includeArchived, setIncludeArchived] = useState(false);
   // An audit target link opens the screen with its group selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
@@ -104,6 +105,11 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       viewer={props.viewer}
       labelHint={t("groups.addLabelHint")}
       searchLabel={t("groups.searchLabel")}
+      noMatch={{
+        title: t("groups.noMatch.title"),
+        description: t("groups.noMatch.description"),
+        clearLabel: tNoMatch("clear"),
+      }}
       includeArchived={includeArchived}
       onChangeIncludeArchived={setIncludeArchived}
       people={people.data ?? []}

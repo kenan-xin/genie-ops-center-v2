@@ -46,6 +46,11 @@ const meta = {
   },
   args: {
     searchLabel: "Search people",
+    noMatch: {
+      title: "No people match",
+      description: "Clear the search and the filters to see everyone.",
+      clearLabel: "Clear search and filters",
+    },
     people: FIXTURE_PEOPLE,
     viewer: FIXTURE_VIEWER,
     settings: FIXTURE_SETTINGS,
@@ -375,6 +380,9 @@ export const Empty: Story = {
   args: { people: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByText(/No people match/)).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Clear search and filters" })
+    ).toBeInTheDocument();
   },
 };
 

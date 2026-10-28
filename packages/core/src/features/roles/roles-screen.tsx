@@ -29,6 +29,7 @@ import {
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
+import { NoMatch } from "../admin/no-match.tsx";
 import type {
   Role,
   RoleDetail,
@@ -577,7 +578,7 @@ export function RolesScreen(props: RolesScreenProps) {
           Loading roles…
         </p>
       ) : filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No roles match.</p>
+        <NoMatch copy={props.noMatch} onClear={() => setQuery("")} />
       ) : (
         <div className="mt-4">
           <DataTable

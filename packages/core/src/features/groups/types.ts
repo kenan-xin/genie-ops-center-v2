@@ -5,6 +5,7 @@ import type {
   GroupRow as Group,
 } from "../../services/groups/index.ts";
 import type { AssignablePerson as PersonOption } from "../../services/people/index.ts";
+import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
  * The presentation types of the Groups screen. The row views come from the groups and people
@@ -41,6 +42,8 @@ export type GroupsScreenProps = {
   readonly viewer: GroupsViewer;
   /** The search field's label and placeholder, from the host catalogue (DEC-13). */
   readonly searchLabel: string;
+  /** The copy when the search and the archived filter match no group. */
+  readonly noMatch: NoMatchCopy;
   readonly includeArchived: boolean;
   readonly onChangeIncludeArchived: (includeArchived: boolean) => void;
   /** Fires when a row opens or the inspector closes, so the host can load that group's detail. */

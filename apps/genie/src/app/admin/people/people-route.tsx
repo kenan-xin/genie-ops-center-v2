@@ -25,6 +25,7 @@ export function PeopleRoute(props: {
   readonly settings: PeopleSettings;
 }) {
   const t = useTranslations("pages");
+  const tNoMatch = useTranslations("noMatch");
   // An audit target link opens the screen with its person selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
@@ -102,6 +103,11 @@ export function PeopleRoute(props: {
       viewer={props.viewer}
       settings={props.settings}
       searchLabel={t("people.searchLabel")}
+      noMatch={{
+        title: t("people.noMatch.title"),
+        description: t("people.noMatch.description"),
+        clearLabel: tNoMatch("clear"),
+      }}
       roles={roles.data ?? []}
       canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}

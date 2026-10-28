@@ -21,6 +21,7 @@ import {
 import { useId, useState } from "react";
 import type { JSX, ReactNode } from "react";
 
+import { NoMatch } from "../admin/no-match.tsx";
 import { AuditEventSheet } from "./audit-event-sheet.tsx";
 import {
   countActiveFilters,
@@ -463,20 +464,10 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
 
       <section>
         {props.events.length === 0 ? (
-          <div className="px-5 py-14 text-center">
-            <p className="text-sm font-semibold">No events match</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Widen the date range or remove a filter.
-            </p>
-            <div className="mt-4">
-              <Button
-                variant="secondary"
-                onClick={() => change(EMPTY_AUDIT_FILTERS)}
-              >
-                Clear filters
-              </Button>
-            </div>
-          </div>
+          <NoMatch
+            copy={props.noMatch}
+            onClear={() => change(EMPTY_AUDIT_FILTERS)}
+          />
         ) : (
           <>
             <DataTable

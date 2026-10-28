@@ -7,6 +7,7 @@ import type {
   UnavailableKey,
   UnavailableReason,
 } from "../../services/roles/index.ts";
+import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
  * The presentation types of the Roles screen. The role, key and assignment views come from the roles
@@ -41,6 +42,8 @@ export type RolesScreenProps = {
   readonly viewer: RolesViewer;
   /** The search field's label and placeholder, from the host catalogue (DEC-13). */
   readonly searchLabel: string;
+  /** The copy when the search matches no role. */
+  readonly noMatch: NoMatchCopy;
   /**
    * The declared permission catalogue the role form picks from, grouped by module with each
    * module's entitlement state (R-33). A new role is built from this, never from a stored role.

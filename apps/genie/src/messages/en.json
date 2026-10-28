@@ -46,6 +46,10 @@
       "title": "People",
       "description": "Everyone who can sign in. Add a person, give them roles, and revoke access when they leave. A pending person becomes active at their first sign-in.",
       "searchLabel": "Search people",
+      "noMatch": {
+        "title": "No people match",
+        "description": "Clear the search and the filters to see everyone."
+      },
       "notAdded": "The person was not added."
     },
     "groups": {
@@ -53,6 +57,10 @@
       "description": "Directory groups from the identity provider, and local groups you manage here. A role assigned to a group reaches every member.",
       "addLabelHint": "Add a display label",
       "searchLabel": "Search groups",
+      "noMatch": {
+        "title": "No groups match",
+        "description": "Clear the search and the archived filter to see every group."
+      },
       "notAdded": "The group was not added.",
       "notCreated": "The local group was not created."
     },
@@ -60,11 +68,19 @@
       "title": "Roles",
       "description": "Named sets of permission keys. A system role is read-only and copyable; a custom role is yours to edit. Who holds a role is decided in Access.",
       "searchLabel": "Search roles",
+      "noMatch": {
+        "title": "No roles match",
+        "description": "Clear the search to see every role."
+      },
       "notSaved": "The role was not saved."
     },
     "audit": {
       "title": "Audit log",
-      "description": "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited."
+      "description": "Who did what, when, on which record. Events are kept for the tenant's lifetime and never edited.",
+      "noMatch": {
+        "title": "No events match",
+        "description": "Widen the date range or remove a filter."
+      }
     },
     "modules": {
       "title": "Modules",
@@ -108,6 +124,9 @@
     "invalid": "Some values are not valid. Fix the marked fields.",
     "retryAfter": "Try again in {minutes, plural, one {# minute} other {# minutes}}.",
     "kept": "Your change is kept."
+  },
+  "noMatch": {
+    "clear": "Clear search and filters"
   },
   "noGrants": {
     "title": "Nothing to open yet",
