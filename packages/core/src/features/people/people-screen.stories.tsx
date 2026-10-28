@@ -142,6 +142,8 @@ export const UnlabelledGroupIdShowsAShortPill: Story = {
     // The tooltip fades in, so wait until it paints.
     await waitFor(() => expect(tip).toBeVisible());
     await userEvent.unhover(table.getByText("39545f73…"));
+    // The table's tooltip fades out; wait until it leaves, so the next find is the inspector's.
+    await waitFor(() => expect(tip).not.toBeInTheDocument());
 
     await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
 
