@@ -166,7 +166,11 @@ async function keyboardWalk(
       if (!(element instanceof HTMLElement) || element === document.body)
         return undefined;
 
-      const style = getComputedStyle(element);
+      // A field inside an Input Group draws its ring on the group box around it (the shadcn part).
+      const ringBox =
+        element.closest<HTMLElement>('[data-slot="input-group"]') ?? element;
+
+      const style = getComputedStyle(ringBox);
 
       // R-8: the focus ring is the --ring color, resolved as rgb() in this element's theme.
       const probe = document.createElement("span");
