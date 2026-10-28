@@ -1,6 +1,12 @@
 "use client";
 
-import { FieldError, FieldLabel, focusRing, SwitchField } from "@genie/ui";
+import {
+  FieldError,
+  FieldLabel,
+  focusRing,
+  SwitchField,
+  Textarea,
+} from "@genie/ui";
 
 import { signInContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import {
@@ -76,7 +82,7 @@ export function SignInTab(props: {
         <FieldLabel htmlFor="branding-notice-text">
           System-use notice
         </FieldLabel>
-        <textarea
+        <Textarea
           id="branding-notice-text"
           rows={4}
           value={notice}
@@ -84,7 +90,6 @@ export function SignInTab(props: {
           aria-describedby={
             noticeError === undefined ? undefined : "branding-notice-text-error"
           }
-          className={`rounded-lg border border-input bg-background px-3 py-2 text-sm ${focusRing}`}
           onChange={(event) => {
             props.onChange("loginNoticeText", event.target.value);
 

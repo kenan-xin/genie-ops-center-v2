@@ -28,6 +28,8 @@ export {
 
 export { Input } from "./components/input.tsx";
 
+export { Textarea } from "./components/textarea.tsx";
+
 export {
   InputGroup,
   InputGroupAddon,
