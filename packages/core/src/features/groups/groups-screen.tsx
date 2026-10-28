@@ -768,7 +768,8 @@ export function GroupsScreen(props: GroupsScreenProps) {
           <HelpDisclosure label="Directory and local groups" iconOnly>
             A directory group&apos;s value and members come from the identity
             provider; only its label is editable here. A group not seen yet can
-            be deleted. Both kinds carry roles.
+            be deleted. Both kinds carry roles. A role assigned to a group
+            reaches every member.
           </HelpDisclosure>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">

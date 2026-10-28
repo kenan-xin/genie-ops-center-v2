@@ -55,7 +55,7 @@
     },
     "groups": {
       "title": "Groups",
-      "description": "Directory groups from the identity provider, and local groups you manage here. A role assigned to a group reaches every member.",
+      "description": "Directory groups from the identity provider, and local groups you manage here.",
       "addLabelHint": "Add a display label",
       "searchLabel": "Search groups",
       "noMatch": {
