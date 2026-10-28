@@ -11,15 +11,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:
+        "primary":
           "border-transparent bg-primary text-primary-foreground not-disabled:not-aria-disabled:hover:bg-primary/90 not-disabled:not-aria-disabled:active:bg-primary/80",
-        secondary:
+        "secondary":
           "border-input bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
-        danger:
+        "danger":
           "border-transparent bg-destructive text-white not-disabled:not-aria-disabled:hover:bg-destructive/90 not-disabled:not-aria-disabled:active:bg-destructive/80",
-        ghost:
+        // A destructive action beside others: the secondary outline with red text (DESIGN.md "Danger").
+        "danger-outline":
+          "border-input bg-card text-destructive not-disabled:not-aria-disabled:hover:bg-muted dark:text-destructive-on-dark",
+        "ghost":
           "border-transparent text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
-        link: "border-transparent text-primary underline-offset-4 not-disabled:not-aria-disabled:hover:underline dark:text-brand-on-dark",
+        "link": "border-transparent text-primary underline-offset-4 not-disabled:not-aria-disabled:hover:underline dark:text-brand-on-dark",
       },
       size: {
         "sm": `h-8 min-h-8 px-3 ${hitArea}`,

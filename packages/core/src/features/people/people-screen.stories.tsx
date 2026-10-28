@@ -647,7 +647,11 @@ export const RemoveConfirmsBeforeItFires: Story = {
       await screen.findByRole("dialog", { name: "Dan Disabled" })
     );
 
-    await userEvent.click(inspector.getByRole("button", { name: /Remove/ }));
+    const remove = inspector.getByRole("button", { name: /Remove/ });
+
+    // An outline with red text, as the inspector capture draws it, not a solid red fill.
+    await expect(getComputedStyle(remove).color).toBe("rgb(220, 38, 38)");
+    await userEvent.click(remove);
 
     const confirm = within(
       await screen.findByRole("dialog", { name: "Remove Dan Disabled?" })

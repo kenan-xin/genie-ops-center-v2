@@ -290,7 +290,7 @@ function RoleDetailView(props: {
               <PencilIcon /> Edit role
             </Button>
             <Button
-              variant="danger"
+              variant="danger-outline"
               loading={props.pending}
               onClick={() => setConfirmDelete(true)}
             >

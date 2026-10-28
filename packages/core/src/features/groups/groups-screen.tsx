@@ -1,8 +1,16 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   Checkbox,
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
   ConfirmDialog,
   DataTable,
   Dialog,
@@ -53,7 +61,8 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { GroupName } from "./group-name.tsx";
+import { initials } from "../audit/helpers.ts";
+import { GroupName, looksLikeId } from "./group-name.tsx";
 import {
   groupLabel,
   type Group,
@@ -128,6 +137,18 @@ function syncBadge(group: Group, viewer: GroupsViewer) {
 
 const LAST_ADMIN_REASON = "This would leave no active tenant administrator";
 
+/** A person as the members list and the search show one: the name over the email. */
+function PersonLines(props: { readonly name: string; readonly email: string }) {
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      <span className="truncate text-sm text-foreground">{props.name}</span>
+      <span className="truncate text-xs text-muted-foreground">
+        {props.email}
+      </span>
+    </span>
+  );
+}
+
 /** The group inspector: header, access card, stale banner, tabs, and the action bar. */
 export function GroupInspector(
   props: GroupInspectorProps & { readonly open?: boolean }
@@ -144,8 +165,8 @@ export function GroupInspector(
   const [labelDraft, setLabelDraft] = useState(group.displayLabel ?? "");
   const [nameDraft, setNameDraft] = useState(group.name);
   const [descriptionDraft, setDescriptionDraft] = useState(group.description);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [roleToAssign, setRoleToAssign] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const labelId = useId();
   const nameId = useId();
   const descriptionId = useId();
@@ -160,8 +181,8 @@ export function GroupInspector(
     setLabelDraft(group.displayLabel ?? "");
     setNameDraft(group.name);
     setDescriptionDraft(group.description);
-    setSelectedMembers([]);
     setRoleToAssign("");
+    setMemberSearch("");
   }, [open, group.id]);
 
   const blocked = props.lastAdministrator;
@@ -170,10 +191,19 @@ export function GroupInspector(
     (person) => !props.members.some((member) => member.id === person.id)
   );
 
+  // The label is what the search matches, so a name or an email finds the person.
   const memberItems = selectable.map((person) => ({
     value: person.id,
-    label: `${person.name} (${person.email})`,
+    label: `${person.name} ${person.email}`,
+    person,
   }));
+
+  // R-24c: an unlabelled directory group whose value is an id asks for a label here, not in its row.
+  const asksForLabel =
+    group.source === "idp" &&
+    group.displayLabel === null &&
+    looksLikeId(group.name) &&
+    props.labelHint !== undefined;
 
   const roleItems = props.roles.map((role) => ({
     value: role.id,
@@ -188,33 +218,38 @@ export function GroupInspector(
       }}
     >
       <SheetContent>
+        {/* The kind pill sits beside the name, so no second line repeats the kind (clarify row 1). */}
         <SheetHeader>
-          <SheetTitle>{groupLabel(group)}</SheetTitle>
-        </SheetHeader>
-        <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              {sourcePill(group)}
-              {group.lastSeenAt === null && group.source === "idp" ? (
-                <StatusPill tone="neutral">Not seen yet</StatusPill>
-              ) : null}
-            </div>
-            {group.description === "" ? null : (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {group.description}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground wrap-anywhere">
-              {group.source === "idp"
-                ? `Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
-                    group.lastSeenAt,
-                    viewer.timeZone,
-                    "never"
-                  )}`
-                : "Local group · membership is managed here"}
-            </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <SheetTitle className="min-w-0 wrap-anywhere">
+              {groupLabel(group)}
+            </SheetTitle>
+            {sourcePill(group)}
+            {group.lastSeenAt === null && group.source === "idp" ? (
+              <StatusPill tone="neutral">Not seen yet</StatusPill>
+            ) : null}
           </div>
-
+          {group.description === "" ? null : (
+            <p className="text-sm text-muted-foreground">{group.description}</p>
+          )}
+          {group.source === "idp" ? (
+            <p className="text-xs text-muted-foreground wrap-anywhere">
+              {`Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
+                group.lastSeenAt,
+                viewer.timeZone,
+                "never"
+              )}`}
+            </p>
+          ) : null}
+          {asksForLabel && editing !== "label" ? (
+            <div>
+              <Button variant="link" onClick={() => setEditing("label")}>
+                {props.labelHint}
+              </Button>
+            </div>
+          ) : null}
+        </SheetHeader>
+        <div className="flex min-w-0 flex-col gap-3 overflow-y-auto px-4 pb-4">
           {group.stale ? (
             <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
               This group no longer arrives in the sign-in token. Archive it to
@@ -222,23 +257,44 @@ export function GroupInspector(
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-input p-3">
-            <p className="text-sm font-semibold text-foreground">
-              Access is managed in one place
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {group.assignmentCount}{" "}
-              {group.assignmentCount === 1 ? "grant reaches" : "grants reach"}{" "}
-              this group today.
-            </p>
-            {props.onOpenInAccess === undefined ? null : (
-              <div className="mt-2">
-                <Button variant="secondary" onClick={props.onOpenInAccess}>
-                  <ShieldIcon /> Open in Access
-                </Button>
+          {/* Never a dead end: Open in Access when the host has the Access screen, the Roles tab
+              otherwise. The count uses the Roles tab's word (clarify row 2). */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input p-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <ShieldIcon
+                aria-hidden="true"
+                className="size-5 shrink-0 text-muted-foreground"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  Access is managed in one place
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {group.assignmentCount}{" "}
+                  {group.assignmentCount === 1 ? "role" : "roles"} through this
+                  group
+                </p>
               </div>
+            </div>
+            {props.onOpenInAccess === undefined ? (
+              <Button variant="link" onClick={() => setTab("roles")}>
+                See roles
+              </Button>
+            ) : (
+              <Button variant="link" onClick={props.onOpenInAccess}>
+                Open in Access
+              </Button>
             )}
           </div>
+
+          <HelpDisclosure label="How group access works">
+            A role assigned to this group reaches every member while the group
+            is not archived. Archiving keeps the assignments and stops them
+            granting.{" "}
+            {group.source === "local"
+              ? "A local group is managed here: you choose its members."
+              : "A directory group's members come from the identity provider."}
+          </HelpDisclosure>
 
           <Tabs
             value={tab}
@@ -256,78 +312,62 @@ export function GroupInspector(
             </TabsList>
 
             <TabsContent value="members">
-              {group.source === "local" ? (
+              {/* One search picks and adds: a pick writes at once (clarify row 4). */}
+              {group.source === "local" && selectable.length > 0 ? (
+                <Field className="mb-3">
+                  <FieldLabel htmlFor={addMembersId}>Add members</FieldLabel>
+                  <Combobox<(typeof memberItems)[number]>
+                    items={memberItems}
+                    value={null}
+                    // Only typing fills the field, so a pick leaves it empty for the next person.
+                    inputValue={memberSearch}
+                    onInputValueChange={(text, details) =>
+                      setMemberSearch(
+                        details.reason === "input-change" ? text : ""
+                      )
+                    }
+                    disabled={props.pending}
+                    onValueChange={(item) => {
+                      if (item !== null) props.onAddMembers([item.value]);
+                    }}
+                  >
+                    <ComboboxInput
+                      id={addMembersId}
+                      placeholder="Search people"
+                    />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No one matches.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item: (typeof memberItems)[number]) => (
+                          <ComboboxItem key={item.value} value={item}>
+                            <PersonLines
+                              name={item.person.name}
+                              email={item.person.email}
+                            />
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </Field>
+              ) : null}
+
+              {props.members.length === 0 ? (
+                <p className="py-2 text-sm text-muted-foreground">
+                  No members yet.
+                </p>
+              ) : (
                 <>
-                  <ul className="divide-y divide-input">
-                    {props.members.map((member) => (
-                      <li
-                        key={member.id}
-                        className="flex items-center justify-between gap-2 py-2"
-                      >
-                        <span className="min-w-0 text-sm text-foreground wrap-anywhere">
-                          {member.name}{" "}
-                          <span className="text-muted-foreground">
-                            {member.email}
-                          </span>
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={blocked}
-                          title={blocked ? LAST_ADMIN_REASON : undefined}
-                          loading={props.pending}
-                          onClick={() => props.onRemoveMembers([member.id])}
-                        >
-                          Remove
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                  {selectable.length > 0 ? (
-                    <div className="mt-3 flex flex-col gap-2">
-                      <Field>
-                        <FieldLabel htmlFor={addMembersId}>
-                          Add to group
-                        </FieldLabel>
-                        <Select
-                          multiple
-                          items={memberItems}
-                          value={selectedMembers}
-                          onValueChange={setSelectedMembers}
-                        >
-                          <SelectTrigger id={addMembersId}>
-                            <SelectValue placeholder="Choose people" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {memberItems.map((item) => (
-                              <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <div>
-                        <Button
-                          variant="secondary"
-                          disabled={selectedMembers.length === 0}
-                          loading={props.pending}
-                          onClick={() => {
-                            props.onAddMembers(selectedMembers);
-                            setSelectedMembers([]);
-                          }}
-                        >
-                          Add {selectedMembers.length || ""}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {/* Remove all stays visible while the group has members, even when every
-                      eligible person is already a member and the picker is hidden. */}
-                  {props.members.length === 0 ? null : (
-                    <div className="mt-3">
+                  {/* Remove all stays while the group has members, even when every eligible
+                      person is already a member and the search is hidden. */}
+                  <div className="flex min-h-11 items-center justify-between gap-2">
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Members · {props.members.length}
+                    </span>
+                    {group.source === "local" ? (
                       <Button
                         variant="ghost"
+                        size="sm"
                         disabled={blocked}
                         title={blocked ? LAST_ADMIN_REASON : undefined}
                         loading={props.pending}
@@ -335,25 +375,41 @@ export function GroupInspector(
                       >
                         Remove all
                       </Button>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
+                  <ul aria-label="Members" className="divide-y divide-input">
+                    {props.members.map((member) => (
+                      <li
+                        key={member.id}
+                        className="flex items-center gap-3 py-2"
+                      >
+                        <Avatar aria-hidden="true">
+                          <AvatarFallback>
+                            {initials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <PersonLines name={member.name} email={member.email} />
+                        {group.source === "local" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={blocked}
+                            title={blocked ? LAST_ADMIN_REASON : undefined}
+                            loading={props.pending}
+                            onClick={() => props.onRemoveMembers([member.id])}
+                          >
+                            Remove from group
+                          </Button>
+                        ) : member.syncedAt === null ? null : (
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            synced{" "}
+                            {fmtDateTime(member.syncedAt, viewer.timeZone, "")}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </>
-              ) : (
-                <ul className="divide-y divide-input">
-                  {props.members.map((member) => (
-                    <li key={member.id} className="py-2">
-                      <span className="text-sm text-foreground">
-                        {member.name}
-                      </span>{" "}
-                      {member.syncedAt === null ? null : (
-                        <span className="text-xs text-muted-foreground">
-                          synced{" "}
-                          {fmtDateTime(member.syncedAt, viewer.timeZone, "")}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
               )}
             </TabsContent>
 
@@ -426,12 +482,6 @@ export function GroupInspector(
             </TabsContent>
           </Tabs>
 
-          <HelpDisclosure label="How group access works">
-            A role assigned to this group reaches every member while the group
-            is not archived. Archiving keeps the assignments and stops them
-            granting.
-          </HelpDisclosure>
-
           {editing === "label" ? (
             <div className="rounded-lg border border-input p-3">
               <Field>
@@ -499,25 +549,43 @@ export function GroupInspector(
           {blocked && (group.source === "idp" || group.source === "local") ? (
             <p className="text-sm text-foreground">{LAST_ADMIN_REASON}</p>
           ) : null}
+        </div>
 
-          <div className="flex flex-wrap gap-2 border-t border-input pt-3">
-            {group.archived ? (
-              props.onRestore === undefined ? null : (
+        {/* The action bar stays under the scrolling content, as the inspector captures pin it. */}
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-input px-4 py-3">
+          {group.archived ? (
+            props.onRestore === undefined ? null : (
+              <Button
+                variant="secondary"
+                loading={props.pending}
+                onClick={props.onRestore}
+              >
+                Restore group
+              </Button>
+            )
+          ) : group.source === "local" ? (
+            <>
+              <Button variant="secondary" onClick={() => setEditing("local")}>
+                <PencilIcon /> Edit name and description
+              </Button>
+              <Button
+                variant="danger-outline"
+                disabled={blocked}
+                title={blocked ? LAST_ADMIN_REASON : undefined}
+                loading={props.pending}
+                onClick={() => setConfirm("delete")}
+              >
+                <TrashIcon /> Delete group
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setEditing("label")}>
+                <PencilIcon /> Edit label
+              </Button>
+              {group.lastSeenAt === null ? (
                 <Button
-                  variant="secondary"
-                  loading={props.pending}
-                  onClick={props.onRestore}
-                >
-                  Restore group
-                </Button>
-              )
-            ) : group.source === "local" ? (
-              <>
-                <Button variant="secondary" onClick={() => setEditing("local")}>
-                  <PencilIcon /> Edit name and description
-                </Button>
-                <Button
-                  variant="danger"
+                  variant="danger-outline"
                   disabled={blocked}
                   title={blocked ? LAST_ADMIN_REASON : undefined}
                   loading={props.pending}
@@ -525,36 +593,19 @@ export function GroupInspector(
                 >
                   <TrashIcon /> Delete group
                 </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="secondary" onClick={() => setEditing("label")}>
-                  <PencilIcon /> Edit label
+              ) : (
+                <Button
+                  variant="secondary"
+                  disabled={blocked}
+                  title={blocked ? LAST_ADMIN_REASON : undefined}
+                  loading={props.pending}
+                  onClick={() => setConfirm("archive")}
+                >
+                  <ArchiveIcon /> Archive group
                 </Button>
-                {group.lastSeenAt === null ? (
-                  <Button
-                    variant="danger"
-                    disabled={blocked}
-                    title={blocked ? LAST_ADMIN_REASON : undefined}
-                    loading={props.pending}
-                    onClick={() => setConfirm("delete")}
-                  >
-                    <TrashIcon /> Delete group
-                  </Button>
-                ) : (
-                  <Button
-                    variant="danger"
-                    disabled={blocked}
-                    title={blocked ? LAST_ADMIN_REASON : undefined}
-                    loading={props.pending}
-                    onClick={() => setConfirm("archive")}
-                  >
-                    <ArchiveIcon /> Archive group
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Inside the sheet's content, so that one Escape closes only the confirm (PD-8). */}
@@ -885,6 +936,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
         <GroupInspector
           open={inspectorOpen}
           pending={props.pending}
+          labelHint={props.labelHint}
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
           assignments={props.details?.[selected.id]?.assignments ?? []}

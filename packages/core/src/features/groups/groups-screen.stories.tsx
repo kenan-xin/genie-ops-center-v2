@@ -136,6 +136,35 @@ export const UnlabelledGroupIdAsksForALabel: Story = {
   },
 };
 
+/** The label prompt left the row, so the inspector of an unlabelled id group asks for it (R-24c). */
+export const UnlabelledGroupAsksForALabelInTheInspector: Story = {
+  args: {
+    groups: [
+      {
+        ...FIXTURE_DIRECTORY,
+        id: "g-oid",
+        name: "39545f73-134e-49ac-9731-0e96df8ea218",
+        externalId: "39545f73-134e-49ac-9731-0e96df8ea218",
+        displayLabel: null,
+      },
+    ],
+    initialSelectedId: "g-oid",
+  },
+  play: async () => {
+    const inspector = within(
+      await screen.findByRole("dialog", {
+        name: "39545f73-134e-49ac-9731-0e96df8ea218",
+      })
+    );
+
+    await userEvent.click(
+      inspector.getByRole("button", { name: "Add a display label" })
+    );
+
+    await expect(inspector.getByLabelText("Display label")).toBeVisible();
+  },
+};
+
 /** An audit target link opens the screen with that group selected (6wz1.26). */
 export const OpensTheLinkedGroup: Story = {
   args: { initialSelectedId: "g-local" },
@@ -510,9 +539,9 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
       await screen.findByRole("dialog", { name: "Operations" })
     );
 
-    // One grant reads in the singular.
+    // One role reads in the singular.
     await expect(
-      inspector.getByText("1 grant reaches this group today.")
+      inspector.getByText("1 role through this group")
     ).toBeInTheDocument();
     await userEvent.click(
       inspector.getByRole("button", { name: "Delete group" })
@@ -610,7 +639,7 @@ export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
       inspector.getByRole("button", { name: "Remove all" })
     ).toBeInTheDocument();
     await expect(
-      inspector.queryByLabelText("Add to group")
+      inspector.queryByLabelText("Add members")
     ).not.toBeInTheDocument();
   },
 };
@@ -657,7 +686,8 @@ export const ArchiveFromTheInspector: Story = {
   },
 };
 
-export const AddsEveryPickedPerson: Story = {
+/** One search picks and adds: no second button between the pick and the write (fix list row 4). */
+export const AddsAPersonInOneStep: Story = {
   args: {
     groups: [FIXTURE_LOCAL],
     people: [
@@ -676,22 +706,172 @@ export const AddsEveryPickedPerson: Story = {
       await screen.findByRole("dialog", { name: "Operations" })
     );
 
-    await userEvent.click(
-      inspector.getByRole("combobox", { name: "Add to group" })
-    );
-    await userEvent.click(
-      await screen.findByRole("option", {
-        name: "Grace Hopper (grace@example.invalid)",
-      })
-    );
-    await userEvent.click(
-      await screen.findByRole("option", {
-        name: "Alan Turing (alan@example.invalid)",
-      })
-    );
-    await userEvent.keyboard("{Escape}");
-    await userEvent.click(inspector.getByRole("button", { name: "Add 2" }));
+    const search = inspector.getByRole("combobox", { name: "Add members" });
 
-    expect(args.onAddMembers).toHaveBeenCalledWith("g-local", ["p-2", "p-3"]);
+    await userEvent.type(search, "Alan");
+    // The search narrows the list, so the other person who is not a member drops out.
+    await waitFor(() =>
+      expect(screen.queryByRole("option", { name: /Grace Hopper/ })).toBeNull()
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Alan Turing/ })
+    );
+
+    await expect(args.onAddMembers).toHaveBeenCalledWith("g-local", ["p-3"]);
+    await expect(search).toHaveValue("");
+  },
+};
+
+/** The members list: a header with its count and Remove all, and one remove per row (row 4). */
+export const RemovesOneMemberFromTheGroup: Story = {
+  args: { groups: [FIXTURE_LOCAL], onRemoveMembers: fn() },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    const header = inspector.getByText("Members · 2");
+
+    await expect(
+      within(header.parentElement!).getByRole("button", { name: "Remove all" })
+    ).toBeVisible();
+
+    const members = within(inspector.getByRole("list", { name: "Members" }));
+    const grace = within(members.getAllByRole("listitem")[1]!);
+
+    // The avatar's initials, then the name over the email.
+    await expect(grace.getByText("GH")).toBeInTheDocument();
+    await expect(
+      grace.getByText("Grace Hopper").getBoundingClientRect().bottom
+    ).toBeLessThanOrEqual(
+      grace.getByText("grace@example.invalid").getBoundingClientRect().top
+    );
+
+    await userEvent.click(
+      grace.getByRole("button", { name: "Remove from group" })
+    );
+
+    await expect(args.onRemoveMembers).toHaveBeenCalledWith("g-local", ["p-2"]);
+  },
+};
+
+/** The access card names its roles and always offers a next step (row 2). */
+export const AccessCardIsNeverADeadEnd: Story = {
+  args: { groups: [FIXTURE_LOCAL] },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    await expect(
+      inspector.getByText("1 role through this group")
+    ).toBeInTheDocument();
+
+    // The host passes no Access link, so the card opens the Roles tab instead.
+    await userEvent.click(inspector.getByRole("button", { name: "See roles" }));
+
+    await expect(
+      inspector.getByRole("tab", { name: /^Roles/ })
+    ).toHaveAttribute("aria-selected", "true");
+  },
+};
+
+/** The header names the kind once, beside the name; the help sits under the access card (rows 1, 3). */
+export const LocalHeaderNamesTheKindOnce: Story = {
+  args: { groups: [FIXTURE_LOCAL] },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Operations" });
+    const inspector = within(dialog);
+    const title = inspector.getByRole("heading", { name: "Operations" });
+    const pill = inspector.getByText("Local");
+
+    await expect(
+      Math.abs(
+        title.getBoundingClientRect().top - pill.getBoundingClientRect().top
+      )
+    ).toBeLessThan(8);
+    await expect(inspector.queryByText(/Local group/)).toBeNull();
+
+    const card = inspector.getByText("1 role through this group");
+
+    const help = inspector.getByRole("button", {
+      name: "How group access works",
+    });
+
+    const tabs = inspector.getByRole("tablist", { name: "Group detail" });
+
+    await expect(help.getBoundingClientRect().top).toBeGreaterThan(
+      card.getBoundingClientRect().bottom
+    );
+    await expect(help.getBoundingClientRect().bottom).toBeLessThan(
+      tabs.getBoundingClientRect().top
+    );
+  },
+};
+
+/** Delete is an outline with red text, not a solid red button (row 5). */
+export const DeleteIsAnOutlineWithRedText: Story = {
+  args: { groups: [FIXTURE_LOCAL] },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    const remove = getComputedStyle(
+      inspector.getByRole("button", { name: "Delete group" })
+    );
+
+    const edit = getComputedStyle(
+      inspector.getByRole("button", { name: "Edit name and description" })
+    );
+
+    await expect(remove.backgroundColor).toBe(edit.backgroundColor);
+    // The destructive token as text (red-600), not white on a red fill.
+    await expect(remove.color).toBe("rgb(220, 38, 38)");
+  },
+};
+
+/** The local group inspector at the phone width, with the add-members search, for axe. */
+export const InspectorPhone: Story = {
+  // One person who is not a member, so the add-members search renders too.
+  args: {
+    groups: [FIXTURE_LOCAL],
+    people: [
+      ...FIXTURE_PEOPLE,
+      {
+        id: "p-3",
+        name: "Alan Turing",
+        email: "alan.mathison.turing@example.invalid",
+      },
+    ],
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Operations" });
+
+    await waitFor(() => expect(dialog).toBeVisible());
+  },
+};
+
+/** The inspector in the dark theme at the phone width, for axe. */
+export const InspectorPhoneDark: Story = {
+  args: { groups: [FIXTURE_LOCAL] },
+  globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Operations" });
+
+    await waitFor(() => expect(dialog).toBeVisible());
   },
 };

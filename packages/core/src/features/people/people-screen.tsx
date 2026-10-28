@@ -221,17 +221,19 @@ export function PersonInspector(props: {
       }}
     >
       <SheetContent>
+        {/* The status pill sits beside the name and the email under it, as the capture draws it. */}
         <SheetHeader>
-          <SheetTitle>{person.name}</SheetTitle>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <SheetTitle className="min-w-0 wrap-anywhere">
+              {person.name}
+            </SheetTitle>
+            {statusPill(person.status)}
+          </div>
+          <span className="text-sm text-muted-foreground wrap-anywhere">
+            {person.email}
+          </span>
         </SheetHeader>
         <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {statusPill(person.status)}
-            <span className="text-xs text-muted-foreground wrap-anywhere">
-              {person.email}
-            </span>
-          </div>
-
           <Tabs
             value={tab}
             onValueChange={(value) =>
@@ -353,7 +355,7 @@ export function PersonInspector(props: {
                   </Button>
                 )}
                 <Button
-                  variant="danger"
+                  variant="danger-outline"
                   disabled={blocked}
                   title={blocked ? blockedReason : undefined}
                   loading={props.pending}

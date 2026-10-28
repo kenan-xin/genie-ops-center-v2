@@ -29,6 +29,15 @@ export {
 export { Input } from "./components/input.tsx";
 
 export {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "./components/combobox.tsx";
+
+export {
   Popover,
   PopoverContent,
   PopoverDescription,

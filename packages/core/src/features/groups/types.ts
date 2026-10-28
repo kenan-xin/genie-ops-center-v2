@@ -63,7 +63,7 @@ export type GroupsScreenProps = {
       }
     >
   >;
-  /** The catalogue hint under an unlabelled group whose value looks like an id (R-24c). */
+  /** The catalogue prompt the inspector of an unlabelled group whose value looks like an id shows (R-24c). */
   readonly labelHint: string;
   /** R-38: group ids where archiving or removing a member would leave no administrator. */
   readonly lastAdministratorGroupIds: readonly string[];
@@ -117,6 +117,8 @@ export type GroupInspectorProps = {
   readonly people: readonly PersonOption[];
   readonly roles: readonly AssignableRole[];
   readonly lastAdministrator: boolean;
+  /** The prompt an unlabelled directory group whose value is an id shows (R-24c). */
+  readonly labelHint?: string | undefined;
   readonly pending?: boolean | undefined;
   readonly onClose: () => void;
   readonly onArchive: () => void;

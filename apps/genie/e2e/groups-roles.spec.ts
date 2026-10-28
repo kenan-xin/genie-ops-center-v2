@@ -318,6 +318,84 @@ test("a closed or deleted group's detail is not read again", async ({
   );
 });
 
+test("a local group adds a member from one search and removes them from the row", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const adminEmail = e2eReaderEmail("groups", project);
+  const name = `Clarify members ${project}`;
+
+  const memberCount = async () => {
+    const [count] = await queryDatabase(
+      `select count(*) from group_member gm
+         join "user" u on u.id = gm.user_id
+         join "group" g on g.id = gm.group_id
+        where u.email = '${adminEmail}' and g.name = '${name}' and g.source = 'local'`
+    );
+
+    return count;
+  };
+
+  await queryDatabase(
+    `with old as (select id from "group" where source = 'local' and name = '${name}'),
+          members as (delete from group_member where group_id in (select id from old))
+     delete from "group" where id in (select id from old)`
+  );
+
+  await signInThroughKeycloak(page, { email: adminEmail });
+  await page.goto("/admin/groups");
+  await page.getByRole("button", { name: "New local group" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "New local group" });
+
+  await dialog.getByLabel("Name").fill(name);
+  await dialog.getByRole("button", { name: "Create group" }).click();
+  await expect(dialog).toBeHidden();
+
+  await page
+    .getByRole("button", { name: new RegExp(name) })
+    .first()
+    .click();
+
+  const inspector = page.getByRole("dialog", { name, exact: true });
+
+  // A pick writes at once: no second button between the search and the save.
+  await inspector
+    .getByRole("combobox", { name: "Add members" })
+    .fill(adminEmail);
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes("/api/rpc/groups/addMembers")
+    ),
+    page.getByRole("option", { name: new RegExp(adminEmail) }).click(),
+  ]);
+
+  const row = inspector
+    .getByRole("list", { name: "Members" })
+    .getByRole("listitem")
+    .filter({ hasText: adminEmail });
+
+  await expect(row).toBeVisible();
+  await expect(inspector.getByText("Members · 1")).toBeVisible();
+  expect(await memberCount()).toBe("1");
+  await expectNoAxeViolations(page, "Group inspector with one member");
+
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes("/api/rpc/groups/removeMembers")
+    ),
+    row.getByRole("button", { name: "Remove from group" }).click(),
+  ]);
+
+  await expect(row).toBeHidden();
+  await expect(inspector.getByText("No members yet.")).toBeVisible();
+  expect(await memberCount()).toBe("0");
+
+  await queryDatabase(
+    `delete from "group" where source = 'local' and name = '${name}'`
+  );
+});
+
 declare global {
   interface Window {
     /** Set before a click; it survives only a client navigation, not a full page load. */
