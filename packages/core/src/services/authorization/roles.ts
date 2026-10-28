@@ -19,6 +19,19 @@ export const CORE_PERMISSION_KEYS = [
   "core:audit:read",
 ] as const;
 
+/** The label each core key shows in the role form and detail, as a module labels its own keys. */
+export const CORE_PERMISSION_LABELS: Record<
+  (typeof CORE_PERMISSION_KEYS)[number],
+  string
+> = {
+  "core:people:manage": "Manage people",
+  "core:groups:manage": "Manage groups",
+  "core:roles:manage": "Manage roles",
+  "core:branding:manage": "Manage branding",
+  "core:settings:manage": "Manage tenant settings",
+  "core:audit:read": "Read the audit log",
+};
+
 export {
   AUDITOR_ROLE,
   TENANT_ADMINISTRATOR_ROLE,

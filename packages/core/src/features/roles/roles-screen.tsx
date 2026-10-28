@@ -7,6 +7,7 @@ import {
   DataTable,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   Field,
@@ -15,9 +16,14 @@ import {
   HelpDisclosure,
   IconTile,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   LabelPill,
   StatusPill,
   StickyActionBar,
+  Textarea,
 } from "@genie/ui";
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -27,6 +33,7 @@ import {
   CopyIcon,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   ShieldIcon,
   TrashIcon,
   WarningIcon,
@@ -96,6 +103,10 @@ function RoleFormDialog(props: {
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            A role is a named set of permission keys. Assign it to groups or
+            people afterwards.
+          </DialogDescription>
         </DialogHeader>
         <RoleFormBody {...props} />
       </DialogContent>
@@ -147,15 +158,18 @@ function RoleFormBody(props: {
           <Input
             id={nameId}
             aria-label="Role name"
+            placeholder="For example, Claims supervisor"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
         </Field>
         <Field>
           <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
-          <Input
+          <Textarea
             id={descriptionId}
             aria-label="Role description"
+            placeholder="What this role is for"
+            rows={2}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
@@ -185,31 +199,68 @@ function RoleFormBody(props: {
           </fieldset>
         ) : null}
 
-        {props.catalogue.map((group) => (
-          <fieldset
-            key={group.moduleId}
-            className="rounded-lg border border-input p-3"
-          >
-            <legend className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              {group.moduleName}
-              <StatusPill tone={group.entitled ? "success" : "neutral"}>
-                {group.entitled ? "Entitled" : "Not entitled"}
-              </StatusPill>
-            </legend>
-            {group.keys.map((entry) => (
-              <label
-                key={entry.key}
-                className="flex min-h-11 items-center gap-2 text-sm text-foreground"
-              >
-                <Checkbox
-                  checked={picked.includes(entry.key)}
-                  onCheckedChange={() => toggle(entry.key)}
-                />
-                {entry.label}
-              </label>
-            ))}
-          </fieldset>
-        ))}
+        <p className="text-xs font-semibold text-foreground">
+          Permissions{" "}
+          <span className="font-normal text-muted-foreground">
+            ({picked.length} selected)
+          </span>
+        </p>
+        {props.catalogue.map((group) => {
+          const keys = group.keys.map((entry) => entry.key);
+          const all = keys.every((key) => picked.includes(key));
+
+          return (
+            <fieldset
+              key={group.moduleId}
+              className="rounded-lg border border-input p-3"
+            >
+              <legend className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                {group.moduleName}
+                <StatusPill tone={group.entitled ? "success" : "neutral"}>
+                  {group.entitled ? "Entitled" : "Not entitled"}
+                </StatusPill>
+              </legend>
+              {/* The capture offers a select-all per module. */}
+              <div className="flex justify-end">
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() =>
+                    setPicked((current) =>
+                      all
+                        ? current.filter((key) => !keys.includes(key))
+                        : [...new Set([...current, ...keys])]
+                    )
+                  }
+                >
+                  {all ? "Clear all" : "Select all"}
+                  <span className="sr-only"> {group.moduleName}</span>
+                </Button>
+              </div>
+              {group.keys.map((entry) => (
+                <label
+                  key={entry.key}
+                  className="flex min-h-11 items-center gap-2 text-sm text-foreground"
+                >
+                  <Checkbox
+                    checked={picked.includes(entry.key)}
+                    onCheckedChange={() => toggle(entry.key)}
+                  />
+                  <span className="min-w-0 flex-1">{entry.label}</span>
+                  {/* The checkbox keeps the label as its name; the key is a visual hint. */}
+                  {entry.label === entry.key ? null : (
+                    <code
+                      aria-hidden="true"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {entry.key}
+                    </code>
+                  )}
+                </label>
+              ))}
+            </fieldset>
+          );
+        })}
       </div>
 
       {/* A refused save reports in the action bar, beside the buttons, and keeps the form (U-1). */}
@@ -237,9 +288,7 @@ function RoleFormBody(props: {
 
 function kindPill(role: Role) {
   return role.kind === "system" ? (
-    <LabelPill>
-      System{role.moduleId === null ? "" : ` · ${role.moduleId}`}
-    </LabelPill>
+    <LabelPill>System · {role.moduleId ?? "Core"}</LabelPill>
   ) : (
     <LabelPill>Custom</LabelPill>
   );
@@ -258,127 +307,154 @@ function RoleDetailView(props: {
   const { detail } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xl font-semibold text-foreground">{detail.name}</h2>
-        {kindPill(detail)}
-      </div>
-      {detail.description === "" ? null : (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {detail.description}
-        </p>
-      )}
+  const keyCount = detail.permissionGroups.reduce(
+    (total, group) => total + group.keys.length,
+    0
+  );
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {detail.kind === "system" ? (
-          // The role dialog closes on submit, so its opener shows the running write.
-          <Button
-            variant="secondary"
-            loading={props.pending}
-            onClick={props.onCopy}
-          >
-            <CopyIcon /> Copy role
-          </Button>
-        ) : (
-          <>
+  return (
+    <div className="flex flex-col gap-4">
+      {/* The captures: a header card with the role's actions at its right. */}
+      <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-card p-4 md:p-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground">
+              {detail.name}
+            </h2>
+            {kindPill(detail)}
+          </div>
+          {detail.description === "" ? null : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {detail.description}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {detail.kind === "system" ? (
+            // The role dialog closes on submit, so its opener shows the running write.
             <Button
               variant="secondary"
               loading={props.pending}
-              onClick={props.onEdit}
+              onClick={props.onCopy}
             >
-              <PencilIcon /> Edit role
+              <CopyIcon /> Copy role
             </Button>
-            <Button
-              variant="danger-outline"
-              loading={props.pending}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <TrashIcon /> Delete role
-            </Button>
-          </>
-        )}
-      </div>
-
-      <h3 className="mt-4 text-sm font-semibold text-foreground">
-        Permissions
-      </h3>
-      {detail.permissionGroups.map((group) => (
-        <section
-          key={group.moduleId}
-          className="mt-2 rounded-lg border border-input p-3"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              {group.moduleName}
-            </span>
-            <StatusPill tone={group.entitled ? "success" : "neutral"}>
-              {group.entitled ? "Entitled" : "Not entitled"}
-            </StatusPill>
-          </div>
-          <ul className="mt-1">
-            {group.keys.map((entry) => (
-              <li
-                key={entry.key}
-                className="flex items-center gap-2 py-0.5 text-sm text-foreground"
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                loading={props.pending}
+                onClick={props.onEdit}
               >
-                <code className="text-xs">{entry.key}</code>
-                {entry.unavailable ? (
-                  <>
-                    <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
-                    <span className="text-xs text-destructive dark:text-destructive-on-dark">
-                      Unavailable,{" "}
-                      {unavailableReasonLabel(
-                        entry.unavailableReason ?? "retired"
-                      )}
-                    </span>
-                    {detail.kind === "custom" ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        loading={props.pending}
-                        onClick={() => props.onRemoveUnavailable(entry.key)}
-                      >
-                        Remove
-                      </Button>
+                <PencilIcon /> Edit role
+              </Button>
+              <Button
+                variant="danger-outline"
+                loading={props.pending}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <TrashIcon /> Delete role
+              </Button>
+            </>
+          )}
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-xl border border-border bg-card p-4 md:p-5">
+          <h3 className="text-base font-semibold text-foreground">
+            Permissions
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {keyCount} {keyCount === 1 ? "key" : "keys"} across{" "}
+            {detail.permissionGroups.length}{" "}
+            {detail.permissionGroups.length === 1 ? "module" : "modules"}.
+          </p>
+          {detail.permissionGroups.map((group) => (
+            <div
+              key={group.moduleId}
+              className="mt-3 border-t border-border pt-3"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">
+                  {group.moduleName}
+                </span>
+                <StatusPill tone={group.entitled ? "success" : "neutral"}>
+                  {group.entitled ? "Entitled" : "Not entitled"}
+                </StatusPill>
+              </div>
+              <ul className="mt-1">
+                {group.keys.map((entry) => (
+                  <li
+                    key={entry.key}
+                    className="flex items-center gap-2 py-0.5 text-sm text-foreground"
+                  >
+                    {/* The capture: the key's label, its mono key at the right. */}
+                    <span className="min-w-0 flex-1">{entry.label}</span>
+                    {entry.label === entry.key ? null : (
+                      <code className="text-xs text-muted-foreground">
+                        {entry.key}
+                      </code>
+                    )}
+                    {entry.unavailable ? (
+                      <>
+                        <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
+                        <span className="text-xs text-destructive dark:text-destructive-on-dark">
+                          Unavailable,{" "}
+                          {unavailableReasonLabel(
+                            entry.unavailableReason ?? "retired"
+                          )}
+                        </span>
+                        {detail.kind === "custom" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            loading={props.pending}
+                            onClick={() => props.onRemoveUnavailable(entry.key)}
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                      </>
                     ) : null}
-                  </>
-                ) : null}
-                {detail.entitlementAdded.includes(entry.key) ? (
-                  <span className="text-xs text-muted-foreground">
-                    Added by entitlement
-                  </span>
-                ) : null}
+                    {detail.entitlementAdded.includes(entry.key) ? (
+                      <LabelPill>Added by entitlement</LabelPill>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-4 md:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h3 className="text-base font-semibold text-foreground">
+              Who holds this role
+            </h3>
+            <Button variant="secondary" onClick={props.onOpenInAccess}>
+              <ShieldIcon /> Manage in Access
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            A role held through a group changes for every member of that group.
+          </p>
+          <ul className="mt-1 divide-y divide-input">
+            {detail.assignments.map((assignment) => (
+              <li key={assignment.id} className="py-2 text-sm text-foreground">
+                {assignment.principalLabel}
+                <span className="text-muted-foreground">
+                  {" "}
+                  ·{" "}
+                  {assignment.scopeType === null
+                    ? "Whole tenant"
+                    : assignment.scopeId}
+                </span>
               </li>
             ))}
           </ul>
         </section>
-      ))}
-
-      <h3 className="mt-4 text-sm font-semibold text-foreground">
-        Who holds this role
-      </h3>
-      <p className="text-sm text-muted-foreground">
-        A role held through a group changes for every member of that group.
-      </p>
-      <ul className="mt-1 divide-y divide-input">
-        {detail.assignments.map((assignment) => (
-          <li key={assignment.id} className="py-2 text-sm text-foreground">
-            {assignment.principalLabel}
-            <span className="text-muted-foreground">
-              {" "}
-              ·{" "}
-              {assignment.scopeType === null
-                ? "Whole tenant"
-                : assignment.scopeId}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-2">
-        <Button variant="secondary" onClick={props.onOpenInAccess}>
-          <ShieldIcon /> Manage in Access
-        </Button>
       </div>
 
       <ConfirmDialog
@@ -526,14 +602,21 @@ export function RolesScreen(props: RolesScreenProps) {
           <label htmlFor={searchId} className="sr-only">
             {props.searchLabel}
           </label>
-          <Input
-            id={searchId}
-            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
-            aria-label={props.searchLabel}
-            placeholder={props.searchLabel}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {/* The captures draw a magnifier inside every list search. */}
+          <InputGroup className="min-w-0 flex-1 sm:w-72 sm:flex-none">
+            <InputGroupInput
+              id={searchId}
+              aria-label={props.searchLabel}
+              placeholder={props.searchLabel}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <InputGroupAddon>
+              <InputGroupText>
+                <SearchIcon aria-hidden="true" />
+              </InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
           <HelpDisclosure label="How roles work" iconOnly>
             A system role is read-only and copyable. A custom role is editable.
             Access gives a role to a person or a group.

@@ -791,6 +791,22 @@ describe("the roles router against a real database", () => {
     expect(source.kind).toBe("system");
   });
 
+  it("reads core as always entitled, with a label for each core key", async () => {
+    const actor = await insertManager();
+
+    // The role detail showed Core as "Not entitled" and its keys without labels (Phase 08 sweep).
+    const detail = await rolesCaller(actor).get({ roleId: adminRoleId });
+
+    const core = detail.permissionGroups.find(
+      (entry) => entry.moduleId === "core"
+    );
+
+    expect(core?.entitled).toBe(true);
+    expect(
+      core?.keys.find((key) => key.key === "core:groups:manage")?.label
+    ).toBe("Manage groups");
+  });
+
   it("shows an unavailable key and permits removing it from a custom role (R-33b)", async () => {
     const actor = await insertManager();
 

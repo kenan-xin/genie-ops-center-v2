@@ -10,7 +10,10 @@ import {
 } from "../../lib/tenant-context/with-transaction.ts";
 import { role, roleAssignment } from "../../schema.ts";
 import { writeAdminAuditEvent } from "../audit/index.ts";
-import { CORE_PERMISSION_KEYS } from "../authorization/roles.ts";
+import {
+  CORE_PERMISSION_KEYS,
+  CORE_PERMISSION_LABELS,
+} from "../authorization/roles.ts";
 
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<Module, "identity" | "permissions">;
@@ -214,7 +217,9 @@ function permissionGroups(
   available: ReadonlySet<string>,
   entitled: ReadonlyMap<string, boolean>
 ): readonly RolePermissionGroup[] {
-  const labels = new Map<string, string>();
+  const labels = new Map<string, string>(
+    Object.entries(CORE_PERMISSION_LABELS)
+  );
 
   for (const module of modules) {
     for (const entry of module.permissions) labels.set(entry.key, entry.label);
@@ -248,7 +253,8 @@ function permissionGroups(
   return [...groups.entries()].map(([moduleId, keys]) => ({
     moduleId,
     moduleName: names.get(moduleId) ?? moduleId,
-    entitled: entitled.get(moduleId) ?? false,
+    // Core is never switched off, so it holds no entitlement row and is always entitled.
+    entitled: moduleId === "core" || (entitled.get(moduleId) ?? false),
     keys,
   }));
 }
@@ -354,7 +360,8 @@ export async function declaredCatalogue(
     groups.set(moduleId, list);
   };
 
-  for (const key of CORE_PERMISSION_KEYS) push("core", key, key);
+  for (const key of CORE_PERMISSION_KEYS)
+    push("core", key, CORE_PERMISSION_LABELS[key]);
 
   // Only an included, entitled module's keys are selectable: a disabled module's keys are not
   // offered, so a role cannot be given a key that does not grant today (R-33a).
