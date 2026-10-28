@@ -151,6 +151,8 @@ export { Badge } from "./components/badge.tsx";
 
 export { Spinner } from "./components/spinner.tsx";
 
+export { infoTint } from "./components/alert.tsx";
+
 export {
   Tooltip,
   TooltipContent,

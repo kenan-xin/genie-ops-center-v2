@@ -398,6 +398,53 @@ test("png, svg, webp and ico uploads are stored with scan_status skipped, the sv
   );
 });
 
+test("a file dropped on an empty image slot shows the drop state, then uploads (tokens.md, Drop zone)", async ({
+  page,
+}, testInfo) => {
+  const prefix = `e2e-drop-${testInfo.project.name}-`;
+
+  await withDeploymentLock(
+    "branding",
+    async () => {
+      try {
+        await queryDatabase(SEED_RESET);
+        await openBranding(page, testInfo.project.name);
+
+        const slot = page.getByRole("group", { name: "Square mark" });
+        const zone = slot.locator("[data-drop-zone]");
+
+        // The browser's own drag carries a DataTransfer with the file, as a desktop drag does.
+        const dataTransfer = await page.evaluateHandle(
+          ([name, base64]) => {
+            const bytes = Uint8Array.from(atob(base64), (char) =>
+              char.charCodeAt(0)
+            );
+
+            const transfer = new DataTransfer();
+
+            transfer.items.add(new File([bytes], name, { type: "image/png" }));
+
+            return transfer;
+          },
+          [`${prefix}mark.png`, PNG.toString("base64")] as const
+        );
+
+        await zone.dispatchEvent("dragenter", { dataTransfer });
+        await expect(zone).toContainText("Drop to upload");
+        await zone.dispatchEvent("drop", { dataTransfer });
+
+        await expect(
+          slot.getByText(`${prefix}mark.png`, { exact: true })
+        ).toBeVisible();
+        await expect(slot.getByText("Skipped")).toBeVisible();
+      } finally {
+        await cleanUp(prefix);
+      }
+    },
+    LOCK_WAIT_MS
+  );
+});
+
 test("a person without core:branding:manage sees no Branding entry and the route refuses (AC-19a, R-93)", async ({
   page,
 }, testInfo) => {

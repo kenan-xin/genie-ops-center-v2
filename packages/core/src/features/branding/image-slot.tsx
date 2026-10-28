@@ -1,6 +1,13 @@
 "use client";
 
-import { Button, FieldError, focusRing, Spinner, StatusPill } from "@genie/ui";
+import {
+  Button,
+  FieldError,
+  focusRing,
+  infoTint,
+  Spinner,
+  StatusPill,
+} from "@genie/ui";
 import { UploadCloud } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
@@ -105,29 +112,55 @@ export function ImageSlot(props: {
         <>
           <button
             type="button"
+            data-drop-zone=""
             onClick={() => input.current?.click()}
             aria-describedby={error === undefined ? undefined : `${id}-error`}
-            className={`flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed p-4 text-center text-sm ${dragging ? "bg-muted" : ""} ${focusRing}`}
+            // tokens.md, Drop zone: the tint while dragging carries state, so it stays blue.
+            className={`flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 p-4 text-center text-sm hover:ring-2 hover:ring-ring hover:ring-offset-2 hover:ring-offset-background ${
+              dragging
+                ? `border-solid border-primary dark:border-brand-on-dark ${infoTint}`
+                : error === undefined
+                  ? "border-dashed border-input bg-muted"
+                  : "border-dashed border-destructive bg-muted dark:border-destructive-on-dark"
+            } ${focusRing}`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
             onDragOver={(event) => {
               event.preventDefault();
               setDragging(true);
             }}
-            onDragLeave={() => setDragging(false)}
+            onDragLeave={(event) => {
+              // Crossing the icon or the text fires dragleave; only leaving the zone ends the drag.
+              const into = event.relatedTarget;
+
+              if (!(into instanceof Node && event.currentTarget.contains(into)))
+                setDragging(false);
+            }}
             onDrop={(event) => {
               event.preventDefault();
               setDragging(false);
               choose(event.dataTransfer.files);
             }}
           >
-            <UploadCloud
-              aria-hidden="true"
-              className="size-5 text-muted-foreground"
-            />
-            <span>
-              Drop an image or{" "}
-              <span className="font-semibold text-primary dark:text-brand-on-dark">
-                browse
-              </span>
+            <span className="flex size-10 items-center justify-center rounded-lg border bg-background">
+              <UploadCloud
+                aria-hidden="true"
+                className="size-6 text-muted-foreground"
+              />
+            </span>
+            <span className="font-medium text-foreground">
+              {dragging ? (
+                "Drop to upload"
+              ) : (
+                <>
+                  Drop an image or{" "}
+                  <span className="font-semibold text-primary dark:text-brand-on-dark">
+                    browse
+                  </span>
+                </>
+              )}
             </span>
             <span className="text-xs text-muted-foreground">
               PNG, SVG, WebP or ICO, up to 1 MB. {props.recommended}.

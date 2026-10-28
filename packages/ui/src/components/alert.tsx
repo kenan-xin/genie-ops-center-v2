@@ -2,6 +2,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import * as React from "react";
 
+/**
+ * tokens.md: the fixed informational tint. It carries state, never brand, so it stays blue for every
+ * tenant; the drop zone uses it while a file is dragged over.
+ */
+export const infoTint = "bg-blue-50 dark:bg-blue-950/50";
+
 const alertVariants = cva(
   "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-leading-icon has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
@@ -12,7 +18,7 @@ const alertVariants = cva(
         warning:
           "border-0 bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
         // tokens.md: an informational callout keeps its fixed blue, never the tenant color.
-        info: "border-0 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100",
+        info: `border-0 ${infoTint} text-blue-900 dark:text-blue-100`,
         destructive:
           "bg-card text-destructive dark:text-destructive-on-dark *:data-[slot=alert-description]:text-destructive/90 dark:*:data-[slot=alert-description]:text-destructive-on-dark/90 *:[svg]:text-current",
       },
