@@ -54,6 +54,8 @@
   --text-xs--line-height: calc(4 / 3);
   /* The Alert icon column (`grid-cols-leading-icon`), so the primitive needs no arbitrary value. */
   --grid-template-columns-leading-icon: auto 1fr;
+  /* The Card header with an action at its end (`grid-cols-header-action`). */
+  --grid-template-columns-header-action: 1fr auto;
   /* DR-20 (S3-03): `max-w-sm` is the 384 px search field cap of tokens.md at every root preset. */
   --container-sm: 384px;
   --spacing: 4px;

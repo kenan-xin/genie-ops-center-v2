@@ -77,6 +77,14 @@ function lines(element: Element): number {
  */
 export const DesktopSessionRowsDoNotWrap: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
+  // The names a session gets when its user agent says nothing, as in the live 1440 capture.
+  args: {
+    sessions: FIXTURE_ACCOUNT_PAGE.sessions.map((session) =>
+      session.isCurrent
+        ? { ...session, device: "Unknown device", browser: "Unknown browser" }
+        : session
+    ),
+  },
   play: async ({ canvasElement }) => {
     const table = sessionTable(canvasElement);
 
@@ -84,7 +92,30 @@ export const DesktopSessionRowsDoNotWrap: Story = {
       table.queryByRole("columnheader", { name: "Status" })
     ).toBeNull();
 
-    await expect(lines(table.getByText("THIS DEVICE"))).toBe(1);
+    const chip = table.getByText("THIS DEVICE");
+
+    const current = within(table.getByRole("row", { name: /THIS DEVICE/ }));
+
+    const device = current.getByText("Unknown device");
+
+    await expect(lines(chip)).toBe(1);
+    // The device and the browser keep one line each, with the chip to their right (1440 capture).
+    await expect(lines(device)).toBe(1);
+    await expect(lines(current.getByText("Unknown browser"))).toBe(1);
+    await expect(chip.getBoundingClientRect().left).toBeGreaterThan(
+      device.getBoundingClientRect().right
+    );
+
+    // The one-line facts still fit the card, with no sideways scroll.
+    const scroller = canvasElement.querySelector(
+      '[data-slot="table-container"]'
+    );
+
+    if (scroller === null) throw new Error("No table container");
+
+    await expect(scroller.scrollWidth).toBeLessThanOrEqual(
+      scroller.clientWidth
+    );
 
     const dated = table
       .getAllByRole("cell")
@@ -95,17 +126,26 @@ export const DesktopSessionRowsDoNotWrap: Story = {
   },
 };
 
-/** The page header keeps the 24 px gap of every admin page, not the 40 px gap between blocks. */
+/**
+ * The page header sits as on every admin page: at the content's left edge, not centered, with the
+ * 24 px gap above the first card, and the subtitle names what the page holds.
+ */
 export const HeaderGapMatchesTheAdminPages: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: async ({ canvasElement }) => {
     const main = within(canvasElement).getByTestId("account-page");
 
-    const header = main.querySelector("header[data-shell-page-header]");
+    const header = main.querySelector<HTMLElement>(
+      "header[data-shell-page-header]"
+    );
 
     if (header === null) throw new Error("No page header");
 
-    const profile = within(main).getByRole("heading", { name: "Profile" });
+    const profile = within(main)
+      .getByRole("heading", { name: "Profile" })
+      .closest('[data-slot="card"]');
+
+    if (profile === null) throw new Error("No Profile card");
 
     await expect(
       profile.getBoundingClientRect().top -
@@ -114,12 +154,33 @@ export const HeaderGapMatchesTheAdminPages: Story = {
     await expect(
       header.getBoundingClientRect().top - main.getBoundingClientRect().top
     ).toBe(0);
+
+    const container = main.parentElement;
+
+    if (container === null) throw new Error("No container");
+
+    await expect(header.getBoundingClientRect().left).toBe(
+      container.getBoundingClientRect().left
+    );
+    await expect(
+      within(header).getByText("Your profile, sessions, and access.")
+    ).toBeInTheDocument();
   },
 };
 
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+
+    // Each block sits in its own bordered card.
+    await expect(
+      ["Profile", "Sessions", "Roles and access"].filter(
+        (name) =>
+          canvas
+            .getByRole("heading", { name })
+            .closest('[data-slot="card"]') === null
+      )
+    ).toEqual([]);
 
     // Profile: initials tile, name, email, one chip per group with its source.
     await expect(canvas.getByText("PN")).toBeInTheDocument();

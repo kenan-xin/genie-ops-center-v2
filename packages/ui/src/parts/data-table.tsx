@@ -76,6 +76,8 @@ export type DataTableProps<Row> = {
   readonly card: DataTableCard<Row>;
   readonly onOpenRow?: (row: Row) => void;
   readonly actions?: (row: Row) => readonly DataTableAction[];
+  /** `false` drops the outer border, for a table inside a card that draws its own. */
+  readonly framed?: boolean;
 };
 
 /** One line of facts, so that every card of a list keeps the same height. */
@@ -128,7 +130,10 @@ export function DataTable<Row>({
   card,
   onOpenRow,
   actions,
+  framed = true,
 }: DataTableProps<Row>) {
+  const frame = framed ? "rounded-xl border border-border" : "";
+
   // The identity opens the row through a native button (R-23): Enter and Space
   // come with it, and the actions menu follows it in the tab order.
   const identity = (row: Row, content: ReactNode) =>
@@ -181,7 +186,7 @@ export function DataTable<Row>({
       {/* A bordered card holds the header band and the rows, so the band does not float (UI-1). */}
       <div
         data-slot="data-table"
-        className="hidden overflow-hidden rounded-xl border border-border md:block"
+        className={`hidden overflow-hidden md:block ${frame}`}
       >
         <Table>
           <TableCaption className="sr-only">{label}</TableCaption>
@@ -226,7 +231,7 @@ export function DataTable<Row>({
       <ul
         role="list"
         aria-label={label}
-        className="divide-y divide-border rounded-xl border border-border md:hidden"
+        className={`divide-y divide-border md:hidden ${frame}`}
       >
         {rows.map((row) => {
           const badge = card.badge?.(row) ?? null;

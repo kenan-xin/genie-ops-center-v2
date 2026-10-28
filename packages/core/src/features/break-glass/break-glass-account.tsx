@@ -1,9 +1,13 @@
 import { Button, Field, FieldLabel, Input, focusRing } from "@genie/ui";
 import { useState } from "react";
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 
+import {
+  AccountCard,
+  AccountCardRow,
+  AccountLayout,
+} from "../account/account-layout.tsx";
 import type { AccountSession } from "../account/types.ts";
-import { PageHeader } from "../shell/page-header.tsx";
 import {
   BreakGlassPasswordForm,
   RateLimitNotice,
@@ -50,22 +54,6 @@ function formatInstant(value: string, timeZone: string): string {
   }).format(new Date(value));
 }
 
-function Block(props: {
-  readonly title: string;
-  readonly description: string;
-  readonly children: ReactNode;
-}): JSX.Element {
-  return (
-    <section className="flex flex-col gap-3">
-      <header>
-        <h2 className="text-lg font-bold text-foreground">{props.title}</h2>
-        <p className="text-sm text-muted-foreground">{props.description}</p>
-      </header>
-      {props.children}
-    </section>
-  );
-}
-
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
@@ -75,26 +63,27 @@ function SessionsBlock(props: {
   const others = props.sessions.filter((session) => !session.isCurrent);
 
   return (
-    <Block
+    <AccountCard
       title="Sessions"
       description="Where this account is signed in, and how to end a session."
+      action={
+        others.length === 0 ? undefined : (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => props.onRevokeOtherSessions?.()}
+          >
+            Sign out all other sessions
+          </Button>
+        )
+      }
     >
-      {others.length === 0 ? null : (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => props.onRevokeOtherSessions?.()}
-          className="w-fit"
-        >
-          Sign out all other sessions
-        </Button>
-      )}
-      <ul className="flex flex-col divide-y divide-border rounded-xl border border-border bg-card">
+      <ul className="flex flex-col divide-y divide-border">
         {props.sessions.map((session) => (
           <li
             key={session.id}
             data-session-id={session.id}
-            className="flex flex-col gap-1 px-4 py-3"
+            className="flex flex-col gap-1 px-4 py-3 md:px-5"
           >
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-foreground">
@@ -122,7 +111,7 @@ function SessionsBlock(props: {
           </li>
         ))}
       </ul>
-    </Block>
+    </AccountCard>
   );
 }
 
@@ -198,100 +187,103 @@ function AuthenticatorBlock(props: {
   const [reenrolling, setReenrolling] = useState(false);
 
   return (
-    <Block
+    <AccountCard
       title="Authenticator"
       description="Required at every sign-in. Re-enroll if you change phones."
     >
-      {props.enrollment !== null ? (
-        <EnrollmentPanel
-          enrollment={props.enrollment}
-          pending={props.pending}
-          error={props.error ?? null}
-          onConfirm={(code) => props.onConfirmReenroll?.(code)}
-        />
-      ) : reenrolling ? (
-        <div className="flex flex-col gap-3">
-          {props.rateLimited ? (
-            <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes} />
-          ) : null}
-          <div className="flex items-end gap-2">
-            <Field className="w-64">
-              <FieldLabel htmlFor="reenroll-password">
-                Confirm your password
-              </FieldLabel>
-              <Input
+      <AccountCardRow>
+        {props.enrollment !== null ? (
+          <EnrollmentPanel
+            enrollment={props.enrollment}
+            pending={props.pending}
+            error={props.error ?? null}
+            onConfirm={(code) => props.onConfirmReenroll?.(code)}
+          />
+        ) : reenrolling ? (
+          <div className="flex flex-col gap-3">
+            {props.rateLimited ? (
+              <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes} />
+            ) : null}
+            <div className="flex items-end gap-2">
+              <Field className="w-64">
+                <FieldLabel htmlFor="reenroll-password">
+                  Confirm your password
+                </FieldLabel>
+                <Input
+                  size="lg"
+                  id="reenroll-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  disabled={props.rateLimited}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="secondary"
                 size="lg"
-                id="reenroll-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                disabled={props.rateLimited}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </Field>
+                onClick={() => props.onStartReenroll?.(password)}
+                disabled={password === "" || props.pending || props.rateLimited}
+              >
+                Start re-enroll
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+            <span className="text-sm">
+              <span className="font-semibold">Authenticator app enrolled</span>
+              <span className="block text-muted-foreground">
+                {props.enrolledAt === null
+                  ? "Enrollment date unknown"
+                  : `Since ${formatInstant(props.enrolledAt, props.timeZone)}`}
+                . Re-enrolling replaces the current app.
+              </span>
+            </span>
             <Button
               type="button"
               variant="secondary"
-              size="lg"
-              onClick={() => props.onStartReenroll?.(password)}
-              disabled={password === "" || props.pending || props.rateLimited}
+              onClick={() => setReenrolling(true)}
+              className="shrink-0"
             >
-              Start re-enroll
+              Re-enroll
             </Button>
           </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
-          <span className="text-sm">
-            <span className="font-semibold">Authenticator app enrolled</span>
-            <span className="block text-muted-foreground">
-              {props.enrolledAt === null
-                ? "Enrollment date unknown"
-                : `Since ${formatInstant(props.enrolledAt, props.timeZone)}`}
-              . Re-enrolling replaces the current app.
-            </span>
-          </span>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setReenrolling(true)}
-            className="shrink-0"
-          >
-            Re-enroll
-          </Button>
-        </div>
-      )}
-    </Block>
+        )}
+      </AccountCardRow>
+    </AccountCard>
   );
 }
 
 export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
   return (
-    <main
-      data-testid="break-glass-account"
-      className="mx-auto w-full max-w-3xl px-4 pb-8"
+    <AccountLayout
+      testId="break-glass-account"
+      description="Local administrator account: password, authenticator, and sessions."
     >
-      {/* The header keeps its own 24 px gap; the blocks keep 40 px between them. */}
-      <PageHeader title="Account" />
-
-      <div className="flex flex-col gap-10">
-        <Block
-          title="Profile"
-          description="Local administrator account. Password and authenticator are managed on this page."
-        >
+      <AccountCard
+        title="Profile"
+        description="Local administrator account. Password and authenticator are managed on this page."
+      >
+        <AccountCardRow className="gap-0">
           <p className="text-base font-semibold text-foreground">
             {props.name}
           </p>
           <p className="text-sm text-muted-foreground">{props.email}</p>
+        </AccountCardRow>
+        <AccountCardRow>
           <p className="text-sm text-muted-foreground">
             Identity source: Genie (local password and authenticator)
           </p>
-        </Block>
+        </AccountCardRow>
+      </AccountCard>
 
-        <Block
-          title="Change password"
-          description="The shared rule applies. Your current password is required."
-        >
+      <AccountCard
+        title="Change password"
+        description="The shared rule applies. Your current password is required."
+      >
+        <AccountCardRow className="gap-3">
           {props.error !== null && props.enrollment == null ? (
             <p
               role="alert"
@@ -309,27 +301,27 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
               props.onChangePassword?.(current, next)
             }
           />
-        </Block>
+        </AccountCardRow>
+      </AccountCard>
 
-        <AuthenticatorBlock
-          enrolledAt={props.authenticatorEnrolledAt}
-          timeZone={props.timeZone}
-          enrollment={props.enrollment ?? null}
-          pending={props.pending === true}
-          error={props.error ?? null}
-          rateLimited={props.rateLimited === true}
-          retryAfterMinutes={props.retryAfterMinutes ?? 15}
-          onStartReenroll={props.onStartReenroll}
-          onConfirmReenroll={props.onConfirmReenroll}
-        />
+      <AuthenticatorBlock
+        enrolledAt={props.authenticatorEnrolledAt}
+        timeZone={props.timeZone}
+        enrollment={props.enrollment ?? null}
+        pending={props.pending === true}
+        error={props.error ?? null}
+        rateLimited={props.rateLimited === true}
+        retryAfterMinutes={props.retryAfterMinutes ?? 15}
+        onStartReenroll={props.onStartReenroll}
+        onConfirmReenroll={props.onConfirmReenroll}
+      />
 
-        <SessionsBlock
-          sessions={props.sessions}
-          timeZone={props.timeZone}
-          onRevokeSession={props.onRevokeSession}
-          onRevokeOtherSessions={props.onRevokeOtherSessions}
-        />
-      </div>
-    </main>
+      <SessionsBlock
+        sessions={props.sessions}
+        timeZone={props.timeZone}
+        onRevokeSession={props.onRevokeSession}
+        onRevokeOtherSessions={props.onRevokeOtherSessions}
+      />
+    </AccountLayout>
   );
 }

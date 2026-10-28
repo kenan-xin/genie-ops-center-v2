@@ -6,9 +6,13 @@ import {
   MonoChip,
 } from "@genie/ui";
 import { useState } from "react";
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 
-import { PageHeader } from "../shell/page-header.tsx";
+import {
+  AccountCard,
+  AccountCardRow,
+  AccountLayout,
+} from "./account-layout.tsx";
 import type {
   AccountGroup,
   AccountPageProps,
@@ -17,8 +21,8 @@ import type {
 
 /**
  * The Account page's three Section 2 blocks (R-18): Profile, Sessions with per-session sign-out
- * and sign out everywhere, and the read-only Roles and access. One column of stacked blocks with
- * a block title and a one-line description each, max reading width, no tabs. Sessions is the shared
+ * and sign out everywhere, and the read-only Roles and access. One column of bordered cards with
+ * a title and a one-line description each, max reading width, no tabs. Sessions is the shared
  * DataTable: a card list on a phone, a table from `md`, and the per-session sign-out in each row's
  * overflow menu (R-23).
  *
@@ -42,22 +46,6 @@ function formatInstant(value: string, timeZone: string): string {
   }).format(new Date(value));
 }
 
-function Block(props: {
-  readonly title: string;
-  readonly description: string;
-  readonly children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <header>
-        <h2 className="text-lg font-bold text-foreground">{props.title}</h2>
-        <p className="text-sm text-muted-foreground">{props.description}</p>
-      </header>
-      {props.children}
-    </section>
-  );
-}
-
 function sourceLabel(source: AccountGroup["source"]): string {
   return source === "idp" ? "Directory" : "Local";
 }
@@ -68,56 +56,63 @@ function ProfileBlock(props: {
   readonly accountManagementUrl: string | null;
 }) {
   return (
-    <Block
+    <AccountCard
       title="Profile"
       description="Your identity as synced from the company directory."
     >
-      <div className="flex items-start gap-4">
+      <AccountCardRow className="flex-row items-center gap-4">
         <span
           aria-hidden="true"
           className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-base font-bold text-foreground"
         >
           {initialsOf(props.profile.name)}
         </span>
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col">
           <p className="text-base font-semibold text-foreground">
             {props.profile.name}
           </p>
-          <p className="text-sm text-muted-foreground">{props.profile.email}</p>
-          {props.groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No groups yet.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-2" aria-label="Groups">
-              {props.groups.map((group) => (
-                <li
-                  key={group.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-input bg-white px-2.5 py-1 text-xs text-foreground dark:bg-card"
-                >
-                  <span className="font-medium">{group.name}</span>
-                  <span className="text-muted-foreground">
-                    {sourceLabel(group.source)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-sm text-muted-foreground">
-            Name, email, and groups come from the company directory; changes are
-            made in the company directory, not in Genie.
+          <p className="text-sm wrap-anywhere text-muted-foreground">
+            {props.profile.email}
           </p>
-          {props.accountManagementUrl === null ? null : (
-            <a
-              className={`w-fit text-sm font-medium text-primary dark:text-brand-on-dark hover:underline ${focusRing}`}
-              href={props.accountManagementUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Change password
-            </a>
-          )}
         </div>
-      </div>
-    </Block>
+      </AccountCardRow>
+      <AccountCardRow>
+        <p className="text-xs font-medium text-muted-foreground">Groups</p>
+        {props.groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No groups yet.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2" aria-label="Groups">
+            {props.groups.map((group) => (
+              <li
+                key={group.id}
+                className="inline-flex items-center gap-1.5 rounded-full border border-input bg-white px-2.5 py-1 text-xs text-foreground dark:bg-card"
+              >
+                <span className="font-medium">{group.name}</span>
+                <span className="text-muted-foreground">
+                  {sourceLabel(group.source)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AccountCardRow>
+      <AccountCardRow className="md:flex-row md:items-start md:justify-between md:gap-4">
+        <p className="text-sm text-muted-foreground">
+          Name, email, and groups come from the company directory; changes are
+          made in the company directory, not in Genie.
+        </p>
+        {props.accountManagementUrl === null ? null : (
+          <a
+            className={`w-fit shrink-0 text-sm font-medium text-primary dark:text-brand-on-dark hover:underline ${focusRing}`}
+            href={props.accountManagementUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Change password
+          </a>
+        )}
+      </AccountCardRow>
+    </AccountCard>
   );
 }
 
@@ -132,12 +127,11 @@ function SessionsBlock(props: {
   const instant = (value: string) => formatInstant(value, props.timeZone);
 
   return (
-    <Block
+    <AccountCard
       title="Sessions"
       description="Where you are signed in, and how to end a session you do not recognize."
-    >
-      {others.length === 0 ? null : (
-        <div>
+      action={
+        others.length === 0 ? undefined : (
           <Button
             variant="secondary"
             loading={props.revoking}
@@ -145,80 +139,85 @@ function SessionsBlock(props: {
           >
             Sign out all other sessions
           </Button>
-        </div>
-      )}
-
-      <DataTable
-        label="Sessions"
-        rows={props.sessions}
-        rowKey={(session) => session.id}
-        rowLabel={(session) => session.device}
-        columns={[
-          {
-            id: "device",
-            header: "Device",
-            cell: (session) => (
-              <span className="flex flex-col">
-                {/* The design puts the chip beside the device, so no Status column takes width. */}
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>{session.device}</span>
+        )
+      }
+    >
+      {/* One child, so the card's divider does not draw a second line under the table. */}
+      <div>
+        <DataTable
+          framed={false}
+          label="Sessions"
+          rows={props.sessions}
+          rowKey={(session) => session.id}
+          rowLabel={(session) => session.device}
+          columns={[
+            {
+              id: "device",
+              header: "Device",
+              cell: (session) => (
+                // The design puts the chip beside the device, so no Status column takes width, and
+                // each fact keeps one line (fix list "Account page layout").
+                <span className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="flex flex-col">
+                    <span>{session.device}</span>
+                    <span className="font-normal text-muted-foreground">
+                      {session.browser}
+                    </span>
+                  </span>
                   {session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null}
                 </span>
-                <span className="font-normal text-muted-foreground">
-                  {session.browser}
+              ),
+            },
+            {
+              id: "ipAddress",
+              header: "IP address",
+              cell: (session) => session.ipAddress,
+            },
+            {
+              id: "signedInAt",
+              header: "Signed in",
+              cell: (session) => (
+                <span className="whitespace-nowrap">
+                  {instant(session.signedInAt)}
                 </span>
-              </span>
-            ),
-          },
-          {
-            id: "ipAddress",
-            header: "IP address",
-            cell: (session) => session.ipAddress,
-          },
-          {
-            id: "signedInAt",
-            header: "Signed in",
-            cell: (session) => (
-              <span className="whitespace-nowrap">
-                {instant(session.signedInAt)}
-              </span>
-            ),
-          },
-          {
-            id: "lastActiveAt",
-            header: "Last active",
-            cell: (session) => (
-              <span className="whitespace-nowrap">
-                {instant(session.lastActiveAt)}
-              </span>
-            ),
-          },
-        ]}
-        card={{
-          title: (session) => session.device,
-          badge: (session) =>
-            session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
-          detail: (session) => session.browser,
-          facts: (session) => [
-            `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
-          ],
-        }}
-        actions={(session) => {
-          if (session.isCurrent) return [];
+              ),
+            },
+            {
+              id: "lastActiveAt",
+              header: "Last active",
+              cell: (session) => (
+                <span className="whitespace-nowrap">
+                  {instant(session.lastActiveAt)}
+                </span>
+              ),
+            },
+          ]}
+          card={{
+            title: (session) => session.device,
+            badge: (session) =>
+              session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
+            detail: (session) => session.browser,
+            facts: (session) => [
+              `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
+            ],
+          }}
+          actions={(session) => {
+            if (session.isCurrent) return [];
 
-          const signOut = {
-            label: "Sign out",
-            onSelect: () => props.onAskRevoke(session),
-            danger: true,
-          };
+            const signOut = {
+              label: "Sign out",
+              onSelect: () => props.onAskRevoke(session),
+              danger: true,
+            };
 
-          // DR-17: a menu item has no loading state, so it refuses a second sign-out.
-          return props.revoking === true
-            ? [{ ...signOut, refusal: "A sign-out is running." }]
-            : [signOut];
-        }}
-      />
-    </Block>
+            // DR-17: a menu item has no loading state, so it refuses a second sign-out.
+            return props.revoking === true
+              ? [{ ...signOut, refusal: "A sign-out is running." }]
+              : [signOut];
+          }}
+        />
+      </div>
+    </AccountCard>
   );
 }
 
@@ -226,18 +225,22 @@ function RolesBlock(props: {
   readonly roleGrants: AccountPageProps["roleGrants"];
 }) {
   return (
-    <Block
+    <AccountCard
       title="Roles and access"
       description="What you hold, where it applies, and how it arrived."
     >
       {props.roleGrants.length === 0 ? (
-        <p className="text-sm text-muted-foreground">You hold no roles yet.</p>
+        <AccountCardRow>
+          <p className="text-sm text-muted-foreground">
+            You hold no roles yet.
+          </p>
+        </AccountCardRow>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-xl border border-border bg-white dark:bg-card">
+        <ul className="flex flex-col divide-y divide-border">
           {props.roleGrants.map((grant) => (
             <li
               key={`${grant.roleName}\u0000${grant.scopeLabel}\u0000${grant.via ?? ""}`}
-              className="flex flex-col gap-1 px-4 py-3"
+              className="flex flex-col gap-1 px-4 py-3 md:px-5"
             >
               <span className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-foreground">
@@ -260,11 +263,13 @@ function RolesBlock(props: {
           ))}
         </ul>
       )}
-      <p className="text-sm text-muted-foreground">
-        Roles are assigned by administrators; contact an administrator for
-        changes.
-      </p>
-    </Block>
+      <AccountCardRow>
+        <p className="text-sm text-muted-foreground">
+          Roles are assigned by administrators; contact an administrator for
+          changes.
+        </p>
+      </AccountCardRow>
+    </AccountCard>
   );
 }
 
@@ -295,36 +300,31 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
       : "Every other device will have to sign in again to reach this service.";
 
   return (
-    <main
-      className="mx-auto w-full max-w-3xl px-4 pb-8"
-      data-testid="account-page"
+    <AccountLayout
+      testId="account-page"
+      description="Your profile, sessions, and access."
     >
-      {/* The header keeps its own 24 px gap; the blocks keep 40 px between them. */}
-      <PageHeader title="Account" />
+      <ProfileBlock
+        profile={props.profile}
+        groups={props.groups}
+        accountManagementUrl={props.accountManagementUrl}
+      />
 
-      <div className="flex flex-col gap-10">
-        <ProfileBlock
-          profile={props.profile}
-          groups={props.groups}
-          accountManagementUrl={props.accountManagementUrl}
-        />
+      <SessionsBlock
+        sessions={props.sessions}
+        timeZone={props.timeZone}
+        revoking={props.revoking}
+        onAskRevoke={(session) => setPending({ kind: "one", session })}
+        onAskRevokeOthers={() =>
+          setPending({
+            kind: "others",
+            count: props.sessions.filter((session) => !session.isCurrent)
+              .length,
+          })
+        }
+      />
 
-        <SessionsBlock
-          sessions={props.sessions}
-          timeZone={props.timeZone}
-          revoking={props.revoking}
-          onAskRevoke={(session) => setPending({ kind: "one", session })}
-          onAskRevokeOthers={() =>
-            setPending({
-              kind: "others",
-              count: props.sessions.filter((session) => !session.isCurrent)
-                .length,
-            })
-          }
-        />
-
-        <RolesBlock roleGrants={props.roleGrants} />
-      </div>
+      <RolesBlock roleGrants={props.roleGrants} />
 
       <ConfirmDialog
         open={pending !== null}
@@ -341,6 +341,6 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
           setPending(null);
         }}
       />
-    </main>
+    </AccountLayout>
   );
 }

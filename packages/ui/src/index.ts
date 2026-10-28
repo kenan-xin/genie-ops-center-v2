@@ -165,6 +165,16 @@ export { Avatar, AvatarFallback } from "./components/avatar.tsx";
 
 export { Badge } from "./components/badge.tsx";
 
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./components/card.tsx";
+
 export { Spinner } from "./components/spinner.tsx";
 
 export { infoTint } from "./components/alert.tsx";
