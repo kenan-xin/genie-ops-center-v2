@@ -8,6 +8,7 @@ import {
 import { useState } from "react";
 import type { JSX } from "react";
 
+import { relativeTime } from "../audit/helpers.ts";
 import {
   AccountCard,
   AccountCardRow,
@@ -58,7 +59,7 @@ function ProfileBlock(props: {
   return (
     <AccountCard
       title="Profile"
-      description="Your identity as synced from the company directory."
+      description="Synced from your company directory at each sign-in."
     >
       <AccountCardRow className="flex-row items-center gap-4">
         <span
@@ -119,6 +120,7 @@ function ProfileBlock(props: {
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
+  readonly nowIso: string;
   readonly revoking?: boolean | undefined;
   readonly onAskRevoke: (session: AccountSession) => void;
   readonly onAskRevokeOthers: () => void;
@@ -126,10 +128,14 @@ function SessionsBlock(props: {
   const others = props.sessions.filter((session) => !session.isCurrent);
   const instant = (value: string) => formatInstant(value, props.timeZone);
 
+  // Last active reads against the injected clock, as the capture shows ("Now", "1 h ago").
+  const ago = (value: string) =>
+    relativeTime(value, new Date(props.nowIso), props.timeZone);
+
   return (
     <AccountCard
       title="Sessions"
-      description="Where you are signed in, and how to end a session you do not recognize."
+      description="Where you are signed in right now."
       action={
         others.length === 0 ? undefined : (
           <Button
@@ -187,7 +193,7 @@ function SessionsBlock(props: {
               header: "Last active",
               cell: (session) => (
                 <span className="whitespace-nowrap">
-                  {instant(session.lastActiveAt)}
+                  {ago(session.lastActiveAt)}
                 </span>
               ),
             },
@@ -196,9 +202,10 @@ function SessionsBlock(props: {
             title: (session) => session.device,
             badge: (session) =>
               session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
-            detail: (session) => session.browser,
+            // The mobile capture: browser and IP, then when it signed in and was last active.
+            detail: (session) => `${session.browser} · ${session.ipAddress}`,
             facts: (session) => [
-              `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
+              `Signed in ${instant(session.signedInAt)} · active ${ago(session.lastActiveAt)}`,
             ],
           }}
           actions={(session) => {
@@ -296,8 +303,8 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
 
   const description =
     last?.kind === "one"
-      ? "That device will have to sign in again to reach this service."
-      : "Every other device will have to sign in again to reach this service.";
+      ? "That device is signed out at once and has to sign in again."
+      : "Every device except this one is signed out at once and has to sign in again.";
 
   return (
     <AccountLayout
@@ -313,6 +320,7 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
       <SessionsBlock
         sessions={props.sessions}
         timeZone={props.timeZone}
+        nowIso={props.nowIso}
         revoking={props.revoking}
         onAskRevoke={(session) => setPending({ kind: "one", session })}
         onAskRevokeOthers={() =>

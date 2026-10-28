@@ -71,6 +71,19 @@ function lines(element: Element): number {
   ).size;
 }
 
+/** Last active reads against the page clock (`nowIso`), as the capture's "Now" and "1 h ago". */
+export const LastActiveReadsAgainstTheClock: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const table = sessionTable(canvasElement);
+
+    // The fixture's current session was last active 2 minutes before FIXTURE_NOW.
+    const current = within(table.getByRole("row", { name: /THIS DEVICE/ }));
+
+    await expect(current.getByText("2 min ago")).toBeVisible();
+  },
+};
+
 /**
  * At desktop width each session row keeps one line per fact: the chip sits beside the device, as
  * in the design, so no Status column takes the width that would wrap the dates.
