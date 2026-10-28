@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import type { ViteUserConfig } from "vitest/config";
 
 /**
@@ -58,6 +60,15 @@ export const UNIT_COVERAGE_EXCLUDE: readonly string[] = [
   ...TRANSIENT_FIXTURE_MARKERS,
 ];
 
+/**
+ * The setup file every unit run installs. It refuses a request to a live model
+ * host, so no test reaches the provider by accident (Spec 7 R-21, AC-5). Core's
+ * integration config lists the same path.
+ */
+export const NO_LIVE_MODEL_SETUP = fileURLToPath(
+  new URL("./no-live-model.ts", import.meta.url)
+);
+
 /** The shared unit-test preset. Every package merges it in its own vitest.config.ts. */
 export const unitTestPreset: ViteUserConfig = {
   test: {
@@ -67,6 +78,7 @@ export const unitTestPreset: ViteUserConfig = {
     exclude: [...UNIT_TEST_EXCLUDE],
     restoreMocks: true,
     passWithNoTests: false,
+    setupFiles: [NO_LIVE_MODEL_SETUP],
     // A share of the machine, not a count: vitest would otherwise fork one worker
     // per CPU inside every project, and Nx already runs several projects at once,
     // so the two layers multiply into heavy oversubscription. A quarter share

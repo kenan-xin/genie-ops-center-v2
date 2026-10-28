@@ -1,3 +1,4 @@
+import { NO_LIVE_MODEL_SETUP } from "@genie/config/vitest/unit";
 import { defineConfig } from "vitest/config";
 
 /**
@@ -24,6 +25,8 @@ export default defineConfig({
     include: ["testing/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     passWithNoTests: false,
+    // The same guard every unit run installs: no request reaches a live model host.
+    setupFiles: [NO_LIVE_MODEL_SETUP],
     testTimeout: 120000,
     hookTimeout: 120000,
     maxWorkers: 4,

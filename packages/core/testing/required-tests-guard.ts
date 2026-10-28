@@ -532,4 +532,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the model provider key in Tenant settings refuses an empty key and keeps the stored key",
     ],
   },
+  {
+    file: "testing/model-transports.test.ts",
+    reason:
+      "Spec 7 R-21 and AC-5 require a recorded test model and no live model call in any test run",
+    cases: [
+      "replays the recording that matches a request, and refuses any other request without its headers",
+      "turns a recorded answer into the provider's response and back, streamed and not",
+      "loads every recording of a folder in name order, and names a broken file",
+    ],
+  },
+  {
+    file: "testing/no-live-model.test.ts",
+    reason:
+      "Spec 7 R-21 and AC-5 require a recorded test model and no live model call in any test run",
+    cases: [
+      "refuses a request to a model host before it leaves the process, and lets other hosts through",
+    ],
+  },
 ];

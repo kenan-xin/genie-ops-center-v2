@@ -15,6 +15,16 @@ import { startDisposablePostgres } from "./postgres.ts";
 export { enableModules } from "./enable-modules.ts";
 
 export {
+  type JsonValue,
+  type ModelRecording,
+  type SentModelRequest,
+  loadModelRecordings,
+  recordingFromResponse,
+  replayModelTransport,
+  responseFromRecording,
+} from "./model-transports.ts";
+
+export {
   assignRole,
   insertGroup,
   insertPersonWith,
