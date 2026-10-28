@@ -226,7 +226,7 @@ test("the offline bar spans the viewport above the sidebar and leaves on online 
   await expect(page.getByText(OFFLINE)).toHaveCount(0);
 });
 
-test("the drawer opens below lg and closes on route change, and the sidebar shows at lg (R-38)", async ({
+test("the drawer opens below lg with focus on the current entry, closes on route change, and the sidebar shows at lg (R-38)", async ({
   page,
 }) => {
   await page.goto("/account");
@@ -244,6 +244,10 @@ test("the drawer opens below lg and closes on route change, and the sidebar show
 
   const drawer = await openNavigation(page);
 
+  // Account has no entry, so focus opens on Close, never on the user footer.
+  await expect(
+    drawer.getByRole("button", { name: "Close navigation" })
+  ).toBeFocused();
   await expectNoAxeViolations(page, "navigation drawer");
   await drawer
     .getByRole("navigation", { name: "Workspace", exact: true })
@@ -253,8 +257,12 @@ test("the drawer opens below lg and closes on route change, and the sidebar show
   await expect(page).toHaveURL(/\/placeholder$/);
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 
-  // The scrim beside the drawer closes it.
-  await openNavigation(page);
+  // On a page with an entry, focus opens on that entry. The scrim beside the drawer closes it.
+  await expect(
+    (await openNavigation(page))
+      .getByRole("navigation", { name: "Workspace", exact: true })
+      .getByRole("link", { name: "Placeholder", exact: true })
+  ).toBeFocused();
 
   const viewport = page.viewportSize();
 

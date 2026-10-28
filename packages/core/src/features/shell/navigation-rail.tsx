@@ -3,6 +3,7 @@
 import { CountPill, focusRing } from "@genie/ui";
 import {
   Blocks,
+  Box,
   ChevronDown,
   Palette,
   ScrollText,
@@ -60,8 +61,9 @@ const rowIdle = "font-medium text-foreground hover:bg-border/60";
 const rowChild =
   "font-medium text-muted-foreground hover:bg-border/60 hover:text-foreground";
 
+// A filled row, not a hairline: in dark the card is the panel's own color, so the fill steps up.
 const rowActive =
-  "bg-card font-semibold text-primary ring-1 ring-border dark:text-brand-on-dark";
+  "bg-card font-semibold text-primary ring-1 ring-border dark:bg-border dark:text-brand-on-dark dark:ring-muted-foreground/30";
 
 function deviceStorage(): Storage | undefined {
   try {
@@ -84,10 +86,12 @@ function Row(props: {
   readonly active: string | undefined;
   readonly height: string;
   readonly idle?: string;
+  /** A module's entry brings no icon; nav rows give it this one, so labels start in one column. */
+  readonly defaultIcon?: LucideIcon;
   readonly linkComponent: ShellLinkComponent | undefined;
 }) {
   const isActive = props.link.href === props.active;
-  const Icon = CORE_ICONS.get(props.link.id);
+  const Icon = CORE_ICONS.get(props.link.id) ?? props.defaultIcon;
   const Anchor = linkFor(props.link.href, props.linkComponent);
 
   return (
@@ -217,6 +221,7 @@ export function NavigationRail(props: NavigationRailProps) {
                   link={entry}
                   active={active}
                   height={navRow}
+                  defaultIcon={Box}
                   linkComponent={props.linkComponent}
                 />
               ))}
@@ -241,6 +246,7 @@ export function NavigationRail(props: NavigationRailProps) {
               link={link}
               active={active}
               height={navRow}
+              defaultIcon={Box}
               linkComponent={props.linkComponent}
             />
           ))}

@@ -222,8 +222,8 @@ export const Admin: Story = {
       "Placeholder",
     ]);
 
-    const coreRowsWithoutIcon = adminNavigation.admin
-      .slice(0, 3)
+    // A module's entry brings no icon and gets the default one (UI fix list, drawer).
+    const rowsWithoutIcon = adminNavigation.admin
       .flatMap((group) => group.entries)
       .filter(
         (entry) =>
@@ -232,13 +232,7 @@ export const Admin: Story = {
             .querySelector("svg") === null
       );
 
-    await expect(coreRowsWithoutIcon).toEqual([]);
-
-    await expect(
-      canvas
-        .getByRole("link", { name: "Placeholder admin" })
-        .querySelector("svg")
-    ).toBeNull();
+    await expect(rowsWithoutIcon).toEqual([]);
     await expect(canvas.getByRole("link", { name: "People" })).toHaveAttribute(
       "aria-current",
       "page"

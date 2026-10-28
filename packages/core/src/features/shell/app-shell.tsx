@@ -78,6 +78,8 @@ export function AppShell(props: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shownPath, setShownPath] = useState(props.currentPath);
   const content = useRef<HTMLDivElement>(null);
+  const drawer = useRef<HTMLDivElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const scrolledPath = useRef(props.currentPath);
 
   // React's pattern for state that follows a prop: adjust it during render.
@@ -166,12 +168,21 @@ export function AppShell(props: AppShellProps) {
           showCloseButton={false}
           // 5/6 is the scale value nearest the design's 84vw; the lint refuses arbitrary widths.
           className="max-w-80 data-[side=left]:w-5/6"
+          // Focus opens on the current page's entry, else on Close; never on the user footer.
+          initialFocus={() =>
+            drawer.current?.querySelector<HTMLElement>(
+              '[aria-current="page"]'
+            ) ?? closeButton.current
+          }
         >
           <SheetTitle className="sr-only">{strings.navigation}</SheetTitle>
           {/* A tap on the current page's row changes no path, and a document load used to close
               the drawer, so any link inside closes it. */}
+          {/* The aside's gray panel, so the current entry's white row shows as a fill. */}
           <div
-            className="flex min-h-0 flex-1 flex-col"
+            ref={drawer}
+            data-shell-drawer=""
+            className="flex min-h-0 flex-1 flex-col bg-muted"
             onClick={(event) => {
               if (
                 event.target instanceof Element &&
@@ -182,6 +193,7 @@ export function AppShell(props: AppShellProps) {
           >
             <div className="flex justify-end px-2 pt-2">
               <button
+                ref={closeButton}
                 type="button"
                 aria-label={strings.closeNavigation}
                 onClick={() => setDrawerOpen(false)}

@@ -347,16 +347,8 @@ export const ClientRoutedPhone: Story = {
     content.scrollTop = content.scrollHeight;
     await expect(content.scrollTop).toBeGreaterThan(0);
 
-    const openDrawer = async () => {
-      await userEvent.click(
-        canvas.getByRole("button", { name: "Open navigation" })
-      );
-
-      return screen.findByRole("dialog", { name: "Navigation" });
-    };
-
     await userEvent.click(
-      within(await openDrawer()).getByRole("link", { name: "Shipments" })
+      within(await openDrawer(canvas)).getByRole("link", { name: "Shipments" })
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await expect(
@@ -370,7 +362,7 @@ export const ClientRoutedPhone: Story = {
 
     // The current page's row changes no path, and the drawer still closes.
     await userEvent.click(
-      within(await openDrawer()).getByRole("link", { name: "Shipments" })
+      within(await openDrawer(canvas)).getByRole("link", { name: "Shipments" })
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   },
@@ -447,6 +439,154 @@ export const WorkspaceDark: Story = {
   globals: { ...desktop, theme: "dark" },
 };
 
+async function openDrawer(canvas: { getByRole: typeof screen.getByRole }) {
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Open navigation" })
+  );
+
+  return screen.findByRole("dialog", { name: "Navigation" });
+}
+
+const fill = (node: Element) => getComputedStyle(node).backgroundColor;
+
+/** The current entry is a filled row, not a hairline on the drawer's own color (UI fix list). */
+async function expectFilledCurrentEntry(drawer: HTMLElement) {
+  const current = element(drawer, '[aria-current="page"]');
+  let behind = current.parentElement;
+
+  // The first painted surface behind the row.
+  while (behind !== null && fill(behind) === "rgba(0, 0, 0, 0)")
+    behind = behind.parentElement;
+
+  if (behind === null) throw new Error("No surface behind the entry");
+
+  await expect(fill(current)).not.toBe(fill(behind));
+}
+
 export const WorkspacePhoneDark: Story = {
+  globals: { ...phone, theme: "dark" },
+  play: async ({ canvas }) => {
+    await expectFilledCurrentEntry(await openDrawer(canvas));
+  },
+};
+
+export const DrawerFocusesTheCurrentEntry: Story = {
+  globals: phone,
+  play: async ({ canvas }) => {
+    const drawer = await openDrawer(canvas);
+
+    await waitFor(() =>
+      expect(within(drawer).getByRole("link", { name: "Orders" })).toHaveFocus()
+    );
+    await expectFilledCurrentEntry(drawer);
+  },
+};
+
+export const DrawerFocusesCloseWithNoCurrentEntry: Story = {
+  globals: phone,
+  args: { currentPath: "/nowhere" },
+  play: async ({ canvas }) => {
+    const drawer = await openDrawer(canvas);
+
+    await waitFor(() =>
+      expect(
+        within(drawer).getByRole("button", { name: "Close navigation" })
+      ).toHaveFocus()
+    );
+  },
+};
+
+/** The placeholder and three stand-in modules: none of their entries brings an icon. */
+const manyModules: ShellNavigation = {
+  ...navigation,
+  admin: [
+    {
+      id: "people-and-access",
+      label: "People and access",
+      entries: [
+        { id: "core-people", label: "People", href: "/admin/people" },
+        { id: "core-groups", label: "Groups", href: "/admin/groups" },
+        { id: "core-roles", label: "Roles", href: "/admin/roles" },
+      ],
+    },
+    {
+      id: "tenant",
+      label: "Tenant",
+      entries: [
+        { id: "core-branding", label: "Branding", href: "/admin/branding" },
+        { id: "core-settings", label: "Settings", href: "/admin/settings" },
+        { id: "core-audit", label: "Audit log", href: "/admin/audit" },
+      ],
+    },
+    {
+      id: "catalog",
+      label: "Catalog",
+      entries: [
+        { id: "core-modules", label: "Modules", href: "/admin/modules" },
+        {
+          id: "core-categories",
+          label: "Categories",
+          href: "/admin/categories",
+        },
+      ],
+    },
+    ...[
+      ["placeholder", "Placeholder", "Placeholder settings"],
+      ["invoices", "Invoices", "Invoice rules"],
+      ["analytics", "Analytics", "Dashboards"],
+      ["slides", "Slides", "Slide templates"],
+    ].map(([id = "", label = "", entry = ""]) => ({
+      id,
+      label,
+      entries: [{ id: `${id}-admin`, label: entry, href: `/admin/${id}` }],
+    })),
+  ],
+};
+
+export const LongDrawerScrollsOnlyTheEntries: Story = {
+  globals: phone,
+  args: {
+    chrome: "admin",
+    currentPath: "/admin/people",
+    navigation: manyModules,
+  },
+  play: async ({ canvas }) => {
+    const drawer = await openDrawer(canvas);
+    const edge = drawer.getBoundingClientRect();
+
+    const list = within(drawer).getByRole("navigation", {
+      name: "People and access",
+    }).parentElement?.parentElement;
+
+    if (list === null || list === undefined) throw new Error("No entry list");
+
+    // Every entry starts its label in one column, so an entry without its own icon gets one.
+    const links = within(list).getAllByRole("link");
+    await expect(links).toHaveLength(12);
+    await Promise.all(
+      links.map((link) => expect(link.querySelector("svg")).not.toBeNull())
+    );
+
+    const starts = new Set(
+      links.map((link) => element(link, "span").getBoundingClientRect().left)
+    );
+
+    await expect(starts.size).toBe(1);
+
+    // Only the entry list scrolls: the identity and the footer stay inside the drawer.
+    const footer = element(drawer, "[data-shell-user-menu]");
+
+    await expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      edge.bottom
+    );
+    await expect(
+      within(drawer).getByText("Admin portal").getBoundingClientRect().top
+    ).toBeGreaterThanOrEqual(edge.top);
+    await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+  },
+};
+
+export const LongDrawerDark: Story = {
+  ...LongDrawerScrollsOnlyTheEntries,
   globals: { ...phone, theme: "dark" },
 };
