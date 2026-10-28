@@ -1,6 +1,6 @@
 "use client";
 
-import { LabelPill } from "@genie/ui";
+import { LabelPill, Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
 import { type ReactNode, useCallback, useState } from "react";
 
 import type { ShellChrome, ShellIdentity } from "./types.ts";
@@ -79,7 +79,6 @@ function IdentityRow(props: {
         <img
           src={logo.src}
           alt={companyName}
-          title={companyName}
           className="h-8 max-w-full object-contain object-left"
           onError={logo.onError}
           ref={logo.ref}
@@ -92,12 +91,14 @@ function IdentityRow(props: {
     <span className="flex min-w-0 items-center gap-3">
       <TenantMark identity={props.identity} size="md" />
       <span className="min-w-0">
-        <span
-          title={companyName}
-          className="block truncate text-sm font-semibold text-foreground"
-        >
-          {companyName}
-        </span>
+        <Tooltip>
+          <TooltipTrigger render={<span className="block min-w-0" />}>
+            <span className="block truncate text-sm font-semibold text-foreground">
+              {companyName}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{companyName}</TooltipContent>
+        </Tooltip>
         {props.secondLine}
       </span>
     </span>
@@ -127,12 +128,14 @@ export function IdentityBlock(props: {
         </LabelPill>
       </span>
     ) : (
-      <span
-        title={identity.productName}
-        className="block truncate text-xs text-muted-foreground"
-      >
-        {identity.productName}
-      </span>
+      <Tooltip>
+        <TooltipTrigger render={<span className="block min-w-0" />}>
+          <span className="block truncate text-xs text-muted-foreground">
+            {identity.productName}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{identity.productName}</TooltipContent>
+      </Tooltip>
     );
 
   const row = (logoUrl: string | null) => (

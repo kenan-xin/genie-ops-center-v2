@@ -1,3 +1,5 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
+
 /** A provider object id: a UUID, or one long run of letters and digits with a digit in it. */
 const ID_LIKE =
   /^(?:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}|(?=.*\d)[a-z0-9]{20,})$/i;
@@ -20,10 +22,15 @@ export function GroupName(props: {
 
   if (!looksLikeId(props.value)) return format(props.value);
 
+  const full = format(props.value);
+
   return (
-    <span title={format(props.value)}>
-      <span aria-hidden="true">{format(`${props.value.slice(0, 8)}…`)}</span>
-      <span className="sr-only">{format(props.value)}</span>
-    </span>
+    <Tooltip>
+      <TooltipTrigger render={<span />}>
+        <span aria-hidden="true">{format(`${props.value.slice(0, 8)}…`)}</span>
+        <span className="sr-only">{full}</span>
+      </TooltipTrigger>
+      <TooltipContent>{full}</TooltipContent>
+    </Tooltip>
   );
 }

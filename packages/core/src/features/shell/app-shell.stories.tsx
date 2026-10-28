@@ -133,20 +133,21 @@ function element(root: ParentNode, selector: string) {
   return found;
 }
 
-/** No page scroll sideways, and every label cut short keeps its full text in `title`. */
+/** No page scroll sideways, and every label cut short keeps its full text in a tooltip. */
 async function expectNoOverflow(root: HTMLElement) {
   await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
     window.innerWidth
   );
 
-  const cutWithoutTitle = [
+  const cutWithoutFullText = [
     ...root.querySelectorAll<HTMLElement>(".truncate"),
   ].filter(
     (label) =>
-      label.scrollWidth > label.clientWidth && label.closest("[title]") === null
+      label.scrollWidth > label.clientWidth &&
+      label.closest('[title], [data-slot="tooltip-trigger"]') === null
   );
 
-  await expect(cutWithoutTitle).toEqual([]);
+  await expect(cutWithoutFullText).toEqual([]);
 }
 
 export const WorkspaceDesktop: Story = {

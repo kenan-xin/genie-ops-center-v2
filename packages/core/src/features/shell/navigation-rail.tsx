@@ -1,6 +1,12 @@
 "use client";
 
-import { CountPill, focusRing } from "@genie/ui";
+import {
+  CountPill,
+  focusRing,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@genie/ui";
 import {
   Blocks,
   Box,
@@ -97,7 +103,6 @@ function Row(props: {
   return (
     <Anchor
       href={props.link.href}
-      title={props.link.label}
       aria-current={isActive ? "page" : undefined}
       className={`${rowBase} ${props.height} ${isActive ? rowActive : (props.idle ?? rowIdle)}`}
     >
@@ -108,7 +113,12 @@ function Row(props: {
           className={`size-5 shrink-0 ${isActive ? "text-primary dark:text-brand-on-dark" : "text-muted-foreground"}`}
         />
       )}
-      <span className="min-w-0 flex-1 truncate">{props.link.label}</span>
+      <Tooltip>
+        <TooltipTrigger render={<span className="min-w-0 flex-1" />}>
+          <span className="block truncate">{props.link.label}</span>
+        </TooltipTrigger>
+        <TooltipContent>{props.link.label}</TooltipContent>
+      </Tooltip>
     </Anchor>
   );
 }
@@ -140,13 +150,16 @@ function Category(props: {
           strokeWidth={1.75}
           className={`size-4 shrink-0 text-muted-foreground motion-safe:transition-transform ${props.open ? "" : "-rotate-90"}`}
         />
-        <span
-          id={`${props.groupId}-name`}
-          title={category.name}
-          className="min-w-0 flex-1 truncate"
-        >
-          {category.name}
-        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span id={`${props.groupId}-name`} className="min-w-0 flex-1" />
+            }
+          >
+            <span className="block truncate">{category.name}</span>
+          </TooltipTrigger>
+          <TooltipContent>{category.name}</TooltipContent>
+        </Tooltip>
         <span id={`${props.groupId}-count`}>
           <CountPill>{category.entries.length}</CountPill>
         </span>

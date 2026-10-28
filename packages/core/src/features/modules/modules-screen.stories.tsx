@@ -111,9 +111,17 @@ export const UnlabelledGroupIdHolder: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Modules" }));
 
-    await expect(
-      table.getByText("39545f73… (group)").parentElement
-    ).toHaveAttribute("title", "39545f73-134e-49ac-9731-0e96df8ea218 (group)");
+    const short = table.getByText("39545f73… (group)");
+
+    await userEvent.hover(short);
+
+    const tip = await screen.findByText(
+      "39545f73-134e-49ac-9731-0e96df8ea218 (group)",
+      { selector: "[data-slot=tooltip-content]" }
+    );
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
   },
 };
 
@@ -151,7 +159,14 @@ export const Phone: Story = {
     await expect(description.scrollWidth).toBeGreaterThan(
       description.clientWidth
     );
-    await expect(description).toHaveAttribute("title", FIXTURE_ON.description);
+    await userEvent.hover(description);
+
+    const tip = await screen.findByText(FIXTURE_ON.description!, {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
 
     // (3) A labelled picker as wide as the card, or the nothing-to-place line.
     await expect(card.getByText("Category", { exact: true })).toBeVisible();

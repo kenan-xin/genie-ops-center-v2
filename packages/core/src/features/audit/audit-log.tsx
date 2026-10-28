@@ -18,6 +18,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@genie/ui";
 import { useId, useState } from "react";
 import type { JSX, ReactNode } from "react";
@@ -409,9 +412,14 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
     props.onChangeAuditFilters?.(filters);
 
   const relative = (event: AuditEvent) => (
-    <span title={fmtExact(event.occurredAt, props.viewer.timeZone)}>
-      {relativeTime(event.occurredAt, now, props.viewer.timeZone)}
-    </span>
+    <Tooltip>
+      <TooltipTrigger render={<span />}>
+        {relativeTime(event.occurredAt, now, props.viewer.timeZone)}
+      </TooltipTrigger>
+      <TooltipContent>
+        {fmtExact(event.occurredAt, props.viewer.timeZone)}
+      </TooltipContent>
+    </Tooltip>
   );
 
   const when = (event: AuditEvent) => (

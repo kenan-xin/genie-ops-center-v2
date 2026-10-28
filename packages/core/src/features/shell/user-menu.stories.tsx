@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { UserMenu } from "./user-menu.tsx";
 
@@ -55,10 +55,16 @@ const trigger = (canvasElement: HTMLElement) => {
 
 export const Member: Story = {
   play: async ({ canvasElement, canvas }) => {
-    await expect(canvas.getByText("Alex Morgan")).toHaveAttribute(
-      "title",
-      "Alex Morgan"
-    );
+    const name = canvas.getByText("Alex Morgan");
+
+    await userEvent.hover(name);
+
+    const tip = await screen.findByText("Alex Morgan", {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
     // The role reads as plain muted text under the name, not as a pill (UI-1 finding 6).
     await expect(canvas.getByText("Member")).toHaveClass(
       "text-muted-foreground"

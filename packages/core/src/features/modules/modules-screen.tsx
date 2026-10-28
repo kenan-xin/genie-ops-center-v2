@@ -19,6 +19,9 @@ import {
   SelectValue,
   StatusPill,
   Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
 import { ChevronRightIcon } from "lucide-react";
@@ -51,15 +54,19 @@ function ModuleId({ module }: { readonly module: ModuleView }) {
   );
 }
 
-/** One line with an ellipsis; the full text stays in the line and its title (fix list (2)). */
+/** One line with an ellipsis; the full text shows in a tooltip on hover (fix list (2)). */
 function Description({ module }: { readonly module: ModuleView }) {
-  return module.description === null ? null : (
-    <p
-      title={module.description}
-      className="truncate text-sm font-normal text-muted-foreground"
-    >
-      {module.description}
-    </p>
+  if (module.description === null) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div className="min-w-0" />}>
+        <p className="truncate text-sm font-normal text-muted-foreground">
+          {module.description}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent>{module.description}</TooltipContent>
+    </Tooltip>
   );
 }
 

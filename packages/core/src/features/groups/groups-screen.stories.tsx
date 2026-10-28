@@ -126,10 +126,19 @@ export const UnlabelledGroupIdAsksForALabel: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Groups" }));
 
-    await expect(table.getByText("39545f73…").parentElement).toHaveAttribute(
-      "title",
-      "39545f73-134e-49ac-9731-0e96df8ea218"
+    const short = table.getByText("39545f73…");
+
+    await userEvent.hover(short);
+
+    const tip = await screen.findByText(
+      "39545f73-134e-49ac-9731-0e96df8ea218",
+      {
+        selector: "[data-slot=tooltip-content]",
+      }
     );
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
     // Only the unlabelled id shows its short form; a label or a readable name shows as it is.
     await expect(table.getByText("39545f73…")).toBeVisible();
     await expect(canvas.queryAllByText("Add a display label")).toHaveLength(0);

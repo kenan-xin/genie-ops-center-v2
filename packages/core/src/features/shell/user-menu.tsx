@@ -7,6 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   focusRing,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@genie/ui";
 import {
   ArrowLeftRight,
@@ -82,12 +85,14 @@ export function UserMenu(props: UserMenuProps) {
             {initials(user.name)}
           </span>
           <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-            <span
-              title={user.name}
-              className="block max-w-full truncate text-sm font-semibold text-foreground"
-            >
-              {user.name}
-            </span>
+            <Tooltip>
+              <TooltipTrigger render={<span className="block min-w-0" />}>
+                <span className="block max-w-full truncate text-sm font-semibold text-foreground">
+                  {user.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{user.name}</TooltipContent>
+            </Tooltip>
             <span className="block max-w-full truncate text-xs text-muted-foreground">
               {user.roleLabel}
             </span>

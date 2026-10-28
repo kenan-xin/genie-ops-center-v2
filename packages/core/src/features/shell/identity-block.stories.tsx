@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { DEFAULT_MARK_URL, IdentityBlock } from "./identity-block.tsx";
 
@@ -201,10 +201,14 @@ export const LongNames: Story = {
     },
   },
   play: async ({ canvas, canvasElement }) => {
-    await expect(canvas.getByText(LONG_COMPANY)).toHaveAttribute(
-      "title",
-      LONG_COMPANY
-    );
+    await userEvent.hover(canvas.getByText(LONG_COMPANY));
+
+    const tip = await screen.findByText(LONG_COMPANY, {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
 
     const block = canvasElement.querySelector<HTMLElement>(
       "[data-shell-identity]"
