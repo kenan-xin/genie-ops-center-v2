@@ -60,6 +60,12 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "That file cannot be used for branding. Use a PNG, SVG, WebP or ICO file up to 1 MB.",
   "branding-invalid":
     "Some branding values are not valid. Fix the marked fields and publish again.",
+  "dataset-query-invalid":
+    "The query does not fit the dataset. Fix the marked parts and run it again.",
+  "dataset-mixed-currency":
+    "That total mixes currencies. Group by the currency, or filter one currency.",
+  "dataset-timeout":
+    "The query took longer than 5 seconds and was stopped. Narrow it and run it again.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

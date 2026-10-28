@@ -23,6 +23,9 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["settings-invalid", 400],
   ["branding-upload-refused", 400],
   ["branding-invalid", 400],
+  ["dataset-query-invalid", 400],
+  ["dataset-mixed-currency", 400],
+  ["dataset-timeout", 503],
 ]);
 
 /**

@@ -32,6 +32,24 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/datasets.integration.test.ts",
+    reason: "Spec 7 AC-2 and AC-3: the dataset seam on the placeholder",
+    cases: [
+      "the placeholder dataset through queryDataset lists the placeholder dataset only to a person who holds placeholder:read",
+      "the placeholder dataset through queryDataset sums amounts per currency",
+      "the placeholder dataset through queryDataset counts quantities in labelled ranges in range order, leaving out nulls and values outside every range",
+      "the placeholder dataset through queryDataset groups a date by week from Monday and answers ISO dates",
+      "the placeholder dataset through queryDataset filters by record id against the uuid column",
+      "the placeholder dataset through queryDataset refuses a person without placeholder:read, and answers a record-scoped reader only that record",
+      "the placeholder dataset through queryDataset refuses an unknown field with dataset-query-invalid naming select.0",
+      "the placeholder dataset through queryDataset returns at most 1,000 rows and says it was truncated",
+      "the placeholder dataset through queryDataset stops a query after 5 seconds",
+      "the placeholder dataset through queryDataset totals money per currency: none, one, two",
+      "the placeholder dataset through queryDataset skips the dataset of a disabled module",
+      "the placeholder dataset through queryDataset the reporting date moves the result",
+    ],
+  },
+  {
     file: "testing/events.integration.test.ts",
     reason:
       "R-53 to R-58 require the placeholder's fast, durable, and serialized subscriptions to run end to end against a real database",

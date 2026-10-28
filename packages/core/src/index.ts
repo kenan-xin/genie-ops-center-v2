@@ -455,6 +455,30 @@ export {
 } from "./services/datasets/registry.ts";
 
 export {
+  DATASET_TIME_LIMIT_MS,
+  type DatasetColumn,
+  type DatasetResult,
+  type DatasetSummary,
+  type DatasetValue,
+  findDataset,
+  listDatasets,
+  queryDataset,
+} from "./services/datasets/index.ts";
+
+export {
+  type DatasetAggregate,
+  type DatasetFilter,
+  type DatasetFilterValue,
+  type DatasetGroup,
+  type DatasetOrder,
+  type DatasetQuery,
+  type DatasetRange,
+  DATASET_ROW_CAP,
+  datasetQuerySchema,
+  validateDatasetQuery,
+} from "./services/datasets/query.ts";
+
+export {
   type FetchedFile,
   FILE_DOWNLOAD_PATH,
   type FetchFileLinkInput,

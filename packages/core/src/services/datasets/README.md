@@ -6,9 +6,11 @@ rules core applies over them (DEC-54).
 ## What belongs here
 
 The registry `registerModuleRuntime` fills from each module's `datasets` declaration, and the
-generic query shape over a declaration's `source(ctx, asOf)`: the permission check, the row cap,
-the time limit, the money rule and the month, week and range buckets. Core reads data only
-through the select a module's `source()` returns.
+generic query over a declaration's `source(ctx, asOf)`: listing and finding the datasets of
+enabled modules, the browser-safe query shape and its check against the declared fields (zod and
+types only), and the runner that composes the SQL with Drizzle's builder, with the permission
+check, the row cap, the time limit, the money rule and the month, week and range buckets. Core
+reads data only through the select a module's `source()` returns.
 
 ## What must not go here
 
