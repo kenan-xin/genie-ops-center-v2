@@ -24,14 +24,8 @@ const KEY_A = "sk-or-v1-s7-05-store-a-0000000000000000";
 
 const KEY_B = "sk-or-v1-s7-05-store-b-0000000000000000";
 
-const LOG_LEVELS = [
-  "fatal",
-  "error",
-  "warn",
-  "info",
-  "debug",
-  "trace",
-] as const;
+// fatal is absent: it drops a logger.error line, so the check would pass on empty output.
+const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 
 let deployment: DisposableDeployment;
 
@@ -194,7 +188,11 @@ describe("the integration key store against a real database", () => {
       // The RPC handler logs the raw error before it maps it.
       logger.error({ err: caught }, "store failed");
 
-      expect(capture.output()).not.toContain(KEY_A);
+      // A level that drops the line proves nothing: assert it was written before reading it.
+      const output = capture.output();
+
+      expect(output).not.toBe("");
+      expect(output).not.toContain(KEY_A);
     }
 
     expect(

@@ -11,6 +11,10 @@ it("refuses a request to a model host before it leaves the process, and lets oth
   ).rejects.toThrow(/live model host openrouter\.ai/);
 
   await expect(
+    fetch("https://openrouter.ai./api/v1/chat/completions", preAborted)
+  ).rejects.toThrow(/live model host openrouter\.ai/);
+
+  await expect(
     fetch("https://ai-gateway.vercel.sh/v4/ai", preAborted)
   ).rejects.toThrow(/live model host ai-gateway\.vercel\.sh/);
 

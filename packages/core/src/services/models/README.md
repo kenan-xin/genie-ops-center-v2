@@ -22,5 +22,5 @@ URL: the allowed origin derives from `MODEL_PROVIDER_BASE_URL`.
 
 ## What it imports
 
-`ai`, `@openrouter/ai-sdk-provider`, zod for the body check, the integrations key reader, the
-tenant-context type, and the error catalogue.
+`ai`, `@openrouter/ai-sdk-provider`, zod for the body check, `MODEL_KEY_PATTERN` from the
+settings schemas, the integrations key reader, the tenant-context type, and the error catalogue.

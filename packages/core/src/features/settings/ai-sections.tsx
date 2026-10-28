@@ -90,7 +90,7 @@ export function AiConnectionSection(props: {
                 <Input
                   id="core-apiKey"
                   type="password"
-                  autoComplete="off"
+                  autoComplete="new-password"
                   value={field.state.value}
                   aria-invalid={message === undefined ? undefined : true}
                   aria-describedby={

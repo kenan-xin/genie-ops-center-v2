@@ -13,7 +13,8 @@ const innerFetch = globalThis.fetch;
 
 globalThis.fetch = (input, init) => {
   const href = input instanceof Request ? input.url : String(input);
-  const hostname = hostnameOf(href);
+  // A trailing dot is the same host, but URL keeps it.
+  const hostname = hostnameOf(href)?.replace(/\.$/, "") ?? null;
 
   if (
     hostname !== null &&
