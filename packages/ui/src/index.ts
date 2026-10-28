@@ -152,6 +152,13 @@ export { Badge } from "./components/badge.tsx";
 export { Spinner } from "./components/spinner.tsx";
 
 export {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./components/tooltip.tsx";
+
+export {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,

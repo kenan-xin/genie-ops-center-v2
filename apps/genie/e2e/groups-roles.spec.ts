@@ -371,6 +371,30 @@ test("Role detail links back to Roles through the page header trail", async ({
   await expect(page).toHaveURL(/\/admin\/roles$/);
 });
 
+// Owner, 2026-10-27: the help beside each search is an icon, named by its topic.
+test("the help buttons on People, Roles and Groups are icons named by their topic", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("groups", testInfo.project.name),
+  });
+
+  /* eslint-disable no-await-in-loop -- one tab visits the three pages in turn. */
+  for (const [path, topic] of [
+    ["/admin/people", "Pending, disabled, removed"],
+    ["/admin/roles", "How roles work"],
+    ["/admin/groups", "Directory and local groups"],
+  ] as const) {
+    await page.goto(path);
+
+    const help = page.getByRole("button", { name: topic, exact: true });
+
+    await expect(help).toBeVisible();
+    await expect(help).toHaveText("");
+  }
+  /* eslint-enable no-await-in-loop */
+});
+
 test("the role editor warns on an unavailable key and offers its removal", async ({
   page,
 }, testInfo) => {

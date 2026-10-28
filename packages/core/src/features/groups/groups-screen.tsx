@@ -650,7 +650,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <HelpDisclosure label="Directory and local groups">
+          <HelpDisclosure label="Directory and local groups" iconOnly>
             A directory group&apos;s value and members come from the identity
             provider; only its label is editable here. A group not seen yet can
             be deleted. Both kinds carry roles.

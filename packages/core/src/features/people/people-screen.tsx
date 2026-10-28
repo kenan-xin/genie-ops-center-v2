@@ -652,7 +652,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <HelpDisclosure label="Pending, disabled, removed">
+          <HelpDisclosure label="Pending, disabled, removed" iconOnly>
             Pending ends at first sign-in. Disable keeps history; Remove ends
             sessions and bans. Replacing a name with an anonymous one is an
             operator command.

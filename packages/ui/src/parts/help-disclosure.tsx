@@ -10,12 +10,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/popover.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../components/tooltip.tsx";
 
 /**
  * Contextual help (tokens.md, "Help disclosure"): a labelled button that opens one 320 px callout
  * on a press. Escape, a click outside and Close shut it, and focus returns to the button. Under
  * 640 px the callout leaves the button and keeps 16 px from each viewport side. `iconOnly` is the
- * toolbar form: the label moves to `aria-label` and `title`.
+ * toolbar form: the label moves to `aria-label` and to a tooltip on hover and keyboard focus.
  */
 export function HelpDisclosure(props: {
   readonly label: string;
@@ -29,25 +34,38 @@ export function HelpDisclosure(props: {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          props.iconOnly ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={props.label}
-              title={props.label}
-              className="justify-self-start"
-            />
-          ) : (
-            // A grid or flex-column parent would stretch the button and center its label.
+      {props.iconOnly ? (
+        // One button triggers both: Base UI merges the two triggers through `render`.
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={props.label}
+                    className="justify-self-start"
+                  />
+                }
+              />
+            }
+          >
+            <CircleHelpIcon aria-hidden="true" />
+          </TooltipTrigger>
+          <TooltipContent>{props.label}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger
+          // A grid or flex-column parent would stretch the button and center its label.
+          render={
             <Button variant="ghost" className="w-fit justify-self-start" />
-          )
-        }
-      >
-        <CircleHelpIcon aria-hidden="true" />
-        {props.iconOnly ? null : props.label}
-      </PopoverTrigger>
+          }
+        >
+          <CircleHelpIcon aria-hidden="true" />
+          {props.label}
+        </PopoverTrigger>
+      )}
       <PopoverContent
         role="group"
         aria-label={props.label}

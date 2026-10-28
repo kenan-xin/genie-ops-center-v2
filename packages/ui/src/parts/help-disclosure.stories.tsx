@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Contextual help (tokens.md, "Help disclosure"). A labelled button opens one 320 px callout beside it, only on a press. Escape, a click outside and the Close link close it, and focus returns to the button. Under 640 px the callout pins to the viewport, 16 px from each side. In a toolbar, `iconOnly` drops the button to its icon, 44 px square under `sm` and 40 px from `sm`, with the label in `aria-label` and `title`.',
+          'Contextual help (tokens.md, "Help disclosure"). A labelled button opens one 320 px callout beside it, only on a press. Escape, a click outside and the Close link close it, and focus returns to the button. Under 640 px the callout pins to the viewport, 16 px from each side. In a toolbar, `iconOnly` drops the button to its icon, 44 px square under `sm` and 40 px from `sm`, with the label in `aria-label` and in a tooltip on hover and keyboard focus.',
       },
     },
   },
@@ -149,8 +149,14 @@ export const IconOnly: Story = {
   play: async ({ canvas }) => {
     const trigger = canvas.getByRole("button", { name: "How access works" });
 
-    await expect(trigger).toHaveAttribute("title", "How access works");
-    await expect(trigger).toHaveTextContent("");
+    await expect(trigger.textContent).toBe("");
+    // A hover or a keyboard focus shows the topic; `title` alone never shows on focus.
+    await userEvent.tab();
+    await expect(trigger).toHaveFocus();
+
+    const tip = await screen.findByText("How access works");
+
+    await waitFor(() => expect(tip).toBeVisible());
     await expect(trigger.getBoundingClientRect().height).toBe(40);
     await expect(trigger.getBoundingClientRect().width).toBe(40);
   },

@@ -70,6 +70,17 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/** The help sits beside the search as an icon, named by its topic (people-groups-and-roles spec). */
+export const HelpIsIconOnly: Story = {
+  play: async ({ canvas }) => {
+    const help = canvas.getByRole("button", {
+      name: "Pending, disabled, removed",
+    });
+
+    await expect(help.textContent).toBe("");
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "People" }));

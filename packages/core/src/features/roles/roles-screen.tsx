@@ -532,7 +532,7 @@ export function RolesScreen(props: RolesScreenProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <HelpDisclosure label="How roles work">
+          <HelpDisclosure label="How roles work" iconOnly>
             A system role is read-only and copyable. A custom role is editable.
             Access gives a role to a person or a group.
           </HelpDisclosure>
