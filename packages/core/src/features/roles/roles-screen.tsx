@@ -17,6 +17,7 @@ import {
   Input,
   LabelPill,
   StatusPill,
+  StickyActionBar,
 } from "@genie/ui";
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -539,6 +540,7 @@ export function RolesScreen(props: RolesScreenProps) {
           </HelpDisclosure>
         </div>
         <Button
+          className="max-md:hidden"
           loading={props.pending}
           onClick={() =>
             openForm({
@@ -619,6 +621,22 @@ export function RolesScreen(props: RolesScreenProps) {
           />
         </div>
       )}
+
+      <StickyActionBar>
+        <Button
+          loading={props.pending}
+          onClick={() =>
+            openForm({
+              mode: "create",
+              name: "",
+              description: "",
+              permissions: [],
+            })
+          }
+        >
+          <PlusIcon /> New role
+        </Button>
+      </StickyActionBar>
 
       {formDialog}
     </div>

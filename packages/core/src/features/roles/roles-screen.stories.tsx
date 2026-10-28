@@ -119,15 +119,48 @@ export const PhoneSearchTakesTheRow: Story = {
 };
 
 export const Phone: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  play: async ({ args, canvas }) => {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ args, canvas, canvasElement }) => {
     const list = within(canvas.getByRole("list", { name: "Roles" }));
 
+    await expect(window.innerWidth).toBe(390);
     await expect(canvas.queryByRole("table")).toBeNull();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
+
     // One assignment reads in the singular.
     await expect(
       list.getByText("2 permissions · 1 assignment")
     ).toBeInTheDocument();
+
+    // The card leads with a tile, and the kind pill shares the name's line.
+    const cards = list.getAllByRole("listitem");
+    const first = within(cards[0]!);
+    const name = first.getByRole("button", { name: /Tenant administrator/ });
+    const kind = first.getByText(/^System/);
+
+    await expect(
+      new Set(cards.map((card) => card.getBoundingClientRect().height)).size
+    ).toBeLessThanOrEqual(2);
+    await expect(
+      cards[0]!.querySelector("[data-slot=icon-tile]")
+    ).not.toBeNull();
+    await expect(
+      Math.abs(
+        name.getBoundingClientRect().top - kind.getBoundingClientRect().top
+      )
+    ).toBeLessThan(6);
+
+    // The primary action sits in the phone's bottom bar.
+    const bar = canvasElement.querySelector<HTMLElement>(
+      "[data-shell-bottom-bar]"
+    );
+
+    await expect(bar).not.toBeNull();
+    await expect(
+      within(bar!).getByRole("button", { name: "New role" })
+    ).toBeVisible();
 
     await userEvent.click(
       list.getByRole("button", { name: /Tenant administrator/ })
@@ -135,6 +168,11 @@ export const Phone: Story = {
 
     expect(args.onSelectRole).toHaveBeenCalledWith("r-tenant-admin");
   },
+};
+
+/** The card list in the dark theme, so axe reads the dark pairs at the phone width too. */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },
 };
 
 export const Dark: Story = {
