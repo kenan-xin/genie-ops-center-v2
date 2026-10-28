@@ -93,7 +93,7 @@ test("a brokered realm shows the company-account action and no reset link", asyn
     await page.goto("/sign-in");
 
     await expect(
-      page.getByRole("link", { name: "Sign in with your company account" })
+      page.getByRole("link", { name: "Sign in with SSO" })
     ).toBeVisible();
     await expect(page.getByRole("link", FORGOT)).toHaveCount(0);
   });

@@ -44,6 +44,8 @@ function useBrandingImage(url: string | null) {
 export function TenantMark(props: {
   readonly identity: ShellIdentity;
   readonly size: keyof typeof TILE;
+  /** Set where no name stands beside the mark, such as the sign-in stack; else it is decorative. */
+  readonly alt?: string;
 }) {
   const mark = useBrandingImage(props.identity.markUrl);
 
@@ -53,7 +55,7 @@ export function TenantMark(props: {
     >
       <img
         src={mark.src ?? DEFAULT_MARK_URL}
-        alt=""
+        alt={props.alt ?? ""}
         className={`${TILE[props.size].mark} object-contain`}
         onError={mark.onError}
         ref={mark.ref}

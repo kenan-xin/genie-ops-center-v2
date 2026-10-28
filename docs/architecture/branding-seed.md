@@ -22,7 +22,7 @@ Previously approved seed corrections remain applicable: exclude bookkeeping and 
 
 ## Text and formatting defaults — approved 2026-09-21
 
-- Omitted `login_welcome_text`: “Welcome to {product name}”, using the tenant's `product_name`.
+- Omitted `login_welcome_text`: no welcome line on the sign-in page (amended 2026-10-28, batch 5 sign-in redesign). The heading “Sign in to {product name}” names the product.
 - Omitted `email_sender_name`: use `company_name`.
 - Omitted `email_footer_text`: no footer text.
 - Omitted `date_format` and `number_format`: follow the required tenant locale; explicit customer overrides remain supported.

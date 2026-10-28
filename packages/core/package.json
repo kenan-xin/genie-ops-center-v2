@@ -17,6 +17,7 @@
     "./features/roles": "./src/features/roles/index.ts",
     "./features/settings": "./src/features/settings/index.ts",
     "./features/shell": "./src/features/shell/index.ts",
+    "./features/sign-in": "./src/features/sign-in/index.ts",
     "./logging": "./src/services/logging/index.ts",
     "./rpc": "./src/lib/rpc/index.ts",
     "./security": "./src/lib/content-security-policy/index.ts",

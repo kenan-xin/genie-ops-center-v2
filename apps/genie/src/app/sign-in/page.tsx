@@ -3,13 +3,11 @@ import {
   localAccountsBesideSso,
   realmResetCredentialsUrl,
 } from "@genie/core";
-import { InfoNote, WarningNote } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
 import { SSO_ENTRY, signInCause } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
-import { SignInAction } from "./sign-in-action.tsx";
-import { SignInFooter } from "./sign-in-footer.tsx";
+import { SignInView } from "./sign-in-view.tsx";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +23,11 @@ export const dynamic = "force-dynamic";
  * to the state a person can act on. The session-expired banner names the tenant's idle minutes,
  * read through the settings reader (R-14).
  *
- * Section 3 brands it as text and color only (R-54): company and product names, welcome text,
- * the system-use notice, the support contact and the terms and privacy links come from branding.
- * The primary pair comes from the root layout's token layer, the background from
- * `--sign-in-background`. No logo and no background image (F-1).
+ * Section 3 brands it (R-54): the product name in the heading, the company name as the mark's text,
+ * a welcome text the tenant set, the system-use notice, the support contact and the terms and
+ * privacy links come from branding. The primary pair comes from the root layout's token layer, the
+ * background from `--sign-in-background`. The mark is the Ops Center default until an anonymous
+ * branding image link exists (F-1); only `markUrl` changes then. No background image.
  */
 const DEFAULT_STATE = "default";
 
@@ -123,56 +122,46 @@ export default async function SignInPage(props: {
                     : t("errors.signedOutClientOnly", { productName });
 
   return (
-    <main
-      // AC-26: the anonymous page bundle stamps the context id it read (the home page redirects here).
-      data-context-id={contextId}
-      data-sign-in-state={cause ?? DEFAULT_STATE}
-      className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-sign-in-background px-4 py-12 dark:bg-background"
-    >
-      <div className="text-center">
-        <h1 className="text-lg font-semibold text-foreground">
-          {branding.companyName}
-        </h1>
-        <p className="text-xs text-muted-foreground">{branding.productName}</p>
-      </div>
-      <section className="flex w-full max-w-md flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm sm:p-8">
-        {banner === undefined ? null : (
-          // A refusal is an amber alert; an expired or signed-out session is a blue status.
-          <div data-testid="sign-in-banner">
-            {cause !== undefined && WARNING_CAUSES.has(cause) ? (
-              <WarningNote size="md" role="alert">
-                {banner}
-              </WarningNote>
-            ) : (
-              <InfoNote size="md" role="status">
-                {banner}
-              </InfoNote>
-            )}
-          </div>
-        )}
-        <h2 className="text-2xl font-semibold text-foreground">{t("title")}</h2>
-        <p data-testid="sign-in-welcome" className="text-muted-foreground">
-          {present(branding.loginWelcomeText) ??
-            t("welcomeFallback", { productName: branding.productName })}
-        </p>
-        <SignInAction
-          notice={branding.loginNoticeText}
-          requiresAcknowledgement={branding.loginNoticeRequiresAcknowledgement}
-          {...entries}
-          acknowledgeLabel={t("acknowledge")}
-          forgotPasswordUrl={forgotPasswordUrl}
-          forgotPasswordLabel={t("forgotPassword")}
-        />
-      </section>
-      <SignInFooter
-        productName={branding.productName}
-        supportEmail={branding.supportEmail}
-        supportUrl={branding.supportUrl}
-        termsUrl={branding.termsUrl}
-        privacyUrl={branding.privacyUrl}
-        termsLabel={t("terms")}
-        privacyLabel={t("privacy")}
-      />
-    </main>
+    <SignInView
+      contextId={contextId}
+      state={cause ?? DEFAULT_STATE}
+      identity={{
+        companyName: branding.companyName,
+        productName: branding.productName,
+        logoLightUrl: null,
+        logoDarkUrl: null,
+        markUrl: null,
+      }}
+      heading={t("heading", { productName: branding.productName })}
+      // The owner removed the default welcome line; only a text the tenant set shows.
+      welcome={present(branding.loginWelcomeText)}
+      notice={
+        banner === undefined
+          ? null
+          : {
+              tone:
+                cause !== undefined && WARNING_CAUSES.has(cause)
+                  ? "warning"
+                  : "info",
+              text: banner,
+            }
+      }
+      action={{
+        notice: branding.loginNoticeText,
+        requiresAcknowledgement: branding.loginNoticeRequiresAcknowledgement,
+        ...entries,
+        acknowledgeLabel: t("acknowledge"),
+        forgotPasswordUrl,
+        forgotPasswordLabel: t("forgotPassword"),
+      }}
+      footer={{
+        supportEmail: branding.supportEmail,
+        supportUrl: branding.supportUrl,
+        termsUrl: branding.termsUrl,
+        privacyUrl: branding.privacyUrl,
+        termsLabel: t("terms"),
+        privacyLabel: t("privacy"),
+      }}
+    />
   );
 }

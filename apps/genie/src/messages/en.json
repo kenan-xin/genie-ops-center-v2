@@ -168,8 +168,8 @@
     "wholeTenant": "Whole tenant"
   },
   "signIn": {
-    "title": "Sign in",
-    "action": "Sign in with your company account",
+    "heading": "Sign in to {productName}",
+    "action": "Sign in with SSO",
     "actionLocal": "Continue to sign in",
     "actionSso": "Sign in with SSO",
     "actionPassword": "Sign in with email and password",

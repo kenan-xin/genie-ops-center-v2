@@ -2,7 +2,6 @@ import { httpUrl, supportContact } from "@genie/core/features/branding";
 import { focusRing } from "@genie/ui";
 
 export type SignInFooterProps = {
-  readonly productName: string;
   readonly supportEmail: string | null;
   readonly supportUrl: string | null;
   readonly termsUrl: string | null;
@@ -14,11 +13,11 @@ export type SignInFooterProps = {
 const LINK_CLASS = `rounded-sm hover:text-foreground hover:underline ${focusRing}`;
 
 /**
- * The sign-in footer: the support contact, the terms and privacy links, and the product name.
- * Core's two rules decide what becomes a link, so a stored `javascript:` value never does.
+ * The sign-in footer: one muted line with the support contact and the terms and privacy links, or
+ * nothing when none is set. Core's two rules decide what becomes a link, so a stored `javascript:`
+ * value never does.
  */
 export function SignInFooter({
-  productName,
   supportEmail,
   supportUrl,
   termsUrl,
@@ -32,30 +31,25 @@ export function SignInFooter({
 
   const privacy = httpUrl(privacyUrl);
 
-  const hasLinks = support !== null || terms !== null || privacy !== null;
+  if (support === null && terms === null && privacy === null) return null;
 
   return (
-    <footer className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
-      {hasLinks ? (
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
-          {support === null ? null : (
-            <a href={support.href} className={LINK_CLASS}>
-              {support.label}
-            </a>
-          )}
-          {terms === null ? null : (
-            <a href={terms} className={LINK_CLASS}>
-              {termsLabel}
-            </a>
-          )}
-          {privacy === null ? null : (
-            <a href={privacy} className={LINK_CLASS}>
-              {privacyLabel}
-            </a>
-          )}
-        </div>
-      ) : null}
-      <p>{productName}</p>
+    <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      {support === null ? null : (
+        <a href={support.href} className={LINK_CLASS}>
+          {support.label}
+        </a>
+      )}
+      {terms === null ? null : (
+        <a href={terms} className={LINK_CLASS}>
+          {termsLabel}
+        </a>
+      )}
+      {privacy === null ? null : (
+        <a href={privacy} className={LINK_CLASS}>
+          {privacyLabel}
+        </a>
+      )}
     </footer>
   );
 }

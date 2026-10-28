@@ -31,7 +31,10 @@ const SEED_RESET = `update tenant_branding set company_name = 'E2E Group', produ
   login_welcome_text = null, login_background_color = null, email_sender_name = null, email_reply_to = null,
   email_footer_text = null, support_email = null, terms_url = null, privacy_url = null`;
 
-/** Polls the signed-out sign-in page until the reader cache serves the written company name. */
+/**
+ * Polls the signed-out sign-in page until the reader cache serves the written company name, which
+ * the page shows as the text of its mark.
+ */
 async function openBrandedSignIn(
   page: Page,
   companyName: string
@@ -41,14 +44,14 @@ async function openBrandedSignIn(
       async () => {
         await page.goto("/sign-in");
 
-        return page.getByRole("heading", { level: 1 }).textContent();
+        return page.locator("main img").getAttribute("alt");
       },
       { timeout: 30_000, intervals: [1000] }
     )
     .toBe(companyName);
 }
 
-test("an empty welcome text shows one default on the sign-in page and in its preview (DR-04)", async ({
+test("an empty welcome text shows no welcome line on the sign-in page (DR-04)", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -63,9 +66,13 @@ test("an empty welcome text shows one default on the sign-in page and in its pre
            login_welcome_text = null`
         );
         await openBrandedSignIn(page, companyName);
-        await expect(page.getByTestId("sign-in-welcome")).toHaveText(
-          "Welcome to Default Ops"
-        );
+        await expect(
+          page.getByRole("heading", {
+            level: 1,
+            name: "Sign in to Default Ops",
+          })
+        ).toBeVisible();
+        await expect(page.getByTestId("sign-in-welcome")).toHaveCount(0);
 
         await signInThroughKeycloak(page, {
           email: e2eBrandingAdminEmail(project),
@@ -163,15 +170,17 @@ test("a branding change reaches the sign-in page and the email, light and dark",
             `Welcome ${theme}`
           );
           await expect(
-            page.getByRole("link", {
-              name: "Sign in with your company account",
-            })
+            page.getByRole("link", { name: "Sign in with SSO" })
           ).toHaveCSS("background-color", "rgb(15, 118, 110)");
           await expect(
             page.getByRole("link", { name: "help@example.invalid" })
           ).toHaveAttribute("href", "mailto:help@example.invalid");
           await expect(page.getByText("Branded Ops").last()).toBeVisible();
-          await expect(page.locator("main img")).toHaveCount(0);
+          // F-1: no tenant logo yet, so the one image is the Ops Center mark.
+          await expect(page.locator("main img")).toHaveAttribute(
+            "src",
+            "/brand/icon-blue.svg"
+          );
           await expectNoAxeViolations(page, `the ${theme} sign-in page`);
 
           // AC-14: one template, rendered with the same branding, reaches Mailpit.

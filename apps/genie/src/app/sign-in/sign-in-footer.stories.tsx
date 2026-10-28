@@ -11,12 +11,11 @@ const meta = {
     docs: {
       description: {
         component:
-          "The sign-in page footer: the support contact and the terms and privacy links from branding, then the product name. Only a valid support email or an http(s) URL becomes a link, so a stored javascript: value never renders as one.",
+          "The sign-in page footer: one muted line with the support contact and the terms and privacy links from branding, or nothing when none is set. Only a valid support email or an http(s) URL becomes a link, so a stored javascript: value never renders as one.",
       },
     },
   },
   args: {
-    productName: "Genie Ops Center",
     supportEmail: "help@example.invalid",
     supportUrl: null,
     termsUrl: "https://example.invalid/terms",
@@ -53,10 +52,8 @@ export const NoLinks: Story = {
     termsUrl: null,
     privacyUrl: null,
   },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(canvas.queryByRole("navigation")).toBeNull();
-    await expect(canvasElement.querySelector("footer > div")).toBeNull();
-    await expect(canvas.getByText("Genie Ops Center")).toBeVisible();
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector("footer")).toBeNull();
   },
 };
 

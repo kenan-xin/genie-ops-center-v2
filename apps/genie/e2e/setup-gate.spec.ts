@@ -233,7 +233,7 @@ test("AC-2: three routes switch from not-set-up to normal at phone and desktop s
       const expectedContent = new Map([
         ["/", "Genie Ops Center"],
         // ARCH-1: the page's session check sends an anonymous request to sign-in before `can()`.
-        ["/placeholder", "Sign in with your company account"],
+        ["/placeholder", "Sign in with SSO"],
         ["/viewer/placeholder", "Placeholder viewer"],
       ]).get(path);
 
