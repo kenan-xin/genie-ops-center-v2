@@ -4,6 +4,11 @@ One entry per design change in this repository, newest first. Each entry names w
 
 ## 2026-10-28
 
+### Changed, the dark People table capture
+
+- The dark People table capture now comes from the build, which follows the `tokens.md` dark table rule: the body rows sit on the page color and the header row on the lighter `--muted` band (owner, 2026-10-27, L273).
+- File: `product/sections/people-groups-and-roles/people-directory-dark.png`. Record: `imports/2026-10-28-people-dark-capture.md`.
+
 ### Changed, the sign-in and break-glass captures
 
 - The 29 sign-in and break-glass captures now come from the build, which follows direction D2: one centered 320px stack with the tenant mark, the heading, the notice and full-width buttons, and no card (owner, 2026-10-27). The sign-in buttons are 40px on desktop and 44px under 1024px.
