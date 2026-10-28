@@ -176,7 +176,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await expect(self.getByRole("button", { name: "Disable" })).toBeDisabled();
   await expect(
-    self.getByText("You cannot disable or remove yourself")
+    self.getByText(
+      "You cannot change your own access. Ask another administrator."
+    )
   ).toBeVisible();
 
   await self.getByRole("button", { name: "Close" }).click();

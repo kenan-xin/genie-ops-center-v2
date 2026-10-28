@@ -635,8 +635,29 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
       inspector.getByRole("button", { name: "Remove" })
     ).toBeDisabled();
     await expect(
-      inspector.getByText("You cannot disable or remove yourself")
+      inspector.getByText(
+        "You cannot change your own access. Ask another administrator."
+      )
     ).toBeInTheDocument();
+  },
+};
+
+/** The captures pin Disable and Remove under every tab, not only under Profile. */
+export const ActionsStayUnderEveryTab: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Bea Brokered/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Bea Brokered" })
+    );
+
+    await userEvent.click(inspector.getByRole("tab", { name: /Groups/ }));
+    await expect(
+      inspector.getByRole("button", { name: "Disable" })
+    ).toBeVisible();
+    await expect(
+      inspector.getByRole("button", { name: "Remove" })
+    ).toBeVisible();
   },
 };
 

@@ -19,6 +19,10 @@ import {
   FormActionBar,
   HelpDisclosure,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
   LabelPill,
   RadioGroup,
   RadioGroupItem,
@@ -42,7 +46,13 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
-import { PlusIcon, ShieldIcon, TrashIcon } from "../admin/icons.tsx";
+import {
+  DirectoryIcon,
+  LocalIcon,
+  PlusIcon,
+  SearchIcon,
+  ShieldIcon,
+} from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import { initials } from "../audit/helpers.ts";
 import { GroupName } from "../groups/group-name.tsx";
@@ -61,7 +71,8 @@ import type {
 export const LAST_ADMIN_REASON =
   "This would leave no active tenant administrator";
 
-export const SELF_REASON = "You cannot disable or remove yourself";
+export const SELF_REASON =
+  "You cannot change your own access. Ask another administrator.";
 
 function fmtDateTime(
   iso: string | null,
@@ -224,15 +235,22 @@ export function PersonInspector(props: {
       <SheetContent>
         {/* The status pill sits beside the name and the email under it, as the capture draws it. */}
         <SheetHeader>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <SheetTitle className="min-w-0 wrap-anywhere">
-              {person.name}
-            </SheetTitle>
-            {statusPill(person.status)}
+          <div className="flex items-center gap-3">
+            <Avatar size="lg" aria-hidden="true">
+              <AvatarFallback>{initials(person.name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <SheetTitle className="min-w-0 wrap-anywhere">
+                  {person.name}
+                </SheetTitle>
+                {statusPill(person.status)}
+              </div>
+              <span className="text-sm text-muted-foreground wrap-anywhere">
+                {person.email}
+              </span>
+            </div>
           </div>
-          <span className="text-sm text-muted-foreground wrap-anywhere">
-            {person.email}
-          </span>
         </SheetHeader>
         <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
           <Tabs
@@ -243,19 +261,20 @@ export function PersonInspector(props: {
           >
             <TabsList aria-label="Person detail">
               <TabsTrigger value="profile">Profile</TabsTrigger>
+              {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="groups">
-                Groups ({person.groups.length})
+                Groups <LabelPill>{person.groups.length}</LabelPill>
               </TabsTrigger>
               <TabsTrigger value="roles">
-                Roles ({person.assignments.length})
+                Roles <LabelPill>{person.assignments.length}</LabelPill>
               </TabsTrigger>
               <TabsTrigger value="sessions">
-                Sessions ({person.sessions.length})
+                Sessions <LabelPill>{person.sessions.length}</LabelPill>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile">
-              <dl className="divide-y divide-input text-sm">
+              <dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
                 <ProfileRow label="Name" value={person.name} />
                 <ProfileRow label="Email" value={person.email} />
                 <ProfileRow
@@ -334,64 +353,10 @@ export function PersonInspector(props: {
                   </div>
                 </div>
               ) : null}
-
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-input pt-3">
-                {person.status === "disabled" ? (
-                  <Button
-                    variant="secondary"
-                    loading={props.pending}
-                    onClick={props.onEnable}
-                  >
-                    Re-enable
-                  </Button>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    disabled={blocked}
-                    title={blocked ? blockedReason : undefined}
-                    loading={props.pending}
-                    onClick={() => setConfirm("disable")}
-                  >
-                    Disable
-                  </Button>
-                )}
-                <Button
-                  variant="danger-outline"
-                  disabled={blocked}
-                  title={blocked ? blockedReason : undefined}
-                  loading={props.pending}
-                  onClick={() => setConfirm("remove")}
-                >
-                  <TrashIcon /> Remove
-                </Button>
-              </div>
-
-              {blocked ? (
-                <p className="mt-2 text-sm text-foreground">{blockedReason}</p>
-              ) : null}
             </TabsContent>
 
             <TabsContent value="groups">
-              <ul className="divide-y divide-input">
-                {person.groups.map((group) => (
-                  <li key={group.id} className="py-2 text-sm text-foreground">
-                    <span className="font-medium">
-                      <GroupName value={group.label} />
-                    </span>{" "}
-                    <span className="text-xs text-muted-foreground">
-                      {group.source === "idp" ? "Directory" : "Local"}
-                      {group.syncedAt === null
-                        ? ""
-                        : ` · synced ${fmtDateTime(group.syncedAt, viewer.timeZone, "")}`}
-                    </span>
-                  </li>
-                ))}
-                {person.groups.length === 0 ? (
-                  <li className="py-2 text-sm text-muted-foreground">
-                    This person is in no group.
-                  </li>
-                ) : null}
-              </ul>
+              <PersonGroups groups={person.groups} viewer={viewer} />
             </TabsContent>
 
             <TabsContent value="roles">
@@ -399,12 +364,17 @@ export function PersonInspector(props: {
                 {person.assignments.map((assignment) => (
                   <li
                     key={assignment.id}
-                    className="py-2 text-sm text-foreground"
+                    className="flex flex-col gap-0.5 py-2 text-sm text-foreground"
                   >
-                    <span className="font-medium">{assignment.roleName}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ·{" "}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{assignment.roleName}</span>
+                      <LabelPill>
+                        {assignment.scopeType === null
+                          ? "Whole tenant"
+                          : `${assignment.scopeType} ${assignment.scopeId}`}
+                      </LabelPill>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
                       {assignment.source === "direct" ? (
                         "Direct"
                       ) : (
@@ -415,9 +385,6 @@ export function PersonInspector(props: {
                           />
                         </>
                       )}
-                      {assignment.scopeType === null
-                        ? ""
-                        : ` · ${assignment.scopeType} ${assignment.scopeId}`}
                     </span>
                   </li>
                 ))}
@@ -441,48 +408,52 @@ export function PersonInspector(props: {
             </TabsContent>
 
             <TabsContent value="sessions">
-              <ul className="divide-y divide-input">
-                {person.sessions.map((session) => (
-                  <li
-                    key={session.id}
-                    className="flex items-center justify-between gap-2 py-2 text-sm text-foreground"
-                  >
-                    <span className="min-w-0 wrap-anywhere">
-                      {session.device} · {session.browser}
-                      <span className="block text-xs text-muted-foreground">
-                        {session.ipAddress} · last active{" "}
-                        {fmtDateTime(session.lastActiveAt, viewer.timeZone, "")}
-                      </span>
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      loading={props.pending}
-                      onClick={() => props.onRevokeSession(session.id)}
-                    >
-                      Sign out
-                    </Button>
-                  </li>
-                ))}
-                {person.sessions.length === 0 ? (
-                  <li className="py-2 text-sm text-muted-foreground">
-                    This person has no open session.
-                  </li>
-                ) : null}
-              </ul>
-              {person.sessions.length === 0 ? null : (
-                <div className="mt-3">
-                  <Button
-                    variant="ghost"
-                    loading={props.pending}
-                    onClick={props.onRevokeAllSessions}
-                  >
-                    Sign out all
-                  </Button>
-                </div>
-              )}
+              <PersonSessions
+                sessions={person.sessions}
+                viewer={viewer}
+                pending={props.pending}
+                onRevokeSession={props.onRevokeSession}
+                onRevokeAllSessions={props.onRevokeAllSessions}
+              />
             </TabsContent>
           </Tabs>
+        </div>
+
+        {/* The captures pin Disable and Remove under every tab, with the refusal above them. */}
+        <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
+          {blocked ? (
+            <p className="text-sm text-foreground">{blockedReason}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {person.status === "disabled" ? (
+              <Button
+                variant="secondary"
+                loading={props.pending}
+                onClick={props.onEnable}
+              >
+                Re-enable
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={blocked}
+                title={blocked ? blockedReason : undefined}
+                loading={props.pending}
+                onClick={() => setConfirm("disable")}
+              >
+                Disable
+              </Button>
+            )}
+            <Button
+              variant="danger-outline"
+              disabled={blocked}
+              title={blocked ? blockedReason : undefined}
+              loading={props.pending}
+              onClick={() => setConfirm("remove")}
+            >
+              Remove
+            </Button>
+          </div>
         </div>
 
         {/* Inside the sheet's content, so that one Escape closes only the confirm (PD-8). */}
@@ -502,14 +473,125 @@ export function PersonInspector(props: {
   );
 }
 
+/** The Sessions tab: each open session with its own sign-out, then Sign out all. */
+function PersonSessions(props: {
+  readonly sessions: PersonDetail["sessions"];
+  readonly viewer: PeopleViewer;
+  readonly pending?: boolean | undefined;
+  readonly onRevokeSession: (sessionId: string) => void;
+  readonly onRevokeAllSessions: () => void;
+}) {
+  return (
+    <>
+      <ul className="divide-y divide-input">
+        {props.sessions.map((session) => (
+          <li
+            key={session.id}
+            className="flex items-center justify-between gap-2 py-2 text-sm text-foreground"
+          >
+            <span className="min-w-0 wrap-anywhere">
+              {session.device} · {session.browser}
+              <span className="block text-xs text-muted-foreground">
+                {session.ipAddress} · last active{" "}
+                {fmtDateTime(session.lastActiveAt, props.viewer.timeZone, "")}
+              </span>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={props.pending}
+              onClick={() => props.onRevokeSession(session.id)}
+            >
+              Sign out
+            </Button>
+          </li>
+        ))}
+        {props.sessions.length === 0 ? (
+          <li className="py-2 text-sm text-muted-foreground">
+            This person has no open session.
+          </li>
+        ) : null}
+      </ul>
+      {props.sessions.length === 0 ? null : (
+        <div className="mt-3">
+          <Button
+            variant="ghost"
+            loading={props.pending}
+            onClick={props.onRevokeAllSessions}
+          >
+            Sign out all
+          </Button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The Groups tab: directory groups, then local groups, each under its own heading. */
+function PersonGroups(props: {
+  readonly groups: PersonDetail["groups"];
+  readonly viewer: PeopleViewer;
+}) {
+  if (props.groups.length === 0)
+    return (
+      <p className="py-2 text-sm text-muted-foreground">
+        This person is in no group.
+      </p>
+    );
+
+  const sections = [
+    { source: "idp", title: "Directory groups", Icon: DirectoryIcon },
+    { source: "local", title: "Local groups", Icon: LocalIcon },
+  ] as const;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {sections.map(({ source, title, Icon }) => {
+        const groups = props.groups.filter((group) => group.source === source);
+
+        if (groups.length === 0) return null;
+
+        return (
+          <section key={source} aria-label={title}>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <ul className="mt-1">
+              {groups.map((group) => (
+                <li
+                  key={group.id}
+                  className="flex items-center gap-2 py-1.5 text-sm text-foreground"
+                >
+                  <Icon
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <GroupName value={group.label} />
+                  </span>
+                  {group.syncedAt === null ? null : (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      synced{" "}
+                      {fmtDateTime(group.syncedAt, props.viewer.timeZone, "")}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One label and value; the label column is fixed, the value starts at its right (capture). */
 function ProfileRow(props: { readonly label: string; readonly value: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-2">
+    <>
       <dt className="text-muted-foreground">{props.label}</dt>
-      <dd className="min-w-0 text-right text-foreground wrap-anywhere">
+      <dd className="col-span-2 min-w-0 text-foreground wrap-anywhere">
         {props.value}
       </dd>
-    </div>
+    </>
   );
 }
 
@@ -649,13 +731,20 @@ export function PeopleScreen(props: PeopleScreenProps) {
           <label htmlFor={searchId} className="sr-only">
             {props.searchLabel}
           </label>
-          <Input
-            id={searchId}
-            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
-            placeholder={props.searchLabel}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {/* The captures draw a magnifier inside every list search. */}
+          <InputGroup className="min-w-0 flex-1 sm:w-72 sm:flex-none">
+            <InputGroupInput
+              id={searchId}
+              placeholder={props.searchLabel}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <InputGroupAddon>
+              <InputGroupText>
+                <SearchIcon aria-hidden="true" />
+              </InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
           <HelpDisclosure label="Pending, disabled, removed" iconOnly>
             Pending ends at first sign-in. Disable keeps history; Remove ends
             sessions and bans. Replacing a name with an anonymous one is an
@@ -819,6 +908,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
                   </span>
                 ),
               },
+              // The capture puts Status right after Person.
+              {
+                id: "status",
+                header: "Status",
+                cell: (person) => statusPill(person.status),
+              },
               { id: "groups", header: "Groups", cell: groupPills },
               {
                 id: "roles",
@@ -828,7 +923,6 @@ export function PeopleScreen(props: PeopleScreenProps) {
               },
               { id: "lastSignIn", header: "Last sign-in", cell: lastSignIn },
             ]}
-            status={(person) => statusPill(person.status)}
             card={{
               media: (person) => (
                 <Avatar size="lg" aria-hidden="true">
@@ -1026,6 +1120,7 @@ export function AddPersonDialog(props: {
             <Input
               ref={emailInput}
               id={emailId}
+              placeholder="name@company.example"
               value={email}
               aria-invalid={emailError !== undefined}
               aria-describedby={emailErrorId}
@@ -1039,6 +1134,7 @@ export function AddPersonDialog(props: {
             <FieldLabel htmlFor={nameId}>Display name</FieldLabel>
             <Input
               id={nameId}
+              placeholder="Filled from the directory at first sign-in"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
