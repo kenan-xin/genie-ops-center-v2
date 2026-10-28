@@ -20,9 +20,12 @@ export type SignInActionProps = {
 const SIGN_IN_ROUTE = "/api/auth/sign-in/keycloak";
 
 // The shadcn default size (40 px) at the full width of the stack, with no icon (direction D2).
-const ACTION_CLASS = `${buttonVariants({ size: "md" })} w-full ${focusRing}`;
+// Under 1024 px the entry keeps the 44 px touch target of DESIGN.md.
+const ENTRY_CLASS = `w-full min-h-11 lg:min-h-0 ${focusRing}`;
 
-const PASSWORD_CLASS = `${buttonVariants({ variant: "secondary", size: "md" })} w-full ${focusRing}`;
+const ACTION_CLASS = `${buttonVariants({ size: "md" })} ${ENTRY_CLASS}`;
+
+const PASSWORD_CLASS = `${buttonVariants({ variant: "secondary", size: "md" })} ${ENTRY_CLASS}`;
 
 /**
  * The system-use notice and the sign-in entries (R-54): one action, or SSO beside email and password

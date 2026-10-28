@@ -176,6 +176,18 @@ export const SsoOnlyPhone: Story = {
   },
 };
 
+// DESIGN.md: 44 px touch targets under 1024 px; the 40 px default returns on desktop.
+export const SsoAndLocalAccountsPhone: Story = {
+  args: BESIDE_SSO_ARGS,
+  globals: phone,
+  play: async ({ canvas }) => {
+    for (const link of canvas.getAllByRole("link")) {
+      // oxlint-disable-next-line no-await-in-loop -- two links, each read once.
+      await expect(link.offsetHeight).toBe(44);
+    }
+  },
+};
+
 export const LongProductNamePhone: Story = {
   globals: phone,
   args: {
