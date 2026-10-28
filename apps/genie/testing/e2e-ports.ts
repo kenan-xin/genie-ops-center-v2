@@ -25,6 +25,8 @@ export const BASE_PORTS = {
   invite: 3900,
   /** The S3-04a landing deployment. */
   landing: 4000,
+  /** The S2-17 broker with local accounts beside SSO. */
+  localSso: 4100,
   devApp: 5400,
   fixture: 7400,
   setupGate: 9400,

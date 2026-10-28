@@ -77,6 +77,19 @@ export function landingBaseUrl(): string {
   return `http://127.0.0.1:${landingPort()}`;
 }
 
+/** The S2-17 broker on which `realm local-accounts enable` ran: local accounts beside SSO. */
+export const LOCALSSO_REALM = "genie-localsso";
+
+export const LOCALSSO_DB = "genie_broker_localsso";
+
+export function localSsoPort(): number {
+  return scopedPort(BASE_PORTS.localSso);
+}
+
+export function localSsoBaseUrl(): string {
+  return `http://127.0.0.1:${localSsoPort()}`;
+}
+
 /** True when the local Docker daemon holds the image tag. */
 export async function imageExists(tag: string): Promise<boolean> {
   return run("docker", ["image", "inspect", tag]).then(
@@ -104,11 +117,27 @@ export type BrokeredSpec = {
   readonly idpArgs: readonly string[];
   /** Extra environment for the `idp set` command only, for example the provider secret. */
   readonly idpEnv?: Readonly<Record<string, string>>;
+  /**
+   * When set, `genie-ops realm local-accounts enable` runs after `idp set` (R-58a), with the
+   * bootstrap credential and the mail values the realm's SMTP needs.
+   */
+  readonly localAccounts?: {
+    readonly ssoDomains: readonly string[];
+    readonly mailEnv: Readonly<Record<string, string>>;
+  };
   /** The SQL against the new database, run after setup and `idp set`. */
   readonly seedSql: string;
   /** The app image; defaults to this worktree's test image. */
   readonly image?: string;
 };
+
+/** `docker exec` environment flags, so a secret reaches one command and never its argv. */
+function envFlags(env: Readonly<Record<string, string>>): string[] {
+  return Object.entries(env).flatMap(([name, value]) => [
+    "-e",
+    `${name}=${value}`,
+  ]);
+}
 
 /** True when the container exists and is running. */
 async function containerRunning(name: string): Promise<boolean> {
@@ -262,20 +291,35 @@ export async function provisionBrokered(
     files.brandingSeed,
   ]);
 
-  const idpEnv = Object.entries(spec.idpEnv ?? {}).flatMap(([name, value]) => [
-    "-e",
-    `${name}=${value}`,
-  ]);
-
   await run("docker", [
     "exec",
-    ...idpEnv,
+    ...envFlags(spec.idpEnv ?? {}),
     container,
     "genie-ops",
     "idp",
     "set",
     ...spec.idpArgs,
   ]);
+
+  if (spec.localAccounts !== undefined) {
+    await run("docker", [
+      "exec",
+      ...envFlags({
+        ...spec.localAccounts.mailEnv,
+        KEYCLOAK_BOOTSTRAP_USER: E2E_BOOTSTRAP_USER,
+        KEYCLOAK_BOOTSTRAP_PASSWORD: E2E_BOOTSTRAP_PASSWORD,
+      }),
+      container,
+      "genie-ops",
+      "realm",
+      "local-accounts",
+      "enable",
+      ...spec.localAccounts.ssoDomains.flatMap((domain) => [
+        "--sso-domain",
+        domain,
+      ]),
+    ]);
+  }
 
   await run("docker", [
     ...compose,

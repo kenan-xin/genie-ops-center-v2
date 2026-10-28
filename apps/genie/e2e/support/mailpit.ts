@@ -1,4 +1,19 @@
-import { standinMailpitUrl } from "../../testing/e2e-keycloak.ts";
+import {
+  E2E_ADMIN_CLIENT_SECRET,
+  standinMailpitUrl,
+  type E2eKeycloak,
+} from "../../testing/e2e-keycloak.ts";
+
+/** The mail sink values the stacks pass to their app service and to a realm's SMTP. */
+export function mailEnv(keycloak: E2eKeycloak) {
+  return {
+    MAIL_PROVIDER: "smtp",
+    MAIL_FROM: "e2e@example.invalid",
+    // A container reaches Mailpit through the same host mapping it uses for Keycloak.
+    SMTP_URL: `smtp://host.docker.internal:${keycloak.smtpPort}`,
+    KEYCLOAK_ADMIN_CLIENT_SECRET: E2E_ADMIN_CLIENT_SECRET,
+  };
+}
 
 /**
  * The Mailpit stand-in's HTTP API, for a browser proof that an email actually went out. The app's

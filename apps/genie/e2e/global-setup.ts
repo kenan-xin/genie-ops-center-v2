@@ -45,6 +45,7 @@ import { scopedPort, scopedProject } from "../testing/worktree-scope.ts";
 import { provisionScenarioDeployments } from "./scenarios.ts";
 import { provisionClientOnly, stopClientOnly } from "./support/client-only.ts";
 import { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
+import { mailEnv } from "./support/mailpit.ts";
 
 export { COMPOSE, COMPOSE_FILE } from "./support/compose.ts";
 
@@ -76,17 +77,6 @@ export const LOCAL_COMPOSE = [
 const LOCAL_READY_URL = `${e2eLocalBaseUrl()}/api/health`;
 
 const LOCAL_ADMINISTRATOR_EMAILS = E2E_PROJECTS.map(e2eLocalAdminEmail);
-
-/** The mail sink values both stacks pass to their app service (and the local realm step). */
-function mailEnv(keycloak: E2eKeycloak) {
-  return {
-    MAIL_PROVIDER: "smtp",
-    MAIL_FROM: "e2e@example.invalid",
-    // A container reaches Mailpit through the same host mapping it uses for Keycloak.
-    SMTP_URL: `smtp://host.docker.internal:${keycloak.smtpPort}`,
-    KEYCLOAK_ADMIN_CLIENT_SECRET: E2E_ADMIN_CLIENT_SECRET,
-  };
-}
 
 /** The pre-added readers, one per spec and project, which the seed assigns the reader role. */
 const READER_EMAILS = E2E_READER_SPECS.flatMap((spec) =>

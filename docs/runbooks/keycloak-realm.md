@@ -95,7 +95,7 @@ Keycloak. A brokered person has no realm group membership by default. The identi
 
 The claim carries bare group names, never paths (`docs/specs/README.md`, "Cross-section calls made in the drafting round"). Set `full.path` to `false` on the Group Membership mapper. Let the identity provider mappers import the names exactly as the provider sends them. Genie Ops Center matches a `group` row on that plain name (`../architecture/access-model.md`). Make sure at the first provisioning that the emitted claim carries no leading slash (to confirm at first provisioning).
 
-One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. LDAP federation, when reopened, creates real realm groups, so it would use the Group Membership mapper as well.
+One claim name must have one producer. The brokered template carries the User Attribute mapper. The local-accounts template carries the Group Membership mapper. A brokered realm that `genie-ops realm local-accounts enable` changed keeps the User Attribute mapper as its one `groups` mapper, and the command adds no Group Membership mapper (Specification 02 R-50 as amended). A local person in that realm gets the `genie_groups` marker and no list, and their roles come from local groups and direct grants. LDAP federation, when reopened, creates real realm groups, so it would use the Group Membership mapper as well.
 
 ### Shared realm settings
 
@@ -137,6 +137,8 @@ Keep the access token lifespan short, because nothing in Genie Ops Center reads 
 Keycloak. The redirector is the `identity-provider-redirector` execution in the browser flow. Set its "Default Identity Provider" configuration to the provider alias. If Keycloak does not find that alias, it shows the login form instead. The same authenticator processes the `kc_idp_hint` query parameter, and a client can override the default with it.
 
 The `realm` step sets the default alias to `company-login` when it creates the realm, with the bootstrap credential, and sets the same two flow values again on a realm that already exists, so a rerun after a failed flow write repairs them. `genie-ops idp set` then writes the provider under that same fixed alias (Spec 2 R-58). Before `idp set` has run, the alias names no provider and the realm shows its own form; after it, sign-in is sent to the provider. The command never writes the flow itself, because writing the flow needs `manage-realm` and `genie-admin` deliberately does not hold it. A realm created before the `realm` step set these values gets them on the next `genie-ops setup` run.
+
+`genie-ops realm local-accounts enable` removes the redirector default, so the realm page shows its password form beside the provider button. A later `realm` step keeps that change (Specification 02 R-53a). See "Local accounts beside the identity provider".
 
 ### The local-accounts variant
 
@@ -245,6 +247,41 @@ The `realm` step sets the redirector's default alias and turns off the profile r
 Step 3 is a requirement before a customer switches onboarding to `jit`. In `jit`, Genie Ops Center admits a new person only when their `groups` claim holds a group mapped to one of its roles (`DEC-7` as amended 2026-09-27), so the provider's assignment and those mappings are the two gates. Map the groups before the switch.
 
 Warning. If the provider emits every group of a person, then the claim can exceed the provider's limit and arrive absent. Microsoft Entra ID omits the `groups` claim for a person in more than 200 groups, and for more than 150 in SAML. Genie Ops Center then keeps that person's previous memberships and writes the audit event `auth:groups_claim_absent` (`DEC-41`). Microsoft Entra ID is one example. The same rule is applied to any provider with a limit. Under `jit`, a new person whose claim arrives absent is refused; pre-add them in People.
+
+## Local accounts beside the identity provider
+
+A brokered realm can also hold local email and password accounts, for people outside the company's identity provider, for example contractors (Specification 02 R-58a, `DEC-36` as amended 2026-10-27). `genie-ops realm local-accounts enable` turns this on. It needs:
+
+- A managed, brokered realm. The command refuses client-only mode, because the realm belongs to the customer (ADR 0010).
+- A provider under `company-login`. Run `genie-ops idp set` first, or the command refuses.
+- The bootstrap credential in the environment of this one command, as for the `realm` step (`DEC-37`), because the flow write needs `manage-realm`.
+- `MAIL_PROVIDER=smtp` with `MAIL_FROM` and `SMTP_URL`, because Keycloak sends the set-password, reset-password and verify-email messages of a local account itself.
+
+Each `--sso-domain` value is one email domain of the identity provider, in lower case and without `@`. The flag is required and can repeat. Run the command on the host:
+
+```sh
+read -rs KEYCLOAK_BOOTSTRAP_PASSWORD && export KEYCLOAK_BOOTSTRAP_PASSWORD
+docker compose exec -e KEYCLOAK_BOOTSTRAP_USER=admin -e KEYCLOAK_BOOTSTRAP_PASSWORD app genie-ops realm local-accounts enable --sso-domain company.example --sso-domain partner-sso.example
+```
+
+In one run, the command does four writes, in this order:
+
+1. It removes `company-login` as the browser flow's redirector default, so the realm page shows its password form beside the provider button.
+2. It writes the local variant's email verification, password reset, the authenticator app as an optional required action, the realm SMTP settings, and the password policy. A password policy that the realm already holds from `realm.overrides.json` stays. Otherwise the local template's policy is written.
+3. It writes the domains to `tenant_settings.sso_email_domains` and sets `realm_supports_local_accounts` to true.
+4. It writes one `ops:realm-local-accounts-enable` audit row, with the domains in its metadata.
+
+Every refusal comes before the first realm write, and names its cause. The command never prints the bootstrap credential or the SMTP password. It is idempotent. A rerun with other domains replaces the list, which is how an operator changes it. A later `genie-ops setup` keeps the change (Specification 02 R-53a): the `realm` step does not restore the redirector default, and still repairs the profile review.
+
+The command does not turn on local accounts for administrators. An administrator then turns on the Local accounts switch on the Tenant Settings page, and Add person offers the local account type. Add person refuses a local account whose email is on a recorded domain or one of its subdomains, with "This address uses the company sign-in. Add the person as a company account." (R-40b). No disable command exists. Turning the switch off stops new local accounts and keeps the existing ones, with their password sign-in (R-51a).
+
+The sign-in page then shows two entries (R-17c). "Sign in with SSO" sends `kc_idp_hint=company-login`, so a company person goes straight to the provider. "Sign in with email and password" sends no hint, so the realm shows its password form.
+
+After the command, do these checks:
+
+1. Open `KEYCLOAK_URL/realms/<realm>/account` in a private browser window. Make sure that the realm page shows the password form and the provider button.
+2. Open `PUBLIC_URL/sign-in` and press "Sign in with SSO". Make sure that the browser lands on the provider without the realm page.
+3. Open the audit log. Make sure that one `ops:realm-local-accounts-enable` row lists the domains.
 
 ## Verify after setup
 

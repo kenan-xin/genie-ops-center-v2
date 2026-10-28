@@ -24,10 +24,13 @@ import {
   invitePort,
   LANDING_REALM,
   landingPort,
+  LOCALSSO_REALM,
+  localSsoPort,
   provisionBrokered,
   SAML_REALM,
   samlPort,
 } from "./support/brokered.ts";
+import { mailEnv } from "./support/mailpit.ts";
 
 /**
  * The S2-13 brokered scenario deployments. Two realms on the stand-in Keycloak play the customer:
@@ -40,7 +43,17 @@ import {
  * a person or a group row.
  */
 
-export type Scenario = "s-b" | "s-d" | "s-e" | "done" | "invite" | "landing";
+export type Scenario =
+  | "s-b"
+  | "s-d"
+  | "s-e"
+  | "done"
+  | "invite"
+  | "landing"
+  | "localsso";
+
+/** The S2-17 broker's SSO domain: the company stand-in's people all sit on it. */
+export const LOCALSSO_DOMAIN = "company.example";
 
 /**
  * The S2-16 done-when groups (AC-20 to AC-24). The admit group is pre-added and mapped to a role
@@ -179,6 +192,12 @@ const LANDING_SEED = [
   ...administratorSql("landing", "acceptance"),
 ].join("; ");
 
+/** S2-17 AC-27: invite mode, local accounts on, and one SSO administrator per project. */
+const LOCALSSO_SEED = [
+  "update tenant_settings set onboarding_mode = 'invite', local_accounts_enabled = true",
+  ...administratorSql("localsso"),
+].join("; ");
+
 /** Starts both brokered deployments and seeds the company people they sign in as. */
 export async function provisionScenarioDeployments(
   compose: readonly string[],
@@ -239,6 +258,29 @@ export async function provisionScenarioDeployments(
     ],
     idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
     seedSql: INVITE_SEED,
+  });
+
+  // S2-17: the same OIDC provider, with local accounts beside it through the shipped command.
+  await provisionBrokered(compose, {
+    suffix: "localsso",
+    realm: LOCALSSO_REALM,
+    hostPort: localSsoPort(),
+    keycloakIssuer: keycloak.keycloakUrl,
+    idpArgs: [
+      "--protocol",
+      "oidc",
+      "--issuer-url",
+      `${keycloak.keycloakUrl}/realms/${COMPANY_REALM}`,
+      "--client-id",
+      COMPANY_OIDC_CLIENT_ID,
+      "--allow-http",
+    ],
+    idpEnv: { IDP_CLIENT_SECRET: COMPANY_OIDC_CLIENT_SECRET },
+    localAccounts: {
+      ssoDomains: [LOCALSSO_DOMAIN],
+      mailEnv: mailEnv(keycloak),
+    },
+    seedSql: LOCALSSO_SEED,
   });
 
   // S3-04a: the landing route needs a module with the landing flag, which only the fixture image
@@ -333,6 +375,7 @@ async function seedCompanyPeople(): Promise<void> {
     { scenario: "landing", state: "menu", groups: () => [] },
     { scenario: "landing", state: "noaccess", groups: () => [] },
     { scenario: "landing", state: "acceptance", groups: () => [] },
+    { scenario: "localsso", state: "admin", groups: () => [] },
   ];
 
   for (const project of E2E_PROJECTS) {
