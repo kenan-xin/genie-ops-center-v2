@@ -130,8 +130,9 @@ export const UnlabelledGroupIdAsksForALabel: Story = {
       "title",
       "39545f73-134e-49ac-9731-0e96df8ea218"
     );
-    // Only the unlabelled id asks for a label; a labelled group and a readable name do not.
-    await expect(table.getAllByText("Add a display label")).toHaveLength(1);
+    // Only the unlabelled id shows its short form; a label or a readable name shows as it is.
+    await expect(table.getByText("39545f73…")).toBeVisible();
+    await expect(canvas.queryAllByText("Add a display label")).toHaveLength(0);
   },
 };
 
@@ -180,15 +181,75 @@ export const PhoneSearchTakesTheRow: Story = {
 };
 
 export const Phone: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  play: async ({ canvas }) => {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
     const list = within(canvas.getByRole("list", { name: "Groups" }));
 
+    await expect(window.innerWidth).toBe(390);
     await expect(canvas.queryByRole("table")).toBeNull();
     // A long unbroken value must not push the page sideways.
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth
     );
+
+    // Two rows: the search, then the filter line. The primary action left the toolbar.
+    const search = canvas
+      .getByRole("textbox", { name: "Search groups" })
+      .getBoundingClientRect();
+
+    const filter = canvas
+      .getByRole("checkbox", { name: "Show archived" })
+      .getBoundingClientRect();
+
+    const overflow = canvas
+      .getByRole("button", { name: "More group actions" })
+      .getBoundingClientRect();
+
+    await expect(filter.top).toBeGreaterThan(search.bottom);
+    await expect(overflow.top).toBeLessThan(filter.bottom);
+    await expect(overflow.top).toBeGreaterThan(search.bottom);
+
+    // The primary action sits in the bottom bar; the secondary one hides in the toolbar menu.
+    const bar = canvasElement.querySelector<HTMLElement>(
+      "[data-shell-bottom-bar]"
+    );
+
+    await expect(bar).not.toBeNull();
+    await expect(
+      within(bar!).getByRole("button", { name: "New local group" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Add directory group" })
+    ).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "More group actions" })
+    );
+
+    const addDirectory = await screen.findByRole("menuitem", {
+      name: "Add directory group",
+    });
+
+    // The popup fades in from opacity 0.
+    await waitFor(() => expect(addDirectory).toBeVisible());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+
+    // The card leads with a kind tile, and the kind pill sits on the name's line.
+    const first = within(list.getAllByRole("listitem")[0]!);
+    const name = first.getByRole("button", { name: /Finance managers/ });
+    const kind = first.getByText("Directory");
+
+    await expect(
+      first.getByRole("button", { name: /Finance managers/ })
+    ).toBeVisible();
+    await expect(
+      Math.abs(
+        name.getBoundingClientRect().top - kind.getBoundingClientRect().top
+      )
+    ).toBeLessThan(6);
+    await expect(first.getByText(/2 members · 3 roles · synced/)).toBeVisible();
+
     // One member and one role read in the singular.
     await expect(list.getByText(/1 member · 0 roles/)).toBeInTheDocument();
     await expect(list.getByText(/0 members · 1 role/)).toBeInTheDocument();
@@ -201,6 +262,11 @@ export const Phone: Story = {
       await screen.findByRole("dialog", { name: "Finance managers" })
     ).toBeInTheDocument();
   },
+};
+
+/** The card list in the dark theme, so axe reads the dark pairs at the phone width too. */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },
 };
 
 export const Dark: Story = {

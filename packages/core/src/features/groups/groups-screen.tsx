@@ -9,6 +9,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
   FieldDescription,
   FieldLabel,
@@ -27,11 +31,13 @@ import {
   SheetHeader,
   SheetTitle,
   StatusPill,
+  StickyActionBar,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@genie/ui";
+import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -47,7 +53,7 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { GroupName, looksLikeId } from "./group-name.tsx";
+import { GroupName } from "./group-name.tsx";
 import {
   groupLabel,
   type Group,
@@ -668,7 +674,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
             be deleted. Both kinds carry roles.
           </HelpDisclosure>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
           <label className="inline-flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
             <Checkbox
               checked={props.includeArchived}
@@ -678,14 +684,39 @@ export function GroupsScreen(props: GroupsScreenProps) {
           </label>
           <Button
             variant="secondary"
+            className="max-md:hidden"
             loading={props.pending}
             onClick={() => setDialog("directory")}
           >
             <DirectoryIcon /> Add directory group
           </Button>
-          <Button loading={props.pending} onClick={() => setDialog("local")}>
+          <Button
+            className="max-md:hidden"
+            loading={props.pending}
+            onClick={() => setDialog("local")}
+          >
             <PlusIcon /> New local group
           </Button>
+          {/* A phone keeps the filter line one row: the secondary action moves in here. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto md:hidden"
+                  aria-label="More group actions"
+                />
+              }
+            >
+              <EllipsisIcon aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setDialog("directory")}>
+                <DirectoryIcon /> Add directory group
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -732,11 +763,6 @@ export function GroupsScreen(props: GroupsScreenProps) {
                     <span>
                       <GroupName value={groupLabel(group)} />
                     </span>
-                    {group.displayLabel === null && looksLikeId(group.name) ? (
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {props.labelHint}
-                      </span>
-                    ) : null}
                     <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
                       {group.description}
                     </span>
@@ -784,6 +810,12 @@ export function GroupsScreen(props: GroupsScreenProps) {
           />
         </div>
       )}
+
+      <StickyActionBar>
+        <Button loading={props.pending} onClick={() => setDialog("local")}>
+          <PlusIcon /> New local group
+        </Button>
+      </StickyActionBar>
 
       <GroupFormDialog
         open={dialog === "directory"}
