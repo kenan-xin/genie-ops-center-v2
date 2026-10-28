@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@genie/ui";
+import { Clock } from "lucide-react";
 import { useId, useRef } from "react";
 import type { JSX } from "react";
 
@@ -44,11 +45,20 @@ export function IdleWarningDialog(props: {
   return (
     <Dialog open={props.open}>
       <DialogContent showCloseButton={false} initialFocus={staySignedIn}>
-        <DialogHeader>
-          <DialogTitle>{props.strings.title}</DialogTitle>
-          <DialogDescription>{props.strings.description}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col items-center gap-1">
+        {/* The capture: a neutral clock tile beside the title and the body, the countdown under them. */}
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground"
+          >
+            <Clock className="size-4" />
+          </span>
+          <DialogHeader>
+            <DialogTitle>{props.strings.title}</DialogTitle>
+            <DialogDescription>{props.strings.description}</DialogDescription>
+          </DialogHeader>
+        </div>
+        <div className="flex flex-col items-start gap-1">
           <p id={countdownLabel} className="text-sm text-muted-foreground">
             {props.strings.countdownLabel}
           </p>
