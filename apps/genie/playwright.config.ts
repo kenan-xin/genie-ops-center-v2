@@ -55,7 +55,8 @@ const config = defineConfig({
   outputDir: "test-results/e2e",
   forbidOnly: true,
   reporter: [["list"]],
-  use: { baseURL: BASE_URL },
+  // A flake that passes on rerun leaves its network and DOM record (xok3.32).
+  use: { baseURL: BASE_URL, trace: "retain-on-failure" },
   projects: [
     {
       name: "phone",
