@@ -90,6 +90,8 @@ The oRPC and TanStack Query setup lives in `apps/genie/src/rpc/` and these rules
 | Email, customer-hosted deployment | SMTP through Nodemailer (`nodemailer`) | 10.x | Government and healthcare deployments will not allow a hosted mail provider. One mailer interface, two adapters. Nodemailer is the established Node.js SMTP client with no runtime dependencies, and it accepts the `SMTP_URL` form of `../architecture/environment-contract.md` directly. |
 | Credential emails, local-account tenants | Keycloak built-in email templates | none | Set password, reset password, verify email carry Keycloak action tokens, so Keycloak sends them, unstyled, with the realm display name (`DEC-40`). Brokered tenants never receive these. |
 | AI chat backend | External Genie chat API | external | Server-side streaming proxy. Secrets never reach the browser. |
+| Model calls | AI SDK (`ai`) | 7.0.154 | One interface over language models for document reading and chat: `generateText`, `streamText` and structured output, with abort signals and call retries. Its `simulateReadableStream`, `JsonToSseTransformStream` and `parseJsonEventStream` also build and read the recorded test model, so no stream code is hand-written. A dependency of core only, because core builds every model (`DEC-55`). |
+| Model provider | OpenRouter through `@openrouter/ai-sdk-provider` | 3.1.0 | The AI SDK provider for OpenRouter: one stored key reaches every allowed model, and a model changes without a restart. Core's one model function passes the stored key, the allowed host, a timeout and `data_collection: "deny"` (`DEC-55`). It has no dependencies of its own, and its peers are `ai` and zod. |
 
 ## Quality
 
