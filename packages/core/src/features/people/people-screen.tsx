@@ -31,6 +31,7 @@ import {
   SheetHeader,
   SheetTitle,
   StatusPill,
+  StickyActionBar,
   Tabs,
   TabsContent,
   TabsList,
@@ -728,7 +729,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               </Select>
             </Field>
           </FilterDisclosure>
-          <Button onClick={() => setAdding(true)}>
+          <Button className="max-md:hidden" onClick={() => setAdding(true)}>
             <PlusIcon /> Add person
           </Button>
         </div>
@@ -843,6 +844,12 @@ export function PeopleScreen(props: PeopleScreenProps) {
           />
         </div>
       )}
+
+      <StickyActionBar>
+        <Button onClick={() => setAdding(true)}>
+          <PlusIcon /> Add person
+        </Button>
+      </StickyActionBar>
 
       <AddPersonDialog
         open={adding}

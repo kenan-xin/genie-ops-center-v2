@@ -9,6 +9,16 @@ const preview: Preview = {
     // command line. "todo" only warns, and this gate must not warn.
     a11y: { test: "error" },
     docs: { toc: true },
+    // The phone viewport of DEC-25, for the list stories.
+    viewport: {
+      options: {
+        phone390: {
+          name: "Phone 390",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
+      },
+    },
   },
   initialGlobals: {
     theme: "light",

@@ -156,15 +156,42 @@ export const UnlabelledGroupIdShowsAShortPill: Story = {
 };
 
 export const Phone: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
-  play: async ({ canvas }) => {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
     const list = within(canvas.getByRole("list", { name: "People" }));
 
+    await expect(window.innerWidth).toBe(390);
     await expect(canvas.queryByRole("table")).toBeNull();
     // The toolbar and a long email must not push the page sideways.
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth
     );
+
+    // The primary action sits in the phone's bottom bar, and the toolbar keeps none.
+    const bar = canvasElement.querySelector<HTMLElement>(
+      "[data-shell-bottom-bar]"
+    );
+
+    await expect(bar).not.toBeNull();
+
+    const barButton = within(bar!).getByRole("button", { name: "Add person" });
+
+    await expect(barButton).toBeVisible();
+    await expect(
+      canvas.getAllByRole("button", { name: "Add person" })
+    ).toHaveLength(1);
+
+    await userEvent.click(barButton);
+
+    const adding = await screen.findByRole("dialog", { name: "Add person" });
+
+    // The dialog fades in from opacity 0.
+    await waitFor(() => expect(adding).toBeVisible());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Add person" })).toBeNull()
+    );
+
     await expect(
       list.getByRole("button", { name: "Actions for ada@example.com" })
     ).toBeInTheDocument();
@@ -177,6 +204,11 @@ export const Phone: Story = {
       await screen.findByRole("dialog", { name: "Leo Local" })
     ).toBeInTheDocument();
   },
+};
+
+/** The card list in the dark theme, so axe reads the dark pairs at the phone width too. */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },
 };
 
 export const PhoneSearchTakesTheRow: Story = {
