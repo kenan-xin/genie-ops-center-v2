@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  Badge,
   Button,
-  CountPill,
+  Checkbox,
   DataTable,
+  focusRing,
   IconTile,
   Input,
   Select,
@@ -12,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
   StatusPill,
-  SwitchField,
 } from "@genie/ui";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import type { AssignableModuleView, CategoriesScreenProps } from "./types.ts";
 
 type AssignItemsProps = Pick<
   CategoriesScreenProps,
-  "list" | "modules" | "onAssign" | "failed" | "onRetry"
+  "list" | "copy" | "modules" | "onAssign" | "failed" | "onRetry"
 >;
 
 /** The pill a switched-off module carries, in the table's cell and on the card. */
@@ -120,7 +121,18 @@ export function AssignItems(props: AssignItemsProps) {
         <h2 id="assign-items" className="text-base font-semibold">
           Assign items
         </h2>
-        <CountPill>{loose} uncategorized</CountPill>
+        {loose > 0 ? (
+          // A warning that is also the shortcut to the filter it names.
+          <button
+            type="button"
+            aria-label={props.copy.showWithoutCategory(loose)}
+            onClick={() => setOnlyLoose(true)}
+            // The after: element grows the 22 px pill to a 44 px hit area.
+            className={`relative cursor-pointer rounded-full after:absolute after:-inset-y-2.75 after:-inset-x-1 ${focusRing}`}
+          >
+            <Badge variant="warning">{props.copy.withoutCategory(loose)}</Badge>
+          </button>
+        ) : null}
       </div>
       <p className="text-sm text-muted-foreground">
         Pick the category each module sits under. A module without one stands
@@ -135,13 +147,10 @@ export function AssignItems(props: AssignItemsProps) {
           onValueChange={setQuery}
           className="sm:max-w-xs"
         />
-        <div className="sm:w-56">
-          <SwitchField
-            label="Uncategorized only"
-            checked={onlyLoose}
-            onCheckedChange={setOnlyLoose}
-          />
-        </div>
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-foreground">
+          <Checkbox checked={onlyLoose} onCheckedChange={setOnlyLoose} />
+          {props.copy.uncategorizedOnly}
+        </label>
       </div>
 
       {shown.length === 0 ? (

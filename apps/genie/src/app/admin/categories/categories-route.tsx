@@ -2,6 +2,7 @@
 
 import { CategoriesScreen } from "@genie/core/features/categories";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { savedIfChanged, useAdminWrite } from "../../../rpc/admin-write.ts";
@@ -18,6 +19,8 @@ type Assignment = {
  * both lists and the server-rendered navigation, whose headings come from categories.
  */
 export function CategoriesRoute() {
+  const t = useTranslations("pages.categories");
+
   const [failed, setFailed] = useState<
     { readonly assignment: Assignment; readonly message: string } | undefined
   >(undefined);
@@ -64,6 +67,15 @@ export function CategoriesRoute() {
   return (
     <CategoriesScreen
       list={list.data ?? { categories: [], ungroupedCount: 0 }}
+      copy={{
+        notice: t("notice"),
+        helpLabel: t("help.label"),
+        help: [t("help.what"), t("help.counts"), t("help.order")],
+        noCategories: t("noCategories"),
+        withoutCategory: (count) => t("withoutCategory", { count }),
+        showWithoutCategory: (count) => t("showWithoutCategory", { count }),
+        uncategorizedOnly: t("uncategorizedOnly"),
+      }}
       // A data-shape filter: only a module with a workspace entry can be placed (Decision 6).
       modules={(modules.data ?? []).filter((module) => module.placeable)}
       onCreate={(name) => run(() => rpc.categories.create({ name }))}

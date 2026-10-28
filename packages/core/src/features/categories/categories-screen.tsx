@@ -1,6 +1,13 @@
 "use client";
 
-import { Button, ConfirmDialog, CountPill, focusRing, Input } from "@genie/ui";
+import {
+  Button,
+  ConfirmDialog,
+  focusRing,
+  HelpDisclosure,
+  Input,
+  LabelPill,
+} from "@genie/ui";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -89,10 +96,16 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
 
   return (
     <div className="grid gap-4">
-      <p className="max-w-prose text-sm text-pretty text-muted-foreground">
-        A category groups what people already see. It never grants access. Who
-        can open a module is set in Roles.
-      </p>
+      <div className="grid gap-1">
+        <p className="max-w-prose text-sm text-pretty text-muted-foreground">
+          {props.copy.notice}
+        </p>
+        <HelpDisclosure label={props.copy.helpLabel}>
+          {props.copy.help.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </HelpDisclosure>
+      </div>
 
       <form
         className="flex gap-2"
@@ -132,6 +145,11 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
       ) : (
         <>
           <div className="rounded-xl border border-border">
+            {categories.length === 0 ? (
+              <p className="border-b border-border px-5 py-4 text-sm text-muted-foreground">
+                {props.copy.noCategories}
+              </p>
+            ) : null}
             <ul aria-label="Categories" className="divide-y divide-border">
               {categories.map((category, index) => (
                 <li
@@ -202,7 +220,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                     </button>
                   )}
                   <span className="ml-auto flex items-center gap-2">
-                    <CountPill>{modules(category.moduleCount)}</CountPill>
+                    <LabelPill>{modules(category.moduleCount)}</LabelPill>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -222,22 +240,23 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                 aria-label="Other"
                 className="flex min-h-15 items-center gap-2 bg-muted/50 px-3 py-2"
               >
-                <span className="flex-1 px-2 text-sm font-semibold text-muted-foreground sm:pl-26">
+                {/* Lines up with the names only when there are rows with handles to line up with. */}
+                <span
+                  className={`flex-1 px-2 text-sm font-semibold text-muted-foreground ${categories.length > 0 ? "sm:pl-26" : ""}`}
+                >
                   Other
                 </span>
-                <CountPill>{modules(props.list.ungroupedCount)}</CountPill>
-                <span className="size-11 lg:size-10" />
+                <LabelPill>{modules(props.list.ungroupedCount)}</LabelPill>
+                {categories.length > 0 ? (
+                  <span className="size-11 lg:size-10" />
+                ) : null}
               </li>
             </ul>
-            <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-              Drag or use the arrows to reorder. Select a name to rename it.
-              Deleting a category leaves its modules under Other; nothing else
-              is removed.
-            </p>
           </div>
 
           <AssignItems
             list={props.list}
+            copy={props.copy}
             modules={props.modules}
             onAssign={props.onAssign}
             failed={props.failed}

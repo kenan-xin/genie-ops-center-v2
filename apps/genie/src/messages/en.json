@@ -106,7 +106,18 @@
     },
     "categories": {
       "title": "Categories",
-      "description": "Headings that group modules in the navigation."
+      "description": "Headings that group modules in the navigation.",
+      "notice": "A category never grants access. Who can open a module is set in Roles.",
+      "help": {
+        "label": "How categories work",
+        "what": "A category groups what people already see in the navigation.",
+        "counts": "The count beside a category counts modules only. Other is fixed: it gathers every module without a category.",
+        "order": "Drag or use the arrows to reorder. Select a name to rename it. Deleting a category leaves its modules under Other; nothing else is removed."
+      },
+      "noCategories": "No categories yet. Add one, for example Operations.",
+      "withoutCategory": "{count} without a category",
+      "showWithoutCategory": "Show only the {count} without a category",
+      "uncategorizedOnly": "Uncategorized only"
     },
     "settings": {
       "title": "Tenant settings",

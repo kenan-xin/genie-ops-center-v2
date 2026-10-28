@@ -35,6 +35,21 @@ const meta = {
   },
   args: {
     list: FIXTURE_LIST,
+    copy: {
+      notice:
+        "A category never grants access. Who can open a module is set in Roles.",
+      helpLabel: "How categories work",
+      help: [
+        "A category groups what people already see in the navigation.",
+        "The count beside a category counts modules only. Other is fixed: it gathers every module without a category.",
+        "Drag or use the arrows to reorder. Select a name to rename it. Deleting a category leaves its modules under Other; nothing else is removed.",
+      ],
+      noCategories: "No categories yet. Add one, for example Operations.",
+      withoutCategory: (count) => `${count} without a category`,
+      showWithoutCategory: (count) =>
+        `Show only the ${count} without a category`,
+      uncategorizedOnly: "Uncategorized only",
+    },
     modules: FIXTURE_ASSIGNABLE,
     onCreate: fn(),
     onRename: fn(),
@@ -71,11 +86,13 @@ const pick = async (canvas: Canvas, module: string, option: string) => {
 };
 
 const overview: Play = async ({ canvas }) => {
+  // The access notice stays visible; how the page works sits in its help (helper-text rule).
   await expect(
     canvas.getByText(
-      "A category groups what people already see. It never grants access. Who can open a module is set in Roles."
+      "A category never grants access. Who can open a module is set in Roles."
     )
-  ).toBeInTheDocument();
+  ).toBeVisible();
+  await expect(canvas.queryByText(/Drag or use the arrows/)).toBeNull();
 
   const rows = within(
     canvas.getByRole("list", { name: "Categories" })
@@ -94,6 +111,14 @@ const overview: Play = async ({ canvas }) => {
   await expect(
     categoryRow(canvas, "Operations").getByText("1 module")
   ).toBeInTheDocument();
+  // A count is a label, never the primary fill (State-vs-Label Rule).
+  await expect(
+    getComputedStyle(categoryRow(canvas, "Operations").getByText("1 module"))
+      .backgroundColor
+  ).not.toBe(
+    getComputedStyle(canvas.getByRole("button", { name: "Add" }))
+      .backgroundColor
+  );
 
   const other = categoryRow(canvas, "Other");
 
@@ -103,7 +128,9 @@ const overview: Play = async ({ canvas }) => {
   // Counts are module-only (R-88).
   await expect(canvas.queryByText(/\d+ solutions?/)).toBeNull();
 
-  await expect(canvas.getByText("3 uncategorized")).toBeInTheDocument();
+  await expect(
+    canvas.getByRole("button", { name: /3 without a category/ })
+  ).toBeInTheDocument();
   // A deleted category reads as no category (R-91).
   await expect(
     canvas.getByRole("combobox", { name: "Category for Asset register" })
@@ -123,11 +150,90 @@ const overviewOnPhone: Play = async (context) => {
   ).not.toBeNull();
 };
 
-export const Default: Story = { play: overview };
+const middle = (element: Element) => {
+  const rect = element.getBoundingClientRect();
+
+  return rect.top + rect.height / 2;
+};
+
+export const Default: Story = {
+  play: async (context) => {
+    await overview(context);
+
+    // Desktop toolbar: the checkbox sits on the search field's row, its label right beside it.
+    const search = context.canvas.getByRole("searchbox", {
+      name: "Search modules",
+    });
+
+    const box = context.canvas.getByRole("checkbox", {
+      name: "Uncategorized only",
+    });
+
+    const label = context.canvas.getByText("Uncategorized only");
+
+    await expect(Math.abs(middle(box) - middle(search))).toBeLessThan(4);
+    await expect(
+      label.getBoundingClientRect().left - box.getBoundingClientRect().right
+    ).toBeLessThan(16);
+  },
+};
 
 export const DefaultOnPhone: Story = { globals: phone, play: overviewOnPhone };
 
 export const Dark: Story = { globals: { theme: "dark" } };
+
+/** One help holds how the page works: the order, the rename, and what the counts mean. */
+export const HelpExplainsCategories: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "How categories work" })
+    );
+
+    const help = within(
+      await screen.findByRole("group", { name: "How categories work" })
+    );
+
+    await expect(help.getByText(/counts modules only/)).toBeInTheDocument();
+    await expect(help.getByText(/Drag or use the arrows/)).toBeInTheDocument();
+    // Closed again, so axe after the play function reads no focus guards.
+    await userEvent.click(help.getByRole("button", { name: "Close" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "How categories work" })
+      ).toBeNull()
+    );
+  },
+};
+
+const noCategories = {
+  list: { categories: [], ungroupedCount: 4 },
+} satisfies Partial<CategoriesScreenProps>;
+
+/** No category yet: the list says so above Other, and Other keeps no empty handle space. */
+const emptyList: Play = async ({ canvas }) => {
+  await expect(
+    canvas.getByText("No categories yet. Add one, for example Operations.")
+  ).toBeVisible();
+
+  const list = canvas.getByRole("list", { name: "Categories" });
+
+  // Where the word itself starts, inside any padding of its box.
+  const word = document.createRange();
+
+  word.selectNodeContents(within(list).getByText("Other"));
+
+  await expect(
+    word.getBoundingClientRect().left - list.getBoundingClientRect().left
+  ).toBeLessThan(32);
+};
+
+export const NoCategories: Story = { args: noCategories, play: emptyList };
+
+export const NoCategoriesOnPhoneDark: Story = {
+  args: noCategories,
+  globals: { theme: "dark", viewport: phone.viewport },
+  play: emptyList,
+};
 
 /** The cards in the dark theme, so axe reads the dark pairs at the phone width too. */
 export const PhoneDark: Story = {
@@ -349,9 +455,13 @@ const assignWholeModule: Play = async ({ args, canvas }) => {
   await expect(canvas.getByText("No module matches.")).toBeInTheDocument();
   await userEvent.clear(search);
 
+  // The section pill turns the filter on.
   await userEvent.click(
-    canvas.getByRole("switch", { name: "Uncategorized only" })
+    canvas.getByRole("button", { name: /3 without a category/ })
   );
+  await expect(
+    canvas.getByRole("checkbox", { name: "Uncategorized only" })
+  ).toBeChecked();
   await expect(
     canvas.queryByRole("combobox", { name: "Category for Contracts" })
   ).toBeNull();
@@ -364,7 +474,7 @@ const assignWholeModule: Play = async ({ args, canvas }) => {
   await expect(args.onAssign).toHaveBeenCalledWith("requests", "c-legal");
 
   await userEvent.click(
-    canvas.getByRole("switch", { name: "Uncategorized only" })
+    canvas.getByRole("checkbox", { name: "Uncategorized only" })
   );
   await pick(canvas, "Fixture", "No category");
   await expect(args.onAssign).toHaveBeenLastCalledWith("fixture", null);
@@ -379,7 +489,7 @@ export const AssignWholeModuleOnPhone: Story = {
 
 const assignSwitchedOff: Play = async ({ args, canvas }) => {
   await userEvent.click(
-    canvas.getByRole("switch", { name: "Uncategorized only" })
+    canvas.getByRole("checkbox", { name: "Uncategorized only" })
   );
   // A switched-off module stays listed and placeable (R-91a).
   await expect(
@@ -420,7 +530,7 @@ const assignFailed: Play = async ({ args, canvas }) => {
     "zzz"
   );
   await userEvent.click(
-    canvas.getByRole("switch", { name: "Uncategorized only" })
+    canvas.getByRole("checkbox", { name: "Uncategorized only" })
   );
   await expect(
     canvas.getByRole("combobox", { name: "Category for Contracts" })

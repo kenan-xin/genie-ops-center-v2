@@ -18,8 +18,26 @@ export type AssignableModuleView = {
   readonly categoryId: string | null;
 };
 
+/** The page's guidance strings, from the host's message catalogue (R-41). */
+export type CategoriesCopy = {
+  /** Always visible: a category never grants access (helper-text rule). */
+  readonly notice: string;
+  /** The help button's label, and the name of its callout. */
+  readonly helpLabel: string;
+  /** The help callout, one paragraph each: what a category is, the counts, the order. */
+  readonly help: readonly string[];
+  /** Above Other when no category exists yet. */
+  readonly noCategories: string;
+  /** The Assign items warning pill, for example "3 without a category". */
+  readonly withoutCategory: (count: number) => string;
+  /** The pill's accessible name; it holds the visible text. */
+  readonly showWithoutCategory: (count: number) => string;
+  readonly uncategorizedOnly: string;
+};
+
 export type CategoriesScreenProps = {
   readonly list: CategoryListView;
+  readonly copy: CategoriesCopy;
   readonly modules: readonly AssignableModuleView[];
   readonly onCreate: (name: string) => void;
   readonly onRename: (id: string, name: string) => void;

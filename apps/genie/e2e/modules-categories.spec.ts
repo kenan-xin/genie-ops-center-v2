@@ -338,9 +338,12 @@ test("a category is created, renamed, reordered, assigned to a module and delete
         ).toBeVisible();
         await expect(
           page.getByText(
-            "A category groups what people already see. It never grants access. Who can open a module is set in Roles."
+            "A category never grants access. Who can open a module is set in Roles."
           )
         ).toHaveCount(1);
+        await expect(
+          page.getByRole("button", { name: "How categories work" })
+        ).toBeVisible();
         await expectNoAxeViolations(page, "Categories page");
 
         // Create two, so there is an order to change.
