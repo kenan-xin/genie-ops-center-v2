@@ -39,12 +39,17 @@ const NAMED = 3;
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
+/** The pill a switched-off module carries, in the table's cell and on the card. */
+function offPill(module: ModuleView) {
+  return module.enabled ? null : <StatusPill tone="neutral">Off</StatusPill>;
+}
+
 function Identity({ module }: { readonly module: ModuleView }) {
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span>{module.displayName}</span>
       <MonoChip>{module.id}</MonoChip>
-      {module.enabled ? null : <StatusPill tone="neutral">Off</StatusPill>}
+      {offPill(module)}
     </span>
   );
 }
@@ -291,10 +296,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
             ),
             title: (module) => module.displayName,
             detail: (module) => <MonoChip>{module.id}</MonoChip>,
-            badge: (module) =>
-              module.enabled ? null : (
-                <StatusPill tone="neutral">Off</StatusPill>
-              ),
+            badge: (module) => offPill(module),
             content: (module) => (
               <div className="grid gap-2">
                 {enabledControl(module)}

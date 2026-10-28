@@ -24,6 +24,11 @@ type AssignItemsProps = Pick<
   "list" | "modules" | "onAssign" | "failed" | "onRetry"
 >;
 
+/** The pill a switched-off module carries, in the table's cell and on the card. */
+function offPill(module: AssignableModuleView) {
+  return module.enabled ? null : <StatusPill tone="neutral">Off</StatusPill>;
+}
+
 /**
  * Files whole modules under a category, one picker per module (Decision 7). Module rows only:
  * record rows from module providers arrive in Section 4. Filing never changes access.
@@ -158,9 +163,7 @@ export function AssignItems(props: AssignItemsProps) {
               cell: (module) => (
                 <span className="flex flex-wrap items-center gap-2">
                   {module.displayName}
-                  {module.enabled ? null : (
-                    <StatusPill tone="neutral">Off</StatusPill>
-                  )}
+                  {offPill(module)}
                 </span>
               ),
             },
@@ -173,10 +176,7 @@ export function AssignItems(props: AssignItemsProps) {
               </IconTile>
             ),
             title: (module) => module.displayName,
-            badge: (module) =>
-              module.enabled ? null : (
-                <StatusPill tone="neutral">Off</StatusPill>
-              ),
+            badge: (module) => offPill(module),
             content: (module) => picker(module),
           }}
         />
