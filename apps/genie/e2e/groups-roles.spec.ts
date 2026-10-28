@@ -12,12 +12,13 @@ import { queryDatabase } from "./support/database.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
-/** Add directory group is inline from 768 px, and inside the toolbar menu on a phone. */
+/**
+ * Add directory group is inline from 768 px, and inside the toolbar menu on a phone. The branch
+ * reads the viewport, because `isVisible()` does not wait and misses a toolbar still rendering.
+ */
 async function openAddDirectoryGroup(page: Page) {
-  const inline = page.getByRole("button", { name: "Add directory group" });
-
-  if (await inline.isVisible()) {
-    await inline.click();
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await page.getByRole("button", { name: "Add directory group" }).click();
 
     return;
   }
