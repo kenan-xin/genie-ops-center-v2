@@ -14,6 +14,7 @@ import {
   FieldLabel,
   FormActionBar,
   HelpDisclosure,
+  IconTile,
   Input,
   LabelPill,
   Select,
@@ -84,8 +85,8 @@ function sourcePill(group: Group) {
   );
 }
 
-/** The state badge a directory group carries: Not seen yet, stale, or hidden when fresh. */
-function syncBadge(group: Group, viewer: GroupsViewer) {
+/** The state a directory group carries as a pill; a fresh group carries none (its facts line dates the sync). */
+function syncPill(group: Group) {
   if (group.archived) return <StatusPill tone="neutral">Archived</StatusPill>;
 
   if (group.source !== "idp") return null;
@@ -100,6 +101,17 @@ function syncBadge(group: Group, viewer: GroupsViewer) {
       </StatusPill>
     );
   }
+
+  return null;
+}
+
+/** The table's Status column: the state pill, or the sync date when the group is fresh. */
+function syncBadge(group: Group, viewer: GroupsViewer) {
+  const pill = syncPill(group);
+
+  if (pill !== null) return pill;
+
+  if (group.source !== "idp" || group.lastSeenAt === null) return null;
 
   return (
     <span className="text-xs text-muted-foreground">
@@ -746,14 +758,29 @@ export function GroupsScreen(props: GroupsScreenProps) {
               },
             ]}
             status={(group) => syncBadge(group, props.viewer)}
-            facts={(group) => [
-              sourcePill(group),
-              `${group.memberCount} member${
-                group.memberCount === 1 ? "" : "s"
-              } · ${group.assignmentCount} role${
-                group.assignmentCount === 1 ? "" : "s"
-              }`,
-            ]}
+            card={{
+              media: (group) => (
+                <IconTile>
+                  {group.source === "idp" ? <DirectoryIcon /> : <LocalIcon />}
+                </IconTile>
+              ),
+              title: (group) => <GroupName value={groupLabel(group)} />,
+              badge: (group) => (
+                <>
+                  {sourcePill(group)}
+                  {syncPill(group)}
+                </>
+              ),
+              facts: (group) => [
+                `${group.memberCount} member${group.memberCount === 1 ? "" : "s"}`,
+                `${group.assignmentCount} role${group.assignmentCount === 1 ? "" : "s"}`,
+                ...(group.source === "idp" && group.lastSeenAt !== null
+                  ? [
+                      `synced ${fmtDateTime(group.lastSeenAt, props.viewer.timeZone, "never")}`,
+                    ]
+                  : []),
+              ],
+            }}
           />
         </div>
       )}

@@ -825,12 +825,20 @@ export function PeopleScreen(props: PeopleScreenProps) {
               { id: "lastSignIn", header: "Last sign-in", cell: lastSignIn },
             ]}
             status={(person) => statusPill(person.status)}
-            facts={(person) => [
-              groupPills(person),
-              `${person.roleCount} role${
-                person.roleCount === 1 ? "" : "s"
-              } · last sign-in ${lastSignIn(person)}`,
-            ]}
+            card={{
+              media: (person) => (
+                <Avatar size="lg" aria-hidden="true">
+                  <AvatarFallback>{initials(person.name)}</AvatarFallback>
+                </Avatar>
+              ),
+              title: (person) => person.name,
+              badge: (person) => statusPill(person.status),
+              detail: (person) => person.email,
+              facts: (person) => [
+                `${person.roleCount} role${person.roleCount === 1 ? "" : "s"}`,
+                `last sign-in ${lastSignIn(person)}`,
+              ],
+            }}
             actions={rowActions}
           />
         </div>

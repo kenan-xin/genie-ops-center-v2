@@ -1,7 +1,7 @@
 "use client";
 
 import { EllipsisIcon } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { Fragment, useId, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
 import {
@@ -29,6 +29,28 @@ export type DataTableColumn<Row> = {
   readonly align?: "end";
 };
 
+/**
+ * The phone card of one row (fix list "Phone card lists (layout)"): a neutral tile, the name with
+ * its pills, up to two muted lines, and the actions menu. The title's button stretches over the
+ * card, so a tap anywhere but the menu opens the row.
+ */
+export type DataTableCard<Row> = {
+  /** The leading tile: an `IconTile`, or an `Avatar` for a person. */
+  readonly media?: (row: Row) => ReactNode;
+  /** Line 1, inside the button that opens the row. */
+  readonly title: (row: Row) => ReactNode;
+  /** Pills on line 1, right of the title: a kind, a status, or both. */
+  readonly badge?: (row: Row) => ReactNode;
+  /** A muted line under the title: an email, an id. */
+  readonly detail?: (row: Row) => ReactNode;
+  /** Muted segments joined with " · " on one line. A long line truncates. */
+  readonly facts?: (row: Row) => readonly ReactNode[];
+  /** Content under the facts that takes its own layout: a picker, a row of access. */
+  readonly content?: (row: Row) => ReactNode;
+  /** The end of line 1, above the row button: an age, or a switch, which stays clickable. */
+  readonly trailing?: (row: Row) => ReactNode;
+};
+
 export type DataTableAction = {
   readonly label: string;
   readonly onSelect: () => void;
@@ -46,17 +68,29 @@ export type DataTableProps<Row> = {
   readonly rowLabel: (row: Row) => string;
   /** The first column is the identity, on the table and on the card, unless `identityColumn` names another. */
   readonly columns: readonly DataTableColumn<Row>[];
-  /** The id of the column whose cell opens the row and leads the card. */
+  /** The id of the column whose cell opens the row. */
   readonly identityColumn?: string;
-  /** Shows on the table as a "Status" column after the given columns, and on the card. */
+  /** Shows as a "Status" column after the given columns. The card states the same fact in `badge`. */
   readonly status?: (row: Row) => ReactNode;
-  /** One or two scan facts for the card. A third is not rendered. */
-  readonly facts?: (row: Row) => readonly ReactNode[];
+  /** The phone card. Below 768 px the table is this list instead. */
+  readonly card: DataTableCard<Row>;
   readonly onOpenRow?: (row: Row) => void;
   readonly actions?: (row: Row) => readonly DataTableAction[];
 };
 
-const maxFacts = 2;
+/** One line of facts, so that every card of a list keeps the same height. */
+function Facts(props: { readonly items: readonly ReactNode[] }) {
+  return (
+    <>
+      {props.items.map((item, index) => (
+        <Fragment key={index}>
+          {index === 0 ? null : " · "}
+          {item}
+        </Fragment>
+      ))}
+    </>
+  );
+}
 
 // The reason is visible text, not a title, because a touch screen has no hover (R-21, R-38).
 function ActionItem({ item }: { readonly item: DataTableAction }) {
@@ -91,7 +125,7 @@ export function DataTable<Row>({
   columns,
   identityColumn: identityId,
   status,
-  facts,
+  card,
   onOpenRow,
   actions,
 }: DataTableProps<Row>) {
@@ -194,27 +228,66 @@ export function DataTable<Row>({
         aria-label={label}
         className="divide-y divide-border rounded-xl border border-border md:hidden"
       >
-        {rows.map((row) => (
-          <li key={rowKey(row)} className="flex items-start gap-2 p-4 text-sm">
-            <div className="grid min-w-0 flex-1 gap-1">
-              {identityColumn ? identity(row, identityColumn.cell(row)) : null}
-              {status ? <div>{status(row)}</div> : null}
-              {facts
-                ? facts(row)
-                    .slice(0, maxFacts)
-                    .map((fact, index) => (
-                      <div
-                        key={index}
-                        className="text-muted-foreground wrap-anywhere"
-                      >
-                        {fact}
-                      </div>
-                    ))
-                : null}
-            </div>
-            {menu(row)}
-          </li>
-        ))}
+        {rows.map((row) => {
+          const badge = card.badge?.(row) ?? null;
+          const detail = card.detail?.(row) ?? null;
+          const facts = card.facts?.(row) ?? [];
+          const content = card.content?.(row) ?? null;
+          const trailing = card.trailing?.(row) ?? null;
+
+          return (
+            <li
+              key={rowKey(row)}
+              className="relative flex items-start gap-3 px-4 py-3 text-sm"
+            >
+              {card.media === undefined ? null : (
+                <span className="pt-0.5">{card.media(row)}</span>
+              )}
+              <div className="grid min-w-0 flex-1 gap-0.5">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {onOpenRow === undefined ? (
+                    <span className="min-w-0 truncate font-medium text-foreground">
+                      {card.title(row)}
+                    </span>
+                  ) : (
+                    // The pseudo-element covers the card, so the whole row is one tap target (R-23).
+                    <button
+                      type="button"
+                      className={`min-w-0 rounded-sm text-left font-medium text-foreground after:absolute after:inset-0 ${focusRing}`}
+                      onClick={() => onOpenRow(row)}
+                    >
+                      <span className="block truncate">{card.title(row)}</span>
+                    </button>
+                  )}
+                  {badge === null ? null : (
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {badge}
+                    </span>
+                  )}
+                  {trailing === null ? null : (
+                    <span className="relative z-10 ml-auto shrink-0">
+                      {trailing}
+                    </span>
+                  )}
+                </div>
+                {detail === null ? null : (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {detail}
+                  </div>
+                )}
+                {facts.length === 0 ? null : (
+                  <div className="truncate text-muted-foreground">
+                    <Facts items={facts} />
+                  </div>
+                )}
+                {content === null ? null : (
+                  <div className="relative z-10">{content}</div>
+                )}
+              </div>
+              <span className="relative z-10">{menu(row)}</span>
+            </li>
+          );
+        })}
       </ul>
     </>
   );

@@ -194,11 +194,15 @@ function SessionsBlock(props: {
             ),
           },
         ]}
-        // One fact keeps the card at the height of the earlier hand-built card: the identity
-        // already shows the browser, and the table keeps the sign-in time.
-        facts={(session) => [
-          `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
-        ]}
+        card={{
+          title: (session) => session.device,
+          badge: (session) =>
+            session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
+          detail: (session) => session.browser,
+          facts: (session) => [
+            `${session.ipAddress} · last active ${instant(session.lastActiveAt)}`,
+          ],
+        }}
         actions={(session) => {
           if (session.isCurrent) return [];
 

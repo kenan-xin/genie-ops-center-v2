@@ -13,6 +13,7 @@ import {
   FieldLabel,
   FormActionBar,
   HelpDisclosure,
+  IconTile,
   Input,
   LabelPill,
   StatusPill,
@@ -602,14 +603,19 @@ export function RolesScreen(props: RolesScreenProps) {
                 align: "end",
               },
             ]}
-            facts={(role) => [
-              kindPill(role),
-              `${role.permissions.length} permission${
-                role.permissions.length === 1 ? "" : "s"
-              } · ${role.assignmentCount} assignment${
-                role.assignmentCount === 1 ? "" : "s"
-              }`,
-            ]}
+            card={{
+              media: () => (
+                <IconTile>
+                  <ShieldIcon />
+                </IconTile>
+              ),
+              title: (role) => role.name,
+              badge: (role) => kindPill(role),
+              facts: (role) => [
+                `${role.permissions.length} permission${role.permissions.length === 1 ? "" : "s"}`,
+                `${role.assignmentCount} assignment${role.assignmentCount === 1 ? "" : "s"}`,
+              ],
+            }}
           />
         </div>
       )}

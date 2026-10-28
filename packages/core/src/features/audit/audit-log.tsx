@@ -499,26 +499,27 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                   cell: (event) => event.summary,
                 },
               ]}
-              facts={(event) => [
-                <span key="actor" className="flex flex-wrap items-center gap-2">
-                  {actorCell(event)}
-                  {relative(event)}
-                </span>,
-                <span
-                  key="action"
-                  className="flex flex-wrap items-center gap-1.5"
-                >
-                  <ActionPill action={event.action} />
-                  <span className="text-xs">
-                    {event.targetType === "" ? null : (
-                      <span className="text-muted-foreground">
-                        {humanize(event.targetType)}
+              card={{
+                media: (event) => <Avatar actor={event.actor} />,
+                title: (event) => event.actor?.name ?? "System",
+                trailing: (event) => relative(event),
+                content: (event) => (
+                  <div className="grid gap-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <ActionPill action={event.action} />
+                      <span className="text-xs">
+                        {event.targetType === "" ? null : (
+                          <span className="text-muted-foreground">
+                            {humanize(event.targetType)}
+                          </span>
+                        )}{" "}
+                        <TargetCell event={event} />
                       </span>
-                    )}{" "}
-                    <TargetCell event={event} />
-                  </span>
-                </span>,
-              ]}
+                    </span>
+                    <p>{event.summary}</p>
+                  </div>
+                ),
+              }}
             />
 
             <div className="flex flex-col items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:justify-between text-muted-foreground">

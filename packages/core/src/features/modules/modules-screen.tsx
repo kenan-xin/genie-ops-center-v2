@@ -6,6 +6,7 @@ import {
   DataTable,
   focusRing,
   HelpDisclosure,
+  IconTile,
   MonoChip,
   Popover,
   PopoverContent,
@@ -21,6 +22,7 @@ import {
   Switch,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
+import { BoxesIcon } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import { GroupName } from "../groups/group-name.tsx";
@@ -281,7 +283,26 @@ export function ModulesScreen(props: ModulesScreenProps) {
             { id: "access", header: "Access", cell: access },
           ]}
           status={enabledControl}
-          facts={(module) => [categoryPicker(module), access(module)]}
+          card={{
+            media: () => (
+              <IconTile>
+                <BoxesIcon />
+              </IconTile>
+            ),
+            title: (module) => module.displayName,
+            detail: (module) => <MonoChip>{module.id}</MonoChip>,
+            badge: (module) =>
+              module.enabled ? null : (
+                <StatusPill tone="neutral">Off</StatusPill>
+              ),
+            content: (module) => (
+              <div className="grid gap-2">
+                {enabledControl(module)}
+                {categoryPicker(module)}
+                {access(module)}
+              </div>
+            ),
+          }}
         />
       )}
 

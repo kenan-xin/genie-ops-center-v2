@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { UserIcon } from "lucide-react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 // The package entry, not ./data-table.tsx, so that the stories prove what an
 // app can import.
-import { DataTable } from "../index.ts";
+import { DataTable, IconTile, LabelPill } from "../index.ts";
 
 type Person = {
   readonly id: string;
@@ -28,7 +29,7 @@ const people: readonly Person[] = [
   {
     id: "p-2",
     email: "averyveryveryverylongaddressforatest@example.com",
-    name: "Jordan Lee",
+    name: "Jordan Lee of the long review group",
     role: "Reviewer",
     status: "Active",
     lastSeen: "Yesterday",
@@ -76,7 +77,18 @@ const meta = {
       },
     ],
     status: (row) => row.status,
-    facts: (row) => [row.name, row.role, row.lastSeen],
+    card: {
+      media: () => (
+        <IconTile>
+          <UserIcon />
+        </IconTile>
+      ),
+      title: (row) => row.email,
+      detail: (row) => row.name,
+      badge: (row) => <LabelPill>{row.id}</LabelPill>,
+      facts: (row) => [row.status, row.role, row.lastSeen],
+      trailing: (row) => `${row.signIns} sign-ins`,
+    },
     onOpenRow: fn(),
     actions: (row) => [
       row.id === "p-2"
@@ -193,7 +205,7 @@ export const Desktop: Story = {
 
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, args }) => {
     const list = canvas.getByRole("list", { name: "People" });
 
     await expect(list).toBeVisible();
@@ -204,29 +216,72 @@ export const Phone: Story = {
     const cards = within(list).getAllByRole("listitem");
 
     await expect(cards).toHaveLength(3);
-    await Promise.all(
-      cards.map(async (card, index) => {
-        await expect(
-          within(card).getByText(people[index]!.status)
-        ).toBeVisible();
-        // Two facts at most: the third (last seen) never renders.
-        await expect(
-          within(card).queryByText(people[index]!.lastSeen)
-        ).toBeNull();
-      })
+
+    // One card shape: a long email truncates instead of growing its card. The divider is not the
+    // card, so it comes off each box.
+    const heights = cards.map((card) => {
+      const style = getComputedStyle(card);
+
+      return (
+        card.getBoundingClientRect().height -
+        Number.parseFloat(style.borderTopWidth) -
+        Number.parseFloat(style.borderBottomWidth)
+      );
+    });
+
+    await expect(new Set(heights).size).toBe(1);
+
+    // The facts are one line, joined with " · ".
+    const facts = within(cards[0]!).getByText("Active · Administrator · Today");
+
+    await expect(facts).toBeVisible();
+
+    // A neutral tile leads the card, left of the name, and lines up with it.
+    const tile = cards[0]!.querySelector("[data-slot=icon-tile]");
+
+    const name = within(cards[0]!).getByRole("button", {
+      name: "avery@example.com",
+    });
+
+    await expect(tile).not.toBeNull();
+    await expect(tile!.getBoundingClientRect().width).toBe(40);
+    await expect(tile!.getBoundingClientRect().right).toBeLessThan(
+      name.getBoundingClientRect().left
     );
 
+    // The badge sits on the name's line, not on a line of its own.
+    const badge = within(cards[0]!).getByText("p-1");
+
     await expect(
-      canvas.getByRole("button", { name: "avery@example.com" })
-    ).toBeVisible();
+      Math.abs(
+        name.getBoundingClientRect().top - badge.getBoundingClientRect().top
+      )
+    ).toBeLessThan(6);
+
+    // The card is one tap target: the point over the facts belongs to the row's button (R-23).
     await expect(
-      canvas.getByRole("button", { name: "Actions for avery@example.com" })
-    ).toBeVisible();
+      cards[0]!.getBoundingClientRect().height
+    ).toBeGreaterThanOrEqual(44);
+
+    const overFacts = facts.getBoundingClientRect();
+
+    await expect(
+      document
+        .elementFromPoint(
+          overFacts.left + overFacts.width / 2,
+          overFacts.top + overFacts.height / 2
+        )
+        ?.closest("button")
+    ).toBe(name);
+
+    await userEvent.click(name);
+    await expect(args.onOpenRow).toHaveBeenLastCalledWith(people[0]);
+
     await expect(
       canvas
-        .getByRole("button", { name: "avery@example.com" })
+        .getByRole("button", { name: "Actions for avery@example.com" })
         .getBoundingClientRect().height
-    ).toBeGreaterThanOrEqual(44);
+    ).toBeGreaterThanOrEqual(40);
     await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth

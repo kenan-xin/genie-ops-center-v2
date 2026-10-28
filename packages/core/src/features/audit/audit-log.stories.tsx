@@ -170,13 +170,20 @@ export const Phone: Story = {
     // The card names the target's type and marks a removed target, as the table does (R-69).
     await expect(first.getByText("User")).toBeVisible();
     await expect(within(cards[2]!).getByText("(removed)")).toBeVisible();
+
+    // The actor leads the card, and the summary sits under the chip and the target.
+    const actor = first.getByRole("button", { name: "Ada Lovelace" });
+
+    const summary = first.getByText(
+      "Added Ada Lovelace and assigned Tenant administrator."
+    );
+
+    await expect(actor.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      summary.getBoundingClientRect().top
+    );
     await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
 
-    await userEvent.click(
-      first.getByRole("button", {
-        name: "Added Ada Lovelace and assigned Tenant administrator.",
-      })
-    );
+    await userEvent.click(actor);
     await expect(
       await screen.findByRole("dialog", { name: "Audit event" })
     ).toBeInTheDocument();

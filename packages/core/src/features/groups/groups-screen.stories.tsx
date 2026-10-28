@@ -190,8 +190,8 @@ export const Phone: Story = {
       document.documentElement.clientWidth
     );
     // One member and one role read in the singular.
-    await expect(list.getByText("1 member · 0 roles")).toBeInTheDocument();
-    await expect(list.getByText("0 members · 1 role")).toBeInTheDocument();
+    await expect(list.getByText(/1 member · 0 roles/)).toBeInTheDocument();
+    await expect(list.getByText(/0 members · 1 role/)).toBeInTheDocument();
 
     await userEvent.click(
       list.getByRole("button", { name: /Finance managers/ })

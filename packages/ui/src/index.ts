@@ -99,9 +99,12 @@ export { DataTable } from "./parts/data-table.tsx";
 
 export type {
   DataTableAction,
+  DataTableCard,
   DataTableColumn,
   DataTableProps,
 } from "./parts/data-table.tsx";
+
+export { IconTile } from "./parts/icon-tile.tsx";
 
 export type { ConfirmDialogProps } from "./parts/confirm-dialog.tsx";
 

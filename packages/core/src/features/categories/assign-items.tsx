@@ -4,6 +4,7 @@ import {
   Button,
   CountPill,
   DataTable,
+  IconTile,
   Input,
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   StatusPill,
   SwitchField,
 } from "@genie/ui";
+import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 
 import type { AssignableModuleView, CategoriesScreenProps } from "./types.ts";
@@ -164,7 +166,19 @@ export function AssignItems(props: AssignItemsProps) {
             },
             { id: "category", header: "Category", cell: picker },
           ]}
-          facts={(module) => [picker(module)]}
+          card={{
+            media: () => (
+              <IconTile>
+                <FolderIcon />
+              </IconTile>
+            ),
+            title: (module) => module.displayName,
+            badge: (module) =>
+              module.enabled ? null : (
+                <StatusPill tone="neutral">Off</StatusPill>
+              ),
+            content: (module) => picker(module),
+          }}
         />
       )}
       <p className="text-xs text-muted-foreground">
