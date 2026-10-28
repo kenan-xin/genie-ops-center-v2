@@ -4,6 +4,12 @@ One entry per design change in this repository, newest first. Each entry names w
 
 ## 2026-10-28
 
+### Added, the event category colors
+
+- A fixed color per audit event category in tables and lists, under the State-vs-Label Rule exception in `DESIGN.md`: sign-in and sessions, people, groups, roles and access, branding and settings, modules, and module events (owner, 2026-10-27).
+- `tokens.md` gains "Category colors" with the seven tone pairs and their measured contrast. Every pair holds 4.5:1 in both themes and sits clear of the status colors and the default primary blue.
+- File: `product/design-system/tokens.md`. Record: `imports/2026-10-28-category-colors.md`.
+
 ### Changed, the branding drop zone captures
 
 - The four Branding Identity captures that show a drop zone now come from the build, which follows `tokens.md` "Drop zone": a 2 px dashed border in `--input`, a `--muted` fill, the upload icon in a neutral tile, and the action line first (owner, 2026-10-27).

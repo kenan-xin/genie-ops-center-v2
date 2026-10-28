@@ -94,6 +94,22 @@ The theme is a `data-theme` attribute on `<html>`. The server writes it from the
 
 Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. In the dark theme the body rows sit on the page color (`--background`, gray-950) and the header row is the lighter `--muted` band (gray-900) (owner, 2026-10-27, L273). A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
 
+## Category colors
+
+An event-category chip in a table or a list may carry a fixed color, under the exception to the State-vs-Label Rule in `DESIGN.md` (owner, 2026-10-27). The category comes from the action key of the audit event, so a reader scans a long log by domain. Every value is fixed: none derives from the tenant color, and none matches a status color or the default `--primary` blue. The chip keeps its text label, so color is never the only code, and avatars stay neutral gray. An operator row (`ops:*`) carries no category and keeps the neutral chip.
+
+| Category | Action keys | Light chip | Light text | Dark chip | Dark text | Text contrast, light / dark |
+| --- | --- | --- | --- | --- | --- | --- |
+| Sign-in and sessions | `auth:*` | `#ecfeff` | `#155e75` | `#083344` | `#67e8f9` | 6.99 / 9.24 |
+| People | `core:person_*`, `core:invitation_sent`, `core:set_password_sent` | `#f5f3ff` | `#6d28d9` | `#2e1065` | `#c4b5fd` | 6.48 / 8.25 |
+| Groups | `core:*group*` | `#fdf4ff` | `#a21caf` | `#4a044e` | `#f0abfc` | 5.89 / 8.41 |
+| Roles and access | `core:role_*`, `core:permission_transformation` | `#eef2ff` | `#4338ca` | `#1e1b4b` | `#a5b4fc` | 7.07 / 8.02 |
+| Branding and settings | `core:branding_published`, `core:settings_updated` | `#faf5ff` | `#7e22ce` | `#3b0764` | `#d8b4fe` | 6.51 / 8.48 |
+| Modules | `core:module_*`, `core:category_*` | `#f0f9ff` | `#0369a1` | `#082f49` | `#7dd3fc` | 5.57 / 8.32 |
+| Module events | any other prefix, for example `solutions:*` | `#f1f5f9` | `#334155` | `#1e293b` | `#cbd5e1` | 9.45 / 9.85 |
+
+Every chip text pair holds at least 4.5:1 against its own fill in both themes. Each text color also sits at least 10 OKLab units from the success, warning and danger colors and from the default primary blue, so no category reads as a status. The values live in the fixed token layer as `--category-<name>-bg` and `--category-<name>-fg`, and a test holds both rules.
+
 ## Breadcrumbs
 
 `PageHeader` carries a breadcrumb slot above the page title (owner, 2026-10-27). The trail shows only on a page that sits under a list, for example "Roles › Tenant administrator". A top-level page never shows one. The last crumb is the record label, it is not a link, and it truncates with its full text in `title`. Under 768 px the trail collapses to one back link to the parent, for example "‹ Roles", at least 44 px tall. Core builds the trail from the route parent and the record label, so a module page gets it with no code of its own. The slot uses the shadcn Breadcrumb in the base style, and each link takes the shared focus ring.
