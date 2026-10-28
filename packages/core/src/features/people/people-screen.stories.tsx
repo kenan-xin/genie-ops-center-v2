@@ -711,6 +711,38 @@ export const AddPersonRefusalClearsOnCancel: Story = {
   },
 };
 
+// A refusal that answers after Cancel is dropped, so the next open starts clean.
+export const AddPersonLateRefusalAfterCancelIsDropped: Story = {
+  args: {
+    onAddPerson: fn(
+      () =>
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("Late refusal.")), 300)
+        )
+    ),
+  },
+  play: async ({ canvas }) => {
+    const open = async () => {
+      await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+      return within(await screen.findByRole("dialog", { name: "Add person" }));
+    };
+
+    const dialog = await open();
+
+    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const reopened = await open();
+
+    // Wait past the late answer, then the new open holds no refusal.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await expect(reopened.queryByRole("alert")).toBeNull();
+  },
+};
+
 export const AddPersonPartialSuccessNotice: Story = {
   args: { notice: "Person added; the email was not sent. Use Resend." },
   play: async ({ canvas }) => {
