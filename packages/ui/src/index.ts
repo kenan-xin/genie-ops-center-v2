@@ -157,6 +157,8 @@ export { CountPill, LabelPill, MonoChip, StatusPill } from "./parts/pills.tsx";
 
 export { EmptyState } from "./parts/empty-state.tsx";
 
+export type { EmptyStateProps } from "./parts/empty-state.tsx";
+
 export { HelpDisclosure } from "./parts/help-disclosure.tsx";
 
 export { FormActionBar } from "./parts/form-action-bar.tsx";

@@ -1,14 +1,32 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 
-function Empty({ className, ...props }: React.ComponentProps<"div">) {
+// `framed` is the page-filling empty state of tokens.md (a refused page, an empty home).
+const emptyVariants = cva(
+  "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance",
+  {
+    variants: {
+      variant: {
+        default: "",
+        framed: "min-h-96 border border-border",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+function Empty({
+  className,
+  variant = "default",
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof emptyVariants>) {
   return (
     <div
       data-slot="empty"
-      className={cn(
-        "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance",
-        className
-      )}
+      data-variant={variant}
+      className={cn(emptyVariants({ variant, className }))}
       {...props}
     />
   );
@@ -31,6 +49,8 @@ const emptyMediaVariants = cva(
       variant: {
         default: "bg-transparent",
         icon: "flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-4",
+        // The neutral icon tile of the framed empty state (the no-access mockup).
+        tile: "mb-2 flex size-13 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground [&_svg:not([class*='size-'])]:size-5.5",
       },
     },
     defaultVariants: {

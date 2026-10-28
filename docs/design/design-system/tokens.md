@@ -210,6 +210,8 @@ A failed one-click action, such as signing out a session or creating a category,
 
 Centered block: icon or letter tile, one heading, one sentence, at most one primary action. Filter empty states offer Clear filters.
 
+One part, `EmptyState` in `packages/ui`, has two forms (batch 5, 2026-10-28). The framed form fills a page: a 1 px dashed `--border` frame, a 52 px neutral icon tile or the company mark tile, a 20 px semibold heading, the line and an outline button. A refused page and an empty home use it. The compact form has no frame and no tile, for a list that matches nothing. Its action is the outline button "Clear search and filters".
+
 ## Loading
 
 Skeleton blocks match the shape they replace and animate only when motion is allowed. They fill with `--border` (gray-200, dark gray-800), because `--muted` (gray-50) does not show on a white page. A spinner carries `role="status"` and a visually hidden label.
