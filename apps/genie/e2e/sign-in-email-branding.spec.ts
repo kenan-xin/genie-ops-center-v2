@@ -88,11 +88,12 @@ test("an empty welcome text shows no welcome line on the sign-in page (DR-04)", 
 
         if (await toggle.isVisible()) await toggle.click();
 
+        const preview = page.getByRole("group", { name: "Preview" });
+
         await expect(
-          page
-            .getByRole("group", { name: "Preview" })
-            .getByText("Welcome to Default Ops", { exact: true })
+          preview.getByText("Sign in to Default Ops", { exact: true })
         ).toBeVisible();
+        await expect(preview.getByTestId("sign-in-welcome")).toHaveCount(0);
       } finally {
         await queryDatabase(SEED_RESET);
       }

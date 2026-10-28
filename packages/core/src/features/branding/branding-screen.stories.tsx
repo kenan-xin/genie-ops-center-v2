@@ -38,7 +38,7 @@ const meta = {
   args: {
     branding: brandingView(),
     timeZone: "UTC",
-    welcomeFallback: (productName) => `Welcome to ${productName}`,
+    signInHeading: (productName) => `Sign in to ${productName}`,
     onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {}),
     onUpload: fn(async () => MARK),
   },
@@ -182,9 +182,25 @@ export const InvalidHex: Story = {
   },
 };
 
+/** The preview renders the page's sign-in stack (direction D2), so the two never drift apart. */
 export const SignIn: Story = {
   play: async ({ canvas, canvasElement }) => {
+    const product = canvas.getByRole("textbox", { name: "Product name" });
+
+    await user.clear(product);
+    await user.type(product, "Acme Ops");
     await user.click(canvas.getByRole("tab", { name: "Sign-in" }));
+
+    const shown = within(preview(canvasElement));
+
+    await expect(shown.getByText("Sign in to Acme Ops")).toBeVisible();
+    await expect(shown.getByText("Sign in with SSO")).toBeVisible();
+    // The page keeps one h1; an omitted welcome text shows no line, as on the page (DR-04).
+    await expect(preview(canvasElement).querySelector("h1")).toBeNull();
+    await expect(
+      preview(canvasElement).querySelector("[data-sign-in-stack]")
+    ).not.toBeNull();
+    await expect(shown.queryByText(/^Welcome to/)).toBeNull();
 
     const acknowledge = canvas.getByRole("switch", {
       name: "People must acknowledge the notice",
@@ -217,6 +233,11 @@ export const SignIn: Story = {
  */
 export const SignInContrast: Story = {
   args: { branding: brandingView({ loginBackgroundColor: "#22aaee" }) },
+  // The preview shows the warning background on purpose, as in ColorsWarning: the stack has no
+  // card, so its text sits on the color the pill measures.
+  parameters: {
+    a11y: { test: "error", context: { exclude: ["[data-branding-preview]"] } },
+  },
   play: async ({ args, canvas }) => {
     await user.click(canvas.getByRole("tab", { name: "Sign-in" }));
 

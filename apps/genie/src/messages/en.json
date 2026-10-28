@@ -174,7 +174,6 @@
     "actionSso": "Sign in with SSO",
     "actionPassword": "Sign in with email and password",
     "forgotPassword": "Forgot your password?",
-    "welcomeFallback": "Welcome to {productName}",
     "acknowledge": "I acknowledge these conditions.",
     "terms": "Terms of use",
     "privacy": "Privacy",

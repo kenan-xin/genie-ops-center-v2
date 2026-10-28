@@ -47,8 +47,8 @@ export type BrandingScreenProps = {
   readonly loading?: boolean;
   readonly error?: string | undefined;
   readonly timeZone: string;
-  /** The sign-in page's text for an empty welcome text, from the host's catalogue (DR-04). */
-  readonly welcomeFallback: (productName: string) => string;
+  /** The sign-in page's heading for a product name, from the host's catalogue (R-54). */
+  readonly signInHeading: (productName: string) => string;
   /** Receives only the changed fields. A rejection with `{ message, issues }` keeps the draft. */
   readonly onPublish: (changes: Partial<BrandingDraft>) => Promise<void>;
   readonly onUpload: (
@@ -365,10 +365,8 @@ function BrandingEditor(
     shown === "sign-in" ? (
       <SignInPreview
         identity={identity}
-        welcomeText={
-          draft.loginWelcomeText?.trim() ||
-          props.welcomeFallback(draft.productName)
-        }
+        heading={props.signInHeading(draft.productName)}
+        welcomeText={draft.loginWelcomeText ?? ""}
         noticeText={draft.loginNoticeText ?? ""}
         requiresAcknowledgement={draft.loginNoticeRequiresAcknowledgement}
       />
@@ -476,7 +474,7 @@ function BrandingEditor(
           dirty={count > 0}
           caption={
             tab === "sign-in"
-              ? "The sign-in card"
+              ? "The sign-in page"
               : "The shell with your color and mark"
           }
         >

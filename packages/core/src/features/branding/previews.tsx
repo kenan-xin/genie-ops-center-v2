@@ -1,10 +1,13 @@
 "use client";
 
+import { buttonVariants } from "@genie/ui";
+
 import { foregroundFor } from "../../lib/branding/foreground.ts";
 import { primaryPair } from "../../lib/branding/tokens.ts";
 import { HEX_COLOR } from "../../services/branding/schemas.ts";
 import { TenantMark } from "../shell/identity-block.tsx";
 import type { ShellIdentity } from "../shell/types.ts";
+import { SignInStack } from "../sign-in/sign-in-stack.tsx";
 
 /**
  * The draft colors for every element that carries `data-branding-preview` with this scope, the
@@ -83,32 +86,46 @@ export function ShellPreview(props: { readonly identity: ShellIdentity }) {
 }
 
 /**
- * The sign-in card with the draft welcome text, notice and background (R-54). Text only, like
- * the real page (F-1); the caller resolves an empty welcome text to the page's fallback (DR-04).
+ * The sign-in page's stack with the draft heading, welcome text, notice and background (R-54).
+ * The mark is the page's default mark (F-1), and an empty welcome text shows no line (DR-04).
  */
 export function SignInPreview(props: {
   readonly identity: ShellIdentity;
+  readonly heading: string;
   readonly welcomeText: string;
   readonly noticeText: string;
   readonly requiresAcknowledgement: boolean;
 }) {
+  const notice = props.noticeText.trim();
+  const gated = notice !== "" && props.requiresAcknowledgement;
+
   return (
-    <div className="flex justify-center rounded-lg bg-(--sign-in-background) p-4">
-      <div className="flex w-full max-w-72 flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center text-sm">
-        <p className="text-base font-bold">{props.identity.companyName}</p>
-        <p className="text-muted-foreground">{props.welcomeText}</p>
-        {props.noticeText === "" ? null : (
-          <p className="w-full rounded-md border bg-muted p-2 text-left text-xs">
-            {props.noticeText}
-          </p>
-        )}
-        {props.requiresAcknowledgement && props.noticeText !== "" ? (
-          <p className="self-start text-xs">I have read the notice</p>
-        ) : null}
-        <span className="mt-1 w-full rounded-lg bg-primary py-1.5 font-semibold text-primary-foreground">
-          Sign in
-        </span>
-      </div>
+    <div className="flex justify-center rounded-lg bg-(--sign-in-background) px-4 py-8">
+      <SignInStack
+        identity={{ ...props.identity, markUrl: null }}
+        heading={props.heading}
+        headingAs="p"
+        welcome={props.welcomeText.trim() || null}
+      >
+        {/* The page's notice block and entry, as text: a preview holds no link or control. */}
+        <div className="flex flex-col gap-3">
+          {notice === "" ? null : (
+            <div className="rounded-lg border bg-muted text-sm">
+              <p className="p-4 whitespace-pre-line">{notice}</p>
+              {gated ? (
+                <p className="border-t px-4 py-3">
+                  I acknowledge these conditions.
+                </p>
+              ) : null}
+            </div>
+          )}
+          <span
+            className={`${buttonVariants({ size: "md" })} w-full ${gated ? "opacity-50" : ""}`}
+          >
+            Sign in with SSO
+          </span>
+        </div>
+      </SignInStack>
     </div>
   );
 }

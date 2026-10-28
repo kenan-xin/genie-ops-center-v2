@@ -59,7 +59,7 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
           : undefined
       }
       timeZone={props.timeZone}
-      welcomeFallback={(productName) => t("welcomeFallback", { productName })}
+      signInHeading={(productName) => t("heading", { productName })}
       onPublish={async (draft) => {
         const result = await publish.mutateAsync(draft);
 
