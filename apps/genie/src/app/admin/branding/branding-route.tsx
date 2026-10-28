@@ -60,6 +60,10 @@ export function BrandingRoute(props: { readonly timeZone: string }) {
       }
       timeZone={props.timeZone}
       signInHeading={(productName) => t("heading", { productName })}
+      helpLabels={{
+        darkColor: pages("branding.help.darkColor"),
+        squareMark: pages("branding.help.squareMark"),
+      }}
       onPublish={async (draft) => {
         const result = await publish.mutateAsync(draft);
 

@@ -44,6 +44,7 @@ export function IdentityTab(props: {
   readonly issues: Readonly<Record<string, string>>;
   readonly images: Partial<Record<BrandingImageSlot, BrandingImageView>>;
   readonly slots: Partial<Record<BrandingImageSlot, SlotState>>;
+  readonly helpLabel: string;
   readonly onChange: (
     field: "companyName" | "productName",
     value: string
@@ -89,7 +90,7 @@ export function IdentityTab(props: {
           />
         );
       })}
-      <HelpDisclosure label="What shows without a square mark">
+      <HelpDisclosure label={props.helpLabel}>
         <p>
           Without a square mark, the shell shows the first letter of the company
           name.

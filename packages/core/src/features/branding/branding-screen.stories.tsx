@@ -39,6 +39,10 @@ const meta = {
     branding: brandingView(),
     timeZone: "UTC",
     signInHeading: (productName) => `Sign in to ${productName}`,
+    helpLabels: {
+      darkColor: "How the color looks in dark",
+      squareMark: "What shows without a square mark",
+    },
     onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {}),
     onUpload: fn(async () => MARK),
   },

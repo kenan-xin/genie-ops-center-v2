@@ -31,6 +31,7 @@ export function ColorsTab(props: {
   readonly draft: BrandingDraft;
   readonly issues: Readonly<Record<string, string>>;
   readonly scope: string;
+  readonly helpLabel: string;
   readonly onColor: (value: string) => void;
   readonly onTheme: (value: BrandingDraft["defaultTheme"]) => void;
 }) {
@@ -66,7 +67,7 @@ export function ColorsTab(props: {
         ) : null}
       </div>
       {valid ? <ContrastPills pairs={brandingContrastPairs(color)} /> : null}
-      <HelpDisclosure label="How the color looks in dark">
+      <HelpDisclosure label={props.helpLabel}>
         <p>
           In the dark theme, brand text and the focus ring use one fixed light
           color, #60a5fa. Buttons keep this color in both themes.

@@ -135,7 +135,11 @@
     "branding": {
       "title": "Branding",
       "description": "How Genie Ops Center looks for the people of this tenant. Changes stay in this browser until you publish.",
-      "notPublished": "The branding was not published."
+      "notPublished": "The branding was not published.",
+      "help": {
+        "darkColor": "How the color looks in dark",
+        "squareMark": "What shows without a square mark"
+      }
     }
   },
   "saveFailure": {
