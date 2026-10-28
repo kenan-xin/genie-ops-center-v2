@@ -50,6 +50,8 @@ export const AUDIT_ACTIONS = [
   // Shell, branding, settings, modules and categories (Section 3, R-90a).
   "core:branding_published",
   "core:settings_updated",
+  "core:integration_key_stored",
+  "core:integration_key_removed",
   "core:module_configured",
   "core:module_enabled",
   "core:module_disabled",

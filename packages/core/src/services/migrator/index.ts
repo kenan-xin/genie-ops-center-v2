@@ -72,6 +72,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0006_tenant_settings_reporting_date.sql",
     import.meta.url
   ),
+  "0007_tenant_integration_key": new URL(
+    "../../../drizzle/0007_tenant_integration_key.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

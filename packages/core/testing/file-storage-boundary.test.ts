@@ -2,44 +2,15 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const repositoryRoot = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../.."
-);
-
-const sourceRoots = [
-  join(repositoryRoot, "packages/core/src"),
-  join(repositoryRoot, "packages/modules"),
-  join(repositoryRoot, "apps/genie/src"),
-];
-
-const sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
-
-function sourceFiles(root: string): string[] {
-  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(root, entry.name);
-
-    if (entry.isDirectory()) return sourceFiles(path);
-
-    if (!sourceExtensions.has(entry.name.slice(entry.name.lastIndexOf(".")))) {
-      return [];
-    }
-
-    if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name)) return [];
-
-    return [path];
-  });
-}
+import { repositoryRoot, sourceFiles, sourceRoots } from "./source-files.ts";
 
 type SourceFile = { readonly path: string; readonly source: string };
 

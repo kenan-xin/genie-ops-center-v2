@@ -505,4 +505,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "readBranding returns no url while the scan is infected, and the shell issues no mark link",
     ],
   },
+  {
+    file: "testing/integration-keys.integration.test.ts",
+    reason:
+      "Spec 7 R-17 and the DEC-53 guard require a key store that never returns, logs or audits a key, and that only the integrations service touches",
+    cases: [
+      "the integration key store against a real database stores, replaces and removes a key with one audit row each that names the key and never its value",
+      "the integration key store against a real database a failed write throws an error that, logged at every level, carries no key",
+    ],
+  },
+  {
+    file: "testing/integration-key-boundary.test.ts",
+    reason:
+      "Spec 7 R-17 and the DEC-53 guard require a key store that never returns, logs or audits a key, and that only the integrations service touches",
+    cases: [
+      "tenant_integration_key access boundary keeps runtime references to tenant_integration_key inside the integrations service",
+      "tenant_integration_key access boundary catches a planted reference in a module source file",
+    ],
+  },
 ];

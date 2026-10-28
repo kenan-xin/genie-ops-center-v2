@@ -259,6 +259,16 @@ export const tenantIntegration = pgTable("tenant_integration", {
   updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
 });
 
+/** Keys an administrator typed, as plain text (DEC-53). Only services/integrations/keys.ts reads or writes it. */
+export const tenantIntegrationKey = pgTable("tenant_integration_key", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  value: text("value").notNull(),
+  updatedByUserId: text("updated_by_user_id").references(() => user.id),
+  createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+});
+
 /**
  * The Better Auth identity tables, generated once with the Better Auth CLI (better-auth 1.7.6)
  * and copied here; the core schema is then the source of truth (Spec 2 D2-5). The application
@@ -545,6 +555,7 @@ export const coreTables = {
   file,
   file_blob: fileBlob,
   tenant_integration: tenantIntegration,
+  tenant_integration_key: tenantIntegrationKey,
   user,
   session,
   account,

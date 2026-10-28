@@ -110,7 +110,11 @@ export function eventCategory(action: string): CategoryTone | null {
     return "access";
   }
 
-  if (verb === "branding_published" || verb === "settings_updated") {
+  if (
+    verb === "branding_published" ||
+    verb === "settings_updated" ||
+    verb.startsWith("integration_key")
+  ) {
     return "settings";
   }
 

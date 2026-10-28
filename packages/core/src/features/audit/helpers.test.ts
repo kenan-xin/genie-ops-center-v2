@@ -24,6 +24,8 @@ describe("the event category of an action key", () => {
       ["core:permission_transformation", "access"],
       ["core:branding_published", "settings"],
       ["core:settings_updated", "settings"],
+      ["core:integration_key_stored", "settings"],
+      ["core:integration_key_removed", "settings"],
       ["core:module_configured", "modules"],
       ["core:category_reordered", "modules"],
       ["solutions:status:changed", "module-event"],

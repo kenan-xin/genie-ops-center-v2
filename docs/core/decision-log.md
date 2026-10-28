@@ -644,7 +644,7 @@ Trade-off, accepted risk: anyone who can read the database, a backup file, or a 
 
 Guard: keys live only in the one core table, never in a module table, `tenant_integration.config`, a log line, an error, an export, or the health endpoint. Only the core integrations service reads and writes them. Encryption at rest is then one change inside that service plus one migration, with no module change.
 
-Designed in: now. Implemented: roadmap Section 6, item 4, with the outbound HTTP service. Revisit when a customer's security review asks for encryption at rest, or when the first key for a customer-owned system is stored. The change is AES-256-GCM in the integrations service with a master key from the environment.
+Designed in: now. Implemented: the key store, for the model provider key, in Section 7 (S7-05). The outbound HTTP service and the other connection kinds in roadmap Section 6, item 4. Revisit when a customer's security review asks for encryption at rest, or when the first key for a customer-owned system is stored. The change is AES-256-GCM in the integrations service with a master key from the environment.
 
 ## DEC-54. A module publishes datasets through a contract point, and core queries them
 
