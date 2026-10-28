@@ -114,3 +114,67 @@ export const monoFont = "jetbrains-mono";
 /** R-8: the one focus ring, colored only through --ring. */
 export const focusRing =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+/**
+ * The event categories of the State-vs-Label Rule exception in `DESIGN.md`, with the fixed
+ * tones of tokens.md, "Category colors". A tone never derives from the tenant color, and each
+ * one sits clear of the status colors and the default primary blue, so a category never reads
+ * as a status. The chip keeps its text label, so the color is never the only code.
+ */
+export type CategoryTone =
+  | "session"
+  | "people"
+  | "groups"
+  | "access"
+  | "settings"
+  | "modules"
+  | "module-event";
+
+export type CategoryTonePair = {
+  readonly background: string;
+  readonly text: string;
+};
+
+export const categoryColors: Readonly<
+  Record<CategoryTone, Readonly<Record<ThemeName, CategoryTonePair>>>
+> = {
+  "session": {
+    light: { background: "#ecfeff", text: "#155e75" },
+    dark: { background: "#083344", text: "#67e8f9" },
+  },
+  "people": {
+    light: { background: "#f5f3ff", text: "#6d28d9" },
+    dark: { background: "#2e1065", text: "#c4b5fd" },
+  },
+  "groups": {
+    light: { background: "#fdf4ff", text: "#a21caf" },
+    dark: { background: "#4a044e", text: "#f0abfc" },
+  },
+  "access": {
+    light: { background: "#eef2ff", text: "#4338ca" },
+    dark: { background: "#1e1b4b", text: "#a5b4fc" },
+  },
+  "settings": {
+    light: { background: "#faf5ff", text: "#7e22ce" },
+    dark: { background: "#3b0764", text: "#d8b4fe" },
+  },
+  "modules": {
+    light: { background: "#f0f9ff", text: "#0369a1" },
+    dark: { background: "#082f49", text: "#7dd3fc" },
+  },
+  "module-event": {
+    light: { background: "#f1f5f9", text: "#334155" },
+    dark: { background: "#1e293b", text: "#cbd5e1" },
+  },
+};
+
+/** Every tone's chip classes, so no component names a category color itself. */
+export const categoryChipClasses: Readonly<Record<CategoryTone, string>> = {
+  "session": "bg-category-session-bg text-category-session-fg",
+  "people": "bg-category-people-bg text-category-people-fg",
+  "groups": "bg-category-groups-bg text-category-groups-fg",
+  "access": "bg-category-access-bg text-category-access-fg",
+  "settings": "bg-category-settings-bg text-category-settings-fg",
+  "modules": "bg-category-modules-bg text-category-modules-fg",
+  "module-event": "bg-category-module-event-bg text-category-module-event-fg",
+};

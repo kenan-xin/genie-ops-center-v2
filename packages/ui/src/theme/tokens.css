@@ -26,6 +26,20 @@
   --color-brand-on-dark: var(--brand-on-dark);
   --color-destructive-on-dark: var(--destructive-on-dark);
   --color-sign-in-background: var(--sign-in-background);
+  --color-category-session-bg: var(--category-session-bg);
+  --color-category-session-fg: var(--category-session-fg);
+  --color-category-people-bg: var(--category-people-bg);
+  --color-category-people-fg: var(--category-people-fg);
+  --color-category-groups-bg: var(--category-groups-bg);
+  --color-category-groups-fg: var(--category-groups-fg);
+  --color-category-access-bg: var(--category-access-bg);
+  --color-category-access-fg: var(--category-access-fg);
+  --color-category-settings-bg: var(--category-settings-bg);
+  --color-category-settings-fg: var(--category-settings-fg);
+  --color-category-modules-bg: var(--category-modules-bg);
+  --color-category-modules-fg: var(--category-modules-fg);
+  --color-category-module-event-bg: var(--category-module-event-bg);
+  --color-category-module-event-fg: var(--category-module-event-fg);
 }
 
 /*
@@ -72,6 +86,21 @@
     --brand-on-dark: #60a5fa;
     /* Error text in dark only (6wz1.71): red-600 measures 3.67:1 on the dark card. */
     --destructive-on-dark: #f87171;
+    /* Event categories (DESIGN.md exception, tokens.md "Category colors"): fixed, never brand. */
+    --category-session-bg: #ecfeff;
+    --category-session-fg: #155e75;
+    --category-people-bg: #f5f3ff;
+    --category-people-fg: #6d28d9;
+    --category-groups-bg: #fdf4ff;
+    --category-groups-fg: #a21caf;
+    --category-access-bg: #eef2ff;
+    --category-access-fg: #4338ca;
+    --category-settings-bg: #faf5ff;
+    --category-settings-fg: #7e22ce;
+    --category-modules-bg: #f0f9ff;
+    --category-modules-fg: #0369a1;
+    --category-module-event-bg: #f1f5f9;
+    --category-module-event-fg: #334155;
   }
 
   [data-theme="dark"] {
@@ -83,6 +112,20 @@
     --muted-foreground: #9ca3af;
     --border: #1f2937;
     --ring: var(--brand-on-dark);
+    --category-session-bg: #083344;
+    --category-session-fg: #67e8f9;
+    --category-people-bg: #2e1065;
+    --category-people-fg: #c4b5fd;
+    --category-groups-bg: #4a044e;
+    --category-groups-fg: #f0abfc;
+    --category-access-bg: #1e1b4b;
+    --category-access-fg: #a5b4fc;
+    --category-settings-bg: #3b0764;
+    --category-settings-fg: #d8b4fe;
+    --category-modules-bg: #082f49;
+    --category-modules-fg: #7dd3fc;
+    --category-module-event-bg: #1e293b;
+    --category-module-event-fg: #cbd5e1;
   }
 
   :root {

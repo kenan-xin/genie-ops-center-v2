@@ -2,6 +2,7 @@
 
 import {
   Button,
+  CategoryChip,
   Checkbox,
   DataTable,
   Field,
@@ -25,6 +26,7 @@ import { NoMatch } from "../admin/no-match.tsx";
 import { AuditEventSheet } from "./audit-event-sheet.tsx";
 import {
   countActiveFilters,
+  eventCategory,
   fmtDateTime,
   fmtExact,
   humanize,
@@ -74,21 +76,15 @@ function Avatar(props: {
   );
 }
 
-/** The action key as a fixed neutral pill; a long key wraps inside a table column. */
+/** The action key as its category chip; an operator row keeps the neutral fill. */
 function ActionPill(props: {
   readonly action: string;
   readonly wrap?: boolean;
 }): JSX.Element {
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-medium text-foreground text-foreground ${
-        props.wrap
-          ? "max-w-full whitespace-normal break-all"
-          : "whitespace-nowrap"
-      }`}
-    >
+    <CategoryChip category={eventCategory(props.action)} wrap={props.wrap}>
       {props.action}
-    </span>
+    </CategoryChip>
   );
 }
 

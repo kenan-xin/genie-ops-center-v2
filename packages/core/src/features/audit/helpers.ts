@@ -1,3 +1,5 @@
+import type { CategoryTone } from "@genie/ui";
+
 import type { AuditFilters } from "./types.ts";
 
 export const RANGE_LABEL = {
@@ -77,6 +79,41 @@ export function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+/**
+ * The event category of an action key, for the category chip (`DESIGN.md`, State-vs-Label Rule
+ * exception). The first prefix names the domain; a prefix core does not own is a module's own
+ * event, and an operator row carries no category, so it keeps the neutral chip.
+ */
+export function eventCategory(action: string): CategoryTone | null {
+  const [prefix = "", verb = ""] = action.split(":");
+
+  if (prefix === "ops") return null;
+
+  if (prefix === "auth") return "session";
+
+  if (prefix !== "core") return "module-event";
+
+  if (
+    verb.startsWith("person") ||
+    verb === "invitation_sent" ||
+    verb === "set_password_sent"
+  ) {
+    return "people";
+  }
+
+  if (verb.includes("group")) return "groups";
+
+  if (verb.startsWith("role") || verb === "permission_transformation") {
+    return "access";
+  }
+
+  if (verb === "branding_published" || verb === "settings_updated") {
+    return "settings";
+  }
+
+  return "modules";
 }
 
 /** `role_assignment` to `Role assignment`. */

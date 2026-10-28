@@ -5,5 +5,30 @@
       "maxFindings": 5,
       "maxChars": 8000
     }
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "packages/ui/src/theme/tokens.css",
+          "packages/ui/src/theme/tokens.ts"
+        ],
+        "createdAt": "2026-10-28T02:29:45.597Z",
+        "reason": "owner decision 2026-10-27 (DESIGN.md State-vs-Label exception): the seven fixed event-category pairs are documented in docs/design/design-system/tokens.md Category colors; the token layer is where the palette is declared"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "15px",
+        "files": [
+          "packages/ui/src/theme/tokens.css"
+        ],
+        "createdAt": "2026-10-28T02:29:50.684Z",
+        "reason": "owner decision: the 15 px default root preset of the Root-Follows-the-Preset Rule; the rem type ramp follows it, so the root size is not a type step"
+      }
+    ]
   }
 }

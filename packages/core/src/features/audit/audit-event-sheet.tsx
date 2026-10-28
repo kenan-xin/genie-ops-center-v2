@@ -2,9 +2,9 @@
 
 import {
   Button,
+  CategoryChip,
   focusRing,
   LabelPill,
-  MonoChip,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -15,6 +15,7 @@ import { useState } from "react";
 import type { JSX, ReactNode } from "react";
 
 import {
+  eventCategory,
   fmtExact,
   formatMetaValue,
   humanize,
@@ -143,7 +144,9 @@ function SheetEventBody(props: {
         {/* The action chip is the visible heading; the title only names the dialog. */}
         <SheetTitle className="sr-only">Audit event</SheetTitle>
         <div>
-          <MonoChip>{event.action}</MonoChip>
+          <CategoryChip category={eventCategory(event.action)}>
+            {event.action}
+          </CategoryChip>
         </div>
       </SheetHeader>
 

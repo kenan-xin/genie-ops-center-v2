@@ -126,6 +126,8 @@ export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
 
 export { focusRing } from "./theme/tokens.ts";
 
+export type { CategoryTone } from "./theme/tokens.ts";
+
 export type { ThemeName } from "./theme/tokens.ts";
 
 export { Switch } from "./components/switch.tsx";
@@ -171,7 +173,13 @@ export {
 
 export { Skeleton } from "./components/skeleton.tsx";
 
-export { CountPill, LabelPill, MonoChip, StatusPill } from "./parts/pills.tsx";
+export {
+  CategoryChip,
+  CountPill,
+  LabelPill,
+  MonoChip,
+  StatusPill,
+} from "./parts/pills.tsx";
 
 export { EmptyState } from "./parts/empty-state.tsx";
 

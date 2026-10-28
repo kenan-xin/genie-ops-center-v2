@@ -124,6 +124,11 @@ export const Default: Story = {
     await expect(
       table.getAllByText("core:person_added").length
     ).toBeGreaterThan(0);
+    // DESIGN.md exception: a chip carries its event category.
+    await expect(
+      getComputedStyle(table.getAllByText("core:person_added")[0]!)
+        .backgroundColor
+    ).toBe("rgb(245, 243, 255)");
     await expect(canvas.getByText(/Showing 4 of 42/)).toBeInTheDocument();
     await expect(
       canvas.getByRole("button", { name: "Load more" })
@@ -158,6 +163,10 @@ export const Phone: Story = {
     const first = within(cards[0]!);
 
     await expect(first.getByText("core:person_added")).toBeVisible();
+    // The card's chip carries the same category as the table's.
+    await expect(
+      getComputedStyle(first.getByText("core:person_added")).backgroundColor
+    ).toBe("rgb(245, 243, 255)");
     // The card names the target's type and marks a removed target, as the table does (R-69).
     await expect(first.getByText("User")).toBeVisible();
     await expect(within(cards[2]!).getByText("(removed)")).toBeVisible();
@@ -171,6 +180,19 @@ export const Phone: Story = {
     await expect(
       await screen.findByRole("dialog", { name: "Audit event" })
     ).toBeInTheDocument();
+  },
+};
+
+/** The card list in the dark theme: the chip takes its dark pair (tokens.md, Category colors). */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Audit events" });
+    const first = within(within(list).getAllByRole("listitem")[0]!);
+
+    await expect(
+      getComputedStyle(first.getByText("core:person_added")).backgroundColor
+    ).toBe("rgb(46, 16, 101)");
   },
 };
 
@@ -356,6 +378,9 @@ export const DetailSheetOpensAnAuthorizedTarget: Story = {
     );
 
     await expect(dialog.getByText("Summary")).toBeInTheDocument();
+    await expect(
+      getComputedStyle(dialog.getByText("core:person_added")).backgroundColor
+    ).toBe("rgb(245, 243, 255)");
 
     await userEvent.click(dialog.getByRole("button", { name: /Open/ }));
 
