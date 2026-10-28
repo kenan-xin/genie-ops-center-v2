@@ -92,10 +92,27 @@ export const ColorsPassing: Story = {
     await expect(pills.getAllByText("Pass")).toHaveLength(4);
     await expect(pills.getByText("Focus ring")).toBeVisible();
     await expect(pills.getByText("4.94:1")).toBeVisible();
-    await expect(
-      canvas.getByText(/one fixed light color, #60a5fa/)
-    ).toBeVisible();
     await expect(canvas.queryByRole("button", { name: /Fix/ })).toBeNull();
+    // The dark-theme note is background, so it sits behind the tab's help (helper-text rule).
+    await expect(canvas.queryByText(/one fixed light color/)).toBeNull();
+    await user.click(
+      canvas.getByRole("button", { name: "How the color looks in dark" })
+    );
+
+    const help = within(
+      await screen.findByRole("group", { name: "How the color looks in dark" })
+    );
+
+    await expect(
+      help.getByText(/one fixed light color, #60a5fa/)
+    ).toBeInTheDocument();
+    // Closed again, so axe after the play function reads no focus guards.
+    await user.click(help.getByRole("button", { name: "Close" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "How the color looks in dark" })
+      ).toBeNull()
+    );
   },
 };
 

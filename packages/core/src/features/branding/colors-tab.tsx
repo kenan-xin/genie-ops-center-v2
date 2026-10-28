@@ -1,6 +1,11 @@
 "use client";
 
-import { focusRing, RadioGroup, RadioGroupItem } from "@genie/ui";
+import {
+  focusRing,
+  HelpDisclosure,
+  RadioGroup,
+  RadioGroupItem,
+} from "@genie/ui";
 
 import { brandingContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import { foregroundFor } from "../../lib/branding/foreground.ts";
@@ -61,10 +66,12 @@ export function ColorsTab(props: {
         ) : null}
       </div>
       {valid ? <ContrastPills pairs={brandingContrastPairs(color)} /> : null}
-      <p className="text-sm text-pretty text-muted-foreground">
-        In the dark theme, brand text and the focus ring use one fixed light
-        color, #60a5fa. Buttons keep this color in both themes.
-      </p>
+      <HelpDisclosure label="How the color looks in dark">
+        <p>
+          In the dark theme, brand text and the focus ring use one fixed light
+          color, #60a5fa. Buttons keep this color in both themes.
+        </p>
+      </HelpDisclosure>
       <div className="flex flex-col gap-2">
         <span id="branding-theme-label" className="text-sm font-medium">
           Default theme

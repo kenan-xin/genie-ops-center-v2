@@ -1,5 +1,7 @@
 "use client";
 
+import { HelpDisclosure } from "@genie/ui";
+
 import type {
   BrandingDraft,
   BrandingImageSlot,
@@ -87,10 +89,12 @@ export function IdentityTab(props: {
           />
         );
       })}
-      <p className="text-sm text-muted-foreground">
-        Without a square mark, the shell shows the first letter of the company
-        name.
-      </p>
+      <HelpDisclosure label="What shows without a square mark">
+        <p>
+          Without a square mark, the shell shows the first letter of the company
+          name.
+        </p>
+      </HelpDisclosure>
     </div>
   );
 }
