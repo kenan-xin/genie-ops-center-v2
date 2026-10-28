@@ -60,10 +60,15 @@ const DECLARED_ARGUMENT = /^ARG ([A-Za-z_][A-Za-z0-9_]*)$/;
  * so they fail a real image on its own dependencies. What remains is a private
  * key block and a long bearer token — neither of which occurs in ordinary
  * runtime code — and file *paths* for the secret-bearing file types below.
+ *
+ * The key needle requires key material after the header, raw or as an escaped
+ * `\n` inside a bundled string: `jose`'s `importPKCS8` compares its input with
+ * the bare header, and the bundler keeps or drops that check depending on how
+ * it scope-hoists the module.
  */
 export function secretNeedles(): readonly RegExp[] {
   return [
-    /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\s|\\[rn])*[A-Za-z0-9+/]{40,}/,
     /\bBearer\s+[A-Za-z0-9._-]{20,}/,
   ];
 }

@@ -10,6 +10,10 @@ import {
   secretPathFinding,
 } from "./image-scan.ts";
 
+/** The shape of a PEM private key: the header, then key material (not a real key). */
+const KEY_BLOCK =
+  "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7\n";
+
 describe("the image history scanner", () => {
   it("accepts MODULE_INCLUDE as the only build argument", () => {
     const findings = scanHistory([
@@ -242,7 +246,7 @@ describe("the image filesystem scanner", () => {
     const files = [
       {
         path: "/app/apps/genie/.next/server/chunks/config.js",
-        content: "-----BEGIN PRIVATE KEY-----",
+        content: `const key = "${KEY_BLOCK.replaceAll("\n", "\\n")}";`,
       },
       {
         path: "/app/apps/genie/.env.production",
@@ -344,7 +348,7 @@ describe("the scanner's needles", () => {
     const needles = secretNeedles();
 
     for (const sample of [
-      "-----BEGIN RSA PRIVATE KEY-----",
+      KEY_BLOCK.replace("BEGIN PRIVATE", "BEGIN RSA PRIVATE"),
       `Authorization: Bearer ${"a".repeat(32)}`,
     ]) {
       expect(needles.some((needle) => needle.test(sample))).toBe(true);
@@ -356,6 +360,8 @@ describe("the scanner's needles", () => {
       "password: this.password",
       "apiKey: config.apiKey",
       "postgres://user:pass@host:5432/db",
+      // jose's importPKCS8 format check, bundled into the server chunk.
+      `if("string"!=typeof e||0!==e.indexOf("-----BEGIN PRIVATE KEY-----"))throw TypeError('"pkcs8" must be PKCS#8 formatted string')`,
     ]) {
       expect(needles.some((needle) => needle.test(sample))).toBe(false);
     }
