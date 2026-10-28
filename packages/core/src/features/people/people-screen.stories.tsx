@@ -131,16 +131,17 @@ export const UnlabelledGroupIdShowsAShortPill: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "People" }));
 
+    const tooltip = { selector: "[data-slot=tooltip-content]" };
+
     // The pill shows 8 characters and an ellipsis; the tooltip and screen readers get the value.
-    await expect(table.getByText("39545f73…").parentElement).toHaveAttribute(
-      "title",
-      OBJECT_ID
-    );
     await expect(table.getByText(OBJECT_ID)).toHaveClass("sr-only");
-    // A labelled group shows its label in full.
-    await expect(table.getByText("Genie Administrators")).not.toHaveAttribute(
-      "title"
-    );
+    await userEvent.hover(table.getByText("39545f73…"));
+
+    const tip = await screen.findByText(OBJECT_ID, tooltip);
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
+    await userEvent.unhover(table.getByText("39545f73…"));
 
     await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
 
@@ -149,9 +150,11 @@ export const UnlabelledGroupIdShowsAShortPill: Story = {
     );
 
     await userEvent.click(inspector.getByRole("tab", { name: /Groups/ }));
-    await expect(
-      inspector.getByText("39545f73…").parentElement
-    ).toHaveAttribute("title", OBJECT_ID);
+    await userEvent.hover(inspector.getByText("39545f73…"));
+
+    const inspectorTip = await screen.findByText(OBJECT_ID, tooltip);
+
+    await waitFor(() => expect(inspectorTip).toBeVisible());
   },
 };
 
