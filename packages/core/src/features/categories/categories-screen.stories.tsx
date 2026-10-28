@@ -14,7 +14,7 @@ import { FIXTURE_ASSIGNABLE, FIXTURE_LIST } from "./__fixtures__/categories.ts";
 import { CategoriesScreen } from "./categories-screen.tsx";
 import type { CategoriesScreenProps } from "./types.ts";
 
-const phone = { viewport: { value: "mobile1", isRotated: false } };
+const phone = { viewport: { value: "phone390", isRotated: false } };
 
 /**
  * The Categories page (R-87 to R-91a). Create, rename, reorder and delete categories, and file
@@ -110,11 +110,29 @@ const overview: Play = async ({ canvas }) => {
   ).toHaveTextContent("No category");
 };
 
+/** The same page at 390 px: the card list of Assign items leads each module with a tile. */
+const overviewOnPhone: Play = async (context) => {
+  await overview(context);
+
+  const files = within(
+    context.canvas.getByRole("list", { name: "Modules to file" })
+  );
+
+  await expect(
+    files.getAllByRole("listitem")[0]!.querySelector("[data-slot=icon-tile]")
+  ).not.toBeNull();
+};
+
 export const Default: Story = { play: overview };
 
-export const DefaultOnPhone: Story = { globals: phone, play: overview };
+export const DefaultOnPhone: Story = { globals: phone, play: overviewOnPhone };
 
 export const Dark: Story = { globals: { theme: "dark" } };
+
+/** The cards in the dark theme, so axe reads the dark pairs at the phone width too. */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: phone.viewport },
+};
 
 const createRenameReorder: Play = async ({ args, canvas }) => {
   const input = canvas.getByRole("textbox", { name: "New category name" });

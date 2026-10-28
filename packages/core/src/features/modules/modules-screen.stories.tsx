@@ -10,7 +10,7 @@ import {
 import { ModulesScreen } from "./modules-screen.tsx";
 import type { ModulesScreenProps } from "./types.ts";
 
-const phone = { viewport: { value: "mobile1", isRotated: false } };
+const phone = { viewport: { value: "phone390", isRotated: false } };
 
 /**
  * The Modules page (R-81 to R-86). Every compiled module, its switch, its category and who holds
@@ -114,6 +114,10 @@ export const Phone: Story = {
     await expect(
       list.getByRole("switch", { name: "Fixture enabled" })
     ).toBeChecked();
+    // The shared card frame leads with a tile.
+    await expect(
+      list.getAllByRole("listitem")[0]!.querySelector("[data-slot=icon-tile]")
+    ).not.toBeNull();
 
     await userEvent.click(
       list.getByRole("combobox", { name: "Category for Dormant" })
@@ -129,6 +133,11 @@ export const Phone: Story = {
 
 export const Dark: Story = {
   globals: { theme: "dark" },
+};
+
+/** The card list in the dark theme, so axe reads the dark pairs at the phone width too. */
+export const PhoneDark: Story = {
+  globals: { theme: "dark", viewport: phone.viewport },
 };
 
 const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {

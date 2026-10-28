@@ -149,7 +149,7 @@ export const Dark: Story = { globals: { theme: "dark" } };
 
 /** R-23: under 768 px each event is a card with the summary, the actor and the action. */
 export const Phone: Story = {
-  globals: { viewport: { value: "mobile1", isRotated: false } },
+  globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
     const list = canvas.getByRole("list", { name: "Audit events" });
 
@@ -192,7 +192,7 @@ export const Phone: Story = {
 
 /** The card list in the dark theme: the chip takes its dark pair (tokens.md, Category colors). */
 export const PhoneDark: Story = {
-  globals: { theme: "dark", viewport: { value: "mobile1", isRotated: false } },
+  globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
     const list = canvas.getByRole("list", { name: "Audit events" });
     const first = within(within(list).getAllByRole("listitem")[0]!);
