@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   e2eGroupsRolesEmail,
@@ -10,6 +11,20 @@ import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
+
+/** Add directory group is inline from 768 px, and inside the toolbar menu on a phone. */
+async function openAddDirectoryGroup(page: Page) {
+  const inline = page.getByRole("button", { name: "Add directory group" });
+
+  if (await inline.isVisible()) {
+    await inline.click();
+
+    return;
+  }
+
+  await page.getByRole("button", { name: "More group actions" }).click();
+  await page.getByRole("menuitem", { name: "Add directory group" }).click();
+}
 
 /**
  * S2-11 through the real realm and the real database: an administrator pre-adds a directory group
@@ -48,7 +63,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await signInThroughKeycloak(page, { email: adminEmail });
   await page.goto("/admin/groups");
 
-  await page.getByRole("button", { name: "Add directory group" }).click();
+  await openAddDirectoryGroup(page);
 
   const addDialog = page.getByRole("dialog", { name: "Add directory group" });
 
@@ -76,7 +91,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   // 6wz1.71). The branding theme is `system`.
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "Add directory group" }).click();
+  await openAddDirectoryGroup(page);
   await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
   await addDialog.getByRole("button", { name: "Add group" }).click();
 

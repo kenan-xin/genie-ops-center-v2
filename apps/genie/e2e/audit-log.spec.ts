@@ -155,11 +155,17 @@ function showing(page: Page, loaded: number, total: number) {
 
 /** The one visible row or list entry for an event, at either viewport. */
 function eventRow(page: Page, summary: string) {
-  // The summary is the row's open button in the table and on the card. The name is exact,
-  // because the search chip names the same query inside quotes.
-  return page
-    .getByRole("button", { name: summary, exact: true })
-    .filter({ visible: true });
+  // The table opens a row from its summary cell. The phone card opens from its actor, so the card
+  // is found by the summary it shows and its own button is the target. The name is exact, because
+  // the search chip names the same query inside quotes.
+  const table = page.getByRole("button", { name: summary, exact: true });
+
+  const card = page
+    .getByRole("listitem")
+    .filter({ hasText: summary })
+    .getByRole("button");
+
+  return table.or(card).filter({ visible: true });
 }
 
 /**

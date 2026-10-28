@@ -1,10 +1,20 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { e2eBreakGlassEmail, e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { queryDatabase } from "./support/database.ts";
 import { clearMailpit, linksIn, waitForMessageTo } from "./support/mailpit.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
+
+/** The button that opens a person's row: the table's identity cell, or the phone card's title. */
+function personRow(page: Page, name: string) {
+  return page
+    .getByRole("table", { name: "People" })
+    .or(page.getByRole("list", { name: "People" }))
+    .getByRole("button", { name: new RegExp(`^${name}`) })
+    .filter({ visible: true });
+}
 
 /**
  * S2-10 through the real realm, the real database, the real People screen and the real mail sink:
@@ -42,10 +52,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   // Open and close a person first, so the save below proves the closed person is not read again.
   await page.getByLabel("Search people").fill(adminEmail);
-  await page
-    .getByRole("button", { name: new RegExp(adminEmail.replace(".", "\\.")) })
-    .first()
-    .click();
+  // The row opens from the person's name, which is the card's title on a phone and the table's
+  // identity cell from 768 px.
+  await personRow(page, "E2E Person").first().click();
 
   const closedInspector = page.getByRole("dialog", { name: "E2E Person" });
 
@@ -159,9 +168,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   // Self-protection: the signed-in administrator's own row cannot disable itself (R-38).
   await page.getByLabel("Search people").fill(adminEmail);
 
-  const selfRow = page
-    .getByRole("button", { name: new RegExp(adminEmail.replace(".", "\\.")) })
-    .first();
+  const selfRow = personRow(page, "E2E Person").first();
 
   await selfRow.click();
 
