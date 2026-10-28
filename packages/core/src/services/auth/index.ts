@@ -17,6 +17,7 @@ import {
   verification,
 } from "../../schema.ts";
 import { writeAuthAuditEvent } from "../audit/index.ts";
+import { BROKER_IDP_ALIAS } from "../keycloak/broker.ts";
 import type { LogValue } from "../logging/index.ts";
 import {
   consumeRateLimit,
@@ -1269,16 +1270,26 @@ export function createAuthMember(input: AuthMemberInput): AuthMember {
       return deleted.length;
     },
 
-    async beginKeycloakSignIn({ headers, callbackURL, errorCallbackURL }) {
+    async beginKeycloakSignIn({
+      headers,
+      callbackURL,
+      errorCallbackURL,
+      idpHint = false,
+    }) {
+      const body = {
+        provider: KEYCLOAK_PROVIDER_ID,
+        callbackURL,
+        errorCallbackURL,
+        disableRedirect: true,
+      };
+
+      // R-17c: Better Auth appends `additionalParams` to the authorization URL.
       const { headers: responseHeaders, response } =
         await instance.api.signInSocial({
           headers,
-          body: {
-            provider: KEYCLOAK_PROVIDER_ID,
-            callbackURL,
-            errorCallbackURL,
-            disableRedirect: true,
-          },
+          body: idpHint
+            ? { ...body, additionalParams: { kc_idp_hint: BROKER_IDP_ALIAS } }
+            : body,
           returnHeaders: true,
         });
 

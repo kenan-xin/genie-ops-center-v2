@@ -10,6 +10,7 @@ import {
   administration,
   DEFAULT_FAVICON_URL,
   faviconHref,
+  localAccountsBesideSso,
   realmAccountUrl,
   realmResetCredentialsUrl,
   type ShellLabels,
@@ -273,6 +274,38 @@ describe("realmAccountUrl", () => {
       })
     ).toBeNull();
   });
+});
+
+describe("localAccountsBesideSso", () => {
+  const brokered = {
+    realmMode: "managed",
+    realmSupportsLocalAccounts: true,
+    ssoEmailDomains: ["company.example"],
+    localAccountsEnabled: true,
+  };
+
+  it.each([
+    ["a brokered realm opened to local accounts", brokered, true],
+    // R-51a: local people keep their entry after the switch goes off.
+    [
+      "the same realm with the switch off",
+      { ...brokered, localAccountsEnabled: false },
+      true,
+    ],
+    // The local variant: no provider stands behind "Sign in with SSO".
+    ["a realm with no SSO domain", { ...brokered, ssoEmailDomains: [] }, false],
+    [
+      "a brokered realm the command never opened",
+      { ...brokered, realmSupportsLocalAccounts: false },
+      false,
+    ],
+    ["client-only mode", { ...brokered, realmMode: "customer" }, false],
+  ] satisfies [string, typeof brokered, boolean][])(
+    "%s",
+    (_, settings, expected) => {
+      expect(localAccountsBesideSso(settings)).toBe(expected);
+    }
+  );
 });
 
 /** A file store whose branding link knows only the given slots. */

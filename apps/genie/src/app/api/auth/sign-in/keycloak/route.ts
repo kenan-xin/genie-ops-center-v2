@@ -4,6 +4,7 @@ import {
   discoverySignInCause,
   KEYCLOAK_UNAVAILABLE,
   requireAuth,
+  SSO_ENTRY,
 } from "../../../../../auth.ts";
 import { requireContext } from "../../../../../context.ts";
 
@@ -46,6 +47,8 @@ export async function GET(request: Request): Promise<Response> {
     headers,
     callbackURL: new URL("/auth/complete", publicUrl).toString(),
     errorCallbackURL: signInPage.toString(),
+    // R-17c: the SSO entry skips the realm page and goes straight to the identity provider.
+    idpHint: new URL(request.url).searchParams.get("entry") === SSO_ENTRY,
   });
 
   if (started.url === undefined) return unavailable();

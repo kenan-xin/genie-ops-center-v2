@@ -178,6 +178,8 @@ export type AuthMember = {
     readonly headers: Headers;
     readonly callbackURL: string;
     readonly errorCallbackURL: string;
+    /** Sends `kc_idp_hint`, so the realm hands the browser straight to its identity provider (R-17c). */
+    readonly idpHint?: boolean;
   }) => Promise<{
     readonly url: string | undefined;
     readonly headers: Headers;

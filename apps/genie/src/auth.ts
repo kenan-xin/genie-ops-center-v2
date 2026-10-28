@@ -29,6 +29,9 @@ export const SIGN_IN_PATH = "/sign-in";
  */
 export const SESSION_EXPIRED_ROUTE = "/api/auth/session-expired";
 
+/** The `entry` value of the SSO entry, which the sign-in route turns into the provider hint (R-17c). */
+export const SSO_ENTRY = "sso";
+
 /** The path the identity provider returns the browser to, which then lands the person (R-36). */
 export const AUTH_COMPLETE_PATH = "/auth/complete";
 

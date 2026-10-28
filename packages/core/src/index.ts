@@ -302,6 +302,7 @@ export {
   faviconHref,
   loadShell,
   localAccountExists,
+  localAccountsBesideSso,
   realmAccountUrl,
   realmResetCredentialsUrl,
   type ShellLabels,

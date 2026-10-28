@@ -114,3 +114,52 @@ export const Dark: Story = {
   args: { notice: NOTICE, requiresAcknowledgement: true },
   globals: { theme: "dark" },
 };
+
+// R-17c: a brokered realm opened to local accounts offers both entries. Only the SSO entry carries
+// the identity provider hint, so a local person lands on the realm's password form.
+const BESIDE_SSO = {
+  label: "Sign in with SSO",
+  href: "/api/auth/sign-in/keycloak?entry=sso",
+  passwordLabel: "Sign in with email and password",
+} as const;
+
+export const LocalAccountsBesideSso: Story = {
+  args: BESIDE_SSO,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("link", { name: BESIDE_SSO.label })
+    ).toHaveAttribute("href", BESIDE_SSO.href);
+    await expect(
+      canvas.getByRole("link", { name: BESIDE_SSO.passwordLabel })
+    ).toHaveAttribute("href", "/api/auth/sign-in/keycloak");
+  },
+};
+
+export const LocalAccountsBesideSsoWithAcknowledgement: Story = {
+  args: { ...BESIDE_SSO, notice: NOTICE, requiresAcknowledgement: true },
+  play: async ({ canvas, args, userEvent }) => {
+    await expect(
+      canvas.getByRole("button", { name: BESIDE_SSO.label })
+    ).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: BESIDE_SSO.passwordLabel })
+    ).toBeDisabled();
+    await expect(canvas.queryByRole("link")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: args.acknowledgeLabel })
+    );
+
+    await expect(
+      canvas.getByRole("link", { name: BESIDE_SSO.label })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("link", { name: BESIDE_SSO.passwordLabel })
+    ).toBeInTheDocument();
+  },
+};
+
+export const LocalAccountsBesideSsoDark: Story = {
+  args: BESIDE_SSO,
+  globals: { theme: "dark" },
+};

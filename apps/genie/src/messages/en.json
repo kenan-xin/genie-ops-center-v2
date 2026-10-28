@@ -171,6 +171,8 @@
     "title": "Sign in",
     "action": "Sign in with your company account",
     "actionLocal": "Continue to sign in",
+    "actionSso": "Sign in with SSO",
+    "actionPassword": "Sign in with email and password",
     "forgotPassword": "Forgot your password?",
     "welcomeFallback": "Welcome to {productName}",
     "acknowledge": "I acknowledge these conditions.",

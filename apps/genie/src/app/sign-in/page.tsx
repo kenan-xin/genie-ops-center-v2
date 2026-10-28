@@ -1,8 +1,12 @@
-import { localAccountExists, realmResetCredentialsUrl } from "@genie/core";
+import {
+  localAccountExists,
+  localAccountsBesideSso,
+  realmResetCredentialsUrl,
+} from "@genie/core";
 import { InfoNote, WarningNote } from "@genie/ui";
 import { getTranslations } from "next-intl/server";
 
-import { signInCause } from "../../auth.ts";
+import { SSO_ENTRY, signInCause } from "../../auth.ts";
 import { requireContext } from "../../context.ts";
 import { SignInAction } from "./sign-in-action.tsx";
 import { SignInFooter } from "./sign-in-footer.tsx";
@@ -68,12 +72,26 @@ export default async function SignInPage(props: {
 
   // R-51a: a local-accounts realm gets its own button label and the realm's reset-password link,
   // kept after the setting is turned off while any local account exists.
+  const settings = await tenant.settings.get();
+
   const forgotPasswordUrl = realmResetCredentialsUrl({
-    settings: await tenant.settings.get(),
+    settings,
     publicUrl: tenant.env.publicUrl,
     realm: tenant.env.auth?.keycloakRealm,
     localAccountExists: await localAccountExists(tenant),
   });
+
+  // R-17c: a brokered realm opened to local accounts offers SSO, with the provider hint, beside
+  // the realm's own email and password form.
+  const entries = localAccountsBesideSso(settings)
+    ? {
+        label: t("actionSso"),
+        href: `/api/auth/sign-in/keycloak?entry=${SSO_ENTRY}`,
+        passwordLabel: t("actionPassword"),
+      }
+    : {
+        label: forgotPasswordUrl === null ? t("action") : t("actionLocal"),
+      };
 
   const productName =
     cause === "signed_out"
@@ -140,7 +158,7 @@ export default async function SignInPage(props: {
         <SignInAction
           notice={branding.loginNoticeText}
           requiresAcknowledgement={branding.loginNoticeRequiresAcknowledgement}
-          label={forgotPasswordUrl === null ? t("action") : t("actionLocal")}
+          {...entries}
           acknowledgeLabel={t("acknowledge")}
           forgotPasswordUrl={forgotPasswordUrl}
           forgotPasswordLabel={t("forgotPassword")}

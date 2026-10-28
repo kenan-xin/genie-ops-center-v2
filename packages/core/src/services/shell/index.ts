@@ -154,6 +154,24 @@ export function realmResetCredentialsUrl(
 }
 
 /**
+ * Whether the sign-in page offers "Sign in with email and password" beside "Sign in with SSO"
+ * (Spec 2 R-17c): a managed, brokered realm that the local-accounts command opened (R-58a). The
+ * administrator's switch is not read, so local people keep their entry after it goes off (R-51a).
+ */
+export function localAccountsBesideSso(
+  settings: Pick<
+    TenantSettings,
+    "realmMode" | "realmSupportsLocalAccounts" | "ssoEmailDomains"
+  >
+): boolean {
+  return (
+    settings.realmMode === "managed" &&
+    settings.realmSupportsLocalAccounts &&
+    settings.ssoEmailDomains.length > 0
+  );
+}
+
+/**
  * Whether any person other than the break-glass account holds a local password account (Spec 2
  * R-51a). Better Auth's provider id for an email and password account is `credential` (D2-5).
  */

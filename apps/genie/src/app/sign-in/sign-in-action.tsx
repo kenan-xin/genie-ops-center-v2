@@ -1,28 +1,39 @@
 "use client";
 
-import { Checkbox, focusRing } from "@genie/ui";
+import { buttonVariants, Checkbox, focusRing } from "@genie/ui";
 import { useState } from "react";
 
 export type SignInActionProps = {
   readonly notice: string | null;
   readonly requiresAcknowledgement: boolean;
   readonly label: string;
+  /** Where the first entry starts the sign-in; the SSO entry adds the provider hint (R-17c). */
+  readonly href?: string;
+  /** The label of the second entry, "Sign in with email and password", set only beside SSO (R-17c). */
+  readonly passwordLabel?: string;
   readonly acknowledgeLabel: string;
   /** The realm's reset-password page, set only while the realm holds local accounts (R-51a). */
   readonly forgotPasswordUrl?: string | null;
   readonly forgotPasswordLabel?: string;
 };
 
+const SIGN_IN_ROUTE = "/api/auth/sign-in/keycloak";
+
 const ACTION_CLASS = `inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground ${focusRing}`;
 
+const PASSWORD_CLASS = `${buttonVariants({ variant: "secondary", size: "lg" })} w-full ${focusRing}`;
+
 /**
- * The system-use notice and the one sign-in action (R-54). The acknowledgement gates the action
- * only when there is notice text to acknowledge, so an empty notice never locks a person out.
+ * The system-use notice and the sign-in entries (R-54): one action, or SSO beside email and password
+ * (R-17c). The acknowledgement gates the entries only when there is notice text to acknowledge, so
+ * an empty notice never locks a person out.
  */
 export function SignInAction({
   notice,
   requiresAcknowledgement,
   label,
+  href = SIGN_IN_ROUTE,
+  passwordLabel,
   acknowledgeLabel,
   forgotPasswordUrl = null,
   forgotPasswordLabel,
@@ -32,6 +43,22 @@ export function SignInAction({
   const text = notice?.trim() ?? "";
 
   const gated = text !== "" && requiresAcknowledgement;
+
+  // The acknowledgement gates every entry: a disabled button until it is given, then a link.
+  const entry = (name: string, target: string, className: string) =>
+    gated && !acknowledged ? (
+      <button
+        type="button"
+        disabled
+        className={`${className} cursor-not-allowed opacity-50`}
+      >
+        {name}
+      </button>
+    ) : (
+      <a href={target} className={className}>
+        {name}
+      </a>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,19 +78,10 @@ export function SignInAction({
           ) : null}
         </div>
       )}
-      {gated && !acknowledged ? (
-        <button
-          type="button"
-          disabled
-          className={`${ACTION_CLASS} cursor-not-allowed opacity-50`}
-        >
-          {label}
-        </button>
-      ) : (
-        <a href="/api/auth/sign-in/keycloak" className={ACTION_CLASS}>
-          {label}
-        </a>
-      )}
+      {entry(label, href, ACTION_CLASS)}
+      {passwordLabel === undefined
+        ? null
+        : entry(passwordLabel, SIGN_IN_ROUTE, PASSWORD_CLASS)}
       {forgotPasswordUrl === null ? null : (
         <a
           href={forgotPasswordUrl}
