@@ -1,0 +1,1 @@
+ALTER TABLE "tenant_settings" ADD COLUMN "sso_email_domains" text[] DEFAULT '{}'::text[] NOT NULL;

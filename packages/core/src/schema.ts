@@ -128,6 +128,11 @@ export const tenantSettings = pgTable(
     realmSupportsLocalAccounts: boolean("realm_supports_local_accounts")
       .notNull()
       .default(false),
+    // The identity provider's email domains: R-58a writes them, R-40b refuses a local add on one.
+    ssoEmailDomains: text("sso_email_domains")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
     updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),

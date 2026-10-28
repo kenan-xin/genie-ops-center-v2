@@ -90,6 +90,7 @@ const DEPLOYMENT_TABLES = {
       keycloak_url_at_setup: { nullable: true },
       local_accounts_enabled: { default: "false" },
       realm_supports_local_accounts: { default: "false" },
+      sso_email_domains: { default: "'{}'::text[]" },
       session_idle_minutes: { default: "15" },
       updated_by_user_id: { nullable: true },
       updated_at: {},
@@ -863,6 +864,8 @@ describe("the Section 3 navigation tables", () => {
 
     // SAFETY: the read above holds the alpha row first, ordered by module_id.
     expected.tenant_module[0].category_id = null;
+    // The later sso_email_domains migration gives the existing settings row its empty default.
+    expected.tenant_settings[0].sso_email_domains = [];
 
     expect(await read()).toEqual(expected);
     expect(await foreignKeys(client, "tenant_module")).toEqual([

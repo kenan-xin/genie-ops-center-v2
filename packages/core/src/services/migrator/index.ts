@@ -64,6 +64,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0004_navigation_categories.sql",
     import.meta.url
   ),
+  "0005_tenant_settings_sso_email_domains": new URL(
+    "../../../drizzle/0005_tenant_settings_sso_email_domains.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */
