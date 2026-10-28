@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { e2eBreakGlassEmail, e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { queryDatabase } from "./support/database.ts";
+import { withDeploymentLock } from "./support/lock.ts";
 import { clearMailpit, linksIn, waitForMessageTo } from "./support/mailpit.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -27,7 +28,13 @@ function personRow(page: Page, name: string) {
  *
  * The phone and desktop projects share one database, so the added person's email is project-scoped.
  */
-test.describe.configure({ timeout: 180_000 });
+
+// The branding lock below can wait LOCK_WAIT_MS for the branding and shell specs, as in shell.spec.
+test.describe.configure({ timeout: 360_000 });
+
+const LOCK_WAIT_MS = 300_000;
+
+const POLL = { timeout: 30_000, intervals: [1000] };
 
 test("add a brokered person, send the invitation to Mailpit, remove them, and hold self-protection", async ({
   page,
@@ -192,39 +199,53 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await expect(page.getByText(/No people match/)).toBeVisible();
 
-  // A refused add keeps its reason readable in dark (6wz1.71). The branding theme is `system`.
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "Add person" }).click();
+  // A refused add keeps its reason readable in dark (6wz1.71). The branding and shell specs publish
+  // other themes under the branding lock, so this step holds it and reloads until the reader window
+  // (DEC-46) serves the seeded `system` theme, which follows the emulated scheme.
+  await withDeploymentLock(
+    "branding",
+    async () => {
+      await page.emulateMedia({ colorScheme: "dark" });
+      await expect
+        .poll(async () => {
+          await page.reload();
 
-  const refusedDialog = page.getByRole("dialog", { name: "Add person" });
+          return page.locator("html").getAttribute("data-theme");
+        }, POLL)
+        .toBe("dark");
+      await page.getByRole("button", { name: "Add person" }).click();
 
-  const email = refusedDialog.getByLabel("Email", { exact: true });
-  const addPath = "**/api/rpc/people/add";
+      const refusedDialog = page.getByRole("dialog", { name: "Add person" });
 
-  await email.fill(adminEmail);
-  await refusedDialog
-    .getByLabel("Display name", { exact: true })
-    .fill("E2E refused");
+      const email = refusedDialog.getByLabel("Email", { exact: true });
+      const addPath = "**/api/rpc/people/add";
 
-  // A save that never reaches the server says so in the dialog's action bar, takes focus, and
-  // keeps the typed values: Add person is the retry.
-  await page.route(addPath, (route) => route.abort());
-  await refusedDialog.getByRole("button", { name: "Add person" }).click();
+      await email.fill(adminEmail);
+      await refusedDialog
+        .getByLabel("Display name", { exact: true })
+        .fill("E2E refused");
 
-  const failure = refusedDialog.getByRole("alert");
+      // A save that never reaches the server says so in the dialog's action bar, takes focus, and
+      // keeps the typed values: Add person is the retry.
+      await page.route(addPath, (route) => route.abort());
+      await refusedDialog.getByRole("button", { name: "Add person" }).click();
 
-  await expect(failure).toHaveText(
-    "The person was not added. The server could not be reached. Check your connection. Your change is kept."
+      const failure = refusedDialog.getByRole("alert");
+
+      await expect(failure).toHaveText(
+        "The person was not added. The server could not be reached. Check your connection. Your change is kept."
+      );
+      await expect(failure).toBeFocused();
+      await expect(email).toHaveValue(adminEmail);
+      await page.unroute(addPath);
+
+      await refusedDialog.getByRole("button", { name: "Add person" }).click();
+      await expect(failure).toHaveText(
+        "The person was not added. A person with that email already exists. Your change is kept."
+      );
+      await expect(failure).toBeFocused();
+      await expectNoAxeViolations(page, "Add person refused, dark");
+    },
+    LOCK_WAIT_MS
   );
-  await expect(failure).toBeFocused();
-  await expect(email).toHaveValue(adminEmail);
-  await page.unroute(addPath);
-
-  await refusedDialog.getByRole("button", { name: "Add person" }).click();
-  await expect(failure).toHaveText(
-    "The person was not added. A person with that email already exists. Your change is kept."
-  );
-  await expect(failure).toBeFocused();
-  await expectNoAxeViolations(page, "Add person refused, dark");
 });
