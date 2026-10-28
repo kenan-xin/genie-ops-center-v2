@@ -5,6 +5,8 @@ import {
   type BreakGlassStep,
   BreakGlassSignIn,
 } from "@genie/core/features/break-glass";
+import type { ShellIdentity } from "@genie/core/features/shell";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 import { z } from "zod";
@@ -56,13 +58,16 @@ async function postAuth(
 }
 
 export function AdminLoginRoute(props: {
-  readonly productName: string;
+  readonly identity: ShellIdentity;
   readonly initialStep: BreakGlassStep;
   readonly initialSteps: readonly BreakGlassStep[];
   /** The signed-in account's email once a session exists, else empty. */
   readonly email: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("breakGlass");
+  // The TOTP issuer is the tenant product name (R-63).
+  const issuer = props.identity.productName;
   const [step, setStep] = useState<BreakGlassStep>(props.initialStep);
   const [steps, setSteps] = useState<readonly BreakGlassStep[]>(
     props.initialSteps
@@ -111,7 +116,7 @@ export function AdminLoginRoute(props: {
     const response = await postAuth("/two-factor/enable", {
       password,
       method: "totp",
-      issuer: props.productName,
+      issuer,
     });
 
     if (await applyRateLimit(response)) return;
@@ -133,7 +138,7 @@ export function AdminLoginRoute(props: {
     setEnrollment({
       otpauthUri: parsed.data.totpURI,
       manualKey: manualKeyOf(parsed.data.totpURI),
-      issuer: props.productName,
+      issuer,
     });
     setError(null);
   }
@@ -250,7 +255,9 @@ export function AdminLoginRoute(props: {
 
   return (
     <BreakGlassSignIn
-      productName={props.productName}
+      identity={props.identity}
+      setupHelpLabel={t("setupHelpLabel")}
+      setupHelp={t("setupHelp")}
       step={step}
       steps={steps}
       email={email}

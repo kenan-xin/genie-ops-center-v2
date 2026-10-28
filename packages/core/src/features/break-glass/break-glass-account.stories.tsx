@@ -84,6 +84,14 @@ export const ChangePassword: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // The door's setup help stays on the door, not on the shared password form.
+    await expect(
+      canvas.queryByRole("button", { name: "Why am I here?" })
+    ).toBeNull();
+    await expect(
+      canvas.queryByText(/every other page brings you back here/)
+    ).toBeNull();
+
     onChangePassword.mockClear();
 
     await userEvent.type(

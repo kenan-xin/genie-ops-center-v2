@@ -29,6 +29,14 @@ export {
 export { Input } from "./components/input.tsx";
 
 export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "./components/input-group.tsx";
+
+export {
   Combobox,
   ComboboxContent,
   ComboboxEmpty,

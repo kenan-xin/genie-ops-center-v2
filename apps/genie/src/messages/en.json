@@ -195,5 +195,9 @@
     "staySignedIn": "Stay signed in",
     "signOutNow": "Sign out now",
     "stayFailed": "We could not reach the server. Check your connection and try again."
+  },
+  "breakGlass": {
+    "setupHelpLabel": "Why am I here?",
+    "setupHelp": "Until you finish setup, every other page brings you back here."
   }
 }

@@ -9,6 +9,10 @@ export type SignInStackProps = {
   /** `p` inside a preview, so the page that shows it keeps one `h1`. */
   readonly headingAs?: "h1" | "p";
   readonly welcome?: string | null;
+  /** A line between the mark and the heading, for example the door's role and step counter. */
+  readonly eyebrow?: ReactNode;
+  /** A help button under the heading and the welcome line (the helper-text rule). */
+  readonly help?: ReactNode;
   readonly notice?: ReactNode;
   readonly footer?: ReactNode;
   readonly children: ReactNode;
@@ -25,6 +29,8 @@ export function SignInStack({
   heading,
   headingAs: Heading = "h1",
   welcome = null,
+  eyebrow,
+  help,
   notice,
   footer,
   children,
@@ -36,6 +42,7 @@ export function SignInStack({
     >
       <div className="flex flex-col items-center gap-4 text-center">
         <TenantMark identity={identity} size="md" alt={identity.companyName} />
+        {eyebrow}
         <div className="flex flex-col gap-1">
           <Heading className="text-xl font-semibold text-balance text-foreground">
             {heading}
@@ -49,6 +56,7 @@ export function SignInStack({
             </p>
           )}
         </div>
+        {help}
       </div>
       {notice === undefined || notice === null ? null : (
         <div className="w-full">{notice}</div>

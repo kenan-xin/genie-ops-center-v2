@@ -54,7 +54,14 @@ export default async function AdminLoginPage() {
 
   return (
     <AdminLoginRoute
-      productName={branding.productName}
+      // The default mark, as on the sign-in page: the mark link answers only a signed-in person.
+      identity={{
+        companyName: branding.companyName,
+        productName: branding.productName,
+        logoLightUrl: null,
+        logoDarkUrl: null,
+        markUrl: null,
+      }}
       initialStep={step}
       initialSteps={steps}
       email={email}

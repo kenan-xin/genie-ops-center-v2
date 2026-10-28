@@ -1,4 +1,15 @@
-import { Button, Field, FieldLabel, Input, focusRing } from "@genie/ui";
+import {
+  Button,
+  Field,
+  FieldLabel,
+  HelpDisclosure,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  focusRing,
+} from "@genie/ui";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
 
@@ -7,6 +18,8 @@ import {
   passwordRuleRows,
 } from "../../lib/password/rule.ts";
 import type { BreakGlassStep } from "../../services/auth/limited.ts";
+import type { ShellIdentity } from "../shell/types.ts";
+import { SignInStack } from "../sign-in/sign-in-stack.tsx";
 
 export { breakGlassSteps } from "../../services/auth/limited.ts";
 
@@ -16,7 +29,7 @@ export type { BreakGlassStep } from "../../services/auth/limited.ts";
 
 /**
  * The break-glass door at `/admin/login` (R-62 to R-65, design spec "sign-in and tenant pages").
- * One card per step: credentials, the six-digit code for an enrolled account, the forced password
+ * It uses the sign-in stack of the sign-in page, with no card. One step at a time: credentials, the six-digit code for an enrolled account, the forced password
  * change with the shared R-64 meter, and authenticator enrollment with a QR placeholder, the
  * manual key and one confirming code. The host owns every request and decides the step; this
  * component owns only the form state and the copy.
@@ -30,8 +43,12 @@ export type BreakGlassEnrollment = {
 };
 
 export type BreakGlassSignInProps = {
-  /** The tenant product name, the TOTP issuer and the card's only brand (R-63). */
-  readonly productName: string;
+  /** The tenant mark and product name over the stack; the host passes the TOTP issuer itself. */
+  readonly identity: ShellIdentity;
+  /** The label of the help button on the setup steps, from the app catalogue. */
+  readonly setupHelpLabel: string;
+  /** Why the setup steps hold the account at the door (R-65), from the app catalogue. */
+  readonly setupHelp: string;
   /** The account email the meter compares the new password against, when the host knows it. */
   readonly email?: string;
   /** Which card is shown; the host decides after each callback resolves. */
@@ -200,8 +217,8 @@ function PasswordField(props: {
   return (
     <Field>
       <FieldLabel htmlFor={props.id}>{props.label}</FieldLabel>
-      <div className="flex items-center gap-1">
-        <Input
+      <InputGroup>
+        <InputGroupInput
           id={props.id}
           size="lg"
           type={show ? "text" : "password"}
@@ -209,20 +226,18 @@ function PasswordField(props: {
           value={props.value}
           disabled={props.disabled === true}
           onChange={(event) => props.onChange(event.target.value)}
-          className="flex-1"
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setShow((value) => !value)}
-          aria-label={show ? "Hide password" : "Show password"}
-          aria-pressed={show}
-          className="shrink-0"
-        >
-          <Icon path={show ? EYE_OFF_PATH : EYE_PATH} />
-        </Button>
-      </div>
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            onClick={() => setShow((value) => !value)}
+            aria-label={show ? "Hide password" : "Show password"}
+            aria-pressed={show}
+            disabled={props.disabled === true}
+          >
+            <Icon path={show ? EYE_OFF_PATH : EYE_PATH} />
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
     </Field>
   );
 }
@@ -321,24 +336,6 @@ function CodeInput(props: {
   );
 }
 
-function Frame(props: {
-  readonly productName: string;
-  readonly children: React.ReactNode;
-}): JSX.Element {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10 text-foreground">
-      <div className="flex w-full max-w-110 flex-col items-center">
-        <span className="mb-6 text-sm font-semibold tracking-tight text-muted-foreground">
-          {props.productName}
-        </span>
-        <div className="w-full rounded-xl border border-border bg-card p-7 sm:p-8">
-          {props.children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** The forced password change and the account page's Change password block share this form. */
 export function BreakGlassPasswordForm(props: {
   readonly email: string;
@@ -356,13 +353,10 @@ export function BreakGlassPasswordForm(props: {
   const [confirm, setConfirm] = useState("");
 
   const rows = passwordRuleRows(next, props.email);
-  const live = rows.filter((row) => row.met !== null);
-  const score = live.filter((row) => row.met === true).length;
-  const rulesMet = score === live.length && next.length > 0;
+  // The fourth rule (`met: null`) is checked on save, so it does not hold the button.
+  const rulesMet =
+    next.length > 0 && rows.every((row) => row.met === null || row.met);
   const confirmOk = next.length > 0 && next === confirm;
-  const strengthLabel = rulesMet
-    ? "Meets the rule"
-    : `${score} of ${live.length} rules`;
   const disabled = props.rateLimited === true;
 
   return (
@@ -394,21 +388,6 @@ export function BreakGlassPasswordForm(props: {
           disabled={disabled}
           onChange={setNext}
         />
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 gap-1">
-            {live.map((row) => (
-              <span
-                key={row.key}
-                className={`h-1.5 flex-1 rounded-full ${
-                  row.met === true ? "bg-primary" : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="w-28 text-right text-xs font-medium text-muted-foreground">
-            {next === "" ? "" : strengthLabel}
-          </span>
-        </div>
         <ul className="flex flex-col gap-1 rounded-lg bg-muted px-3.5 py-3 text-sm">
           {rows.map((row) => (
             <li key={row.key} className="flex items-center gap-2">
@@ -477,9 +456,6 @@ export function BreakGlassPasswordForm(props: {
       >
         Set password and continue
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        Until enrollment is complete, every other page brings you back here.
-      </p>
     </form>
   );
 }
@@ -529,33 +505,57 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
           ? "Your temporary password must be replaced before you continue."
           : "Scan the code with an authenticator app, then confirm with the code it shows. This account cannot be used without one.";
 
+  const setupStep =
+    props.step === "change-password" || props.step === "authenticator-enroll";
+
   return (
-    <Frame productName={props.productName}>
-      <div className="flex flex-col gap-6" data-testid="break-glass-sign-in">
-        <header className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+    <main
+      data-testid="break-glass-sign-in"
+      className="flex min-h-dvh flex-col items-center justify-center bg-sign-in-background px-4 py-12 text-foreground dark:bg-background"
+    >
+      <SignInStack
+        identity={props.identity}
+        heading={title}
+        welcome={description}
+        eyebrow={
+          <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
               <Icon path={SHIELD_PATH} />
               Administrator
             </span>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Step {stepIndex} of {props.steps.length}
             </span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-2xl font-bold leading-tight tracking-tight">
-              {title}
-            </h1>
-            <p className="text-base leading-relaxed text-muted-foreground">
-              {description}
-            </p>
-          </div>
-        </header>
-
-        {props.error === null || props.error === undefined ? null : (
-          <ErrorBlock message={props.error} />
-        )}
-
+        }
+        help={
+          setupStep ? (
+            <HelpDisclosure label={props.setupHelpLabel} align="start">
+              <p>{props.setupHelp}</p>
+            </HelpDisclosure>
+          ) : null
+        }
+        notice={
+          props.error === null || props.error === undefined ? null : (
+            <ErrorBlock message={props.error} />
+          )
+        }
+        footer={
+          // A plain anchor, because core imports nothing from `next/*`. A host that passes
+          // `onGoToMemberSignIn` (a story) observes the click instead.
+          <a
+            href={props.memberSignInHref ?? "/sign-in"}
+            onClick={(event) => {
+              if (props.onGoToMemberSignIn === undefined) return;
+              event.preventDefault();
+              props.onGoToMemberSignIn();
+            }}
+            className={`rounded-lg text-sm text-muted-foreground hover:text-foreground hover:underline ${focusRing}`}
+          >
+            Member sign-in
+          </a>
+        }
+      >
         {props.step === "credentials" ? (
           <form
             className="flex flex-col gap-4"
@@ -703,9 +703,10 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
               </>
             ) : (
               <>
-                <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+                {/* One column at every width: the 320 px stack has no room for the code beside the key. */}
+                <div className="flex flex-col items-center gap-3">
                   <EnrollmentCode seed={props.enrollment.otpauthUri} />
-                  <div className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
+                  <div className="flex w-full min-w-0 flex-col gap-2 text-sm">
                     <p className="flex items-start gap-1.5 text-muted-foreground">
                       <Icon path={QR_PATH} />
                       Scan with any authenticator app. Cannot scan? Enter this
@@ -759,27 +760,9 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                 </Button>
               </>
             )}
-            <p className="text-center text-xs text-muted-foreground">
-              Until enrollment is complete, every other page brings you back
-              here.
-            </p>
           </form>
         ) : null}
-
-        {/* A plain anchor, because core imports nothing from `next/*`. A host that passes
-            `onGoToMemberSignIn` (a story) observes the click instead. */}
-        <a
-          href={props.memberSignInHref ?? "/sign-in"}
-          onClick={(event) => {
-            if (props.onGoToMemberSignIn === undefined) return;
-            event.preventDefault();
-            props.onGoToMemberSignIn();
-          }}
-          className={`self-center rounded-lg text-sm text-muted-foreground hover:text-foreground hover:underline ${focusRing}`}
-        >
-          Member sign-in
-        </a>
-      </div>
-    </Frame>
+      </SignInStack>
+    </main>
   );
 }
