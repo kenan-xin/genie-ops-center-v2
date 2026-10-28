@@ -176,10 +176,11 @@ export type EventDeclaration = {
 };
 
 /**
- * 12. Capabilities, declaration-site only. The name is a key of the
- * `CapabilityInterfaces` registry in `packages/core/contracts`, so a module
- * cannot provide a capability that does not exist. The implementation is the
- * provider registered under that name; a consumer gets it or nothing (R-58).
+ * 12. Capabilities. The name is a key of the `CapabilityInterfaces` registry in
+ * `packages/core/contracts`, so a module cannot provide a capability that does
+ * not exist. The implementation is the provider registered under that name;
+ * core records the module id beside it, so a consumer gets it or nothing
+ * (R-58) and the list form returns every enabled module's provider (R-13).
  * Section 0 registers none, so `capabilities` is the empty list until a real
  * module needs one and the same change adds it to the registry and to the
  * module contract document.

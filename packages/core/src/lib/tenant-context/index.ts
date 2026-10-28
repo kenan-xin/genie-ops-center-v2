@@ -285,7 +285,7 @@ export function createTenantContext(
   const readers = createTenantReaders({ db, compiledModuleIds });
 
   const jobQueue = createJobQueue(pool, logger);
-  const capabilities = createCapabilityRegistry();
+  const capabilities = createCapabilityRegistry(readers.entitlements);
   const publicUrl = createPublicUrl(env.publicUrl);
 
   // The one Better Auth instance (R-4), built here from values this context already holds and

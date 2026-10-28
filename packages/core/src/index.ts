@@ -455,7 +455,10 @@ export type {
   SubscriptionOptions,
 } from "./services/event-bus/index.ts";
 
-export type { CapabilityRegistry } from "./services/capabilities/index.ts";
+export type {
+  CapabilityProvider,
+  CapabilityRegistry,
+} from "./services/capabilities/index.ts";
 
 export {
   createDatasetRegistry,

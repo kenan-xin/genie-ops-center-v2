@@ -114,6 +114,9 @@ function contextWith(
         get: () => {
           throw new Error("the router looked up a capability");
         },
+        list: () => {
+          throw new Error("the router listed capabilities");
+        },
       },
       datasets: {
         register: () => {

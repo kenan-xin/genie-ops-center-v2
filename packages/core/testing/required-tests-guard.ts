@@ -281,6 +281,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/capabilities.integration.test.ts",
+    reason:
+      "R-13 under AC-2 requires the list form to return each enabled module's provider with its module id",
+    cases: [
+      "the capability registry against a real database list answers each enabled module's provider with its module id, in registration order",
+    ],
+  },
+  {
     file: "testing/worker.integration.test.ts",
     reason:
       "AC-11, R-4, R-5, R-27 and R-50 to R-52 require the pg-boss worker against real Postgres",

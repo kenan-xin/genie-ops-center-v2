@@ -32,7 +32,11 @@ export function registerModuleRuntime(
 
   for (const module of modules) {
     for (const provision of module.capabilities) {
-      context.capabilities.provide(provision.name, provision.implementation);
+      context.capabilities.provide(
+        module.identity.id,
+        provision.name,
+        provision.implementation
+      );
     }
 
     for (const dataset of module.datasets ?? []) {
