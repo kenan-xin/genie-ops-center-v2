@@ -61,6 +61,8 @@ describe("the core package root", () => {
     expect(core.defineModuleErrors).toBeTypeOf("function");
     expect(core.validateModule).toBeTypeOf("function");
     expect(core.permissionKeyFor).toBeTypeOf("function");
+    expect(core.modelFor).toBeTypeOf("function");
+    expect(core.modelStatus).toBeTypeOf("function");
   });
 
   it("exports the logger a deployment builds and the execution seam a request takes", () => {

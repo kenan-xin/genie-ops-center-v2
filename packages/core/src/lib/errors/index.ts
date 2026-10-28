@@ -66,6 +66,10 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "That total mixes currencies. Group by the currency, or filter one currency.",
   "dataset-timeout":
     "The query took longer than 5 seconds and was stopped. Narrow it and run it again.",
+  "ai-off":
+    "AI is off for this deployment. An administrator can turn it on in Tenant settings.",
+  "model-not-allowed":
+    "That model is not allowed here. Pick one of the allowed models.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

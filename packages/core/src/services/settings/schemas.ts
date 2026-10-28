@@ -28,11 +28,25 @@ export const reportingSettingsSchema = z.object({
     .nullable(),
 });
 
+/**
+ * The characters a model provider key may hold: printable ASCII without spaces, so it fits an
+ * `authorization` header. The model request guard checks the stored key with the same pattern.
+ */
+export const MODEL_KEY_PATTERN = /^[\x21-\x7e]+$/;
+
 /** The model provider key (R-17). An empty field never reaches here: the screen keeps the stored key. */
 export const modelKeySchema = z.object({
-  apiKey: z.string().trim().min(1, {
-    error: "Enter the key, or leave the field empty to keep the stored key.",
-  }),
+  apiKey: z
+    .string()
+    .trim()
+    .min(1, {
+      error: "Enter the key, or leave the field empty to keep the stored key.",
+      abort: true,
+    })
+    .regex(MODEL_KEY_PATTERN, {
+      error:
+        "The key holds a character that a key cannot hold. Paste the key again.",
+    }),
 });
 
 /** The model id rule (R-18): author/model, with an optional `:variant` suffix. */

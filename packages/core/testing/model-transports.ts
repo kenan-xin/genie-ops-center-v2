@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   JsonToSseTransformStream,
@@ -8,6 +9,47 @@ import {
 } from "ai";
 import { isEqual } from "es-toolkit";
 import { z } from "zod";
+
+import type { TenantContext } from "../src/lib/tenant-context/index.ts";
+import {
+  MODEL_REQUEST_TIMEOUT_MS,
+  type ModelTransport,
+  setModelConnection,
+} from "../src/services/models/connection.ts";
+
+/** The absolute path of packages/core/testing/model-recordings. */
+export const CORE_MODEL_RECORDINGS = fileURLToPath(
+  new URL("model-recordings", import.meta.url)
+);
+
+/** Sends this context's model requests through `transport`, still behind the request guard. */
+export function useModelTransport(
+  context: TenantContext,
+  connection: {
+    readonly transport: ModelTransport;
+    readonly timeoutMs?: number;
+  }
+): void {
+  setModelConnection(context, {
+    transport: connection.transport,
+    timeoutMs: connection.timeoutMs ?? MODEL_REQUEST_TIMEOUT_MS,
+  });
+}
+
+/** What a test reads back from the recorded model: every request it was sent. */
+export type RecordedModel = { readonly sent: readonly SentModelRequest[] };
+
+/** Replays the recordings of `directory` for this context's model requests. */
+export function useRecordedModel(
+  context: TenantContext,
+  directory: string
+): RecordedModel {
+  const transport = replayModelTransport(loadModelRecordings(directory));
+
+  useModelTransport(context, { transport });
+
+  return { sent: transport.sent };
+}
 
 export type JsonValue =
   | string

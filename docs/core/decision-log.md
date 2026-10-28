@@ -668,4 +668,4 @@ Why: no new environment variable, models switch without a restart, and the tests
 
 Trade-off: OpenRouter passes prompts to third-party model providers. Real customer data needs Management approval first.
 
-Designed in: Section 7. Revisit when a customer requires a model inside its own network: the base URL becomes a setting.
+Designed in: Section 7. Implemented: the model connection and the recorded test model in Section 7 (S7-05). Revisit when a customer requires a model inside its own network: the base URL becomes a setting.

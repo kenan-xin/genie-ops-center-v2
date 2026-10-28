@@ -85,6 +85,7 @@ Compiled disabled modules with a schema remain configurable through this authori
 - Jobs: `enqueue(job, data, options)` and schedules.
 - Streaming: the server-side proxy route pattern with a per-user send lease, for a module that relays an upstream event stream to the browser. The route mounts under `/api/m/<id>/...` and is authenticated by the user session and `can()`, unlike the Inbound endpoints point, which serves customer systems. First used by the solutions module (roadmap Section 4).
 - Integrations: resolve a `tenant_integration` to configuration plus the live secret at call time.
+- Models: `modelFor(tenant, { task })` builds a language model for a task over the stored key, the allowed host, a timeout and denied data collection, and `modelStatus(tenant)` says whether AI is on. A module never sees the key (`DEC-53`, `DEC-55`).
 - UI: the design-system primitives in `packages/ui`, the shell slots (page header, actions, empty state), tables, forms, and the record picker. The page header slot is `PageHeader` from `@genie/core/features/shell`: a page renders it inside its own `<main>` with its title, description, and actions, and inside the shell it hides the title where the top bar shows it and moves the actions into a phone bottom bar.
 - Testing: the shared Vitest presets, Testcontainers Postgres, core factories, and generic database/context helpers. Each module owns its table factories and router/schema integration tests under its own `testing/` directory; the generator preserves that ownership. The app harness composes core and module helpers for the standing isolation test and the deployment-wide Playwright seed. Test imports obey the runtime layer boundaries.
   Modules with UI additionally own colocated documented Storybook stories, browser-safe fixtures, and applicable interaction tests, discovered by the development-only Storybook host without module-specific CI edits. These follow [the UI development workflow](ui-development.md) and supplement unit/integration/E2E tests. Fixture-driven permission states prove presentation, not authorization; headless modules do not need artificial UI stories.
@@ -106,6 +107,7 @@ Rules that keep the channels safe: `packages/core/contracts` imports only zod an
 - Read or write another module's tables, or core tables other than `audit_event`, `notification`, and `file` through the services above.
 - Check permissions anywhere except `can()`, or list records with record-scoped access without filtering on `scopesFor()` (`DEC-39`).
 - Store a credential. Only a `tenant_integration.secret_ref`, or a key that an administrator typed, which core stores and resolves (`DEC-53`).
+- Build a language model or call a model provider other than through `modelFor` (`DEC-55`).
 - Know who hosts the deployment, or which adapter stores files.
 - Import a database driver or open a connection. The only database is `ctx.tenant.db` (`DEC-34`).
 - Import from any `apps/*` package or assume the standard shell. Pages and navigation are components rendered by whichever app composes the module.

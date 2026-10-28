@@ -18,10 +18,13 @@ export {
   type JsonValue,
   type ModelRecording,
   type SentModelRequest,
+  CORE_MODEL_RECORDINGS,
   loadModelRecordings,
   recordingFromResponse,
   replayModelTransport,
   responseFromRecording,
+  useModelTransport,
+  useRecordedModel,
 } from "./model-transports.ts";
 
 export {

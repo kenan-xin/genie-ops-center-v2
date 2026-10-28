@@ -455,6 +455,14 @@ export type {
   SubscriptionOptions,
 } from "./services/event-bus/index.ts";
 
+export {
+  type AiState,
+  type ModelRequest,
+  type ModelStatus,
+  modelFor,
+  modelStatus,
+} from "./services/models/index.ts";
+
 export type {
   CapabilityProvider,
   CapabilityRegistry,

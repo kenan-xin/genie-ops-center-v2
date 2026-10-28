@@ -1,0 +1,36 @@
+{
+  "name": "hello-other-model",
+  "request": {
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "body": {
+      "model": "anthropic/claude-opus-5.5",
+      "messages": [{ "role": "user", "content": "Say hello." }],
+      "provider": { "data_collection": "deny" }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "gen-recorded-other-model",
+      "object": "chat.completion",
+      "created": 1761696000,
+      "model": "anthropic/claude-opus-5.5",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "message": {
+            "role": "assistant",
+            "content": "Hello from the other model."
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 6,
+        "total_tokens": 16
+      }
+    }
+  }
+}

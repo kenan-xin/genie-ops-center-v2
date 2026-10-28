@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { modelSettingsSchema } from "./schemas.ts";
+import { modelKeySchema, modelSettingsSchema } from "./schemas.ts";
 
 type ModelSettings = {
   readonly allowedModels: string[];
@@ -94,4 +94,27 @@ it("checks model settings: one issue per broken rule, none for a valid set", () 
   ];
 
   for (const row of rows) expect(issues(row.input)).toEqual(row.issues);
+});
+
+it("refuses a key with a character a key cannot hold, and keeps a trimmed key", () => {
+  const refused = modelKeySchema.safeParse({ apiKey: "sk-or-v1-ab\ncd" });
+
+  expect(
+    refused.success
+      ? []
+      : refused.error.issues.map(({ path, message }) => ({
+          path: path.join("."),
+          message,
+        }))
+  ).toEqual([
+    {
+      path: "apiKey",
+      message:
+        "The key holds a character that a key cannot hold. Paste the key again.",
+    },
+  ]);
+
+  expect(modelKeySchema.parse({ apiKey: "  sk-or-v1-abcd  " })).toEqual({
+    apiKey: "sk-or-v1-abcd",
+  });
 });

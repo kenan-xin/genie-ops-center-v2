@@ -543,6 +543,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/models.integration.test.ts",
+    reason:
+      "Spec 7 R-18 to R-20 and AC-5 require one model function that reaches only the allowed host, denies data collection, stops at its timeout, reads the stored key at each call, and keeps AI off without a key or defaults",
+    cases: [
+      "the model factory against a real database hands out a model that holds no stored key",
+      "the model factory against a real database builds the chat default with the stored key, the allowed host and denied data collection",
+      "the model factory against a real database picks the model per task, and refuses a chat model outside the allowed list",
+      "the model factory against a real database a call option cannot turn data collection back on",
+      "the model factory against a real database stops a slow answer at the timeout after one request",
+      "the model factory against a real database streams the chat default from its recording",
+      "the model factory against a real database stops a stalled stream at the timeout",
+      "the model factory against a real database reads the key at each call and never the OPENROUTER_API_KEY environment value",
+      "the model factory against a real database keeps AI off without a key or without both defaults",
+    ],
+  },
+  {
     file: "testing/no-live-model.test.ts",
     reason:
       "Spec 7 R-21 and AC-5 require a recorded test model and no live model call in any test run",
