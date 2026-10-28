@@ -6,7 +6,17 @@ The generic test helpers every integration test starts from.
 
 A disposable Postgres with the real migration histories applied in the order the image applies them, tenant-context construction for a test, and factories for core's own tables. A core table gets its factory in the section that creates it, so Section 0 adds none.
 
+## Recorded test model
+
 The recorded test model (`DEC-55`): `model-transports.ts` loads a folder of `*.json` recordings, replays the one whose whole request matches, and turns a recorded answer into a provider response and back. The no-live-model setup that `@genie/config`'s unit preset and core's integration config install refuses a request to a model host, so a test cannot reach the provider by accident (R-21, AC-5).
+
+Only the owner refreshes `model-recordings/`, from a live run in their own shell. The script prints names and statuses, never the key, refuses to run in CI, and changes only files under the directories it is given. It never runs in a gate.
+
+```sh
+read -rs MODEL_RECORDING_KEY && export MODEL_RECORDING_KEY
+node packages/core/tools/refresh-model-recordings.ts packages/core/testing/model-recordings
+unset MODEL_RECORDING_KEY
+```
 
 ## What must not go here
 
