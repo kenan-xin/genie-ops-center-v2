@@ -2,6 +2,7 @@
 
 import {
   type ModelKeyInput,
+  type ModelSettingsInput,
   type ReportingInput,
   type SessionsInput,
   type SignInInput,
@@ -60,6 +61,18 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     saved: savedIn("Reporting"),
     refused: onScreen,
     notSaved: () => t("settings.notSaved.reporting"),
+  });
+
+  const models = useAdminWrite({
+    write: (input: ModelSettingsInput) =>
+      rpc.settings.saveModels({
+        ...input,
+        allowedModels: [...input.allowedModels],
+      }),
+    invalidate: [["settings"]],
+    saved: savedIn("AI models"),
+    refused: onScreen,
+    notSaved: () => t("settings.notSaved.models"),
   });
 
   const keySave = useAdminWrite({
@@ -125,6 +138,9 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       }}
       onSaveReporting={async (input) => {
         await reporting.mutateAsync(input);
+      }}
+      onSaveModels={async (input) => {
+        await models.mutateAsync(input);
       }}
       onSaveModelKey={async (input) => {
         await keySave.mutateAsync(input);

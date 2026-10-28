@@ -4,15 +4,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { validModule } from "../src/lib/module-contract/__fixtures__/valid-module.ts";
 import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
+import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import type { AuditMetadataValue } from "../src/services/audit/index.ts";
 import {
   principalFor,
   seedRoles,
 } from "../src/services/authorization/index.ts";
+import { silentLogger } from "../src/services/logging/index.ts";
 import { setModuleEnabledIn } from "../src/services/module-management/index.ts";
 import {
   readSettings,
+  saveModelSettings,
   saveModuleSettings,
   saveReportingSettings,
   saveSessionSettings,
@@ -122,7 +125,8 @@ beforeEach(async () => {
   await query(
     `update tenant_settings set onboarding_mode = 'invite', local_accounts_enabled = false,
        realm_supports_local_accounts = true, session_idle_minutes = 15,
-       reporting_date = null, updated_by_user_id = null`
+       reporting_date = null, allowed_models = '{}'::text[], chat_model = null,
+       document_model = null, updated_by_user_id = null`
   );
   since = await clock();
 });
@@ -148,10 +152,14 @@ async function settingsRow() {
     realm_supports_local_accounts: boolean;
     session_idle_minutes: number;
     reporting_date: string | null;
+    allowed_models: string[];
+    chat_model: string | null;
+    document_model: string | null;
     updated_by_user_id: string | null;
   }>(
     `select onboarding_mode, local_accounts_enabled, realm_supports_local_accounts,
-       session_idle_minutes, reporting_date::text as reporting_date, updated_by_user_id
+       session_idle_minutes, reporting_date::text as reporting_date,
+       allowed_models, chat_model, document_model, updated_by_user_id
        from tenant_settings`
   );
 
@@ -244,6 +252,115 @@ describe("core section saves", () => {
 
     expect(await auditRows()).toEqual([]);
     expect((await settingsRow())?.updated_by_user_id).toBeNull();
+
+    // The allowed models are an array, so a second save of the same ids, in a new array instance,
+    // must not count as a change (Review Focus 4).
+    const models = {
+      allowedModels: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      chatModel: "openai/gpt-6.1-terra",
+      documentModel: "anthropic/claude-opus-5.5",
+    };
+
+    await expect(
+      saveModelSettings(deployment.context, { actorUserId, ...models })
+    ).resolves.toEqual({ changed: true });
+
+    await expect(
+      saveModelSettings(deployment.context, {
+        actorUserId,
+        allowedModels: [...models.allowedModels],
+        chatModel: models.chatModel,
+        documentModel: models.documentModel,
+      })
+    ).resolves.toEqual({ changed: false });
+
+    expect(await auditRows()).toHaveLength(1);
+  });
+
+  it("saves the allowed models and the two defaults with one core:settings_updated row", async () => {
+    await expect(
+      saveModelSettings(deployment.context, {
+        actorUserId,
+        allowedModels: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+        chatModel: "openai/gpt-6.1-terra",
+        documentModel: "anthropic/claude-opus-5.5",
+      })
+    ).resolves.toEqual({ changed: true });
+
+    expect(await settingsRow()).toMatchObject({
+      allowed_models: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      chat_model: "openai/gpt-6.1-terra",
+      document_model: "anthropic/claude-opus-5.5",
+    });
+
+    expect(await auditRows()).toEqual([
+      {
+        action: "core:settings_updated",
+        target_type: "settings",
+        target_id: "ai-models",
+        summary: "Changed AI models",
+        metadata: {
+          section: "ai-models",
+          changes: {
+            allowedModels: {
+              from: [],
+              to: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+            },
+            chatModel: { from: null, to: "openai/gpt-6.1-terra" },
+            documentModel: { from: null, to: "anthropic/claude-opus-5.5" },
+          },
+        },
+      },
+    ]);
+
+    // A new process reads the saved values through the cached settings reader (DEC-46, DEC-55).
+    const second = createTenantContext(
+      {
+        DATABASE_URL: deployment.context.env.databaseUrl,
+        PUBLIC_URL: deployment.context.env.publicUrl,
+      },
+      silentLogger(),
+      []
+    );
+
+    try {
+      const settings = await second.settings.get();
+
+      expect(settings.allowedModels).toEqual([
+        "openai/gpt-6.1-terra",
+        "anthropic/claude-opus-5.5",
+      ]);
+      expect(settings.chatModel).toBe("openai/gpt-6.1-terra");
+      expect(settings.documentModel).toBe("anthropic/claude-opus-5.5");
+    } finally {
+      await second.db.$client.end();
+    }
+  });
+
+  it("refuses a chat default outside the allowed models with settings-invalid and the chatModel issue, and writes nothing", async () => {
+    await expect(
+      saveModelSettings(deployment.context, {
+        actorUserId,
+        allowedModels: ["openai/gpt-6.1-terra"],
+        chatModel: "anthropic/claude-opus-5.5",
+        documentModel: "openai/gpt-6.1-terra",
+      })
+    ).rejects.toMatchObject({
+      code: "settings-invalid",
+      issues: [
+        {
+          path: "chatModel",
+          message: "Choose a model from the allowed models.",
+        },
+      ],
+    });
+
+    expect(await settingsRow()).toMatchObject({
+      allowed_models: [],
+      chat_model: null,
+      document_model: null,
+    });
+    expect(await auditRows()).toEqual([]);
   });
 
   it("idle minutes 4 and 481 refuse with settings-invalid and the issue for sessionIdleMinutes; 5 and 480 save", async () => {

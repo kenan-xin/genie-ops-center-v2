@@ -20,7 +20,7 @@ import {
 } from "react";
 import { z } from "zod";
 
-import { AiConnectionSection } from "./ai-sections.tsx";
+import { AiConnectionSection, AiModelsSection } from "./ai-sections.tsx";
 import {
   ReportingSection,
   SectionFooter,
@@ -44,11 +44,14 @@ const REPORTING = "reporting";
 
 const AI_CONNECTION = "ai-connection";
 
+const AI_MODELS = "ai-models";
+
 const CORE_FIELDS = new Map<string, readonly string[]>([
   [SIGN_IN, ["onboardingMode", "localAccountsEnabled"]],
   [SESSIONS, ["sessionIdleMinutes"]],
   [REPORTING, ["reportingDate"]],
   [AI_CONNECTION, ["apiKey"]],
+  [AI_MODELS, ["allowedModels", "chatModel", "documentModel"]],
 ]);
 
 type Section = {
@@ -170,6 +173,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       group: "tenant",
       disabled: false,
     },
+    { id: AI_MODELS, title: "AI models", group: "tenant", disabled: false },
     ...(settings?.modules ?? []).map((module): Section => ({
       id: module.moduleId,
       title: module.title,
@@ -220,7 +224,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
     document
       .querySelector(`[data-field="${CSS.escape(target.fieldId)}"]`)
       ?.querySelector<HTMLElement>(
-        "input:not([aria-hidden]), [role=switch], [role=radio]"
+        "input:not([aria-hidden]), textarea, [role=switch], [role=radio], [role=combobox]"
       )
       ?.focus();
   }, [target.fieldId, target.sectionId, settings]);
@@ -483,6 +487,41 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           />
         </SectionCard>
       );
+
+    if (current.id === AI_MODELS) {
+      const models = {
+        allowedModels: settings.core.allowedModels,
+        chatModel: settings.core.chatModel ?? "",
+        documentModel: settings.core.documentModel ?? "",
+      };
+
+      return (
+        <SectionCard
+          title="AI models"
+          description="The models that AI features may use, and the default for each task."
+          lastChanged={lastChangedText(
+            settings.core.lastChanged,
+            props.timeZone
+          )}
+          headingRef={heading}
+        >
+          <AiModelsSection
+            key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}
+            values={models}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
+            onDirtyChange={onDirtyChange}
+            onSubmit={(values) =>
+              save(AI_MODELS, () => props.onSaveModels(values))()
+            }
+            footer={footer}
+          />
+        </SectionCard>
+      );
+    }
 
     const module = moduleOf(current.id);
 

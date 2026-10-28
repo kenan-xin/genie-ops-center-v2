@@ -8,6 +8,7 @@ import {
   readSettings,
   removeModelKey,
   saveModelKey,
+  saveModelSettings,
   saveModuleSettings,
   saveReportingSettings,
   saveSessionSettings,
@@ -46,6 +47,13 @@ export function createSettingsRouter(modules: readonly Module[]) {
       saveReportingSettings(context.tenant, {
         actorUserId: context.caller.userId,
         reportingDate: input.reportingDate,
+      })
+    ),
+
+    saveModels: managed.saveModels.handler(({ context, input }) =>
+      saveModelSettings(context.tenant, {
+        ...input,
+        actorUserId: context.caller.userId,
       })
     ),
 

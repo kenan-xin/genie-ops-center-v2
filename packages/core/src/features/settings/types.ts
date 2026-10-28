@@ -38,6 +38,13 @@ export type ReportingInput = { readonly reportingDate: string | null };
 /** The key field is write-only: an empty field never reaches the service (R-17). */
 export type ModelKeyInput = { readonly apiKey: string };
 
+/** The allowed models and the two defaults, saved together because they are checked together (R-18). */
+export type ModelSettingsInput = {
+  readonly allowedModels: readonly string[];
+  readonly chatModel: string;
+  readonly documentModel: string;
+};
+
 export type TenantSettingsScreenProps = {
   /** Undefined while the first read runs. */
   readonly settings: SettingsView | undefined;
@@ -68,6 +75,7 @@ export type TenantSettingsScreenProps = {
   readonly onSaveReporting: (input: ReportingInput) => Promise<void>;
   readonly onSaveModelKey: (input: ModelKeyInput) => Promise<void>;
   readonly onRemoveModelKey: () => Promise<void>;
+  readonly onSaveModels: (input: ModelSettingsInput) => Promise<void>;
   readonly onSaveModule: (
     moduleId: string,
     values: Record<string, ConfigValue | null>

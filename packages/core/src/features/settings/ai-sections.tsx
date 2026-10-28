@@ -7,19 +7,34 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   StatusPill,
+  Textarea,
 } from "@genie/ui";
-import { useForm } from "@tanstack/react-form";
-import { useState, type ReactNode } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
+import { isEqual, uniq } from "es-toolkit";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { modelKeySchema } from "../../services/settings/schemas.ts";
+import {
+  modelKeySchema,
+  modelSettingsSchema,
+} from "../../services/settings/schemas.ts";
 import {
   clearServerError,
   type FooterState,
+  type SectionProps,
   useFooterState,
   useServerIssues,
 } from "./core-sections.tsx";
-import type { ModelKeyInput, SettingsIssue } from "./types.ts";
+import type {
+  ModelKeyInput,
+  ModelSettingsInput,
+  SettingsIssue,
+} from "./types.ts";
 
 /**
  * The write-only model provider key (R-17). The field starts empty on every visit and empties
@@ -121,6 +136,162 @@ export function AiConnectionSection(props: {
         }}
         onClose={() => setConfirming(false)}
       />
+    </>
+  );
+}
+
+/** The textarea's own text becomes the field: lines trimmed, blank lines dropped, each id once. */
+function parseModelList(text: string): string[] {
+  return uniq(
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "")
+  );
+}
+
+/** The allowed models and the two defaults (R-18), saved together because they are checked together. */
+export function AiModelsSection(props: SectionProps<ModelSettingsInput>) {
+  const form = useForm({
+    defaultValues: props.values,
+    validators: { onChange: modelSettingsSchema },
+    listeners: { onChange: clearServerError },
+    onSubmit: async ({ value }) => props.onSubmit(value),
+  });
+
+  useServerIssues(form, props.issues);
+
+  const footer = useFooterState(form, props.onDirtyChange);
+
+  const allowed = useStore(form.store, (state) => state.values.allowedModels);
+  const dirty = useStore(form.store, (state) => !state.isDefaultValue);
+  const [text, setText] = useState(() => allowed.join("\n"));
+
+  // Typing keeps its own text; a change from outside, such as Discard, rewrites it.
+  useEffect(() => {
+    if (!isEqual(parseModelList(text), allowed)) setText(allowed.join("\n"));
+  }, [allowed, text]);
+
+  const items = allowed.map((id) => ({ value: id, label: id }));
+
+  const defaultModel = (
+    name: "chatModel" | "documentModel",
+    label: string,
+    help: string
+  ) => (
+    <form.Field name={name}>
+      {(field) => {
+        const issue: { message?: string } | undefined =
+          field.state.meta.errors[0];
+
+        const message =
+          field.state.meta.isTouched ||
+          dirty ||
+          field.state.meta.errorMap.onServer !== undefined
+            ? issue?.message
+            : undefined;
+
+        const id = `core-${name}`;
+
+        return (
+          <div data-field={name} className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={id}>{label}</FieldLabel>
+            <Select
+              items={items}
+              value={field.state.value === "" ? null : field.state.value}
+              onValueChange={(value) => field.handleChange(value ?? "")}
+            >
+              <SelectTrigger
+                id={id}
+                aria-invalid={message === undefined ? undefined : true}
+                aria-describedby={
+                  message === undefined ? `${id}-help` : `${id}-error`
+                }
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {message === undefined ? (
+              <FieldDescription id={`${id}-help`}>{help}</FieldDescription>
+            ) : (
+              <FieldError id={`${id}-error`}>{message}</FieldError>
+            )}
+          </div>
+        );
+      }}
+    </form.Field>
+  );
+
+  return (
+    <>
+      <div className="flex flex-col gap-6 px-5 py-5">
+        <form.Field name="allowedModels">
+          {(field) => {
+            const issue: { message?: string } | undefined =
+              field.state.meta.errors[0];
+
+            const message =
+              field.state.meta.isTouched ||
+              dirty ||
+              field.state.meta.errorMap.onServer !== undefined
+                ? issue?.message
+                : undefined;
+
+            return (
+              <div data-field="allowedModels" className="flex flex-col gap-1.5">
+                <FieldLabel htmlFor="core-allowedModels">
+                  Allowed models
+                </FieldLabel>
+                <Textarea
+                  id="core-allowedModels"
+                  rows={4}
+                  value={text}
+                  aria-invalid={message === undefined ? undefined : true}
+                  aria-describedby={
+                    message === undefined
+                      ? "core-allowedModels-help"
+                      : "core-allowedModels-error"
+                  }
+                  onChange={(event) => {
+                    setText(event.target.value);
+                    field.handleChange(parseModelList(event.target.value));
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                {message === undefined ? (
+                  <FieldDescription id="core-allowedModels-help">
+                    One OpenRouter model id per line, for example
+                    openai/gpt-6.1-terra.
+                  </FieldDescription>
+                ) : (
+                  <FieldError id="core-allowedModels-error">
+                    {message}
+                  </FieldError>
+                )}
+              </div>
+            );
+          }}
+        </form.Field>
+
+        {defaultModel(
+          "chatModel",
+          "Chat default",
+          "A person can pick another allowed model in each chat."
+        )}
+        {defaultModel(
+          "documentModel",
+          "Document reading",
+          "Document reading always uses this model."
+        )}
+      </div>
+      {props.footer(footer)}
     </>
   );
 }

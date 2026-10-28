@@ -55,6 +55,7 @@ const meta = {
     onSaveReporting: saved(),
     onSaveModelKey: saved(),
     onRemoveModelKey: saved(),
+    onSaveModels: saved(),
     onSaveModule: saved(),
     onTargetChange: fn(),
   } satisfies TenantSettingsScreenProps,
@@ -866,6 +867,113 @@ export const AiKeyRemoveConfirms: Story = {
   },
 };
 
+const MODEL_SETTINGS = {
+  allowedModels: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+  chatModel: "openai/gpt-6.1-terra",
+  documentModel: "anthropic/claude-opus-5.5",
+};
+
+/** A saved view with both defaults, so a story changes one thing from a valid form. */
+const withModels = (overrides: Partial<typeof MODEL_SETTINGS> = {}) => ({
+  ...FIXTURE_SETTINGS,
+  core: { ...FIXTURE_SETTINGS.core, ...MODEL_SETTINGS, ...overrides },
+});
+
+/** The options a select offers, in order, so a story can prove it lists the current ids. */
+const optionTexts = async () =>
+  (await screen.findAllByRole("option")).map((option) => option.textContent);
+
+/** The textarea trims each line, drops blanks and repeats, and both defaults save with it (R-18). */
+export const AiModelsSave: Story = {
+  args: { target: { section: "ai-models" } },
+  play: async ({ args, canvas }) => {
+    fireEvent.change(canvas.getByRole("textbox", { name: "Allowed models" }), {
+      target: {
+        value:
+          "openai/gpt-6.1-terra\n\n  anthropic/claude-opus-5.5  \nopenai/gpt-6.1-terra",
+      },
+    });
+
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Chat default" })
+    );
+    await expect(await optionTexts()).toEqual(MODEL_SETTINGS.allowedModels);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "openai/gpt-6.1-terra" })
+    );
+
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Document reading" })
+    );
+    await expect(await optionTexts()).toEqual(MODEL_SETTINGS.allowedModels);
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "anthropic/claude-opus-5.5",
+      })
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(args.onSaveModels).toHaveBeenCalledWith({
+        allowedModels: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+        chatModel: "openai/gpt-6.1-terra",
+        documentModel: "anthropic/claude-opus-5.5",
+      })
+    );
+  },
+};
+
+/** Removing the line a default names leaves Save disabled with the default issue shown (R-18). */
+export const AiModelsDefaultOutsideList: Story = {
+  args: { settings: withModels(), target: { section: "ai-models" } },
+  play: async ({ canvas }) => {
+    fireEvent.change(canvas.getByRole("textbox", { name: "Allowed models" }), {
+      target: { value: "anthropic/claude-opus-5.5" },
+    });
+
+    await expect(
+      await canvas.findByText("Choose a model from the allowed models.")
+    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    // The removed id is gone from the picker too, not only from the list field.
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Chat default" })
+    );
+    await expect(await optionTexts()).toEqual(["anthropic/claude-opus-5.5"]);
+  },
+};
+
+/** A server issue for a default reaches that select (DR-20 S3-06). */
+export const AiModelsSaveRefusedMarksTheField: Story = {
+  args: {
+    settings: withModels(),
+    target: { section: "ai-models" },
+    onSaveModels: fn(async () => {
+      throw {
+        message: "The AI models were not saved. Your change is kept.",
+        issues: [{ path: "chatModel", message: "Server says no." }],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    // One more allowed id keeps the form valid while making it dirty, so Save submits.
+    fireEvent.change(canvas.getByRole("textbox", { name: "Allowed models" }), {
+      target: {
+        value:
+          "openai/gpt-6.1-terra\nanthropic/claude-opus-5.5\nmeta-llama/llama-3-8b-instruct:free",
+      },
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await expect(await canvas.findByText("Server says no.")).toBeVisible();
+    await expect(
+      canvas.getByText("The AI models were not saved. Your change is kept.")
+    ).toBeVisible();
+  },
+};
+
 export const StaleLink: Story = {
   args: { target: { section: "retired-module", field: "x" } },
   play: async ({ canvas }) => {
@@ -897,6 +1005,18 @@ export const FocusCoreField: Story = {
     await waitFor(() =>
       expect(
         canvas.getByRole("spinbutton", { name: "Idle timeout" })
+      ).toHaveFocus()
+    );
+  },
+};
+
+/** A link to a field of the AI models section focuses the default's picker (R-18). */
+export const AiModelsDeepLinkFocusesTheField: Story = {
+  args: { target: { section: "ai-models", field: "chatModel" } },
+  play: async ({ canvas }) => {
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("combobox", { name: "Chat default" })
       ).toHaveFocus()
     );
   },

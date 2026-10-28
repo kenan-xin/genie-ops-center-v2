@@ -130,6 +130,7 @@
         "signIn": "The sign-in settings were not saved.",
         "sessions": "The idle timeout was not saved.",
         "reporting": "The reporting date was not saved.",
+        "models": "The AI models were not saved.",
         "modelKey": "The model provider key was not stored.",
         "modelKeyRemoval": "The model provider key was not removed.",
         "module": "The {module} settings were not saved."

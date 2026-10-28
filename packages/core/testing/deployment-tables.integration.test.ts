@@ -93,6 +93,9 @@ const DEPLOYMENT_TABLES = {
       sso_email_domains: { default: "'{}'::text[]" },
       session_idle_minutes: { default: "15" },
       reporting_date: { nullable: true },
+      allowed_models: { default: "'{}'::text[]" },
+      chat_model: { nullable: true },
+      document_model: { nullable: true },
       updated_by_user_id: { nullable: true },
       updated_at: {},
     },
@@ -869,6 +872,10 @@ describe("the Section 3 navigation tables", () => {
     expected.tenant_settings[0].sso_email_domains = [];
     // The reporting_date migration adds a nullable column, so the existing row reads null.
     expected.tenant_settings[0].reporting_date = null;
+    // The model settings migration gives the existing row its empty list and two null defaults.
+    expected.tenant_settings[0].allowed_models = [];
+    expected.tenant_settings[0].chat_model = null;
+    expected.tenant_settings[0].document_model = null;
 
     expect(await read()).toEqual(expected);
     expect(await foreignKeys(client, "tenant_module")).toEqual([

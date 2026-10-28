@@ -137,6 +137,14 @@ export const tenantSettings = pgTable(
     sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
     // The reporting date (Spec 7 R-9): blank means today in the tenant's default time zone.
     reportingDate: date("reporting_date"),
+    // The model settings (Spec 7 R-18, DEC-55): the ids AI features may use, and the two defaults.
+    // Read through the settings reader, so a change applies without a restart (DEC-46).
+    allowedModels: text("allowed_models")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    chatModel: text("chat_model"),
+    documentModel: text("document_model"),
     updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },

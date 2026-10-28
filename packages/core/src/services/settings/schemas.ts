@@ -34,3 +34,46 @@ export const modelKeySchema = z.object({
     error: "Enter the key, or leave the field empty to keep the stored key.",
   }),
 });
+
+/** The model id rule (R-18): author/model, with an optional `:variant` suffix. */
+const MODEL_ID = /^[\w.~-]+\/[\w.~-]+(?::[\w.~-]+)?$/;
+
+/**
+ * The model settings (R-18). The allowed list and both defaults are checked together, so one
+ * schema serves the browser and the server: one rule, one text.
+ */
+export const modelSettingsSchema = z
+  .object({
+    allowedModels: z.array(z.string()),
+    chatModel: z.string(),
+    documentModel: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.allowedModels.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allowedModels"],
+        message: "Add at least one model.",
+      });
+
+      return;
+    }
+
+    if (!values.allowedModels.every((id) => MODEL_ID.test(id))) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allowedModels"],
+        message: "Enter one model id per line, as author/model.",
+      });
+
+      return;
+    }
+
+    for (const path of ["chatModel", "documentModel"] as const)
+      if (!values.allowedModels.includes(values[path]))
+        ctx.addIssue({
+          code: "custom",
+          path: [path],
+          message: "Choose a model from the allowed models.",
+        });
+  });

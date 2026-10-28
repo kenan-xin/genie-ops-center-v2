@@ -1782,6 +1782,46 @@
         }
       }
     },
+    "/settings/ai/models": {
+      "patch": {
+        "operationId": "settings.saveModels",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allowedModels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "chatModel": {
+                    "type": "string"
+                  },
+                  "documentModel": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "allowedModels",
+                  "chatModel",
+                  "documentModel"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/settings/modules/{moduleId}": {
       "patch": {
         "operationId": "settings.saveModule",

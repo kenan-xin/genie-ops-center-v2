@@ -40,6 +40,18 @@ export const settingsContract = {
     .input(z.object({ reportingDate: z.string().nullable() }))
     .output(saved),
 
+  // The allowed models and the two defaults (R-18). The service parses them with the strict schema.
+  saveModels: oc
+    .route({ method: "PATCH", path: "/settings/ai/models" })
+    .input(
+      z.object({
+        allowedModels: z.array(z.string()),
+        chatModel: z.string(),
+        documentModel: z.string(),
+      })
+    )
+    .output(saved),
+
   saveModule: oc
     .route({ method: "PATCH", path: "/settings/modules/{moduleId}" })
     .input(

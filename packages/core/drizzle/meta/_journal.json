@@ -57,6 +57,13 @@
       "when": 1793214248146,
       "tag": "0007_tenant_integration_key",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793215980209,
+      "tag": "0008_tenant_settings_models",
+      "breakpoints": true
     }
   ]
 }

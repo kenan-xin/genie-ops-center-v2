@@ -48,6 +48,7 @@ import {
 import { ModuleManagementError } from "../module-management/index.ts";
 import {
   modelKeySchema,
+  modelSettingsSchema,
   reportingSettingsSchema,
   sessionSettingsSchema,
   signInSettingsSchema,
@@ -68,6 +69,12 @@ export type CoreSettingsView = {
   readonly sessionIdleMinutes: number;
   /** Null means today in the tenant's default time zone (R-9). */
   readonly reportingDate: string | null;
+  /** The model ids AI features may use (R-18). */
+  readonly allowedModels: readonly string[];
+  /** The default chat model, null until one is chosen (R-18). */
+  readonly chatModel: string | null;
+  /** The model document reading always uses, null until one is chosen (R-18). */
+  readonly documentModel: string | null;
   /** Whether the model provider key is stored. The value is never part of a settings read (R-17). */
   readonly modelKeyStored: boolean;
   readonly lastChanged: LastChanged;
@@ -121,6 +128,9 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
       realmSupportsLocalAccounts: tenantSettings.realmSupportsLocalAccounts,
       sessionIdleMinutes: tenantSettings.sessionIdleMinutes,
       reportingDate: tenantSettings.reportingDate,
+      allowedModels: tenantSettings.allowedModels,
+      chatModel: tenantSettings.chatModel,
+      documentModel: tenantSettings.documentModel,
       updatedAt: tenantSettings.updatedAt,
       updatedBy: user.name,
     })
@@ -136,6 +146,9 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     realmSupportsLocalAccounts: row.realmSupportsLocalAccounts,
     sessionIdleMinutes: row.sessionIdleMinutes,
     reportingDate: row.reportingDate,
+    allowedModels: row.allowedModels,
+    chatModel: row.chatModel,
+    documentModel: row.documentModel,
     modelKeyStored: await integrationKeyStored(tenant, "model-provider"),
     lastChanged: lastChangedOf(row.updatedAt, row.updatedBy),
   };
@@ -236,10 +249,13 @@ type SettingsField =
   | "onboardingMode"
   | "localAccountsEnabled"
   | "sessionIdleMinutes"
-  | "reportingDate";
+  | "reportingDate"
+  | "allowedModels"
+  | "chatModel"
+  | "documentModel";
 
 type CoreSection = {
-  readonly id: "sign-in" | "sessions" | "reporting";
+  readonly id: "sign-in" | "sessions" | "reporting" | "ai-models";
   readonly title: string;
 };
 
@@ -269,7 +285,9 @@ async function saveCore(
       const from = row[field];
       const to = next[field];
 
-      if (to !== undefined && from !== to) changes[field] = { from, to };
+      // An array column, the allowed models, compares by value: a new instance of the same ids is
+      // not a change (Review Focus 4).
+      if (to !== undefined && !isEqual(from, to)) changes[field] = { from, to };
     }
 
     if (Object.keys(changes).length === 0) return { changed: false };
@@ -405,6 +423,32 @@ export async function removeModelKey(
     name: "model-provider",
     actorUserId: input.actorUserId,
   });
+}
+
+/** The allowed models and the two defaults (R-18), checked together and saved as one section. */
+export async function saveModelSettings(
+  tenant: TenantContext,
+  input: {
+    readonly actorUserId: string;
+    readonly allowedModels: readonly string[];
+    readonly chatModel: string;
+    readonly documentModel: string;
+  }
+): Promise<{ readonly changed: boolean }> {
+  const parsed = modelSettingsSchema.safeParse(input);
+
+  if (!parsed.success)
+    throw new AppError(CORE_ERRORS["settings-invalid"], {
+      issues: issuesOf(parsed.error),
+    });
+
+  return saveCore(
+    tenant,
+    { id: "ai-models", title: "AI models" },
+    input.actorUserId,
+    parsed.data,
+    () => {}
+  );
 }
 
 /**
