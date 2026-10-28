@@ -29,6 +29,7 @@ Spec R-54 to R-59a.
 
 - The system-use notice acknowledgement is enforced in the browser only. `/api/auth/sign-in/keycloak` does not check it (U-9, owner, 2026-10-25).
 - The dark sign-in page keeps `--background`. The sign-in background pair answers this (DR-05, DR-20 S3-08 part, 2026-10-25).
+- If a custom Keycloak login theme is built later, the login theme uses the sign-in stack of batch 5: logo mark, 320 px, full-width 40 px buttons, no card. The two steps then read as one flow. No theme exists today, and the realm uses the built-in theme (batch 5, 2026-10-28).
 
 ## Acceptance
 
