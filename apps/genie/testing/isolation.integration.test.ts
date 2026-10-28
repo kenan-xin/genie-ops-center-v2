@@ -4,6 +4,8 @@ import {
   principalFor,
   createLogger,
   createTenantContext,
+  queryDataset,
+  registerModuleRuntime,
   withTransaction,
   type ModuleRequestContext,
   type TenantContext,
@@ -126,6 +128,10 @@ beforeAll(async () => {
     enableModules(second.context, ["placeholder"]),
   ]);
 
+  // The dataset seam is a member of the context too, registered once per deployment.
+  registerModuleRuntime(first.context, [placeholderModule]);
+  registerModuleRuntime(second.context, [placeholderModule]);
+
   // One reader per deployment, holding `placeholder:read` through a real role assignment in
   // that deployment's own database (DEC-48).
   [firstReader, secondReader] = await Promise.all([
@@ -208,10 +214,12 @@ describe("two tenant contexts in one process", () => {
 
     const firstRow = await insertPlaceholderRecord(first.context, {
       label: "first-only",
+      recordedOn: "2026-01-15",
     });
 
     const secondRow = await insertPlaceholderRecord(second.context, {
       label: "second-only",
+      recordedOn: "2026-01-15",
     });
 
     const fromFirst = await callProcedure(
@@ -231,6 +239,32 @@ describe("two tenant contexts in one process", () => {
         placeholderRouter,
         callerFor(second.context, firstReader)
       ).read()
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    // DEC-34, AC-2: a dataset read runs on the request context's own database. A runner that kept
+    // one connection in a module would answer the first deployment's row to the second. Sequential,
+    // so a planted singleton is claimed by the first read and must show in the second.
+    const firstDataset = await queryDataset(
+      callerFor(first.context, firstReader),
+      {
+        dataset: "placeholder.records",
+        query: { select: ["label"] },
+      }
+    );
+
+    const secondDataset = await queryDataset(
+      callerFor(second.context, secondReader),
+      {
+        dataset: "placeholder.records",
+        query: { select: ["label"] },
+      }
+    );
+
+    await expect(
+      queryDataset(callerFor(second.context, firstReader), {
+        dataset: "placeholder.records",
+        query: { select: ["label"] },
+      })
     ).rejects.toMatchObject({ code: "forbidden" });
 
     const [firstSettings, secondSettings] = await Promise.all([
@@ -335,6 +369,8 @@ describe("two tenant contexts in one process", () => {
     // return both labels and fail here, while a count of two would still pass.
     expect(fromFirst.map((row) => row.label)).toEqual(["first-only"]);
     expect(fromSecond.map((row) => row.label)).toEqual(["second-only"]);
+    expect(firstDataset.rows.map((row) => row.label)).toEqual(["first-only"]);
+    expect(secondDataset.rows.map((row) => row.label)).toEqual(["second-only"]);
 
     // The same boundary stated by identity, so a shared database that happened
     // to hold one row each could not slip through.
