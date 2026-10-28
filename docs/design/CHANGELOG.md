@@ -4,6 +4,11 @@ One entry per design change in this repository, newest first. Each entry names w
 
 ## 2026-10-28
 
+### Changed, the Modules phone capture
+
+- The Modules phone capture now comes from the build, which follows the approved phone mockup: the switch on the name's line, the id in muted mono, one description line, a labelled full-width category select, and a "Who can open it" row that links to Roles (owner, 2026-10-27).
+- File: `product/sections/audit-and-tenant-settings/modules-mobile.png`. Record: `imports/2026-10-28-modules-phone-capture.md`.
+
 ### Added, the event category colors
 
 - A fixed color per audit event category in tables and lists, under the State-vs-Label Rule exception in `DESIGN.md`: sign-in and sessions, people, groups, roles and access, branding and settings, modules, and module events (owner, 2026-10-27).
