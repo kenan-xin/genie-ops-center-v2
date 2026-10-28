@@ -60,10 +60,13 @@ describe("the placeholder module declaration", () => {
     }
   });
 
-  it("declares the placeholder record reader job", () => {
+  it("declares the placeholder record reader and touch jobs", () => {
     expect(
       placeholderModule.jobs.map(({ name, schedule }) => ({ name, schedule }))
-    ).toEqual([{ name: "placeholder.read-record", schedule: undefined }]);
+    ).toEqual([
+      { name: "placeholder.read-record", schedule: undefined },
+      { name: "placeholder.touch-record", schedule: undefined },
+    ]);
   });
   /* oxlint-enable anti-slop/require-readable-spacing */
 

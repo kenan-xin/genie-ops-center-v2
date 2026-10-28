@@ -342,6 +342,7 @@ export type {
   DatasetSource,
   JobContext,
   JobDeclaration,
+  JobRetry,
   Module,
   ModuleConfiguration,
   ModuleIdentity,
@@ -441,6 +442,11 @@ export {
 } from "./lib/password/rule.ts";
 
 export type { JobQueue } from "./services/job-queue/index.ts";
+
+export {
+  enqueueJob,
+  JOB_STARTER_KEY,
+} from "./services/job-queue/module-jobs.ts";
 
 export type {
   DurableEventQueue,

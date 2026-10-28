@@ -15,7 +15,11 @@ import {
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
 import { fixtureApi, validModule } from "./__fixtures__/valid-module.ts";
-import type { DatasetDeclaration, NavigationEntry } from "./module.ts";
+import type {
+  DatasetDeclaration,
+  JobRetry,
+  NavigationEntry,
+} from "./module.ts";
 import { validateModule, validateRegistry } from "./validate.ts";
 
 /** The fixture with the given contract and the router `build` makes from core's implementer. */
@@ -457,6 +461,26 @@ describe("validateModule", () => {
 
     expect(validateModule(broken).join(" ")).toContain(
       'Module "fixture" cannot declare a job in the reserved "core." namespace'
+    );
+  });
+
+  // A negative or fractional value makes pg-boss refuse the queue at worker start, and the worker
+  // then exits on every restart.
+  it.each([
+    { limit: -1 },
+    { limit: 1.5 },
+    { limit: 3, delaySeconds: -1 },
+    { limit: 3, delaySeconds: 0.5 },
+    // SAFETY: a JavaScript module can omit the required limit; the type cannot stop it.
+    {} as JobRetry,
+  ])("rejects a job retry of %o", (retry) => {
+    const broken = {
+      ...validModule,
+      jobs: validModule.jobs.map((job) => ({ ...job, retry })),
+    };
+
+    expect(validateModule(broken)).toContain(
+      'Job "fixture.cleanup" declares an invalid retry: a limit and a delay are whole numbers from 0.'
     );
   });
 

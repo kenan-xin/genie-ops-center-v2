@@ -105,6 +105,11 @@ const emittedField = z.looseObject({
   anyOf: z.array(jsonKeywords).optional(),
 });
 
+/** A whole number from 0. A missing value is not one: a JavaScript module can omit a typed field. */
+function isWhole(value: number | undefined): boolean {
+  return value !== undefined && Number.isInteger(value) && value >= 0;
+}
+
 function keysWithin(
   schema: z.infer<typeof jsonKeywords>,
   allowed: ReadonlySet<string>
@@ -260,7 +265,21 @@ export function validateModule(module: Module): readonly string[] {
   // prefix would run under another module's entitlement or race a core queue (D-11).
   const jobNames = new Set<string>();
 
-  for (const { name } of module.jobs) {
+  for (const { name, retry } of module.jobs) {
+    // pg-boss refuses a queue whose retry values are not whole numbers from 0, and the worker
+    // would then fail its start on every restart.
+    if (
+      retry !== undefined &&
+      !(
+        isWhole(retry.limit) &&
+        (retry.delaySeconds === undefined || isWhole(retry.delaySeconds))
+      )
+    ) {
+      problems.push(
+        `Job "${name}" declares an invalid retry: a limit and a delay are whole numbers from 0.`
+      );
+    }
+
     if (name.startsWith("core.")) {
       problems.push(
         `Module "${id}" cannot declare a job in the reserved "core." namespace: "${name}".`

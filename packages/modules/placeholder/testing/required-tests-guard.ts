@@ -61,4 +61,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder event subscriptions against Testcontainers Postgres runs its fast, durable, and serialized effects end to end",
     ],
   },
+  {
+    file: "testing/jobs.integration.test.ts",
+    reason:
+      "Spec 7 R-12 and AC-3: a module-enqueued job runs as its starter and retries by its declared policy",
+    cases: [
+      "the placeholder touch job through the worker a touch by a reader runs as them and audits under their name",
+      "the placeholder touch job through the worker a touch by a person without placeholder:read completes and writes nothing",
+      "the placeholder touch job through the worker a forged starter in the job data is replaced by the caller",
+      "the placeholder touch job through the worker a forged starter through the raw queue runs with no caller and writes nothing",
+      "the placeholder touch job through the worker a failed run is retried by the declared policy, then completes",
+    ],
+  },
 ];

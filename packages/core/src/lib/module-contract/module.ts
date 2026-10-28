@@ -230,12 +230,27 @@ export type AnySubscription = {
   readonly serializeBy?: (payload: never) => string;
 };
 
-/** 13. Jobs, declaration-site only. Every handler receives the tenant context (DEC-34). */
-export type JobContext = { readonly tenant: TenantContext };
+/** A job's retry policy, which the worker writes onto its queue and `enqueueJob` onto each job. */
+export type JobRetry = {
+  /** Retries after the first failed run. */
+  readonly limit: number;
+  /** Seconds before a retry. With `backoff`, the base of an exponential delay. */
+  readonly delaySeconds?: number;
+  readonly backoff?: boolean;
+};
+
+/** 13. Jobs. Every handler receives the tenant context (DEC-34). */
+export type JobContext = {
+  readonly tenant: TenantContext;
+  /** The person who started the job, built once per run with their current grants (R-12, DEC-48). Absent for a scheduled run. */
+  readonly caller?: RequestPrincipal;
+};
 
 export type JobDeclaration<TData = never> = {
   readonly name: string;
   readonly schedule?: string;
+  /** Without one, pg-boss's defaults: two retries, no delay, no backoff. */
+  readonly retry?: JobRetry;
   handler(ctx: JobContext, data: TData): Promise<void>;
 };
 

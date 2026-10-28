@@ -1,6 +1,14 @@
-import { AppError, CORE_ERRORS, implementModule, scopesFor } from "@genie/core";
+import {
+  AppError,
+  can,
+  CORE_ERRORS,
+  enqueueJob,
+  implementModule,
+  scopesFor,
+} from "@genie/core";
 
 import { placeholderContract } from "./contract.ts";
+import { touchRecordJob } from "./jobs.ts";
 import { placeholderRecord } from "./schema.ts";
 import { recordScope } from "./scope.ts";
 
@@ -27,6 +35,17 @@ export const placeholderRouter = os.router({
       .select()
       .from(placeholderRecord)
       .where(recordScope(scopes));
+  }),
+  // The job runs as the caller and checks their read grant on the record itself, so the procedure
+  // asks only for the workspace key.
+  touch: os.touch.handler(async ({ context, input }) => {
+    if (!(await can(context.caller, "placeholder:use"))) {
+      throw new AppError(CORE_ERRORS.forbidden);
+    }
+
+    return {
+      jobId: await enqueueJob(context, touchRecordJob, { id: input.id }),
+    };
   }),
 });
 

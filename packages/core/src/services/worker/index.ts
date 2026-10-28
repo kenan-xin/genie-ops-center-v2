@@ -18,6 +18,7 @@ import {
   type TenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
+import { principalFor } from "../authorization/index.ts";
 import {
   durableEventQueues,
   envelopeCorrelationId,
@@ -29,6 +30,7 @@ import {
   type JobData,
   stopJobQueue,
 } from "../job-queue/index.ts";
+import { jobRetryOptions, splitJobStarter } from "../job-queue/module-jobs.ts";
 import {
   createLogger,
   jsonLineSinks,
@@ -524,9 +526,13 @@ async function serve(
   await boss.start();
 
   await Promise.all([
-    ...[HEARTBEAT_JOB, ...jobs.map(({ job }) => job.name)].map(async (name) =>
-      boss.createQueue(name)
-    ),
+    boss.createQueue(HEARTBEAT_JOB),
+    // `createQueue` ignores its options on a queue that exists, so the declared retry policy is
+    // written by `updateQueue` on every start, and a changed declaration reaches the queue.
+    ...jobs.map(async ({ job }) => {
+      await boss.createQueue(job.name);
+      await boss.updateQueue(job.name, jobRetryOptions(job));
+    }),
     // A dead-letter queue exists before the serialized queue that names it references it (R-57),
     // and each serialized queue keeps its key_strict_fifo policy across restarts.
     ...subscriptions.map(async (subscription) => {
@@ -549,8 +555,27 @@ async function serve(
     ...jobs.map(({ moduleId, job }): QueueLoop => ({
       name: job.name,
       mayRun: async () => context.entitlements.isEnabled(moduleId),
-      // SAFETY: a queue carries only the data its own module enqueued under this job name.
-      run: async (data) => job.handler({ tenant: context }, data as never),
+      // The starter's principal is built once per run, so the job reads their grants as they are
+      // now, not as they were at enqueue (R-12, DEC-48). A run without one, a schedule, has none.
+      run: async (data) => {
+        const { data: payload, startedBy } = splitJobStarter(data);
+
+        const ctx =
+          startedBy === undefined
+            ? { tenant: context }
+            : {
+                tenant: context,
+                caller: principalFor({
+                  tenant: context,
+                  modules: options.modules,
+                  userId: startedBy,
+                  authenticated: true,
+                }),
+              };
+
+        // SAFETY: a queue carries only the data its own module enqueued under this job name.
+        await job.handler(ctx, payload as never);
+      },
     })),
   ];
 

@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { placeholderContract } from "./contract.ts";
 import { recordsDataset } from "./datasets.ts";
+import { touchRecordJob } from "./jobs.ts";
 import {
   PlaceholderAdminPage,
   placeholderEntryPage,
@@ -216,8 +217,9 @@ export const placeholderModule = {
   subscriptions: recordTouchedSubscriptions,
 
   // The job the worker's contract test enqueues: it reads through the tenant context it is given,
-  // which proves a handler's reads land in the worker's own database (AC-11).
-  jobs: [readRecordJob],
+  // which proves a handler's reads land in the worker's own database (AC-11). The touch job runs
+  // as its starter, with a retry policy (R-12, AC-3).
+  jobs: [readRecordJob, touchRecordJob],
 
   inboundEndpoints: [],
 

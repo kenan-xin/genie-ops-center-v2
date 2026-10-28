@@ -1,3 +1,4 @@
+import { omit } from "es-toolkit";
 import type { Pool } from "pg";
 import {
   type ConstructorOptions,
@@ -25,6 +26,43 @@ export type JobValue =
 
 /** A job's payload: the JSON object pg-boss stores beside the job. */
 export type JobData = { readonly [name: string]: JobValue };
+
+/**
+ * The payload key that names the person who started a job. Only core writes it: the public
+ * `enqueue` and `schedule` strip it, and `enqueueJob` writes it through `sendAsStarter`, so data
+ * copied from a browser cannot make a job run as someone else (R-12, DEC-48).
+ */
+export const JOB_STARTER_KEY = "genie:startedBy";
+
+function withoutStarter(data: JobData): JobData {
+  return omit(data, [JOB_STARTER_KEY]);
+}
+
+type Send = (
+  job: string,
+  data: JobData,
+  options?: SendOptions
+) => Promise<string | null>;
+
+/** The context's send that keeps the starter key, held off the public type. */
+const starterSends = new WeakMap<JobQueue, Send>();
+
+/**
+ * Sends a job whose data may carry `JOB_STARTER_KEY`. Only `enqueueJob` calls it; the core root
+ * does not export it, so a module reaches the queue only through the stripping `enqueue`.
+ */
+export async function sendAsStarter(
+  queue: JobQueue,
+  ...args: Parameters<Send>
+): Promise<string | null> {
+  const send = starterSends.get(queue);
+
+  if (send === undefined) {
+    throw new Error("This job queue was not built by createJobQueue.");
+  }
+
+  return send(...args);
+}
 
 /**
  * The job queue a procedure, a page or a job reaches through the tenant context. A job name is
@@ -148,7 +186,7 @@ export function createJobQueue(
 
   const queue: JobQueue = {
     enqueue: async (job, data, options) =>
-      (await ready(job)).send(job, data, options),
+      (await ready(job)).send(job, withoutStarter(data), options),
     schedule: async (job, cron, data, options) => {
       // The worker owns these keys for module declarations and rewrites or removes them every
       // heartbeat, so a caller schedule under one would be overwritten or deleted.
@@ -158,9 +196,21 @@ export function createJobQueue(
         );
       }
 
-      await (await ready(job)).schedule(job, cron, data, options);
+      // A scheduled run has no starter, so a key in its data is dropped like an enqueued one.
+      await (
+        await ready(job)
+      ).schedule(
+        job,
+        cron,
+        data === undefined ? data : withoutStarter(data),
+        options
+      );
     },
   };
+
+  starterSends.set(queue, async (job, data, options) =>
+    (await ready(job)).send(job, data, options)
+  );
 
   stoppers.set(queue, async () => {
     if (started !== undefined) await boss.stop({ graceful: false });

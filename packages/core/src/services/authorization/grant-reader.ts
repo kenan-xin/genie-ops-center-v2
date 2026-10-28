@@ -208,8 +208,8 @@ export function createRecordResolver(
  * per request and never share the result. `userId` is the signed-in person's row id, and
  * `authenticated` says whether this request's enforced session read (R-14) found a valid session.
  * They are supplied separately on purpose: `userId` is unrestricted text, so no value of it - and
- * no sentinel - can stand for "no session". The worker does not build one per job run yet; a job
- * that acts for a person calls this once per run when that wiring lands.
+ * no sentinel - can stand for "no session". The worker calls this once per run of a job that a
+ * person started, so the job reads that person's grants as they are at the run (R-12).
  */
 export function principalFor(input: {
   readonly tenant: TenantContext;
