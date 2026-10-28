@@ -152,6 +152,96 @@ export const InShellPhoneOwnBottomBar: Story = {
   },
 };
 
+const rolesTrail = {
+  parent: { label: "Roles", href: "/admin/roles" },
+  current: "Tenant administrator",
+};
+
+/** A page under a list shows the trail above its title (tokens.md, Breadcrumbs). */
+export const BreadcrumbDesktop: Story = {
+  decorators: [inShell],
+  args: { title: "Roles", breadcrumb: rolesTrail },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    const trail = within(
+      canvas.getByRole("navigation", { name: "breadcrumb" })
+    );
+
+    const parent = trail.getByRole("link", { name: "Roles" });
+
+    await expect(parent).toBeVisible();
+    await expect(parent).toHaveAttribute("href", "/admin/roles");
+    await expect(trail.getByText("Tenant administrator")).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    await expect(
+      trail.queryByRole("link", { name: "Tenant administrator" })
+    ).not.toHaveAttribute("href");
+    await expect(
+      parent.compareDocumentPosition(
+        canvas.getByRole("heading", { level: 1, name: "Roles" })
+      ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  },
+};
+
+/** Under 768 px the trail is one back link to the parent, though the title hides. */
+export const BreadcrumbPhone: Story = {
+  decorators: [inShell],
+  args: { title: "Roles", breadcrumb: rolesTrail },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    const back = canvas
+      .getAllByRole("link", { name: "Roles" })
+      .find((link) => link.checkVisibility());
+
+    if (back === undefined) throw new Error("no visible back link");
+
+    await expect(back).toHaveAttribute("href", "/admin/roles");
+    const box = back.getBoundingClientRect();
+
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    // A tap lands on it: an `sr-only` header keeps its box but clips it away.
+    await expect(
+      back.contains(
+        document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      )
+    ).toBe(true);
+    await expect(
+      canvasElement.querySelector('[data-slot="breadcrumb"]')
+    ).not.toBeVisible();
+  },
+};
+
+/** A long record label keeps one line and carries its full text in `title`. */
+export const BreadcrumbLongLabel: Story = {
+  decorators: [
+    inShell,
+    (Story) => (
+      <div style={{ width: 480 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    title: "Roles",
+    breadcrumb: {
+      ...rolesTrail,
+      current:
+        "Regional claims review supervisors for the northern and western districts",
+    },
+  },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    const label = canvas.getByText(/^Regional claims review/);
+
+    await expect(label).toHaveAttribute("title", label.textContent);
+    await expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
+    await expect(label.getBoundingClientRect().height).toBeLessThan(24);
+  },
+};
+
 export const Dark: Story = {
   decorators: [inShell],
   args: { actions: <Button>Add person</Button> },

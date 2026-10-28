@@ -5,26 +5,37 @@ import {
   type RoleInput,
   type RolesViewer,
 } from "@genie/core/features/roles";
+import { PageHeader } from "@genie/core/features/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation.js";
-import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
 
 /**
  * The browser half of the Roles route. The server refused a caller without `core:roles:manage`
- * before this mounts, and every procedure re-checks it. The screen owns the selected role and the
- * form; each write reloads the list and the open detail through TanStack Query.
+ * before this mounts, and every procedure re-checks it. The selected role lives in the URL
+ * (`?selected=`), so an audit target link, the back button and the header trail to Roles all open
+ * the right view; each write reloads the list and the open detail through TanStack Query.
  */
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   const t = useTranslations("pages");
   const tNoMatch = useTranslations("noMatch");
   const router = useRouter();
-  // An audit target link opens the screen with its role selected.
-  const linkedRoleId = useSearchParams().get("selected");
-  const [selectedRoleId, setSelectedRoleId] = useState(linkedRoleId);
+  const pathname = usePathname();
+  const selectedRoleId = useSearchParams().get("selected");
+
+  // A shallow history entry: Next syncs `useSearchParams` with it and renders nothing on the server.
+  const selectRole = (roleId: string | null) => {
+    window.history.pushState(
+      null,
+      "",
+      roleId === null
+        ? pathname
+        : `${pathname}?selected=${encodeURIComponent(roleId)}`
+    );
+  };
 
   const list = useQuery({
     queryKey: ["roles"],
@@ -78,38 +89,52 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     });
 
   return (
-    <RolesScreen
-      roles={list.data ?? []}
-      catalogue={catalogue.data ?? []}
-      searchLabel={t("roles.searchLabel")}
-      noMatch={{
-        title: t("roles.noMatch.title"),
-        description: t("roles.noMatch.description"),
-        clearLabel: tNoMatch("clear"),
-      }}
-      viewer={props.viewer}
-      selectedRoleId={selectedRoleId}
-      onSelectRole={setSelectedRoleId}
-      detail={detail.data}
-      loading={list.isPending}
-      pending={action.isPending || save.isPending}
-      error={list.isError ? "The roles could not be read." : undefined}
-      onCreateRole={(input) => saveRole(null, input)}
-      onUpdateRole={(roleId, input) => saveRole(roleId, input)}
-      onRemoveUnavailableKey={(roleId, input) =>
-        run(() =>
-          rpc.roles.update({
-            roleId,
-            name: input.name,
-            description: input.description,
-            permissions: [...input.permissions],
-          })
-        )
-      }
-      onDeleteRole={(roleId) => run(() => rpc.roles.remove({ roleId }))}
-      onOpenInAccess={(roleId) => {
-        router.push(`/admin/access?recipient=${encodeURIComponent(roleId)}`);
-      }}
-    />
+    <>
+      <PageHeader
+        title={t("roles.title")}
+        description={t("roles.description")}
+        {...(selectedRoleId === null
+          ? {}
+          : {
+              breadcrumb: {
+                parent: { label: t("roles.title"), href: pathname },
+                current: detail.data?.name,
+              },
+            })}
+      />
+      <RolesScreen
+        roles={list.data ?? []}
+        catalogue={catalogue.data ?? []}
+        searchLabel={t("roles.searchLabel")}
+        noMatch={{
+          title: t("roles.noMatch.title"),
+          description: t("roles.noMatch.description"),
+          clearLabel: tNoMatch("clear"),
+        }}
+        viewer={props.viewer}
+        selectedRoleId={selectedRoleId}
+        onSelectRole={selectRole}
+        detail={detail.data}
+        loading={list.isPending}
+        pending={action.isPending || save.isPending}
+        error={list.isError ? "The roles could not be read." : undefined}
+        onCreateRole={(input) => saveRole(null, input)}
+        onUpdateRole={(roleId, input) => saveRole(roleId, input)}
+        onRemoveUnavailableKey={(roleId, input) =>
+          run(() =>
+            rpc.roles.update({
+              roleId,
+              name: input.name,
+              description: input.description,
+              permissions: [...input.permissions],
+            })
+          )
+        }
+        onDeleteRole={(roleId) => run(() => rpc.roles.remove({ roleId }))}
+        onOpenInAccess={(roleId) => {
+          router.push(`/admin/access?recipient=${encodeURIComponent(roleId)}`);
+        }}
+      />
+    </>
   );
 }

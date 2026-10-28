@@ -1,5 +1,4 @@
 import { coreAdminPermission } from "@genie/core";
-import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
@@ -25,14 +24,10 @@ export default async function RolesPage() {
     coreAdminPermission("core-roles"),
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
-      const t = await getTranslations("pages");
 
+      // The route renders the header, because Role detail adds the trail to it.
       return (
         <main>
-          <PageHeader
-            title={t("roles.title")}
-            description={t("roles.description")}
-          />
           <RolesRoute
             viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
           />

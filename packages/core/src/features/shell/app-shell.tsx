@@ -149,7 +149,12 @@ export function AppShell(props: AppShellProps) {
             tabIndex={0}
             className={`min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20 ${focusRing} focus-visible:ring-inset`}
           >
-            <ShellContext.Provider value={{ chrome: props.chrome }}>
+            <ShellContext.Provider
+              value={{
+                chrome: props.chrome,
+                linkComponent: props.linkComponent,
+              }}
+            >
               {props.children}
             </ShellContext.Provider>
           </div>

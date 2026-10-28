@@ -10,7 +10,11 @@ export {
 
 export { NoAccessState, type NoAccessStateProps } from "./no-access-state.tsx";
 
-export { PageHeader, type PageHeaderProps } from "./page-header.tsx";
+export {
+  PageHeader,
+  type PageBreadcrumb,
+  type PageHeaderProps,
+} from "./page-header.tsx";
 
 export { PageSkeleton, type PageSkeletonProps } from "./page-skeleton.tsx";
 

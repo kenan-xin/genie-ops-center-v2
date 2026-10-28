@@ -337,6 +337,40 @@ test("a client navigation gives the new page its own title, and the route announ
   );
 });
 
+// tokens.md, Breadcrumbs: the trail at desktop, one back link on a phone; either opens Roles.
+test("Role detail links back to Roles through the page header trail", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("groups", testInfo.project.name),
+  });
+  await page.goto("/admin/roles");
+
+  await page
+    .getByRole("button", { name: "Auditor", exact: true })
+    .filter({ visible: true })
+    .click();
+
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await expect(
+      page.getByRole("navigation", { name: "breadcrumb" })
+    ).toContainText("Auditor");
+  }
+
+  const toRoles = page
+    .getByRole("main")
+    .getByRole("link", { name: "Roles", exact: true })
+    .filter({ visible: true });
+
+  await expect(toRoles).toHaveCount(1);
+  await toRoles.click();
+
+  await expect(
+    page.getByRole("textbox", { name: "Search roles" })
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/roles$/);
+});
+
 test("the role editor warns on an unavailable key and offers its removal", async ({
   page,
 }, testInfo) => {

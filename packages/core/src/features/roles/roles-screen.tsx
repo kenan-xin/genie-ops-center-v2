@@ -246,7 +246,6 @@ function kindPill(role: Role) {
 /** The role detail: header actions, permission groups with the entitlement state, and holders. */
 function RoleDetailView(props: {
   readonly detail: RoleDetail;
-  readonly onBack: () => void;
   readonly onEdit: () => void;
   readonly onCopy: () => void;
   readonly onDelete: () => void;
@@ -259,10 +258,7 @@ function RoleDetailView(props: {
 
   return (
     <div>
-      <Button variant="ghost" size="sm" onClick={props.onBack}>
-        ← Roles
-      </Button>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xl font-semibold text-foreground">{detail.name}</h2>
         {kindPill(detail)}
       </div>
@@ -474,14 +470,7 @@ export function RolesScreen(props: RolesScreenProps) {
     if (props.detail === undefined) {
       return (
         <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => props.onSelectRole(null)}
-          >
-            ← Roles
-          </Button>
-          <p role="status" className="mt-3 text-sm text-muted-foreground">
+          <p role="status" className="text-sm text-muted-foreground">
             Loading role…
           </p>
           {formDialog}
@@ -494,7 +483,6 @@ export function RolesScreen(props: RolesScreenProps) {
         <RoleDetailView
           detail={props.detail}
           pending={props.pending}
-          onBack={() => props.onSelectRole(null)}
           onEdit={() =>
             openForm({
               mode: "edit",

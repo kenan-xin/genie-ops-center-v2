@@ -151,6 +151,15 @@ export { Badge } from "./components/badge.tsx";
 
 export { Spinner } from "./components/spinner.tsx";
 
+export {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "./components/breadcrumb.tsx";
+
 export { Skeleton } from "./components/skeleton.tsx";
 
 export { CountPill, LabelPill, MonoChip, StatusPill } from "./parts/pills.tsx";
