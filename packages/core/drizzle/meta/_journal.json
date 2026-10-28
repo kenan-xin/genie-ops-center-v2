@@ -43,6 +43,13 @@
       "when": 1793168804259,
       "tag": "0005_tenant_settings_sso_email_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793195529002,
+      "tag": "0006_tenant_settings_reporting_date",
+      "breakpoints": true
     }
   ]
 }

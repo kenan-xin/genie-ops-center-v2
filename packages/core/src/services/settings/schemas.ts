@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * The strict schemas of the two core sections. They import only zod, so the screen validates with
- * them in the browser and the service parses with them on the server: one rule, one text.
+ * The strict schemas of the three core sections. They import only zod, so the screen validates
+ * with them in the browser and the service parses with them on the server: one rule, one text.
  */
 const IDLE_MESSAGE = "Enter a whole number from 5 to 480.";
 
@@ -19,4 +19,11 @@ export const sessionSettingsSchema = z.object({
     .int({ error: IDLE_MESSAGE })
     .min(5, { error: IDLE_MESSAGE })
     .max(480, { error: IDLE_MESSAGE }),
+});
+
+/** Reporting (R-9): a whole date, or null for today in the tenant's default time zone. */
+export const reportingSettingsSchema = z.object({
+  reportingDate: z.iso
+    .date({ error: "Enter a whole date, or clear the field to use today." })
+    .nullable(),
 });

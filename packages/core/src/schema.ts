@@ -5,6 +5,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   index,
   integer,
   jsonb,
@@ -134,6 +135,8 @@ export const tenantSettings = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     sessionIdleMinutes: integer("session_idle_minutes").notNull().default(15),
+    // The reporting date (Spec 7 R-9): blank means today in the tenant's default time zone.
+    reportingDate: date("reporting_date"),
     updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },

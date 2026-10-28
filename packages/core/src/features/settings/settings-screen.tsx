@@ -21,6 +21,7 @@ import {
 import { z } from "zod";
 
 import {
+  ReportingSection,
   SectionFooter,
   SessionsSection,
   SignInSection,
@@ -38,9 +39,12 @@ const SIGN_IN = "sign-in";
 
 const SESSIONS = "sessions";
 
+const REPORTING = "reporting";
+
 const CORE_FIELDS = new Map<string, readonly string[]>([
   [SIGN_IN, ["onboardingMode", "localAccountsEnabled"]],
   [SESSIONS, ["sessionIdleMinutes"]],
+  [REPORTING, ["reportingDate"]],
 ]);
 
 type Section = {
@@ -155,6 +159,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       disabled: false,
     },
     { id: SESSIONS, title: "Sessions", group: "tenant", disabled: false },
+    { id: REPORTING, title: "Reporting", group: "tenant", disabled: false },
     ...(settings?.modules ?? []).map((module): Section => ({
       id: module.moduleId,
       title: module.title,
@@ -406,6 +411,35 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             onDirtyChange={onDirtyChange}
             onSubmit={(values) =>
               save(SESSIONS, () => props.onSaveSessions(values))()
+            }
+            footer={footer}
+          />
+        </SectionCard>
+      );
+
+    if (current.id === REPORTING)
+      return (
+        <SectionCard
+          title="Reporting"
+          description="The date that figures, dashboards and answers treat as today."
+          lastChanged={lastChangedText(
+            settings.core.lastChanged,
+            props.timeZone
+          )}
+          headingRef={heading}
+        >
+          <ReportingSection
+            key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}
+            values={{ reportingDate: settings.core.reportingDate }}
+            timeZone={props.timeZone}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
+            onDirtyChange={onDirtyChange}
+            onSubmit={(values) =>
+              save(REPORTING, () => props.onSaveReporting(values))()
             }
             footer={footer}
           />

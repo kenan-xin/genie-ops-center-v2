@@ -1,6 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fireEvent,
+  fn,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 import {
   FIXTURE_PLACEHOLDER,
@@ -44,6 +52,7 @@ const meta = {
     },
     onSaveSignIn: saved(),
     onSaveSessions: saved(),
+    onSaveReporting: saved(),
     onSaveModule: saved(),
     onTargetChange: fn(),
   } satisfies TenantSettingsScreenProps,
@@ -711,6 +720,65 @@ export const CoreIssueOnField: Story = {
     await waitFor(() =>
       expect(canvas.queryByText("Server says no.")).toBeNull()
     );
+  },
+};
+
+/** Editing the reporting date saves it, and Use today clears the field to null (R-9). */
+export const ReportingDateSavesAndClears: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: { ...FIXTURE_SETTINGS.core, reportingDate: "2026-01-01" },
+    },
+    target: { section: "reporting" },
+  },
+  play: async ({ args, canvas }) => {
+    fireEvent.change(canvas.getByLabelText("Reporting date"), {
+      target: { value: "2026-10-27" },
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(args.onSaveReporting).toHaveBeenCalledWith({
+        reportingDate: "2026-10-27",
+      })
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Use today" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(args.onSaveReporting).toHaveBeenLastCalledWith({
+        reportingDate: null,
+      })
+    );
+  },
+};
+
+/**
+ * The half-typed date proof lives in `tenant-settings.spec.ts`: a story's synthetic key events do
+ * not edit Chrome's date segments, so the component browser cannot produce one.
+ */
+
+/** The section saves through the screen, so a refusal reaches the field and the footer bar. */
+export const ReportingSaveRefusedMarksTheField: Story = {
+  args: {
+    target: { section: "reporting" },
+    onSaveReporting: fn(async () => {
+      throw {
+        message: "The reporting date was not saved. Your change is kept.",
+        issues: [{ path: "reportingDate", message: "Server says no." }],
+      };
+    }),
+  },
+  play: async ({ canvas }) => {
+    fireEvent.change(canvas.getByLabelText("Reporting date"), {
+      target: { value: "2026-10-27" },
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await expect(await canvas.findByText("Server says no.")).toBeVisible();
+    await expect(
+      canvas.getByText("The reporting date was not saved. Your change is kept.")
+    ).toBeVisible();
   },
 };
 

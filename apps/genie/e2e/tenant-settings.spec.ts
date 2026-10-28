@@ -259,6 +259,65 @@ test("changes onboarding mode, local accounts and idle minutes, one core:setting
   );
 });
 
+test("sets and clears the reporting date (R-9)", async ({ page }, testInfo) => {
+  await withDeploymentLock(
+    "tenant-settings",
+    async () => {
+      const action = "core:settings_updated";
+
+      try {
+        await sql("update tenant_settings set reporting_date = null");
+        await signInThroughBroker(page, {
+          baseUrl: BASE,
+          email: scenarioEmail("invite", "settings", testInfo.project.name),
+        });
+
+        await page.goto(`${BASE}/admin/settings?section=reporting`);
+        await expect(
+          page.getByRole("heading", { level: 2, name: "Reporting" })
+        ).toBeVisible();
+
+        const date = page.getByLabel("Reporting date");
+        const save = page.getByRole("button", { name: "Save", exact: true });
+
+        await expect(page.getByText(/Blank means today in .+\./)).toBeVisible();
+
+        await date.fill("2026-10-27");
+        await saveAndExpect(page, "Reporting", action);
+        expect(await settingsColumn("reporting_date")).toBe("2026-10-27");
+
+        await page.reload();
+        await expect(date).toHaveValue("2026-10-27");
+        await expectNoAxeViolations(page, "Reporting");
+
+        // A half-typed date blocks Save instead of saving as blank, which would clear the
+        // setting to today and move every figure (Review Focus 3). Mobile Chromium opens the
+        // native picker instead and has no keyboard-editable segments, so this runs on desktop.
+        if (testInfo.project.name === "desktop") {
+          await date.click({ position: { x: 8, y: 10 } });
+          await page.keyboard.press("Backspace");
+          await expect(date).toHaveValue("");
+          await expect(save).toBeDisabled();
+          await expect(
+            page.getByText(
+              "Enter a whole date, or clear the field to use today."
+            )
+          ).toBeVisible();
+          expect(await settingsColumn("reporting_date")).toBe("2026-10-27");
+        }
+
+        await page.reload();
+        await page.getByRole("button", { name: "Use today" }).click();
+        await saveAndExpect(page, "Reporting", action);
+        expect(await settingsColumn("reporting_date")).toBe("");
+      } finally {
+        await sql("update tenant_settings set reporting_date = null");
+      }
+    },
+    LOCK_WAIT_MS
+  );
+});
+
 test("the placeholder section renders five kinds, refuses an invalid value and saves into tenant_module.config, also while disabled (AC-10, AC-19)", async ({
   page,
 }, testInfo) => {

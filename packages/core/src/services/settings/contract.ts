@@ -35,6 +35,11 @@ export const settingsContract = {
     .input(z.object({ sessionIdleMinutes: z.number() }))
     .output(saved),
 
+  saveReporting: oc
+    .route({ method: "PATCH", path: "/settings/reporting" })
+    .input(z.object({ reportingDate: z.string().nullable() }))
+    .output(saved),
+
   saveModule: oc
     .route({ method: "PATCH", path: "/settings/modules/{moduleId}" })
     .input(

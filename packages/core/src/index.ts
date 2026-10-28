@@ -570,6 +570,8 @@ export {
   type CategoriesRouter,
 } from "./services/categories/router.ts";
 
+export { reportingDate } from "./services/settings/reporting-date.ts";
+
 export {
   type SettingsContract,
   settingsContract,

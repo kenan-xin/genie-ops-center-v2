@@ -50,6 +50,7 @@ export const FIXTURE_SETTINGS: SettingsView = {
     realmMode: "managed",
     realmSupportsLocalAccounts: true,
     sessionIdleMinutes: 15,
+    reportingDate: null,
     lastChanged: { by: "Ada Lovelace", at: "2026-10-20T09:30:00.000Z" },
   },
   modules: [FIXTURE_PLACEHOLDER],

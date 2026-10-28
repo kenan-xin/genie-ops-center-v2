@@ -14,6 +14,7 @@ import { setModuleEnabledIn } from "../src/services/module-management/index.ts";
 import {
   readSettings,
   saveModuleSettings,
+  saveReportingSettings,
   saveSessionSettings,
   saveSignInSettings,
 } from "../src/services/settings/index.ts";
@@ -120,7 +121,8 @@ beforeEach(async () => {
   await query("update tenant_module set enabled = false, config = '{}'::jsonb");
   await query(
     `update tenant_settings set onboarding_mode = 'invite', local_accounts_enabled = false,
-       realm_supports_local_accounts = true, session_idle_minutes = 15, updated_by_user_id = null`
+       realm_supports_local_accounts = true, session_idle_minutes = 15,
+       reporting_date = null, updated_by_user_id = null`
   );
   since = await clock();
 });
@@ -145,8 +147,13 @@ async function settingsRow() {
     local_accounts_enabled: boolean;
     realm_supports_local_accounts: boolean;
     session_idle_minutes: number;
+    reporting_date: string | null;
     updated_by_user_id: string | null;
-  }>("select * from tenant_settings");
+  }>(
+    `select onboarding_mode, local_accounts_enabled, realm_supports_local_accounts,
+       session_idle_minutes, reporting_date::text as reporting_date, updated_by_user_id
+       from tenant_settings`
+  );
 
   return row;
 }
@@ -272,6 +279,88 @@ describe("core section saves", () => {
       sessionIdleMinutes: 480,
     });
     expect((await settingsRow())?.session_idle_minutes).toBe(480);
+  });
+
+  it("saves and clears the reporting date with one core:settings_updated row each", async () => {
+    const caller = await callerWith([BASE]);
+
+    await expect(
+      saveReportingSettings(deployment.context, {
+        actorUserId,
+        reportingDate: "2026-10-27",
+      })
+    ).resolves.toEqual({ changed: true });
+
+    expect((await settingsRow())?.reporting_date).toBe("2026-10-27");
+    expect(
+      (await readSettings(deployment.context, compiled, caller)).core
+        .reportingDate
+    ).toBe("2026-10-27");
+
+    await expect(
+      saveReportingSettings(deployment.context, {
+        actorUserId,
+        reportingDate: null,
+      })
+    ).resolves.toEqual({ changed: true });
+
+    expect((await settingsRow())?.reporting_date).toBeNull();
+    expect(
+      (await readSettings(deployment.context, compiled, caller)).core
+        .reportingDate
+    ).toBeNull();
+
+    expect(await auditRows()).toEqual([
+      {
+        action: "core:settings_updated",
+        target_type: "settings",
+        target_id: "reporting",
+        summary: "Changed Reporting",
+        metadata: {
+          section: "reporting",
+          changes: {
+            reportingDate: { from: null, to: "2026-10-27" },
+          },
+        },
+      },
+      {
+        action: "core:settings_updated",
+        target_type: "settings",
+        target_id: "reporting",
+        summary: "Changed Reporting",
+        metadata: {
+          section: "reporting",
+          changes: {
+            reportingDate: { from: "2026-10-27", to: null },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("refuses an impossible reporting date", async () => {
+    await saveReportingSettings(deployment.context, {
+      actorUserId,
+      reportingDate: "2026-10-27",
+    });
+
+    await expect(
+      saveReportingSettings(deployment.context, {
+        actorUserId,
+        reportingDate: "2026-02-30",
+      })
+    ).rejects.toMatchObject({
+      code: "settings-invalid",
+      issues: [
+        {
+          path: "reportingDate",
+          message: "Enter a whole date, or clear the field to use today.",
+        },
+      ],
+    });
+
+    expect((await settingsRow())?.reporting_date).toBe("2026-10-27");
+    expect(await auditRows()).toHaveLength(1);
   });
 
   it("an onboarding mode outside the two refuses with settings-invalid", async () => {

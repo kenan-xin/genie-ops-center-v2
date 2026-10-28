@@ -10,6 +10,7 @@ export type {
   CoreSettingsView,
   LastChangedView,
   ModuleSettingsView,
+  ReportingInput,
   SessionsInput,
   SettingsView,
   SignInInput,

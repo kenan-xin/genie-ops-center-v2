@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ReportingInput,
   type SessionsInput,
   type SignInInput,
   TenantSettingsScreen,
@@ -52,6 +53,14 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     notSaved: () => t("settings.notSaved.sessions"),
   });
 
+  const reporting = useAdminWrite({
+    write: (input: ReportingInput) => rpc.settings.saveReporting(input),
+    invalidate: [["settings"]],
+    saved: savedIn("Reporting"),
+    refused: onScreen,
+    notSaved: () => t("settings.notSaved.reporting"),
+  });
+
   const moduleTitle = (moduleId: string) =>
     settings.data?.modules.find((section) => section.moduleId === moduleId)
       ?.title ?? moduleId;
@@ -93,6 +102,9 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       }}
       onSaveSessions={async (input) => {
         await sessions.mutateAsync(input);
+      }}
+      onSaveReporting={async (input) => {
+        await reporting.mutateAsync(input);
       }}
       onSaveModule={async (moduleId, values) => {
         await module.mutateAsync({ moduleId, values });

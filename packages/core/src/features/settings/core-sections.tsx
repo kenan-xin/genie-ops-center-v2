@@ -21,10 +21,16 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import {
+  reportingSettingsSchema,
   sessionSettingsSchema,
   signInSettingsSchema,
 } from "../../services/settings/schemas.ts";
-import type { SessionsInput, SettingsIssue, SignInInput } from "./types.ts";
+import type {
+  ReportingInput,
+  SessionsInput,
+  SettingsIssue,
+  SignInInput,
+} from "./types.ts";
 
 export type FooterState = {
   readonly dirty: boolean;
@@ -212,6 +218,109 @@ export function SignInSection(
               )}
             </div>
           )}
+        </form.Field>
+      </div>
+      {props.footer(footer)}
+    </>
+  );
+}
+
+/**
+ * A half-typed date has no valid value, so the form holds one the schema refuses. Without it the
+ * field would read as blank and save as today, moving every figure (Review Focus 3).
+ */
+const INCOMPLETE_DATE = "incomplete";
+
+/** The reporting date (R-9). Blank means today in the tenant's default time zone. */
+export function ReportingSection(
+  props: SectionProps<ReportingInput> & { readonly timeZone: string }
+) {
+  const form = useForm({
+    defaultValues: props.values,
+    validators: { onChange: reportingSettingsSchema },
+    listeners: { onChange: clearServerError },
+    onSubmit: async ({ value }) => props.onSubmit(value),
+  });
+
+  useServerIssues(form, props.issues);
+
+  const footer = useFooterState(form, props.onDirtyChange);
+
+  return (
+    <>
+      <div className="px-5 py-5">
+        <form.Field name="reportingDate">
+          {(field) => {
+            const issue: { message?: string } | undefined =
+              field.state.meta.errors[0];
+
+            const message =
+              field.state.meta.isTouched ||
+              field.state.meta.errorMap.onServer !== undefined
+                ? issue?.message
+                : undefined;
+
+            return (
+              <div data-field="reportingDate" className="flex flex-col gap-1.5">
+                <FieldLabel htmlFor="core-reportingDate">
+                  Reporting date
+                </FieldLabel>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="core-reportingDate"
+                    type="date"
+                    className="max-w-44"
+                    // The refusal is a form value, not a date: show the field empty.
+                    value={
+                      field.state.value === INCOMPLETE_DATE
+                        ? ""
+                        : (field.state.value ?? "")
+                    }
+                    aria-invalid={message === undefined ? undefined : true}
+                    aria-describedby={
+                      message === undefined
+                        ? "core-reportingDate-help"
+                        : "core-reportingDate-error"
+                    }
+                    onChange={(event) => {
+                      const incomplete =
+                        event.target.validity.badInput ||
+                        // The controlled value's write echoes an empty change; keep the refusal.
+                        (event.target.value === "" &&
+                          field.state.value === INCOMPLETE_DATE);
+
+                      if (incomplete) {
+                        field.handleChange(INCOMPLETE_DATE);
+
+                        field.handleBlur();
+
+                        return;
+                      }
+
+                      field.handleChange(event.target.value || null);
+                    }}
+                    onBlur={field.handleBlur}
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={field.state.value === null}
+                    onClick={() => field.handleChange(null)}
+                  >
+                    Use today
+                  </Button>
+                </div>
+                {message === undefined ? (
+                  <FieldDescription id="core-reportingDate-help">
+                    Blank means today in {props.timeZone}.
+                  </FieldDescription>
+                ) : (
+                  <FieldError id="core-reportingDate-error">
+                    {message}
+                  </FieldError>
+                )}
+              </div>
+            );
+          }}
         </form.Field>
       </div>
       {props.footer(footer)}

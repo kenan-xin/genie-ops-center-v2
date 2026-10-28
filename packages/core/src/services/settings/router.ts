@@ -7,6 +7,7 @@ import { settingsContract } from "./contract.ts";
 import {
   readSettings,
   saveModuleSettings,
+  saveReportingSettings,
   saveSessionSettings,
   saveSignInSettings,
 } from "./index.ts";
@@ -36,6 +37,13 @@ export function createSettingsRouter(modules: readonly Module[]) {
       saveSessionSettings(context.tenant, {
         actorUserId: context.caller.userId,
         sessionIdleMinutes: input.sessionIdleMinutes,
+      })
+    ),
+
+    saveReporting: managed.saveReporting.handler(({ context, input }) =>
+      saveReportingSettings(context.tenant, {
+        actorUserId: context.caller.userId,
+        reportingDate: input.reportingDate,
       })
     ),
 

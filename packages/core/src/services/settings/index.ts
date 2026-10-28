@@ -41,7 +41,11 @@ import {
 import { can } from "../authorization/index.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
 import { ModuleManagementError } from "../module-management/index.ts";
-import { sessionSettingsSchema, signInSettingsSchema } from "./schemas.ts";
+import {
+  reportingSettingsSchema,
+  sessionSettingsSchema,
+  signInSettingsSchema,
+} from "./schemas.ts";
 
 /** Who changed a section last, and when. `by` is null for a write no person made (provisioning). */
 export type LastChanged = {
@@ -56,6 +60,8 @@ export type CoreSettingsView = {
   readonly realmMode: "managed" | "customer";
   readonly realmSupportsLocalAccounts: boolean;
   readonly sessionIdleMinutes: number;
+  /** Null means today in the tenant's default time zone (R-9). */
+  readonly reportingDate: string | null;
   readonly lastChanged: LastChanged;
 };
 
@@ -106,6 +112,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
       realmMode: tenantSettings.realmMode,
       realmSupportsLocalAccounts: tenantSettings.realmSupportsLocalAccounts,
       sessionIdleMinutes: tenantSettings.sessionIdleMinutes,
+      reportingDate: tenantSettings.reportingDate,
       updatedAt: tenantSettings.updatedAt,
       updatedBy: user.name,
     })
@@ -120,6 +127,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     realmMode: row.realmMode === "customer" ? "customer" : "managed",
     realmSupportsLocalAccounts: row.realmSupportsLocalAccounts,
     sessionIdleMinutes: row.sessionIdleMinutes,
+    reportingDate: row.reportingDate,
     lastChanged: lastChangedOf(row.updatedAt, row.updatedBy),
   };
 }
@@ -218,10 +226,11 @@ export async function readSettings(
 type SettingsField =
   | "onboardingMode"
   | "localAccountsEnabled"
-  | "sessionIdleMinutes";
+  | "sessionIdleMinutes"
+  | "reportingDate";
 
 type CoreSection = {
-  readonly id: "sign-in" | "sessions";
+  readonly id: "sign-in" | "sessions" | "reporting";
   readonly title: string;
 };
 
@@ -327,6 +336,27 @@ export async function saveSessionSettings(
   return saveCore(
     tenant,
     { id: "sessions", title: "Sessions" },
+    input.actorUserId,
+    parsed.data,
+    () => {}
+  );
+}
+
+/** The reporting date (R-9): the stored date, or null for today in the tenant's time zone. */
+export async function saveReportingSettings(
+  tenant: TenantContext,
+  input: { readonly actorUserId: string; readonly reportingDate: string | null }
+): Promise<{ readonly changed: boolean }> {
+  const parsed = reportingSettingsSchema.safeParse(input);
+
+  if (!parsed.success)
+    throw new AppError(CORE_ERRORS["settings-invalid"], {
+      issues: issuesOf(parsed.error),
+    });
+
+  return saveCore(
+    tenant,
+    { id: "reporting", title: "Reporting" },
     input.actorUserId,
     parsed.data,
     () => {}

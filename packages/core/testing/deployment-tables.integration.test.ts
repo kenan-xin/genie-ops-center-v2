@@ -92,6 +92,7 @@ const DEPLOYMENT_TABLES = {
       realm_supports_local_accounts: { default: "false" },
       sso_email_domains: { default: "'{}'::text[]" },
       session_idle_minutes: { default: "15" },
+      reporting_date: { nullable: true },
       updated_by_user_id: { nullable: true },
       updated_at: {},
     },
@@ -866,6 +867,8 @@ describe("the Section 3 navigation tables", () => {
     expected.tenant_module[0].category_id = null;
     // The later sso_email_domains migration gives the existing settings row its empty default.
     expected.tenant_settings[0].sso_email_domains = [];
+    // The reporting_date migration adds a nullable column, so the existing row reads null.
+    expected.tenant_settings[0].reporting_date = null;
 
     expect(await read()).toEqual(expected);
     expect(await foreignKeys(client, "tenant_module")).toEqual([
