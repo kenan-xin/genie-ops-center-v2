@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation.js";
+import { useEffect, useRef, useTransition } from "react";
 
 import { type FailureKind, type Refusal, refusalOf } from "./client.ts";
 
@@ -33,7 +34,7 @@ export type AdminWrite<TInput, TResult> = {
   readonly write: (input: TInput) => Promise<TResult>;
   /** The queries the write can change. They reload together after it, refused or not. */
   readonly invalidate: readonly QueryKey[];
-  /** Reload the server-rendered navigation too; no client query holds it. */
+  /** Reload the server-rendered navigation too, before the report; no client query holds it. */
   readonly refresh?: boolean;
   /** The success toast, or `undefined` for none. Default: SAVED. */
   readonly saved?: (result: TResult, input: TInput) => string | undefined;
@@ -56,7 +57,8 @@ export function adminWriteOptions<TInput, TResult>(
   write: AdminWrite<TInput, TResult>,
   host: {
     readonly queryClient: QueryClient;
-    readonly refresh: () => void;
+    /** Settles once the refreshed server tree is on screen. */
+    readonly refresh: () => Promise<void>;
     readonly toast: typeof toast;
     readonly copy: SaveFailureCopy;
   }
@@ -93,7 +95,7 @@ export function adminWriteOptions<TInput, TResult>(
       })
     );
 
-    if (write.refresh === true) host.refresh();
+    if (write.refresh === true) await host.refresh();
   };
 
   return {
@@ -134,11 +136,24 @@ export function useAdminWrite<TInput, TResult>(
   const queryClient = useQueryClient();
   const router = useRouter();
   const t = useTranslations("saveFailure");
+  // Next sets its router state inside the caller's transition, so `refreshing` holds until the
+  // refreshed tree commits. A report before that shows on a screen that the commit still changes,
+  // and the commit takes the page title away for a moment (xok3.33).
+  const [refreshing, startRefresh] = useTransition();
+  const refreshed = useRef<(() => void)[]>([]);
+
+  useEffect(() => {
+    if (!refreshing) for (const settle of refreshed.current.splice(0)) settle();
+  }, [refreshing]);
 
   return useMutation(
     adminWriteOptions(write, {
       queryClient,
-      refresh: () => router.refresh(),
+      refresh: () =>
+        new Promise<void>((settle) => {
+          refreshed.current.push(settle);
+          startRefresh(() => router.refresh());
+        }),
       toast,
       copy: {
         causes: {

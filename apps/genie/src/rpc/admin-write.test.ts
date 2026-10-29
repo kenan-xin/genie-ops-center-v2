@@ -136,6 +136,38 @@ describe("adminWriteOptions", () => {
     unsubscribe();
   });
 
+  it("reports a refused write once the navigation refresh landed (xok3.33)", async () => {
+    const queryClient = new QueryClient();
+    const landed = Promise.withResolvers<void>();
+    const refresh = vi.fn(() => landed.promise);
+    const place = vi.fn();
+
+    const done = new MutationObserver(
+      queryClient,
+      adminWriteOptions(
+        {
+          write: () => Promise.reject(refused),
+          invalidate: [],
+          refresh: true,
+          refused: place,
+        },
+        { queryClient, refresh, toast: vi.fn(), copy }
+      )
+    )
+      .mutate("input")
+      .catch(() => undefined);
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+
+    // The screen still shows the tree from before the refresh, so the refusal waits for it.
+    expect(place).not.toHaveBeenCalled();
+
+    landed.resolve();
+    await done;
+
+    expect(place).toHaveBeenCalledOnce();
+  });
+
   it("lets the route name its own success toast, or none", async () => {
     const unchanged = await run({
       write: async () => ({ changed: false }),
