@@ -374,10 +374,6 @@ for (const [label, end, state] of [
     // The fake clock fakes `performance.timeOrigin` too, so a window value marks the document.
     await page.evaluate(() => Object.assign(window, { nav1Document: true }));
 
-    const remounted = page.waitForResponse((response) =>
-      isActivity(response.url())
-    );
-
     await (
       await openNavigation(page)
     )
@@ -385,8 +381,6 @@ for (const [label, end, state] of [
       .getByRole("link", { name: "Placeholder", exact: true })
       .click();
     await expect(page).toHaveURL(/\/placeholder$/);
-    // The new page's shell mounts its own activity client, in the same document.
-    expect((await remounted).status()).toBe(200);
     expect(await page.evaluate(() => "nav1Document" in window)).toBe(true);
 
     await end(page, times);

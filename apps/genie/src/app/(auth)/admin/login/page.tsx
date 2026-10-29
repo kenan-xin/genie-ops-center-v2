@@ -1,8 +1,8 @@
 import { breakGlassSteps, type BreakGlassStep } from "@genie/core";
 import { redirect } from "next/navigation.js";
 
-import { requireContext } from "../../../context.ts";
-import { documentSessionState } from "../../../document-session.ts";
+import { requireContext } from "../../../../context.ts";
+import { documentSessionState } from "../../../../document-session.ts";
 import { AdminLoginRoute } from "./admin-login-route.tsx";
 
 export const dynamic = "force-dynamic";

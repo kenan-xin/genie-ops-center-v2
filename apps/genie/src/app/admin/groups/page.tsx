@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
-import { ShellFrame } from "../../../shell-frame.tsx";
 import { GroupsRoute } from "./groups-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +21,7 @@ export async function generateMetadata() {
  * gives each person a preference.
  */
 export default async function GroupsPage() {
-  const content = await renderIfPermitted(
+  return renderIfPermitted(
     coreAdminPermission("core-groups"),
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
@@ -41,6 +40,4 @@ export default async function GroupsPage() {
       );
     }
   );
-
-  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

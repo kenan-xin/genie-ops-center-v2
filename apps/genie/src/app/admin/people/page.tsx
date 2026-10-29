@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
-import { ShellFrame } from "../../../shell-frame.tsx";
 import { PeopleRoute } from "./people-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +21,7 @@ export async function generateMetadata() {
  * (DEC-46) and handed to the Add person dialog; the server re-checks every write.
  */
 export default async function PeoplePage() {
-  const content = await renderIfPermitted(
+  return renderIfPermitted(
     coreAdminPermission("core-people"),
     async (caller) => {
       const tenant = requireContext().tenant;
@@ -49,6 +48,4 @@ export default async function PeoplePage() {
       );
     }
   );
-
-  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

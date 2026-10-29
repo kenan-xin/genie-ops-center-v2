@@ -1,10 +1,8 @@
-import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 
 import { requireAuth } from "../../../auth.ts";
 import { requireContext } from "../../../context.ts";
 import { requireSession } from "../../../document-session.ts";
-import { ShellFrame } from "../../../shell-frame.tsx";
 import { AdminAccountRoute } from "./admin-account-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -25,33 +23,29 @@ export default async function AdminAccountPage() {
 
   if (!person.isBreakGlass) redirect("/account");
 
-  const tPages = await getTranslations("pages");
-
   const [sessions, branding] = await Promise.all([
     auth.listOwnSessions({ session: signedIn }),
     app.tenant.branding.get(),
   ]);
 
   return (
-    <ShellFrame chrome="admin" title={tPages("account.title")}>
-      <AdminAccountRoute
-        name={person.name}
-        email={person.email}
-        productName={branding.productName}
-        // The two-factor table carries no enrollment timestamp; the field shows the unknown copy.
-        authenticatorEnrolledAt={null}
-        sessions={sessions.map((session) => ({
-          id: session.id,
-          device: session.device,
-          browser: session.browser,
-          ipAddress: session.ipAddress,
-          signedInAt: session.signedInAt.toISOString(),
-          lastActiveAt: session.lastActiveAt.toISOString(),
-          isCurrent: session.isCurrent,
-        }))}
-        timeZone={branding.defaultTimeZone}
-        passwordNotice={null}
-      />
-    </ShellFrame>
+    <AdminAccountRoute
+      name={person.name}
+      email={person.email}
+      productName={branding.productName}
+      // The two-factor table carries no enrollment timestamp; the field shows the unknown copy.
+      authenticatorEnrolledAt={null}
+      sessions={sessions.map((session) => ({
+        id: session.id,
+        device: session.device,
+        browser: session.browser,
+        ipAddress: session.ipAddress,
+        signedInAt: session.signedInAt.toISOString(),
+        lastActiveAt: session.lastActiveAt.toISOString(),
+        isCurrent: session.isCurrent,
+      }))}
+      timeZone={branding.defaultTimeZone}
+      passwordNotice={null}
+    />
   );
 }

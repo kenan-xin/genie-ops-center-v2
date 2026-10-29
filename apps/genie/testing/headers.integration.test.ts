@@ -395,3 +395,32 @@ describe("header coverage on the built application", () => {
     }
   });
 });
+
+describe("a module route answers before any loading fallback (6wz1.76)", () => {
+  for (const path of [
+    "/placeholder/not/a/page",
+    "/m/not-a-module",
+    "/admin/m/not-a-module/x",
+  ]) {
+    it(`${path} answers 404 with all five headers`, async () => {
+      const response = await raw(path);
+
+      expect(response.status).toBe(404);
+
+      for (const header of FIVE) {
+        expect(response.headers.get(header), header).not.toBeNull();
+      }
+    });
+  }
+
+  for (const path of ["/placeholder", "/admin/people"]) {
+    it(`${path} sends a signed-out request to the sign-in page`, async () => {
+      const response = await raw(path);
+
+      expect(response.status).toBe(307);
+      expect(
+        new URL(response.headers.get("location") ?? "", PUBLIC_URL).pathname
+      ).toBe("/sign-in");
+    });
+  }
+});

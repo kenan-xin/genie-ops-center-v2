@@ -17,9 +17,14 @@ const Link: ShellLinkComponent =
 /**
  * The two places the core shell meets Next's router (NAV-1). Core imports nothing from `next/*`,
  * and a component cannot pass from a server component as a prop, so this client file passes them.
+ * The path comes from the router, because a layout's shell stays mounted across navigations.
  */
-export function NextAppShell(props: Omit<AppShellProps, "linkComponent">) {
-  return <AppShell {...props} linkComponent={Link} />;
+export function NextAppShell(
+  props: Omit<AppShellProps, "linkComponent" | "currentPath">
+) {
+  return (
+    <AppShell {...props} currentPath={usePathname()} linkComponent={Link} />
+  );
 }
 
 /** The router's pathname has no search, so a filter or a section change keeps the person's focus. */

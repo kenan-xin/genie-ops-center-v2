@@ -158,6 +158,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/headers.integration.test.ts",
+    reason:
+      "`6wz1.76`: a module route decides its 404 and its sign-in redirect before any loading fallback",
+    cases: [
+      "a module route answers before any loading fallback (6wz1.76) /placeholder/not/a/page answers 404 with all five headers",
+      "a module route answers before any loading fallback (6wz1.76) /m/not-a-module answers 404 with all five headers",
+      "a module route answers before any loading fallback (6wz1.76) /admin/m/not-a-module/x answers 404 with all five headers",
+      "a module route answers before any loading fallback (6wz1.76) /placeholder sends a signed-out request to the sign-in page",
+      "a module route answers before any loading fallback (6wz1.76) /admin/people sends a signed-out request to the sign-in page",
+    ],
+  },
+  {
     file: "testing/disabled-module.integration.test.ts",
     cases: [
       "compiled disabled module refusal a compiled disabled module hides navigation refuses RPC and routes and keeps its tables",

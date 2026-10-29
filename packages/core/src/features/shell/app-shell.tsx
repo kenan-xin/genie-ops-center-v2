@@ -101,6 +101,9 @@ export function AppShell(props: AppShellProps) {
   const title =
     props.title ??
     shellLinks(props.navigation).find((link) => link.href === active)?.label ??
+    (props.currentPath === props.menu.accountHref
+      ? strings.account
+      : undefined) ??
     (props.chrome === "admin" ? strings.adminPortal : strings.workspace);
 
   return (

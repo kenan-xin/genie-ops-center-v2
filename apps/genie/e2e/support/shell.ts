@@ -22,7 +22,11 @@ export async function openNavigation(page: Page): Promise<Locator> {
     return aside;
   }
 
-  const drawer = page.getByRole("dialog", { name: "Navigation" });
+  // The shell stays mounted across a client navigation, so the drawer that a link just closed still
+  // shows while it slides out; only an open one counts (Base UI's `data-open`).
+  const drawer = page
+    .getByRole("dialog", { name: "Navigation" })
+    .and(page.locator("[data-open]"));
 
   // Each retry clicks only while the target is closed, so a slow open is never toggled shut.
   await expect(async () => {

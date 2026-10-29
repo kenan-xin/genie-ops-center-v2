@@ -5,7 +5,6 @@ import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
-import { ShellFrame } from "../../../shell-frame.tsx";
 import { AuditLogRoute } from "./audit-log-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ export async function generateMetadata() {
  * neither.
  */
 export default async function AuditLogPage() {
-  const content = await renderIfPermitted(
+  return renderIfPermitted(
     coreAdminPermission("core-audit"),
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
@@ -48,6 +47,4 @@ export default async function AuditLogPage() {
       );
     }
   );
-
-  return <ShellFrame chrome="admin">{content}</ShellFrame>;
 }

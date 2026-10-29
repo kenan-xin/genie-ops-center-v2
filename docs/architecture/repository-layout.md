@@ -10,9 +10,11 @@ genie-ops-center/
     storybook/                      Development-only app composition: UI, core-feature and selected module
                                     stories. Next.js/Vite; no runtime bootstrap or customer image output.
     genie/                          The standard Next.js application. One composition of core, ui, and modules.
-      src/app/(auth)/               Sign-in, break-glass, tenant pages.
-      src/app/(workspace)/          Member routes. Thin files that render module pages.
-      src/app/(admin)/              Admin routes. Thin files that render core and module admin pages.
+      src/app/(auth)/               The break-glass door, outside both shell layouts.
+      src/app/(workspace)/          The workspace shell layout, the account page and the module routes.
+                                    Thin files that render module pages.
+      src/app/admin/                The admin shell layout, the core admin pages and the module admin pages.
+                                    Each shell layout stays mounted across navigations and never redirects.
       src/app/api/                  Better Auth handler, oRPC at /api/rpc, chat stream, health, /api/m/<module>/ endpoints.
       src/rpc/                      oRPC handler options, error interceptor, and the browser client (ADR 0011).
       src/context.ts                Builds the one TenantContext at startup from the environment (DEC-34).

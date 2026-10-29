@@ -1,10 +1,13 @@
 import { readOwnGroups, readRoleSummaries, realmAccountUrl } from "@genie/core";
 import { getTranslations } from "next-intl/server";
 
-import { requireAuth } from "../../auth.ts";
-import { requireContext } from "../../context.ts";
-import { documentPrincipal, requireSession } from "../../document-session.ts";
-import { ShellFrame } from "../../shell-frame.tsx";
+import { requireAuth } from "../../../auth.ts";
+import { requireContext } from "../../../context.ts";
+import {
+  documentPrincipal,
+  requireSession,
+} from "../../../document-session.ts";
+import { keepBreakGlassInAdmin } from "../../../shell-frame.tsx";
 import { AccountRoute } from "./account-route.tsx";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +36,9 @@ export default async function AccountPage() {
 
   const signedIn = await requireSession();
 
+  await keepBreakGlassInAdmin();
+
   const t = await getTranslations("account");
-  const tPages = await getTranslations("pages");
 
   const userId = signedIn.user.id;
 
@@ -76,31 +80,29 @@ export default async function AccountPage() {
   });
 
   return (
-    <ShellFrame chrome="workspace" title={tPages("account.title")}>
-      <AccountRoute
-        profile={{
-          name: signedIn.user.name,
-          email: signedIn.user.email,
-        }}
-        groups={groups.map((group) => ({
-          id: group.id,
-          name: group.name,
-          source: group.source,
-        }))}
-        sessions={sessions.map((session) => ({
-          id: session.id,
-          device: session.device,
-          browser: session.browser,
-          ipAddress: session.ipAddress,
-          signedInAt: session.signedInAt.toISOString(),
-          lastActiveAt: session.lastActiveAt.toISOString(),
-          isCurrent: session.isCurrent,
-        }))}
-        roleGrants={roleGrants}
-        accountManagementUrl={accountManagementUrl}
-        timeZone={branding.defaultTimeZone}
-        nowIso={new Date().toISOString()}
-      />
-    </ShellFrame>
+    <AccountRoute
+      profile={{
+        name: signedIn.user.name,
+        email: signedIn.user.email,
+      }}
+      groups={groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        source: group.source,
+      }))}
+      sessions={sessions.map((session) => ({
+        id: session.id,
+        device: session.device,
+        browser: session.browser,
+        ipAddress: session.ipAddress,
+        signedInAt: session.signedInAt.toISOString(),
+        lastActiveAt: session.lastActiveAt.toISOString(),
+        isCurrent: session.isCurrent,
+      }))}
+      roleGrants={roleGrants}
+      accountManagementUrl={accountManagementUrl}
+      timeZone={branding.defaultTimeZone}
+      nowIso={new Date().toISOString()}
+    />
   );
 }

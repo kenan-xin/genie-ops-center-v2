@@ -188,6 +188,7 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
   await expect
     .poll(() => new URL(page.url()).pathname, { timeout: 30000 })
     .toBe("/admin/account");
+  await expect(page.locator("[data-shell]")).toBeVisible();
   await expectNoAxeViolations(page, "/admin/account");
 });
 

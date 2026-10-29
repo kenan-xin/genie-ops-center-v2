@@ -587,6 +587,17 @@ export const LongDrawerScrollsOnlyTheEntries: Story = {
   },
 };
 
+/** A layout shell gets no title from the account page, so the top bar names it from the menu. */
+export const AccountPageTitle: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  args: { currentPath: "/account" },
+  play: async ({ canvasElement }) => {
+    await expect(
+      canvasElement.querySelector("[data-shell-top-bar]")
+    ).toHaveTextContent("Account");
+  },
+};
+
 export const LongDrawerDark: Story = {
   ...LongDrawerScrollsOnlyTheEntries,
   globals: { ...phone, theme: "dark" },

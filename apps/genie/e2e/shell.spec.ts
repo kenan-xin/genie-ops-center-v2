@@ -284,6 +284,14 @@ test("a shell link opens its page in the same document: new row and title, drawe
   // The activity client posts on mount, so the page is hydrated and the click goes to the router.
   await mounted;
 
+  // The desktop aside stays in the DOM below lg, hidden, so the mark works at both viewports. The
+  // phone drawer renders in a portal outside [data-shell], so this matches exactly one element.
+  const rail = page.locator("[data-shell] aside");
+
+  await rail.evaluate((aside) => {
+    aside.dataset.nav1Rail = "kept";
+  });
+
   const content = page.getByRole("group", { name: "Page content" });
 
   await page.getByTestId("account-page").evaluate((main) => {
@@ -305,6 +313,9 @@ test("a shell link opens its page in the same document: new row and title, drawe
   await page.keyboard.press("Enter");
 
   await expect(page).toHaveURL(/\/placeholder\/archive$/);
+
+  // The same element: the shell stayed mounted across the click (6wz1.77).
+  await expect(rail).toHaveAttribute("data-nav1-rail", "kept");
 
   const heading = page.getByRole("heading", { level: 1 });
 
