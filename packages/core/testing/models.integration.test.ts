@@ -179,7 +179,7 @@ describe("the model factory against a real database", () => {
       prompt: PROMPT,
     });
 
-    expect(text).toBe("Hello from the recording.");
+    expect(text).toBe("Hello!");
     expect(sent).toEqual([
       {
         url: "https://openrouter.ai/api/v1/chat/completions",
@@ -199,7 +199,7 @@ describe("the model factory against a real database", () => {
     );
 
     const rows = [
-      [{ task: "chat" }, "Hello from the recording."],
+      [{ task: "chat" }, "Hello!"],
       [
         { task: "chat", modelId: DOCUMENT_DEFAULT },
         "Hello from the other model.",
@@ -282,7 +282,7 @@ describe("the model factory against a real database", () => {
       prompt: PROMPT,
     });
 
-    expect(await result.text).toBe("Hello from the recording.");
+    expect(await result.text).toBe("Hello!");
   });
 
   it("stops a stalled stream at the timeout", async () => {
@@ -308,7 +308,7 @@ describe("the model factory against a real database", () => {
       wait(2000, undefined).then(() => "the stream is still open"),
     ]);
 
-    expect(text).toBe("Hel");
+    expect(text).toBe("Hello");
     expect(errors).toMatchObject([{ name: "TimeoutError" }]);
     expect(performance.now() - started).toBeLessThan(2000);
   });
