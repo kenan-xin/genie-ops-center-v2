@@ -266,7 +266,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 - **Shape:** 8px radius; heights 32px (sm) / 40px (md, the default) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
 - **Secondary:** white fill, gray-300 border, gray-800 text. **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
-- **Hover / Focus:** fill variants drop to 90% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
+- **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
 - **Disabled / Loading:** disabled is 50% opacity with `cursor-not-allowed` and no hover change; use `aria-disabled` instead of the `disabled` attribute when the control must stay focusable to explain why. Loading keeps the label and the width, replaces the leading icon with a spinner, sets `aria-busy="true"`, and ignores a second press. Any action that leaves the page or waits on the network uses the loading state (at least Publish, Save, Send test, the sign-in redirect).
 
 ### Chips
@@ -337,7 +337,7 @@ For now the sign-in page and the emails carry text and color branding only. They
 
 ### Don't:
 
-- **Don't** derive any tint, shade, or ramp from the tenant color; hover is 90% opacity of the same color, press is 80%.
+- **Don't** derive any tint, shade, or ramp from the tenant color; hover is 94% opacity of the same color, press is 80%.
 - **Don't** use arbitrary text sizes (`text-[13.5px]`, any `text-[Npx]`) in any component.
 - **Don't** put a shadow on a resting surface; hairline borders separate, and shadows belong to menus and overlays.
 - **Don't** give a label pill a status color, and don't use emoji as icons — Lucide only, stroke 1.75.

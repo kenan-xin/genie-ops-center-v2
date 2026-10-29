@@ -2,6 +2,13 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-10-29
+
+### Changed, the fill button hover
+
+- A fill button (primary and danger) drops to 94% opacity on hover, not 90%. At 90% the default fills measured 4.34:1 and 4.32:1 against white text on the white page, under the 4.5:1 AA minimum (bead `6wz1.87`). At 94% they measure 4.66:1 and 4.54:1.
+- File: `product/design-system/tokens.md`. Record: `imports/2026-10-29-button-hover-contrast.md`.
+
 ## 2026-10-28
 
 ### Changed, the dark People table capture

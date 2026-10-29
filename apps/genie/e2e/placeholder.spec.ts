@@ -147,8 +147,8 @@ test("opens a record page by its route parameter with its trail and title, and t
   await expect(
     page.getByRole("status").filter({ hasText: "Touch queued." })
   ).toBeVisible();
-  // The scan reads the page at rest: the primary Button's hover contrast is bead `6wz1.87`.
-  await page.mouse.move(0, 0);
+  // 6wz1.87: the scan reads the primary Button hovered, so a hover fill under 4.5:1 fails it.
+  await page.getByRole("button", { name: "Touch record" }).hover();
   await expectNoAxeViolations(page, "placeholder record page");
 });
 
