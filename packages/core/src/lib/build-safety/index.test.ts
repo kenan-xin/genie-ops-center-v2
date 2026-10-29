@@ -94,7 +94,7 @@ const RUNTIME_SUBPATHS = new Set([".", "./testing"]);
  * Node's type stripper cannot load (ERR_UNKNOWN_FILE_EXTENSION), so the runtime probe below cannot
  * evaluate it. It gets the static import-graph probe instead, which is TSX-capable: it fails on a
  * database driver, the node-postgres adapter, a connection builtin, the core runtime, or a
- * `process.env` read. An entry that itself ships `.tsx` (`./rpc/client`) takes the same probe for
+ * `process.env` read or an inline type-only import. An entry that itself ships `.tsx` (`./rpc/client`) takes the same probe for
  * the same reason. No subpath is exempt from a safety assertion.
  */
 function isBrowserFeature(subpath: string): boolean {
@@ -205,6 +205,31 @@ describe("the browser feature graph probe", () => {
       expect(
         report.violations.some((line) => line.includes("process.env"))
       ).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses an inline type-only import, which Vite keeps as a side-effect import", () => {
+    const dir = mkdtempSync(join(tmpdir(), "genie-feature-inline-type-"));
+
+    try {
+      const entry = join(dir, "entry.ts");
+
+      writeFileSync(
+        entry,
+        `import { type Row } from "./server.ts";\nexport type X = Row;\n`
+      );
+      writeFileSync(
+        join(dir, "server.ts"),
+        `export type Row = { id: string };\n`
+      );
+
+      const report = analyzeFeatureGraph(entry);
+
+      expect(report.violations).toEqual([
+        `${entry} keeps ./server.ts at run time through an inline type-only import; write \`import type\``,
+      ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

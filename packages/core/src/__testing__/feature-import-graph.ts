@@ -11,7 +11,8 @@ import ts from "typescript";
  * browser feature entry is `.ts` but reaches `.tsx`, so it is checked here instead: the whole
  * graph reachable from the entry is parsed with the TypeScript compiler, and the probe fails on
  * anything that would put a database driver, a connection-capable builtin, the core runtime, or a
- * deployment environment read into a browser bundle. It resolves imports statically and starts
+ * deployment environment read into a browser bundle. It also refuses an inline type-only import,
+ * which keeps its module at run time under Vite. It resolves imports statically and starts
  * nothing.
  *
  * A relative import is followed, and an `@genie/*` workspace package is followed into its source
@@ -108,6 +109,35 @@ function specifiers(sourceFile: ts.SourceFile): readonly string[] {
   return found;
 }
 
+/**
+ * The specifiers of `import { type A } from "x"` declarations that name only inline types. Under
+ * `verbatimModuleSyntax` the declaration compiles to `import "x"`, and Vite (Storybook, Vitest)
+ * keeps it, so the whole module loads in the browser. `import type` is erased everywhere.
+ */
+function inlineTypeOnlyImports(sourceFile: ts.SourceFile): readonly string[] {
+  return sourceFile.statements.flatMap((statement) => {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier)
+    )
+      return [];
+
+    const clause = statement.importClause;
+
+    const bindings = clause?.namedBindings;
+
+    return clause !== undefined &&
+      !clause.isTypeOnly &&
+      clause.name === undefined &&
+      bindings !== undefined &&
+      ts.isNamedImports(bindings) &&
+      bindings.elements.length > 0 &&
+      bindings.elements.every((element) => element.isTypeOnly)
+      ? [statement.moduleSpecifier.text]
+      : [];
+  });
+}
+
 /** True when the file reads `process.env`, by property or by index. */
 function readsEnvironment(sourceFile: ts.SourceFile): boolean {
   let reads = false;
@@ -189,6 +219,12 @@ export function analyzeFeatureGraph(
 
     if (readsEnvironment(sourceFile)) {
       violations.push(`${file} reads process.env`);
+    }
+
+    for (const specifier of inlineTypeOnlyImports(sourceFile)) {
+      violations.push(
+        `${file} keeps ${specifier} at run time through an inline type-only import; write \`import type\``
+      );
     }
 
     for (const specifier of specifiers(sourceFile)) {
