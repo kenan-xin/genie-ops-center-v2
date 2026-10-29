@@ -83,11 +83,14 @@ export function adminWriteOptions<TInput, TResult>(
       .join(" ");
   };
 
+  // A read in flight left before the write answered, and an invalidation joins a first read rather
+  // than starting another, so the reads are cancelled first and read again (xok3.32).
   const reload = async () => {
     await Promise.all(
-      write.invalidate.map((queryKey) =>
-        host.queryClient.invalidateQueries({ queryKey })
-      )
+      write.invalidate.map(async (queryKey) => {
+        await host.queryClient.cancelQueries({ queryKey });
+        await host.queryClient.invalidateQueries({ queryKey });
+      })
     );
 
     if (write.refresh === true) host.refresh();

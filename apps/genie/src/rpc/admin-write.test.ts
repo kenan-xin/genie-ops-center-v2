@@ -3,6 +3,7 @@ import {
   MutationObserver,
   QueryClient,
   type QueryKey,
+  QueryObserver,
 } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
@@ -100,6 +101,39 @@ describe("adminWriteOptions", () => {
     reloads.resolve();
 
     await done;
+  });
+
+  it("reads a list again when the write answered during its first read (xok3.32)", async () => {
+    const queryClient = new QueryClient();
+    const firstRead = Promise.withResolvers<string>();
+
+    const list = new QueryObserver(queryClient, {
+      queryKey: ["groups", false],
+      queryFn: vi
+        .fn<() => Promise<string>>()
+        .mockReturnValueOnce(firstRead.promise)
+        .mockResolvedValue("with the new row"),
+    });
+
+    const unsubscribe = list.subscribe(() => undefined);
+
+    // The first read left before the write, and its answer arrives once the reload began.
+    queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "invalidate")
+        firstRead.resolve("without the new row");
+    });
+
+    await new MutationObserver(
+      queryClient,
+      adminWriteOptions(
+        { write: async () => undefined, invalidate: [["groups"]] },
+        { queryClient, refresh: vi.fn(), toast: vi.fn(), copy }
+      )
+    ).mutate("input");
+
+    expect(list.getCurrentResult().data).toBe("with the new row");
+
+    unsubscribe();
   });
 
   it("lets the route name its own success toast, or none", async () => {
