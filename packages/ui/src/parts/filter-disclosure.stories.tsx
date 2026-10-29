@@ -96,6 +96,10 @@ export const PanelUnderTheButton: Story = {
 
     const panel = await screen.findByRole("group", { name: "Filters" });
 
+    // The panel fades in from opacity 0. A loaded browser can hold the fade at
+    // its first frame, so the later visibility check waits for the open state.
+    await waitFor(() => expect(panel).toBeVisible());
+
     await expect(button).toHaveAttribute("aria-expanded", "true");
     await expect(panel.getBoundingClientRect().width).toBe(288);
     await expect(
