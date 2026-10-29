@@ -16,6 +16,8 @@ export {
   type PageHeaderProps,
 } from "./page-header.tsx";
 
+export { PageTrailContext, PageTrailProvider } from "./page-trail.tsx";
+
 export { PageSkeleton, type PageSkeletonProps } from "./page-skeleton.tsx";
 
 export { RouteFocus } from "./route-focus.tsx";

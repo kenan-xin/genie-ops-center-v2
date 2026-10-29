@@ -116,6 +116,8 @@ export type ModulePageRoute = {
   readonly permission: PermissionKey;
   /** The record a parameter names: the check runs on it, and the trail shows its label. */
   readonly record?: { readonly type: string; readonly param: string };
+  /** The path of one of the module's navigation entries of the same surface: the trail's parent (R-1a). */
+  readonly parent?: string;
 };
 
 /** 8. Pages, as `pages` stores them. Core calls `render` only after the check passes. */

@@ -13,6 +13,7 @@ import { principalFor } from "../src/services/authorization/index.ts";
 import {
   matchModulePage,
   type ModulePageMatch,
+  modulePageAccess,
   openModulePage,
 } from "../src/services/module-pages/index.ts";
 import {
@@ -77,6 +78,7 @@ const pagesFixture = {
         path: "/pages-fixture/:id",
         permission: "pages-fixture:use",
         record: { type: "pages-fixture-record", param: "id" },
+        parent: "/pages-fixture",
         load: async (ctx, params) => {
           const id = params["id"] ?? "";
 
@@ -111,16 +113,23 @@ beforeEach(() => {
   loaded.length = 0;
 });
 
-/** The record page's match for one id. */
-function record(id: string): ModulePageMatch {
-  const match = matchModulePage(pagesFixture, "workspace", [
-    "pages-fixture",
-    id,
-  ]);
+/** The workspace page's match for these segments. */
+function matched(segments: readonly string[]): ModulePageMatch {
+  const match = matchModulePage(pagesFixture, "workspace", segments);
 
-  if (match === undefined) throw new Error(`no page matches ${id}`);
+  if (match === undefined) throw new Error(`no page matches ${segments}`);
 
   return match;
+}
+
+/** The record page's match for one id. */
+function record(id: string): ModulePageMatch {
+  return matched(["pages-fixture", id]);
+}
+
+/** The top-level page's match. */
+function home(): ModulePageMatch {
+  return matched(["pages-fixture"]);
 }
 
 /** The request context of a new person holding these keys, tenant-wide or on one scope. */
@@ -192,5 +201,26 @@ describe("module pages", () => {
       kind: "missing",
     });
     expect(loaded).toEqual(["lost"]);
+  });
+
+  it("answers each page kind its trail and its title", async () => {
+    const allowedCtx = await personWith(["pages-fixture:use"]);
+    const refusedCtx = await personWith([]);
+
+    expect(await modulePageAccess(allowedCtx, home())).toEqual({
+      kind: "allowed",
+      title: "Pages fixture",
+    });
+    expect(await modulePageAccess(allowedCtx, record("r-1"))).toEqual({
+      kind: "allowed",
+      trail: {
+        parent: { label: "Pages fixture", href: "/pages-fixture" },
+        current: "Record r-1",
+      },
+      title: "Record r-1",
+    });
+    expect(await modulePageAccess(refusedCtx, record("r-1"))).toEqual({
+      kind: "refused",
+    });
   });
 });

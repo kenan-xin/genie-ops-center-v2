@@ -711,8 +711,24 @@ function pageProblems(module: Module): string[] {
   for (const surface of ["workspace", "admin"] as const) {
     const pageByPattern = new Map<string, string>();
 
+    const entryPaths = new Set(
+      module.navigation.entries
+        .filter((entry) => entry.surface === surface)
+        .map((entry) => entry.path)
+    );
+
     for (const page of module.pages[surface]) {
-      const { path, permission, record } = page;
+      const { path, permission, record, parent } = page;
+
+      // The trail links the parent with its entry's label, so a parent elsewhere would link nowhere.
+      if (
+        parent !== undefined &&
+        (parent === path || !entryPaths.has(parent))
+      ) {
+        problems.push(
+          `Page "${path}" names parent "${parent}", which is not the path of one of its ${surface} navigation entries.`
+        );
+      }
 
       if (
         !bases[surface].some(

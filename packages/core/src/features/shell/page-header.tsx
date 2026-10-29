@@ -13,6 +13,7 @@ import {
 import { ChevronLeft } from "lucide-react";
 import { use, type ReactNode } from "react";
 
+import { PageTrailContext } from "./page-trail.tsx";
 import { ShellContext } from "./shell-context.ts";
 import { linkFor } from "./shell-link.ts";
 
@@ -81,7 +82,8 @@ function Trail(props: {
 export function PageHeader(props: PageHeaderProps) {
   const shell = use(ShellContext);
   const inShell = shell !== null;
-  const crumb = props.breadcrumb;
+  // A module page passes none: core gives it the trail of its route (R-1a).
+  const crumb = props.breadcrumb ?? use(PageTrailContext);
   const hideBelowLg = inShell ? "max-lg:sr-only" : "";
   const bar = props.bottomBar ?? props.actions;
 

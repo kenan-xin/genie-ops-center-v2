@@ -1,8 +1,12 @@
 import {
   type ModulePageMatch,
+  type ModuleRPCContext,
   matchModulePage,
+  modulePageAccess,
   openModulePage,
 } from "@genie/core";
+import { PageTrailProvider } from "@genie/core/features/shell";
+import type { Metadata } from "next";
 import { headers } from "next/headers.js";
 import { notFound } from "next/navigation.js";
 import type { ReactNode } from "react";
@@ -61,14 +65,7 @@ export async function ModuleRoutePage(props: ModuleRoute): Promise<ReactNode> {
 
   if (match === undefined) notFound();
 
-  const opened = await openModulePage(
-    {
-      tenant: requireContext().tenant,
-      caller: await documentPrincipal(),
-      requestId: (await headers()).get("x-request-id") ?? newRequestId(),
-    },
-    match
-  );
+  const opened = await openModulePage(await pageContext(), match);
 
   if (opened.kind === "refused") {
     return <NoAccessMain testId="permission-denied" />;
@@ -76,5 +73,34 @@ export async function ModuleRoutePage(props: ModuleRoute): Promise<ReactNode> {
 
   if (opened.kind === "missing") notFound();
 
-  return opened.element;
+  return (
+    <PageTrailProvider value={opened.trail}>{opened.element}</PageTrailProvider>
+  );
+}
+
+/**
+ * A module route's document title, from the same check as the page: `generateMetadata` runs beside
+ * the page, so a refused person gets the default title and never the record label (R-1a).
+ */
+export async function moduleRouteMetadata(
+  route: ModuleRoute
+): Promise<Metadata> {
+  const match = lookup(route);
+
+  // No page: the route's layout answers this request with 404.
+  if (match === undefined) return {};
+
+  const access = await modulePageAccess(await pageContext(), match);
+
+  return access.kind === "allowed" && access.title !== undefined
+    ? { title: access.title }
+    : {};
+}
+
+async function pageContext(): Promise<ModuleRPCContext> {
+  return {
+    tenant: requireContext().tenant,
+    caller: await documentPrincipal(),
+    requestId: (await headers()).get("x-request-id") ?? newRequestId(),
+  };
 }

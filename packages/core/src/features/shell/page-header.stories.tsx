@@ -3,6 +3,7 @@ import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 
 import { PageHeader } from "./page-header.tsx";
+import { PageTrailProvider } from "./page-trail.tsx";
 import { ShellContext } from "./shell-context.ts";
 
 /**
@@ -157,33 +158,49 @@ const rolesTrail = {
   current: "Tenant administrator",
 };
 
+/** The trail and its record label on desktop. */
+const playBreadcrumbDesktop: Story["play"] = async ({ canvas }) => {
+  const trail = within(canvas.getByRole("navigation", { name: "breadcrumb" }));
+
+  const parent = trail.getByRole("link", { name: "Roles" });
+
+  await expect(parent).toBeVisible();
+  await expect(parent).toHaveAttribute("href", "/admin/roles");
+  await expect(trail.getByText("Tenant administrator")).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(
+    trail.queryByRole("link", { name: "Tenant administrator" })
+  ).not.toHaveAttribute("href");
+  await expect(
+    parent.compareDocumentPosition(
+      canvas.getByRole("heading", { level: 1, name: "Roles" })
+    ) & Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy();
+};
+
 /** A page under a list shows the trail above its title (tokens.md, Breadcrumbs). */
 export const BreadcrumbDesktop: Story = {
   decorators: [inShell],
   args: { title: "Roles", breadcrumb: rolesTrail },
   globals: { viewport: { value: "desktop", isRotated: false } },
-  play: async ({ canvas }) => {
-    const trail = within(
-      canvas.getByRole("navigation", { name: "breadcrumb" })
-    );
+  play: playBreadcrumbDesktop,
+};
 
-    const parent = trail.getByRole("link", { name: "Roles" });
-
-    await expect(parent).toBeVisible();
-    await expect(parent).toHaveAttribute("href", "/admin/roles");
-    await expect(trail.getByText("Tenant administrator")).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
-    await expect(
-      trail.queryByRole("link", { name: "Tenant administrator" })
-    ).not.toHaveAttribute("href");
-    await expect(
-      parent.compareDocumentPosition(
-        canvas.getByRole("heading", { level: 1, name: "Roles" })
-      ) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-  },
+/** A module page passes no trail: core gives the header the trail of its route (R-1a). */
+export const BreadcrumbFromTheRoute: Story = {
+  decorators: [
+    (Story) => (
+      <PageTrailProvider value={rolesTrail}>
+        <Story />
+      </PageTrailProvider>
+    ),
+    inShell,
+  ],
+  args: { title: "Roles" },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: playBreadcrumbDesktop,
 };
 
 /** Under 768 px the trail is one back link to the parent, though the title hides. */

@@ -1058,6 +1058,11 @@ describe("validateModule", () => {
       { workspace: [page("/fixture/:id"), page("/fixture/:key")] },
       'Pages "/fixture/:id" and "/fixture/:key" of the workspace surface match the same paths.',
     ],
+    [
+      "a parent that is a navigation entry of the other surface",
+      { workspace: [childPage("/admin/fixture")] },
+      'Page "/fixture/:id" names parent "/admin/fixture", which is not the path of one of its workspace navigation entries.',
+    ],
   ] as const)(
     "refuses a page that breaks a page rule: %s",
     (_rule, extra, problem) => {
@@ -1093,6 +1098,24 @@ describe("validateModule", () => {
 
     expect(validateModule(broken)).toEqual([
       'Navigation entry "fixture-archive" has no workspace page at "/fixture/archive" that requires "fixture:use".',
+    ]);
+  });
+
+  it("refuses a navigation entry's page that names itself as its parent", () => {
+    const broken = {
+      ...validModule,
+      pages: {
+        ...validModule.pages,
+        workspace: validModule.pages.workspace.map((entry) =>
+          entry.path === "/fixture/archive"
+            ? { ...entry, parent: entry.path }
+            : entry
+        ),
+      },
+    };
+
+    expect(validateModule(broken)).toEqual([
+      'Page "/fixture/archive" names parent "/fixture/archive", which is not the path of one of its workspace navigation entries.',
     ]);
   });
 
@@ -1288,6 +1311,16 @@ function recordPage(record: {
     path: "/fixture/:id",
     permission: "fixture:use",
     record,
+    component: Empty,
+  });
+}
+
+/** One `/fixture/:id` page under the given parent. */
+function childPage(parent: string): ModulePage {
+  return definePage({
+    path: "/fixture/:id",
+    permission: "fixture:use",
+    parent,
     component: Empty,
   });
 }
