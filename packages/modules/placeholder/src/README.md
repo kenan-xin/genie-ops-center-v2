@@ -20,6 +20,7 @@ deployment environment or of the runtime registry. A database driver: the router
 
 ## What it imports
 
-`@genie/core`, `@genie/ui`, `react`, `zod`, `drizzle-orm`, and its own files. `contract.ts`
+`@genie/core`, `@genie/ui`, `react`, `@tanstack/react-query` (the record page's browser call),
+`zod`, `drizzle-orm`, and its own files. `contract.ts`
 imports only `zod` and `@genie/core/rpc`.
 Never another module, never an app, never a customer folder, never a database driver.

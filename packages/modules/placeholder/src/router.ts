@@ -6,6 +6,7 @@ import {
   implementModule,
   scopesFor,
 } from "@genie/core";
+import { eq, sql } from "drizzle-orm";
 
 import { placeholderContract } from "./contract.ts";
 import { touchRecordJob } from "./jobs.ts";
@@ -35,6 +36,25 @@ export const placeholderRouter = os.router({
       .select()
       .from(placeholderRecord)
       .where(recordScope(scopes));
+  }),
+  // The id is compared as text, so a value that is not a uuid finds nothing instead of failing.
+  get: os.get.handler(async ({ context, input }) => {
+    const target = { type: "placeholder-record", id: input.id };
+
+    if (!(await can(context.caller, "placeholder:use", target))) {
+      throw new AppError(CORE_ERRORS.forbidden);
+    }
+
+    const [record] = await context.tenant.db
+      .select()
+      .from(placeholderRecord)
+      .where(eq(sql`${placeholderRecord.id}::text`, input.id));
+
+    if (record === undefined) {
+      throw new AppError(CORE_ERRORS["not-found"]);
+    }
+
+    return record;
   }),
   // The job runs as the caller and checks their read grant on the record itself, so the procedure
   // asks only for the workspace key.

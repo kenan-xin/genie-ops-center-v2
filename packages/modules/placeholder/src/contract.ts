@@ -18,6 +18,11 @@ export const placeholderContract = {
   read: oc
     .route({ method: "GET", path: "/placeholder/records" })
     .output(z.array(placeholderRecordOutput)),
+  /** One record, for its page. Refused without placeholder:use on the record; not-found when absent. */
+  get: oc
+    .route({ method: "GET", path: "/placeholder/records/{id}" })
+    .input(z.object({ id: z.string() }))
+    .output(placeholderRecordOutput),
   /** Enqueues `placeholder.touch-record` as the caller; `jobId` is null when pg-boss dropped it. */
   touch: oc
     .route({ method: "POST", path: "/placeholder/records/{id}/touch" })

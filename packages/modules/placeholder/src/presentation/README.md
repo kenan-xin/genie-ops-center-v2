@@ -12,10 +12,13 @@ runs.
 
 ## What must not go here
 
-Data fetching, a query client, a permission check, and any import of the runtime
-registry or the deployment environment. A component that cannot render from props
-alone does not belong in this folder.
+Data fetching of its own, a query client, a permission check, and any import of the
+runtime registry or the deployment environment. A browser call goes only through
+`useModuleClient` with the module's own contract, inside the query client and the
+module client that the app provides (Spec 7 R-2). A component that cannot render
+from props and those two providers does not belong in this folder.
 
 ## What it imports
 
-`@genie/ui`, `react`, `PageHeader` from `@genie/core/features/shell`, and its own fixtures. The story file also imports `@storybook/nextjs-vite` and `storybook/test` types.
+`@genie/ui`, `react`, `PageHeader` from `@genie/core/features/shell`, `useModuleClient`
+from `@genie/core/rpc/client`, `@tanstack/react-query`, `../contract.ts`, and its own fixtures. The story file also imports `@storybook/nextjs-vite` and `storybook/test` types.

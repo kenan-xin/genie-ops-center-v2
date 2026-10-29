@@ -20,7 +20,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/router.integration.test.ts",
     reason:
-      "R-24 and R-38 require the placeholder router and schema proof to run against a real database, and DEC-34's isolation proof reads through this router",
+      "R-24 and R-38 require the placeholder router and schema proof to run against a real database, and DEC-34's isolation proof reads through this router; Spec 7 R-1 and AC-1: the record page loads through the module's own procedure under the route's permission",
     cases: [
       "the placeholder read procedure against a real database answers the rows this deployment holds",
       "the placeholder read procedure against a real database refuses a caller without the key, and reads nothing",
@@ -29,6 +29,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder read procedure against a real database refuses an anonymous caller",
       "the placeholder read procedure against a real database answers a dataset source whose aliased subquery reads the seeded rows",
       "the placeholder read procedure against a real database appends placeholder:admin to Tenant administrator on enable and removes it on disable",
+      "the placeholder read procedure against a real database get answers one record to a holder of placeholder:use on it, and refuses or misses otherwise",
     ],
   },
   {

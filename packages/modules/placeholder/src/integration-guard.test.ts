@@ -38,6 +38,7 @@ const ROUTER_CASES = [
   "the placeholder read procedure against a real database refuses an anonymous caller",
   "the placeholder read procedure against a real database answers a dataset source whose aliased subquery reads the seeded rows",
   "the placeholder read procedure against a real database appends placeholder:admin to Tenant administrator on enable and removes it on disable",
+  "the placeholder read procedure against a real database get answers one record to a holder of placeholder:use on it, and refuses or misses otherwise",
 ];
 
 function packageJson(): { scripts: Record<string, string> } {

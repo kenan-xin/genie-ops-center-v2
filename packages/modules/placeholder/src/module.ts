@@ -1,4 +1,5 @@
 import {
+  callProcedure,
   definePage,
   type JobDeclaration,
   type Module,
@@ -14,6 +15,7 @@ import { touchRecordJob } from "./jobs.ts";
 import {
   PlaceholderAdminPage,
   placeholderEntryPage,
+  PlaceholderRecordPage,
   PlaceholderWorkspacePage,
 } from "./presentation/module-pages.tsx";
 import { placeholderRouter } from "./router.ts";
@@ -186,7 +188,7 @@ export const placeholderModule = {
     entries: [home, archive, retired, settings],
   },
 
-  // One page per navigation entry, at its path and under its key.
+  // One page per navigation entry, at its path and under its key, and the record page.
   pages: {
     workspace: [
       definePage({
@@ -203,6 +205,15 @@ export const placeholderModule = {
         path: retired.path,
         permission: retired.requiredPermission,
         component: placeholderEntryPage(retired.label),
+      }),
+      definePage({
+        path: "/placeholder/:id",
+        permission: "placeholder:use",
+        record: { type: "placeholder-record", param: "id" },
+        parent: home.path,
+        load: (ctx, params) =>
+          callProcedure(placeholderRouter, ctx).get({ id: params.id ?? "" }),
+        component: PlaceholderRecordPage,
       }),
     ],
     admin: [

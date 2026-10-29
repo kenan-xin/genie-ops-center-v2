@@ -55,6 +55,8 @@ describe("compiled disabled module refusal", () => {
         "/placeholder",
         // Next decodes each segment before the route sees it, so the proxy must too.
         "/placeholder/%61rchive",
+        // A page with a route parameter is the module's too (R-8).
+        "/placeholder/11111111-1111-4111-8111-111111111111",
         "/admin/placeholder",
         "/viewer/placeholder",
       ].map(async (path) => {

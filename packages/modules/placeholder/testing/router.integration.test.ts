@@ -148,6 +148,58 @@ describe("the placeholder read procedure against a real database", () => {
     expect(rows.map((entry) => entry.id)).not.toContain(other.id);
   });
 
+  it("get answers one record to a holder of placeholder:use on it, and refuses or misses otherwise", async () => {
+    const a = await insertPlaceholderRecord(deployment.context, {
+      label: "Record A",
+    });
+
+    const b = await insertPlaceholderRecord(deployment.context, {
+      label: "Record B",
+    });
+
+    const tenantWide = (
+      await insertPersonWith(deployment.context, ["placeholder:use"])
+    ).userId;
+
+    const scopedToA = (
+      await insertPersonWith(deployment.context, ["placeholder:use"], {
+        type: "placeholder-record",
+        id: a.id,
+      })
+    ).userId;
+
+    const readOnly = await reader();
+
+    const rows = [
+      { userId: tenantWide, id: a.id, answer: { label: "Record A" } },
+      { userId: scopedToA, id: a.id, answer: { label: "Record A" } },
+      { userId: scopedToA, id: b.id, refused: "forbidden" },
+      { userId: readOnly, id: a.id, refused: "forbidden" },
+      {
+        userId: tenantWide,
+        id: "00000000-0000-4000-8000-000000000000",
+        refused: "not-found",
+      },
+      { userId: tenantWide, id: "not-a-uuid", refused: "not-found" },
+    ] as const;
+
+    await Promise.all(
+      rows.map(async (row) => {
+        const get = callProcedure(
+          placeholderRouter,
+          contextFor(row.userId)
+        ).get({ id: row.id });
+
+        await ("answer" in row
+          ? expect(get, row.id).resolves.toMatchObject({
+              id: row.id,
+              ...row.answer,
+            })
+          : expect(get, row.id).rejects.toMatchObject({ code: row.refused }));
+      })
+    );
+  });
+
   it("refuses an anonymous caller", async () => {
     const caller = callProcedure(placeholderRouter, {
       tenant: deployment.context,

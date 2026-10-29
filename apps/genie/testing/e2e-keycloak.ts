@@ -96,6 +96,14 @@ export function e2eSignOutEmail(project: string): string {
   return `e2e.sign-out.${project}@example.com`;
 }
 
+/**
+ * A person with a `user` row and no role, whom the placeholder record page refuses (Spec 7 AC-1).
+ * Its own realm user, so no other spec's sign-in replaces its id token.
+ */
+export function e2ePlaceholderUngrantedEmail(project: string): string {
+  return `e2e.placeholder-ungranted.${project}@example.com`;
+}
+
 /** A realm user whose email is also a break-glass account's (R-62). */
 export function e2eBreakGlassEmail(project: string): string {
   return `e2e.break-glass.${project}@example.com`;

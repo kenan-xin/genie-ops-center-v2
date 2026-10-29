@@ -18,6 +18,7 @@
   "dependencies": {
     "@genie/core": "workspace:*",
     "@genie/ui": "workspace:*",
+    "@tanstack/react-query": "5.104.5",
     "drizzle-orm": "0.45.4",
     "react": "19.3.1",
     "zod": "4.6.7"

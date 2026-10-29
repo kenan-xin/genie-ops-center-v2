@@ -1,6 +1,18 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import {
+  e2ePlaceholderUngrantedEmail,
+  e2eReaderEmail,
+} from "../testing/e2e-keycloak.ts";
+import { expectNoAxeViolations } from "./support/axe.ts";
+import { queryDatabase } from "./support/database.ts";
+import { signInThroughKeycloak } from "./support/sign-in.ts";
+
+// The record page (Spec 7 AC-1, R-1, R-1a, R-2) is proved by "opens a record page by its route
+// parameter with its trail and title, and touches the record from the browser" and "refuses a
+// person without placeholder:use before the record loads", at both viewports with axe.
+
 // The navigation filter, the refused route and the granted read (Spec 0 AC-11, R-34, R-35) are
 // proved signed in by `done-when.spec.ts`; the admin guard and the WCAG 2.1 AA scan of a refused
 // page by `section-2-screens.spec.ts`; the anonymous RPC envelope by
@@ -88,4 +100,76 @@ test("the policy strips no stylesheet and no script", async ({ page }) => {
 
   expect(await cspViolations(page)).toEqual([]);
   expect(refusals).toEqual([]);
+});
+
+test("opens a record page by its route parameter with its trail and title, and touches the record from the browser (Spec 7 AC-1, R-1, R-1a, R-2)", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("placeholder", testInfo.project.name),
+  });
+
+  const [id] = await queryDatabase(
+    "select id from placeholder_record where label = 'e2e-visible'"
+  );
+
+  await page.goto(`/placeholder/${id}`);
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "e2e-visible" })
+  ).toBeAttached();
+  await expect(page).toHaveTitle(new RegExp(`^Placeholder record ${id} · .+$`));
+
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    const trail = page.getByRole("navigation", { name: "breadcrumb" });
+
+    await expect(
+      trail.getByRole("link", { name: "Placeholder", exact: true })
+    ).toHaveAttribute("href", "/placeholder");
+    await expect(trail.getByText(`Placeholder record ${id}`)).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+  } else {
+    await expect(
+      page
+        .getByRole("link", { name: "Placeholder", exact: true })
+        .filter({ visible: true })
+    ).toHaveAttribute("href", "/placeholder");
+  }
+
+  const touched = page.waitForResponse((response) =>
+    response.url().endsWith("/api/rpc/placeholder/touch")
+  );
+
+  await page.getByRole("button", { name: "Touch record" }).click();
+  expect((await touched).status()).toBe(200);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Touch queued." })
+  ).toBeVisible();
+  // The scan reads the page at rest: the primary Button's hover contrast is bead `6wz1.87`.
+  await page.mouse.move(0, 0);
+  await expectNoAxeViolations(page, "placeholder record page");
+});
+
+test("refuses a person without placeholder:use before the record loads (Spec 7 AC-1, R-1)", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2ePlaceholderUngrantedEmail(testInfo.project.name),
+  });
+
+  const [id] = await queryDatabase(
+    "select id from placeholder_record where label = 'e2e-visible'"
+  );
+
+  await page.goto(`/placeholder/${id}`);
+
+  await expect(page.getByTestId("permission-denied")).toBeVisible();
+  await expect(page.getByText("e2e-visible")).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "breadcrumb" })
+  ).toHaveCount(0);
+  expect(await page.title()).not.toContain("Placeholder record");
+  await expectNoAxeViolations(page, "refused placeholder record page");
 });
