@@ -523,6 +523,20 @@ export {
 } from "./services/datasets/query.ts";
 
 export {
+  type CartesianSeries,
+  CHART_SERIES_LIMIT,
+  CHART_TYPES,
+  type ChartType,
+  checkPanelConfig,
+  type DonutSeries,
+  type KpiSeries,
+  type PanelConfig,
+  type PanelConfigCheck,
+  panelConfigSchema,
+  type TableSeries,
+} from "./services/charts/panel-config.ts";
+
+export {
   type FetchedFile,
   FILE_DOWNLOAD_PATH,
   type FetchFileLinkInput,
