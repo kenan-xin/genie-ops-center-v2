@@ -236,3 +236,180 @@ export const EmptyDark: Story = {
   globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
   play: emptyPlay,
 };
+
+const outstanding = {
+  ...invoiced,
+  kind: "donut",
+  title: "Outstanding by customer",
+  x: { key: "x", label: "Customer", type: "text" },
+  columns: [
+    {
+      key: "Outstanding",
+      label: "Outstanding",
+      type: "money",
+      currency: "EUR",
+    },
+  ],
+  rows: [
+    { x: "Acme", Outstanding: 50_000 },
+    { x: "Globex", Outstanding: 30_000 },
+    { x: null, Outstanding: 20_000 },
+  ],
+} as const satisfies ChartProps;
+
+const donutPlay: Story["play"] = async ({ canvasElement, globals }) => {
+  const theme = themeOf(globals["theme"]);
+
+  const parts = await waitFor(() => {
+    const sectors = canvasElement.querySelectorAll(".recharts-pie-sector path");
+
+    expect(sectors).toHaveLength(3);
+
+    return [...sectors];
+  });
+
+  // Parts take the slots in row order, so a part keeps its color while the rows keep their order.
+  await expect(parts.map((part) => getComputedStyle(part).fill)).toEqual([
+    slotColor(theme, 1),
+    slotColor(theme, 2),
+    slotColor(theme, 3),
+  ]);
+
+  const legend = canvasElement.querySelector<HTMLElement>(
+    ".recharts-legend-wrapper"
+  );
+
+  await expect(legend).not.toBeNull();
+  await expect(
+    within(legend!)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent)
+  ).toEqual(["Acme", "Globex", "No value"]);
+};
+
+export const Donut: Story = {
+  args: outstanding,
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: donutPlay,
+};
+
+export const DonutDark: Story = {
+  args: outstanding,
+  globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
+  play: donutPlay,
+};
+
+const { x: _x, ...noAxis } = outstanding;
+
+const kpi = {
+  ...noAxis,
+  kind: "kpi",
+  title: "Outstanding",
+  rows: [{ Outstanding: 1_234_567 }],
+} as const satisfies ChartProps;
+
+const kpiPlay: Story["play"] = async ({ canvas }) => {
+  const value = canvas.getByText("€12,345.67");
+
+  await expect(value).toBeVisible();
+  await expect(
+    canvas.getByText("Outstanding").getBoundingClientRect().bottom
+  ).toBeLessThanOrEqual(value.getBoundingClientRect().top);
+  await expect(canvas.queryByRole("tab")).toBeNull();
+};
+
+export const Kpi: Story = {
+  args: kpi,
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: kpiPlay,
+};
+
+export const KpiDark: Story = {
+  args: kpi,
+  globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
+  play: kpiPlay,
+};
+
+const records = {
+  ...noAxis,
+  kind: "table",
+  title: "Records",
+  columns: [
+    { key: "label", label: "Label", type: "text" },
+    {
+      key: "amountCents",
+      label: "Amount",
+      type: "money",
+      currencyKey: "currency",
+    },
+    { key: "currency", label: "Currency", type: "text" },
+  ],
+  rows: [
+    { label: "A", amountCents: 1500, currency: "EUR" },
+    { label: "B", amountCents: 700, currency: "USD" },
+  ],
+} as const satisfies ChartProps;
+
+const tablePlay: Story["play"] = async ({ canvas }) => {
+  const table = canvas.getByRole("table");
+
+  await expect(
+    within(table).getByRole("cell", { name: "€15.00" })
+  ).toBeVisible();
+  await expect(
+    within(table).getByRole("cell", { name: "US$7.00" })
+  ).toBeVisible();
+};
+
+export const Table: Story = {
+  args: records,
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: tablePlay,
+};
+
+export const TableDark: Story = {
+  args: records,
+  globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
+  play: tablePlay,
+};
+
+const tableViewPlay: Story["play"] = async ({ canvas }) => {
+  // From the keyboard: Tab to the tabs, move to "Table" and choose it.
+  await userEvent.tab();
+  await expect(canvas.getByRole("tab", { name: "Chart" })).toHaveFocus();
+  await userEvent.keyboard("{ArrowRight}");
+  await expect(canvas.getByRole("tab", { name: "Table" })).toHaveFocus();
+  await userEvent.keyboard("{Enter}");
+
+  const table = await canvas.findByRole("table");
+
+  await expect(
+    within(table)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent)
+  ).toEqual(["Recorded on", "Invoiced", "Collected (EUR)", "Actions"]);
+
+  const february = within(table)
+    .getAllByRole("row")
+    .find((row) => row.textContent?.includes("Feb 2026"));
+
+  await expect(february).toBeDefined();
+
+  // A missing value is an empty cell, never 0.
+  await expect(
+    within(february!)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent)
+  ).toEqual(["Feb 2026", "€1,200.00", "", ""]);
+  await expect(canvas.getByText(CAPTION)).toBeVisible();
+};
+
+export const TableView: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: tableViewPlay,
+};
+
+export const TableViewDark: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
+  play: tableViewPlay,
+};

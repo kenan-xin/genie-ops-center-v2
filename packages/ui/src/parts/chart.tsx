@@ -9,6 +9,8 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   XAxis,
   YAxis,
   type TooltipPayloadEntry,
@@ -217,6 +219,64 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
   );
 }
 
+/** A donut: one part per row, in row order, so a part keeps its slot (the gate refuses a ninth). */
+function DonutPlot(props: ChartProps & { readonly x: ChartColumn }) {
+  const value = props.columns[0];
+
+  const data = props.rows.map((row, index) => {
+    const name = row[props.x.key] ?? null;
+
+    return {
+      x: name === null ? "No value" : formatChartValue(props.x, name),
+      s0: value === undefined ? null : (row[value.key] ?? null),
+      fill: slot(index),
+    };
+  });
+
+  return (
+    <ChartContainer>
+      <PieChart title={props.title}>
+        <Pie
+          data={data}
+          dataKey="s0"
+          nameKey="x"
+          innerRadius="60%"
+          isAnimationActive={false}
+        />
+        <ChartTooltip
+          content={({ active, payload }) => (
+            <ChartTooltipContent
+              active={active}
+              payload={payload}
+              label={undefined}
+              formatLabel={() => ""}
+              formatValue={(item) =>
+                value === undefined || item.value === undefined
+                  ? ""
+                  : formatChartValue(value, Number(item.value))
+              }
+            />
+          )}
+        />
+        <ChartLegend content={<ChartLegendContent />} />
+      </PieChart>
+    </ChartContainer>
+  );
+}
+
+function KpiValue(props: ChartProps) {
+  const column = props.columns[0];
+  const row = props.rows[0];
+
+  return (
+    <p className="text-2xl font-bold tabular-nums">
+      {column === undefined || row === undefined
+        ? ""
+        : formatChartValue(column, row[column.key] ?? null)}
+    </p>
+  );
+}
+
 /**
  * The one chart (Spec 7 R-16). It draws the `ChartData` that the core chart gate answers, with a
  * Chart and a Table view, fixed series colors, and a caption that names the dataset and the read
@@ -241,6 +301,8 @@ export function Chart(props: ChartProps) {
     body = (
       <EmptyState title="No data" description="No records match this chart." />
     );
+  } else if (props.kind === "kpi") {
+    body = <KpiValue {...props} />;
   } else if (props.x !== undefined && props.kind !== "table") {
     body = (
       <Tabs defaultValue="chart">
@@ -249,7 +311,11 @@ export function Chart(props: ChartProps) {
           <TabsTrigger value="table">Table</TabsTrigger>
         </TabsList>
         <TabsContent value="chart">
-          <CartesianPlot {...props} x={props.x} />
+          {props.kind === "donut" ? (
+            <DonutPlot {...props} x={props.x} />
+          ) : (
+            <CartesianPlot {...props} x={props.x} />
+          )}
         </TabsContent>
         <TabsContent value="table">{table}</TabsContent>
       </Tabs>
