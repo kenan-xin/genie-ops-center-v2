@@ -19,7 +19,10 @@ import {
   SESSION_EXPIRED_PATH,
 } from "../unauthenticated.ts";
 
-/** The contracts the browser calls: core's eight administration areas. */
+/**
+ * The contracts the browser calls: core's eight administration areas, and each module's contract
+ * under its module id, the key `useModuleClient` reads from this client.
+ */
 type BrowserContract = {
   readonly audit: AuditContract;
   readonly groups: GroupsContract;

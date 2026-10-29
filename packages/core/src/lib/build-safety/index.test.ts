@@ -94,7 +94,8 @@ const RUNTIME_SUBPATHS = new Set([".", "./testing"]);
  * Node's type stripper cannot load (ERR_UNKNOWN_FILE_EXTENSION), so the runtime probe below cannot
  * evaluate it. It gets the static import-graph probe instead, which is TSX-capable: it fails on a
  * database driver, the node-postgres adapter, a connection builtin, the core runtime, or a
- * `process.env` read. No subpath is exempt from a safety assertion.
+ * `process.env` read. An entry that itself ships `.tsx` (`./rpc/client`) takes the same probe for
+ * the same reason. No subpath is exempt from a safety assertion.
  */
 function isBrowserFeature(subpath: string): boolean {
   return subpath.startsWith("./features/");
@@ -133,7 +134,7 @@ describe("the build-safe entrypoints", () => {
   it.each(buildSafeSubpaths())(
     "keeps $subpath free of a driver, a connection and a deployment read",
     ({ subpath, entry }) => {
-      if (isBrowserFeature(subpath)) {
+      if (isBrowserFeature(subpath) || entry.endsWith(".tsx")) {
         // The browser feature graph is checked statically: it reaches `.tsx`, which the Node
         // runtime probe cannot load.
         const report = analyzeFeatureGraph(
@@ -141,8 +142,11 @@ describe("the build-safe entrypoints", () => {
         );
 
         expect(report.violations).toEqual([]);
-        // A walk that resolved nothing would pass vacuously; the real tree is several files.
-        expect(report.files.length).toBeGreaterThan(3);
+
+        // A walk that resolved nothing would pass vacuously; a feature tree is several files,
+        // while a single-file browser entry is its own file.
+        if (isBrowserFeature(subpath))
+          expect(report.files.length).toBeGreaterThan(3);
 
         return;
       }

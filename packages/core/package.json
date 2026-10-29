@@ -20,6 +20,7 @@
     "./features/sign-in": "./src/features/sign-in/index.ts",
     "./logging": "./src/services/logging/index.ts",
     "./rpc": "./src/lib/rpc/index.ts",
+    "./rpc/client": "./src/lib/rpc/module-client.tsx",
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./testing/stage-workspace": "./testing/stage-workspace.ts",

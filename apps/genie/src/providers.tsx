@@ -1,7 +1,10 @@
 "use client";
 
+import { ModuleClientProvider } from "@genie/core/rpc/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+
+import { rpc } from "./rpc/client.ts";
 
 /**
  * The browser's one query client.
@@ -20,6 +23,8 @@ const client = new QueryClient({
 
 export function QueryProvider(props: { readonly children: ReactNode }) {
   return (
-    <QueryClientProvider client={client}>{props.children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ModuleClientProvider client={rpc}>{props.children}</ModuleClientProvider>
+    </QueryClientProvider>
   );
 }
