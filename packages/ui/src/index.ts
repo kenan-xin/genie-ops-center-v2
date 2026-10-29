@@ -117,6 +117,15 @@ export { ConfirmDialog } from "./parts/confirm-dialog.tsx";
 export { DataTable } from "./parts/data-table.tsx";
 
 export type {
+  ChartColumn,
+  ChartData,
+  ChartFieldType,
+  ChartKind,
+  ChartRow,
+  ChartValue,
+} from "./parts/chart-data.ts";
+
+export type {
   DataTableAction,
   DataTableCard,
   DataTableColumn,
