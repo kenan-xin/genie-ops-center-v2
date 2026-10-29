@@ -300,7 +300,7 @@ function RoleDetailView(props: {
   readonly onEdit: () => void;
   readonly onCopy: () => void;
   readonly onDelete: () => void;
-  readonly onOpenInAccess: () => void;
+  readonly onOpenInAccess?: (() => void) | undefined;
   readonly onRemoveUnavailable: (key: string) => void;
   readonly pending?: boolean | undefined;
 }) {
@@ -433,9 +433,12 @@ function RoleDetailView(props: {
             <h3 className="text-base font-semibold text-foreground">
               Who holds this role
             </h3>
-            <Button variant="secondary" onClick={props.onOpenInAccess}>
-              <ShieldIcon /> Manage in Access
-            </Button>
+            {/* Until a host passes the Access screen (d8l5.27), the holders below are the view. */}
+            {props.onOpenInAccess === undefined ? null : (
+              <Button variant="secondary" onClick={props.onOpenInAccess}>
+                <ShieldIcon /> Manage in Access
+              </Button>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             A role held through a group changes for every member of that group.
@@ -579,7 +582,11 @@ export function RolesScreen(props: RolesScreenProps) {
             })
           }
           onDelete={() => props.onDeleteRole?.(props.detail!.id)}
-          onOpenInAccess={() => props.onOpenInAccess?.(props.detail!.id)}
+          onOpenInAccess={
+            props.onOpenInAccess === undefined
+              ? undefined
+              : () => props.onOpenInAccess?.(props.detail!.id)
+          }
           onRemoveUnavailable={(key) =>
             props.onRemoveUnavailableKey?.(props.detail!.id, {
               name: props.detail!.name,

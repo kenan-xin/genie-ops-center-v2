@@ -480,6 +480,14 @@ test("Role detail links back to Roles through the page header trail", async ({
     ).toContainText("Auditor");
   }
 
+  // d8l5.27: no Access route exists yet, so the holders card offers no way to it.
+  await expect(
+    page.getByRole("heading", { name: "Who holds this role" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Manage in Access" })
+  ).toHaveCount(0);
+
   const toRoles = page
     .getByRole("main")
     .getByRole("link", { name: "Roles", exact: true })

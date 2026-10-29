@@ -199,6 +199,23 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
   },
 };
 
+/** d8l5.27: the Access seam. A host that passes `onOpenInAccess` gets the button back. */
+export const ManageInAccessWhenTheHostPassesIt: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    onOpenInAccess: fn(),
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Manage in Access" })
+    );
+    await expect(args.onOpenInAccess).toHaveBeenCalledWith(
+      FIXTURE_CUSTOM_DETAIL.id
+    );
+  },
+};
+
 export const CopyPrefillsTheKeysAndCreatesACustomRole: Story = {
   args: {
     selectedRoleId: FIXTURE_SYSTEM_DETAIL.id,

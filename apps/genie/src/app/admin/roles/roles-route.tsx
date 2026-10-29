@@ -8,7 +8,7 @@ import {
 import { PageHeader } from "@genie/core/features/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
+import { usePathname, useSearchParams } from "next/navigation.js";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
@@ -22,7 +22,6 @@ import { rpc } from "../../../rpc/client.ts";
 export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   const t = useTranslations("pages");
   const tNoMatch = useTranslations("noMatch");
-  const router = useRouter();
   const pathname = usePathname();
   const selectedRoleId = useSearchParams().get("selected");
 
@@ -131,9 +130,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
           )
         }
         onDeleteRole={(roleId) => run(() => rpc.roles.remove({ roleId }))}
-        onOpenInAccess={(roleId) => {
-          router.push(`/admin/access?recipient=${encodeURIComponent(roleId)}`);
-        }}
+        // No onOpenInAccess until the Access screen exists (d8l5.27, deviation 888).
       />
     </>
   );
