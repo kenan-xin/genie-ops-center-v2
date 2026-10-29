@@ -15,10 +15,12 @@ import {
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
 import { fixtureApi, validModule } from "./__fixtures__/valid-module.ts";
-import type {
-  DatasetDeclaration,
-  JobRetry,
-  NavigationEntry,
+import {
+  type DatasetDeclaration,
+  definePage,
+  type JobRetry,
+  type ModulePage,
+  type NavigationEntry,
 } from "./module.ts";
 import { validateModule, validateRegistry } from "./validate.ts";
 
@@ -49,6 +51,13 @@ describe("validateModule", () => {
     "categories",
     "settings",
     "branding",
+    "m",
+    "admin",
+    "api",
+    "viewer",
+    "account",
+    "auth",
+    "sign-in",
   ])("reserves the module id %s", (id) => {
     expect(validateModule(renameModule(validModule, id))).toContain(
       `Module id "${id}" is reserved for core.`
@@ -738,6 +747,16 @@ describe("validateModule", () => {
     const ok = {
       ...validModule,
       navigation: { pinned: six, entries: six },
+      pages: {
+        ...validModule.pages,
+        workspace: six.map((entry) =>
+          definePage({
+            path: entry.path,
+            permission: entry.requiredPermission,
+            component: Empty,
+          })
+        ),
+      },
     };
 
     expect(validateModule(ok)).toEqual([]);
@@ -988,6 +1007,95 @@ describe("validateModule", () => {
     expect(validateModule(broken).join(" ")).toContain("fixture-home");
   });
 
+  it.each([
+    [
+      "a workspace page outside the module's paths",
+      { workspace: [page("/elsewhere")] },
+      'Page "/elsewhere" is outside the module\'s own paths: "/fixture", "/m/fixture", "/admin/fixture" or "/admin/m/fixture".',
+    ],
+    [
+      "a workspace page that only shares the id's letters",
+      { workspace: [page("/fixtures")] },
+      'Page "/fixtures" is outside the module\'s own paths: "/fixture", "/m/fixture", "/admin/fixture" or "/admin/m/fixture".',
+    ],
+    [
+      "an admin page on a workspace path",
+      { admin: [page("/fixture/settings", "fixture:admin")] },
+      'Page "/fixture/settings" is outside the module\'s own paths: "/fixture", "/m/fixture", "/admin/fixture" or "/admin/m/fixture".',
+    ],
+    [
+      "an upper-case segment",
+      { workspace: [page("/fixture/Lines")] },
+      'Page path "/fixture/Lines" must be "/"-separated kebab-case words or ":name" parameters, each name once.',
+    ],
+    [
+      "an empty segment",
+      { workspace: [page("/fixture//lines")] },
+      'Page path "/fixture//lines" must be "/"-separated kebab-case words or ":name" parameters, each name once.',
+    ],
+    [
+      "a repeated parameter name",
+      { workspace: [page("/fixture/:id/lines/:id")] },
+      'Page path "/fixture/:id/lines/:id" must be "/"-separated kebab-case words or ":name" parameters, each name once.',
+    ],
+    [
+      "a key the module does not declare",
+      { workspace: [page("/fixture/other", "other:use")] },
+      'Page "/fixture/other" requires "other:use", which the module does not declare.',
+    ],
+    [
+      "an unknown record type",
+      { workspace: [recordPage({ type: "nope", param: "id" })] },
+      'Page "/fixture/:id" names record type "nope", which is not one of the module\'s record types.',
+    ],
+    [
+      "a record parameter its path lacks",
+      { workspace: [recordPage({ type: "fixture_record", param: "key" })] },
+      'Page "/fixture/:id" names record parameter "key", which its path does not hold.',
+    ],
+    [
+      "two pages of one surface with the same shape",
+      { workspace: [page("/fixture/:id"), page("/fixture/:key")] },
+      'Pages "/fixture/:id" and "/fixture/:key" of the workspace surface match the same paths.',
+    ],
+  ] as const)(
+    "refuses a page that breaks a page rule: %s",
+    (_rule, extra, problem) => {
+      const broken = {
+        ...validModule,
+        pages: {
+          workspace: [
+            ...validModule.pages.workspace,
+            ...("workspace" in extra ? extra.workspace : []),
+          ],
+          admin: [
+            ...validModule.pages.admin,
+            ...("admin" in extra ? extra.admin : []),
+          ],
+        },
+      };
+
+      expect(validateModule(broken)).toEqual([problem]);
+    }
+  );
+
+  it.each([
+    ["a missing page", [page("/fixture")]],
+    [
+      "a page under another key",
+      [page("/fixture"), page("/fixture/archive", "fixture:read")],
+    ],
+  ])("refuses a navigation entry without its page: %s", (_rule, workspace) => {
+    const broken = {
+      ...validModule,
+      pages: { ...validModule.pages, workspace },
+    };
+
+    expect(validateModule(broken)).toEqual([
+      'Navigation entry "fixture-archive" has no workspace page at "/fixture/archive" that requires "fixture:use".',
+    ]);
+  });
+
   it("rejects the landing flag on an admin entry", () => {
     expect(validateModule(withAdminLanding(validModule)).join(" ")).toContain(
       'Admin entry "fixture-admin"'
@@ -1160,6 +1268,29 @@ describe("validateRegistry", () => {
     );
   });
 });
+
+const Empty = () => null;
+
+/** One page that loads nothing, for the page rules. */
+function page(
+  path: string,
+  permission: `${string}:${string}` = "fixture:use"
+): ModulePage {
+  return definePage({ path, permission, component: Empty });
+}
+
+/** One `/fixture/:id` page whose check runs on the given record. */
+function recordPage(record: {
+  readonly type: string;
+  readonly param: string;
+}): ModulePage {
+  return definePage({
+    path: "/fixture/:id",
+    permission: "fixture:use",
+    record,
+    component: Empty,
+  });
+}
 
 /** The valid fixture with the given dataset declarations. */
 function withDatasets(datasets: readonly DatasetDeclaration[]) {

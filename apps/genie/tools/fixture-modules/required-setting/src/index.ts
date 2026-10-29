@@ -42,7 +42,7 @@ const requiredSettingModule = {
 
   navigation: { pinned: [], entries: [] },
 
-  pages: { workspace: {}, admin: {} },
+  pages: { workspace: [], admin: [] },
 
   configuration: {
     schema: z.object({ endpoint: z.string().min(1).max(200) }),

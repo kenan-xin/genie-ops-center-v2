@@ -36,7 +36,7 @@ const invalidViewerModule = {
 
   navigation: { pinned: [], entries: [] },
 
-  pages: { workspace: {}, admin: {} },
+  pages: { workspace: [], admin: [] },
 
   events: [],
 

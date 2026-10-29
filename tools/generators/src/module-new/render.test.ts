@@ -247,7 +247,7 @@ describe("the rendered user interface", () => {
   });
 
   it("checks no permission of its own, in any presentation file", () => {
-    // The app mounts a module page behind the entry's requiredPermission through
+    // Core mounts a module page behind the page's declared permission through
     // the one seam, and renders its own denied response when it refuses. A check
     // here would be a second seam (DEC-39), and a refusal rendered here would say
     // what that response deliberately withholds.

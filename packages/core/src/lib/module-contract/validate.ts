@@ -37,7 +37,20 @@ const RESERVED_IDS: ReadonlySet<string> = new Set([
   "categories",
   "settings",
   "branding",
+  // A `/<id>` page path must not claim a path that core or the module contract names, or a
+  // disabled module's page would take that path in the proxy (Spec 1 R-8).
+  "m",
+  "admin",
+  "api",
+  "viewer",
+  "account",
+  "auth",
+  "sign-in",
 ]);
+
+const PAGE_LITERAL = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+const PAGE_PARAMETER = /^:[a-z][a-zA-Z0-9]*$/;
 
 /**
  * The zod def members this validator reads beyond the public `type`
@@ -483,6 +496,8 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
+  problems.push(...pageProblems(module));
+
   // Seeding a default role creates missing permission definitions, never a
   // privilege in another module (docs/architecture/permission-evolution.md).
   for (const role of module.defaultRoles) {
@@ -665,6 +680,108 @@ function transformationProblems(
     if (!declared.has(final)) {
       problems.push(
         `${label} renames to "${final}", which the module does not declare.`
+      );
+    }
+  }
+
+  return problems;
+}
+
+/**
+ * The page rules (Spec 7 R-1): each page lies in the module's own paths, has a well-formed path,
+ * requires a key the module declares, names a record it can check, and matches no path another
+ * page of its surface matches; every navigation entry has the page of its path and key.
+ */
+function pageProblems(module: Module): string[] {
+  const id = module.identity.id;
+
+  const declared = new Set<string>(
+    module.permissions.map((entry) => entry.key)
+  );
+
+  const recordTypes = new Set(module.recordTypes.map((entry) => entry.type));
+
+  const problems: string[] = [];
+
+  const bases = {
+    workspace: [`/${id}`, `/m/${id}`],
+    admin: [`/admin/${id}`, `/admin/m/${id}`],
+  };
+
+  for (const surface of ["workspace", "admin"] as const) {
+    const pageByPattern = new Map<string, string>();
+
+    for (const page of module.pages[surface]) {
+      const { path, permission, record } = page;
+
+      if (
+        !bases[surface].some(
+          (base) => path === base || path.startsWith(`${base}/`)
+        )
+      ) {
+        problems.push(
+          `Page "${path}" is outside the module's own paths: "/${id}", "/m/${id}", "/admin/${id}" or "/admin/m/${id}".`
+        );
+      }
+
+      const segments = path.split("/").slice(1);
+      const names = segments.filter((segment) => PAGE_PARAMETER.test(segment));
+
+      if (
+        !segments.every(
+          (segment) =>
+            PAGE_LITERAL.test(segment) || PAGE_PARAMETER.test(segment)
+        ) ||
+        new Set(names).size !== names.length
+      ) {
+        problems.push(
+          `Page path "${path}" must be "/"-separated kebab-case words or ":name" parameters, each name once.`
+        );
+      }
+
+      if (!declared.has(permission)) {
+        problems.push(
+          `Page "${path}" requires "${permission}", which the module does not declare.`
+        );
+      }
+
+      if (record !== undefined && !recordTypes.has(record.type)) {
+        problems.push(
+          `Page "${path}" names record type "${record.type}", which is not one of the module's record types.`
+        );
+      }
+
+      if (record !== undefined && !names.includes(`:${record.param}`)) {
+        problems.push(
+          `Page "${path}" names record parameter "${record.param}", which its path does not hold.`
+        );
+      }
+
+      // Two patterns match the same paths when they are equal once each parameter name is removed.
+      const pattern = segments
+        .map((segment) => (segment.startsWith(":") ? ":" : segment))
+        .join("/");
+
+      const earlier = pageByPattern.get(pattern);
+
+      if (earlier === undefined) pageByPattern.set(pattern, path);
+      else {
+        problems.push(
+          `Pages "${earlier}" and "${path}" of the ${surface} surface match the same paths.`
+        );
+      }
+    }
+  }
+
+  for (const entry of module.navigation.entries) {
+    const hasPage = module.pages[entry.surface].some(
+      (page) =>
+        page.path === entry.path && page.permission === entry.requiredPermission
+    );
+
+    if (!hasPage) {
+      problems.push(
+        `Navigation entry "${entry.id}" has no ${entry.surface} page at "${entry.path}" that requires "${entry.requiredPermission}".`
       );
     }
   }

@@ -352,7 +352,7 @@ export type ${names.pascal}Router = typeof ${names.camel}Router;
 `;
 
 const declaration: Template = (names) =>
-  `import { can, type Module, scopesFor } from "@genie/core";
+  `import { can, definePage, type Module, scopesFor } from "@genie/core";
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -441,9 +441,22 @@ export const ${names.camel}Module = {
     entries: [home, settings],
   },
 
+  // One page per navigation entry, at its path and under its key; \`can()\` checks the key first.
   pages: {
-    workspace: { home: ${names.pascal}WorkspacePage },
-    admin: { settings: ${names.pascal}AdminPage },
+    workspace: [
+      definePage({
+        path: home.path,
+        permission: home.requiredPermission,
+        component: ${names.pascal}WorkspacePage,
+      }),
+    ],
+    admin: [
+      definePage({
+        path: settings.path,
+        permission: settings.requiredPermission,
+        component: ${names.pascal}AdminPage,
+      }),
+    ],
   },
 
   /**
@@ -758,14 +771,13 @@ const modulePages: Template = (names) =>
 import { WorkspacePage } from "./workspace-page.tsx";
 
 /**
- * What the module registers under \`pages\`. Core mounts a page with no props, so each entry
- * here is the component the app renders. The read that fills these from \`ctx.tenant\` arrives
- * with the shell, so each entry renders its empty state for now. The components stay in their
- * own files, with their stories and their tests.
+ * The components the module's \`pages\` declarations render. Neither declares a loader nor reads
+ * its route props, so each renders its empty state for now. The components stay in their own
+ * files, with their stories and their tests.
  *
- * Neither entry asks whether the person may be here. The app's page loader already asked, with
- * the entry's \`requiredPermission\`, and renders its own denied response instead of this
- * component when the answer is no, which \`src/access.test.ts\` proves against the real seam.
+ * Neither component asks whether the person may be here. Core already asked, with the page's
+ * \`permission\`, and renders its own denied response instead of this component when the answer
+ * is no, which \`src/access.test.ts\` proves against the real seam.
  */
 export function ${names.pascal}WorkspacePage() {
   return <WorkspacePage records={[]} />;

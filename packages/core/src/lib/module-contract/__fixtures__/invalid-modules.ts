@@ -1,6 +1,6 @@
 import { permissionKeyFor } from "../keys.ts";
 import { moduleLedgerTable } from "../ledger.ts";
-import type { Module, NavigationEntry } from "../module.ts";
+import type { Module, ModulePage, NavigationEntry } from "../module.ts";
 import { fixtureApi } from "./valid-module.ts";
 
 /**
@@ -13,7 +13,27 @@ function actionOf(key: string, oldId: string): string {
   return key.replace(`${oldId}:`, "");
 }
 
-/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix and the ledger to a new module id. */
+/** The path with the old id's segment replaced by the new id. */
+function renamePath(path: string, oldId: string, newId: string): string {
+  return path
+    .split("/")
+    .map((segment) => (segment === oldId ? newId : segment))
+    .join("/");
+}
+
+function renamePage(
+  page: ModulePage,
+  oldId: string,
+  newId: string
+): ModulePage {
+  return {
+    ...page,
+    path: renamePath(page.path, oldId, newId),
+    permission: permissionKeyFor(newId, actionOf(page.permission, oldId)),
+  };
+}
+
+/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix, every page and navigation path, and the ledger to a new module id. */
 export function renameModule(module: Module, id: string): Module {
   const oldId = module.identity.id;
 
@@ -34,6 +54,12 @@ export function renameModule(module: Module, id: string): Module {
       entries: module.navigation.entries.map((entry) =>
         renameEntry(entry, oldId, id)
       ),
+    },
+    pages: {
+      workspace: module.pages.workspace.map((page) =>
+        renamePage(page, oldId, id)
+      ),
+      admin: module.pages.admin.map((page) => renamePage(page, oldId, id)),
     },
     defaultRoles: module.defaultRoles.map((role) => ({
       ...role,
@@ -116,6 +142,7 @@ function renameEntry(
 ): NavigationEntry {
   return {
     ...entry,
+    path: renamePath(entry.path, oldId, newId),
     requiredPermission: permissionKeyFor(
       newId,
       actionOf(entry.requiredPermission, oldId)

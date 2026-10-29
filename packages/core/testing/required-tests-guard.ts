@@ -568,4 +568,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "refuses a request to a model host before it leaves the process, and lets other hosts through",
     ],
   },
+  {
+    file: "testing/module-pages.integration.test.ts",
+    reason:
+      "Spec 7 R-1 and AC-1: a module page refuses before its loader runs, checks a record page on the record, and loads with its route parameters",
+    cases: [
+      "module pages refuses a person without the page permission before the loader runs",
+      "module pages checks a record page on the record, so a grant on one record opens only that record's page",
+      "module pages loads a page with its route parameters and renders its component with the loaded data",
+      "module pages answers missing for a record its resolver does not find and for a loader that answers not-found",
+    ],
+  },
 ];

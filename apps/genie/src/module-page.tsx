@@ -1,11 +1,17 @@
-import type { PermissionKey } from "@genie/core";
+import {
+  type ModulePageMatch,
+  matchModulePage,
+  openModulePage,
+} from "@genie/core";
+import { headers } from "next/headers.js";
 import { notFound } from "next/navigation.js";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { requireSession } from "./document-session.ts";
-import { pinnedRoutePermission } from "./module-route.ts";
-import { renderIfPermitted } from "./page-access.tsx";
+import { requireContext } from "./context.ts";
+import { documentPrincipal, requireSession } from "./document-session.ts";
+import { NoAccessMain } from "./page-access.tsx";
 import { moduleById } from "./registry.ts";
+import { newRequestId } from "./request-id.ts";
 import { keepBreakGlassInAdmin } from "./shell-frame.tsx";
 
 export type ModuleRoute = {
@@ -18,31 +24,16 @@ export type ModuleRoute = {
 };
 
 /**
- * The page a module route answers with, and the permission pinned to the module's own key
- * (`pinnedRoutePermission`). A module that is not in this image has no registry entry, so an
- * excluded module answers nothing (R-22).
+ * The module page this route answers with, matched by core on the module's own declarations. A
+ * module that is not in this image has no registry entry, so an excluded module answers nothing
+ * (R-22).
  */
-function lookup(
-  route: ModuleRoute
-): { permission: PermissionKey; Page: ComponentType } | undefined {
+function lookup(route: ModuleRoute): ModulePageMatch | undefined {
   const module = moduleById.get(route.moduleId);
 
-  if (module === undefined) return undefined;
-
-  const permission = pinnedRoutePermission(
-    module,
-    route.surface,
-    `/${[...route.base, ...route.path].join("/")}`
-  );
-
-  const Page =
-    route.surface === "admin"
-      ? module.pages.admin.settings
-      : module.pages.workspace[route.path.at(-1) ?? "home"];
-
-  return permission === undefined || Page === undefined
+  return module === undefined
     ? undefined
-    : { permission, Page };
+    : matchModulePage(module, route.surface, [...route.base, ...route.path]);
 }
 
 /**
@@ -61,13 +52,29 @@ export async function ModuleRouteGate(
   return props.children;
 }
 
-/** A module route's page body, behind the one authorization seam (DEC-39). */
+/**
+ * A module route's page body: core checks the page's permission through `can()` before its loader
+ * runs, then renders it (Spec 7 R-1, DEC-39).
+ */
 export async function ModuleRoutePage(props: ModuleRoute): Promise<ReactNode> {
-  const found = lookup(props);
+  const match = lookup(props);
 
-  if (found === undefined) notFound();
+  if (match === undefined) notFound();
 
-  const { permission, Page } = found;
+  const opened = await openModulePage(
+    {
+      tenant: requireContext().tenant,
+      caller: await documentPrincipal(),
+      requestId: (await headers()).get("x-request-id") ?? newRequestId(),
+    },
+    match
+  );
 
-  return renderIfPermitted(permission, () => <Page />);
+  if (opened.kind === "refused") {
+    return <NoAccessMain testId="permission-denied" />;
+  }
+
+  if (opened.kind === "missing") notFound();
+
+  return opened.element;
 }

@@ -136,7 +136,7 @@ function viewerAppWith(
     } as AppContext["tenant"],
     startedAt: 0,
     contextId: "ctx-proxy-test",
-    moduleRoutes: new Map(),
+    moduleRouteOwner: () => undefined,
     // The gate is satisfied, so these viewer cases exercise the provider path rather than the
     // not-set-up page; the gate's own behaviour is covered by the integration suite.
     setupGate: { isSatisfied: async () => true },
@@ -262,7 +262,7 @@ function gatedApp(): AppContext {
     tenant: {} as AppContext["tenant"],
     startedAt: 0,
     contextId: "ctx-gate-dev-hmr",
-    moduleRoutes: new Map(),
+    moduleRouteOwner: () => undefined,
     setupGate: { isSatisfied: async () => false },
     viewerProviders: new Map(),
     reportProviderFailure: vi.fn(),

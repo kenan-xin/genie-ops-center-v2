@@ -1,4 +1,4 @@
-import { implementModule, type Module } from "@genie/core";
+import { definePage, implementModule, type Module } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { createElement } from "react";
 
@@ -49,15 +49,19 @@ const landingFixtureModule = {
   navigation: { pinned: [], entries: [home] },
 
   pages: {
-    workspace: {
-      home: () =>
-        createElement(
-          "main",
-          null,
-          createElement(PageHeader, { title: "Landing fixture" })
-        ),
-    },
-    admin: {},
+    workspace: [
+      definePage({
+        path: home.path,
+        permission: home.requiredPermission,
+        component: () =>
+          createElement(
+            "main",
+            null,
+            createElement(PageHeader, { title: "Landing fixture" })
+          ),
+      }),
+    ],
+    admin: [],
   },
 
   events: [],

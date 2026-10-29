@@ -1,5 +1,5 @@
 import { validModule } from "./__fixtures__/valid-module.ts";
-import type { Module } from "./module.ts";
+import { definePage, type Module, type ModulePageProps } from "./module.ts";
 
 /**
  * Type assertions. Vitest does not run this file: the unit preset does not enable typecheck and
@@ -133,12 +133,29 @@ export const staticEntryWithCategory: Module = {
   },
 };
 
-// 8. Pages: React components, keyed by name, on both surfaces.
+// 8. Pages: route declarations built with `definePage`, on both surfaces.
 export const pageIsAString: Module = {
   ...validModule,
-  // @ts-expect-error a page is a component type
-  pages: { workspace: { home: "HomePage" }, admin: {} },
+  // @ts-expect-error a page is a declaration, not a component name
+  pages: { workspace: ["HomePage"], admin: [] },
 };
+
+definePage({
+  path: "/fixture/:id",
+  permission: "fixture:use",
+  // @ts-expect-error the component reads data the loader does not answer
+  load: async () => ({ count: 1 }),
+  component: (props: ModulePageProps<{ readonly name: string }>) =>
+    props.data.name,
+});
+
+definePage({
+  path: "/fixture",
+  permission: "fixture:use",
+  // @ts-expect-error a component that needs data has no loader
+  component: (props: ModulePageProps<{ readonly name: string }>) =>
+    props.data.name,
+});
 
 // 9. Category assignment: optional, and complete when present. An optional
 // point is omitted rather than set to undefined, because the core tsconfig

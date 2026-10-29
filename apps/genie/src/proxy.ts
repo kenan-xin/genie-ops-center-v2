@@ -3,7 +3,7 @@
 // `drizzle-orm/node-postgres`, so importing it would put the database driver in
 // this bundle. The build-safe `@genie/core/security` and `@genie/core/errors`
 // subpaths import nothing at all. Everything else the proxy needs, the module
-// route map, the provider map and the failure reporter, comes from the context
+// route owner, the provider map and the failure reporter, comes from the context
 // slot, which the bootstrap filled.
 import { type Dirent, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +17,6 @@ import {
 import { type NextRequest, NextResponse } from "next/server.js";
 
 import { readContext } from "./context.ts";
-import { moduleRouteOwner } from "./module-paths.ts";
 import { PATHNAME_HEADER } from "./pathname-header.ts";
 import { newRequestId } from "./request-id.ts";
 import { SETUP_REQUIRED_HEADER } from "./setup-required-header.ts";
@@ -342,14 +341,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // R-8: a declared route or a viewer document whose module is switched off
+  // R-8: a declared page or a viewer document whose module is switched off
   // refuses before its page renders and before any frame-origin provider runs.
   // The entitlement reader answers disabled for a compiled module with no row,
   // so this also covers a module that has not been through the seed step; an
-  // excluded module's path was never declared and falls through to the
+  // excluded module's page was never declared and falls through to the
   // framework's own not-found, which keeps the two cases distinguishable.
   const owner =
-    moduleRouteOwner(pathname, app.moduleRoutes) ??
+    app.moduleRouteOwner(pathname) ??
     viewerRouteFor(pathname, new Set(app.viewerProviders.keys()))?.moduleId;
 
   if (

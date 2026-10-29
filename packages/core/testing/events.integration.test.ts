@@ -200,7 +200,7 @@ const eventModule = {
   recordTypes: [],
   defaultRoles: [],
   navigation: { pinned: [], entries: [] },
-  pages: { workspace: {}, admin: {} },
+  pages: { workspace: [], admin: [] },
   events: [deliveryContract, serializedContract, poisonContract],
   capabilities: [],
   jobs: [],

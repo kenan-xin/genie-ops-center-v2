@@ -39,7 +39,7 @@ export const killCaseModule = {
   recordTypes: [],
   defaultRoles: [],
   navigation: { pinned: [], entries: [] },
-  pages: { workspace: {}, admin: {} },
+  pages: { workspace: [], admin: [] },
   events: [killCaseContract],
   capabilities: [],
   jobs: [],

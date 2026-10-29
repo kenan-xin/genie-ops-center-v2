@@ -117,7 +117,7 @@ const correlationModule = {
   recordTypes: [],
   defaultRoles: [],
   navigation: { pinned: [], entries: [] },
-  pages: { workspace: {}, admin: {} },
+  pages: { workspace: [], admin: [] },
   events: [
     firstContract,
     secondContract,

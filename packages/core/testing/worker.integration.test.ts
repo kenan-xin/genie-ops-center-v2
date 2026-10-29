@@ -60,7 +60,7 @@ function moduleWithJob(
     recordTypes: [],
     defaultRoles: [],
     navigation: { pinned: [], entries: [] },
-    pages: { workspace: {}, admin: {} },
+    pages: { workspace: [], admin: [] },
     events: [],
     capabilities: [],
     jobs: [job],

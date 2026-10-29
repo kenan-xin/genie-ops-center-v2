@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { implementModule } from "../../rpc/implement-module.ts";
 import { oc } from "../../rpc/index.ts";
-import type { Module } from "../module.ts";
+import { definePage, type Module } from "../module.ts";
 
 const fixtureRecord = pgTable("fixture_record", {
   id: uuid("id").primaryKey(),
@@ -127,7 +127,27 @@ export const validModule = {
     ],
   },
 
-  pages: { workspace: { home: WorkspacePage }, admin: { settings: AdminPage } },
+  pages: {
+    workspace: [
+      definePage({
+        path: "/fixture",
+        permission: "fixture:use",
+        component: WorkspacePage,
+      }),
+      definePage({
+        path: "/fixture/archive",
+        permission: "fixture:use",
+        component: WorkspacePage,
+      }),
+    ],
+    admin: [
+      definePage({
+        path: "/admin/fixture",
+        permission: "fixture:admin",
+        component: AdminPage,
+      }),
+    ],
+  },
 
   categoryAssignment: {
     listAssignable: async () => [],

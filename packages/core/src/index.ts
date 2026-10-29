@@ -347,15 +347,32 @@ export type {
   ModuleConfiguration,
   ModuleIdentity,
   ModuleNavigation,
+  ModulePage,
+  ModulePageProps,
+  ModulePageRoute,
   ModulePages,
   ModuleRequestContext,
   ModuleSchema,
   NavigationEntry,
+  PageParams,
   PermissionChange,
   PermissionDeclaration,
   PermissionTransformation,
   Subscription,
 } from "./lib/module-contract/module.ts";
+
+export { definePage } from "./lib/module-contract/module.ts";
+
+export {
+  matchModulePage,
+  type ModulePageAccess,
+  type ModulePageMatch,
+  modulePageAccess,
+  moduleRouteOwner,
+  type OpenedModulePage,
+  openModulePage,
+  type PageModule,
+} from "./services/module-pages/index.ts";
 
 export { moduleLedgerTable } from "./lib/module-contract/ledger.ts";
 

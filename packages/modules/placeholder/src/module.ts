@@ -1,8 +1,9 @@
-import type {
-  JobDeclaration,
-  Module,
-  Subscription,
-  TenantContext,
+import {
+  definePage,
+  type JobDeclaration,
+  type Module,
+  type Subscription,
+  type TenantContext,
 } from "@genie/core";
 import { defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
@@ -185,15 +186,32 @@ export const placeholderModule = {
     entries: [home, archive, retired, settings],
   },
 
+  // One page per navigation entry, at its path and under its key.
   pages: {
-    // Each further entry's page key is the last segment of its path, which `/placeholder/[entry]`
-    // looks up.
-    workspace: {
-      home: PlaceholderWorkspacePage,
-      archive: placeholderEntryPage(archive.label),
-      retired: placeholderEntryPage(retired.label),
-    },
-    admin: { settings: PlaceholderAdminPage },
+    workspace: [
+      definePage({
+        path: home.path,
+        permission: home.requiredPermission,
+        component: PlaceholderWorkspacePage,
+      }),
+      definePage({
+        path: archive.path,
+        permission: archive.requiredPermission,
+        component: placeholderEntryPage(archive.label),
+      }),
+      definePage({
+        path: retired.path,
+        permission: retired.requiredPermission,
+        component: placeholderEntryPage(retired.label),
+      }),
+    ],
+    admin: [
+      definePage({
+        path: settings.path,
+        permission: settings.requiredPermission,
+        component: PlaceholderAdminPage,
+      }),
+    ],
   },
 
   configuration: {

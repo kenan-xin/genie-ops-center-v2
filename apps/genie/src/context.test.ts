@@ -23,7 +23,7 @@ const fakeContext: AppContext = {
   tenant: {} as AppContext["tenant"],
   startedAt: 0,
   contextId: "ctx-test",
-  moduleRoutes: new Map(),
+  moduleRouteOwner: () => undefined,
   setupGate: { isSatisfied: async () => true },
   viewerProviders: new Map(),
   reportProviderFailure: () => {},

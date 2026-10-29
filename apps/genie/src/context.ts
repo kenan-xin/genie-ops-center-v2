@@ -29,11 +29,11 @@ export type AppContext = {
   /** Identifies this context in every log line, so acceptance can count contexts. */
   readonly contextId: string;
   /**
-   * The module that owns each declared navigation path, so the proxy can refuse a disabled
-   * module's route before a page renders (R-8). It is a flat map rather than the registry,
+   * The module whose declared page matches a raw request path, so the proxy can refuse a disabled
+   * module's route before a page renders (R-8). A function on the slot rather than the registry,
    * because the proxy bundle must not reach the module declarations and the database driver.
    */
-  readonly moduleRoutes: ReadonlyMap<string, string>;
+  readonly moduleRouteOwner: (pathname: string) => string | undefined;
   /** The process-global setup gate of D-2, read by the proxy on every request. */
   readonly setupGate: SetupGate;
   /**

@@ -6,10 +6,9 @@ import type { ReactNode } from "react";
 import { documentPrincipal } from "./document-session.ts";
 
 /**
- * The page loader of R-27. One principal per request, read lazily once, and the single
- * authorization seam of DEC-39. A workspace entry requires `<id>:use` and an admin page
- * `<id>:admin`; a person without the key gets the denied response, and the route stays mounted
- * (R-35). The principal comes from `requireSession()` through `documentPrincipal()`, so an idle,
+ * The page loader of R-27 for core's own pages. One principal per request, read lazily once, and
+ * the single authorization seam of DEC-39. A person without the key gets the denied response, and
+ * the route stays mounted (R-35). Module pages go through core's `openModulePage` instead. The principal comes from `requireSession()` through `documentPrincipal()`, so an idle,
  * anonymous or limited session is redirected before `can()` runs (ARCH-1).
  *
  * The caller is handed to `render`, so a page that needs the signed-in person's own values (the

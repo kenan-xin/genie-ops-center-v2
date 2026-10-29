@@ -1,7 +1,7 @@
 import type { Subquery } from "drizzle-orm";
 import type { MigrationMeta } from "drizzle-orm/migrator";
 import type { PgTable } from "drizzle-orm/pg-core";
-import type { ComponentType } from "react";
+import { type ComponentType, createElement, type ReactElement } from "react";
 import type { ZodObject, ZodType } from "zod";
 
 import type {
@@ -11,7 +11,11 @@ import type {
 } from "../../../contracts/index.ts";
 import type { RequestPrincipal } from "../../services/authorization/index.ts";
 import type { FrameOriginProvider } from "../content-security-policy/index.ts";
-import type { ModuleContract, ModuleRouter } from "../rpc/implement-module.ts";
+import type {
+  ModuleContract,
+  ModuleRouter,
+  ModuleRPCContext,
+} from "../rpc/implement-module.ts";
 import type { TenantContext } from "../tenant-context/index.ts";
 import type { PermissionKey, Scope } from "./keys.ts";
 
@@ -97,11 +101,72 @@ export type ModuleNavigation = {
   readonly entries: readonly NavigationEntry[];
 };
 
-/** 8. Pages. */
-export type ModulePages = {
-  readonly workspace: Readonly<Record<string, ComponentType>>;
-  readonly admin: Readonly<Record<string, ComponentType>>;
+export type PageParams = Readonly<Record<string, string>>;
+
+/** What a page component receives: its route parameters and what its loader answered. */
+export type ModulePageProps<TData = undefined> = {
+  readonly params: PageParams;
+  readonly data: TData;
 };
+
+export type ModulePageRoute = {
+  /** Absolute, in the module's own paths; a `:name` segment is a route parameter. */
+  readonly path: string;
+  /** One of the module's own keys. `can()` checks it before anything loads (R-1). */
+  readonly permission: PermissionKey;
+  /** The record a parameter names: the check runs on it, and the trail shows its label. */
+  readonly record?: { readonly type: string; readonly param: string };
+};
+
+/** 8. Pages, as `pages` stores them. Core calls `render` only after the check passes. */
+export type ModulePage = ModulePageRoute & {
+  readonly render: (
+    ctx: ModuleRPCContext,
+    params: PageParams
+  ) => Promise<ReactElement>;
+};
+
+export type ModulePages = {
+  readonly workspace: readonly ModulePage[];
+  readonly admin: readonly ModulePage[];
+};
+
+/** A page that loads nothing. */
+export function definePage(
+  page: ModulePageRoute & {
+    readonly component: ComponentType<ModulePageProps>;
+  }
+): ModulePage;
+/** A page whose server loader feeds its component. */
+export function definePage<TData>(
+  page: ModulePageRoute & {
+    readonly load: (
+      ctx: ModuleRPCContext,
+      params: PageParams
+    ) => Promise<TData>;
+    readonly component: ComponentType<ModulePageProps<TData>>;
+  }
+): ModulePage;
+export function definePage<TData>(
+  page: ModulePageRoute & {
+    readonly load?: (
+      ctx: ModuleRPCContext,
+      params: PageParams
+    ) => Promise<TData>;
+    readonly component: ComponentType<ModulePageProps<TData | undefined>>;
+  }
+): ModulePage {
+  const { load, component, ...route } = page;
+
+  return {
+    ...route,
+    render: async (ctx, params) =>
+      createElement(component, {
+        params,
+        data: load === undefined ? undefined : await load(ctx, params),
+      }),
+  };
+}
 
 /**
  * What every module procedure reads: the one tenant context and the request's own principal.

@@ -12,6 +12,7 @@ import {
   forExecution,
   migrationPlan,
   moduleHistory,
+  moduleRouteOwner,
   readSetupProgress,
   registerModuleRuntime,
   runMigrations,
@@ -21,7 +22,7 @@ import {
 import type { FrameOriginProvider } from "@genie/core/security";
 
 import { type AppContext, publishContext } from "./context.ts";
-import { compiledModuleIds, modules, moduleRoutes } from "./registry.ts";
+import { compiledModuleIds, modules } from "./registry.ts";
 
 /**
  * Wraps every module's optional viewer provider so each call is recorded.
@@ -195,7 +196,7 @@ function buildContext(
     tenant,
     startedAt: Date.now(),
     contextId,
-    moduleRoutes,
+    moduleRouteOwner: (pathname) => moduleRouteOwner(modules, pathname),
     setupGate: buildSetupGate(tenant),
     viewerProviders: buildViewerProviders(logger),
     reportProviderFailure: (cause, meta) =>

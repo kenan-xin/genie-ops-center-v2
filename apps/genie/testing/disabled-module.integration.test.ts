@@ -51,14 +51,18 @@ describe("compiled disabled module refusal", () => {
     expect(transportBody.json.data.requestId).toBe(transportRequestId);
 
     const routeAnswers = await Promise.all(
-      ["/placeholder", "/admin/placeholder", "/viewer/placeholder"].map(
-        async (path) => {
-          const response = await fetch(`${server.baseUrl}${path}`);
-          const text = await response.text();
+      [
+        "/placeholder",
+        // Next decodes each segment before the route sees it, so the proxy must too.
+        "/placeholder/%61rchive",
+        "/admin/placeholder",
+        "/viewer/placeholder",
+      ].map(async (path) => {
+        const response = await fetch(`${server.baseUrl}${path}`);
+        const text = await response.text();
 
-          return { path, response, text };
-        }
-      )
+        return { path, response, text };
+      })
     );
 
     for (const { path, response, text } of routeAnswers) {
