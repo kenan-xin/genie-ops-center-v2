@@ -95,12 +95,22 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   // A refused add keeps its dialog, the typed value and the reason, readable in dark (U-1,
   // 6wz1.71). The branding theme is `system` only while no branding proof changes it, so this
-  // part holds the `branding` lock that those proofs take.
+  // part holds the `branding` lock that those proofs take, and reloads until the reader window
+  // (DEC-46) serves the seeded `system` theme, as `people.spec.ts` does.
   await withDeploymentLock(
     "branding",
     async () => {
       await page.emulateMedia({ colorScheme: "dark" });
-      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+      await expect
+        .poll(
+          async () => {
+            await page.reload();
+
+            return page.locator("html").getAttribute("data-theme");
+          },
+          { timeout: 30_000, intervals: [1000] }
+        )
+        .toBe("dark");
       await openAddDirectoryGroup(page);
       await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
       await addDialog.getByRole("button", { name: "Add group" }).click();
