@@ -1,0 +1,171 @@
+import {
+  callProcedure,
+  principalFor,
+  seedRoles,
+  type ModuleRequestContext,
+} from "@genie/core";
+import {
+  assignRole,
+  enableModules,
+  insertPersonWith,
+  insertUser,
+  startDisposableDeployment,
+} from "@genie/core/testing";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { invoicesModule } from "../src/module.ts";
+import { invoicesRouter } from "../src/router.ts";
+import {
+  insertAllocation,
+  insertCustomer,
+  insertInvoice,
+  insertPayment,
+} from "./factories.ts";
+
+/* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
+
+/**
+ * Who may write, through the seeded roles and real grants (R-39, decision 13). Every principal is
+ * built by the real loader with the module's record types, so a scoped grant reaches an invoice
+ * or a payment only through the parent customer its resolver answers.
+ */
+let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
+
+let viewerUserId: string;
+
+let financeUserId: string;
+
+const t = () => deployment.context;
+
+async function personWithSeededRole(name: string): Promise<string> {
+  const { rows } = await t().db.$client.query<{ id: string }>(
+    "select id from role where name = $1",
+    [name]
+  );
+  const roleId = rows[0]?.id;
+
+  if (roleId === undefined) throw new Error(`no seeded role ${name}`);
+
+  const userId = await insertUser(t());
+
+  await assignRole(t(), { roleId, principal: { type: "user", id: userId } });
+
+  return userId;
+}
+
+beforeAll(async () => {
+  deployment = await startDisposableDeployment([invoicesModule]);
+  await enableModules(deployment.context, ["invoices"]);
+  await seedRoles(deployment.context, [invoicesModule]);
+  viewerUserId = await personWithSeededRole("Viewer");
+  financeUserId = await personWithSeededRole("Finance");
+}, 120000);
+
+afterAll(async () => {
+  // A failed start leaves this unset, and calling through it would replace the real error.
+  await deployment?.stop();
+});
+
+const as = (userId: string) =>
+  callProcedure(invoicesRouter, {
+    tenant: t(),
+    caller: principalFor({
+      tenant: t(),
+      modules: [invoicesModule],
+      userId,
+      authenticated: true,
+    }),
+  } satisfies ModuleRequestContext);
+
+type Caller = ReturnType<typeof as>;
+
+async function aPair(customerId?: string) {
+  const id = customerId ?? (await insertCustomer(t())).id;
+
+  return {
+    invoiceId: (await insertInvoice(t(), { customerId: id })).id,
+    paymentId: (await insertPayment(t(), { customerId: id })).id,
+  };
+}
+
+async function aLink(): Promise<string> {
+  return (
+    await insertAllocation(t(), { ...(await aPair()), amountCents: 1000 })
+  ).id;
+}
+
+/** Everything a write of this module changes, read with SQL. */
+async function ledgerState() {
+  const { rows } = await t().db.$client.query(
+    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits"
+  );
+
+  return rows[0];
+}
+
+/** Each write procedure, with a fresh record to write. Later tasks add their writes here. */
+const WRITES: readonly {
+  readonly name: string;
+  readonly call: () => Promise<(caller: Caller) => Promise<object>>;
+}[] = [
+  {
+    name: "linkPayment",
+    call: async () => {
+      const pair = await aPair();
+
+      return (caller) => caller.linkPayment({ ...pair, amountCents: 1000 });
+    },
+  },
+  {
+    name: "changeAllocation",
+    call: async () => {
+      const id = await aLink();
+
+      return (caller) => caller.changeAllocation({ id, amountCents: 2000 });
+    },
+  },
+  {
+    name: "unlinkAllocation",
+    call: async () => {
+      const id = await aLink();
+
+      return (caller) => caller.unlinkAllocation({ id });
+    },
+  },
+];
+
+describe("invoices write access", () => {
+  it.each(WRITES)(
+    "the seeded Viewer is refused $name and changes nothing, and Finance is allowed",
+    async ({ call }) => {
+      const write = await call();
+      const before = await ledgerState();
+
+      await expect(write(as(viewerUserId))).rejects.toMatchObject({
+        code: "forbidden",
+      });
+      expect(await ledgerState()).toEqual(before);
+
+      await expect(write(as(financeUserId))).resolves.toBeDefined();
+    }
+  );
+
+  it("a writer scoped to one customer links its records and is refused on another customer's", async () => {
+    const a = await insertCustomer(t());
+    const b = await insertCustomer(t());
+    const { userId } = await insertPersonWith(t(), ["invoices:write"], {
+      type: "invoices-customer",
+      id: a.id,
+    });
+
+    await expect(
+      as(userId).linkPayment({ ...(await aPair(a.id)), amountCents: 100 })
+    ).resolves.toMatchObject({ allocationId: expect.any(String) });
+
+    const pairOfB = await aPair(b.id);
+
+    await expect(
+      as(userId).linkPayment({ ...pairOfB, amountCents: 100 })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
