@@ -2,6 +2,14 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-10-30
+
+### Changed, the batch 5 spec lines in the workspace
+
+- The design workspace now holds the lines that batch 5 wrote only into the repository copies: the empty role line (L303), the settings save-failure rule, and older repository lines of the same files. The next import keeps them.
+- The Branding preview is "the sign-in page", not "the sign-in card", because the sign-in screen has no card (direction D2).
+- Files: `product/sections/{people-groups-and-roles,audit-and-tenant-settings,branding}/spec.md`. Record: `imports/2026-10-30-batch-5-spec-sync.md`.
+
 ## 2026-10-29
 
 ### Changed, the fill button hover
