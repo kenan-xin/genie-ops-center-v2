@@ -44,8 +44,21 @@ type Send = (
   options?: SendOptions
 ) => Promise<string | null>;
 
-/** The context's send that keeps the starter key, held off the public type. */
-const starterSends = new WeakMap<JobQueue, Send>();
+/**
+ * The context's send that keeps the starter key, held off the public type. The framework compiles
+ * core into several bundles, each with its own module instance, and the bootstrap's bundle builds
+ * the queue that a procedure's bundle sends on, so the map sits on the process global, as in
+ * `with-transaction.ts`.
+ */
+const STARTER_SENDS = Symbol.for("genie.job-queue.starter-sends");
+
+// SAFETY: this module creates the map once and only ever stores this map type under the symbol.
+// A global slot is reachable by any code in the process, so a caller that names the symbol could
+// send with a starter; the seam accepts that, because `enqueue` still strips the starter key from
+// browser data. Bead `xok3.34` (stop duplicating @genie/core across server bundles) removes the slot.
+const starterSends = ((
+  globalThis as Record<symbol, WeakMap<JobQueue, Send> | undefined>
+)[STARTER_SENDS] ??= new WeakMap<JobQueue, Send>());
 
 /**
  * Sends a job whose data may carry `JOB_STARTER_KEY`. Only `enqueueJob` calls it; the core root
