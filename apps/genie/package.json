@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@genie/core": "workspace:*",
+    "@genie/module-invoices": "workspace:*",
     "@genie/module-placeholder": "workspace:*",
     "@genie/ui": "workspace:*",
     "@orpc/client": "catalog:",

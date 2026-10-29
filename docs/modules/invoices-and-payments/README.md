@@ -14,11 +14,27 @@ A person uploads documents to the Documents inbox. A model reads each one and cl
 
 ## Permissions and roles
 
-`invoices:read` and `invoices:write`. Default roles: Finance (both) and Viewer (read).
+Three keys: `invoices:read` reads invoices, payments and customers, `invoices:write` saves invoices and payments and changes their links, and `invoices:use` opens the Invoices and Payments workspace (`DEC-50`). Three default roles: Finance (use, read and write), Viewer (use and read), and Invoices and Payments user (use). The roles carry `invoices:use` now because a seeded role is never rewritten. S7-07 adds the workspace entries and pages.
 
 ## Tables
 
-`customer`, `document`, `invoice`, `payment`, `allocation`, `field_origin`, `allocation_event`. Amounts are integer cents with a currency code.
+Amounts are integer cents beside a three-letter upper-case currency code. A balance is the invoice total minus its allocations and is never stored.
+
+- `customer`: a name and an optional email. Two names that differ only in case and outer spaces are refused.
+- `document`: one uploaded file, by the core file id, with its SHA-256 hash and its kind (invoice, payment, paid receipt or purchase order). A unique hash stores an exact copy once.
+- `invoice`: a customer, an optional document, the number, the invoice date, an optional due date with its source (document, person or unspecified; unspecified has no date), the payment terms, the currency, a positive total and a description.
+- `payment`: a customer, an optional document, the payment date, the currency, a positive amount, the reference, the method and the invoice numbers it names.
+- `allocation`: a positive amount of one payment linked to one invoice, at most once per pair, marked when the link was automatic.
+- `allocation_event`: an append-only history of each link, change and unlink, with the amounts before and after and the person who made it.
+- `field_origin`: for one field of a document, whether it was extracted, entered or corrected. An extracted field always holds its quote and page.
+
+## Record types
+
+- `invoices-customer`: a customer, labelled by name, with no parent and no path.
+- `invoices-invoice`: an invoice, labelled by number, under its customer, at `/m/invoices/invoices/<id>`.
+- `invoices-payment`: a payment, labelled by reference or date, under its customer, at `/m/invoices/payments/<id>`.
+
+A grant on a customer covers its invoices and payments.
 
 ## Datasets
 
