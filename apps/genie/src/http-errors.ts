@@ -36,6 +36,7 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["dataset-query-invalid", 400],
   ["dataset-mixed-currency", 400],
   ["dataset-timeout", 503],
+  ["chart-invalid", 400],
   ["ai-off", 409],
   ["model-not-allowed", 400],
 ]);

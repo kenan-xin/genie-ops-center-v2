@@ -59,6 +59,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/chart-gate.integration.test.ts",
+    reason:
+      "Spec 7 AC-4: the chart gate's query and column checks on the placeholder",
+    cases: [
+      "the chart gate on placeholder.records passes a bar chart of one series and answers its rows, dataset and read time",
+      "the chart gate on placeholder.records joins two series on the month and leaves a missing month empty, never 0",
+      "the chart gate on placeholder.records points a query the dataset refuses at its own series",
+      "the chart gate on placeholder.records refuses a dataset the caller cannot read like one that does not exist",
+      "the chart gate on placeholder.records refuses money that one axis cannot show in one currency",
+      "the chart gate on placeholder.records passes an empty result: a money KPI over no rows answers one empty value",
+      "the chart gate on placeholder.records shows each table amount in the currency of its row",
+    ],
+  },
+  {
     file: "testing/events.integration.test.ts",
     reason:
       "R-53 to R-58 require the placeholder's fast, durable, and serialized subscriptions to run end to end against a real database",

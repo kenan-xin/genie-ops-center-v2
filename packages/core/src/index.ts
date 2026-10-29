@@ -536,6 +536,8 @@ export {
   type TableSeries,
 } from "./services/charts/panel-config.ts";
 
+export { type CheckedChart, checkChart } from "./services/charts/index.ts";
+
 export {
   type FetchedFile,
   FILE_DOWNLOAD_PATH,

@@ -66,6 +66,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "That total mixes currencies. Group by the currency, or filter one currency.",
   "dataset-timeout":
     "The query took longer than 5 seconds and was stopped. Narrow it and run it again.",
+  "chart-invalid":
+    "The chart does not fit its data. Fix the marked parts and try again.",
   "ai-off":
     "AI is off for this deployment. An administrator can turn it on in Tenant settings.",
   "model-not-allowed":
