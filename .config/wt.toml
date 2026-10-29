@@ -6,6 +6,8 @@
 # instead of falling back to copying every gitignored file (~900 MB today).
 [pre-start]
 copy = "wt step copy-ignored --require-include"
+# The .githooks dispatcher needs node_modules/.bin/lefthook, so a new worktree cannot commit before an install.
+install = "pnpm install --frozen-lockfile --prefer-offline"
 
 [step.copy-ignored]
 # bd resolves linked worktrees to the main repo's .beads workspace on its own;
