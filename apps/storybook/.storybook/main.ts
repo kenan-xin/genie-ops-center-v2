@@ -48,6 +48,10 @@ const config: StorybookConfig = {
   // compiles the product stylesheet with Tailwind's own Vite plugin.
   viteFinal: (viteConfig) =>
     mergeConfig(viteConfig, {
+      // The module client's packages. One selection's run fills the optimizer
+      // cache, and a later selection that first imports them would reload
+      // the browser mid-run and fail its stories.
+      optimizeDeps: { include: ["@orpc/contract", "@tanstack/react-query"] },
       plugins: [
         moduleTailwindSources({
           stylesheet: join(here, "preview.css"),
