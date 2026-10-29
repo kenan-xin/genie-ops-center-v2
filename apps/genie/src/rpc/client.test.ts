@@ -64,9 +64,9 @@ describe("refusalOf", () => {
     ],
     [
       "a refusal the status table misses",
-      refusedWith("last-administrator", 500, "No administrator would stay."),
+      refusedWith("invoices:locked", 500, "The invoice is locked."),
       "refused",
-      "No administrator would stay.",
+      "The invoice is locked.",
     ],
     [
       "a change made elsewhere",

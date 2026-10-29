@@ -121,7 +121,7 @@ export function refusalOf(cause: unknown): Refusal {
   const { appCode, retryAfterMinutes, issues } = data.data;
   const status = kindOfStatus(cause.status);
 
-  // Some catalogue refusals (`last-administrator`) are missing from the status table and answer 500.
+  // A module's refusal is missing from the status table and answers 500; a 502 reads as network.
   const kind =
     appCode === "internal-error"
       ? "unknown"

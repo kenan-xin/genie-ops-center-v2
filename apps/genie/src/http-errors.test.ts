@@ -1,7 +1,23 @@
-import { AppError, CORE_ERRORS } from "@genie/core";
+import { AppError, CORE_ERROR_MESSAGES, CORE_ERRORS } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
-import { errorResponse } from "./http-errors.ts";
+import { errorResponse, httpStatusForCode } from "./http-errors.ts";
+
+/** The codes that mean a server fault: the generic entry and the start-up failures. */
+const SERVER_FAULTS = new Set([
+  "internal-error",
+  "environment-invalid",
+  "migration-lock-timeout",
+  "migration-failed",
+]);
+
+describe("httpStatusForCode", () => {
+  it.each(
+    Object.keys(CORE_ERROR_MESSAGES).filter((code) => !SERVER_FAULTS.has(code))
+  )("gives the catalogue code %s its own status", (code) => {
+    expect(httpStatusForCode(code)).not.toBe(500);
+  });
+});
 
 describe("errorResponse", () => {
   it("returns the catalogue code, safe message and request id", async () => {
