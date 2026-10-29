@@ -32,6 +32,15 @@ export async function expectNoAxeViolations(
     )
   );
 
+  // Next streams the <title> after the page content (xok3.31), so axe waits for it. A page with no
+  // title at all still reaches axe, which reports `document-title`.
+  await page
+    .waitForFunction(() => document.title !== "", undefined, {
+      polling: 100,
+      timeout: 10_000,
+    })
+    .catch(() => undefined);
+
   const results = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
 
   expect(
