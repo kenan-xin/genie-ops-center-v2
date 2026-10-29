@@ -3,5 +3,7 @@
   "company_name": "Genie",
   "product_name": "Genie Ops Center",
   "default_locale": "en",
-  "default_time_zone": "Asia/Singapore"
+  "default_time_zone": "Asia/Singapore",
+  "email_sender_name": "Genie",
+  "email_reply_to": "geniestudio001@gmail.com"
 }
