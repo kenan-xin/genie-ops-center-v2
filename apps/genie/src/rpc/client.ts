@@ -20,8 +20,9 @@ import {
 } from "../unauthenticated.ts";
 
 /**
- * The contracts the browser calls: core's eight administration areas, and each module's contract
- * under its module id, the key `useModuleClient` reads from this client.
+ * The contracts the browser calls: core's eight administration areas. A module's browser code
+ * reaches its own router at runtime through `useModuleClient`, which reads its entry from this
+ * client's Proxy by module id; the type does not enumerate module contracts.
  */
 type BrowserContract = {
   readonly audit: AuditContract;

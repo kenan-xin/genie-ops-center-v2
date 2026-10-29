@@ -26,7 +26,10 @@ const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
  */
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
-/** Ids a module may not take: core itself, and the core areas (eight) beside the modules in the RPC router. */
+/**
+ * Ids a module may not take: core itself, the core areas (eight) and the modules in the RPC
+ * router, and the top-level paths core serves itself.
+ */
 const RESERVED_IDS: ReadonlySet<string> = new Set([
   "core",
   "audit",
@@ -37,8 +40,10 @@ const RESERVED_IDS: ReadonlySet<string> = new Set([
   "categories",
   "settings",
   "branding",
-  // A `/<id>` page path must not claim a path that core or the module contract names, or a
-  // disabled module's page would take that path in the proxy (Spec 1 R-8).
+  // A `/<id>` or `/admin/<id>` page path must not claim a path that core or the module
+  // contract names, or a disabled module's page would take that path in the proxy
+  // (Spec 1 R-8). The last three are core's own pages: the break-glass door
+  // (`/admin/login`), `/setup-required` and `/module-disabled`.
   "m",
   "admin",
   "api",
@@ -46,6 +51,9 @@ const RESERVED_IDS: ReadonlySet<string> = new Set([
   "account",
   "auth",
   "sign-in",
+  "login",
+  "setup-required",
+  "module-disabled",
 ]);
 
 const PAGE_LITERAL = /^[a-z0-9]+(-[a-z0-9]+)*$/;

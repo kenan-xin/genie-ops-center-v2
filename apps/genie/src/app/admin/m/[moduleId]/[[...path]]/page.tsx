@@ -23,7 +23,10 @@ export async function generateMetadata(props: Props) {
   return moduleRouteMetadata(await routeOf(props));
 }
 
-/** Any compiled module's admin pages under `/admin/m/<id>`, behind its own `<id>:admin` key. */
+/**
+ * Any compiled module's admin pages under `/admin/m/<id>`, behind the permission each page
+ * declares.
+ */
 export default async function ModuleAdminPage(props: Props) {
   return <ModuleRoutePage {...await routeOf(props)} />;
 }

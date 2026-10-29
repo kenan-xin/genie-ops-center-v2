@@ -8,8 +8,9 @@ import { documentPrincipal } from "./document-session.ts";
 /**
  * The page loader of R-27 for core's own pages. One principal per request, read lazily once, and
  * the single authorization seam of DEC-39. A person without the key gets the denied response, and
- * the route stays mounted (R-35). Module pages go through core's `openModulePage` instead. The principal comes from `requireSession()` through `documentPrincipal()`, so an idle,
- * anonymous or limited session is redirected before `can()` runs (ARCH-1).
+ * the route stays mounted (R-35). Module pages go through core's `openModulePage` instead. The
+ * principal comes from `requireSession()` through `documentPrincipal()`, so an idle, anonymous or
+ * limited session is redirected before `can()` runs (ARCH-1).
  *
  * The caller is handed to `render`, so a page that needs the signed-in person's own values (the
  * audit page's viewer, for example) reads the same request principal the check used rather than

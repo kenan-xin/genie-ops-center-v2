@@ -58,6 +58,9 @@ describe("validateModule", () => {
     "account",
     "auth",
     "sign-in",
+    "login",
+    "setup-required",
+    "module-disabled",
   ])("reserves the module id %s", (id) => {
     expect(validateModule(renameModule(validModule, id))).toContain(
       `Module id "${id}" is reserved for core.`
