@@ -67,6 +67,20 @@ describe("validateModule", () => {
     );
   });
 
+  it.each(["user", "group", "role"])(
+    "reserves the record type %s for core",
+    (type) => {
+      const module = {
+        ...validModule,
+        recordTypes: [{ ...validModule.recordTypes[0]!, type }],
+      };
+
+      expect(validateModule(module)).toContain(
+        `Record type "${type}" is reserved for core.`
+      );
+    }
+  );
+
   it("accepts an equivalent rename to a declared key from a retired one", () => {
     const renamed = {
       ...validModule,

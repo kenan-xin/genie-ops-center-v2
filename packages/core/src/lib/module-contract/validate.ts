@@ -1,6 +1,7 @@
 import { z, type ZodType } from "zod";
 
 import { moduleApiProblems } from "../rpc/conformance.ts";
+import { CORE_RECORD_TYPE_NAMES } from "./core-record-type-names.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
 import {
@@ -261,6 +262,18 @@ export function validateModule(module: Module): readonly string[] {
   // core's areas own the other ids as their RPC keys and path prefixes (ADR 0011).
   if (RESERVED_IDS.has(id)) {
     problems.push(`Module id "${id}" is reserved for core.`);
+  }
+
+  // A record type resolves by its name in one registry with core's own, so a module must not
+  // take the name of a core record and shadow the audit link of a person, group or role.
+  const coreRecordTypes: ReadonlySet<string> = new Set(
+    Object.values(CORE_RECORD_TYPE_NAMES)
+  );
+
+  for (const { type } of module.recordTypes) {
+    if (coreRecordTypes.has(type)) {
+      problems.push(`Record type "${type}" is reserved for core.`);
+    }
   }
 
   // The startup omission check finds an installed module by its ledger table, so

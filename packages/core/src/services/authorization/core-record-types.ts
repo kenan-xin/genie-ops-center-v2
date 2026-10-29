@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 
+import { CORE_RECORD_TYPE_NAMES } from "../../lib/module-contract/core-record-type-names.ts";
 import type { RecordTypeDeclaration } from "../../lib/module-contract/module.ts";
 import { group, role, user } from "../../schema.ts";
 
@@ -17,7 +18,7 @@ function selectedPath(screen: string, id: string): string {
  */
 export const CORE_RECORD_TYPES: readonly RecordTypeDeclaration[] = [
   {
-    type: "user",
+    type: CORE_RECORD_TYPE_NAMES.user,
     async resolve({ tenant }, id) {
       const [row] = await tenant.db
         .select({ name: user.name, isBreakGlass: user.isBreakGlass })
@@ -39,7 +40,7 @@ export const CORE_RECORD_TYPES: readonly RecordTypeDeclaration[] = [
     },
   },
   {
-    type: "group",
+    type: CORE_RECORD_TYPE_NAMES.group,
     async resolve({ tenant }, id) {
       const [row] = await tenant.db
         .select({ name: group.name, displayLabel: group.displayLabel })
@@ -56,7 +57,7 @@ export const CORE_RECORD_TYPES: readonly RecordTypeDeclaration[] = [
     },
   },
   {
-    type: "role",
+    type: CORE_RECORD_TYPE_NAMES.role,
     async resolve({ tenant }, id) {
       const [row] = await tenant.db
         .select({ name: role.name })
