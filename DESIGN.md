@@ -207,6 +207,8 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 **Exception: event categories (owner, 2026-10-27).** An event-category chip or marker in a table or list may carry a fixed category color. The category comes from the event prefix, for example sign-in and sessions (`auth:`), people, groups, roles and access, branding and settings, modules, and module events. The category colors are part of the fixed layer and never derive from the tenant color, so the No-Ramp Rule holds. They differ from the status colors (green, amber, red) and from the default `--primary` blue, so a category never reads as a status. The chip keeps its text label, so color is never the only code, and avatars stay neutral gray. Light and dark each get their own checked values: at least 4.5:1 for chip text and 3:1 for a marker against its surface. The values live in `docs/design/design-system/tokens.md`, "Category colors".
 
+**Exception: chart series (2026-10-30, pending the design review `buv3.20`).** A chart may draw its series, or the parts of a donut, in eight fixed series colors. A chart takes them in slot order and never cycles, because the chart gate refuses a ninth series. The series colors are part of the fixed layer and never derive from the tenant color, so the No-Ramp Rule holds. Text never wears a series color. Every chart keeps its legend and its table view, so color is never the only code. The values, and the contrast each one holds, live in `docs/design/design-system/tokens.md`, "Chart series colors".
+
 ## Typography
 
 **Display Font:** Plus Jakarta Sans (system-ui fallback)

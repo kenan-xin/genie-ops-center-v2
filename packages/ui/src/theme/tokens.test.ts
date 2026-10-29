@@ -4,6 +4,7 @@ import {
   approvedFonts,
   categoryColors,
   categoryChipClasses,
+  chartColors,
   colorRoles,
   controlHeightsPx,
   defaultControlHeight,
@@ -202,5 +203,61 @@ describe("the event category tones against tokens.md, Category colors", () => {
     expect(Object.keys(categoryChipClasses).toSorted()).toEqual(
       Object.keys(categoryColors).toSorted()
     );
+  });
+});
+
+describe("the chart series colors against tokens.md, Chart series colors", () => {
+  it("gives every chart series slot its tokens.md value in both themes", () => {
+    expect(chartColors).toEqual({
+      light: [
+        "#2a78d6",
+        "#eb6834",
+        "#1baf7a",
+        "#eda100",
+        "#e87ba4",
+        "#008300",
+        "#6250d6",
+        "#e34948",
+      ],
+      dark: [
+        "#3987e5",
+        "#d95926",
+        "#199e70",
+        "#c98500",
+        "#d55181",
+        "#008300",
+        "#9085e9",
+        "#e66767",
+      ],
+    });
+  });
+
+  it("keeps chart neighbors 15 apart and every slot visible on the card", () => {
+    for (const [theme, card, minimum] of [
+      ["light", "#ffffff", 2],
+      ["dark", "#111827", 3],
+    ] as const) {
+      const slots = chartColors[theme];
+
+      for (const [index, slot] of slots.entries()) {
+        const ratio = contrastRatio(slot, card);
+
+        expect(
+          ratio,
+          `slot ${index + 1} in ${theme} measures ${ratio.toFixed(2)}:1`
+        ).toBeGreaterThanOrEqual(minimum);
+
+        const next = slots[index + 1];
+
+        if (next !== undefined) {
+          const apart = distance(slot, next);
+
+          expect(
+            apart,
+            `slots ${index + 1} and ${index + 2} in ${theme} sit ${apart.toFixed(1)} apart`
+          ).toBeGreaterThanOrEqual(15);
+        }
+      }
+    }
   });
 });

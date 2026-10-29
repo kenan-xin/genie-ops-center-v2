@@ -110,6 +110,23 @@ An event-category chip in a table or a list may carry a fixed color, under the e
 
 Every chip text pair holds at least 4.5:1 against its own fill in both themes. Each text color also sits at least 10 OKLab units from the success, warning and danger colors and from the default primary blue, so no category reads as a status. The values live in the fixed token layer as `--category-<name>-bg` and `--category-<name>-fg`, and a test holds both rules.
 
+## Chart series colors
+
+A chart may draw its series, or the parts of a donut, in fixed series colors, under the exception to the State-vs-Label Rule in `DESIGN.md` (2026-10-30, pending the design review `buv3.20`). A chart takes the slots in order, from slot 1, and never cycles: the chart gate refuses a ninth series or part (Spec 7 R-15). The values are fixed and never derive from the tenant color. Text never wears a series color. Every chart keeps its legend and its table view, so color is never the only code.
+
+| Slot | Hue | Light | Contrast on `#ffffff` | Dark | Contrast on `#111827` |
+| --- | --- | --- | --- | --- | --- |
+| 1 | blue | `#2a78d6` | 4.42 | `#3987e5` | 4.88 |
+| 2 | orange | `#eb6834` | 3.20 | `#d95926` | 4.57 |
+| 3 | aqua | `#1baf7a` | 2.82 | `#199e70` | 5.21 |
+| 4 | yellow | `#eda100` | 2.17 | `#c98500` | 5.78 |
+| 5 | magenta | `#e87ba4` | 2.69 | `#d55181` | 4.50 |
+| 6 | green | `#008300` | 4.95 | `#008300` | 3.59 |
+| 7 | violet | `#6250d6` | 5.77 | `#9085e9` | 5.67 |
+| 8 | red | `#e34948` | 3.95 | `#e66767` | 5.49 |
+
+Neighbor slots sit at least 15 OKLab units apart in both themes (worst 19.6 light, 19.3 dark), also under color-vision deficiency (worst 9.1 and 8.4). Every dark slot holds 3:1 on the dark card. Three light slots sit under 3:1 on white (aqua, yellow, magenta), and the table view is their relief. The values live in the fixed token layer as `--chart-1` to `--chart-8`, and a test holds the neighbor and contrast rules. The earlier reference `--chart-1` to `--chart-5` failed the palette check (yellow-400 beside amber-400 at 3.4 OKLab units), so it is not used.
+
 ## Breadcrumbs
 
 `PageHeader` carries a breadcrumb slot above the page title (owner, 2026-10-27). The trail shows only on a page that sits under a list, for example "Roles › Tenant administrator". A top-level page never shows one. The last crumb is the record label, it is not a link, and it truncates with its full text in `title`. Under 768 px the trail collapses to one back link to the parent, for example "‹ Roles", at least 44 px tall. Core builds the trail from the route parent and the record label, so a module page gets it with no code of its own. The slot uses the shadcn Breadcrumb in the base style, and each link takes the shared focus ring.

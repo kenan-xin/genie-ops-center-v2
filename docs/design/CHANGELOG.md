@@ -4,6 +4,12 @@ One entry per design change in this repository, newest first. Each entry names w
 
 ## 2026-10-30
 
+### Added, the chart series colors
+
+- Eight fixed series colors for charts, `--chart-1` to `--chart-8`, with a light and a dark value each, under a new State-vs-Label exception in `DESIGN.md` (Spec 7 R-16, pending the design review `buv3.20`). A chart takes the slots in order and never cycles.
+- The earlier reference `--chart-1` to `--chart-5` failed the palette check, so it is not used.
+- File: `product/design-system/tokens.md`. Record: `imports/2026-10-30-chart-series-colors.md`.
+
 ### Changed, the batch 5 spec lines in the workspace
 
 - The design workspace now holds the lines that batch 5 wrote only into the repository copies: the empty role line (L303), the settings save-failure rule, and older repository lines of the same files. The next import keeps them.

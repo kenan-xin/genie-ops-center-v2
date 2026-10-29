@@ -103,6 +103,15 @@
     --category-modules-fg: #0369a1;
     --category-module-event-bg: #f1f5f9;
     --category-module-event-fg: #334155;
+    /* Chart series (DESIGN.md exception, tokens.md "Chart series colors"): fixed, never brand. */
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
+    --chart-3: #1baf7a;
+    --chart-4: #eda100;
+    --chart-5: #e87ba4;
+    --chart-6: #008300;
+    --chart-7: #6250d6;
+    --chart-8: #e34948;
   }
 
   [data-theme="dark"] {
@@ -128,6 +137,14 @@
     --category-modules-fg: #7dd3fc;
     --category-module-event-bg: #1e293b;
     --category-module-event-fg: #cbd5e1;
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-7: #9085e9;
+    --chart-8: #e66767;
   }
 
   :root {

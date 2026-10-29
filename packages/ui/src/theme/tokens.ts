@@ -168,6 +168,34 @@ export const categoryColors: Readonly<
   },
 };
 
+/**
+ * The eight chart series slots of tokens.md, "Chart series colors" (the chart exception in
+ * `DESIGN.md`). A chart takes them in order and never cycles, because the chart gate refuses a
+ * ninth series. They never derive from the tenant color.
+ */
+export const chartColors: Readonly<Record<ThemeName, readonly string[]>> = {
+  light: [
+    "#2a78d6",
+    "#eb6834",
+    "#1baf7a",
+    "#eda100",
+    "#e87ba4",
+    "#008300",
+    "#6250d6",
+    "#e34948",
+  ],
+  dark: [
+    "#3987e5",
+    "#d95926",
+    "#199e70",
+    "#c98500",
+    "#d55181",
+    "#008300",
+    "#9085e9",
+    "#e66767",
+  ],
+};
+
 /** Every tone's chip classes, so no component names a category color itself. */
 export const categoryChipClasses: Readonly<Record<CategoryTone, string>> = {
   "session": "bg-category-session-bg text-category-session-fg",
