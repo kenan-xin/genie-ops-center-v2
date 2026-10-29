@@ -3,6 +3,7 @@
 import {
   Button,
   ConfirmDialog,
+  FormActionBar,
   HelpDisclosure,
   StatusPill,
   Tabs,
@@ -309,6 +310,8 @@ function BrandingEditor(
     const before = latest.current;
 
     setPublishing(true);
+    // Cleared first, so a repeated failure with the same copy takes focus again (FormActionBar).
+    setFailure(null);
 
     try {
       await props.onPublish(changes);
@@ -320,7 +323,6 @@ function BrandingEditor(
       state.rebase(
         after === before ? { ...after, draft: state.draft, images: {} } : after
       );
-      setFailure(null);
       setServerIssues({});
     } catch (cause) {
       const refused = refusedPublish.parse(cause);
@@ -337,25 +339,32 @@ function BrandingEditor(
     }
   }
 
+  // One bar: in the status row from 768 px, fixed at the bottom of the screen below it, where a
+  // page's primary action lives. A failed Publish shows in it, beside the buttons (DESIGN.md).
   const actions = (
-    <>
-      <Button
-        variant="secondary"
-        disabled={count === 0}
-        onClick={() => setConfirm("discard")}
-      >
-        Discard
-      </Button>
-      <Button
-        focusableWhenDisabled
-        disabled={blocked !== null}
-        title={blocked ?? undefined}
-        loading={publishing}
-        onClick={() => setConfirm("publish")}
-      >
-        Publish
-      </Button>
-    </>
+    <section
+      aria-label="Publish actions"
+      className="fixed inset-x-0 bottom-0 z-20 border-t bg-background p-3 md:static md:z-auto md:flex-1 md:border-0 md:bg-transparent md:p-0"
+    >
+      <FormActionBar failure={failure}>
+        <Button
+          variant="secondary"
+          disabled={count === 0}
+          onClick={() => setConfirm("discard")}
+        >
+          Discard
+        </Button>
+        <Button
+          focusableWhenDisabled
+          disabled={blocked !== null}
+          title={blocked ?? undefined}
+          loading={publishing}
+          onClick={() => setConfirm("publish")}
+        >
+          Publish
+        </Button>
+      </FormActionBar>
+    </section>
   );
 
   const by = props.branding.lastPublished.by;
@@ -380,7 +389,10 @@ function BrandingEditor(
     );
 
   return (
-    <div className="flex flex-col gap-4 pb-20 md:pb-0">
+    // The fixed phone bar grows by the failure line, so the page keeps room for it.
+    <div
+      className={`flex flex-col gap-4 md:pb-0 ${failure === null ? "pb-20" : "pb-40"}`}
+    >
       <PreviewColors
         scope={scope}
         primaryColor={draft.primaryColor}
@@ -404,16 +416,8 @@ function BrandingEditor(
             the draft.
           </p>
         </HelpDisclosure>
-        <div className="ml-auto hidden gap-2 md:flex">{actions}</div>
+        {actions}
       </div>
-      {failure === null ? null : (
-        <p
-          role="alert"
-          className="text-sm text-destructive dark:text-destructive-on-dark"
-        >
-          {failure}
-        </p>
-      )}
       <div className="grid gap-4 lg:grid-cols-5">
         <Tabs
           value={tab}
@@ -488,12 +492,6 @@ function BrandingEditor(
           {previewFor(tab)}
         </PreviewCard>
       </div>
-      <section
-        aria-label="Publish actions"
-        className="fixed inset-x-0 bottom-0 z-20 flex justify-end gap-2 border-t bg-background p-3 md:hidden"
-      >
-        {actions}
-      </section>
       <ConfirmDialog
         open={confirm === "publish"}
         title={`Publish ${plural(count, "change", "changes")}?`}

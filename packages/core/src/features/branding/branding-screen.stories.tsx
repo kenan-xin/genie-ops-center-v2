@@ -585,11 +585,32 @@ export const PublishRefused: Story = {
       })
     );
 
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "Some branding values are not valid."
+    // One failure, in the bar beside Publish, and it takes focus (FormActionBar).
+    const bar = canvas.getByRole("region", { name: "Publish actions" });
+
+    await waitFor(() =>
+      expect(within(bar).getByRole("alert")).toHaveTextContent(
+        "Some branding values are not valid."
+      )
     );
+    await expect(canvas.getAllByRole("alert")).toHaveLength(1);
+    await expect(within(bar).getByRole("alert")).toHaveFocus();
     await expect(canvas.getByText("1 unpublished change")).toBeVisible();
+
+    // The same refusal again takes focus again, so the person hears the second failure too.
+    await user.click(canvas.getByRole("button", { name: "Publish" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Publish",
+      })
+    );
+    await waitFor(() => expect(within(bar).getByRole("alert")).toHaveFocus());
   },
+};
+
+export const PublishRefusedOnPhone: Story = {
+  ...PublishRefused,
+  globals: phone,
 };
 
 export const PublishIssueOnImage: Story = {
