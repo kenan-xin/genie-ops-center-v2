@@ -311,6 +311,8 @@ test("under prefers-reduced-motion no transition or animation runs on the shell,
         await expect(
           page.getByRole("listitem", { name, exact: true })
         ).toBeVisible();
+        // The row shows before the write settles, and its loading Delete button drops a click.
+        await expect(page.getByText(SAVED).first()).toBeVisible();
 
         // The control: with no preference the same dialog moves, so the recorder can see motion.
         await page.emulateMedia({ reducedMotion: "no-preference" });
