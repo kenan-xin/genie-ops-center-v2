@@ -8,6 +8,7 @@
     "./errors": "./src/lib/errors/index.ts",
     "./features/account": "./src/features/account/index.ts",
     "./features/agent": "./src/features/agent/index.ts",
+    "./features/agent/bubble": "./src/features/agent/chat-bubble.tsx",
     "./features/audit": "./src/features/audit/index.ts",
     "./features/branding": "./src/features/branding/index.ts",
     "./features/break-glass": "./src/features/break-glass/index.ts",

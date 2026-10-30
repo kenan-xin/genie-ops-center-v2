@@ -10,6 +10,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
+import { AgentBubble } from "./agent-bubble.tsx";
 import { requireContext } from "./context.ts";
 import { documentSessionState, requireSession } from "./document-session.ts";
 import { NextAppShell } from "./next-app-shell.tsx";
@@ -44,6 +45,7 @@ export async function ShellFrame(props: {
   return (
     <>
       <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
+      <AgentBubble />
       <NextAppShell {...shell}>{props.children}</NextAppShell>
     </>
   );
