@@ -148,6 +148,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `invoice datasets ${row}`),
   },
   {
+    file: "testing/live-scenarios.integration.test.ts",
+    reason:
+      "Spec 7 AC-6 and R-30 to R-34: the seven live uploads replayed through the procedures give expected_live_running_totals.json after every step, and a duplicate or a purchase order changes no figure",
+    cases: [
+      "live uploads replays the seven live uploads to expected_live_running_totals.json after each step",
+    ],
+  },
+  {
     file: "testing/demo-history.integration.test.ts",
     reason:
       "Spec 7 AC-6 and R-36: the demo history saved through the procedures gives every baseline total, every invoice status and the nine answers",
