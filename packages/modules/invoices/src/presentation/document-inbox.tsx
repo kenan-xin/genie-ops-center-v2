@@ -170,6 +170,12 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const data = documents.data;
   const rows: readonly InboxRow[] = [...duplicates, ...data.rows];
 
+  // The save-failure rule of DESIGN.md: one alert line with what failed and why; Retry stays the retry.
+  const retryFailed =
+    retry.error === null
+      ? null
+      : `${rows.find((row) => row.id === retry.variables)?.label ?? "The document"} was not read again. ${retry.error.message}`.trim();
+
   const retryButton = (row: InboxRow) =>
     row.status === "could-not-read" && data.canUpload ? (
       <Button
@@ -241,6 +247,11 @@ export function DocumentInbox(props: DocumentInboxProps) {
         </div>
       ) : null}
       <div className="mt-6">
+        {retryFailed === null ? null : (
+          <p role="alert" className="mb-2 text-sm text-destructive">
+            {retryFailed}
+          </p>
+        )}
         {rows.length === 0 ? (
           <EmptyState
             variant="framed"

@@ -315,6 +315,27 @@ export const Retry: Story = {
   },
 };
 
+// F4.1: a refused Retry names the document and the reason, and the row keeps its Retry.
+export const RetryRefused: Story = {
+  name: "Retry refused",
+  args: { view: retryView },
+  globals: desktop,
+  beforeEach: () => {
+    serve(retryView);
+    retryReading.mockRejectedValue(
+      new Error("That document is not waiting for a retry.")
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Retry" }));
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      `${COULD_NOT_READ.label} was not read again. That document is not waiting for a retry.`
+    );
+    await expect(canvas.getByRole("button", { name: "Retry" })).toBeEnabled();
+  },
+};
+
 // B8.5: while a row is Reading the page asks again, and the row changes without a reload.
 export const RefreshWhileReading: Story = {
   name: "Refresh while reading",
