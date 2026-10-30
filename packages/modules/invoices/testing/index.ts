@@ -4,6 +4,8 @@
  * module-owned, and nothing in a browser or a customer runtime imports them).
  */
 
+export { withNewId } from "./pdf-fixtures.ts";
+
 export {
   DEMO_PACK,
   type DemoHistoryIds,
