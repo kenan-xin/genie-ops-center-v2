@@ -10,7 +10,7 @@ const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
 
 /**
  * The agent route in `next dev` (Spec 7 R-40, P13). The model stand-in answers from the
- * placeholder's recording `what-can-you-do`, so the answer proves that the stand-in is loaded and
+ * placeholder's recordings, so the answer proves that the stand-in is loaded and
  * that AI is on in this run: without it, the server would call a live model host.
  */
 test("a signed-in person's message streams the recorded answer @no-screen", async ({
@@ -42,5 +42,17 @@ test("a signed-in person's message streams the recorded answer @no-screen", asyn
   const body = await response.text();
 
   expect(response.status(), body).toBe(200);
-  expect(body).toContain("I answer questions about the records you may read");
+
+  // The answer streams in many `text-delta` chunks, so join them before reading it.
+  const text = body
+    .split("\n")
+    .filter((line) => line.startsWith("data: {"))
+    .map((line) => JSON.parse(line.slice("data: ".length)))
+    .filter((chunk) => chunk.type === "text-delta")
+    .map((chunk) => chunk.delta)
+    .join("");
+
+  expect(text).toContain(
+    "I can answer questions using workspace records you have permission to read."
+  );
 });

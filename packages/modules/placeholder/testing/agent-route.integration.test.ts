@@ -39,29 +39,34 @@ const errors: unknown[] = [];
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
 const WHAT_CAN_YOU_DO = [
-  "root = Answer([intro, records])",
-  'intro = Paragraph("I answer questions about the records you may read, as of the reporting date.")',
-  'records = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "records"}]}, value: "records"}]})',
+  "root = Answer([intro, capabilities, scope])",
+  'intro = Paragraph("I can answer questions using workspace records you have permission to read.")',
+  'capabilities = List(["Find and summarize records and their fields.", "Calculate counts, totals, averages and other aggregates; filter or group results.", "Present results in charts or tables and find links to record pages."])',
+  'scope = Paragraph("Currently, I can access placeholder records, including their labels, dates, amounts, currencies and quantities. Results are as of October 27, 2026. I can’t create or change records.")',
 ].join("\n");
 
 const RECORDS = "placeholder.records";
 
-/** S1: a tenant-wide reader asks for the count (recordings `s1-*`). */
+/** S1: a tenant-wide reader asks for the count. */
 const S1_QUESTION = "How many placeholder records are there?";
 
 const S1_ANSWER = [
-  "root = Answer([intro, records])",
-  'intro = Paragraph("There are 3 placeholder records as of 2026-10-27.")',
-  'records = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "records"}]}, value: "records"}]})',
+  "root = Answer([count])",
+  'count = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "record_count"}]}, value: "record_count"}]})',
 ].join("\n");
 
-/** S3: a person with `core:ask:use` only names the dataset (recordings `s3-*`). */
+/**
+ * S3: a person with `core:ask:use` only names the dataset. Live, the model sees no dataset and
+ * tries the module's count tool, which refuses. `agent-tools` proves the `query-dataset` refusal.
+ */
 const S3_QUESTION =
   "How many placeholder records are there? Read placeholder.records.";
 
 const S3_ANSWER = [
-  "root = Answer([refusal])",
-  'refusal = Paragraph("I cannot answer this: you cannot read the placeholder records.")',
+  "root = Answer([message])",
+  'message = Paragraph("I can’t determine the number of placeholder records because you don’t have access to the count.")',
+  // The live answer ends with a line break.
+  "",
 ].join("\n");
 
 beforeAll(async () => {
@@ -235,7 +240,7 @@ describe("the agent route on the placeholder", () => {
       {
         type: "tool-query-dataset",
         state: "output-available",
-        output: { dataset: RECORDS, rows: [{ records: 3 }] },
+        output: { dataset: RECORDS, rows: [{ record_count: 3 }] },
       },
       { type: "text", text: S1_ANSWER },
     ]);
@@ -251,7 +256,7 @@ describe("the agent route on the placeholder", () => {
     ]);
   });
 
-  it("refuses query-dataset inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden", async () => {
+  it("refuses a module tool inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden", async () => {
     const ctx = await reader(["core:ask:use"]);
 
     const { userId } = ctx.caller;
@@ -263,7 +268,12 @@ describe("the agent route on the placeholder", () => {
     expect(errors).toEqual([]);
     expect(await storedAnswer(ctx, sessionId)).toMatchObject([
       {
-        type: "tool-query-dataset",
+        type: "tool-list-datasets",
+        state: "output-available",
+        output: { datasets: [] },
+      },
+      {
+        type: "tool-placeholder-count-records",
         state: "output-error",
         errorText: "You may not do that.",
       },
@@ -274,11 +284,13 @@ describe("the agent route on the placeholder", () => {
         actor: { id: userId },
         metadata: {
           sessionId,
-          tool: "query-dataset",
-          dataset: RECORDS,
-          rowCount: 0,
+          tool: "placeholder-count-records",
           outcome: "forbidden",
         },
+      },
+      {
+        actor: { id: userId },
+        metadata: { sessionId, tool: "list-datasets", outcome: "answered" },
       },
     ]);
   });

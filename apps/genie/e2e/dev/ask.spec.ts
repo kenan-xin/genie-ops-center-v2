@@ -16,8 +16,8 @@ import { ASK_PEOPLE, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
 /**
  * Ask and the chat bubble in `next dev` with the model stand-in (Spec 7 AC-8 line 4, R-42, P13).
- * The stand-in replays the placeholder's recording `what-can-you-do`, so every question here is
- * exactly that one, and the KPI's 3 comes from the chart gate over the three seeded records.
+ * The stand-in replays the placeholder's recordings, so every question here is exactly the one
+ * they hold, and the KPI's 3 comes from the chart gate over the three seeded records.
  */
 
 const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
@@ -25,10 +25,11 @@ const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
 /** A development server compiles a route when it is first asked for (see `devtools.spec.ts`). */
 const FIRST_PAINT = { timeout: 120_000 };
 
-const QUESTION = "What can you do?";
+const QUESTION = "How many placeholder records are there?";
 
-const ANSWER =
-  "I answer questions about the records you may read, as of the reporting date.";
+/** The answer is one KPI that the chart gate draws. */
+const answerOf = (scope: Page | Locator) =>
+  scope.getByRole("figure", { name: "Placeholder records" });
 
 /** Each project asks as its own person, so the two viewports never share a session list. */
 const asker = (testInfo: TestInfo) =>
@@ -69,14 +70,11 @@ async function ask(page: Page): Promise<string> {
   return sessionId;
 }
 
-/** The answer's paragraph and the KPI that the gate drew. */
+/** The KPI that the gate drew. */
 async function expectAnswer(page: Page): Promise<void> {
-  await expect(page.getByText(ANSWER)).toBeVisible(FIRST_PAINT);
-  await expect(
-    page
-      .getByRole("figure", { name: "Placeholder records" })
-      .getByText("3", { exact: true })
-  ).toBeVisible(FIRST_PAINT);
+  await expect(answerOf(page).getByText("3", { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
 }
 
 /**
@@ -149,7 +147,7 @@ test("the bubble and Ask share a session, and the bubble opens again on a new ch
       .locator(`a[href="/ask/${sessionId}"]`)
   ).toHaveText(QUESTION);
   expect(await ask(page)).not.toBe(sessionId);
-  await expect(reopened.getByText(ANSWER)).toBeVisible(FIRST_PAINT);
+  await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 
   await reopened.getByRole("link", { name: "Open Ask" }).click();
   await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
@@ -223,5 +221,5 @@ test("another person's session link answers the not-found page with nothing of t
   expect(response?.status()).toBe(404);
   await expect(page.getByText("This page could not be found.")).toBeVisible();
   await expect(page.getByText(QUESTION)).toHaveCount(0);
-  await expect(page.getByText(ANSWER)).toHaveCount(0);
+  await expect(answerOf(page)).toHaveCount(0);
 });

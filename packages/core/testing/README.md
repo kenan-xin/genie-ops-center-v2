@@ -18,6 +18,14 @@ node packages/core/tools/refresh-model-recordings.ts packages/core/testing/model
 unset MODEL_RECORDING_KEY
 ```
 
+The refresh script replays each saved request one time. A recording whose live answer calls a tool needs a new recording for the request that follows the tool result, so the script cannot refresh an agent conversation. Use record mode for that. With `MODEL_RECORDING_KEY` set outside CI, the no-live-model guard steps aside, and a request that no recording answers goes to the provider and is saved beside the others as `live-<hash>.json`. Delete the stale recordings of the conversation first, run the tests that use them, then update the expected answers in those tests.
+
+```sh
+read -rs MODEL_RECORDING_KEY && export MODEL_RECORDING_KEY
+pnpm nx run @genie/module-placeholder:test:integration --skip-nx-cache
+unset MODEL_RECORDING_KEY
+```
+
 ## What must not go here
 
 An import of a module, a module's factory, and any composition that knows which modules a deployment includes. A module owns its own factories, and the app harness composes them with these helpers (R-39). No database mock: a test here takes a real Postgres.

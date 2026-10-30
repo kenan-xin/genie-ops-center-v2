@@ -121,7 +121,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent route on the placeholder streams the recorded answer as UI message chunks and stores the exchange under the question",
       "the agent route on the placeholder sends a later message without a model id to the model the session started with",
       "the agent route on the placeholder answers a reader's count through list-datasets and query-dataset, stores both results, and audits both calls as the reader",
-      "the agent route on the placeholder refuses query-dataset inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden",
+      "the agent route on the placeholder refuses a module tool inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden",
     ],
   },
 ];

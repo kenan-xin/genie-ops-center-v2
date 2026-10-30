@@ -1,6 +1,5 @@
 {
-  "name": "other-model-2",
-  "handWritten": "S7-10, 2026-10-30: written by hand, no live run allowed; the owner refreshes it (run-state, Blocked on owner).",
+  "name": "live-ad29d9455d25",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -19,14 +18,6 @@
         {
           "role": "user",
           "content": "What can you do?"
-        },
-        {
-          "role": "assistant",
-          "content": "root = Answer([intro])\nintro = Paragraph(\"I answer questions about your records.\")"
-        },
-        {
-          "role": "user",
-          "content": "Thank you."
         }
       ],
       "provider": {
@@ -306,16 +297,26 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-other-model-2",
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
         "object": "chat.completion.chunk",
-        "created": 1793361600,
+        "created": 1793371067,
         "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "root = Answer([reply])\n",
-              "role": "assistant"
+              "content": "",
+              "role": "assistant",
+              "reasoning": "The user w",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": "The user w",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -323,16 +324,26 @@
         ]
       },
       {
-        "id": "gen-other-model-2",
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
         "object": "chat.completion.chunk",
-        "created": 1793361600,
+        "created": 1793371067,
         "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "reply = Paragraph(\"Glad to help.\")",
-              "role": "assistant"
+              "content": "",
+              "role": "assistant",
+              "reasoning": "ants to know what I can do,",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": "ants to know what I can do,",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -340,27 +351,246 @@
         ]
       },
       {
-        "id": "gen-other-model-2",
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
         "object": "chat.completion.chunk",
-        "created": 1793361600,
+        "created": 1793371067,
         "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
         "choices": [
           {
             "index": 0,
             "delta": {
               "content": "",
-              "role": "assistant"
+              "role": "assistant",
+              "reasoning": " so I should check the available",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": " so I should check the available",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
             },
-            "finish_reason": "stop",
-            "native_finish_reason": "completed"
+            "finish_reason": null,
+            "native_finish_reason": null
           }
         ]
       },
       {
-        "id": "gen-other-model-2",
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
         "object": "chat.completion.chunk",
-        "created": 1793361600,
+        "created": 1793371067,
         "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " datasets first to give an acc",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": " datasets first to give an acc",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": "urate answer.",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": "urate answer.",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": "\n\n",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "text": "\n\n",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.text",
+                  "signature": "CAQSuAUKEAgTGAI4AUIIdGhpbmtpbmcSDKFMGZs8Hd3mSB3RchoMZiWB637VZ6VY9g8SIjB9Gfj1fB+qWHpK4p2RM9oGcn/RYaFzVXA0Z3H1Bbe1Ru2Jvqm1wR8i5E42g6xbeqEq1QTg9itM4NhUOZmZWKi1l7sSl4tI6MZo3TGr2IHf1+ZSZHdCliJ+pKbIJlEqtLONwS08yPmpV7wQD89ncE0sHSBgli7NjJ++Tgg34HGSZYDpdu9q5/0q2PIx0LRVhME8ZEoLdmchVjFWoo9/hf1bz+nmSwd1eFkLKZT8LTuutkRBXGNhuS51wZ+dD1hxcuJWsu10pbqsctVNHTMTFcnrfglX8tyO0oOyru9uslyzc8yq370NTIVhxFqTZ1muxHUYvRgwv0Y/dX8pPDNZ985pQobyYhb9B579HQ0K/BC6loTh+EIM85AKhwuzNgDtoCUo8oMCo56JlA1ytCFMV5Ys+S6D79u4cnSuf18R+aW7XN/A2pEyYTcdT1rMDjqi6vHWjf+Tg97NDofaAQsN76HxyE4+cKYTV/NnY4qGJVCAzBl2WYgW3QnJ3YbZQfhktL/bgvurVT945XMbBbbaCAVUey6IBuuoaLEasgtDcTWR6RbQBL84zUny4SdPTz9DJE0bNb8i9s+6++S9R2OzfWOTbsMeOqFx25ge1+RTXH7DKzYp7JnrM9n3gPs6wxdI+ghQKY0T0yzhpob7BpTcLFtG8oeat0Lktd+928RrBnrnZwh3P5PjIIvCEXMpt8KHVt9zEky4O9HxofdysOro3Mzii01a7ZKcSxPSdK/MGhfZMa0Vs1knPttki9rTdPX0vnuoSFjI8URa5R8jSWCZ1xX1gxDND8ZYqX/hTdwtVecU4Ml/x57mBBkCVg2DqOMXhrdle5DxcMy9b0brTrwDFmXX5lXTW62CvoAYAQ==.eyJlbmRwb2ludF9zbHVnIjoiYW50aHJvcGljL2NsYXVkZS1vcHVzLTUuNS0yMDI2MDkyMXxjbGF1ZGUtb24tYXdzIn0",
+                  "format": "anthropic-claude-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "toolu_01MoPLuuygFUx35oMjVt6S7m",
+                  "type": "function",
+                  "function": {
+                    "name": "list-datasets",
+                    "arguments": ""
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": ""
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": "{}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": null
+            },
+            "finish_reason": "tool_calls",
+            "native_finish_reason": "tool_use"
+          }
+        ]
+      },
+      {
+        "id": "gen-1793371067-nP6BGetD9xsaD4vrN2Ov",
+        "object": "chat.completion.chunk",
+        "created": 1793371067,
+        "model": "anthropic/claude-opus-5.5",
+        "provider": "Claude Platform on AWS",
+        "service_tier": "default",
         "choices": [
           {
             "index": 0,
@@ -368,14 +598,32 @@
               "content": "",
               "role": "assistant"
             },
-            "finish_reason": "stop",
-            "native_finish_reason": "completed"
+            "finish_reason": "tool_calls",
+            "native_finish_reason": "tool_use"
           }
         ],
         "usage": {
-          "prompt_tokens": 0,
-          "completion_tokens": 0,
-          "total_tokens": 0
+          "prompt_tokens": 4347,
+          "completion_tokens": 55,
+          "total_tokens": 4402,
+          "cost": 0.018488,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.018488,
+            "upstream_inference_prompt_cost": 0.017388,
+            "upstream_inference_completions_cost": 0.0011
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 26,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
         }
       }
     ]

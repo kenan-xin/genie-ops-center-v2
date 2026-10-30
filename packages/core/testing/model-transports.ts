@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +14,8 @@ import { z } from "zod";
 
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import {
+  guardedModelFetch,
+  MODEL_PROVIDER_ORIGIN,
   MODEL_REQUEST_TIMEOUT_MS,
   type ModelTransport,
   setModelConnection,
@@ -46,11 +50,43 @@ export function useRecordedModel(
   context: TenantContext,
   directory: string
 ): RecordedModel {
-  const transport = replayModelTransport(loadModelRecordings(directory));
+  const transport = replayModelTransport(
+    loadModelRecordings(directory),
+    liveRecorder(directory)
+  );
 
   useModelTransport(context, { transport });
 
   return { sent: transport.sent };
+}
+
+/** Where record mode saves a request that no recording answers, and how it sends it live. */
+export type ModelRecorder = {
+  readonly directory: string;
+  readonly send: typeof globalThis.fetch;
+};
+
+/**
+ * The owner's record mode (DEC-55): with `MODEL_RECORDING_KEY` set outside CI, a request that no
+ * recording answers goes to the provider through `fetch` as it is now, and its answer is saved in
+ * `directory`. So a conversation records each follow-up request that a tool result causes, which
+ * the refresh script, replaying saved requests, cannot. Otherwise no recorder.
+ */
+export function liveRecorder(directory: string): ModelRecorder | undefined {
+  const key = process.env.MODEL_RECORDING_KEY;
+
+  if (!key || process.env.CI !== undefined) {
+    return undefined;
+  }
+
+  return {
+    directory,
+    send: guardedModelFetch(globalThis.fetch, {
+      origin: MODEL_PROVIDER_ORIGIN,
+      timeoutMs: MODEL_REQUEST_TIMEOUT_MS,
+      apiKey: key,
+    }),
+  };
 }
 
 export type JsonValue =
@@ -190,12 +226,15 @@ async function streamEvents(response: Response): Promise<readonly JsonValue[]> {
  * A fetch that answers the recording whose method, URL and whole parsed body
  * match, and records each request's URL, authorization header and parsed body in
  * `sent`. The no-match error names no header. A recording is never used up, so
- * two equal requests get the same answer.
+ * two equal requests get the same answer. With a `recorder`, a request that no
+ * recording answers is sent live and saved as `live-<hash>.json`, then replayed.
  */
 export function replayModelTransport(
-  recordings: readonly ModelRecording[]
+  recordings: readonly ModelRecording[],
+  recorder?: ModelRecorder
 ): typeof globalThis.fetch & { readonly sent: readonly SentModelRequest[] } {
   const sent: SentModelRequest[] = [];
+  const known = [...recordings];
 
   const transport: typeof globalThis.fetch = async (input, init) => {
     const request = input instanceof Request ? input : undefined;
@@ -206,19 +245,28 @@ export function replayModelTransport(
 
     sent.push({ url, authorization: headers.get("authorization"), body });
 
-    const recording = recordings.find(
+    let recording = known.find(
       (candidate) =>
         candidate.request.method === method &&
         candidate.request.url === url &&
         isEqual(candidate.request.body, body)
     );
 
+    if (
+      recording === undefined &&
+      recorder !== undefined &&
+      body !== undefined
+    ) {
+      recording = await recordLive(recorder, url, body);
+      known.push(recording);
+    }
+
     if (recording === undefined) {
       throw new Error(
         `No recording answers ${method} ${url} for model ${modelNameOf(body)}. ` +
-          `The sent body was ${JSON.stringify(body)}. Add a recording with this ` +
-          "request beside the test, then let the owner run the refresh script " +
-          "(packages/core/tools/refresh-model-recordings.ts)."
+          `The sent body was ${JSON.stringify(body)}. Let the owner record it ` +
+          "in record mode, or refresh the folder with " +
+          "packages/core/tools/refresh-model-recordings.ts (packages/core/testing/README.md)."
       );
     }
 
@@ -226,6 +274,43 @@ export function replayModelTransport(
   };
 
   return Object.assign(transport, { sent });
+}
+
+async function recordLive(
+  recorder: ModelRecorder,
+  url: string,
+  body: JsonValue
+): Promise<ModelRecording> {
+  const serialized = JSON.stringify(body);
+
+  const response = await recorder.send(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: serialized,
+  });
+
+  // A failed live call saves nothing, so the next run asks again.
+  if (!response.ok) {
+    throw new Error(
+      `Record mode: the provider answered HTTP ${response.status} for model ${modelNameOf(body)}.`
+    );
+  }
+
+  const name = `live-${createHash("sha256").update(serialized).digest("hex").slice(0, 12)}`;
+
+  const recording: ModelRecording = {
+    name,
+    request: { method: "POST", url, body },
+    response: await recordingFromResponse(response),
+  };
+
+  await writeFile(
+    join(recorder.directory, `${name}.json`),
+    `${JSON.stringify(recording, undefined, 2)}\n`,
+    "utf8"
+  );
+
+  return recording;
 }
 
 function requestBody(body: BodyInit | null | undefined): JsonValue | undefined {

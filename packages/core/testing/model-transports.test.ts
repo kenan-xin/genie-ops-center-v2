@@ -64,8 +64,50 @@ it("replays the recording that matches a request, and refuses any other request 
 
   await expect(refusal).rejects.toThrow(/POST/);
   await expect(refusal).rejects.toThrow(/third\/model/);
-  await expect(refusal).rejects.toThrow(/refresh-model-recordings\.ts/);
+  await expect(refusal).rejects.toThrow(/record mode/);
   await expect(refusal).rejects.not.toThrow(/sk-or-v1-replay-secret/);
+});
+
+it("in record mode sends a request that no recording answers once, saves it, and replays it after", async () => {
+  const folder = mkdtempSync(join(tmpdir(), "model-recordings-"));
+  const live: unknown[] = [];
+
+  try {
+    const transport = replayModelTransport([], {
+      directory: folder,
+      send: async (_input, init) => {
+        live.push(init?.body);
+
+        return Response.json({ id: "answer-live" });
+      },
+    });
+
+    const request = {
+      method: "POST",
+      body: JSON.stringify({ model: "live/model", messages: [] }),
+    };
+
+    const answers = [
+      await (await transport(CHAT_URL, request)).json(),
+      await (await transport(CHAT_URL, request)).json(),
+    ];
+
+    expect(answers).toEqual([{ id: "answer-live" }, { id: "answer-live" }]);
+    expect(live).toHaveLength(1);
+    expect(loadModelRecordings(folder)).toEqual([
+      {
+        name: expect.stringMatching(/^live-[\da-f]{12}$/),
+        request: {
+          method: "POST",
+          url: CHAT_URL,
+          body: { model: "live/model", messages: [] },
+        },
+        response: { status: 200, body: { id: "answer-live" } },
+      },
+    ]);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
 
 it("turns a recorded answer into the provider's response and back, streamed and not", async () => {

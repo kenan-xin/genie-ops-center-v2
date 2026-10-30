@@ -270,7 +270,7 @@ describe("the agent route", () => {
       parts: [{ type: "text", text: "Which datasets can I read?" }],
     });
     // What a turn cancelled while its tool ran stores: the call, never its result. The recording
-    // `agent-after-cancelled-tool` answers only a history without that call.
+    // The recordings answer only a history without that call.
     await appendMessage(ctx, sessionId, {
       id: randomUUID(),
       role: "assistant",
@@ -298,7 +298,10 @@ describe("the agent route", () => {
 
     expect(errors).toEqual([]);
     expect(message?.parts).toContainEqual(
-      expect.objectContaining({ type: "text", text: "Hello!" })
+      expect.objectContaining({
+        type: "text",
+        text: expect.stringContaining('greeting = Paragraph("Hello!")'),
+      })
     );
   });
 });
