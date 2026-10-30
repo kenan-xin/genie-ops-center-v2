@@ -23,6 +23,7 @@ import {
 } from "./services/ledger/invoices.ts";
 import { savePayment } from "./services/ledger/payments.ts";
 import { savePaidReceipt } from "./services/ledger/receipts.ts";
+import { retryReading } from "./services/reading/job.ts";
 
 const os = implementModule("invoices", invoicesContract);
 
@@ -60,6 +61,9 @@ async function assertCanWriteLink(
 export const invoicesRouter = os.router({
   uploadDocument: os.uploadDocument.handler(({ context, input }) =>
     uploadDocument(context, input.file)
+  ),
+  retryReading: os.retryReading.handler(({ context, input }) =>
+    retryReading(context, input.id)
   ),
   saveInvoice: os.saveInvoice.handler(({ context, input }) =>
     saveInvoice(context, input)

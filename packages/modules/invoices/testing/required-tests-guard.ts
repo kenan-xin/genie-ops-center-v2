@@ -42,6 +42,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `document upload ${row}`),
   },
   {
+    file: "testing/reading-job.integration.test.ts",
+    reason:
+      "Spec 7 R-12 and R-26: the reading job runs as the uploader, retries twice, then shows Could not read with Retry",
+    cases: [
+      "an upload enqueues one reading job as the uploader with two retries and backoff",
+      "a document that cannot be read fails twice, then shows Could not read",
+      "a run for a read document changes nothing",
+      "a run without a starter claims nothing",
+      "Retry reads a document that could not be read again, once",
+      "a failed enqueue leaves the uploaded document Could not read",
+      "a PDF with no text layer needs input with its reason",
+    ].map((row) => `the reading job ${row}`),
+  },
+  {
     file: "testing/allocations.integration.test.ts",
     reason:
       "Spec 7 R-32 and R-34: links under row locks never exceed a total, and every change leaves an event and an audit row",
@@ -71,6 +85,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "savePayment",
         "savePaidReceipt",
         "uploadDocument",
+        "retryReading",
         "correctInvoiceTotal",
       ].map(
         (name) =>

@@ -20,6 +20,7 @@ import { invoicesRouter } from "../src/router.ts";
 import {
   insertAllocation,
   insertCustomer,
+  insertDocument,
   insertInvoice,
   insertPayment,
 } from "./factories.ts";
@@ -99,7 +100,7 @@ async function aLink(): Promise<string> {
 /** Everything a write of this module changes, read with SQL. */
 async function ledgerState() {
   const { rows } = await t().db.$client.query(
-    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits, (select count(*)::int from invoice) as invoices, (select count(*)::int from payment) as payments, (select count(*)::int from customer) as customers, (select count(*)::int from document) as documents, (select count(*)::int from file) as files"
+    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits, (select count(*)::int from invoice) as invoices, (select count(*)::int from payment) as payments, (select count(*)::int from customer) as customers, (select count(*)::int from document) as documents, (select json_agg(json_build_array(id, reading_status, reading_attempts) order by id) from document) as readings, (select count(*)::int from file) as files"
   );
 
   return rows[0];
@@ -183,6 +184,17 @@ const WRITES: readonly {
       const file = aPdf();
 
       return (caller) => caller.uploadDocument({ file });
+    },
+  },
+  {
+    name: "retryReading",
+    call: async () => {
+      const { id } = await insertDocument(t(), {
+        readingStatus: "could-not-read",
+        readingAttempts: 3,
+      });
+
+      return (caller) => caller.retryReading({ id });
     },
   },
   {

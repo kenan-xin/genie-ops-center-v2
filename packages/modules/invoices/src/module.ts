@@ -32,6 +32,7 @@ import {
   loadInvoiceRecord,
   loadPaymentRecord,
 } from "./services/pages/records.ts";
+import { readingJob } from "./services/reading/job.ts";
 
 /** The Invoices workspace entry and the page of its path (DEC-50). */
 const INVOICES_ENTRY = {
@@ -150,7 +151,8 @@ export const invoicesModule = {
 
   capabilities: [],
 
-  jobs: [],
+  // Reads each upload as its uploader, with two retries (R-12, R-26).
+  jobs: [readingJob],
 
   inboundEndpoints: [],
 

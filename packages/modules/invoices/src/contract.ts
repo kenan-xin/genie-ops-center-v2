@@ -217,6 +217,11 @@ export const invoicesContract = {
     .route({ method: "POST", path: "/invoices/documents" })
     .input(z.object({ file: z.file() }))
     .output(uploadDocumentOutput),
+  /** Reads a Could not read document again, from its first attempt (R-26). */
+  retryReading: oc
+    .route({ method: "POST", path: "/invoices/documents/{id}/retry" })
+    .input(z.object({ id: recordId }))
+    .output(z.object({ documentId: z.string() })),
   /** Saves an invoice as unpaid, then links the saved payments that name it (R-29, R-31, R-33). */
   saveInvoice: oc
     .route({ method: "POST", path: "/invoices/invoices" })

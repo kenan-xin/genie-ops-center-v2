@@ -48,6 +48,14 @@ A payment links only to an invoice of the same customer and the same currency. A
 
 The file goes through `FileStorage`, and the document stores its SHA-256 hash and its file name, with no kind and the status `reading`. An exact copy of a stored document stores nothing and answers `duplicate` with the stored document and its label: Duplicate (nothing added). Nothing is kept for the copy, so the answer is gone after a reload. When two uploads of the same new file meet, one stores it and the other removes its copy in the same transaction and answers `duplicate`. The label of a document is its file name, else the number of the invoice or the reference of the payment saved from it, else "Document".
 
+## Reading job
+
+Each stored upload enqueues one `invoices.read-document` job after its transaction commits. The job runs as the uploader, never as a system principal, so a revoked `invoices:write` is seen at read time; a job without a starter changes nothing. It fails up to three times: the first run and two retries with backoff (`{ limit: 2, delaySeconds: 15, backoff: true }`). The worker passes no attempt number, so the job counts its own attempts in `reading_attempts`; a failed run before the third rethrows for pg-boss to retry, and the third failed run sets the document to Could not read (`could-not-read`) and completes. Every write of the job names `reading_status = 'reading'`, so a late or second run for a document that is already read changes nothing.
+
+A PDF with no text layer is read with the outcome `no-text-layer`, no kind and no reading, and the person fills its fields. When the enqueue itself fails, the document becomes Could not read and the upload still answers `uploaded`.
+
+`retryReading` at `POST /invoices/documents/{id}/retry` starts a Could not read document again with 0 attempts, as the person who retried. It needs `invoices:write` on the whole deployment, like the upload. A document in another state is refused with `document-not-retryable` (HTTP 409), so a second Retry while it reads enqueues nothing.
+
 ## Saving invoices
 
 An invoice saves as unpaid and joins outstanding at once. Its customer is either an existing one, chosen by id, or a new one that the person confirmed. A new customer needs a write grant on the whole deployment. A grant on one customer saves only that customer's invoices. Customer names are unique when case and outer spaces are ignored, so a confirmed name that already exists reuses that customer, and only a new one writes a `customer-created` audit row.

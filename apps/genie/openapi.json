@@ -2051,6 +2051,42 @@
         }
       }
     },
+    "/invoices/documents/{id}/retry": {
+      "post": {
+        "operationId": "invoices.retryReading",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documentId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "documentId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/invoices": {
       "post": {
         "operationId": "invoices.saveInvoice",

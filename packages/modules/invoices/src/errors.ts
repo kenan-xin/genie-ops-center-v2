@@ -41,6 +41,10 @@ export const INVOICE_ERRORS = defineModuleErrors("invoices", {
     message: "That file is over the upload limit of this deployment.",
     status: 413,
   },
+  "document-not-retryable": {
+    message: "That document is not waiting for a retry.",
+    status: 409,
+  },
   "reduction-invalid": {
     message: "A reduction must lower one of the links of this invoice.",
     status: 400,
