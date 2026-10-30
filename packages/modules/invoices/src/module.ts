@@ -7,6 +7,7 @@ import {
   invoicesDataset,
   paymentsDataset,
 } from "./datasets.ts";
+import { INVOICES_PERMISSIONS } from "./permissions.ts";
 import {
   InvoiceListPage,
   InvoiceRecordPage,
@@ -83,14 +84,7 @@ export const invoicesModule = {
 
   router: invoicesRouter,
 
-  permissions: [
-    { key: "invoices:read", label: "Read invoices, payments and customers" },
-    {
-      key: "invoices:write",
-      label: "Save invoices and payments and change their links",
-    },
-    { key: "invoices:use", label: "Use the Invoices and Payments workspace" },
-  ],
+  permissions: INVOICES_PERMISSIONS,
 
   recordTypes: invoicesRecordTypes,
 

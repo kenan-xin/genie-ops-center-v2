@@ -162,6 +162,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `invoice pages ${row}`),
   },
   {
+    file: "testing/demo-seed.integration.test.ts",
+    reason:
+      "Spec 7 R-59 and DEC-20: the seed stores each history PDF through FileStorage on a document of its kind, keyed by its SHA-256, and a stopped run resumes",
+    cases: [
+      "links each history invoice and payment to a stored document of its kind holding its own PDF",
+      "completes a history PDF stored with its document but no invoice, without a second document",
+    ].map((row) => `demo seed ${row}`),
+  },
+  {
     file: "testing/live-scenarios.integration.test.ts",
     reason:
       "Spec 7 AC-6 and R-30 to R-34: the seven live uploads replayed through the procedures give expected_live_running_totals.json after every step, and a duplicate or a purchase order changes no figure",

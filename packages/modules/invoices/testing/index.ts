@@ -9,8 +9,15 @@ export {
   type DemoHistoryIds,
   readDemoCsv,
   readDemoJson,
-  saveDemoHistory,
 } from "./demo-pack.ts";
+
+export {
+  type DemoHistoryCount,
+  type DemoHistoryPlan,
+  demoReportingDate,
+  planDemoHistory,
+  seedDemoHistory,
+} from "./demo-seed.ts";
 
 export {
   type AllocationRow,

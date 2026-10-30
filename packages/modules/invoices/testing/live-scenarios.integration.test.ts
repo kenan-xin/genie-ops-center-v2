@@ -22,12 +22,8 @@ import { invoicesModule } from "../src/module.ts";
 import { invoicesRouter } from "../src/router.ts";
 import { MATCH_FACT_FIELDS } from "../src/services/ledger/documents.ts";
 import { recordPaymentFromReading } from "../src/services/ledger/payments.ts";
-import {
-  type DemoHistoryIds,
-  readDemoJson,
-  saveDemoHistory,
-  toCents,
-} from "./demo-pack.ts";
+import { type DemoHistoryIds, readDemoJson, toCents } from "./demo-pack.ts";
+import { seedDemoHistory } from "./demo-seed.ts";
 import { insertDocument, insertFieldOrigin } from "./factories.ts";
 
 /**
@@ -100,7 +96,7 @@ beforeAll(async () => {
     "invoices:read",
     "invoices:write",
   ]));
-  ids = await saveDemoHistory(contextFor(financeUserId));
+  ({ ids } = await seedDemoHistory(tenant, { userId: financeUserId }));
 }, 120000);
 
 afterAll(async () => {

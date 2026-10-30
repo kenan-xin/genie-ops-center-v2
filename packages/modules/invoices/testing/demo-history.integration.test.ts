@@ -26,9 +26,9 @@ import {
   type DemoHistoryIds,
   readDemoCsv,
   readDemoJson,
-  saveDemoHistory,
   toCents,
 } from "./demo-pack.ts";
+import { seedDemoHistory } from "./demo-seed.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
@@ -140,7 +140,7 @@ beforeAll(async () => {
     "invoices:read",
     "invoices:write",
   ]));
-  ids = await saveDemoHistory(contextFor(financeUserId));
+  ({ ids } = await seedDemoHistory(tenant, { userId: financeUserId }));
 }, 120000);
 
 afterAll(async () => {
