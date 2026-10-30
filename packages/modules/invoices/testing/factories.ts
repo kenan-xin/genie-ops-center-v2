@@ -12,6 +12,7 @@ import {
   payment,
   sourceDocument,
 } from "../src/schema.ts";
+import { MATCH_FACT_FIELDS } from "../src/services/ledger/documents.ts";
 
 export type CustomerRow = typeof customer.$inferSelect;
 
@@ -151,6 +152,26 @@ export async function insertAllocation(
       })
       .returning()
   );
+}
+
+/** A payment document whose three match facts passed the quote check, unless its amount was corrected. */
+export async function insertPaymentDocument(
+  tenant: TenantContext,
+  amountOrigin: "extracted" | "corrected" = "extracted"
+): Promise<string> {
+  const document = await insertDocument(tenant, { kind: "payment" });
+
+  await Promise.all(
+    MATCH_FACT_FIELDS.map((field) =>
+      insertFieldOrigin(tenant, {
+        documentId: document.id,
+        field,
+        origin: field === "amount" ? amountOrigin : "extracted",
+      })
+    )
+  );
+
+  return document.id;
 }
 
 export async function insertFieldOrigin(

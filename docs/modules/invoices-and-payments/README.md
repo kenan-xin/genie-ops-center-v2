@@ -52,6 +52,26 @@ When the invoice is saved, R-31 runs in the same transaction. It takes each paym
 
 The seam for S7-08 and S7-09 is `MATCH_FACT_FIELDS`: the `field_origin` rows `customer`, `invoiceNumbers` and `amount` of the payment's document. Their facts passed the quote check when all three hold origin `extracted`. The reading job writes `extracted` only for a value that passed the quote check, and a person's change marks the field `corrected`, so a corrected payment never links by itself.
 
+## Saving payments
+
+The key facts of a Possible duplicate payment are the same customer, the same payment date, the same amount and the same currency. A payment of a customer that already existed with those facts answers `possible-duplicate` with the existing payment and writes nothing, until the person sends the save again with `keepPossibleDuplicate`. A document gives at most one payment, and a payment save takes only a `payment` document. The named invoice numbers are stored trimmed, in upper case, without repeats and sorted.
+
+A payment saves in one of two ways.
+
+- By hand, through `savePayment` at `POST /invoices/payments`. The person chooses the customer and the links. The save never links by itself. It checks a write grant on the customer and on each chosen invoice, and saves the payment and every link in one transaction, so a refused link, for example one above an invoice's open balance, saves nothing. A second save from the same document is refused with `document-already-saved`, before the duplicate check.
+- From a reading, through `recordPaymentFromReading`, which the S7-08 reading job calls on the server. It is not a procedure. It finds the customer by name, ignoring case and outer spaces, and never creates one. It links automatically only under R-30: the payment names one invoice of that customer in its currency, the amount is no more than that invoice's open balance, and the document's `MATCH_FACT_FIELDS` all hold origin `extracted`. Every other case writes nothing and answers the match for the person.
+
+For S7-08, each answer of `recordPaymentFromReading` and the inbox status it leads to:
+
+| Answer | Inbox status |
+| --- | --- |
+| `saved` (an automatic link) | Linked automatically |
+| `needs-review` with match `split` | Confirm the split |
+| `needs-review` with match `no-match`, also when no customer has the name (`customerId` is null) | No matching invoice |
+| `possible-duplicate` | Possible duplicate |
+| `needs-review` with match `confirm`, `overpayment` or `suggestions` | Needs your input |
+| `already-saved` | The document's payment is saved already; the job shows that payment |
+
 ## Datasets
 
 `invoices`, `payments`, `customers`, with the measures of the specification, R-36.

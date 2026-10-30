@@ -14,13 +14,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
 import { invoicesRouter } from "../src/router.ts";
-import { MATCH_FACT_FIELDS } from "../src/services/ledger/documents.ts";
 import {
   insertCustomer,
   insertDocument,
-  insertFieldOrigin,
   insertInvoice,
   insertPayment,
+  insertPaymentDocument,
 } from "./factories.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
@@ -106,23 +105,6 @@ async function auditActions(targetId: string) {
   );
 
   return rows.map((row) => row.action);
-}
-
-/** A payment document whose three match facts passed the quote check, unless its amount was corrected. */
-async function aPaymentDocument(amountOrigin: "extracted" | "corrected") {
-  const document = await insertDocument(t(), { kind: "payment" });
-
-  await Promise.all(
-    MATCH_FACT_FIELDS.map((field) =>
-      insertFieldOrigin(t(), {
-        documentId: document.id,
-        field,
-        origin: field === "amount" ? amountOrigin : "extracted",
-      })
-    )
-  );
-
-  return document.id;
 }
 
 type PaymentRowSpec = {
@@ -283,7 +265,8 @@ describe("invoice saves", () => {
 
       for (const spec of payments) {
         // oxlint-disable-next-line no-await-in-loop -- the insert order is part of the case.
-        const documentId = await aPaymentDocument(
+        const documentId = await insertPaymentDocument(
+          t(),
           spec.amountOrigin ?? "extracted"
         );
         // oxlint-disable-next-line no-await-in-loop

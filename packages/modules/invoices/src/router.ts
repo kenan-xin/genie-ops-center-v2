@@ -17,6 +17,7 @@ import {
   unlinkAllocation,
 } from "./services/ledger/allocations.ts";
 import { saveInvoice } from "./services/ledger/invoices.ts";
+import { savePayment } from "./services/ledger/payments.ts";
 
 const os = implementModule("invoices", invoicesContract);
 
@@ -54,6 +55,9 @@ async function assertCanWriteLink(
 export const invoicesRouter = os.router({
   saveInvoice: os.saveInvoice.handler(({ context, input }) =>
     saveInvoice(context, input)
+  ),
+  savePayment: os.savePayment.handler(({ context, input }) =>
+    savePayment(context, input)
   ),
   linkPayment: os.linkPayment.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller, [

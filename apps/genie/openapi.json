@@ -2155,6 +2155,237 @@
         }
       }
     },
+    "/invoices/payments": {
+      "post": {
+        "operationId": "invoices.savePayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "documentId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "customer": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "email": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "email"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "confirmed": {
+                            "const": true
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "email",
+                          "confirmed"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "paymentDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "reference": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "method": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "namedInvoiceNumbers": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "allocations": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "invoiceId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 2147483647
+                        }
+                      },
+                      "required": [
+                        "invoiceId",
+                        "amountCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "keepPossibleDuplicate": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "documentId",
+                  "customer",
+                  "paymentDate",
+                  "currency",
+                  "amountCents",
+                  "reference",
+                  "method",
+                  "namedInvoiceNumbers",
+                  "allocations",
+                  "keepPossibleDuplicate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "saved"
+                        },
+                        "paymentId": {
+                          "type": "string"
+                        },
+                        "customerId": {
+                          "type": "string"
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "allocationId": {
+                                "type": "string"
+                              },
+                              "invoiceId": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "allocationId",
+                              "invoiceId",
+                              "amountCents"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "paymentId",
+                        "customerId",
+                        "allocations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "possible-duplicate"
+                        },
+                        "duplicateOf": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "duplicateOf"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/allocations": {
       "post": {
         "operationId": "invoices.linkPayment",

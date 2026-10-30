@@ -55,12 +55,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "changeAllocation",
         "unlinkAllocation",
         "saveInvoice",
+        "savePayment",
       ].map(
         (name) =>
           `the seeded Viewer is refused ${name} and changes nothing, and Finance is allowed`
       ),
       "a writer scoped to one customer links its records and is refused on another customer's",
       "a writer scoped to one customer saves its invoices and is refused another customer's",
+      "a writer scoped to one customer saves its payments and is refused another customer's",
     ].map((row) => `invoices write access ${row}`),
   },
   {
@@ -83,5 +85,27 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "of two payments the older links and the second stays unallocated",
       ].map((row) => `saving invoice inv-9 of 720,000, ${row}`),
     ].map((row) => `invoice saves ${row}`),
+  },
+  {
+    file: "testing/payments.integration.test.ts",
+    reason:
+      "Spec 7 R-26, R-30, R-33 and R-34: a payment links by itself only when R-30 holds, Possible duplicate, one record per document, and a refused link saves nothing",
+    cases: [
+      "a payment saved with two chosen links saves both, and a link above an open balance saves nothing",
+      ...[
+        "one named invoice with checked facts links automatically",
+        "two named invoices answer a split",
+        "an amount above the open balance answers an overpayment",
+        "a corrected amount answers confirm",
+        "no named invoice and an amount equal to one open balance answers suggestions",
+        "no named invoice and no equal open balance answers no-match",
+      ].map(
+        (row) =>
+          `a reading against INV-A of 520,000, INV-B of 405,000 and INV-C of 420,000: ${row}`
+      ),
+      "a reading of an unknown customer answers needs-review and writes no customer and no payment",
+      "the same customer, date, amount and currency answers possible-duplicate in both paths until the person keeps it",
+      "a second reading of a saved document answers already-saved, and a save by hand of it is refused",
+    ].map((row) => `payment saves ${row}`),
   },
 ];

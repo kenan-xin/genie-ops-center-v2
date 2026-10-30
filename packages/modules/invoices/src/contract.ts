@@ -80,12 +80,56 @@ export const saveInvoiceOutput = z.discriminatedUnion("outcome", [
 
 export type SaveInvoiceOutput = z.infer<typeof saveInvoiceOutput>;
 
+export const savePaymentInput = z.object({
+  documentId: recordId.nullable(),
+  customer: customerChoice,
+  paymentDate: isoDate,
+  currency: currencyCode,
+  amountCents: cents,
+  reference: z.string().trim().min(1).max(200).nullable(),
+  method: z.string().trim().min(1).max(100).nullable(),
+  namedInvoiceNumbers: z.array(z.string().trim().min(1).max(64)).max(20),
+  /** The links the person chose. The browser save never links by itself (decision 4). */
+  allocations: z
+    .array(z.strictObject({ invoiceId: recordId, amountCents: cents }))
+    .max(20),
+  keepPossibleDuplicate: z.boolean(),
+});
+
+export type SavePaymentInput = z.infer<typeof savePaymentInput>;
+
+export const savePaymentOutput = z.discriminatedUnion("outcome", [
+  z.object({
+    outcome: z.literal("saved"),
+    paymentId: z.string(),
+    customerId: z.string(),
+    allocations: z.array(
+      z.object({
+        allocationId: z.string(),
+        invoiceId: z.string(),
+        amountCents: cents,
+      })
+    ),
+  }),
+  z.object({
+    outcome: z.literal("possible-duplicate"),
+    duplicateOf: z.string(),
+  }),
+]);
+
+export type SavePaymentOutput = z.infer<typeof savePaymentOutput>;
+
 export const invoicesContract = {
   /** Saves an invoice as unpaid, then links the saved payments that name it (R-29, R-31, R-33). */
   saveInvoice: oc
     .route({ method: "POST", path: "/invoices/invoices" })
     .input(saveInvoiceInput)
     .output(saveInvoiceOutput),
+  /** Saves a payment with the links the person chose, all or nothing (R-33, R-34). */
+  savePayment: oc
+    .route({ method: "POST", path: "/invoices/payments" })
+    .input(savePaymentInput)
+    .output(savePaymentOutput),
   /** Links an amount of a payment to an invoice of the same customer and currency (R-32, R-34). */
   linkPayment: oc
     .route({ method: "POST", path: "/invoices/allocations" })
