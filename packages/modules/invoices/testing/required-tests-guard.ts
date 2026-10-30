@@ -133,6 +133,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a reduction raising the link of 200,000 to 250,000 is refused with reduction-invalid",
       "a reduction naming the link of 200,000 twice, to 100,000 and to 150,000, for a total of 150,000 is refused with reduction-invalid",
       "two corrections at the same time that reduce the links of two shared payments in opposite order both finish",
+      "saving an invoice that its payments name, while a correction reduces new links of the same two payments, both finish",
     ].map((row) => `receipts and corrections ${row}`),
   },
   {

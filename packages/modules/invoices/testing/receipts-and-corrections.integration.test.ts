@@ -20,6 +20,7 @@ import {
   insertDocument,
   insertInvoice,
   insertPayment,
+  insertPaymentDocument,
 } from "./factories.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
@@ -351,6 +352,106 @@ describe("receipts and corrections", () => {
       expect((await stateOf(two.invoiceId)).totalCents).toBe(100_000);
       // Both calls really waited at each step, so the case is a race.
       expect([waitedOnLow, waitedOnHigh]).toEqual([2, 2]);
+    } finally {
+      // Destroyed, not pooled: a hold that failed before its rollback still owns a payment lock.
+      holdLow.release(true);
+      holdHigh.release(true);
+    }
+  }, 30000);
+
+  it("saving an invoice that its payments name, while a correction reduces new links of the same two payments, both finish", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { id: corrected } = await insertInvoice(t(), {
+      customerId,
+      totalCents: 200_000,
+    });
+    const pay = async () =>
+      (
+        await insertPayment(t(), {
+          customerId,
+          documentId: await insertPaymentDocument(t()),
+          amountCents: 100_000,
+          namedInvoiceNumbers: ["INV-R31"],
+        })
+      ).id;
+    const a = await pay();
+    const b = await pay();
+    const [low, high] = a < b ? [a, b] : [b, a];
+
+    // The higher id is the older payment, so date order and id order disagree.
+    await t().db.$client.query(
+      "update payment set payment_date = '2026-10-01' where id = $1",
+      [high]
+    );
+
+    const holdLow = await t().db.$client.connect();
+    const holdHigh = await t().db.$client.connect();
+
+    try {
+      for (const [held, id] of [
+        [holdLow, low],
+        [holdHigh, high],
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop -- each hold is its own open transaction.
+        await held.query("begin");
+        // `no key update` lets the link inserts below take their key-share locks.
+        // oxlint-disable-next-line no-await-in-loop
+        await held.query(
+          "select 1 from payment where id = $1 for no key update",
+          [id]
+        );
+      }
+
+      // R-31 reads both payments as unlinked, then waits on its first payment lock.
+      const save = api().saveInvoice({
+        documentId: null,
+        customer: { id: customerId },
+        number: "INV-R31",
+        invoiceDate: "2026-10-20",
+        dueDate: "2026-10-31",
+        dueDateSource: "document",
+        paymentTerms: null,
+        currency: "SGD",
+        totalCents: 300_000,
+        description: null,
+        keepPossibleDuplicate: false,
+      });
+      const waitedForSave = await untilWaiting(1);
+      const linkTo = async (paymentId: string) =>
+        (
+          await insertAllocation(t(), {
+            invoiceId: corrected,
+            paymentId,
+            amountCents: 100_000,
+          })
+        ).id;
+      const reductions = [
+        { allocationId: await linkTo(low), amountCents: 50_000 },
+        { allocationId: await linkTo(high), amountCents: 50_000 },
+      ];
+      const correct = api().correctInvoiceTotal({
+        id: corrected,
+        totalCents: 100_000,
+        reductions,
+      });
+      const waitedOnLow = await untilWaiting(2);
+      await holdLow.query("rollback");
+      const waitedOnHigh = await untilWaiting(2);
+      await holdHigh.query("rollback");
+
+      expect(await Promise.allSettled([save, correct])).toEqual([
+        {
+          status: "fulfilled",
+          value: expect.objectContaining({
+            outcome: "saved",
+            linkedPayments: [],
+          }),
+        },
+        { status: "fulfilled", value: { outcome: "corrected" } },
+      ]);
+      expect((await stateOf(corrected)).totalCents).toBe(100_000);
+      // Each call really waited at each step, so the case is a race.
+      expect([waitedForSave, waitedOnLow, waitedOnHigh]).toEqual([1, 2, 2]);
     } finally {
       // Destroyed, not pooled: a hold that failed before its rollback still owns a payment lock.
       holdLow.release(true);

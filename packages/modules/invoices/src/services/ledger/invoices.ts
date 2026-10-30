@@ -80,9 +80,10 @@ async function linkPaymentsNamingInvoice(
     readonly totalCents: number;
   }
 ): Promise<LinkedPayment[]> {
-  const candidates = await tx
+  const locked = await tx
     .select({
       id: payment.id,
+      paymentDate: payment.paymentDate,
       currency: payment.currency,
       amountCents: payment.amountCents,
       namedInvoiceNumbers: payment.namedInvoiceNumbers,
@@ -102,10 +103,16 @@ async function linkPaymentsNamingInvoice(
         factsCheckedSql(payment.documentId)
       )
     )
-    .orderBy(payment.paymentDate, payment.id)
+    // Locked in id order like every payment lock; a link committed meanwhile can bring a correction here.
+    .orderBy(payment.id)
     .for("update");
 
-  if (candidates.length === 0) return [];
+  if (locked.length === 0) return [];
+
+  // R-31 links oldest first; the id order of the lock already breaks a date tie.
+  const candidates = locked.toSorted((a, b) =>
+    a.paymentDate === b.paymentDate ? 0 : a.paymentDate < b.paymentDate ? -1 : 1
+  );
 
   // Read after the lock, in its own statement: a link committed while the lock waited is not in
   // the locking statement's snapshot.
