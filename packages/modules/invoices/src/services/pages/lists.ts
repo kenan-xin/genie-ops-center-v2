@@ -4,8 +4,10 @@ import { z } from "zod";
 import type {
   InvoiceListRow,
   InvoiceListView,
+  PaymentListRow,
+  PaymentListView,
 } from "../../presentation/views.ts";
-import { invoiceStatusOf } from "./status.ts";
+import { invoiceStatusOf, paymentStatusOf } from "./status.ts";
 
 /** The fields a list row reads from one `invoices.invoices` row, as the dataset answers them. */
 export const listRow = z.object({
@@ -53,6 +55,54 @@ export async function loadInvoiceList(
   return {
     asOf: result.asOf,
     rows: result.rows.map((row) => invoiceListRowOf(listRow.parse(row))),
+    truncated: result.truncated,
+  };
+}
+
+/** The fields a list row reads from one `invoices.payments` row, as the dataset answers them. */
+export const paymentRow = z.object({
+  id: z.string(),
+  reference: z.string().nullable(),
+  customerName: z.string(),
+  paymentDate: z.string(),
+  method: z.string().nullable(),
+  currency: z.string(),
+  amountCents: z.number().int(),
+  unallocatedCents: z.number().int(),
+});
+
+export const PAYMENT_ROW_FIELDS = Object.keys(paymentRow.shape);
+
+/** One payment list row, its unallocated money read into its status. */
+export function paymentListRowOf(
+  row: z.infer<typeof paymentRow>
+): PaymentListRow {
+  return { ...row, status: paymentStatusOf(row) };
+}
+
+/**
+ * The Payments list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
+ * scoped person sees only the payments they may read (DEC-39, R-9).
+ *
+ * shortcut: at most 1,000 rows (DATASET_ROW_CAP); page past it with czjw.28
+ */
+export async function loadPaymentList(
+  ctx: ModuleRequestContext
+): Promise<PaymentListView> {
+  const result = await queryDataset(ctx, {
+    dataset: "invoices.payments",
+    query: {
+      select: PAYMENT_ROW_FIELDS,
+      orderBy: [
+        { column: "paymentDate", direction: "desc" },
+        { column: "reference", direction: "desc" },
+      ],
+    },
+  });
+
+  return {
+    asOf: result.asOf,
+    rows: result.rows.map((row) => paymentListRowOf(paymentRow.parse(row))),
     truncated: result.truncated,
   };
 }

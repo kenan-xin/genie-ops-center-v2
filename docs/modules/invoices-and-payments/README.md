@@ -97,14 +97,14 @@ The specification names three datasets. The fourth, `invoices.allocations`, is t
 
 ## Pages
 
-The workspace entry Invoices opens the list at `/m/invoices/invoices`. Every page requires `invoices:use`, and every loader reads under `invoices:read`, so a person with only the Invoices and Payments user role gets the denied page (P5). Every page reads through the datasets above as of the reporting date (R-9), so no page adds a balance of its own and the pages and the agent agree (P3).
+The workspace entries Invoices opens the list at `/m/invoices/invoices` and Payments opens `/m/invoices/payments`. Every page requires `invoices:use`, and every loader reads under `invoices:read`, so a person with only the Invoices and Payments user role gets the denied page (P5). Every page reads through the datasets above as of the reporting date (R-9), so no page adds a balance of its own and the pages and the agent agree (P3).
 
 | Page | Path | Reads |
 | --- | --- | --- |
 | Invoices list | `/m/invoices/invoices` | `invoices.invoices`, ordered by invoice date and number, at most 1,000 rows; a cut read says how many it shows (P4; paging is deferred to `czjw.28`) |
 | Invoice record | `/m/invoices/invoices/<id>` | `invoices.invoices` and `invoices.allocations` filtered by the invoice, its link history from `allocation_event` oldest first (the time in the tenant's time zone, the change, the payment, the amount before and after, Automatic or By a person; no actor name, P10), and a 5-minute link to its source PDF under `invoices:read` on the invoice (P11). The page declares `invoices:read` as its record's read key, so core refuses a person without it before the title or the trail shows the invoice number (R-1a). An invoice dated after the reporting date shows a note with its number, not 404 (P7) |
-| Payments list | `/m/invoices/payments` | `invoices.payments` |
-| Payment record | `/m/invoices/payments/<id>` | The payment's amount, its links and its unallocated amount |
+| Payments list | `/m/invoices/payments` | `invoices.payments`, ordered by payment date and reference, at most 1,000 rows; a cut read says how many it shows (P4; paging is deferred to `czjw.28`). The status is Allocated, Part allocated or Unallocated from the unallocated amount (R-31) |
+| Payment record | `/m/invoices/payments/<id>` | `invoices.payments` and `invoices.allocations` filtered by the payment, its link history from `allocation_event` oldest first (the time in the tenant's time zone, the change, the invoice, the amount before and after, Automatic or By a person; no actor name, P10), and a 5-minute link to its source PDF under `invoices:read` on the payment (P11). The page declares `invoices:read` as its record's read key, so core refuses a person without it before the title or the trail shows the payment (R-1a). A payment dated after the reporting date shows a note with its label, not 404 (P7) |
 
 ## Demo pack
 

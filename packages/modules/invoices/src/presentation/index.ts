@@ -20,7 +20,21 @@ export {
 
 export { InvoiceRecord, type InvoiceRecordProps } from "./invoice-record.tsx";
 
-export { InvoiceListPage, InvoiceRecordPage } from "./module-pages.tsx";
+export { PaymentList, type PaymentListProps } from "./payment-list.tsx";
+
+export {
+  PaymentStatusBadge,
+  type PaymentStatusBadgeProps,
+} from "./payment-status-badge.tsx";
+
+export { PaymentRecord, type PaymentRecordProps } from "./payment-record.tsx";
+
+export {
+  InvoiceListPage,
+  InvoiceRecordPage,
+  PaymentListPage,
+  PaymentRecordPage,
+} from "./module-pages.tsx";
 
 export type {
   AllocationRow,
@@ -30,4 +44,8 @@ export type {
   InvoiceRecordView,
   InvoiceStatus,
   InvoiceListView,
+  PaymentListRow,
+  PaymentListView,
+  PaymentRecordView,
+  PaymentStatus,
 } from "./views.ts";

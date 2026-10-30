@@ -54,6 +54,28 @@ export type InvoiceDetail = InvoiceListRow & {
   readonly allocatedCents: number;
 };
 
+/** One payment's three states, in the words of R-31. */
+export type PaymentStatus = "allocated" | "part-allocated" | "unallocated";
+
+/** One payment as the list shows it, its unallocated money read into its status. */
+export type PaymentListRow = {
+  readonly id: string;
+  readonly reference: string | null;
+  readonly customerName: string;
+  readonly paymentDate: string;
+  readonly method: string | null;
+  readonly currency: string;
+  readonly amountCents: number;
+  readonly unallocatedCents: number;
+  readonly status: PaymentStatus;
+};
+
+export type PaymentListView = {
+  readonly asOf: string;
+  readonly rows: readonly PaymentListRow[];
+  readonly truncated: boolean;
+};
+
 /** A record dated after the reporting date is in no balance yet, so it shows a note (P7). */
 export type InvoiceRecordView =
   | {
@@ -61,6 +83,23 @@ export type InvoiceRecordView =
       readonly asOf: string;
       readonly timeZone: string;
       readonly invoice: InvoiceDetail;
+      readonly allocations: readonly AllocationRow[];
+      readonly history: readonly HistoryRow[];
+      readonly documentUrl: string | null;
+    }
+  | {
+      readonly kind: "after-reporting-date";
+      readonly asOf: string;
+      readonly label: string;
+    };
+
+/** What the payment record page renders, its links read as of the reporting date (R-9, R-36). */
+export type PaymentRecordView =
+  | {
+      readonly kind: "shown";
+      readonly asOf: string;
+      readonly timeZone: string;
+      readonly payment: PaymentListRow & { readonly allocatedCents: number };
       readonly allocations: readonly AllocationRow[];
       readonly history: readonly HistoryRow[];
       readonly documentUrl: string | null;

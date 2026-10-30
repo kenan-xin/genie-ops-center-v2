@@ -16,6 +16,14 @@ export const formatMoney = (cents: number, currency: string) =>
 
 export const formatDay = (day: string) => formatChartValue(DAY, day);
 
+/** A payment is named by its reference, or by its date when it has none. */
+export function paymentLabel(row: {
+  readonly reference: string | null;
+  readonly paymentDate: string;
+}): string {
+  return row.reference ?? formatDay(row.paymentDate);
+}
+
 /** An instant in the tenant's time zone (P10). */
 export const formatInstant = (instant: string, timeZone: string) =>
   new Intl.DateTimeFormat("en-GB", {

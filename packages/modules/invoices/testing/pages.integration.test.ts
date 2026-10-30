@@ -22,6 +22,7 @@ import { invoicesModule } from "../src/module.ts";
 import type {
   InvoiceListView,
   InvoiceRecordView,
+  PaymentListView,
 } from "../src/presentation/views.ts";
 import { invoicesRouter } from "../src/router.ts";
 import { loadInvoiceRecord } from "../src/services/pages/records.ts";
@@ -117,7 +118,7 @@ async function openRecord(
 const READER = ["invoices:use", "invoices:read"] as const;
 
 describe("invoice pages", () => {
-  it("the list answers only the customer a scoped reader may read", async () => {
+  it("the lists answer only the customer a scoped reader may read", async () => {
     const [a, b] = await Promise.all([
       insertCustomer(t()),
       insertCustomer(t()),
@@ -125,12 +126,15 @@ describe("invoice pages", () => {
 
     if (a === undefined || b === undefined) throw new Error("no customers");
 
-    const visible = await insertInvoice(t(), {
-      customerId: a.id,
-      number: "INV-A",
-    });
+    const [visible, payment] = await Promise.all([
+      insertInvoice(t(), { customerId: a.id, number: "INV-A" }),
+      insertPayment(t(), { customerId: a.id }),
+    ]);
 
-    await insertInvoice(t(), { customerId: b.id, number: "INV-B" });
+    await Promise.all([
+      insertInvoice(t(), { customerId: b.id, number: "INV-B" }),
+      insertPayment(t(), { customerId: b.id }),
+    ]);
 
     const { userId } = await insertPersonWith(
       t(),
@@ -149,6 +153,19 @@ describe("invoice pages", () => {
       .data;
 
     expect(data.rows.map((row) => row.id)).toEqual([visible.id]);
+
+    const payments = await openPage(userId, ["m", "invoices", "payments"]);
+
+    if (payments.kind !== "open") {
+      throw new Error(`the payments page answered ${payments.kind}`);
+    }
+
+    // SAFETY: core renders the list page with `data` set to the loader's PaymentListView.
+    const paymentData = (
+      payments.element.props as { readonly data: PaymentListView }
+    ).data;
+
+    expect(paymentData.rows.map((row) => row.id)).toEqual([payment.id]);
   });
 
   it("the record answers link, change and unlink as three history rows in order, with no allocation left", async () => {

@@ -10,6 +10,8 @@ import {
 import {
   InvoiceListPage,
   InvoiceRecordPage,
+  PaymentListPage,
+  PaymentRecordPage,
 } from "./presentation/module-pages.tsx";
 import { invoicesRecordTypes, RECORD_TYPES } from "./record-types.ts";
 import { invoicesRouter } from "./router.ts";
@@ -24,14 +26,26 @@ import {
   payment,
   sourceDocument,
 } from "./schema.ts";
-import { loadInvoiceList } from "./services/pages/lists.ts";
-import { loadInvoiceRecord } from "./services/pages/records.ts";
+import { loadInvoiceList, loadPaymentList } from "./services/pages/lists.ts";
+import {
+  loadInvoiceRecord,
+  loadPaymentRecord,
+} from "./services/pages/records.ts";
 
 /** The Invoices workspace entry and the page of its path (DEC-50). */
 const INVOICES_ENTRY = {
   id: "invoices-invoices",
   label: "Invoices",
   path: "/m/invoices/invoices",
+  surface: "workspace",
+  requiredPermission: "invoices:use",
+} as const;
+
+/** The Payments workspace entry and the page of its path (DEC-50). */
+const PAYMENTS_ENTRY = {
+  id: "invoices-payments",
+  label: "Payments",
+  path: "/m/invoices/payments",
   surface: "workspace",
   requiredPermission: "invoices:use",
 } as const;
@@ -90,7 +104,10 @@ export const invoicesModule = {
     { name: "Viewer", permissions: ["invoices:use", "invoices:read"] },
   ],
 
-  navigation: { pinned: [INVOICES_ENTRY], entries: [INVOICES_ENTRY] },
+  navigation: {
+    pinned: [INVOICES_ENTRY, PAYMENTS_ENTRY],
+    entries: [INVOICES_ENTRY, PAYMENTS_ENTRY],
+  },
 
   // One page per navigation entry, at its path and under its key.
   pages: {
@@ -112,6 +129,24 @@ export const invoicesModule = {
         parent: INVOICES_ENTRY.path,
         load: (ctx, params) => loadInvoiceRecord(ctx, params.id ?? ""),
         component: InvoiceRecordPage,
+      }),
+      definePage({
+        path: PAYMENTS_ENTRY.path,
+        permission: "invoices:use",
+        load: loadPaymentList,
+        component: PaymentListPage,
+      }),
+      definePage({
+        path: "/m/invoices/payments/:id",
+        permission: "invoices:use",
+        record: {
+          type: RECORD_TYPES.payment,
+          param: "id",
+          read: "invoices:read",
+        },
+        parent: PAYMENTS_ENTRY.path,
+        load: (ctx, params) => loadPaymentRecord(ctx, params.id ?? ""),
+        component: PaymentRecordPage,
       }),
     ],
     admin: [],

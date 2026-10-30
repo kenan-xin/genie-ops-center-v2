@@ -1,6 +1,6 @@
 # src/presentation/\_\_fixtures\_\_
 
-The browser-safe sample data the invoice page stories render.
+The browser-safe sample data the invoice and payment page stories render.
 
 ## What belongs here
 

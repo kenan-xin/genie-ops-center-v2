@@ -4,10 +4,10 @@ The server loaders behind the module's pages (Spec 7 R-1, R-9).
 
 ## What belongs here
 
-One file per concern: `lists.ts` loads the Invoices list through `queryDataset`, `records.ts`
-loads a record page behind its one `invoices:read` check, `history.ts` reads the link history from
-the module's own append-only events, and `status.ts` names the four invoice states from a dataset
-row. A balance or an allocation is read only through the module's `invoices.invoices` and its
+One file per concern: `lists.ts` loads the Invoices and Payments lists through `queryDataset`,
+`records.ts` loads a record page behind its one `invoices:read` check, `history.ts` reads the link
+history from the module's own append-only events, and `status.ts` names the four invoice states
+and the three payment states from a dataset row. A balance or an allocation is read only through the module's `invoices.invoices` and its
 siblings, as of the reporting date, and never with SQL of its own.
 
 ## What must not go here
