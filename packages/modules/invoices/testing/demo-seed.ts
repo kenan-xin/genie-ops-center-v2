@@ -286,7 +286,12 @@ export async function seedDemoHistory(
 
       const [document] = await tx
         .insert(sourceDocument)
-        .values({ fileId: file.id, sha256: source.sha256, kind: source.kind })
+        .values({
+          fileId: file.id,
+          sha256: source.sha256,
+          kind: source.kind,
+          fileName: basename(source.path),
+        })
         .returning({ id: sourceDocument.id });
 
       if (document === undefined) {

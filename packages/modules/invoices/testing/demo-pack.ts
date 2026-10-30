@@ -10,6 +10,22 @@ export const DEMO_PACK = new URL(
   import.meta.url
 );
 
+/** The seven files of `03_Live_Upload_Documents`, in the numbered order the demo uploads them. */
+export const LIVE_UPLOADS: readonly string[] = [
+  "01_Invoice_Missing_Due_Date.pdf",
+  "02_Payment_Partial_Existing_Invoice.pdf",
+  "03_Payment_Covers_Two_Invoices.pdf",
+  "04_Duplicate_of_Partial_Payment.pdf",
+  "05_Payment_Unmatched.pdf",
+  "06_Paid_Sales_Receipt.pdf",
+  "07_Purchase_Order_Not_Proof_of_Payment.pdf",
+];
+
+/** The bytes of a pack file, by its path relative to `DEMO_PACK`. */
+export function readDemoFile(path: string): Buffer {
+  return readFileSync(new URL(path, DEMO_PACK));
+}
+
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- the pack's files have different shapes, and each caller parses the one it reads.
 export function readDemoJson(path: string): unknown {
   return JSON.parse(readFileSync(new URL(path, DEMO_PACK), "utf8"));

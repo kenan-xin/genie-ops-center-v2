@@ -10,9 +10,12 @@ import {
   fieldOrigin,
   invoice,
   payment,
+  type ReadingOutcome,
+  type ReadingStatus,
   sourceDocument,
 } from "../src/schema.ts";
 import { MATCH_FACT_FIELDS } from "../src/services/ledger/documents.ts";
+import type { StoredReading } from "../src/services/reading/stored-reading.ts";
 
 export type CustomerRow = typeof customer.$inferSelect;
 
@@ -56,15 +59,29 @@ export async function insertCustomer(
 
 export async function insertDocument(
   tenant: TenantContext,
-  values: { kind?: DocumentKind; sha256?: string; fileId?: string } = {}
+  values: {
+    kind?: DocumentKind | null;
+    sha256?: string;
+    fileId?: string;
+    fileName?: string | null;
+    readingStatus?: ReadingStatus;
+    readingAttempts?: number;
+    readingOutcome?: ReadingOutcome | null;
+    reading?: StoredReading | null;
+  } = {}
 ): Promise<DocumentRow> {
   return only(
     await tenant.db
       .insert(sourceDocument)
       .values({
-        kind: values.kind ?? "payment",
+        kind: values.kind === undefined ? "payment" : values.kind,
         sha256: values.sha256 ?? randomBytes(32).toString("hex"),
         fileId: values.fileId ?? randomUUID(),
+        fileName: values.fileName ?? null,
+        readingStatus: values.readingStatus ?? "read",
+        readingAttempts: values.readingAttempts ?? 0,
+        readingOutcome: values.readingOutcome ?? null,
+        reading: values.reading ?? null,
       })
       .returning()
   );

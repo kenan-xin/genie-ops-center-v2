@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { invoicesContract } from "./contract.ts";
 import { RECORD_TYPES } from "./record-types.ts";
 import { allocation } from "./schema.ts";
+import { uploadDocument } from "./services/documents/upload.ts";
 import { assertCanWrite } from "./services/ledger/access.ts";
 import {
   changeAllocation,
@@ -57,6 +58,9 @@ async function assertCanWriteLink(
  * `module-disabled` when the entitlement is off, before any handler runs.
  */
 export const invoicesRouter = os.router({
+  uploadDocument: os.uploadDocument.handler(({ context, input }) =>
+    uploadDocument(context, input.file)
+  ),
   saveInvoice: os.saveInvoice.handler(({ context, input }) =>
     saveInvoice(context, input)
   ),

@@ -199,7 +199,24 @@ export type CorrectInvoiceTotalOutput = z.infer<
   typeof correctInvoiceTotalOutput
 >;
 
+/** `duplicate` is an exact copy of a stored document: nothing is added (R-23, decision 10). */
+export const uploadDocumentOutput = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("uploaded"), documentId: z.string() }),
+  z.object({
+    outcome: z.literal("duplicate"),
+    documentId: z.string(),
+    label: z.string(),
+  }),
+]);
+
+export type UploadDocumentOutput = z.infer<typeof uploadDocumentOutput>;
+
 export const invoicesContract = {
+  /** Stores one PDF once per exact file, for the reading job (R-23, decisions 9 and 10). */
+  uploadDocument: oc
+    .route({ method: "POST", path: "/invoices/documents" })
+    .input(z.object({ file: z.file() }))
+    .output(uploadDocumentOutput),
   /** Saves an invoice as unpaid, then links the saved payments that name it (R-29, R-31, R-33). */
   saveInvoice: oc
     .route({ method: "POST", path: "/invoices/invoices" })

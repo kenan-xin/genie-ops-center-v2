@@ -26,7 +26,8 @@ describe("the invoices module declaration", () => {
     // deferred read defers. Nothing reads them at import time.
     const history = invoicesModule.schema.migrations();
 
-    expect(history).toHaveLength(1);
+    expect(history).toHaveLength(2);
     expect(history[0]?.sql.join("")).toContain("allocation_event");
+    expect(history[1]?.sql.join("")).toContain("reading_status");
   });
 });

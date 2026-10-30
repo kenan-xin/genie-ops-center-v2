@@ -2,6 +2,7 @@ import { startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
+import type { ReadingStatus } from "../src/schema.ts";
 import {
   insertAllocation,
   insertCustomer,
@@ -127,6 +128,15 @@ describe("the invoices schema", () => {
           documentId,
           field: "amount",
           quote: null,
+        });
+      },
+    ],
+    [
+      "a document reading status outside its three values",
+      async () => {
+        await insertDocument(t(), {
+          // SAFETY: deliberately not a ReadingStatus; the row proves the schema refuses a writer that bypasses the type.
+          readingStatus: "paused" as ReadingStatus,
         });
       },
     ],

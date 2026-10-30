@@ -193,6 +193,20 @@ describe("invoice saves", () => {
     }
   );
 
+  it("refuses a document with no kind yet with document-kind-mismatch and saves nothing", async () => {
+    const document = await insertDocument(t(), {
+      kind: null,
+      readingStatus: "reading",
+    });
+
+    await expect(save({ documentId: document.id })).rejects.toMatchObject({
+      code: "invoices:document-kind-mismatch",
+    });
+    expect(await count("invoice where document_id = $1", [document.id])).toBe(
+      0
+    );
+  });
+
   it("a second save from the same document is refused with document-already-saved", async () => {
     const { id: customerId } = await insertCustomer(t());
     const document = await insertDocument(t(), { kind: "invoice" });

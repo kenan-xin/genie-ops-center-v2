@@ -32,7 +32,8 @@ export async function assertDocumentKind(
 
   if (row === undefined) throw new AppError(CORE_ERRORS["not-found"]);
 
-  if (!kinds.includes(row.kind)) {
+  // A null kind is a document the reading job has not classified yet.
+  if (row.kind === null || !kinds.includes(row.kind)) {
     throw new AppError(INVOICE_ERRORS["document-kind-mismatch"]);
   }
 }

@@ -7,7 +7,9 @@
 export {
   DEMO_PACK,
   type DemoHistoryIds,
+  LIVE_UPLOADS,
   readDemoCsv,
+  readDemoFile,
   readDemoJson,
 } from "./demo-pack.ts";
 

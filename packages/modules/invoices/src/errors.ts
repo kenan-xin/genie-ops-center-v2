@@ -33,6 +33,14 @@ export const INVOICE_ERRORS = defineModuleErrors("invoices", {
     message: "A record from that document is already saved.",
     status: 409,
   },
+  "document-not-pdf": {
+    message: "That file is not a PDF. Upload a PDF document.",
+    status: 400,
+  },
+  "document-too-large": {
+    message: "That file is over the upload limit of this deployment.",
+    status: 413,
+  },
   "reduction-invalid": {
     message: "A reduction must lower one of the links of this invoice.",
     status: 400,

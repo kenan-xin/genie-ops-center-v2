@@ -8,6 +8,13 @@
       "when": 1793315993078,
       "tag": "0000_invoice-records",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793387739261,
+      "tag": "0001_document-reading",
+      "breakpoints": true
     }
   ]
 }

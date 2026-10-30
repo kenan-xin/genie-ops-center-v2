@@ -26,7 +26,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a customer name that differs only in case and outer spaces",
       "a currency in lower case",
       "an extracted field origin without its quote",
+      "a document reading status outside its three values",
     ].map((row) => `the invoices schema refuses ${row}`),
+  },
+  {
+    file: "testing/upload.integration.test.ts",
+    reason:
+      "Spec 7 R-23: one stored copy per exact file, PDF only, under the upload limit",
+    cases: [
+      "stores 01 once with its SHA-256 and its name, unread",
+      "answers duplicate for the same bytes and adds no document and no file",
+      "keeps one document and one file for two uploads of the same bytes at once",
+      "refuses a file that is not a PDF and stores nothing",
+      "refuses a file over the upload limit and stores nothing",
+    ].map((row) => `document upload ${row}`),
   },
   {
     file: "testing/allocations.integration.test.ts",
@@ -57,12 +70,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "saveInvoice",
         "savePayment",
         "savePaidReceipt",
+        "uploadDocument",
         "correctInvoiceTotal",
       ].map(
         (name) =>
           `the seeded Viewer is refused ${name} and changes nothing, and Finance is allowed`
       ),
       "a writer scoped to one customer links its records and is refused on another customer's",
+      "a writer scoped to one customer is refused uploadDocument",
       "a writer scoped to one customer saves its invoices and is refused another customer's",
       "a writer scoped to one customer saves its payments and is refused another customer's",
     ].map((row) => `invoices write access ${row}`),
@@ -77,6 +92,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the same customer and number answers possible-duplicate until the person keeps it",
       "refuses a purchase-order document with document-kind-mismatch and saves nothing",
       "refuses a payment document with document-kind-mismatch and saves nothing",
+      "refuses a document with no kind yet with document-kind-mismatch and saves nothing",
       "a second save from the same document is refused with document-already-saved",
       ...[
         "a payment of 300,000 naming INV-9 links automatically",

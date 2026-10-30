@@ -6,6 +6,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -16,6 +17,7 @@ import {
 
 import journal from "../drizzle/meta/_journal.json" with { type: "json" };
 import { DUE_DATE_SOURCES } from "./contract.ts";
+import type { StoredReading } from "./services/reading/stored-reading.ts";
 
 export const DOCUMENT_KINDS = [
   "invoice",
@@ -25,6 +27,22 @@ export const DOCUMENT_KINDS = [
 ] as const;
 
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+/** Where a document's reading job stands. A document stored before reading existed is `read`. */
+export const READING_STATUSES = ["reading", "could-not-read", "read"] as const;
+
+export type ReadingStatus = (typeof READING_STATUSES)[number];
+
+/** Why a read document still needs the person, when the reading itself decided it. */
+export const READING_OUTCOMES = [
+  "confirm-split",
+  "no-match",
+  "possible-duplicate",
+  "ai-off",
+  "no-text-layer",
+] as const;
+
+export type ReadingOutcome = (typeof READING_OUTCOMES)[number];
 
 export const FIELD_ORIGINS = ["extracted", "entered", "corrected"] as const;
 
@@ -78,12 +96,35 @@ export const sourceDocument = pgTable(
     fileId: uuid("file_id").notNull(),
     /** One stored copy per exact file (R-34). */
     sha256: text("sha256").notNull().unique("document_sha256_key"),
-    kind: text("kind", { enum: DOCUMENT_KINDS }).notNull(),
+    /** Null until the reading job classifies the document. */
+    kind: text("kind", { enum: DOCUMENT_KINDS }),
+    /** The uploaded name. Null on a document stored before uploads kept it. */
+    fileName: text("file_name"),
+    readingStatus: text("reading_status", { enum: READING_STATUSES })
+      .notNull()
+      .default("read"),
+    /** The job counts its own attempts: the core worker passes no attempt number. */
+    readingAttempts: integer("reading_attempts").notNull().default(0),
+    readingOutcome: text("reading_outcome", { enum: READING_OUTCOMES }),
+    /** The reading after the quote check, null until the model step stores it. */
+    reading: jsonb("reading").$type<StoredReading>(),
     ...timestamps(),
   },
   (table) => [
     check("document_sha256_check", sql`${table.sha256} ~ '^[0-9a-f]{64}$'`),
     check("document_kind_check", oneOf(table.kind, DOCUMENT_KINDS)),
+    check(
+      "document_reading_status_check",
+      oneOf(table.readingStatus, READING_STATUSES)
+    ),
+    check(
+      "document_reading_attempts_check",
+      sql`${table.readingAttempts} >= 0`
+    ),
+    check(
+      "document_reading_outcome_check",
+      oneOf(table.readingOutcome, READING_OUTCOMES)
+    ),
   ]
 );
 
@@ -266,6 +307,10 @@ export const MIGRATIONS_TABLE = "__drizzle_migrations_invoices";
 const MIGRATION_FILES = {
   "0000_invoice-records": new URL(
     "../drizzle/0000_invoice-records.sql",
+    import.meta.url
+  ),
+  "0001_document-reading": new URL(
+    "../drizzle/0001_document-reading.sql",
     import.meta.url
   ),
 };

@@ -99,11 +99,17 @@ async function aLink(): Promise<string> {
 /** Everything a write of this module changes, read with SQL. */
 async function ledgerState() {
   const { rows } = await t().db.$client.query(
-    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits, (select count(*)::int from invoice) as invoices, (select count(*)::int from payment) as payments, (select count(*)::int from customer) as customers"
+    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits, (select count(*)::int from invoice) as invoices, (select count(*)::int from payment) as payments, (select count(*)::int from customer) as customers, (select count(*)::int from document) as documents, (select count(*)::int from file) as files"
   );
 
   return rows[0];
 }
+
+/** A PDF of its own bytes, so each upload stores a new document. */
+const aPdf = () =>
+  new File([`%PDF-1.7 ${randomUUID()}`], "upload.pdf", {
+    type: "application/pdf",
+  });
 
 /** Each write procedure, with a fresh record to write. Later tasks add their writes here. */
 const WRITES: readonly {
@@ -169,6 +175,14 @@ const WRITES: readonly {
           method: null,
           keepPossibleDuplicate: false,
         });
+    },
+  },
+  {
+    name: "uploadDocument",
+    call: async () => {
+      const file = aPdf();
+
+      return (caller) => caller.uploadDocument({ file });
     },
   },
   {
@@ -250,6 +264,20 @@ describe("invoices write access", () => {
     await expect(
       as(userId).linkPayment({ ...pairOfB, amountCents: 100 })
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("a writer scoped to one customer is refused uploadDocument", async () => {
+    const { id } = await insertCustomer(t());
+    const { userId } = await insertPersonWith(t(), ["invoices:write"], {
+      type: "invoices-customer",
+      id,
+    });
+    const before = await ledgerState();
+
+    await expect(
+      as(userId).uploadDocument({ file: aPdf() })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await ledgerState()).toEqual(before);
   });
 
   it("a writer scoped to one customer saves its invoices and is refused another customer's", async () => {

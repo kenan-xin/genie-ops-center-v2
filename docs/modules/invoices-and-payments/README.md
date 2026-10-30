@@ -21,7 +21,7 @@ Three keys: `invoices:read` reads invoices, payments and customers, `invoices:wr
 Amounts are integer cents beside a three-letter upper-case currency code. A balance is the invoice total minus its allocations and is never stored.
 
 - `customer`: a name and an optional email. Two names that differ only in case and outer spaces are refused.
-- `document`: one uploaded file, by the core file id, with its SHA-256 hash and its kind (invoice, payment, paid receipt or purchase order). A unique hash stores an exact copy once.
+- `document`: one uploaded file, by the core file id, with its SHA-256 hash, its uploaded file name, its kind (invoice, payment, paid receipt or purchase order; null until the reading job classifies it), its reading status (`reading`, `could-not-read` or `read`), the number of reading attempts, the reading outcome when the reading decided that the person must act (`confirm-split`, `no-match`, `possible-duplicate`, `ai-off` or `no-text-layer`), and the checked reading. A unique hash stores an exact copy once. A document stored before uploads existed has no file name and is `read`.
 - `invoice`: a customer, an optional document, the number, the invoice date, an optional due date with its source (document, person or unspecified; unspecified has no date), the payment terms, the currency, a positive total and a description.
 - `payment`: a customer, an optional document, the payment date, the currency, a positive amount, the reference, the method and the invoice numbers it names.
 - `allocation`: a positive amount of one payment linked to one invoice, at most once per pair, marked when the link was automatic.
@@ -41,6 +41,12 @@ A grant on a customer covers its invoices and payments.
 A link (an allocation) puts an amount of one payment against one invoice. Every write locks rows in one order: the customer row, then invoice rows in id order, then payment rows in id order, then allocation rows. A write can skip a level. One write reverses two levels: an invoice total correction locks the links of its invoice before their payments. This is safe because every write that touches a link locks the link's invoice first. With these rules, two writes cannot deadlock. Under those locks, a link is refused when it would make the invoice's allocations exceed its total, or the payment's allocations exceed its amount.
 
 A payment links only to an invoice of the same customer and the same currency. A pair links at most once. A second link of the same pair is refused with `link-exists`. Change the existing link instead. A removed link returns its amount to the payment as unallocated. Every link, change and removal writes an `allocation_event` row, with the amounts before and after and the person who made it, and an audit row on the invoice. `automatic` marks a link the module made by itself, which Undo can remove. A changed link is a person's link, so it loses the mark.
+
+## Uploading documents
+
+`uploadDocument` at `POST /invoices/documents` takes one PDF per call. A file whose first bytes are not `%PDF-` is refused with `document-not-pdf`; the declared type is not read, because a browser can send none. A file over the deployment's `FILE_MAX_BYTES` is refused with `document-too-large` (HTTP 413). A document has no customer before a save, so the upload needs `invoices:write` on the whole deployment; a writer scoped to one customer is refused.
+
+The file goes through `FileStorage`, and the document stores its SHA-256 hash and its file name, with no kind and the status `reading`. An exact copy of a stored document stores nothing and answers `duplicate` with the stored document and its label: Duplicate (nothing added). Nothing is kept for the copy, so the answer is gone after a reload. When two uploads of the same new file meet, one stores it and the other removes its copy in the same transaction and answers `duplicate`. The label of a document is its file name, else the number of the invoice or the reference of the payment saved from it, else "Document".
 
 ## Saving invoices
 
