@@ -6,7 +6,7 @@ import {
   type Subscription,
   type TenantContext,
 } from "@genie/core";
-import { defineEvent } from "@genie/core/contracts";
+import { capability, defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
 
 import { placeholderContract } from "./contract.ts";
@@ -239,8 +239,13 @@ export const placeholderModule = {
 
   events: [recordTouched],
 
-  // Section 0 registers no capability, so a provision cannot name one (DEC-42).
-  capabilities: [],
+  capabilities: [
+    capability("document-inbox", {
+      label: home.label,
+      path: home.path,
+      permission: home.requiredPermission,
+    }),
+  ],
 
   // The module's three subscriptions to its own event: fast, durable and serialized (R-61).
   subscriptions: recordTouchedSubscriptions,

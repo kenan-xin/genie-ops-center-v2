@@ -1,6 +1,11 @@
 import { z, type ZodType } from "zod";
 
 import { moduleApiProblems } from "../rpc/conformance.ts";
+import {
+  AGENT_TOOL_NAME,
+  AGENT_TOOL_NAME_MAX,
+  CORE_AGENT_TOOL_NAMES,
+} from "./agent-tools.ts";
 import { CORE_RECORD_TYPE_NAMES } from "./core-record-type-names.ts";
 import { isPermissionKey } from "./keys.ts";
 import { moduleLedgerTable } from "./ledger.ts";
@@ -517,7 +522,7 @@ export function validateModule(module: Module): readonly string[] {
     }
   }
 
-  problems.push(...pageProblems(module));
+  problems.push(...pageProblems(module), ...capabilityProblems(module));
 
   // Seeding a default role creates missing permission definitions, never a
   // privilege in another module (docs/architecture/permission-evolution.md).
@@ -702,6 +707,69 @@ function transformationProblems(
       problems.push(
         `${label} renames to "${final}", which the module does not declare.`
       );
+    }
+  }
+
+  return problems;
+}
+
+/**
+ * The capability rules. One bad tool name makes the model provider refuse every chat request, and
+ * a module tool must not shadow a core tool (R-43). An inbox link checks one of the module's own
+ * keys and stays inside the application (R-42).
+ */
+function capabilityProblems(module: Module): string[] {
+  const id = module.identity.id;
+  const declared = new Set<string>(module.permissions.map(({ key }) => key));
+  const coreTools: ReadonlySet<string> = new Set(CORE_AGENT_TOOL_NAMES);
+  const toolNames = new Set<string>();
+  const problems: string[] = [];
+
+  for (const provision of module.capabilities) {
+    if (provision.name === "document-inbox") {
+      const { label, path, permission } = provision.implementation;
+
+      if (!declared.has(permission)) {
+        problems.push(
+          `Document inbox "${label}" names permission "${permission}", which the module does not declare.`
+        );
+      }
+
+      if (!path.startsWith("/") || path.startsWith("//")) {
+        problems.push(
+          `Document inbox "${label}" links to "${path}", which is not a path of the application.`
+        );
+      }
+
+      continue;
+    }
+
+    for (const { name, description } of provision.implementation.tools) {
+      const tool = `Agent tool "${name}"`;
+
+      if (!AGENT_TOOL_NAME.test(name)) {
+        problems.push(
+          `${tool} is not kebab-case: lower-case letters and digits in hyphen-separated parts.`
+        );
+      } else if (name.length > AGENT_TOOL_NAME_MAX) {
+        problems.push(
+          `${tool} is longer than ${AGENT_TOOL_NAME_MAX} characters.`
+        );
+      } else if (coreTools.has(name)) {
+        problems.push(`${tool} takes the name of a core tool.`);
+      } else if (!name.startsWith(`${id}-`)) {
+        problems.push(`${tool} must start with "${id}-".`);
+      }
+
+      if (toolNames.has(name)) {
+        problems.push(`${tool} is declared more than once.`);
+      }
+
+      toolNames.add(name);
+
+      if (description.trim() === "") {
+        problems.push(`${tool} has no description.`);
+      }
     }
   }
 

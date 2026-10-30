@@ -18,6 +18,7 @@ Depends on: [S7-05](../05-model-connection/index.md), [S7-07](../07-invoice-page
 - Reading and Could not read with Retry, partial readings, AI-off manual entry, PDFs with no text layer.
 - Payments as drafts, then matching from S7-06.
 - The Documents inbox page.
+- Provide the `document-inbox` capability for the Documents inbox page, so that Ask and the chat bubble link to it (S7-10 plan P2).
 
 Out of scope: the review screens (S7-09).
 

@@ -6,6 +6,7 @@ import type { ZodObject, ZodType } from "zod";
 
 import type {
   CapabilityName,
+  CapabilityProvisionOf,
   EventContract,
   EventEnvelope,
 } from "../../../contracts/index.ts";
@@ -256,14 +257,12 @@ export type EventDeclaration = {
  * not exist. The implementation is the provider registered under that name;
  * core records the module id beside it, so a consumer gets it or nothing
  * (R-58) and the list form returns every enabled module's provider (R-13).
- * Section 0 registers none, so `capabilities` is the empty list until a real
- * module needs one and the same change adds it to the registry and to the
- * module contract document.
+ * A new capability is added to the registry and to the module contract
+ * document in the same change.
  */
 export type CapabilityProvision = {
-  readonly name: CapabilityName;
-  readonly implementation: unknown;
-};
+  [TName in CapabilityName]: CapabilityProvisionOf<TName>;
+}[CapabilityName];
 
 /**
  * 15. Subscriptions: the events a module handles. A subscription with no option is fast: it runs

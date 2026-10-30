@@ -175,9 +175,8 @@ export const validModule = {
     },
   ],
 
-  // Empty on purpose: a provision names a key of the CapabilityInterfaces
-  // registry, and Section 0 registers no capability. `module.test-d.ts` holds
-  // the type assertion that an invented name is refused.
+  // Empty on purpose: `validate.test.ts` adds provisions per case, and
+  // `module.test-d.ts` holds the type assertion that an invented name is refused.
   capabilities: [],
 
   jobs: [

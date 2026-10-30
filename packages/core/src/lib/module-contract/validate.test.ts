@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  capability,
+  defineAgentTool,
+  type DocumentInbox,
+} from "../../../contracts/index.ts";
+import {
   implementModule,
   type ModuleContract,
   type ModuleImplementer,
@@ -19,6 +24,7 @@ import {
   type DatasetDeclaration,
   definePage,
   type JobRetry,
+  type Module,
   type ModulePage,
   type NavigationEntry,
 } from "./module.ts";
@@ -1261,6 +1267,61 @@ describe("validateModule", () => {
       expect(validateModule(withDatasets(datasets))).toContain(problem);
     }
   });
+
+  it("refuses an agent tool or an inbox the platform cannot use", () => {
+    const longest = `fixture-${"a".repeat(56)}`;
+
+    expect(
+      validateModule(withTools(["fixture-count-records", longest]))
+    ).toEqual([]);
+
+    expect(validateModule(withInbox({ permission: "fixture:use" }))).toEqual(
+      []
+    );
+
+    const cases: readonly [Module, string][] = [
+      [
+        withTools(["placeholder.count"]),
+        'Agent tool "placeholder.count" is not kebab-case: lower-case letters and digits in hyphen-separated parts.',
+      ],
+      [
+        withTools(["count-records"]),
+        'Agent tool "count-records" must start with "fixture-".',
+      ],
+      [
+        withTools(["fixture-count", "fixture-count"]),
+        'Agent tool "fixture-count" is declared more than once.',
+      ],
+      [
+        withTools(["list-datasets"]),
+        'Agent tool "list-datasets" takes the name of a core tool.',
+      ],
+      [
+        withTools([`${longest}a`]),
+        `Agent tool "${longest}a" is longer than 64 characters.`,
+      ],
+      [
+        withTools(["fixture-count"], " "),
+        'Agent tool "fixture-count" has no description.',
+      ],
+      [
+        withInbox({ permission: "other:read" }),
+        'Document inbox "Fixture inbox" names permission "other:read", which the module does not declare.',
+      ],
+      [
+        withInbox({ path: "https://example.com" }),
+        'Document inbox "Fixture inbox" links to "https://example.com", which is not a path of the application.',
+      ],
+      [
+        withInbox({ path: "//example.com" }),
+        'Document inbox "Fixture inbox" links to "//example.com", which is not a path of the application.',
+      ],
+    ];
+
+    for (const [module, problem] of cases) {
+      expect(validateModule(module)).toEqual([problem]);
+    }
+  });
 });
 
 describe("validateRegistry", () => {
@@ -1350,6 +1411,38 @@ function childPage(parent: string): ModulePage {
     parent,
     component: Empty,
   });
+}
+
+/** The valid fixture providing one read tool of each given name. */
+function withTools(names: readonly string[], description = "Counts records.") {
+  const tools = names.map((name) =>
+    defineAgentTool({
+      name,
+      description,
+      input: z.object({}),
+      run: async () => ({ output: 0, rowCount: 0 }),
+    })
+  );
+
+  return {
+    ...validModule,
+    capabilities: [capability("agent-tools", { tools })],
+  };
+}
+
+/** The valid fixture providing an inbox at its home page, with the given changes. */
+function withInbox(change: Partial<DocumentInbox>) {
+  const inbox: DocumentInbox = {
+    label: "Fixture inbox",
+    path: "/fixture",
+    permission: "fixture:use",
+    ...change,
+  };
+
+  return {
+    ...validModule,
+    capabilities: [capability("document-inbox", inbox)],
+  };
 }
 
 /** The valid fixture with the given dataset declarations. */

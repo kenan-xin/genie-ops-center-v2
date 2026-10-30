@@ -1,5 +1,8 @@
 import type { ZodType } from "zod";
 
+import type { PermissionKey } from "../src/lib/module-contract/keys.ts";
+import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
+
 /**
  * One event's contract: its name, its version and the zod schema of its payload. The emitting
  * module and every subscriber import the same contract from one place — the module that owns it
@@ -53,11 +56,80 @@ export type EventEnvelope<TPayload> = {
   readonly emittedAt: string;
 };
 
+/** A value a tool answers the model with: JSON, so the model reads it and core stores it. */
+export type AgentToolValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly AgentToolValue[]
+  | { readonly [key: string]: AgentToolValue };
+
+export type AgentToolResult = {
+  /** What the model reads back. */
+  readonly output: AgentToolValue;
+  /** Rows the tool read, for the audit row (R-47). */
+  readonly rowCount: number;
+  /** The dataset the tool read, when it read one. */
+  readonly dataset?: string;
+};
+
 /**
- * The named synchronous interfaces a module can provide and another can ask for. Section 0
- * declares the registry and adds no real capability; a capability is added here when a real
- * module needs one, in the same change that documents it in the module contract.
+ * One read tool for the boss agent (R-43). It reads only through `queryDataset`, `can()` and
+ * `scopesFor()` as `ctx.caller`, the person who asks (DEC-29), and core writes its audit row.
  */
-export type CapabilityInterfaces = Record<never, never>;
+export type AgentTool<TInput> = {
+  /** `<moduleId>-<kebab-name>`, at most 64 characters, because providers accept no other name. */
+  readonly name: string;
+  readonly description: string;
+  readonly input: ZodType<TInput>;
+  run(ctx: ModuleRequestContext, input: TInput): Promise<AgentToolResult>;
+};
+
+/** A tool as a provider list holds it. */
+export type AnyAgentTool = {
+  readonly name: string;
+  readonly description: string;
+  readonly input: ZodType;
+  run(ctx: ModuleRequestContext, input: never): Promise<AgentToolResult>;
+};
+
+/** Types one tool's `run` against its own input schema, then widens it for the provider list. */
+export function defineAgentTool<TInput>(tool: AgentTool<TInput>): AnyAgentTool {
+  return tool;
+}
+
+export type AgentToolsProvider = { readonly tools: readonly AnyAgentTool[] };
+
+/** Where a module takes documents; Ask and the bubble link to it for a holder of the key (R-42). */
+export type DocumentInbox = {
+  readonly label: string;
+  readonly path: string;
+  readonly permission: PermissionKey;
+};
+
+/**
+ * The named synchronous interfaces a module can provide and another can ask for. A capability is
+ * added here when a real module needs one, in the same change that documents it in the module
+ * contract.
+ */
+export type CapabilityInterfaces = {
+  readonly "agent-tools": AgentToolsProvider;
+  readonly "document-inbox": DocumentInbox;
+};
 
 export type CapabilityName = keyof CapabilityInterfaces & string;
+
+/** One module's provision of a named capability: the name and the interface it implements. */
+export type CapabilityProvisionOf<TName extends CapabilityName> = {
+  readonly name: TName;
+  readonly implementation: CapabilityInterfaces[TName];
+};
+
+/** One provision, typed so its implementation matches the interface of its name. */
+export function capability<TName extends CapabilityName>(
+  name: TName,
+  implementation: CapabilityInterfaces[TName]
+): CapabilityProvisionOf<TName> {
+  return { name, implementation };
+}

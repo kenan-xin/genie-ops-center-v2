@@ -197,8 +197,7 @@ export const eventWithoutVersion: Module = {
   ],
 };
 
-// 12. Capabilities: a name the CapabilityInterfaces registry holds. Section 0
-// registers none, so the empty list is the only list that compiles.
+// 12. Capabilities: a name the CapabilityInterfaces registry holds.
 export const noCapabilities: Module = { ...validModule, capabilities: [] };
 
 export const inventedCapability: Module = {
