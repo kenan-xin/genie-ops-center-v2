@@ -140,11 +140,17 @@ describe("the demo seed command", () => {
     expect(lines.join("\n")).not.toContain(DEMO_EMAIL);
     expect(lines.at(-1)).toBe("Written.");
 
-    const { rows: audit } = await client.query<{ count: number }>(
-      "select count(*)::int as count from audit_event where actor_user_id = $1",
+    const { rows: audit } = await client.query<{
+      count: number;
+      only_invoice_actions: boolean;
+    }>(
+      `select count(*)::int as count,
+              bool_and(action like 'invoices:%') as only_invoice_actions
+       from audit_event where actor_user_id = $1`,
       [demoId]
     );
-    expect(audit[0]?.count).toBeGreaterThan(0);
+    // 6 customers, 36 invoices, 30 payments and 30 payment links, one module audit row each.
+    expect(audit[0]).toEqual({ count: 102, only_invoice_actions: true });
     expect(changes(before, await tableCounts(deployment))).toEqual({
       "public.role_assignment": 3,
       "public.file": 66,
@@ -156,7 +162,7 @@ describe("the demo seed command", () => {
       "public.allocation": 30,
       "public.allocation_event": 30,
       // Every new audit row names the demo account; the module writes them, not the seed.
-      "public.audit_event": audit[0]?.count,
+      "public.audit_event": 102,
     });
 
     const { rows: grants } = await client.query(
