@@ -79,7 +79,7 @@
           "customerName": "Meridian Labs",
           "settledWithDueDateCount": 5,
           "paidLateCount": 2,
-          "repeatedLatePayer": true
+          "repeatedLatePayer": false
         },
         {
           "customerName": "Orchid Retail",
@@ -88,7 +88,7 @@
           "repeatedLatePayer": true
         }
       ],
-      "note": "Repeatedly means two or more late settlements. A part-paid invoice is not in the denominator."
+      "note": "Repeatedly means late on more than half of the settled invoices with a known due date. A part-paid invoice is not in the denominator."
     },
     {
       "id": "overdue-balances",

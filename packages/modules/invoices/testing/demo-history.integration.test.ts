@@ -397,8 +397,9 @@ describe("demo history", () => {
           customerName: row.name ?? null,
           settledWithDueDateCount: row.settledWithDueDateCount ?? null,
           paidLateCount: row.paidLateCount ?? null,
-          // Decision 17: repeatedly means two or more late settlements.
-          repeatedLatePayer: Number(row.paidLateCount) >= 2,
+          // Repeatedly means late on more than half of the settled invoices.
+          repeatedLatePayer:
+            Number(row.paidLateCount) * 2 > Number(row.settledWithDueDateCount),
         })),
     ],
     [
