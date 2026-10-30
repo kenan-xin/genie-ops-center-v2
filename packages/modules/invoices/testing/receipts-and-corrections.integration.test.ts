@@ -352,8 +352,9 @@ describe("receipts and corrections", () => {
       // Both calls really waited at each step, so the case is a race.
       expect([waitedOnLow, waitedOnHigh]).toEqual([2, 2]);
     } finally {
-      holdLow.release();
-      holdHigh.release();
+      // Destroyed, not pooled: a hold that failed before its rollback still owns a payment lock.
+      holdLow.release(true);
+      holdHigh.release(true);
     }
   }, 30000);
 
