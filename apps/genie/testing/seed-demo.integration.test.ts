@@ -211,6 +211,28 @@ describe("the demo seed command", () => {
     expect(changes(before, await tableCounts(deployment))).toEqual({});
     expect(await settings(deployment)).toEqual(settingsBefore);
   });
+
+  it("keeps the time of history written after the seed when a later run writes again", async () => {
+    const client = deployment.context.db.$client;
+    const later = "2026-10-30 01:00:00+00";
+    await client.query(
+      "update allocation_event set occurred_at = $1 where id = (select min(id::text)::uuid from allocation_event)",
+      [later]
+    );
+    // A missing grant makes the run write again, with all history already present.
+    await client.query(
+      "delete from role_assignment where principal_id = $1 and role_id = (select min(role_id::text)::uuid from role_assignment where principal_id = $1)",
+      [demoId]
+    );
+
+    expect((await run(false)).at(-1)).toBe("Written.");
+
+    const { rows: kept } = await client.query<{ count: number }>(
+      "select count(*)::int as count from allocation_event where occurred_at = $1",
+      [later]
+    );
+    expect(kept).toEqual([{ count: 1 }]);
+  });
 });
 
 describe("the demo seed command on a database that is not ready", () => {

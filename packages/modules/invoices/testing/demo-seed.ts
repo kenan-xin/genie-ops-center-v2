@@ -263,6 +263,7 @@ export async function seedDemoHistory(
   const customers = new Map<string, string>();
   const invoices = new Map<string, string>();
   const payments = new Map<string, string>();
+  const savedPayments: string[] = [];
 
   const seedCustomers = new Map(
     seed.customers.map((customer) => [customer.customer_id, customer])
@@ -385,23 +386,25 @@ export async function seedDemoHistory(
 
     customers.set(record.customer_id, result.customerId);
     payments.set(record.payment_id, result.paymentId);
+    savedPayments.push(result.paymentId);
   }
 
   // The save stamps each link event with the run time, but the pack's links happened on the
-  // payment date, so the seed dates them at noon in the pack's time zone. `audit_event` is
-  // append-only (decision log: audit events are never edited), so its rows keep the run time.
-  const linkedAt = sql`(${payment.paymentDate} + time '12:00') at time zone ${seed.metadata.timezone}`;
-
+  // payment date, so the seed dates them at noon in the pack's time zone. Only the links of
+  // payments saved by this run, so a later run never re-dates a person's own history.
+  // `audit_event` is append-only (decision log: never edited), so its rows keep the run time.
   await withTransaction(tenant, (tx) =>
     tx
       .update(allocationEvent)
-      .set({ occurredAt: linkedAt })
+      .set({
+        occurredAt: sql`(${payment.paymentDate} + time '12:00') at time zone ${seed.metadata.timezone}`,
+      })
       .from(payment)
       .where(
         and(
           eq(payment.id, allocationEvent.paymentId),
-          inArray(payment.id, [...payments.values()]),
-          sql`${allocationEvent.occurredAt} is distinct from ${linkedAt}`
+          inArray(payment.id, savedPayments),
+          eq(allocationEvent.action, "linked")
         )
       )
   );
