@@ -135,7 +135,7 @@ export async function loadInvoiceRecord(
         orderBy: [{ column: "paymentDate", direction: "asc" }],
       },
     }),
-    allocationHistory(ctx.tenant, { invoiceId: id }, read.asOf),
+    allocationHistory(ctx, { invoiceId: id }, read.asOf),
     ctx.tenant.db
       .select({ documentId: invoice.documentId })
       .from(invoice)
@@ -208,7 +208,7 @@ export async function loadPaymentRecord(
         orderBy: [{ column: "invoiceNumber", direction: "asc" }],
       },
     }),
-    allocationHistory(ctx.tenant, { paymentId: id }, read.asOf),
+    allocationHistory(ctx, { paymentId: id }, read.asOf),
     ctx.tenant.db
       .select({ documentId: payment.documentId })
       .from(payment)

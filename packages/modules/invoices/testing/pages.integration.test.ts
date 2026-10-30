@@ -25,7 +25,10 @@ import type {
   PaymentListView,
 } from "../src/presentation/views.ts";
 import { invoicesRouter } from "../src/router.ts";
-import { loadInvoiceRecord } from "../src/services/pages/records.ts";
+import {
+  loadInvoiceRecord,
+  loadPaymentRecord,
+} from "../src/services/pages/records.ts";
 import { insertCustomer, insertInvoice, insertPayment } from "./factories.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
@@ -224,6 +227,48 @@ describe("invoice pages", () => {
     ]);
     expect(view.allocations).toEqual([]);
     expect(view.invoice.outstandingCents).toBe(720_000);
+  });
+
+  it("the history shows only the links of invoices the reader may read, as the allocations do", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const [invoice, payment] = await Promise.all([
+      insertInvoice(t(), { customerId }),
+      insertPayment(t(), { customerId }),
+    ]);
+    const { userId: financeId } = await insertPersonWith(t(), [
+      ...READER,
+      "invoices:write",
+    ]);
+    await callProcedure(invoicesRouter, contextFor(financeId)).linkPayment({
+      invoiceId: invoice.id,
+      paymentId: payment.id,
+      amountCents: 1000,
+    });
+    const [onPayment, onInvoice] = await Promise.all([
+      insertPersonWith(t(), [...READER], {
+        type: "invoices-payment",
+        id: payment.id,
+      }),
+      insertPersonWith(t(), [...READER], {
+        type: "invoices-invoice",
+        id: invoice.id,
+      }),
+    ]);
+
+    const paymentView = await loadPaymentRecord(
+      contextFor(onPayment.userId),
+      payment.id
+    );
+    const invoiceView = await openRecord(onInvoice.userId, invoice.id);
+
+    if (paymentView.kind !== "shown" || invoiceView.kind !== "shown") {
+      throw new Error("a record answered the reporting-date note");
+    }
+    expect(paymentView.allocations).toEqual([]);
+    expect(paymentView.history).toEqual([]);
+    expect(invoiceView.history.map((row) => row.invoiceId)).toEqual([
+      invoice.id,
+    ]);
   });
 
   it("an invoice dated after the reporting date answers the note with its number", async () => {
