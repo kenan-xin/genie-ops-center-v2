@@ -24,6 +24,7 @@
     "./security": "./src/lib/content-security-policy/index.ts",
     "./testing": "./testing/index.ts",
     "./testing/stage-workspace": "./testing/stage-workspace.ts",
+    "./testing/model-transports": "./testing/model-transports.ts",
     "./testing/required-tests-runner": "./testing/required-tests-runner.ts",
     "./testing/required-tests-validator": "./testing/required-tests-validator.ts",
     "./contracts": "./contracts/index.ts",

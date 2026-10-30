@@ -2,11 +2,22 @@ import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { createTenantContext, seedRoles, SETUP_STEPS } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
-import { enableModules, insertUser } from "@genie/core/testing";
+import {
+  assignRole,
+  enableModules,
+  insertRole,
+  insertUser,
+  writeModelConnection,
+} from "@genie/core/testing";
+import {
+  insertAgentRecords,
+  PLACEHOLDER_AGENT_RECORDINGS,
+} from "@genie/module-placeholder/testing";
 
 import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
@@ -61,6 +72,25 @@ export const DEV_PORT = Number(
 
 /** The demo account the seeded pages are read as (R-59). */
 export const DEMO_ACCOUNT_EMAIL = "e2e.demo@example.invalid";
+
+/** The people the agent specs sign in as (Spec 7 R-40, AC-8); each holds one role. */
+export const ASK_PEOPLE = {
+  phone: "e2e.ask.phone@example.invalid",
+  desktop: "e2e.ask.desktop@example.invalid",
+  /** Opens another person's session link (B12.5). */
+  other: "e2e.ask.other@example.invalid",
+  /** Reads the placeholder but may not ask. */
+  noAsk: "e2e.no-ask@example.invalid",
+} as const;
+
+const ASK_KEYS = ["core:ask:use", "placeholder:read", "placeholder:use"];
+
+const PERMISSIONS_OF = new Map<string, readonly string[]>([
+  [ASK_PEOPLE.phone, ASK_KEYS],
+  [ASK_PEOPLE.desktop, ASK_KEYS],
+  [ASK_PEOPLE.other, ASK_KEYS],
+  [ASK_PEOPLE.noAsk, ["placeholder:use"]],
+]);
 
 const databaseUrl = () =>
   `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`;
@@ -150,6 +180,40 @@ async function seedDemo(): Promise<void> {
 
   if (!second.endsWith("Already seeded: nothing to write.")) {
     throw new Error(`The second demo seed run wrote again.\n${second}`);
+  }
+}
+
+/**
+ * AI on with the test settings, the agent's records and the people of `ASK_PEOPLE`, on a tenant
+ * context of its own. The reporting date stays the demo seed's `2026-10-27`, the recordings' date.
+ * AI on is safe only because `next dev` loads the model stand-in (see the spawn below).
+ */
+async function seedAgent(): Promise<void> {
+  const context = createTenantContext(
+    { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },
+    silentLogger(),
+    selectedModuleIds,
+    undefined,
+    "core"
+  );
+
+  try {
+    await writeModelConnection(context, {
+      allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      chat: "openai/gpt-6.1-terra",
+      document: "anthropic/claude-opus-5.5",
+    });
+    await insertAgentRecords(context);
+    await Promise.all(
+      [...PERMISSIONS_OF].map(async ([email, permissions]) => {
+        const id = await insertUser(context, { email, emailVerified: true });
+        const roleId = await insertRole(context, { permissions });
+
+        await assignRole(context, { roleId, principal: { type: "user", id } });
+      })
+    );
+  } finally {
+    await context.db.$client.end();
   }
 }
 
@@ -246,6 +310,10 @@ export default async function globalSetup(): Promise<void> {
   // `next dev` rather than the built server, because the development branch of
   // the mount is the whole subject of these specs. NODE_ENV is set by `next
   // dev` itself; setting it here would be the test arranging its own result.
+  //
+  // `--import` loads the model stand-in (`testing/model-standin.ts`, P13) before the server, so
+  // every model request of this run is answered from the placeholder's recordings. A failed
+  // import stops `next dev`, so AI on never runs without it.
   const child = spawn(
     resolve(APP_ROOT, "node_modules/.bin/next"),
     ["dev", "--hostname", "127.0.0.1", "--port", String(DEV_PORT)],
@@ -256,6 +324,11 @@ export default async function globalSetup(): Promise<void> {
         ...TEST_AUTH_ENV,
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: publicUrl(),
+        NODE_OPTIONS:
+          `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(resolve(APP_ROOT, "testing/model-standin.ts")).href}`.trim(),
+        GENIE_E2E_MODEL_RECORDINGS:
+          process.env.GENIE_E2E_MODEL_RECORDINGS ??
+          PLACEHOLDER_AGENT_RECORDINGS,
       },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
@@ -287,6 +360,7 @@ export default async function globalSetup(): Promise<void> {
 
   await seedTestSetup();
   await seedDemo();
+  await seedAgent();
 }
 
 /**

@@ -1,0 +1,31 @@
+import {
+  loadModelRecordings,
+  MODEL_PROVIDER_ORIGIN,
+  replayModelTransport,
+} from "@genie/core/testing/model-transports";
+
+/**
+ * The development browser run's model (DEC-55, P13). `NODE_OPTIONS=--import` loads this file into
+ * `next dev` before the server starts, and it answers every request to the model origin from the
+ * recordings in `GENIE_E2E_MODEL_RECORDINGS`, so no request of the run reaches a model host. It
+ * is in-process because the request guard accepts only the provider's own HTTPS origin, and
+ * DEC-55 allows no base-URL variable. A missing folder throws, which stops `next dev`: the run
+ * fails closed.
+ */
+const directory = process.env.GENIE_E2E_MODEL_RECORDINGS;
+
+if (directory === undefined || directory === "") {
+  throw new Error(
+    "GENIE_E2E_MODEL_RECORDINGS is not set. The model stand-in will not load without its recordings."
+  );
+}
+
+const replay = replayModelTransport(loadModelRecordings(directory));
+
+const original = globalThis.fetch;
+
+globalThis.fetch = (input, init) =>
+  new URL(input instanceof Request ? input.url : input).origin ===
+  MODEL_PROVIDER_ORIGIN
+    ? replay(input, init)
+    : original(input, init);

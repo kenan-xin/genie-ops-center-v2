@@ -17,6 +17,8 @@ import {
   setModelConnection,
 } from "../src/services/models/connection.ts";
 
+export { MODEL_PROVIDER_ORIGIN } from "../src/services/models/connection.ts";
+
 /** The absolute path of packages/core/testing/model-recordings. */
 export const CORE_MODEL_RECORDINGS = fileURLToPath(
   new URL("model-recordings", import.meta.url)
