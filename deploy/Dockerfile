@@ -12,6 +12,7 @@ FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2ee
 # accepting an explicitly empty selection (Spec 0 AC-24, pg4).
 ARG MODULE_INCLUDE
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV OPENUI_TELEMETRY_DISABLED=1
 
 # Node 26 images no longer ship corepack, so pnpm is installed explicitly at the
 # version the workspace pins in `packageManager`.

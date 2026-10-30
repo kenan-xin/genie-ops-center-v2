@@ -82,3 +82,6 @@ allowBuilds:
   # binary its optional dependencies already carry.
   "@parcel/watcher": false
   "@swc/core": false
+  # @openuidev/react-lang's dependency. Its install script sends install
+  # telemetry (`OPENUI_TELEMETRY_DISABLED`). Denied rather than run.
+  "@openuidev/lang-core": false

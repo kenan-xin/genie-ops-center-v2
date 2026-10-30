@@ -93,6 +93,7 @@ The oRPC and TanStack Query setup lives in `apps/genie/src/rpc/` and these rules
 | AI chat backend | External Genie chat API | external | Server-side streaming proxy. Secrets never reach the browser. |
 | Model calls | AI SDK (`ai`) | 7.0.154 | One interface over language models for document reading and chat: `generateText`, `streamText` and structured output, with abort signals and call retries. Its `simulateReadableStream`, `JsonToSseTransformStream` and `parseJsonEventStream` also build and read the recorded test model, so no stream code is hand-written. A dependency of core only, because core builds every model (`DEC-55`). |
 | Model provider | OpenRouter through `@openrouter/ai-sdk-provider` | 3.1.0 | The AI SDK provider for OpenRouter: one stored key reaches every allowed model, and a model changes without a restart. Core's one model function passes the stored key, the allowed host, a timeout and `data_collection: "deny"` (`DEC-55`). It has no dependencies of its own, and its peers are `ai` and zod. |
+| Generative answers | `@openuidev/react-lang` | 1.0.2 exactly | Parses OpenUI Lang and renders it with our own catalog (R-45). In `packages/core` only. `react-ui` and `react-headless` are never installed; the `lang-core` install script is denied in `allowBuilds` and `OPENUI_TELEMETRY_DISABLED=1` is set where installs run. Its devtools load only in development. |
 
 ## Quality
 

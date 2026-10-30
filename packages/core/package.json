@@ -32,6 +32,7 @@
   },
   "scripts": {
     "lint": "oxlint --config ../../oxlint.config.ts src contracts testing tools",
+    "agent-prompt": "node tools/emit-agent-prompt.ts && oxfmt src/services/agent/catalog-prompt.generated.ts",
     "schemas": "node tools/emit-schemas.ts",
     "test": "vitest run",
     "test:integration": "node tools/run-required-tests.ts",
@@ -41,6 +42,7 @@
     "@genie/ui": "workspace:*",
     "@openrouter/ai-sdk-provider": "3.1.0",
     "@opentelemetry/api": "1.10.0",
+    "@openuidev/react-lang": "1.0.2",
     "@orpc/contract": "catalog:",
     "@orpc/server": "catalog:",
     "@react-email/components": "1.0.12",

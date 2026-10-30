@@ -32,6 +32,7 @@ concurrency:
 # runner together, so CI runs at most 2 (xok3.24).
 env:
   NX_PARALLEL: 2
+  OPENUI_TELEMETRY_DISABLED: "1"
 
 jobs:
   gates:

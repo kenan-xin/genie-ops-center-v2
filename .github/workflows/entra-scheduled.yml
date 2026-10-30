@@ -29,6 +29,9 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
+env:
+  OPENUI_TELEMETRY_DISABLED: "1"
+
 jobs:
   entra:
     runs-on: ubuntu-latest
