@@ -52,7 +52,12 @@ const config: StorybookConfig = {
       // cache, and a later selection that first imports them would reload
       // the browser mid-run and fail its stories. The chart stories add Recharts.
       optimizeDeps: {
-        include: ["@orpc/contract", "@tanstack/react-query", "recharts"],
+        include: [
+          "@orpc/contract",
+          "@tanstack/react-query",
+          "@openuidev/react-lang",
+          "recharts",
+        ],
       },
       plugins: [
         moduleTailwindSources({
