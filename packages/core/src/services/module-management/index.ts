@@ -183,8 +183,8 @@ export async function setModuleEnabledIn(
   const roles = defaultRoleRows(module);
 
   // A module an upgrade registered after setup has no default roles yet (DEC-50, "New modules on
-  // an existing deployment"). The switch-on creates the missing ones by name, assigns none, and
-  // never rewrites a role that already holds the name (R-33a).
+  // an existing deployment"). Each switch-on creates the missing default roles by name, assigns
+  // none, and never rewrites a role that already holds the name (R-33a).
   if (changed && enabled && roles.length > 0) {
     await tx
       .insert(role)

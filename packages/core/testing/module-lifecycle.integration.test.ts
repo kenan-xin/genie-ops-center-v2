@@ -714,7 +714,7 @@ describe("genie-ops module lifecycle", () => {
     });
   }, 120000);
 
-  it("the first switch-on of a module an upgrade registered creates its default roles once and assigns none", async () => {
+  it("each switch-on of a module an upgrade registered creates its missing default roles and assigns none", async () => {
     const fixture = await upgradedDeployment();
     const names = ["Fixture reader", "Fixture user"];
 
@@ -765,7 +765,7 @@ describe("genie-ops module lifecycle", () => {
     await expect(rolesNamed(fixture.observer, names)).resolves.toEqual(created);
   }, 120000);
 
-  it("the first switch-on keeps the id and keys of a role that already holds a default role's name", async () => {
+  it("a switch-on keeps the id and keys of a role that already holds a default role's name", async () => {
     const fixture = await upgradedDeployment();
 
     const existing = await fixture.observer.query<{ id: string }>(

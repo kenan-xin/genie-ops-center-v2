@@ -8,7 +8,7 @@ import { seedGenieAdministrators, seedRoles } from "../authorization/index.ts";
  * holding `Tenant administrator` tenant-wide (R-55, DEC-23). A module registered disabled gets its
  * role definitions only: `seedRoles` appends a module's admin key to `Tenant administrator` only
  * when its entitlement is enabled, and the later switch-on appends it. A module an upgrade
- * registered after setup gets its missing default roles from its first switch-on
+ * registered after setup gets its missing default roles on each switch-on
  * (`setModuleEnabledIn`), which inserts them the same way.
  *
  * Both halves are create-if-missing and never rewrite an existing permission array, so a rerun or

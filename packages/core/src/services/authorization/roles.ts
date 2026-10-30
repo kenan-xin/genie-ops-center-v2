@@ -114,7 +114,7 @@ export async function syncModuleAdminKey(
 
 /**
  * A module's declared default roles as `role` rows: system roles carrying the module id. Both
- * `seedRoles` and the first switch-on of a module insert them by name and never overwrite one
+ * `seedRoles` and each switch-on of a module insert them by name and never overwrite one
  * (R-33a).
  */
 export function defaultRoleRows(
