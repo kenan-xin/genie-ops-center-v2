@@ -1,5 +1,6 @@
 {
   "name": "agent-after-cancelled-tool",
+  "handWritten": "S7-10, 2026-10-30: written by hand, no live run allowed; the request is the body the route sent, the response events are copied from hello-chat-default-stream.json; the owner refreshes it live.",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
