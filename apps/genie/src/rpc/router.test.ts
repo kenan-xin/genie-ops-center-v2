@@ -11,7 +11,7 @@ const os = implementModule("reports", contract);
 const router = os.router({ read: os.read.handler(() => "read") });
 
 describe("createAppRouter", () => {
-  it("mounts core's eight areas beside the modules", () => {
+  it("mounts core's nine areas beside the modules", () => {
     expect(Object.keys(createAppRouter([]))).toEqual([
       "audit",
       "groups",
@@ -21,6 +21,7 @@ describe("createAppRouter", () => {
       "categories",
       "settings",
       "branding",
+      "agent",
     ]);
   });
 });

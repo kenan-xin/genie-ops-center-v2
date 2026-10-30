@@ -1,4 +1,5 @@
 import {
+  createAgentRouter,
   createAuditRouter,
   createBrandingRouter,
   createCategoriesRouter,
@@ -11,7 +12,7 @@ import {
   type ModuleRouter,
 } from "@genie/core";
 
-/** The composed router: one entry per module id, plus core's eight areas. */
+/** The composed router: one entry per module id, plus core's nine areas. */
 export type AppRouter = Readonly<Record<string, ModuleRouter>>;
 
 /**
@@ -44,6 +45,7 @@ export function composeRouter(
  * `core:groups:manage`, `people` behind `core:people:manage` and `roles` behind
  * `core:roles:manage` (R-37), `modules` and `categories` behind `core:settings:manage` (R-81,
  * R-87). `settings` and `branding` are empty until S3-06 and S3-07 fill them (Section 3, D3-6).
+ * `agent` sits behind `core:ask:use` (Spec 7 R-42).
  */
 export function createAppRouter(modules: readonly Module[]): AppRouter {
   return composeRouter([
@@ -56,5 +58,6 @@ export function createAppRouter(modules: readonly Module[]): AppRouter {
     ["categories", createCategoriesRouter(modules)],
     ["settings", createSettingsRouter(modules)],
     ["branding", createBrandingRouter()],
+    ["agent", createAgentRouter()],
   ]);
 }

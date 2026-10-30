@@ -33,7 +33,7 @@ const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
- * Ids a module may not take: core itself, the core areas (eight) and the modules in the RPC
+ * Ids a module may not take: core itself, the core areas (nine) and the modules in the RPC
  * router, and the top-level paths core serves itself.
  */
 const RESERVED_IDS: ReadonlySet<string> = new Set([
@@ -46,6 +46,9 @@ const RESERVED_IDS: ReadonlySet<string> = new Set([
   "categories",
   "settings",
   "branding",
+  "agent",
+  // Core's Ask page, `/ask`.
+  "ask",
   // A `/<id>` or `/admin/<id>` page path must not claim a path that core or the module
   // contract names, or a disabled module's page would take that path in the proxy
   // (Spec 1 R-8). The last three are core's own pages: the break-glass door

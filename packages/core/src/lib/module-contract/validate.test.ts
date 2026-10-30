@@ -57,6 +57,8 @@ describe("validateModule", () => {
     "categories",
     "settings",
     "branding",
+    "agent",
+    "ask",
     "m",
     "admin",
     "api",

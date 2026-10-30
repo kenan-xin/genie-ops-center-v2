@@ -105,4 +105,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent tools on the placeholder answers an unknown field with the dataset's fix hint and records dataset-query-invalid",
     ],
   },
+  {
+    file: "testing/agent-access.integration.test.ts",
+    reason:
+      "Spec 7 R-42: Ask links to an enabled module's document inbox only for a person who may open it",
+    cases: [
+      "agentAccess on the placeholder links the placeholder's inbox only for a holder of placeholder:use while the module is on",
+    ],
+  },
 ];

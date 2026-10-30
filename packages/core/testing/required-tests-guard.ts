@@ -374,7 +374,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the access seam against a real database answers scopesFor with all for a tenant-wide assignment and the list otherwise",
       "the access seam against a real database grants through a group, and not through an archived group until it is restored",
       "the access seam against a real database lets only an unlimited break-glass account bypass",
-      "the access seam against a real database seeds the six core keys and the two system roles without overwriting a changed array",
+      "the access seam against a real database seeds the seven core keys and the two system roles without overwriting a changed array",
       "the access seam against a real database appends the module admin key to Tenant administrator on enable and removes it on disable",
       "the access seam against a real database omits a navigation entry whose permission refuses, and the route behind it still refuses",
     ],
@@ -592,6 +592,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the owner-only agent store against a real database a person lists only their own sessions, latest message first",
       "the owner-only agent store against a real database another person's session answers not-found and stays unchanged",
       "the owner-only agent store against a real database messages keep their order and their parts",
+    ],
+  },
+  {
+    file: "testing/agent-area.integration.test.ts",
+    reason:
+      "Spec 7 R-42: the agent area sits behind core:ask:use and lists only the caller's own sessions",
+    cases: [
+      "the agent area refuses a person without core:ask:use on both procedures, and lists a holder's own sessions",
+    ],
+  },
+  {
+    file: "testing/agent-access.integration.test.ts",
+    reason:
+      "Spec 7 R-42, R-20, P6 and P7: only a key holder who is not the break-glass account may use Ask, and Ask says whether AI is on",
+    cases: [
+      "agentAccess permits only a key holder who is not the break-glass account, and says whether AI is on",
     ],
   },
 ];

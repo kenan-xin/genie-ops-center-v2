@@ -337,6 +337,7 @@ describe("the roles setup step (R-55, R-33)", () => {
         "core:branding:manage",
         "core:settings:manage",
         "core:audit:read",
+        "core:ask:use",
         // The enabled module's admin key is appended (R-31).
         "fixture:admin",
       ])

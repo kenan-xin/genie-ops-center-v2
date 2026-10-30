@@ -146,6 +146,7 @@ export {
 } from "./lib/errors/index.ts";
 
 export {
+  ASK_PERMISSION,
   AUDITOR_ROLE,
   CORE_PERMISSION_KEYS,
   can,
@@ -491,6 +492,13 @@ export {
   readOwnSession,
   AGENT_TOOL_AUDIT_ACTION,
   agentToolSet,
+  type AgentAccess,
+  agentAccess,
+  type InboxLink,
+  type AgentContract,
+  agentContract,
+  type AgentRouter,
+  createAgentRouter,
 } from "./services/agent/index.ts";
 
 export type {

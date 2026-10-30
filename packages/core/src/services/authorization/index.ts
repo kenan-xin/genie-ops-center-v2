@@ -32,6 +32,7 @@ export {
 } from "./role-summaries.ts";
 
 export {
+  ASK_PERMISSION,
   AUDITOR_ROLE,
   CORE_PERMISSION_KEYS,
   GENIE_ADMINISTRATORS_GROUP,

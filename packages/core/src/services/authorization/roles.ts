@@ -17,6 +17,7 @@ export const CORE_PERMISSION_KEYS = [
   "core:branding:manage",
   "core:settings:manage",
   "core:audit:read",
+  "core:ask:use",
 ] as const;
 
 /** The label each core key shows in the role form and detail, as a module labels its own keys. */
@@ -30,7 +31,15 @@ export const CORE_PERMISSION_LABELS: Record<
   "core:branding:manage": "Manage branding",
   "core:settings:manage": "Manage tenant settings",
   "core:audit:read": "Read the audit log",
+  "core:ask:use": "Use Ask",
 };
+
+/**
+ * The key that gates Ask, the bubble and the agent (Spec 7 R-42). A new deployment's
+ * `Tenant administrator` holds it; an existing role is never broadened (R-33a).
+ */
+export const ASK_PERMISSION: (typeof CORE_PERMISSION_KEYS)[number] =
+  "core:ask:use";
 
 export {
   AUDITOR_ROLE,

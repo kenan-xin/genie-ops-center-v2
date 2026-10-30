@@ -86,8 +86,9 @@ export function shellNavigation(
 }
 
 /**
- * The chrome switch (R-32, DEC-23). The core admin entries cover all six core keys, so holding a
- * core admin group in the already permitted tree equals holding a core admin permission.
+ * The chrome switch (R-32, DEC-23). The core admin entries cover all six core admin keys, so
+ * holding a core admin group in the already permitted tree equals holding a core admin permission.
+ * `core:ask:use` has no admin entry, so it never switches the chrome.
  */
 export function administration(
   tree: NavigationTree

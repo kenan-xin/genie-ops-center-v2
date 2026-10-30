@@ -376,7 +376,7 @@ describe("the access seam against a real database", () => {
     expect(pool.queries()).toBe(0);
   });
 
-  it("seeds the six core keys and the two system roles without overwriting a changed array", async () => {
+  it("seeds the seven core keys and the two system roles without overwriting a changed array", async () => {
     const roles = await deployment.context.db.$client.query<{
       name: string;
       permissions: string[];
@@ -392,7 +392,15 @@ describe("the access seam against a real database", () => {
     ]);
     expect(roles.rows[0]?.permissions).toEqual(["core:audit:read"]);
     expect(await tenantAdministratorKeys()).toEqual(
-      expect.arrayContaining([...CORE_PERMISSION_KEYS])
+      expect.arrayContaining([
+        "core:people:manage",
+        "core:groups:manage",
+        "core:roles:manage",
+        "core:branding:manage",
+        "core:settings:manage",
+        "core:audit:read",
+        "core:ask:use",
+      ])
     );
 
     await deployment.context.db.$client.query(

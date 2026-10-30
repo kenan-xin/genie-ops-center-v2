@@ -1,5 +1,6 @@
 // Type-only imports are erased, so this browser file pulls no core runtime into the bundle.
 import type {
+  AgentContract,
   AuditContract,
   BrandingContract,
   CategoriesContract,
@@ -20,9 +21,9 @@ import {
 } from "../unauthenticated.ts";
 
 /**
- * The contracts the browser calls: core's eight administration areas. A module's browser code
- * reaches its own router at runtime through `useModuleClient`, which reads its entry from this
- * client's Proxy by module id; the type does not enumerate module contracts.
+ * The contracts the browser calls: core's eight administration areas and the `agent` area. A
+ * module's browser code reaches its own router at runtime through `useModuleClient`, which reads
+ * its entry from this client's Proxy by module id; the type does not enumerate module contracts.
  */
 type BrowserContract = {
   readonly audit: AuditContract;
@@ -33,6 +34,7 @@ type BrowserContract = {
   readonly categories: CategoriesContract;
   readonly settings: SettingsContract;
   readonly branding: BrandingContract;
+  readonly agent: AgentContract;
 };
 
 const link = new RPCLink({

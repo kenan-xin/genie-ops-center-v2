@@ -14,6 +14,8 @@ import { startDisposablePostgres } from "./postgres.ts";
 
 export { enableModules } from "./enable-modules.ts";
 
+export { writeModelConnection } from "./agent-helpers.ts";
+
 export {
   type JsonValue,
   type ModelRecording,
