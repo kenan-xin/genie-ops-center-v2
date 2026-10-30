@@ -3,6 +3,13 @@
  * them pulls the router, the schema or their server dependencies into a browser.
  */
 
+export { DocumentInbox, type DocumentInboxProps } from "./document-inbox.tsx";
+
+export {
+  DocumentStatusBadge,
+  type DocumentStatusBadgeProps,
+} from "./document-status-badge.tsx";
+
 export { InvoiceList, type InvoiceListProps } from "./invoice-list.tsx";
 
 export {
@@ -30,6 +37,7 @@ export {
 export { PaymentRecord, type PaymentRecordProps } from "./payment-record.tsx";
 
 export {
+  DocumentInboxPage,
   InvoiceListPage,
   InvoiceRecordPage,
   PaymentListPage,
@@ -38,7 +46,10 @@ export {
 
 export type {
   AllocationRow,
+  DocumentInboxRow,
+  DocumentInboxView,
   HistoryRow,
+  InboxStatus,
   InvoiceDetail,
   InvoiceListRow,
   InvoiceRecordView,

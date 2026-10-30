@@ -10,6 +10,7 @@ import {
 } from "./datasets.ts";
 import { INVOICES_PERMISSIONS } from "./permissions.ts";
 import {
+  DocumentInboxPage,
   InvoiceListPage,
   InvoiceRecordPage,
   PaymentListPage,
@@ -28,12 +29,22 @@ import {
   payment,
   sourceDocument,
 } from "./schema.ts";
+import { loadDocumentInbox } from "./services/documents/inbox.ts";
 import { loadInvoiceList, loadPaymentList } from "./services/pages/lists.ts";
 import {
   loadInvoiceRecord,
   loadPaymentRecord,
 } from "./services/pages/records.ts";
 import { readingJob } from "./services/reading/job.ts";
+
+/** The Documents workspace entry and the page of its path (DEC-50, R-37). */
+const DOCUMENTS_ENTRY = {
+  id: "invoices-documents",
+  label: "Documents",
+  path: "/m/invoices/documents",
+  surface: "workspace",
+  requiredPermission: "invoices:use",
+} as const;
 
 /** The Invoices workspace entry and the page of its path (DEC-50). */
 const INVOICES_ENTRY = {
@@ -101,13 +112,19 @@ export const invoicesModule = {
   ],
 
   navigation: {
-    pinned: [INVOICES_ENTRY, PAYMENTS_ENTRY],
-    entries: [INVOICES_ENTRY, PAYMENTS_ENTRY],
+    pinned: [DOCUMENTS_ENTRY, INVOICES_ENTRY, PAYMENTS_ENTRY],
+    entries: [DOCUMENTS_ENTRY, INVOICES_ENTRY, PAYMENTS_ENTRY],
   },
 
   // One page per navigation entry, at its path and under its key.
   pages: {
     workspace: [
+      definePage({
+        path: DOCUMENTS_ENTRY.path,
+        permission: "invoices:use",
+        load: loadDocumentInbox,
+        component: DocumentInboxPage,
+      }),
       definePage({
         path: INVOICES_ENTRY.path,
         permission: "invoices:use",

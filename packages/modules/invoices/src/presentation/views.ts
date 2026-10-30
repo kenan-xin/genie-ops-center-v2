@@ -3,6 +3,13 @@
  * date, and the page only formats what it answered (R-9, R-36).
  */
 
+/** The Documents inbox view is the contract's, so the page and the loader share one shape. */
+export type {
+  DocumentInboxRow,
+  DocumentInboxView,
+  InboxStatus,
+} from "../contract.ts";
+
 export type InvoiceStatus =
   | { readonly kind: "paid" | "open" | "no-due-date" }
   | { readonly kind: "overdue"; readonly daysOverdue: number };

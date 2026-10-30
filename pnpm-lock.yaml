@@ -604,6 +604,12 @@ importers:
       '@genie/ui':
         specifier: workspace:*
         version: link:../../ui
+      '@tanstack/react-pacer':
+        specifier: 0.24.1
+        version: 0.24.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@tanstack/react-query':
+        specifier: 5.104.5
+        version: 5.104.5(@types/react@19.3.0)(react@19.3.1)
       ai:
         specifier: 7.0.154
         version: 7.0.154(zod@4.6.7)
