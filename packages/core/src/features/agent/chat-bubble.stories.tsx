@@ -146,7 +146,7 @@ export const NewChatEachTime: Story = {
   render: () => <NewChatHarness />,
   globals: desktop,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Open Ask" }));
+    await openBubble(canvas);
 
     const first = await screen.findByText(/^New session /);
     const firstId = first.textContent;
