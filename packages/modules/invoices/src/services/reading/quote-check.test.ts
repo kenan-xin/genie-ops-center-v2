@@ -139,7 +139,8 @@ describe("the quote check", () => {
     });
   });
 
-  it.each([
+  // The page is the quote unless a row names its own.
+  it.each<[string, string, string?]>([
     ["500.00", "TOTAL (SGD) 5,000.00"],
     // A substring check passes this one: 5000.00 sits inside 15000.00.
     ["5000.00", "TOTAL (SGD) 15,000.00"],
@@ -150,18 +151,25 @@ describe("the quote check", () => {
     // A part of a date is not an amount.
     ["26.00", "Payment date 2026-10-26"],
     ["2026.00", "Payment date 2026-10-26"],
-  ])("drops the amount %s that its quote %s does not hold", (value, quote) => {
-    const checked = checkReading(
-      reading({ amount: { value, quote, page: 1 } }),
-      [quote]
-    );
+    // A space the model inserted splits the page's 1500.00.
+    ["500.00", "TOTAL 1 500.00", "TOTAL 1500.00"],
+    // A quote that cuts the page's sign off.
+    ["5000.00", "5,000.00", "Credit -5,000.00"],
+  ])(
+    "drops the amount %s that its quote %s does not hold",
+    (value, quote, page = quote) => {
+      const checked = checkReading(
+        reading({ amount: { value, quote, page: 1 } }),
+        [page]
+      );
 
-    expect(checked).toEqual({
-      fields: {},
-      invoiceNumbers: [],
-      dropped: ["amount"],
-    });
-  });
+      expect(checked).toEqual({
+        fields: {},
+        invoiceNumbers: [],
+        dropped: ["amount"],
+      });
+    }
+  );
 
   it.each([
     "TOTAL (SGD) 5,000.00",

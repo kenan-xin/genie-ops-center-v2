@@ -105,23 +105,27 @@ function holdsWholeToken(
 
 /**
  * An amount stands in its quote by an equal cents token, read with whitespace kept so that
- * neighbouring numbers never join, and never signed or part of a date. An identifier or a date
- * stands as a whole token. Any other
+ * neighbouring numbers never join, and never signed or part of a date. The token must also stand
+ * so on the spaced page, because the page check ignores whitespace and a space the model
+ * inserted would split "1500.00" (M-3). An identifier or a date stands as a whole token. Any other
  * value is a normalised substring.
  */
 function standsInQuote(
   field: ReadingField | "invoiceNumbers",
   value: string,
-  quote: string
+  quote: string,
+  pageText: string
 ): boolean {
   if (field === "amount") {
     const valueCents = centsOf(value);
     const spacedQuote = spacedForQuote(quote);
+    const spacedPage = spacedForQuote(pageText);
 
     return (spacedQuote.match(/\d+(?:\.\d+)?/g) ?? []).some(
       (token) =>
         centsOf(token) === valueCents &&
-        holdsWholeToken(spacedQuote, token, AMOUNT_BOUNDS)
+        holdsWholeToken(spacedQuote, token, AMOUNT_BOUNDS) &&
+        holdsWholeToken(spacedPage, token, AMOUNT_BOUNDS)
     );
   }
 
@@ -147,15 +151,16 @@ function checked(
     return undefined;
 
   const normalizedQuote = normalizeForQuote(quote);
+  const pageText = pages[page - 1] ?? "";
 
   if (
     normalizedQuote === "" ||
-    !normalizeForQuote(pages[page - 1] ?? "").includes(normalizedQuote)
+    !normalizeForQuote(pageText).includes(normalizedQuote)
   ) {
     return undefined;
   }
 
-  if (!hasFormat(value) || !standsInQuote(field, value, quote))
+  if (!hasFormat(value) || !standsInQuote(field, value, quote, pageText))
     return undefined;
 
   return { value, quote, page };
