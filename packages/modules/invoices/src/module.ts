@@ -1,4 +1,5 @@
 import { definePage, type Module } from "@genie/core";
+import { capability } from "@genie/core/contracts";
 
 import { invoicesContract } from "./contract.ts";
 import {
@@ -149,7 +150,14 @@ export const invoicesModule = {
 
   events: [],
 
-  capabilities: [],
+  // Ask and the bubble link to the inbox for a person who may upload (R-42, decision 12).
+  capabilities: [
+    capability("document-inbox", {
+      label: "Documents",
+      path: "/m/invoices/documents",
+      permission: "invoices:write",
+    }),
+  ],
 
   // Reads each upload as its uploader, with two retries (R-12, R-26).
   jobs: [readingJob],

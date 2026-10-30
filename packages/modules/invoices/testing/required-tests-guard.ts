@@ -75,6 +75,24 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `payment readings ${row}`),
   },
   {
+    file: "testing/inbox.integration.test.ts",
+    reason:
+      "Spec 7 R-37 and DEC-39: the inbox lists every document with its status, for a tenant-wide reader",
+    cases: [
+      "lists every document newest first with its label, kind, status and what was found",
+      "refuses a reader scoped to one customer, and offers no upload to a Viewer",
+      "Ask links to Documents for a holder of invoices:write only",
+    ].map((row) => `the documents inbox ${row}`),
+  },
+  {
+    file: "testing/live-readings.integration.test.ts",
+    reason:
+      "Spec 7 AC-7 up to the inbox: the seven live uploads reach their statuses and records with the recorded test model",
+    cases: [
+      "live readings the seven live uploads reach the inbox statuses of the design",
+    ],
+  },
+  {
     file: "testing/allocations.integration.test.ts",
     reason:
       "Spec 7 R-32 and R-34: links under row locks never exceed a total, and every change leaves an event and an audit row",

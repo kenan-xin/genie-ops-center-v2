@@ -1,7 +1,6 @@
 import {
   callProcedure,
   createTenantContext,
-  type DatasetFilter,
   type DatasetQuery,
   type ModuleRequestContext,
   principalFor,
@@ -25,6 +24,7 @@ import { recordPaymentFromReading } from "../src/services/ledger/payments.ts";
 import { type DemoHistoryIds, readDemoJson, toCents } from "./demo-pack.ts";
 import { seedDemoHistory } from "./demo-seed.ts";
 import { insertDocument, insertFieldOrigin } from "./factories.ts";
+import { runningTotals } from "./live-totals.ts";
 
 /**
  * The seven live uploads of the demo pack replayed at the record level, because reading the PDFs
@@ -120,31 +120,6 @@ async function rows(dataset: string, query: DatasetQuery): Promise<Rows> {
     .rows;
 }
 
-async function total(
-  dataset: string,
-  field: string,
-  filters: readonly DatasetFilter[] = []
-): Promise<number> {
-  const [row] = await rows(dataset, {
-    filters,
-    aggregates: [{ fn: "sum", field, as: "total" }],
-  });
-
-  return Number(row?.total ?? 0);
-}
-
-/** The four running totals the demo guide prints after each upload. */
-async function runningTotals() {
-  return {
-    invoicedCents: await total("invoices.invoices", "totalCents"),
-    collectedCents: await total("invoices.payments", "amountCents"),
-    outstandingCents: await total("invoices.invoices", "outstandingCents"),
-    overdueCents: await total("invoices.invoices", "outstandingCents", [
-      { field: "overdue", op: "eq", value: true },
-    ]),
-  };
-}
-
 /** Compares the four totals with the guide's step for this upload, both as integer cents. */
 async function expectTotalsAfter(upload: string): Promise<void> {
   const step = LIVE_TOTALS.steps.find(
@@ -155,7 +130,7 @@ async function expectTotalsAfter(upload: string): Promise<void> {
     throw new Error(`The guide has no running totals after ${upload}.`);
   }
 
-  expect(await runningTotals()).toEqual({
+  expect(await runningTotals(contextFor(financeUserId))).toEqual({
     invoicedCents: toCents(step.total_invoiced_sales),
     collectedCents: toCents(step.total_collected),
     outstandingCents: toCents(step.outstanding),

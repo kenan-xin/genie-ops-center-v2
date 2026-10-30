@@ -13,6 +13,28 @@ export const DUE_DATE_SOURCES = ["document", "person", "unspecified"] as const;
 
 export type DueDateSource = (typeof DUE_DATE_SOURCES)[number];
 
+export const DOCUMENT_KINDS = [
+  "invoice",
+  "payment",
+  "paid-receipt",
+  "purchase-order",
+] as const;
+
+/** A document's status in the inbox, in the order it is decided (R-37, decision 11). */
+export const INBOX_STATUSES = [
+  "reading",
+  "could-not-read",
+  "needs-input",
+  "linked-automatically",
+  "confirm-split",
+  "possible-duplicate",
+  "no-match",
+  "kept-as-reference",
+  "saved",
+] as const;
+
+export type InboxStatus = (typeof INBOX_STATUSES)[number];
+
 export const recordId = z.uuid();
 
 /** A positive amount in integer cents that fits the `integer` amount columns. */
@@ -211,7 +233,39 @@ export const uploadDocumentOutput = z.discriminatedUnion("outcome", [
 
 export type UploadDocumentOutput = z.infer<typeof uploadDocumentOutput>;
 
+/** One inbox row. `found` holds the checked values of a stored reading, else null. */
+export const documentInboxRow = z.object({
+  id: z.string(),
+  label: z.string(),
+  kind: z.enum(DOCUMENT_KINDS).nullable(),
+  status: z.enum(INBOX_STATUSES),
+  reason: z.enum(["ai-off", "no-text-layer"]).nullable(),
+  found: z
+    .object({
+      customer: z.string().nullable(),
+      currency: z.string().nullable(),
+      amountCents: z.number().int().nullable(),
+      invoiceNumbers: z.array(z.string()),
+    })
+    .nullable(),
+});
+
+export const documentInboxView = z.object({
+  rows: z.array(documentInboxRow),
+  truncated: z.boolean(),
+  ai: z.enum(["on", "no-key", "no-models"]),
+  canUpload: z.boolean(),
+});
+
+export type DocumentInboxRow = z.infer<typeof documentInboxRow>;
+
+export type DocumentInboxView = z.infer<typeof documentInboxView>;
+
 export const invoicesContract = {
+  /** Every document, newest first, for a tenant-wide reader (R-37, decision 12). */
+  listDocuments: oc
+    .route({ method: "GET", path: "/invoices/documents" })
+    .output(documentInboxView),
   /** Stores one PDF once per exact file, for the reading job (R-23, decisions 9 and 10). */
   uploadDocument: oc
     .route({ method: "POST", path: "/invoices/documents" })

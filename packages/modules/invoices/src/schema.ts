@@ -16,15 +16,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 import journal from "../drizzle/meta/_journal.json" with { type: "json" };
-import { DUE_DATE_SOURCES } from "./contract.ts";
+import { DOCUMENT_KINDS, DUE_DATE_SOURCES } from "./contract.ts";
 import type { StoredReading } from "./services/reading/stored-reading.ts";
 
-export const DOCUMENT_KINDS = [
-  "invoice",
-  "payment",
-  "paid-receipt",
-  "purchase-order",
-] as const;
+export { DOCUMENT_KINDS };
 
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 

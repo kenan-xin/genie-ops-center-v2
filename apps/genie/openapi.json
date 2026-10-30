@@ -1967,6 +1967,165 @@
       }
     },
     "/invoices/documents": {
+      "get": {
+        "operationId": "invoices.listDocuments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "invoice",
+                                  "payment",
+                                  "paid-receipt",
+                                  "purchase-order"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "reading",
+                              "could-not-read",
+                              "needs-input",
+                              "linked-automatically",
+                              "confirm-split",
+                              "possible-duplicate",
+                              "no-match",
+                              "kept-as-reference",
+                              "saved"
+                            ],
+                            "type": "string"
+                          },
+                          "reason": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "ai-off",
+                                  "no-text-layer"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "found": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "customer": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "currency": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "invoiceNumbers": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "customer",
+                                  "currency",
+                                  "amountCents",
+                                  "invoiceNumbers"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "kind",
+                          "status",
+                          "reason",
+                          "found"
+                        ]
+                      }
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    },
+                    "ai": {
+                      "enum": [
+                        "on",
+                        "no-key",
+                        "no-models"
+                      ],
+                      "type": "string"
+                    },
+                    "canUpload": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "rows",
+                    "truncated",
+                    "ai",
+                    "canUpload"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "invoices.uploadDocument",
         "requestBody": {

@@ -23,6 +23,15 @@ export async function assertCanWrite(
   if (!allowed.every(Boolean)) throw new AppError(CORE_ERRORS.forbidden);
 }
 
+/** Refuses a read that no single record covers, such as the documents inbox, without a tenant-wide grant. */
+export async function assertCanReadEverywhere(
+  caller: RequestPrincipal
+): Promise<void> {
+  if ((await scopesFor(caller, "invoices:read")).kind !== "all") {
+    throw new AppError(CORE_ERRORS.forbidden);
+  }
+}
+
 /** Refuses a write that no single record covers, such as a new customer, without a tenant-wide grant. */
 export async function assertCanWriteEverywhere(
   caller: RequestPrincipal

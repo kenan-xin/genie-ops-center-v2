@@ -62,6 +62,16 @@ When the enqueue itself fails, the document becomes Could not read and the uploa
 
 `retryReading` at `POST /invoices/documents/{id}/retry` starts a Could not read document again with 0 attempts, as the person who retried. It needs `invoices:write` on the whole deployment, like the upload. A document in another state is refused with `document-not-retryable` (HTTP 409), so a second Retry while it reads enqueues nothing.
 
+## Documents inbox
+
+`listDocuments` at `GET /invoices/documents` answers every document, newest first, at most 1,000 rows with `truncated` set past them. Each row has its label, its kind (null until read), its status, the manual-entry reason (`ai-off` or `no-text-layer`) and what was found: the checked customer, currency, amount in cents and invoice numbers of its stored reading, or null before one. The view also answers whether AI is on and whether the person may upload.
+
+The status is decided in this order: Reading and Could not read from the job; a purchase order is Kept as a reference; a payment with an automatic link is Linked automatically; any other invoice or payment saved from the document is Saved, also when its reading had asked for a split; then the stored match outcome, Confirm the split, No matching invoice or Possible duplicate; else Needs your input. Invoices and paid receipts are saved by the person, so their readings need input. Duplicate (nothing added) is an upload answer only, never a row.
+
+A document has no customer before a save, so the list needs `invoices:read` on the whole deployment; a reader scoped to one customer is refused. Upload and Retry need `invoices:write` on the whole deployment, and the view's `canUpload` says whether the person has it. The label is the file name, else the number of the invoice or the reference of the payment saved from it, else "Document", so a document stored before uploads kept a name shows its saved record.
+
+The module provides the `document-inbox` capability: Documents at `/m/invoices/documents`, for a holder of `invoices:write`, the key of the place where the module takes documents. Ask and the chat bubble link to it.
+
 ## Saving invoices
 
 An invoice saves as unpaid and joins outstanding at once. Its customer is either an existing one, chosen by id, or a new one that the person confirmed. A new customer needs a write grant on the whole deployment. A grant on one customer saves only that customer's invoices. Customer names are unique when case and outer spaces are ignored, so a confirmed name that already exists reuses that customer, and only a new one writes a `customer-created` audit row.
