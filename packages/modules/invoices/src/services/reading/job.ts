@@ -20,6 +20,7 @@ import {
 import { assertCanWriteEverywhere } from "../ledger/access.ts";
 import type { ModelReading } from "./model-output.ts";
 import { readWithModel } from "./model-reading.ts";
+import { matchPaymentReading } from "./payment-draft.ts";
 import { checkReading } from "./quote-check.ts";
 import type { StoredReading } from "./stored-reading.ts";
 import { extractTextLayer } from "./text-layer.ts";
@@ -128,14 +129,17 @@ export const readingJob: JobDeclaration<{ readonly documentId: string }> = {
       .returning({
         attempt: sourceDocument.readingAttempts,
         fileId: sourceDocument.fileId,
+        kind: sourceDocument.kind,
         reading: sourceDocument.reading,
       });
 
     if (claimed === undefined) return;
 
+    let { kind, reading } = claimed;
+
     try {
       // A run after the reading was stored asks the model nothing again.
-      if (claimed.reading === null) {
+      if (reading === null) {
         // AI off is manual entry, decided before any byte is fetched (R-20, decision 8).
         if ((await modelStatus(tenant)).state !== "on") {
           await endReading(tenant, documentId, {
@@ -179,17 +183,20 @@ export const readingJob: JobDeclaration<{ readonly documentId: string }> = {
           return;
         }
 
-        await storeReading(
-          tenant,
-          documentId,
-          output.kind,
-          checkReading(output, pages)
-        );
+        kind = output.kind;
+        reading = checkReading(output, pages);
+        await storeReading(tenant, documentId, kind, reading);
       }
+
+      // Also on a resumed run: the save answers already-saved for a payment it saved before.
+      const readingOutcome =
+        kind === "payment"
+          ? await matchPaymentReading({ tenant, caller }, documentId, reading)
+          : null;
 
       await endReading(tenant, documentId, {
         readingStatus: "read",
-        readingOutcome: null,
+        readingOutcome,
       });
     } catch (error) {
       if (claimed.attempt < READING_ATTEMPTS) throw error;

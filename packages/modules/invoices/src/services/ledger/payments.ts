@@ -50,6 +50,8 @@ export const readingPaymentInput = z.strictObject({
   namedInvoiceNumbers: z.array(z.string().trim().min(1).max(64)).max(20),
 });
 
+export type ReadingPaymentInput = z.infer<typeof readingPaymentInput>;
+
 export type ReadingPaymentOutcome =
   | {
       readonly outcome: "saved";

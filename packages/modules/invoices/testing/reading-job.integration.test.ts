@@ -384,7 +384,8 @@ describe("the reading job", () => {
       const row = await documentRow(id);
       expect(row).toMatchObject({
         readingStatus: "read",
-        readingOutcome: null,
+        // No customer exists here, so a payment matches nothing (payment-readings covers the rest).
+        readingOutcome: kind === "payment" ? "no-match" : null,
         kind,
       });
       // toEqual, not toMatchObject: a field the page does not state must not appear.

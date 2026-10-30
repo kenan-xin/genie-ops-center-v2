@@ -81,16 +81,19 @@ A payment saves in one of two ways.
 - By hand, through `savePayment` at `POST /invoices/payments`. The person chooses the customer and the links. The save never links by itself. It checks a write grant on the customer and on each chosen invoice, and saves the payment and every link in one transaction, so a refused link, for example one above an invoice's open balance, saves nothing. A second save from the same document is refused with `document-already-saved`, before the duplicate check.
 - From a reading, through `recordPaymentFromReading`, which the S7-08 reading job calls on the server. It is not a procedure. It finds the customer by name, ignoring case and outer spaces, and never creates one. It links automatically only under R-30: the payment names one invoice of that customer in its currency, the amount is no more than that invoice's open balance, and the document's `MATCH_FACT_FIELDS` all hold origin `extracted`. Every other case writes nothing and answers the match for the person.
 
-For S7-08, each answer of `recordPaymentFromReading` and the inbox status it leads to:
+For S7-08, each answer of `recordPaymentFromReading`, the `reading_outcome` the reading job stores for it, and the inbox status it leads to. The job calls it as the uploader with the reading as stored, also on a resumed run. A null outcome lets the records decide the status.
 
-| Answer | Inbox status |
-| --- | --- |
-| `saved` (an automatic link) | Linked automatically |
-| `needs-review` with match `split` | Confirm the split |
-| `needs-review` with match `no-match`, also when no customer has the name (`customerId` is null) | No matching invoice |
-| `possible-duplicate` | Possible duplicate |
-| `needs-review` with match `confirm`, `overpayment` or `suggestions` | Needs your input |
-| `already-saved` | The document's payment is saved already; the job shows that payment |
+| Answer | Stored outcome | Inbox status |
+| --- | --- | --- |
+| `saved` (an automatic link) | null | Linked automatically |
+| `needs-review` with match `split` | `confirm-split` | Confirm the split |
+| `needs-review` with match `no-match`, also when no customer has the name (`customerId` is null) | `no-match` | No matching invoice |
+| `possible-duplicate` | `possible-duplicate` | Possible duplicate |
+| `needs-review` with match `confirm`, `overpayment` or `suggestions` | null | Needs your input |
+| `already-saved` | null | The document's payment is saved already; the job shows that payment |
+| refused with `forbidden` (the uploader lost `invoices:write`), `invoices:document-already-saved` (a hand save won the race) or `invoices:document-kind-mismatch` (a person changed the type) | null | Needs your input, or the records of a hand save |
+
+A reading without a checked customer, date, currency or amount sends nothing and stores no outcome. Any other error fails the attempt, so the job retries it.
 
 ## Receipts, purchase orders and corrections
 

@@ -64,6 +64,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `the reading job ${row}`),
   },
   {
+    file: "testing/payment-readings.integration.test.ts",
+    reason:
+      "Spec 7 R-12 and R-30: a payment reading saves through recordPaymentFromReading as the uploader, once",
+    cases: [
+      "a reading whose uploader lost invoices:write saves nothing",
+      "readings of 03 and 05 save nothing and keep their match",
+      "a reading of 02 links automatically as the uploader",
+      "a reading of 02 a rerun after the payment was saved saves no second payment",
+    ].map((row) => `payment readings ${row}`),
+  },
+  {
     file: "testing/allocations.integration.test.ts",
     reason:
       "Spec 7 R-32 and R-34: links under row locks never exceed a total, and every change leaves an event and an audit row",
