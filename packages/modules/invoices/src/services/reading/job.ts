@@ -36,15 +36,21 @@ export const READING_RETRY = {
 export const READING_ATTEMPTS = READING_RETRY.limit + 1;
 
 /**
- * A reading unchanged this long has no run left that will end it (I-1). Each claim sets
- * `updated_at`, so one gap is one run plus the wait before the next: a run is cut by pg-boss's
- * default job expiry of 15 minutes (the job sets none; the model request alone stops at
- * `MODEL_REQUEST_TIMEOUT_MS`, 120 s), and the longest backoff wait is 15 s x 4 = 60 s.
+ * A claimed reading unchanged this long has no run left that will end it (I-1). Each claim sets
+ * `updated_at`, so one gap is one run plus the wait before the next. The worker fetches and runs
+ * a job itself, so pg-boss's expiry does not stop a run; the model request does, at
+ * `MODEL_REQUEST_TIMEOUT_MS` (120 s), and the longest backoff wait is 15 s x 4 = 60 s.
  */
 export const READING_STALLS_AFTER_MINUTES = 20;
 
+/**
+ * A reading no run has claimed waits in a queue that the worker drains one job at a time, so a
+ * long batch may hold it far past 20 minutes (N-1). Only a lost enqueue leaves it this long.
+ */
+export const UNCLAIMED_READING_STALLS_AFTER_MINUTES = 24 * 60;
+
 /** A `reading` row that no run will end: the inbox shows it and Retry takes it as Could not read. */
-export const readingStalled = sql<boolean>`(${sourceDocument.readingStatus} = 'reading' and ${sourceDocument.updatedAt} < now() - make_interval(mins => ${READING_STALLS_AFTER_MINUTES}))`;
+export const readingStalled = sql<boolean>`(${sourceDocument.readingStatus} = 'reading' and ${sourceDocument.updatedAt} < now() - make_interval(mins => case when ${sourceDocument.readingAttempts} > 0 then ${READING_STALLS_AFTER_MINUTES}::int else ${UNCLAIMED_READING_STALLS_AFTER_MINUTES}::int end))`;
 
 const readingData = z.object({ documentId: z.uuid() });
 

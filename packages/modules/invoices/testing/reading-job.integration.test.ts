@@ -364,6 +364,29 @@ describe("the reading job", () => {
     expect(await jobsOf(stalled)).toHaveLength(1);
   });
 
+  it("a reading no run claimed yet stays Reading for a day while its job waits in the queue", async () => {
+    const queued = await aDocument(BROKEN_PDF, "reading");
+    const lost = await aDocument(BROKEN_PDF, "reading");
+    await t()
+      .db.update(sourceDocument)
+      .set({ updatedAt: ago(READING_STALLS_AFTER_MINUTES + 1) })
+      .where(eq(sourceDocument.id, queued));
+    await t()
+      .db.update(sourceDocument)
+      .set({ updatedAt: ago(24 * 60 + 1) })
+      .where(eq(sourceDocument.id, lost));
+
+    const { rows } = await loadDocumentInbox(as(retrierId));
+    const statusOf = (id: string) => rows.find((row) => row.id === id)?.status;
+    expect(statusOf(queued)).toBe("reading");
+    expect(statusOf(lost)).toBe("could-not-read");
+
+    await expect(retryReading(as(retrierId), queued)).rejects.toMatchObject({
+      code: "invoices:document-not-retryable",
+    });
+    expect(await jobsOf(queued)).toHaveLength(0);
+  });
+
   it("Retry reads a document that could not be read again, once", async () => {
     const id = await aDocument(BROKEN_PDF, "could-not-read", 3);
 

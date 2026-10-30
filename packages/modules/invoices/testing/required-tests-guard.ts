@@ -52,6 +52,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a run for a read document changes nothing",
       "a run without a starter reads nothing and ends Could not read",
       "a reading no run ended within the bound shows Could not read and takes Retry",
+      "a reading no run claimed yet stays Reading for a day while its job waits in the queue",
       "Retry reads a document that could not be read again, once",
       "a failed enqueue leaves the uploaded document Could not read",
       ...["01", "02", "03", "05", "06", "07"].map(
