@@ -32,10 +32,11 @@ type RefusalData = {
 function refusal(
   appCode: string,
   message: string,
-  data: RefusalData
+  data: RefusalData,
+  declaredStatus?: number
 ): ORPCError<string, RefusalData> {
   return new ORPCError(appCode, {
-    status: httpStatusForCode(appCode),
+    status: httpStatusForCode(appCode, declaredStatus),
     message,
     data,
   });
@@ -43,7 +44,7 @@ function refusal(
 
 /**
  * The one error mapping of the RPC transport (ADR 0011, decision 6). An `AppError` keeps its
- * catalogue code and fixed safe message, and takes its status from `httpStatusForCode`, so a
+ * code, fixed safe message and declared status, and takes its status from `httpStatusForCode`, so a
  * procedure and an ordinary route answer the same status. oRPC's own `BAD_REQUEST` (input
  * validation) and a decode failure answer `invalid-input`. Everything else answers the generic
  * entry at 500. No cause, stack or zod issue reaches the body.
@@ -66,7 +67,7 @@ export function toTransportError(input: {
     // Only a real list is carried, as in `safeBodyFor` (`@genie/core`, lib/errors).
     if (cause.issues?.length) data = { ...data, issues: cause.issues };
 
-    return refusal(cause.code, cause.safeMessage, data);
+    return refusal(cause.code, cause.safeMessage, data, cause.status);
   }
 
   const badRequest =

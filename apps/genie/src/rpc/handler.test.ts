@@ -22,7 +22,7 @@ import {
 const REQUEST_ID = "req-handler-test";
 
 const HANDLER_TEST_ERRORS = defineModuleErrors("reports", {
-  "quota-exceeded": "The reports quota is used up.",
+  "quota-exceeded": { message: "The reports quota is used up.", status: 409 },
 });
 
 const contract = {
@@ -216,12 +216,12 @@ describe("the RPC handler's error interceptor", () => {
     });
   });
 
-  it("answers a module AppError with its own code and safe message at 500", async () => {
+  it("answers a module AppError with its own code, safe message and declared status", async () => {
     const { call } = setup();
 
     const answer = await refusal(await call("quota"));
 
-    expect(answer.status).toBe(500);
+    expect(answer.status).toBe(409);
     expect(answer.body.json.data.appCode).toBe("reports:quota-exceeded");
     expect(answer.body.json.message).toBe("The reports quota is used up.");
   });

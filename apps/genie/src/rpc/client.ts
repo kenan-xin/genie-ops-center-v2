@@ -123,7 +123,7 @@ export function refusalOf(cause: unknown): Refusal {
   const { appCode, retryAfterMinutes, issues } = data.data;
   const status = kindOfStatus(cause.status);
 
-  // A module's refusal is missing from the status table and answers 500; a 502 reads as network.
+  // A refusal that answers 500 or 502 is still a refusal, not a server or network fault.
   const kind =
     appCode === "internal-error"
       ? "unknown"

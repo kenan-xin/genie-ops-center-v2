@@ -42,13 +42,17 @@ const STATUS_BY_CODE = new Map<string, number>([
 ]);
 
 /**
- * The one status mapping of R-46: a catalogue code's HTTP status, or 500 for a
- * code the table does not hold (a module code, or the generic entry). The RPC
- * error interceptor reads the same function, so a procedure and an ordinary route
- * answer the same status for the same code.
+ * The one status mapping of R-46: the status a module code declares in
+ * `defineModuleErrors`, else a catalogue code's status from the table, else 500
+ * (the generic entry). The declared status is a required parameter, so no caller
+ * can forget it. The RPC error interceptor reads the same function, so a
+ * procedure and an ordinary route answer the same status for the same code.
  */
-export function httpStatusForCode(code: string): number {
-  return STATUS_BY_CODE.get(code) ?? 500;
+export function httpStatusForCode(
+  code: string,
+  declaredStatus: number | undefined
+): number {
+  return declaredStatus ?? STATUS_BY_CODE.get(code) ?? 500;
 }
 
 /**
@@ -65,7 +69,9 @@ export function errorResponse(cause: unknown, requestId: string): Response {
   const body = safeBodyFor(error, requestId);
 
   const status =
-    error instanceof AppError ? httpStatusForCode(error.code) : 500;
+    error instanceof AppError
+      ? httpStatusForCode(error.code, error.status)
+      : 500;
 
   return Response.json(body, { status });
 }

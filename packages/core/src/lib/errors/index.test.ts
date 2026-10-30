@@ -12,7 +12,7 @@ import {
 } from "./index.ts";
 
 const placeholderErrors = defineModuleErrors("placeholder", {
-  "record-locked": "That record is in use.",
+  "record-locked": { message: "That record is in use.", status: 409 },
 });
 
 const REQUEST_ID = "01JD0000000000000000000000";
@@ -264,16 +264,22 @@ describe("safeBodyFor", () => {
   });
 
   it("refuses a module error code or message the contract does not allow", () => {
-    expect(() => defineModuleErrors("Placeholder", { ok: "Fine." })).toThrow(
-      "kebab-case"
-    );
-
     expect(() =>
-      defineModuleErrors("placeholder", { "record locked": "Fine." })
+      defineModuleErrors("Placeholder", {
+        ok: { message: "Fine.", status: 409 },
+      })
     ).toThrow("kebab-case");
 
     expect(() =>
-      defineModuleErrors("placeholder", { "record-locked": "  " })
+      defineModuleErrors("placeholder", {
+        "record locked": { message: "Fine.", status: 409 },
+      })
+    ).toThrow("kebab-case");
+
+    expect(() =>
+      defineModuleErrors("placeholder", {
+        "record-locked": { message: "  ", status: 409 },
+      })
     ).toThrow("no message");
   });
 

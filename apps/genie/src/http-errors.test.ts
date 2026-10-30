@@ -15,7 +15,7 @@ describe("httpStatusForCode", () => {
   it.each(
     Object.keys(CORE_ERROR_MESSAGES).filter((code) => !SERVER_FAULTS.has(code))
   )("gives the catalogue code %s its own status", (code) => {
-    expect(httpStatusForCode(code)).not.toBe(500);
+    expect(httpStatusForCode(code, undefined)).not.toBe(500);
   });
 });
 

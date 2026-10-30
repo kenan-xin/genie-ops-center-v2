@@ -107,7 +107,27 @@ const DECLARED = Symbol("genie.error-definition");
 export type ErrorDefinition = {
   readonly code: string;
   readonly message: string;
+  /** The HTTP status a module code answers. A core code takes its status from the app's table. */
+  readonly status?: ModuleErrorStatus;
   readonly [DECLARED]?: true;
+};
+
+/** The statuses a module refusal may answer. A refusal is never a server fault, so 500 is absent. */
+export type ModuleErrorStatus =
+  | 400
+  | 403
+  | 404
+  | 409
+  | 413
+  | 422
+  | 429
+  | 502
+  | 503;
+
+/** One module error as its module declares it: the fixed safe message and the status it answers. */
+export type ModuleErrorDeclaration = {
+  readonly message: string;
+  readonly status: ModuleErrorStatus;
 };
 
 /** The former name of `ErrorDefinition`, kept for the module-facing spelling. */
@@ -128,8 +148,13 @@ const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
  * object spread of a definition does not carry it: a copy with the message replaced is refused
  * like any other object a caller assembles.
  */
-function declare(code: string, message: string): ErrorDefinition {
-  const definition = { code, message };
+function declare(
+  code: string,
+  message: string,
+  status?: ModuleErrorStatus
+): ErrorDefinition {
+  const definition =
+    status === undefined ? { code, message } : { code, message, status };
 
   Object.defineProperty(definition, DECLARED, {
     value: true,
@@ -178,23 +203,27 @@ export function moduleErrorCode(moduleId: string, code: string): string {
 }
 
 /**
- * The errors one module can raise, each with its own fixed safe message. A module calls this
- * once where it declares itself, and raises `AppError` with one of the returned definitions.
+ * The errors one module can raise, each with its own fixed safe message and the HTTP status it
+ * answers. A module calls this once where it declares itself, and raises `AppError` with one of
+ * the returned definitions.
  * The result is frozen and local to that module: no shared mutable registry exists, and a code
  * cannot be invented at the point where an error is thrown.
  */
 export function defineModuleErrors<
-  const TCodes extends Readonly<Record<string, string>>,
+  const TCodes extends Readonly<Record<string, ModuleErrorDeclaration>>,
 >(
   moduleId: string,
-  messages: TCodes
+  errors: TCodes
 ): Readonly<Record<keyof TCodes, ErrorDefinition>> {
-  const entries = Object.entries(messages).map(([code, message]) => {
+  const entries = Object.entries(errors).map(([code, { message, status }]) => {
     if (message.trim() === "") {
       throw new Error(`Error code "${code}" has no message.`);
     }
 
-    return [code, declare(moduleErrorCode(moduleId, code), message)] as const;
+    return [
+      code,
+      declare(moduleErrorCode(moduleId, code), message, status),
+    ] as const;
   });
 
   // SAFETY: the entries are built from this object's own keys, one definition each, which is
@@ -224,6 +253,12 @@ export class AppError extends Error {
   declare readonly code: string;
 
   declare readonly safeMessage: string;
+
+  /**
+   * The HTTP status a module definition declares. Absent on a core code, whose status the app's
+   * table holds, and on a definition that only claims a core code.
+   */
+  declare readonly status: ModuleErrorStatus | undefined;
 
   /**
    * The request this error answers, when the throw site knows it but the formatter does not. A
@@ -278,6 +313,7 @@ export class AppError extends Error {
     for (const [name, value] of [
       ["code", definition.code],
       ["safeMessage", message],
+      ["status", catalogued === undefined ? definition.status : undefined],
       ["requestId", options.requestId],
       ["retryAfterMinutes", options.retryAfterMinutes],
       [
