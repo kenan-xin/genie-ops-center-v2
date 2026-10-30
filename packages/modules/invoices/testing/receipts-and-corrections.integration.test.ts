@@ -360,27 +360,33 @@ describe("receipts and corrections", () => {
   it.each([
     [
       "naming a link of another invoice",
-      async () => (await invoiceWithLinks()).first.allocationId,
-      0,
+      async () => [
+        {
+          allocationId: (await invoiceWithLinks()).first.allocationId,
+          amountCents: 0,
+        },
+      ],
+      250_000,
     ],
     [
       "raising the link of 200,000 to 250,000",
-      async (own: Links) => own.first.allocationId,
+      async (own: Links) => amounts([own.first, 250_000]),
       250_000,
+    ],
+    [
+      "naming the link of 200,000 twice, to 100,000 and to 150,000, for a total of 150,000",
+      async (own: Links) => amounts([own.first, 100_000], [own.first, 150_000]),
+      150_000,
     ],
   ] as const)(
     "a reduction %s is refused with reduction-invalid",
-    async (_, allocationOf, amountCents) => {
+    async (_, reductionsOf, totalCents) => {
       const { invoiceId, ...links } = await invoiceWithLinks();
-      const allocationId = await allocationOf(links);
+      const reductions = await reductionsOf(links);
       const before = await stateOf(invoiceId);
 
       await expect(
-        api().correctInvoiceTotal({
-          id: invoiceId,
-          totalCents: 250_000,
-          reductions: [{ allocationId, amountCents }],
-        })
+        api().correctInvoiceTotal({ id: invoiceId, totalCents, reductions })
       ).rejects.toMatchObject({ code: "invoices:reduction-invalid" });
       expect(await stateOf(invoiceId)).toEqual(before);
     }
