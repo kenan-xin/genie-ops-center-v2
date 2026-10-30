@@ -1,0 +1,201 @@
+{
+  "reportingDate": "2026-10-27",
+  "currency": "SGD",
+  "source": "Built from the demo pack: 04_Demo_Guide/expected_invoice_status.csv, expected_customer_payment_behaviour.csv and expected_monthly_totals.csv, and 01_History_Datasets/history_seed.json for invoiced sales per customer, manual due dates and allocations. Amounts are integer cents.",
+  "questions": [
+    {
+      "id": "overdue-invoices",
+      "prompt": "Which customers currently have overdue invoices? Show the unpaid amount, due date and days overdue, with sources.",
+      "measures": ["overdue"],
+      "rows": [
+        {
+          "customerName": "Orchid Retail",
+          "invoiceNumber": "INV-2026-08-04",
+          "outstandingCents": 405000,
+          "dueDate": "2026-08-18",
+          "daysOverdue": 70
+        },
+        {
+          "customerName": "Harbor Foods",
+          "invoiceNumber": "INV-2026-09-03",
+          "outstandingCents": 520000,
+          "dueDate": "2026-09-17",
+          "daysOverdue": 40
+        },
+        {
+          "customerName": "Orchid Retail",
+          "invoiceNumber": "INV-2026-09-04",
+          "outstandingCents": 420000,
+          "dueDate": "2026-09-30",
+          "daysOverdue": 27
+        },
+        {
+          "customerName": "ABC Trading",
+          "invoiceNumber": "INV-2026-10-01",
+          "outstandingCents": 650000,
+          "dueDate": "2026-10-15",
+          "daysOverdue": 12
+        },
+        {
+          "customerName": "Harbor Foods",
+          "invoiceNumber": "INV-2026-10-03",
+          "outstandingCents": 740000,
+          "dueDate": "2026-10-17",
+          "daysOverdue": 10
+        }
+      ],
+      "totalCents": 2735000
+    },
+    {
+      "id": "repeated-late-payers",
+      "prompt": "Which customers repeatedly pay late? Use fully settled invoices with known due dates; show the numerator and denominator.",
+      "measures": ["repeated late payment"],
+      "rows": [
+        {
+          "customerName": "ABC Trading",
+          "settledWithDueDateCount": 5,
+          "paidLateCount": 4,
+          "repeatedLatePayer": true
+        },
+        {
+          "customerName": "Apex Digital",
+          "settledWithDueDateCount": 6,
+          "paidLateCount": 0,
+          "repeatedLatePayer": false
+        },
+        {
+          "customerName": "Harbor Foods",
+          "settledWithDueDateCount": 4,
+          "paidLateCount": 4,
+          "repeatedLatePayer": true
+        },
+        {
+          "customerName": "Lumi Design",
+          "settledWithDueDateCount": 6,
+          "paidLateCount": 0,
+          "repeatedLatePayer": false
+        },
+        {
+          "customerName": "Meridian Labs",
+          "settledWithDueDateCount": 5,
+          "paidLateCount": 2,
+          "repeatedLatePayer": true
+        },
+        {
+          "customerName": "Orchid Retail",
+          "settledWithDueDateCount": 3,
+          "paidLateCount": 3,
+          "repeatedLatePayer": true
+        }
+      ],
+      "note": "Repeatedly means two or more late settlements. A part-paid invoice is not in the denominator."
+    },
+    {
+      "id": "overdue-balances",
+      "prompt": "Show unpaid overdue balances separately.",
+      "measures": ["overdue"],
+      "rows": [
+        { "customerName": "Harbor Foods", "overdueCents": 1260000 },
+        { "customerName": "Orchid Retail", "overdueCents": 825000 },
+        { "customerName": "ABC Trading", "overdueCents": 650000 }
+      ],
+      "totalCents": 2735000
+    },
+    {
+      "id": "monthly-invoiced-and-collected",
+      "prompt": "What did we invoice and collect each month from May to October? Explain why those numbers differ.",
+      "measures": ["invoiced sales", "collections"],
+      "rows": [
+        { "month": "2026-05", "invoicedCents": 3490000, "collectedCents": 3130000 },
+        { "month": "2026-06", "invoicedCents": 3670000, "collectedCents": 3655000 },
+        { "month": "2026-07", "invoicedCents": 3850000, "collectedCents": 3835000 },
+        { "month": "2026-08", "invoicedCents": 4030000, "collectedCents": 4015000 },
+        { "month": "2026-09", "invoicedCents": 4210000, "collectedCents": 3070000 },
+        { "month": "2026-10", "invoicedCents": 4390000, "collectedCents": 1815000 }
+      ],
+      "note": "Invoiced sales count invoices by invoice date. Collections count payments by payment date. A payment arrives after its invoice, and part of the September and October invoices is still unpaid."
+    },
+    {
+      "id": "top-customers-by-sales",
+      "prompt": "Who are our top customers by invoiced sales?",
+      "measures": ["invoiced sales"],
+      "rows": [
+        { "customerName": "Apex Digital", "invoicedCents": 5670000 },
+        { "customerName": "Meridian Labs", "invoicedCents": 5100000 },
+        { "customerName": "Harbor Foods", "invoicedCents": 4140000 },
+        { "customerName": "ABC Trading", "invoicedCents": 3450000 },
+        { "customerName": "Lumi Design", "invoicedCents": 2895000 },
+        { "customerName": "Orchid Retail", "invoicedCents": 2385000 }
+      ]
+    },
+    {
+      "id": "top-customers-overdue",
+      "prompt": "Which also have the highest overdue balances?",
+      "measures": ["invoiced sales", "overdue"],
+      "rows": [
+        {
+          "customerName": "Apex Digital",
+          "invoicedCents": 5670000,
+          "overdueCents": 0
+        },
+        {
+          "customerName": "Meridian Labs",
+          "invoicedCents": 5100000,
+          "overdueCents": 0
+        },
+        {
+          "customerName": "Harbor Foods",
+          "invoicedCents": 4140000,
+          "overdueCents": 1260000
+        }
+      ],
+      "note": "Top means the three largest by invoiced sales. Of them, only Harbor Foods has an overdue balance, and it is the largest overdue balance of all customers."
+    },
+    {
+      "id": "invoices-without-due-date",
+      "prompt": "Which invoices have no due date?",
+      "measures": ["outstanding"],
+      "rows": [
+        {
+          "invoiceNumber": "INV-2026-10-04",
+          "customerName": "Orchid Retail",
+          "totalCents": 435000,
+          "outstandingCents": 435000
+        }
+      ]
+    },
+    {
+      "id": "manual-due-dates",
+      "prompt": "Which due dates were entered manually?",
+      "measures": [],
+      "rows": [
+        {
+          "invoiceNumber": "INV-2026-09-04",
+          "customerName": "Orchid Retail",
+          "dueDate": "2026-09-30"
+        }
+      ]
+    },
+    {
+      "id": "partial-payments",
+      "prompt": "Find invoices with partial payments and show each allocation.",
+      "measures": ["outstanding"],
+      "rows": [
+        {
+          "invoiceNumber": "INV-2026-09-03",
+          "customerName": "Harbor Foods",
+          "totalCents": 720000,
+          "allocatedCents": 200000,
+          "outstandingCents": 520000,
+          "allocations": [
+            {
+              "paymentReference": "TXN-PAY-2026-026",
+              "paymentDate": "2026-10-10",
+              "amountCents": 200000
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

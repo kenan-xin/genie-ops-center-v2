@@ -99,6 +99,10 @@ The specification names three datasets. The fourth, `invoices.allocations`, is t
 
 `demo-pack/` holds the fictional demo data: 6 customers, 36 invoices, 30 payments, the history PDFs, seven live-upload PDFs and the expected answers at reporting date 2026-10-27. The SQL and SQLite copies of the same history are left out, so `SHA256SUMS.txt` lists two files that are not here. `04_Demo_Guide/live_expected_entities_DO_NOT_PRELOAD.json` is test data only: no seed reads it.
 
+## Expected answers
+
+`expected-answers.json`, beside the demo pack, holds the nine answers to the pack's read prompts at reporting date 2026-10-27, in integer cents: `overdue-invoices`, `repeated-late-payers`, `overdue-balances`, `monthly-invoiced-and-collected`, `top-customers-by-sales`, `top-customers-overdue`, `invoices-without-due-date`, `manual-due-dates` and `partial-payments`. Each holds its prompt, the R-36 measures it uses, its rows and, where one is meaningful, a total. The values come from the pack's own expected files and its history records, never from this module's code, and `testing/demo-history.integration.test.ts` proves the datasets answer every one of them. S7-11 asks the questions through the datasets, and S7-14 runs them as the answer track of the evaluation suite; both read this file.
+
 ## Open decisions
 
 | Id | Question | Default if not decided |

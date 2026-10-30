@@ -5,6 +5,14 @@
  */
 
 export {
+  DEMO_PACK,
+  type DemoHistoryIds,
+  readDemoCsv,
+  readDemoJson,
+  saveDemoHistory,
+} from "./demo-pack.ts";
+
+export {
   type AllocationRow,
   type CustomerRow,
   type DocumentRow,
