@@ -967,6 +967,8 @@ export const AiModelsSave: Story = {
     await userEvent.click(
       await screen.findByRole("option", { name: "openai/gpt-6.1-terra" })
     );
+    // The closed list fades out before it unmounts; until then its options also match.
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 
     await userEvent.click(
       canvas.getByRole("combobox", { name: "Document reading" })
