@@ -150,6 +150,40 @@ const WRITES: readonly {
       return (caller) => caller.savePayment(aPayment(id));
     },
   },
+  {
+    name: "savePaidReceipt",
+    call: async () => {
+      const { id } = await insertCustomer(t());
+      return (caller) =>
+        caller.savePaidReceipt({
+          documentId: null,
+          customer: { id },
+          number: `RCPT-${randomUUID()}`,
+          date: "2026-10-01",
+          dueDate: null,
+          dueDateSource: "unspecified",
+          currency: "SGD",
+          totalCents: 1000,
+          description: null,
+          reference: null,
+          method: null,
+          keepPossibleDuplicate: false,
+        });
+    },
+  },
+  {
+    name: "correctInvoiceTotal",
+    call: async () => {
+      const { invoiceId } = await aPair();
+
+      return (caller) =>
+        caller.correctInvoiceTotal({
+          id: invoiceId,
+          totalCents: 2000,
+          reductions: [],
+        });
+    },
+  },
 ];
 
 function aPayment(customerId: string) {

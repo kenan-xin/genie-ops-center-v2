@@ -16,8 +16,12 @@ import {
   linkPayment,
   unlinkAllocation,
 } from "./services/ledger/allocations.ts";
-import { saveInvoice } from "./services/ledger/invoices.ts";
+import {
+  correctInvoiceTotal,
+  saveInvoice,
+} from "./services/ledger/invoices.ts";
 import { savePayment } from "./services/ledger/payments.ts";
+import { savePaidReceipt } from "./services/ledger/receipts.ts";
 
 const os = implementModule("invoices", invoicesContract);
 
@@ -58,6 +62,12 @@ export const invoicesRouter = os.router({
   ),
   savePayment: os.savePayment.handler(({ context, input }) =>
     savePayment(context, input)
+  ),
+  savePaidReceipt: os.savePaidReceipt.handler(({ context, input }) =>
+    savePaidReceipt(context, input)
+  ),
+  correctInvoiceTotal: os.correctInvoiceTotal.handler(({ context, input }) =>
+    correctInvoiceTotal(context, input)
   ),
   linkPayment: os.linkPayment.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller, [

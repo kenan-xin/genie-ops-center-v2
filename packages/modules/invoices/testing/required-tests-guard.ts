@@ -56,6 +56,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "unlinkAllocation",
         "saveInvoice",
         "savePayment",
+        "savePaidReceipt",
+        "correctInvoiceTotal",
       ].map(
         (name) =>
           `the seeded Viewer is refused ${name} and changes nothing, and Finance is allowed`
@@ -107,5 +109,28 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the same customer, date, amount and currency answers possible-duplicate in both paths until the person keeps it",
       "a second reading of a saved document answers already-saved, and a save by hand of it is refused",
     ].map((row) => `payment saves ${row}`),
+  },
+  {
+    file: "testing/receipts-and-corrections.integration.test.ts",
+    reason:
+      "Spec 7 R-32 and R-33: a paid receipt is one invoice, one payment and one link, and a total corrected below its allocations asks which links to reduce",
+    cases: [
+      "a paid receipt of 180,000 saves one invoice, one payment and one link of the full amount",
+      ...["600,000", "300,000"].map(
+        (total) =>
+          `an invoice of 500,000 with links of 300,000 corrected to ${total} is saved and audited`
+      ),
+      "an invoice of 500,000 with links of 300,000 corrected to 250,000 with no reductions answers choose-links and changes nothing",
+      ...[
+        "the first link reduced to 150,000 is corrected",
+        "the second link reduced to 0 is corrected and removes it",
+        "the first link reduced to 190,000 only is refused with reductions-insufficient",
+      ].map(
+        (row) =>
+          `an invoice of 500,000 with links of 300,000 corrected to 250,000: ${row}`
+      ),
+      "a reduction naming a link of another invoice is refused with reduction-invalid",
+      "a reduction raising the link of 200,000 to 250,000 is refused with reduction-invalid",
+    ].map((row) => `receipts and corrections ${row}`),
   },
 ];

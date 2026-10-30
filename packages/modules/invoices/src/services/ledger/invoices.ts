@@ -1,5 +1,6 @@
 import {
   AppError,
+  CORE_ERRORS,
   moduleAudit,
   type ModuleRequestContext,
   type TenantTransaction,
@@ -7,7 +8,12 @@ import {
 } from "@genie/core";
 import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 
-import type { SaveInvoiceInput, SaveInvoiceOutput } from "../../contract.ts";
+import type {
+  CorrectInvoiceTotalInput,
+  CorrectInvoiceTotalOutput,
+  SaveInvoiceInput,
+  SaveInvoiceOutput,
+} from "../../contract.ts";
 import { INVOICE_ERRORS } from "../../errors.ts";
 import { RECORD_TYPES } from "../../record-types.ts";
 import { allocation, invoice, payment } from "../../schema.ts";
@@ -15,7 +21,13 @@ import {
   decidePaymentMatch,
   normalizeInvoiceNumber,
 } from "../matching/decide.ts";
-import { linkPayment } from "./allocations.ts";
+import { assertCanWrite } from "./access.ts";
+import {
+  changeAllocation,
+  linkPayment,
+  lockInvoices,
+  unlinkAllocation,
+} from "./allocations.ts";
 import { authorizeCustomer, lockCustomer } from "./customers.ts";
 import { assertDocumentKind, factsCheckedSql } from "./documents.ts";
 
@@ -155,6 +167,108 @@ async function linkPaymentsNamingInvoice(
   }
 
   return linked;
+}
+
+/**
+ * Corrects an invoice total (R-32, decision 9). Below its allocations, it answers `choose-links`
+ * and writes nothing; resent with reductions that fit, it lowers or removes those links first,
+ * while the old total still bounds them, and then saves the total.
+ */
+export async function correctInvoiceTotal(
+  ctx: ModuleRequestContext,
+  input: CorrectInvoiceTotalInput
+): Promise<CorrectInvoiceTotalOutput> {
+  const reducedIds = input.reductions.map((r) => r.allocationId);
+
+  // The same link twice would be reduced twice.
+  if (new Set(reducedIds).size !== reducedIds.length) {
+    throw new AppError(INVOICE_ERRORS["reduction-invalid"]);
+  }
+
+  const named =
+    reducedIds.length === 0
+      ? []
+      : await ctx.tenant.db
+          .select({ paymentId: allocation.paymentId })
+          .from(allocation)
+          .where(inArray(allocation.id, reducedIds));
+
+  if (named.length !== reducedIds.length) {
+    throw new AppError(CORE_ERRORS["not-found"]);
+  }
+
+  await assertCanWrite(ctx.caller, [
+    { type: RECORD_TYPES.invoice, id: input.id },
+    ...named.map((row) => ({
+      type: RECORD_TYPES.payment,
+      id: row.paymentId,
+    })),
+  ]);
+
+  return withTransaction(ctx.tenant, async (tx) => {
+    const locked = (await lockInvoices(tx, [input.id])).get(input.id);
+
+    if (locked === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+
+    // Safe before `lockLink` locks payments: every path that touches a link locks its invoice first.
+    const links = await tx
+      .select({
+        allocationId: allocation.id,
+        paymentId: allocation.paymentId,
+        amountCents: allocation.amountCents,
+      })
+      .from(allocation)
+      .where(eq(allocation.invoiceId, input.id))
+      .orderBy(allocation.id)
+      .for("update");
+
+    const byId = new Map(links.map((link) => [link.allocationId, link]));
+    let allocatedCents = links.reduce((sum, link) => sum + link.amountCents, 0);
+
+    for (const reduction of input.reductions) {
+      const link = byId.get(reduction.allocationId);
+
+      if (link === undefined || reduction.amountCents >= link.amountCents) {
+        throw new AppError(INVOICE_ERRORS["reduction-invalid"]);
+      }
+
+      allocatedCents -= link.amountCents - reduction.amountCents;
+    }
+
+    if (allocatedCents > input.totalCents) {
+      if (input.reductions.length > 0) {
+        throw new AppError(INVOICE_ERRORS["reductions-insufficient"]);
+      }
+
+      return {
+        outcome: "choose-links",
+        excessCents: allocatedCents - input.totalCents,
+        allocations: links,
+      };
+    }
+
+    for (const { allocationId, amountCents } of input.reductions) {
+      // oxlint-disable-next-line no-await-in-loop -- each change locks its payment in turn, under the invoice lock.
+      await (amountCents === 0
+        ? unlinkAllocation(ctx, tx, { allocationId })
+        : changeAllocation(ctx, tx, { allocationId, amountCents }));
+    }
+
+    await tx
+      .update(invoice)
+      .set({ totalCents: input.totalCents, updatedAt: sql`now()` })
+      .where(eq(invoice.id, input.id));
+
+    await audit(
+      { tenant: ctx.tenant, caller: ctx.caller, tx },
+      "invoices:invoice-total-corrected",
+      { type: RECORD_TYPES.invoice, id: input.id },
+      "Corrected an invoice total.",
+      { fromCents: locked.totalCents, toCents: input.totalCents }
+    );
+
+    return { outcome: "corrected" };
+  });
 }
 
 /**

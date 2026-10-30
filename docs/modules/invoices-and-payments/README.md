@@ -72,6 +72,14 @@ For S7-08, each answer of `recordPaymentFromReading` and the inbox status it lea
 | `needs-review` with match `confirm`, `overpayment` or `suggestions` | Needs your input |
 | `already-saved` | The document's payment is saved already; the job shows that payment |
 
+## Receipts, purchase orders and corrections
+
+A paid receipt is one invoice, one payment and one allocation. `savePaidReceipt` at `POST /invoices/receipts` saves, in one transaction, the invoice, a payment of its full total on the same date that names its number, and a link of that total, and writes a `receipt-saved` audit row. It takes only a `paid-receipt` document, gives at most one record per document, and asks Possible duplicate on the invoice's key facts like an invoice save.
+
+No save takes a purchase-order document, so a purchase order changes no figure.
+
+`correctInvoiceTotal` at `PATCH /invoices/invoices/{id}` changes an invoice total. A total at or above its allocations is saved with an `invoice-total-corrected` audit row. A total corrected below its allocations answers `choose-links` with the excess and the invoice's links, and writes nothing. The person sends it again with `reductions`, each the new, lower amount of one link of this invoice, where 0 removes the link. The reductions are applied as link changes, each with its allocation event and audit row, before the total changes. A reduction that names another invoice's link or does not lower its link is refused with `reduction-invalid`, and reductions that still leave the links above the new total are refused with `reductions-insufficient`, so nothing changes.
+
 ## Datasets
 
 `invoices`, `payments`, `customers`, with the measures of the specification, R-36.

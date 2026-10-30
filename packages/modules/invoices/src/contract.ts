@@ -119,6 +119,86 @@ export const savePaymentOutput = z.discriminatedUnion("outcome", [
 
 export type SavePaymentOutput = z.infer<typeof savePaymentOutput>;
 
+/** A paid receipt: one invoice, one payment of its total and one link between them (R-33). */
+export const savePaidReceiptInput = z
+  .object({
+    documentId: recordId.nullable(),
+    customer: customerChoice,
+    number: z.string().trim().min(1).max(64),
+    date: isoDate,
+    dueDate: isoDate.nullable(),
+    dueDateSource: z.enum(DUE_DATE_SOURCES),
+    currency: currencyCode,
+    totalCents: cents,
+    description: z.string().trim().min(1).max(1000).nullable(),
+    reference: z.string().trim().min(1).max(200).nullable(),
+    method: z.string().trim().min(1).max(100).nullable(),
+    keepPossibleDuplicate: z.boolean(),
+  })
+  .refine(
+    (input) =>
+      (input.dueDate === null) === (input.dueDateSource === "unspecified"),
+    {
+      path: ["dueDate"],
+      message:
+        "A due date is given exactly when its source is not unspecified.",
+    }
+  );
+
+export type SavePaidReceiptInput = z.infer<typeof savePaidReceiptInput>;
+
+export const savePaidReceiptOutput = z.discriminatedUnion("outcome", [
+  z.object({
+    outcome: z.literal("saved"),
+    invoiceId: z.string(),
+    paymentId: z.string(),
+    allocationId: z.string(),
+    customerId: z.string(),
+  }),
+  z.object({
+    outcome: z.literal("possible-duplicate"),
+    duplicateOf: z.string(),
+  }),
+]);
+
+export type SavePaidReceiptOutput = z.infer<typeof savePaidReceiptOutput>;
+
+/** Each reduction is the new amount of one link of this invoice; 0 removes it (decision 9). */
+export const correctInvoiceTotalInput = z.object({
+  id: recordId,
+  totalCents: cents,
+  reductions: z
+    .array(
+      z.strictObject({
+        allocationId: recordId,
+        amountCents: z.number().int().min(0),
+      })
+    )
+    .max(20),
+});
+
+export type CorrectInvoiceTotalInput = z.infer<typeof correctInvoiceTotalInput>;
+
+/** `choose-links` asks the person which links to reduce, and nothing is written (R-32). */
+export const correctInvoiceTotalOutput = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("corrected") }),
+  z.object({
+    outcome: z.literal("choose-links"),
+    excessCents: z.number().int(),
+    allocations: z.array(
+      z.object({
+        allocationId: z.string(),
+        paymentId: z.string(),
+        amountCents: cents,
+      })
+    ),
+  }),
+]);
+
+export type CorrectInvoiceTotalOutput = z.infer<
+  typeof correctInvoiceTotalOutput
+>;
+
 export const invoicesContract = {
   /** Saves an invoice as unpaid, then links the saved payments that name it (R-29, R-31, R-33). */
   saveInvoice: oc
@@ -130,6 +210,16 @@ export const invoicesContract = {
     .route({ method: "POST", path: "/invoices/payments" })
     .input(savePaymentInput)
     .output(savePaymentOutput),
+  /** Saves a paid receipt as one invoice, one payment and one link of the full amount (R-33). */
+  savePaidReceipt: oc
+    .route({ method: "POST", path: "/invoices/receipts" })
+    .input(savePaidReceiptInput)
+    .output(savePaidReceiptOutput),
+  /** Corrects an invoice total. Below its allocations, it asks which links to reduce (R-32). */
+  correctInvoiceTotal: oc
+    .route({ method: "PATCH", path: "/invoices/invoices/{id}" })
+    .input(correctInvoiceTotalInput)
+    .output(correctInvoiceTotalOutput),
   /** Links an amount of a payment to an invoice of the same customer and currency (R-32, R-34). */
   linkPayment: oc
     .route({ method: "POST", path: "/invoices/allocations" })

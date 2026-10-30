@@ -2386,6 +2386,352 @@
         }
       }
     },
+    "/invoices/receipts": {
+      "post": {
+        "operationId": "invoices.savePaidReceipt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "documentId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "customer": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "email": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "email"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "confirmed": {
+                            "const": true
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "email",
+                          "confirmed"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "number": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "dueDateSource": {
+                    "enum": [
+                      "document",
+                      "person",
+                      "unspecified"
+                    ],
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "totalCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reference": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "method": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "keepPossibleDuplicate": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "documentId",
+                  "customer",
+                  "number",
+                  "date",
+                  "dueDate",
+                  "dueDateSource",
+                  "currency",
+                  "totalCents",
+                  "description",
+                  "reference",
+                  "method",
+                  "keepPossibleDuplicate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "saved"
+                        },
+                        "invoiceId": {
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "type": "string"
+                        },
+                        "allocationId": {
+                          "type": "string"
+                        },
+                        "customerId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "invoiceId",
+                        "paymentId",
+                        "allocationId",
+                        "customerId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "possible-duplicate"
+                        },
+                        "duplicateOf": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "duplicateOf"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/invoices/{id}": {
+      "patch": {
+        "operationId": "invoices.correctInvoiceTotal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "totalCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "reductions": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "allocationId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "allocationId",
+                        "amountCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "totalCents",
+                  "reductions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "corrected"
+                        }
+                      },
+                      "required": [
+                        "outcome"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "const": "choose-links"
+                        },
+                        "excessCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "allocations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "allocationId": {
+                                "type": "string"
+                              },
+                              "paymentId": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "allocationId",
+                              "paymentId",
+                              "amountCents"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "excessCents",
+                        "allocations"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/allocations": {
       "post": {
         "operationId": "invoices.linkPayment",
