@@ -148,6 +148,18 @@ const ROWS: readonly {
     },
   },
   {
+    row: "B3.4 two names, only one found, is a split of one part and never automatic",
+    facts: facts({
+      namedInvoiceNumbers: ["INV-2026-09-03", "INV-UNKNOWN"],
+      amountCents: 300_000,
+    }),
+    expected: {
+      kind: "split",
+      parts: [{ invoiceId: "inv-0903", amountCents: 300_000 }],
+      unallocatedCents: 0,
+    },
+  },
+  {
     row: "B3.5 no name, an open invoice of the exact amount is suggested",
     facts: facts({ amountCents: 950_000 }),
     expected: { kind: "suggestions", invoiceIds: ["inv-1006"] },
