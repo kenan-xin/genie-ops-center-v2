@@ -51,6 +51,9 @@ async function waitForDatabaseCondition(
 }
 /* oxlint-enable no-await-in-loop */
 
+/** The image's module selection, as `build-image` passes it. */
+const MODULE_INCLUDE = process.env.MODULE_INCLUDE ?? "placeholder";
+
 /** Named in the staleness failures below, so the fix is one copy-paste away. */
 const REBUILD_IMAGE = `docker build -f deploy/Dockerfile --build-arg MODULE_INCLUDE=placeholder -t ${IMAGE} .`;
 
@@ -88,7 +91,7 @@ async function buildImage(): Promise<boolean> {
         "-f",
         "deploy/Dockerfile",
         "--build-arg",
-        `MODULE_INCLUDE=${process.env.MODULE_INCLUDE ?? "placeholder"}`,
+        `MODULE_INCLUDE=${MODULE_INCLUDE}`,
         "-t",
         IMAGE,
         ".",
@@ -1274,7 +1277,12 @@ describe("the built image", () => {
     // still applies the module history to a real database, and the ledger
     // rows it writes hash the repository's own SQL bytes — the ledger is in
     // the migrator's `drizzle` schema, one table per module history.
-    const sources = moduleMigrationSources();
+    // Only the modules the image carries; the prune removed the others.
+    const selected = new Set(MODULE_INCLUDE.split(",").map((id) => id.trim()));
+
+    const sources = moduleMigrationSources().filter(({ module }) =>
+      selected.has(module)
+    );
 
     expect(sources.length).toBeGreaterThanOrEqual(1);
 

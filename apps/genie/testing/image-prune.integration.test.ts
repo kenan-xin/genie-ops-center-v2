@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { dockerBuild, removeImage, requireDocker } from "./image-process.ts";
 import { testImageTag } from "./image-tag.ts";
 import { PRUNE_FIXTURE_MODULE } from "./shared-empty-image.ts";
 import { stageFixtureModule, stageWorkspace } from "./stage-workspace.ts";
+import { WORKSPACE_ROOT } from "./worktree-scope.ts";
 
 /**
  * The build-input exclusion proof (Spec 0 AC-5 and AC-24, `pg4`), run inside a
@@ -36,6 +37,20 @@ const EXTRA_MODULE = PRUNE_FIXTURE_MODULE;
 const DIRECT_IMPORT = `import "@genie/module-placeholder";\n`;
 
 const SUBPATH_IMPORT = `import "@genie/module-placeholder/presentation";\n`;
+
+/** The stage's module folders: the repository's own plus the fixture. */
+const STAGED_MODULES = [
+  ...readdirSync(join(WORKSPACE_ROOT, "packages/modules"), {
+    withFileTypes: true,
+  }).flatMap((entry) => (entry.isDirectory() ? [entry.name] : [])),
+  EXTRA_MODULE,
+];
+
+/** The prune's `removed:` list when only `kept` survives, in its sorted order. */
+const removedExcept = (...kept: readonly string[]) =>
+  STAGED_MODULES.filter((id) => !kept.includes(id))
+    .toSorted()
+    .join(", ");
 
 const stages: string[] = [];
 
@@ -122,7 +137,9 @@ describe("the builder-stage module prune", () => {
 
     expect(result.ok, tail(result.log)).toBe(true);
     expect(result.log).toMatch(pruneLine("kept: placeholder"));
-    expect(result.log).toMatch(pruneLine(`removed: ${EXTRA_MODULE}`));
+    expect(result.log).toMatch(
+      pruneLine(`removed: ${removedExcept("placeholder")}`)
+    );
   }, 900000);
 
   it("refuses an unset MODULE_INCLUDE", async () => {
@@ -148,9 +165,7 @@ describe("the builder-stage module prune", () => {
     expect(result.ok, tail(result.log)).toBe(false);
     // An explicitly empty selection reaches the prune as empty, not as unset.
     expect(result.log).toMatch(pruneLine("kept: (none)"));
-    expect(result.log).toMatch(
-      pruneLine(`removed: ${EXTRA_MODULE}, placeholder`)
-    );
+    expect(result.log).toMatch(pruneLine(`removed: ${removedExcept()}`));
     expect(result.log).toMatch(unresolved("@genie/module-placeholder"));
     expect(result.log).toMatch(IMPORTER);
   }, 900000);
@@ -165,9 +180,7 @@ describe("the builder-stage module prune", () => {
     );
 
     expect(result.ok, tail(result.log)).toBe(false);
-    expect(result.log).toMatch(
-      pruneLine(`removed: ${EXTRA_MODULE}, placeholder`)
-    );
+    expect(result.log).toMatch(pruneLine(`removed: ${removedExcept()}`));
     expect(result.log).toMatch(
       unresolved("@genie/module-placeholder/presentation")
     );
