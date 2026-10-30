@@ -225,7 +225,7 @@ export async function correctInvoiceTotal(
     const byId = new Map(links.map((link) => [link.allocationId, link]));
     let allocatedCents = links.reduce((sum, link) => sum + link.amountCents, 0);
 
-    for (const reduction of input.reductions) {
+    const changes = input.reductions.map((reduction) => {
       const link = byId.get(reduction.allocationId);
 
       if (link === undefined || reduction.amountCents >= link.amountCents) {
@@ -233,7 +233,9 @@ export async function correctInvoiceTotal(
       }
 
       allocatedCents -= link.amountCents - reduction.amountCents;
-    }
+
+      return { ...reduction, paymentId: link.paymentId };
+    });
 
     if (allocatedCents > input.totalCents) {
       if (input.reductions.length > 0) {
@@ -247,7 +249,10 @@ export async function correctInvoiceTotal(
       };
     }
 
-    for (const { allocationId, amountCents } of input.reductions) {
+    // Payment rows lock in id order, so two corrections that share payments cannot deadlock.
+    for (const { allocationId, amountCents } of changes.toSorted((a, b) =>
+      a.paymentId < b.paymentId ? -1 : 1
+    )) {
       // oxlint-disable-next-line no-await-in-loop -- each change locks its payment in turn, under the invoice lock.
       await (amountCents === 0
         ? unlinkAllocation(ctx, tx, { allocationId })

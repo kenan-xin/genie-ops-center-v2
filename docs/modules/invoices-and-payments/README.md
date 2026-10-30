@@ -38,7 +38,7 @@ A grant on a customer covers its invoices and payments.
 
 ## Links
 
-A link (an allocation) puts an amount of one payment against one invoice. Every write locks rows in one order: the customer row, then invoice rows in id order, then the payment row, then allocation rows. A write can skip a level and never reverses two, so two writes cannot deadlock. Under those locks, a link is refused when it would make the invoice's allocations exceed its total, or the payment's allocations exceed its amount.
+A link (an allocation) puts an amount of one payment against one invoice. Every write locks rows in one order: the customer row, then invoice rows in id order, then payment rows in id order, then allocation rows. A write can skip a level. One write reverses two levels: an invoice total correction locks the links of its invoice before their payments. This is safe because every write that touches a link locks the link's invoice first. With these rules, two writes cannot deadlock. Under those locks, a link is refused when it would make the invoice's allocations exceed its total, or the payment's allocations exceed its amount.
 
 A payment links only to an invoice of the same customer and the same currency. A pair links at most once; a second amount changes the existing link. A removed link returns its amount to the payment as unallocated. Every link, change and removal writes an `allocation_event` row, with the amounts before and after and the person who made it, and an audit row on the invoice. `automatic` marks a link the module made by itself, which Undo can remove. A changed link is a person's link, so it loses the mark.
 

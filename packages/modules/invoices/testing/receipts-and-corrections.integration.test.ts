@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 import {
   callProcedure,
   principalFor,
@@ -101,6 +103,26 @@ async function stateOf(invoiceId: string) {
   );
 
   return rows[0];
+}
+
+/**
+ * Polls until this database has `count` lock requests not yet granted. It reads `pg_locks`, which
+ * the releasing session updates itself, so a wait that just ended never counts.
+ */
+async function untilWaiting(count: number): Promise<number> {
+  let waiting = 0;
+
+  for (let tries = 0; tries < 200 && waiting < count; tries += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- polling one value until it holds.
+    await sleep(50);
+    // oxlint-disable-next-line no-await-in-loop
+    const { rows } = await t().db.$client.query<{ n: number }>(
+      "select count(*)::int as n from pg_locks l join pg_stat_activity a using (pid) where not l.granted and a.datname = current_database()"
+    );
+    waiting = rows[0]?.n ?? 0;
+  }
+
+  return waiting;
 }
 
 const amounts = (...links: [Link, number][]) =>
@@ -260,6 +282,80 @@ describe("receipts and corrections", () => {
       });
     }
   );
+
+  it("two corrections at the same time that reduce the links of two shared payments in opposite order both finish", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { id: a } = await insertPayment(t(), {
+      customerId,
+      amountCents: 200_000,
+    });
+    const { id: b } = await insertPayment(t(), {
+      customerId,
+      amountCents: 200_000,
+    });
+    const [low, high] = a < b ? [a, b] : [b, a];
+    const invoiceOf = async () => {
+      const { id: invoiceId } = await insertInvoice(t(), {
+        customerId,
+        totalCents: 200_000,
+      });
+      const linkTo = async (paymentId: string) => {
+        const { id } = await insertAllocation(t(), {
+          invoiceId,
+          paymentId,
+          amountCents: 100_000,
+        });
+
+        return { allocationId: id, amountCents: 50_000 };
+      };
+
+      return { invoiceId, low: await linkTo(low), high: await linkTo(high) };
+    };
+    const one = await invoiceOf();
+    const two = await invoiceOf();
+    const holdLow = await t().db.$client.connect();
+    const holdHigh = await t().db.$client.connect();
+
+    try {
+      for (const [held, id] of [
+        [holdLow, low],
+        [holdHigh, high],
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop -- each hold is its own open transaction.
+        await held.query("begin");
+        // oxlint-disable-next-line no-await-in-loop
+        await held.query("select 1 from payment where id = $1 for update", [
+          id,
+        ]);
+      }
+
+      const corrections = [
+        { id: one.invoiceId, reductions: [one.low, one.high] },
+        { id: two.invoiceId, reductions: [two.high, two.low] },
+      ].map((input) =>
+        api().correctInvoiceTotal({ ...input, totalCents: 100_000 })
+      );
+      // Released one at a time: request order makes one call hold the low payment and the other the high one.
+      const waitedOnLow = await untilWaiting(2);
+      await holdLow.query("rollback");
+      const waitedOnHigh = await untilWaiting(2);
+      await holdHigh.query("rollback");
+
+      const settled = await Promise.allSettled(corrections);
+
+      expect(settled).toEqual([
+        { status: "fulfilled", value: { outcome: "corrected" } },
+        { status: "fulfilled", value: { outcome: "corrected" } },
+      ]);
+      expect((await stateOf(one.invoiceId)).totalCents).toBe(100_000);
+      expect((await stateOf(two.invoiceId)).totalCents).toBe(100_000);
+      // Both calls really waited at each step, so the case is a race.
+      expect([waitedOnLow, waitedOnHigh]).toEqual([2, 2]);
+    } finally {
+      holdLow.release();
+      holdHigh.release();
+    }
+  }, 30000);
 
   it.each([
     [
