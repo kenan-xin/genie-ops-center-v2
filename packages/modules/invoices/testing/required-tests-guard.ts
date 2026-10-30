@@ -50,11 +50,38 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason:
       "Spec 7 R-39 and decision 13: only invoices:write on the record writes, through the seeded roles",
     cases: [
-      ...["linkPayment", "changeAllocation", "unlinkAllocation"].map(
+      ...[
+        "linkPayment",
+        "changeAllocation",
+        "unlinkAllocation",
+        "saveInvoice",
+      ].map(
         (name) =>
           `the seeded Viewer is refused ${name} and changes nothing, and Finance is allowed`
       ),
       "a writer scoped to one customer links its records and is refused on another customer's",
+      "a writer scoped to one customer saves its invoices and is refused another customer's",
     ].map((row) => `invoices write access ${row}`),
+  },
+  {
+    file: "testing/invoices.integration.test.ts",
+    reason:
+      "Spec 7 R-31 and R-33: a new customer only on confirmation, Possible duplicate, one record per document, and R-30 when a named invoice is saved",
+    cases: [
+      "a confirmed new customer is created once and reused when named in another case",
+      "a writer scoped to one customer is refused a new customer",
+      "the same customer and number answers possible-duplicate until the person keeps it",
+      "refuses a purchase-order document with document-kind-mismatch and saves nothing",
+      "refuses a payment document with document-kind-mismatch and saves nothing",
+      "a second save from the same document is refused with document-already-saved",
+      ...[
+        "a payment of 300,000 naming INV-9 links automatically",
+        "a payment whose amount was corrected stays unallocated",
+        "a payment above the total stays unallocated",
+        "a payment naming two invoices stays unallocated",
+        "a payment in another currency stays unallocated",
+        "of two payments the older links and the second stays unallocated",
+      ].map((row) => `saving invoice inv-9 of 720,000, ${row}`),
+    ].map((row) => `invoice saves ${row}`),
   },
 ];

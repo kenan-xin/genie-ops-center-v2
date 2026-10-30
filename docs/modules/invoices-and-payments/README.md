@@ -42,6 +42,16 @@ A link (an allocation) puts an amount of one payment against one invoice. Every 
 
 A payment links only to an invoice of the same customer and the same currency. A pair links at most once; a second amount changes the existing link. A removed link returns its amount to the payment as unallocated. Every link, change and removal writes an `allocation_event` row, with the amounts before and after and the person who made it, and an audit row on the invoice. `automatic` marks a link the module made by itself, which Undo can remove. A changed link is a person's link, so it loses the mark.
 
+## Saving invoices
+
+An invoice saves as unpaid and joins outstanding at once. Its customer is either an existing one, chosen by id, or a new one that the person confirmed. A new customer needs a write grant on the whole deployment. A grant on one customer saves only that customer's invoices. Customer names are unique when case and outer spaces are ignored, so a confirmed name that already exists reuses that customer, and only a new one writes a `customer-created` audit row.
+
+The key facts of a Possible duplicate invoice are the same customer and the same number, ignoring case and outer spaces. The save then answers `possible-duplicate` with the existing invoice and writes nothing. The person can send the save again with `keepPossibleDuplicate`, because no unique index holds the number. A document gives at most one invoice: a second save from it is refused with `document-already-saved`. An invoice save takes only an `invoice` document. A purchase order or a payment document is refused with `document-kind-mismatch`, so a purchase order never counts as a sale.
+
+When the invoice is saved, R-31 runs in the same transaction. It takes each payment of that customer, in that currency, with no link, that names this invoice number and no other, and whose facts passed the quote check, oldest payment date first. Each one links automatically under R-30 when its amount fits the open amount that remains. A link made this way is marked automatic, so Undo applies, and it writes its allocation event and audit row. Every other payment stays unallocated for the person.
+
+The seam for S7-08 and S7-09 is `MATCH_FACT_FIELDS`: the `field_origin` rows `customer`, `invoiceNumbers` and `amount` of the payment's document. Their facts passed the quote check when all three hold origin `extracted`. The reading job writes `extracted` only for a value that passed the quote check, and a person's change marks the field `corrected`, so a corrected payment never links by itself.
+
 ## Datasets
 
 `invoices`, `payments`, `customers`, with the measures of the specification, R-36.

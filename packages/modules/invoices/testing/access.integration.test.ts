@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   callProcedure,
   principalFor,
@@ -97,7 +99,7 @@ async function aLink(): Promise<string> {
 /** Everything a write of this module changes, read with SQL. */
 async function ledgerState() {
   const { rows } = await t().db.$client.query(
-    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits"
+    "select (select json_agg(json_build_array(id, amount_cents, automatic) order by id) from allocation) as allocations, (select count(*)::int from allocation_event) as events, (select count(*)::int from audit_event) as audits, (select count(*)::int from invoice) as invoices, (select count(*)::int from customer) as customers"
   );
 
   return rows[0];
@@ -132,7 +134,31 @@ const WRITES: readonly {
       return (caller) => caller.unlinkAllocation({ id });
     },
   },
+  {
+    name: "saveInvoice",
+    call: async () => {
+      const { id } = await insertCustomer(t());
+
+      return (caller) => caller.saveInvoice(anInvoice(id));
+    },
+  },
 ];
+
+function anInvoice(customerId: string) {
+  return {
+    documentId: null,
+    customer: { id: customerId },
+    number: `INV-${randomUUID()}`,
+    invoiceDate: "2026-10-01",
+    dueDate: null,
+    dueDateSource: "unspecified" as const,
+    paymentTerms: null,
+    currency: "SGD",
+    totalCents: 1000,
+    description: null,
+    keepPossibleDuplicate: false,
+  };
+}
 
 describe("invoices write access", () => {
   it.each(WRITES)(
@@ -167,5 +193,21 @@ describe("invoices write access", () => {
     await expect(
       as(userId).linkPayment({ ...pairOfB, amountCents: 100 })
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("a writer scoped to one customer saves its invoices and is refused another customer's", async () => {
+    const a = await insertCustomer(t());
+    const b = await insertCustomer(t());
+    const { userId } = await insertPersonWith(t(), ["invoices:write"], {
+      type: "invoices-customer",
+      id: a.id,
+    });
+
+    await expect(
+      as(userId).saveInvoice(anInvoice(a.id))
+    ).resolves.toMatchObject({ outcome: "saved" });
+    await expect(as(userId).saveInvoice(anInvoice(b.id))).rejects.toMatchObject(
+      { code: "forbidden" }
+    );
   });
 });

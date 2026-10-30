@@ -16,6 +16,7 @@ import {
   linkPayment,
   unlinkAllocation,
 } from "./services/ledger/allocations.ts";
+import { saveInvoice } from "./services/ledger/invoices.ts";
 
 const os = implementModule("invoices", invoicesContract);
 
@@ -51,6 +52,9 @@ async function assertCanWriteLink(
  * `module-disabled` when the entitlement is off, before any handler runs.
  */
 export const invoicesRouter = os.router({
+  saveInvoice: os.saveInvoice.handler(({ context, input }) =>
+    saveInvoice(context, input)
+  ),
   linkPayment: os.linkPayment.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller, [
       invoiceRef(input.invoiceId),
