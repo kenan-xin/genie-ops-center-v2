@@ -113,6 +113,22 @@ export async function syncModuleAdminKey(
 }
 
 /**
+ * A module's declared default roles as `role` rows: system roles carrying the module id. Both
+ * `seedRoles` and the first switch-on of a module insert them by name and never overwrite one
+ * (R-33a).
+ */
+export function defaultRoleRows(
+  module: Pick<Module, "identity" | "defaultRoles">
+) {
+  return module.defaultRoles.map((entry) => ({
+    name: entry.name,
+    permissions: [...entry.permissions],
+    moduleId: module.identity.id,
+    isSystem: true,
+  }));
+}
+
+/**
  * The seeding the `roles` setup step (S2-08) calls (R-33, R-55): the two core system roles and
  * every compiled module's default roles, each marked system, then the admin key of every module
  * whose entitlement is enabled. A module registered disabled gets its definitions only.
@@ -126,17 +142,7 @@ export async function seedRoles(
   modules: readonly Pick<Module, "identity" | "permissions" | "defaultRoles">[]
 ): Promise<void> {
   await context.db.transaction(async (tx) => {
-    const definitions = [
-      ...CORE_ROLES,
-      ...modules.flatMap((module) =>
-        module.defaultRoles.map((entry) => ({
-          name: entry.name,
-          permissions: [...entry.permissions],
-          moduleId: module.identity.id,
-          isSystem: true,
-        }))
-      ),
-    ];
+    const definitions = [...CORE_ROLES, ...modules.flatMap(defaultRoleRows)];
 
     await tx
       .insert(role)

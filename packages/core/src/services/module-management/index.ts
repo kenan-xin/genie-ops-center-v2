@@ -11,8 +11,8 @@ import {
   type TenantTransaction,
   withTransaction,
 } from "../../lib/tenant-context/with-transaction.ts";
-import { tenantModule } from "../../schema.ts";
-import { syncModuleAdminKey } from "../authorization/roles.ts";
+import { role, tenantModule } from "../../schema.ts";
+import { defaultRoleRows, syncModuleAdminKey } from "../authorization/roles.ts";
 
 /**
  * One actionable validation failure of R-68a: the configuration field a person has to fix
@@ -179,9 +179,22 @@ export async function setModuleEnabledIn(
     )
     .returning({ moduleId: tenantModule.moduleId });
 
+  const changed = updated.length > 0;
+  const roles = defaultRoleRows(module);
+
+  // A module an upgrade registered after setup has no default roles yet (DEC-50, "New modules on
+  // an existing deployment"). The switch-on creates the missing ones by name, assigns none, and
+  // never rewrites a role that already holds the name (R-33a).
+  if (changed && enabled && roles.length > 0) {
+    await tx
+      .insert(role)
+      .values(roles)
+      .onConflictDoNothing({ target: role.name });
+  }
+
   // R-31: the real transition appends or removes the module's admin key on `Tenant
   // administrator` in the same transaction, so the two never disagree.
-  if (updated.length > 0) await syncModuleAdminKey(tx, module, enabled);
+  if (changed) await syncModuleAdminKey(tx, module, enabled);
 
-  return { changed: updated.length > 0 };
+  return { changed };
 }

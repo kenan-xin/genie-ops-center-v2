@@ -243,6 +243,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "genie-ops module lifecycle module enable activates a module with valid required configuration",
       "genie-ops module lifecycle setModuleEnabled writes the same tenant_module row as the module enable command",
       "genie-ops module lifecycle the core procedure reports stable errors and actionable issues for rejected enables",
+      "genie-ops module lifecycle the first switch-on of a module an upgrade registered creates its default roles once and assigns none",
+      "genie-ops module lifecycle the first switch-on keeps the id and keys of a role that already holds a default role's name",
       "genie-ops retire writes one retirement row and leaves tenant data in place",
       "genie-ops retire retire twice keeps the original retired_at value",
       "genie-ops retire retire prints the cause, exits nonzero, and writes one failure audit row",

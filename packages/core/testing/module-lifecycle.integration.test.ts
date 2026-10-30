@@ -11,6 +11,7 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { seedRoles } from "../src/services/authorization/roles.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { CORE_HISTORY, runMigrations } from "../src/services/migrator/index.ts";
 import { ModuleManagementError } from "../src/services/module-management/index.ts";
@@ -149,6 +150,48 @@ const compiledPlaceholderModule: Module = {
     migrationsTable: moduleLedgerTable("placeholder"),
   },
 };
+
+/** A module that an upgrade adds to a deployment set up before it existed, with two default roles. */
+const upgradeModule: Module = {
+  ...validModule,
+  defaultRoles: [
+    { name: "Fixture user", permissions: ["fixture:use"] },
+    { name: "Fixture reader", permissions: ["fixture:read", "fixture:use"] },
+  ],
+};
+
+type RoleRow = {
+  readonly id: string;
+  readonly name: string;
+  readonly permissions: readonly string[];
+  readonly module_id: string | null;
+  readonly is_system: boolean;
+};
+
+/**
+ * The state of a deployment that an upgrade gave the module: setup seeded the core roles before
+ * the module existed, and the migrator's registration wrote a disabled row and no role.
+ */
+async function upgradedDeployment(): Promise<Fixture> {
+  const fixture = await createFixture([upgradeModule]);
+
+  await seedRoles(fixture.context, []);
+  await seedModule(fixture.observer, "fixture");
+
+  return fixture;
+}
+
+async function rolesNamed(
+  observer: Client,
+  names: readonly string[]
+): Promise<RoleRow[]> {
+  const result = await observer.query<RoleRow>(
+    "select id::text as id, name, permissions, module_id, is_system from role where name = any($1) order by name",
+    [names]
+  );
+
+  return result.rows;
+}
 
 async function createFixture(
   compiledModules: readonly Module[] = [validModule]
@@ -669,6 +712,87 @@ describe("genie-ops module lifecycle", () => {
       enabled: false,
       enabled_at: priorEnabledAt,
     });
+  }, 120000);
+
+  it("the first switch-on of a module an upgrade registered creates its default roles once and assigns none", async () => {
+    const fixture = await upgradedDeployment();
+    const names = ["Fixture reader", "Fixture user"];
+
+    await expect(rolesNamed(fixture.observer, names)).resolves.toEqual([]);
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    const switchTo = (enabled: boolean) =>
+      setModuleEnabled(
+        fixture.context,
+        fixture.compiledModules,
+        "fixture",
+        enabled
+      );
+
+    await expect(switchTo(true)).resolves.toEqual({ changed: true });
+
+    const created = await rolesNamed(fixture.observer, names);
+
+    expect(created).toEqual([
+      {
+        id: expect.any(String),
+        name: "Fixture reader",
+        permissions: ["fixture:read", "fixture:use"],
+        module_id: "fixture",
+        is_system: true,
+      },
+      {
+        id: expect.any(String),
+        name: "Fixture user",
+        permissions: ["fixture:use"],
+        module_id: "fixture",
+        is_system: true,
+      },
+    ]);
+    await expect(
+      fixture.observer.query(
+        "select count(*)::int as count from role_assignment where role_id = any($1::uuid[])",
+        [created.map((row) => row.id)]
+      )
+    ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+
+    await switchTo(true);
+    await switchTo(false);
+    await expect(switchTo(true)).resolves.toEqual({ changed: true });
+
+    await expect(rolesNamed(fixture.observer, names)).resolves.toEqual(created);
+  }, 120000);
+
+  it("the first switch-on keeps the id and keys of a role that already holds a default role's name", async () => {
+    const fixture = await upgradedDeployment();
+
+    const existing = await fixture.observer.query<{ id: string }>(
+      "insert into role (name, permissions) values ('Fixture user', array['fixture:read']) returning id::text as id"
+    );
+
+    const { setModuleEnabled } =
+      await import("../src/services/module-management/index.ts");
+
+    await setModuleEnabled(
+      fixture.context,
+      fixture.compiledModules,
+      "fixture",
+      true
+    );
+
+    await expect(
+      rolesNamed(fixture.observer, ["Fixture user"])
+    ).resolves.toEqual([
+      {
+        id: existing.rows[0]?.id,
+        name: "Fixture user",
+        permissions: ["fixture:read"],
+        module_id: null,
+        is_system: false,
+      },
+    ]);
   }, 120000);
 });
 
