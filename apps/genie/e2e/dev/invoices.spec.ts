@@ -4,7 +4,17 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
-import { DEMO_ACCOUNT_EMAIL, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+import {
+  DEMO_ACCOUNT_EMAIL,
+  DEV_DB_PORT,
+  DEV_MODULES,
+  DEV_PORT,
+} from "./global-setup.ts";
+
+test.skip(
+  !DEV_MODULES.has("invoices"),
+  "This run does not compile the invoices module."
+);
 
 declare global {
   interface Window {

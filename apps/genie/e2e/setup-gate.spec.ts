@@ -2,12 +2,19 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { SETUP_STEPS } from "@genie/core";
 import { expect, test, type Page } from "@playwright/test";
 
+import { IMAGE_MODULES } from "../testing/image-tag.ts";
 import { compose, HOST_PORT } from "./setup-gate/stack.ts";
 import { expectSecurityHeaders } from "./support/headers.ts";
 
 const BASE_URL = `http://127.0.0.1:${HOST_PORT}`;
 
-const ROUTES = ["/", "/placeholder", "/viewer/placeholder"] as const;
+const PLACEHOLDER = IMAGE_MODULES.has("placeholder");
+
+// A customer image without placeholder has no placeholder page (bead xok3.35).
+const ROUTES = [
+  "/",
+  ...(PLACEHOLDER ? ["/placeholder", "/viewer/placeholder"] : []),
+];
 
 const VIEWPORTS = [
   { name: "phone", width: 390, height: 844 },
@@ -34,8 +41,12 @@ async function completeKnownSteps(): Promise<void> {
 
   // The seed step's two rows, as `markSetupDone` writes them: the sign-in page reads settings
   // (R-51a). The branding row omits default_theme, so the column default `system` applies.
+  const enablePlaceholder = PLACEHOLDER
+    ? "insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; "
+    : "";
+
   await psql(
-    `insert into tenant_module (module_id, enabled) values ('placeholder', true) on conflict (module_id) do update set enabled = true; insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_settings default values on conflict do nothing; insert into tenant_branding (company_name, product_name, default_locale, default_time_zone, primary_color, primary_foreground, font_size) values ('Setup Gate', 'Genie Ops Center', 'en', 'UTC', '#0f766e', '#ffffff', 'large') on conflict do nothing`
+    `${enablePlaceholder}insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_settings default values on conflict do nothing; insert into tenant_branding (company_name, product_name, default_locale, default_time_zone, primary_color, primary_foreground, font_size) values ('Setup Gate', 'Genie Ops Center', 'en', 'UTC', '#0f766e', '#ffffff', 'large') on conflict do nothing`
   );
 }
 
@@ -129,7 +140,7 @@ async function expectSelfHostedDefaultFace(
   );
 }
 
-test("AC-2: three routes switch from not-set-up to normal at phone and desktop sizes", async ({
+test("AC-2: the image's routes switch from not-set-up to normal at phone and desktop sizes", async ({
   page,
   request,
 }) => {

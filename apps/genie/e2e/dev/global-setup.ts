@@ -92,6 +92,9 @@ const PERMISSIONS_OF = new Map<string, readonly string[]>([
   [ASK_PEOPLE.noAsk, ["placeholder:use"]],
 ]);
 
+/** The modules the registry compiles into `next dev`, so a spec skips a module this run leaves out. */
+export const DEV_MODULES: ReadonlySet<string> = new Set(selectedModuleIds);
+
 const databaseUrl = () =>
   `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`;
 
@@ -148,6 +151,9 @@ async function seedDemo(): Promise<void> {
     await context.db.$client.end();
   }
 
+  // The command seeds the demo pack's invoice history, so a run without invoices has nothing to seed.
+  if (!DEV_MODULES.has("invoices")) return;
+
   // Only what the command documents, beside PATH so `node` resolves: never the test's other env.
   // `NODE_ENV` is the one value Next's global types make required; the command never reads it.
   const env = {
@@ -203,7 +209,9 @@ async function seedAgent(): Promise<void> {
       chat: "openai/gpt-6.1-terra",
       document: "anthropic/claude-opus-5.5",
     });
-    await insertAgentRecords(context);
+
+    // The agent's records are placeholder rows, and only a run with placeholder has its table.
+    if (DEV_MODULES.has("placeholder")) await insertAgentRecords(context);
     await Promise.all(
       [...PERMISSIONS_OF].map(async ([email, permissions]) => {
         const id = await insertUser(context, { email, emailVerified: true });

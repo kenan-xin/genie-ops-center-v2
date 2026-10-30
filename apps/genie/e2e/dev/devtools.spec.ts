@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { selectedModuleIds } from "../../src/modules.ts";
 import { DEV_DB_PORT } from "./global-setup.ts";
 
 /**
@@ -79,8 +80,7 @@ test("the devtools open and report this deployment truthfully", async ({
   // fixture.
   await expect(fact(page, "Database")).toHaveText("genie");
   await expect(fact(page, "Modules").getByRole("listitem")).toHaveText([
-    "invoices",
-    "placeholder",
+    ...selectedModuleIds,
   ]);
   await expect(fact(page, "Permissions")).toHaveText("No permissions granted.");
   await expect(fact(page, "User")).toHaveText(

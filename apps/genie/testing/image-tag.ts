@@ -14,6 +14,25 @@ export function testImageTag(repository: string, tag: string): string {
  */
 export const IMAGE = testImageTag("genie-s005", "test");
 
+/**
+ * The `MODULE_INCLUDE` value `IMAGE` is built with. It follows the shell's
+ * `${MODULE_INCLUDE-placeholder}` rule: an unset variable selects placeholder,
+ * an explicitly empty one selects nothing.
+ */
+export const IMAGE_MODULE_INCLUDE = process.env.MODULE_INCLUDE ?? "placeholder";
+
+/**
+ * The module ids `IMAGE` compiles, so a spec visits only their pages. Split as
+ * the release pipeline splits an include list: the boundary rules keep
+ * `@genie/generators` out of the app (R-7a), and the image build refuses an
+ * unknown id.
+ */
+export const IMAGE_MODULES: ReadonlySet<string> = new Set(
+  IMAGE_MODULE_INCLUDE.split(",")
+    .map((id) => id.trim())
+    .filter((id) => id !== "")
+);
+
 /** The fixture image the browser gate builds and drives. */
 export const FIXTURE_IMAGE = testImageTag("genie-s005", "fixture");
 

@@ -4,7 +4,17 @@ import { mintDevSession } from "@genie/core/testing";
 import { expect, test } from "@playwright/test";
 
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
-import { ASK_PEOPLE, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+import {
+  ASK_PEOPLE,
+  DEV_DB_PORT,
+  DEV_MODULES,
+  DEV_PORT,
+} from "./global-setup.ts";
+
+test.skip(
+  !DEV_MODULES.has("placeholder"),
+  "The model stand-in replays the placeholder's recordings."
+);
 
 const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
 

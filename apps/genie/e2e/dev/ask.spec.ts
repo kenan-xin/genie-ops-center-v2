@@ -12,7 +12,17 @@ import {
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { atLg } from "../support/shell.ts";
-import { ASK_PEOPLE, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+import {
+  ASK_PEOPLE,
+  DEV_DB_PORT,
+  DEV_MODULES,
+  DEV_PORT,
+} from "./global-setup.ts";
+
+test.skip(
+  !DEV_MODULES.has("placeholder"),
+  "The model stand-in replays the placeholder's recordings."
+);
 
 /**
  * Ask and the chat bubble in `next dev` with the model stand-in (Spec 7 AC-8 line 4, R-42, P13).
