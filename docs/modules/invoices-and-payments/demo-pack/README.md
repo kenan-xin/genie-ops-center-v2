@@ -1,6 +1,6 @@
 # Invoice & Payment Demo Pack
 
-All records are fictional. Snapshot date: **27 October 2026**, Asia/Singapore. Currency: SGD. Seller: Northstar Studio (fictional). Use this fixed date for repeatable overdue answers; real current dates will change ageing.
+All records are fictional. Snapshot date: **27 October 2026**, Asia/Singapore. Currency: SGD. Seller: Genie (fictional). Use this fixed date for repeatable overdue answers; real current dates will change ageing.
 
 ## What is included
 - 6 customers; 36 historical invoices; 30 payment records; 30 payment allocations.

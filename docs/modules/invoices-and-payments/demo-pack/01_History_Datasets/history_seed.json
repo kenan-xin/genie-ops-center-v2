@@ -3,7 +3,7 @@
     "as_of_date": "2026-10-27",
     "currency": "SGD",
     "timezone": "Asia/Singapore",
-    "seller": "Northstar Studio (fictional)",
+    "seller": "Genie (fictional)",
     "amount_convention": "Invoice totals; tax_amount is zero for all synthetic records. Not recognised accounting revenue.",
     "import_order": [
       "customers",
