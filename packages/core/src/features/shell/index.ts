@@ -18,6 +18,8 @@ export {
 
 export { PageTrailContext, PageTrailProvider } from "./page-trail.tsx";
 
+export { PageLink, type PageLinkProps } from "./page-link.tsx";
+
 export { PageSkeleton, type PageSkeletonProps } from "./page-skeleton.tsx";
 
 export { RouteFocus } from "./route-focus.tsx";

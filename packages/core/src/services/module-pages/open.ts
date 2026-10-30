@@ -84,7 +84,10 @@ export type OpenedModulePage =
       readonly title?: string;
     };
 
-/** The check, then `render`. A loader's `AppError` with code `not-found` answers missing. */
+/**
+ * The check, then `render`. A loader's `AppError` with code `not-found` answers missing, and one
+ * with code `forbidden` answers refused, as the check's own refusal does.
+ */
 export async function openModulePage(
   ctx: ModuleRPCContext,
   match: ModulePageMatch
@@ -104,6 +107,10 @@ export async function openModulePage(
   } catch (error) {
     if (error instanceof AppError && error.code === "not-found") {
       return { kind: "missing" };
+    }
+
+    if (error instanceof AppError && error.code === "forbidden") {
+      return { kind: "refused" };
     }
 
     throw error;

@@ -90,6 +90,16 @@ const pagesFixture = {
         },
         component: RecordView,
       }),
+      definePage({
+        path: "/pages-fixture/barred",
+        permission: "pages-fixture:use",
+        load: async () => {
+          loaded.push("barred");
+
+          throw new AppError(CORE_ERRORS.forbidden);
+        },
+        component: Home,
+      }),
     ],
     admin: [],
   },
@@ -201,6 +211,15 @@ describe("module pages", () => {
       kind: "missing",
     });
     expect(loaded).toEqual(["lost"]);
+  });
+
+  it("answers refused for a loader that refuses with forbidden", async () => {
+    const ctx = await personWith(["pages-fixture:use"]);
+
+    expect(
+      await openModulePage(ctx, matched(["pages-fixture", "barred"]))
+    ).toEqual({ kind: "refused" });
+    expect(loaded).toEqual(["barred"]);
   });
 
   it("answers each page kind its trail and its title", async () => {

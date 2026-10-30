@@ -571,12 +571,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/module-pages.integration.test.ts",
     reason:
-      "Spec 7 R-1 and AC-1: a module page refuses before its loader runs, checks a record page on the record, and loads with its route parameters. Spec 7 R-1a: a nested page's trail carries the resolver's record label, a top-level page has none, and a refused person gets neither the trail nor the title",
+      "Spec 7 R-1 and AC-1: a module page refuses before its loader runs, checks a record page on the record, and loads with its route parameters. Spec 7 R-1a: a nested page's trail carries the resolver's record label, a top-level page has none, and a refused person gets neither the trail nor the title. Spec 7 S7-07: a loader's forbidden answers the denied page, not a server error",
     cases: [
       "module pages refuses a person without the page permission before the loader runs",
       "module pages checks a record page on the record, so a grant on one record opens only that record's page",
       "module pages loads a page with its route parameters and renders its component with the loaded data",
       "module pages answers missing for a record its resolver does not find and for a loader that answers not-found",
+      "module pages answers refused for a loader that refuses with forbidden",
       "module pages answers each page kind its trail and its title",
     ],
   },
