@@ -19,6 +19,13 @@ const GENERATED_SOURCES = new Set([
   join(APP_ROOT, "src", "styles", "module-sources.generated.css"),
 ]);
 
+/**
+ * Tests and stories, which the `production` named input in `nx.json` leaves out
+ * of `build`. A change to one alone keeps the cached `.next`, so its timestamp
+ * says nothing about whether the build is current.
+ */
+const NOT_BUILD_INPUT = /\.(test\.tsx?|stories\.[^/]+)$/;
+
 /** Every source tree whose change can alter the application build. */
 function sourceRoots(): readonly string[] {
   const modulesRoot = join(WORKSPACE_ROOT, "packages/modules");
@@ -48,7 +55,10 @@ function newestMtimeMs(root: string): number {
 
       if (entry.isDirectory()) {
         walk(child);
-      } else if (!GENERATED_SOURCES.has(child)) {
+      } else if (
+        !GENERATED_SOURCES.has(child) &&
+        !NOT_BUILD_INPUT.test(entry.name)
+      ) {
         newest = Math.max(newest, statSync(child).mtimeMs);
       }
     }
