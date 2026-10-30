@@ -584,4 +584,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "module pages refuses a record page's read key before its label and its loader",
     ],
   },
+  {
+    file: "testing/agent-store.integration.test.ts",
+    reason:
+      "Spec 7 R-41: core stores agent sessions and messages, tool results included, and only the owner lists, reads, appends to or claims a session",
+    cases: [
+      "the owner-only agent store against a real database a person lists only their own sessions, latest message first",
+      "the owner-only agent store against a real database another person's session answers not-found and stays unchanged",
+      "the owner-only agent store against a real database messages keep their order and their parts",
+    ],
+  },
 ];

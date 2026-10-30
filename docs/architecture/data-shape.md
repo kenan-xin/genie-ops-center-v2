@@ -107,6 +107,14 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 
 `audit_event`: id, occurred_at, actor_user_id (nullable for system; created in Section 1 with the deployment tables, foreign key added with `user` in Section 2), action (text, `module:verb`), target_type, target_id, summary, metadata (jsonb). Append-only, kept for the tenant's lifetime, readable with `core:audit:read`. A `genie-ops` command writes a row with `actor_user_id` null, `action` `ops:<command>`, and the operating-system user, the non-secret arguments, and the outcome in `metadata` (`DEC-45`). Index on (target_type, target_id) and on (occurred_at descending, id descending), the reader's keyset order (R-67). Erasing a person keeps their events under the anonymized user id.
 
+### Agent
+
+`agent_session`: id (uuid, no default: the browser makes it, so a new chat has its link at once), user_id (foreign key to `user.id`, on delete cascade), title, model_id, created_at, updated_at (moves with each message). Index on (user_id, updated_at). One boss-agent chat (Spec 7 R-41).
+
+`agent_message`: id (uuid), session_id (foreign key to `agent_session.id`, on delete cascade), seq (bigint, generated always as identity, the message order), role (`user` or `assistant`, checked), parts (jsonb, the AI SDK UI message parts, tool inputs and results included), created_at. Index on (session_id, seq).
+
+Both tables are owner-only. Every read and write goes through the core agent store and filters on the signed-in person's `user_id`. Another person's session id answers not found, the same as a missing one, so an id alone opens nothing. The rows go with their person: deleting the `user` row deletes the sessions and their messages.
+
 ## Module tables
 
 Each module owns its tables in the same database and documents them in `../modules/<module>/README.md`. The rules a module's tables must follow:

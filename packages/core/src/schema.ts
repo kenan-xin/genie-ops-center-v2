@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import { sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import {
@@ -550,6 +551,49 @@ export const userPreference = pgTable("user_preference", {
   updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
 });
 
+/**
+ * One boss-agent chat (Spec 7 R-41), owner-only: every read and write in `services/agent/store.ts`
+ * filters on `user_id`. No default id: the browser makes it, so a new chat has its link at once.
+ */
+export const agentSession = pgTable(
+  "agent_session",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    modelId: text("model_id").notNull(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    index("agent_session_user_updated_idx").on(table.userId, table.updatedAt),
+  ]
+);
+
+/** One message of a chat as AI SDK UI parts, tool results included (R-41); `seq` is the order. */
+export const agentMessage = pgTable(
+  "agent_message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => agentSession.id, { onDelete: "cascade" }),
+    seq: bigint("seq", { mode: "number" }).generatedAlwaysAsIdentity(),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    parts: jsonb("parts").$type<UIMessage["parts"]>().notNull(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    index("agent_message_session_seq_idx").on(table.sessionId, table.seq),
+    check(
+      "agent_message_role_check",
+      sql`${table.role} in ('user', 'assistant')`
+    ),
+  ]
+);
+
 /** Every core table by its SQL name, the one place a core table is registered. */
 export const coreTables = {
   tenant_module: tenantModule,
@@ -576,4 +620,6 @@ export const coreTables = {
   notification,
   category,
   user_preference: userPreference,
+  agent_session: agentSession,
+  agent_message: agentMessage,
 } satisfies Readonly<Record<string, PgTable>>;

@@ -43,10 +43,11 @@ describe("the migration plan", () => {
     // Core owns the Section 1 migration, the Section 2 identity migration (R-1), the audit
     // reader's keyset index (R-67), the Section 3 navigation tables (R-86a), the SSO email
     // domains column (R-58a), the reporting date (Spec 7 R-9), the integration key store
-    // (Spec 7 R-17, DEC-53) and the model settings (Spec 7 R-18), so the history holds all nine.
+    // (Spec 7 R-17, DEC-53), the model settings (Spec 7 R-18) and the agent tables (Spec 7 R-41),
+    // so the history holds all ten.
     // The SQL still arrives as data read from a declared `new URL`, never as a folder path, which
     // is what keeps it in a production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(9);
+    expect(CORE_HISTORY.migrations).toHaveLength(10);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'

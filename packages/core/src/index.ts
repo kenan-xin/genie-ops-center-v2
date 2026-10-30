@@ -480,6 +480,17 @@ export {
   modelStatus,
 } from "./services/models/index.ts";
 
+export {
+  AGENT_SESSION_LIST_LIMIT,
+  type AgentMessage,
+  type AgentSessionSummary,
+  appendMessage,
+  createOwnSession,
+  findOwnSession,
+  listOwnSessions,
+  readOwnSession,
+} from "./services/agent/index.ts";
+
 export type {
   CapabilityProvider,
   CapabilityRegistry,

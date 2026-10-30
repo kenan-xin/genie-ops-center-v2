@@ -64,6 +64,13 @@
       "when": 1793215980209,
       "tag": "0008_tenant_settings_models",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793347705572,
+      "tag": "0009_agent_sessions",
+      "breakpoints": true
     }
   ]
 }
