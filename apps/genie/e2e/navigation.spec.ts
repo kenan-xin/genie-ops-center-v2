@@ -141,12 +141,17 @@ test("with no landing route, home opens the first workspace entry (R-34)", async
       await signInThroughBroker(page, {
         baseUrl: inviteBaseUrl(),
         email: scenarioEmail("invite", "mixed", testInfo.project.name),
-        landing: "/placeholder",
       });
 
-      await page.goto(`${inviteBaseUrl()}/`);
+      // A proof that turned Placeholder off and on can release the lock just before this one,
+      // and the entitlement reader caches 10 s (DEC-46), so home polls.
+      await expect
+        .poll(async () => {
+          await page.goto(`${inviteBaseUrl()}/`);
 
-      await expect(page).toHaveURL(`${inviteBaseUrl()}/placeholder`);
+          return new URL(page.url()).pathname;
+        }, POLL)
+        .toBe("/placeholder");
       await expect(page.getByText("Nothing to open yet")).toHaveCount(0);
     },
     300_000
