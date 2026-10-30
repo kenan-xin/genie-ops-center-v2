@@ -4,7 +4,14 @@
  * module-owned, and nothing in a browser or a customer runtime imports them).
  */
 
+import { fileURLToPath } from "node:url";
+
 export { withNewId } from "./pdf-fixtures.ts";
+
+/** The absolute path of testing/model-recordings: the hand-written readings of the live uploads. */
+export const INVOICES_READING_RECORDINGS = fileURLToPath(
+  new URL("model-recordings", import.meta.url)
+);
 
 export {
   DEMO_PACK,

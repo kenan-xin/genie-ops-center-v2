@@ -32,19 +32,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/upload.integration.test.ts",
     reason:
-      "Spec 7 R-23: one stored copy per exact file, PDF only, under the upload limit",
+      "Spec 7 R-23 and R-20: one stored copy per exact file, PDF only, under the upload limit; with AI off the reading needs input",
     cases: [
       "stores 01 once with its SHA-256 and its name, unread",
       "answers duplicate for the same bytes and adds no document and no file",
       "keeps one document and one file for two uploads of the same bytes at once",
       "refuses a file that is not a PDF and stores nothing",
+      "a reading with AI off needs input and sends no request",
       "refuses a file over the upload limit and stores nothing",
     ].map((row) => `document upload ${row}`),
   },
   {
     file: "testing/reading-job.integration.test.ts",
     reason:
-      "Spec 7 R-12 and R-26: the reading job runs as the uploader, retries twice, then shows Could not read with Retry",
+      "Spec 7 R-12 and R-24 to R-27: the reading job runs as the uploader, classifies each upload and keeps only quoted fields, retries twice, then shows Could not read with Retry",
     cases: [
       "an upload enqueues one reading job as the uploader with two retries and backoff",
       "a document that cannot be read fails twice, then shows Could not read",
@@ -52,6 +53,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a run without a starter claims nothing",
       "Retry reads a document that could not be read again, once",
       "a failed enqueue leaves the uploaded document Could not read",
+      ...["01", "02", "03", "05", "06", "07"].map(
+        (upload) =>
+          `reads each live upload into its kind and its checked fields: ${upload}`
+      ),
+      "the reading of 01 fills no due date and no payment terms",
+      "a partial reading keeps its valid fields",
+      "a run after the reading is stored sends no second request",
       "a PDF with no text layer needs input with its reason",
     ].map((row) => `the reading job ${row}`),
   },

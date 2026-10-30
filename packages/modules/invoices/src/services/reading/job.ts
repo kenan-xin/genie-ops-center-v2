@@ -3,15 +3,25 @@ import {
   CORE_ERRORS,
   enqueueJob,
   type JobDeclaration,
+  modelStatus,
   type ModuleRequestContext,
   type TenantContext,
+  withTransaction,
 } from "@genie/core";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { INVOICE_ERRORS } from "../../errors.ts";
-import { type ReadingStatus, sourceDocument } from "../../schema.ts";
+import {
+  fieldOrigin,
+  type ReadingStatus,
+  sourceDocument,
+} from "../../schema.ts";
 import { assertCanWriteEverywhere } from "../ledger/access.ts";
+import type { ModelReading } from "./model-output.ts";
+import { readWithModel } from "./model-reading.ts";
+import { checkReading } from "./quote-check.ts";
+import type { StoredReading } from "./stored-reading.ts";
 import { extractTextLayer } from "./text-layer.ts";
 
 /** Two retries after the first run, with backoff (R-26, decision 4). */
@@ -48,6 +58,51 @@ async function endReading(
 }
 
 /**
+ * Stores the kind and the checked reading once, with one `extracted` origin per kept value and
+ * one for the invoice numbers (R-25, R-30). A reading already stored stays as it is.
+ */
+async function storeReading(
+  tenant: TenantContext,
+  documentId: string,
+  kind: ModelReading["kind"],
+  reading: StoredReading
+): Promise<void> {
+  const origins = Object.entries(reading.fields).map(([field, read]) => ({
+    documentId,
+    field,
+    origin: "extracted" as const,
+    quote: read.quote,
+    page: read.page,
+  }));
+
+  const [firstNumber] = reading.invoiceNumbers;
+
+  if (firstNumber !== undefined) {
+    origins.push({
+      documentId,
+      field: "invoiceNumbers",
+      origin: "extracted",
+      quote: firstNumber.quote,
+      page: firstNumber.page,
+    });
+  }
+
+  await withTransaction(tenant, async (tx) => {
+    const [stored] = await tx
+      .update(sourceDocument)
+      .set({ kind, reading, updatedAt: sql`now()` })
+      .where(
+        and(inState(documentId, "reading"), isNull(sourceDocument.reading))
+      )
+      .returning({ id: sourceDocument.id });
+
+    if (stored === undefined || origins.length === 0) return;
+
+    await tx.insert(fieldOrigin).values(origins).onConflictDoNothing();
+  });
+}
+
+/**
  * Reads one uploaded document as the person who started the job (R-12, decision 2). The job counts
  * its own attempts on the row, because the worker passes no attempt number (decision 3): a failed
  * run before the last rethrows so pg-boss retries it, and the last one ends Could not read and
@@ -73,18 +128,68 @@ export const readingJob: JobDeclaration<{ readonly documentId: string }> = {
       .returning({
         attempt: sourceDocument.readingAttempts,
         fileId: sourceDocument.fileId,
+        reading: sourceDocument.reading,
       });
 
     if (claimed === undefined) return;
 
     try {
-      const { bytes } = await tenant.fileStorage.fetch(claimed.fileId);
-      const { hasText } = await extractTextLayer(bytes);
+      // A run after the reading was stored asks the model nothing again.
+      if (claimed.reading === null) {
+        // AI off is manual entry, decided before any byte is fetched (R-20, decision 8).
+        if ((await modelStatus(tenant)).state !== "on") {
+          await endReading(tenant, documentId, {
+            readingStatus: "read",
+            readingOutcome: "ai-off",
+          });
 
-      // Until the model step lands, a document with text ends read with no outcome.
+          return;
+        }
+
+        const { bytes } = await tenant.fileStorage.fetch(claimed.fileId);
+        const { pages, hasText } = await extractTextLayer(bytes);
+
+        if (!hasText) {
+          await endReading(tenant, documentId, {
+            readingStatus: "read",
+            readingOutcome: "no-text-layer",
+          });
+
+          return;
+        }
+
+        let output: ModelReading;
+
+        try {
+          output = await readWithModel(tenant, { pages, pdf: bytes });
+        } catch (error) {
+          // AI was turned off between the check and the call.
+          if (
+            !(error instanceof AppError) ||
+            error.code !== CORE_ERRORS["ai-off"].code
+          ) {
+            throw error;
+          }
+
+          await endReading(tenant, documentId, {
+            readingStatus: "read",
+            readingOutcome: "ai-off",
+          });
+
+          return;
+        }
+
+        await storeReading(
+          tenant,
+          documentId,
+          output.kind,
+          checkReading(output, pages)
+        );
+      }
+
       await endReading(tenant, documentId, {
         readingStatus: "read",
-        readingOutcome: hasText ? null : "no-text-layer",
+        readingOutcome: null,
       });
     } catch (error) {
       if (claimed.attempt < READING_ATTEMPTS) throw error;

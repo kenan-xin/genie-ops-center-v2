@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
   createTenantContext,
   JOB_STARTER_KEY,
@@ -11,17 +14,29 @@ import {
   insertPersonWith,
   markSetupDone,
   startDisposableDeployment,
+  useModelTransport,
+  useRecordedModel,
   writeModelConnection,
 } from "@genie/core/testing";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
-import { type ReadingStatus, sourceDocument } from "../src/schema.ts";
+import {
+  type DocumentKind,
+  fieldOrigin,
+  type ReadingStatus,
+  sourceDocument,
+} from "../src/schema.ts";
 import { uploadDocument } from "../src/services/documents/upload.ts";
 import { readingJob, retryReading } from "../src/services/reading/job.ts";
-import { readDemoFile } from "./demo-pack.ts";
+import type {
+  ReadingField,
+  StoredReading,
+} from "../src/services/reading/stored-reading.ts";
+import { LIVE_UPLOADS, readDemoFile } from "./demo-pack.ts";
 import { insertDocument } from "./factories.ts";
+import { INVOICES_READING_RECORDINGS } from "./index.ts";
 import { BROKEN_PDF, NO_TEXT_PDF, withNewId } from "./pdf-fixtures.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
@@ -36,17 +51,21 @@ let uploaderId: string;
 
 let retrierId: string;
 
+let recorded: ReturnType<typeof useRecordedModel>;
+
 const t = () => deployment.context;
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([invoicesModule]);
+  // markSetupDone inserts the settings row that writeModelConnection updates.
+  await markSetupDone(deployment.context);
   // Before the first settings read, which caches for 10 s (DEC-46).
   await writeModelConnection(deployment.context, {
     allowed: ["deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-opus-5.5"],
     chat: "deepseek/deepseek-v4.1-flash-1017",
     document: "deepseek/deepseek-v4.1-flash-1017",
   });
-  await markSetupDone(deployment.context);
+  recorded = useRecordedModel(deployment.context, INVOICES_READING_RECORDINGS);
   await enableModules(deployment.context, ["invoices"]);
   const writer = ["invoices:use", "invoices:read", "invoices:write"];
   ({ userId: uploaderId } = await insertPersonWith(deployment.context, writer));
@@ -78,6 +97,129 @@ const live01 = () =>
 
 const file01 = (bytes: Buffer) =>
   new File([new Uint8Array(bytes)], "01.pdf", { type: "application/pdf" });
+
+/** Uploads a live document as the uploader and answers its id. */
+async function uploaded(bytes: Buffer, name = "document.pdf") {
+  const answer = await uploadDocument(
+    as(uploaderId),
+    new File([new Uint8Array(bytes)], name, { type: "application/pdf" })
+  );
+
+  expect(answer.outcome).toBe("uploaded");
+
+  return answer.documentId;
+}
+
+async function originsOf(documentId: string) {
+  const rows = await t()
+    .db.select({
+      field: fieldOrigin.field,
+      origin: fieldOrigin.origin,
+      quote: fieldOrigin.quote,
+      page: fieldOrigin.page,
+    })
+    .from(fieldOrigin)
+    .where(eq(fieldOrigin.documentId, documentId));
+
+  return rows.toSorted((a, b) => a.field.localeCompare(b.field));
+}
+
+type Quoted = readonly [value: string, quote: string];
+
+/** What the page and the demo pack's expected entities state for each live upload (S7-08 plan, "Recordings"). */
+const READINGS: readonly (readonly [
+  string,
+  DocumentKind,
+  Partial<Record<ReadingField, Quoted>>,
+  readonly Quoted[],
+])[] = [
+  [
+    "01",
+    "invoice",
+    {
+      customer: ["ABC Trading", "Bill to: ABC Trading"],
+      number: ["INV-LIVE-001", "Invoice number INV-LIVE-001"],
+      date: ["2026-10-26", "Invoice date 2026-10-26"],
+      currency: ["SGD", "Currency: SGD"],
+      amount: ["5000.00", "TOTAL (SGD) 5,000.00"],
+      description: [
+        "Additional consulting project - October 2026",
+        "Additional consulting project - October 2026",
+      ],
+    },
+    [],
+  ],
+  [
+    "02",
+    "payment",
+    {
+      customer: ["Harbor Foods", "Harbor Foods"],
+      date: ["2026-10-26", "Payment date 2026-10-26"],
+      currency: ["SGD", "Currency SGD"],
+      amount: ["3000.00", "TOTAL (SGD) 3,000.00"],
+      reference: ["HF-SEP-FINAL-PART", "Payment reference HF-SEP-FINAL-PART"],
+      method: ["Bank transfer", "Payment method Bank transfer"],
+    },
+    [["INV-2026-09-03", "Invoice reference INV-2026-09-03 | SGD 3,000.00"]],
+  ],
+  [
+    "03",
+    "payment",
+    {
+      customer: ["Orchid Retail", "Orchid Retail"],
+      date: ["2026-10-27", "Payment date 2026-10-27"],
+      currency: ["SGD", "Currency SGD"],
+      amount: ["8250.00", "TOTAL (SGD) 8,250.00"],
+      reference: ["OR-AUG-SEP-BUNDLE", "Payment reference OR-AUG-SEP-BUNDLE"],
+      method: ["Bank transfer", "Payment method Bank transfer"],
+    },
+    [
+      ["INV-2026-08-04", "Invoice reference INV-2026-08-04 | SGD 4,050.00"],
+      ["INV-2026-09-04", "Invoice reference INV-2026-09-04 | SGD 4,200.00"],
+    ],
+  ],
+  [
+    "05",
+    "payment",
+    {
+      customer: ["Meridian Labs", "Meridian Labs"],
+      date: ["2026-10-27", "Payment date 2026-10-27"],
+      currency: ["SGD", "Currency SGD"],
+      amount: ["2222.00", "TOTAL (SGD) 2,222.00"],
+      reference: ["ML-UNREFERENCED", "Payment reference ML-UNREFERENCED"],
+      method: ["Bank transfer", "Payment method Bank transfer"],
+    },
+    [],
+  ],
+  [
+    "06",
+    "paid-receipt",
+    {
+      customer: ["Lumi Design", "Customer: Lumi Design"],
+      number: ["RCPT-LIVE-001", "Receipt number RCPT-LIVE-001"],
+      date: ["2026-10-27", "Purchase / payment date 2026-10-27"],
+      currency: ["SGD", "Currency: SGD"],
+      amount: ["1800.00", "TOTAL (SGD) 1,800.00"],
+      reference: ["LD-PURCHASE-1800", "Payment reference LD-PURCHASE-1800"],
+      method: ["Card", "Payment method Card"],
+    },
+    [],
+  ],
+  [
+    "07",
+    "purchase-order",
+    {
+      customer: ["MERIDIAN LABS", "MERIDIAN LABS"],
+      number: ["PO-LIVE-001", "Purchase order number PO-LIVE-001"],
+      date: ["2026-10-27", "Order date 2026-10-27"],
+      currency: ["SGD", "Currency: SGD"],
+      amount: ["2200.00", "TOTAL (SGD) 2,200.00"],
+    },
+    [],
+  ],
+];
+
+const onPage1 = ([value, quote]: Quoted) => ({ value, quote, page: 1 });
 
 /** A document whose stored file holds these bytes, in the given reading state. */
 async function aDocument(
@@ -225,6 +367,134 @@ describe("the reading job", () => {
     expect(answer.outcome).toBe("uploaded");
     expect(await documentRow(answer.documentId)).toMatchObject({
       readingStatus: "could-not-read",
+    });
+  });
+
+  it.each(READINGS)(
+    "reads each live upload into its kind and its checked fields: %s",
+    async (upload, kind, fields, invoiceNumbers) => {
+      const id = await uploaded(
+        readDemoFile(
+          `03_Live_Upload_Documents/${LIVE_UPLOADS.find((name) => name.startsWith(upload))}`
+        )
+      );
+
+      await run(id);
+
+      const row = await documentRow(id);
+      expect(row).toMatchObject({
+        readingStatus: "read",
+        readingOutcome: null,
+        kind,
+      });
+      // toEqual, not toMatchObject: a field the page does not state must not appear.
+      expect(row?.reading).toEqual({
+        fields: Object.fromEntries(
+          Object.entries(fields).map(([field, read]) => [field, onPage1(read)])
+        ),
+        invoiceNumbers: invoiceNumbers.map(onPage1),
+        dropped: [],
+      });
+      const [firstNumber] = invoiceNumbers;
+      expect(await originsOf(id)).toEqual(
+        [
+          ...Object.entries(fields).map(([field, [, quote]]) => ({
+            field,
+            origin: "extracted",
+            quote,
+            page: 1,
+          })),
+          ...(firstNumber
+            ? [
+                {
+                  field: "invoiceNumbers",
+                  origin: "extracted",
+                  quote: firstNumber[1],
+                  page: 1,
+                },
+              ]
+            : []),
+        ].toSorted((a, b) => a.field.localeCompare(b.field))
+      );
+    }
+  );
+
+  it("the reading of 01 fills no due date and no payment terms", async () => {
+    const id = await uploaded(live01());
+
+    await run(id);
+
+    const reading = (await documentRow(id))?.reading;
+    expect(reading?.fields).not.toHaveProperty("dueDate");
+    expect(reading?.fields).not.toHaveProperty("paymentTerms");
+    expect(reading?.dropped).toEqual([]);
+  });
+
+  it("a partial reading keeps its valid fields", async () => {
+    // A crafted answer, not a recording: the owner's live refresh would replace it (decision 15).
+    const recording = JSON.parse(
+      readFileSync(
+        join(INVOICES_READING_RECORDINGS, "read-01-invoice.json"),
+        "utf8"
+      )
+    );
+    const [choice] = recording.response.body.choices;
+    const answer = JSON.parse(choice.message.content);
+    answer.amount.quote = "TOTAL (SGD) 9,999.00";
+    choice.message.content = JSON.stringify(answer);
+    const tenant = createTenantContext(
+      { DATABASE_URL: t().env.databaseUrl, PUBLIC_URL: t().env.publicUrl },
+      silentLogger(),
+      ["invoices"]
+    );
+    useModelTransport(tenant, {
+      transport: async () =>
+        new Response(JSON.stringify(recording.response.body), {
+          headers: { "content-type": "application/json" },
+        }),
+    });
+    const id = await uploaded(live01());
+
+    await readingJob
+      .handler({ tenant, caller: as(uploaderId).caller }, { documentId: id })
+      .finally(() => tenant.db.$client.end());
+
+    const row = await documentRow(id);
+    expect(row?.readingStatus).toBe("read");
+    expect(row?.reading?.dropped).toEqual(["amount"]);
+    expect(Object.keys(row?.reading?.fields ?? {}).toSorted()).toEqual([
+      "currency",
+      "customer",
+      "date",
+      "description",
+      "number",
+    ]);
+    expect((await originsOf(id)).map((origin) => origin.field)).not.toContain(
+      "amount"
+    );
+  });
+
+  it("a run after the reading is stored sends no second request", async () => {
+    const id = await uploaded(live01());
+    const stopped: StoredReading = {
+      fields: {},
+      invoiceNumbers: [],
+      dropped: ["customer"],
+    };
+    // As a run that stopped after storing the reading leaves it: still reading.
+    await t()
+      .db.update(sourceDocument)
+      .set({ kind: "invoice", reading: stopped })
+      .where(eq(sourceDocument.id, id));
+    const before = recorded.sent.length;
+
+    await run(id);
+
+    expect(recorded.sent).toHaveLength(before);
+    expect(await documentRow(id)).toMatchObject({
+      readingStatus: "read",
+      kind: "invoice",
+      reading: stopped,
     });
   });
 

@@ -18,6 +18,7 @@
   "dependencies": {
     "@genie/core": "workspace:*",
     "@genie/ui": "workspace:*",
+    "ai": "7.0.154",
     "drizzle-orm": "0.45.4",
     "react": "19.3.1",
     "unpdf": "2.0.0",

@@ -18,7 +18,9 @@ import type { UploadDocumentOutput } from "../src/contract.ts";
 import { invoicesModule } from "../src/module.ts";
 import { invoicesRouter } from "../src/router.ts";
 import { sourceDocument } from "../src/schema.ts";
+import { readingJob } from "../src/services/reading/job.ts";
 import { readDemoFile } from "./demo-pack.ts";
+import { withNewId } from "./pdf-fixtures.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
@@ -51,16 +53,18 @@ afterAll(async () => {
 
 const t = () => deployment.context;
 
-const upload = (bytes: string | Uint8Array<ArrayBuffer>, name: string) =>
-  callProcedure(invoicesRouter, {
+const asWriter = (): ModuleRequestContext => ({
+  tenant: t(),
+  caller: principalFor({
     tenant: t(),
-    caller: principalFor({
-      tenant: t(),
-      modules: [invoicesModule],
-      userId: writerUserId,
-      authenticated: true,
-    }),
-  } satisfies ModuleRequestContext).uploadDocument({
+    modules: [invoicesModule],
+    userId: writerUserId,
+    authenticated: true,
+  }),
+});
+
+const upload = (bytes: string | Uint8Array<ArrayBuffer>, name: string) =>
+  callProcedure(invoicesRouter, asWriter()).uploadDocument({
     file: new File([bytes], name, { type: "application/pdf" }),
   });
 
@@ -177,6 +181,31 @@ describe("document upload", () => {
       code: "invoices:document-not-pdf",
     });
     expect(await counts()).toEqual(before);
+  });
+
+  it("a reading with AI off needs input and sends no request", async () => {
+    const name = "01_Invoice_Missing_Due_Date.pdf";
+    const { documentId } = await upload(
+      new Uint8Array(
+        withNewId(readDemoFile(`03_Live_Upload_Documents/${name}`))
+      ),
+      name
+    );
+
+    await expect(
+      readingJob.handler(asWriter(), { documentId })
+    ).resolves.toBeUndefined();
+
+    const [row] = await t()
+      .db.select()
+      .from(sourceDocument)
+      .where(eq(sourceDocument.id, documentId));
+    expect(row).toMatchObject({
+      readingStatus: "read",
+      readingOutcome: "ai-off",
+      kind: null,
+      reading: null,
+    });
   });
 
   it("refuses a file over the upload limit and stores nothing", async () => {
