@@ -151,6 +151,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `invoice datasets ${row}`),
   },
   {
+    file: "testing/pages.integration.test.ts",
+    reason:
+      "Spec 7 R-59 and DEC-39: a page reads through the scoped dataset, so a scoped person sees only their customer's records",
+    cases: [
+      "invoice pages the list answers only the customer a scoped reader may read",
+    ],
+  },
+  {
     file: "testing/live-scenarios.integration.test.ts",
     reason:
       "Spec 7 AC-6 and R-30 to R-34: the seven live uploads replayed through the procedures give expected_live_running_totals.json after every step, and a duplicate or a purchase order changes no figure",

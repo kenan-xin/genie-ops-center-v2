@@ -9,9 +9,11 @@ invoices, payments, allocations, allocation events and field origins) with their
 history, the contract and the router behind `can()`, the permission keys, the record types, the
 datasets, and the factories for its own tables under `testing/`.
 
-Two entry points, so a browser never loads the server graph. `@genie/module-invoices` is the
+Three entry points, so a browser never loads the server graph. `@genie/module-invoices` is the
 module-facing declaration the application mounts. `@genie/module-invoices/contract` is the API the
-browser client types its calls from. Tests import the factories from `@genie/module-invoices/testing`.
+browser client types its calls from. `@genie/module-invoices/presentation` is the browser-safe
+client surface that the pages and their stories use. Tests import the factories from
+`@genie/module-invoices/testing`.
 
 ## What must not go here
 

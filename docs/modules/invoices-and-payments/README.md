@@ -95,6 +95,17 @@ Overdue is a positive outstanding with a known due date strictly before the repo
 
 The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
 
+## Pages
+
+The workspace entry Invoices opens the list at `/m/invoices/invoices`. Every page requires `invoices:use`, and every loader reads under `invoices:read`, so a person with only the Invoices and Payments user role gets the denied page (P5). Every page reads through the datasets above as of the reporting date (R-9), so no page adds a balance of its own and the pages and the agent agree (P3).
+
+| Page | Path | Reads |
+| --- | --- | --- |
+| Invoices list | `/m/invoices/invoices` | `invoices.invoices`, ordered by invoice date and number, at most 1,000 rows; a cut read says how many it shows (P4; paging is deferred to `czjw.28`) |
+| Invoice record | `/m/invoices/invoices/<id>` | The invoice's balance, its allocations, its history and a link to its source PDF |
+| Payments list | `/m/invoices/payments` | `invoices.payments` |
+| Payment record | `/m/invoices/payments/<id>` | The payment's amount, its links and its unallocated amount |
+
 ## Demo pack
 
 `demo-pack/` holds the fictional demo data: 6 customers, 36 invoices, 30 payments, the history PDFs, seven live-upload PDFs and the expected answers at reporting date 2026-10-27. The SQL and SQLite copies of the same history are left out, so `SHA256SUMS.txt` lists two files that are not here. `04_Demo_Guide/live_expected_entities_DO_NOT_PRELOAD.json` is test data only: no seed reads it.

@@ -1,4 +1,4 @@
-import type { Module } from "@genie/core";
+import { definePage, type Module } from "@genie/core";
 
 import { invoicesContract } from "./contract.ts";
 import {
@@ -7,6 +7,7 @@ import {
   invoicesDataset,
   paymentsDataset,
 } from "./datasets.ts";
+import { InvoiceListPage } from "./presentation/module-pages.tsx";
 import { invoicesRecordTypes } from "./record-types.ts";
 import { invoicesRouter } from "./router.ts";
 import {
@@ -20,11 +21,21 @@ import {
   payment,
   sourceDocument,
 } from "./schema.ts";
+import { loadInvoiceList } from "./services/pages/lists.ts";
+
+/** The Invoices workspace entry and the page of its path (DEC-50). */
+const INVOICES_ENTRY = {
+  id: "invoices-invoices",
+  label: "Invoices",
+  path: "/m/invoices/invoices",
+  surface: "workspace",
+  requiredPermission: "invoices:use",
+} as const;
 
 /**
  * Every point of the module contract this module declares. Nothing outside the contract is
  * reachable from here: the router reads through `ctx.tenant`, every check goes through
- * `can()`, and no other module is imported. The workspace entries and pages arrive with S7-07.
+ * `can()`, and no other module is imported.
  */
 export const invoicesModule = {
   identity: {
@@ -75,9 +86,20 @@ export const invoicesModule = {
     { name: "Viewer", permissions: ["invoices:use", "invoices:read"] },
   ],
 
-  navigation: { pinned: [], entries: [] },
+  navigation: { pinned: [INVOICES_ENTRY], entries: [INVOICES_ENTRY] },
 
-  pages: { workspace: [], admin: [] },
+  // One page per navigation entry, at its path and under its key.
+  pages: {
+    workspace: [
+      definePage({
+        path: INVOICES_ENTRY.path,
+        permission: "invoices:use",
+        load: loadInvoiceList,
+        component: InvoiceListPage,
+      }),
+    ],
+    admin: [],
+  },
 
   events: [],
 
