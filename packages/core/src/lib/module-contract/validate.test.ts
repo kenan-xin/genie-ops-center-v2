@@ -1376,6 +1376,19 @@ describe("validateRegistry", () => {
     expect(validateRegistry([first, second]).join(" ")).toContain("landing");
   });
 
+  it("rejects one agent tool name from two modules whose ids share a prefix", () => {
+    const tool = ["contract-data-count"];
+
+    expect(
+      validateRegistry([
+        renameModule(withTools(tool), "contract"),
+        renameModule(withTools(tool), "contract-data"),
+      ])
+    ).toEqual([
+      'Agent tool "contract-data-count" is provided by modules "contract" and "contract-data".',
+    ]);
+  });
+
   it("rejects two modules with the same id", () => {
     expect(validateRegistry([validModule, validModule]).join(" ")).toContain(
       "fixture"

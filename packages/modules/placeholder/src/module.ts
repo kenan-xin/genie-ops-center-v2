@@ -9,6 +9,7 @@ import {
 import { capability, defineEvent } from "@genie/core/contracts";
 import { z } from "zod";
 
+import { countRecordsTool } from "./agent-tools.ts";
 import { placeholderContract } from "./contract.ts";
 import { recordsDataset } from "./datasets.ts";
 import { touchRecordJob } from "./jobs.ts";
@@ -245,6 +246,7 @@ export const placeholderModule = {
       path: home.path,
       permission: home.requiredPermission,
     }),
+    capability("agent-tools", { tools: [countRecordsTool] }),
   ],
 
   // The module's three subscriptions to its own event: fast, durable and serialized (R-61).

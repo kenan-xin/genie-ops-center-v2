@@ -8,6 +8,10 @@ The owner-only store of chat sessions and their messages, the agent's tools and 
 checks, the system prompt and the route handler that the app mounts. Every read and write of
 `agent_session` and `agent_message` goes through the store and filters on the signed-in person.
 
+A tool reads only through the dataset service and the record route, as the person who asks, so
+`can()` and `scopesFor()` decide what it answers. Core writes one audit row per tool call, with
+the tool, the dataset, the input and the row count, never the returned values.
+
 ## What must not go here
 
 Screens: the Ask page, the chat bubble and the answer renderer live in `features/agent/`. A

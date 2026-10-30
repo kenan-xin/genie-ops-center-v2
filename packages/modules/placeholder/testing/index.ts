@@ -4,6 +4,8 @@
  * factories module-owned, and nothing in a browser or a customer runtime imports them).
  */
 
+export { AGENT_RECORDS, insertAgentRecords } from "./agent-fixtures.ts";
+
 export {
   type PlaceholderRecordRow,
   insertPlaceholderRecord,

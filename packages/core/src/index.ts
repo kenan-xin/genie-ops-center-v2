@@ -489,6 +489,8 @@ export {
   findOwnSession,
   listOwnSessions,
   readOwnSession,
+  AGENT_TOOL_AUDIT_ACTION,
+  agentToolSet,
 } from "./services/agent/index.ts";
 
 export type {

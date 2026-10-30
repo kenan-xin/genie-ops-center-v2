@@ -917,6 +917,28 @@ export function validateRegistry(
     seen.add(module.identity.id);
   }
 
+  // A module id may hold a hyphen, so module `a` tool `a-b-c` and module `a-b` tool `c` share the
+  // name `a-b-c`, and the model's tool set is keyed by name: one tool would hide the other (R-43).
+  const toolOwners = new Map<string, string>();
+
+  for (const module of modules) {
+    for (const provision of module.capabilities) {
+      if (provision.name !== "agent-tools") continue;
+
+      for (const { name } of provision.implementation.tools) {
+        const owner = toolOwners.get(name);
+
+        if (owner !== undefined && owner !== module.identity.id) {
+          problems.push(
+            `Agent tool "${name}" is provided by modules "${owner}" and "${module.identity.id}".`
+          );
+        }
+
+        toolOwners.set(name, owner ?? module.identity.id);
+      }
+    }
+  }
+
   const landing = modules.flatMap((module) =>
     module.navigation.entries.filter((entry) => entry.landing === true)
   );
