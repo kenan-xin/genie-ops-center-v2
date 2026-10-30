@@ -73,12 +73,15 @@ test("the devtools open and report this deployment truthfully", async ({
 
   await expect(page.getByRole("heading", { name: "Deployment" })).toBeVisible();
 
-  // The database this deployment really runs against, the module compiled into
+  // The database this deployment really runs against, the modules compiled into
   // it, no permission for the anonymous request, and the sentence that says
   // nobody is signed in. Every one is read from the running context, not from a
   // fixture.
   await expect(fact(page, "Database")).toHaveText("genie");
-  await expect(fact(page, "Modules")).toHaveText("placeholder");
+  await expect(fact(page, "Modules").getByRole("listitem")).toHaveText([
+    "invoices",
+    "placeholder",
+  ]);
   await expect(fact(page, "Permissions")).toHaveText("No permissions granted.");
   await expect(fact(page, "User")).toHaveText(
     "No user is signed in. Section 0 has no identity yet."
