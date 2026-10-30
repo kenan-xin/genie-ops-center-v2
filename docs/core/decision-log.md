@@ -54,6 +54,8 @@ Amended 2026-09-18: the row is never deleted, so the audit trail stays complete.
 
 Amended 2026-10-20 (owner decision, Spec 5 rework): after a customer is retired, the customer's contract sets how long the last backup set is kept, and each retirement plan names that period. No default period exists, so a retirement plan without the period is not approved. The 90-day hold above still governs the database, the realm, and the bucket. Erasing a person removes their data only. It does not block a future sign-in, and no identity tombstone is kept, because a tombstone is personal data kept after an erasure request. Blocking a future sign-in is the job of the customer's identity provider, and the confirmation text of `genie-ops erase` and the runbook say so. A later sign-in by the same person is a first sign-in of a new person: refused under `invite` unless pre-added again, and a new `user` row under `jit` when a mapped group is present. Trade-off: an erased person who still holds a mapped group can return under `jit`, and the customer's identity provider is the one place that prevents it.
 
+Amended 2026-10-30 (Spec 7): erasing a person also deletes their agent chats, the `agent_session` rows and, by cascade, the `agent_message` rows. A chat is free text and can hold personal data, so keeping it would defeat the erasure. `data-shape.md` names the rows.
+
 Designed in: Section 1. Implemented: Section 5. Revisit when a customer contract names a different hold period.
 
 ## DEC-18. Environments and testing tenants
