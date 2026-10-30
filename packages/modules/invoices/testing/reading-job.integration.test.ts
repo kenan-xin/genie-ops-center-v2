@@ -18,7 +18,7 @@ import {
   useRecordedModel,
   writeModelConnection,
 } from "@genie/core/testing";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
@@ -28,8 +28,13 @@ import {
   type ReadingStatus,
   sourceDocument,
 } from "../src/schema.ts";
+import { loadDocumentInbox } from "../src/services/documents/inbox.ts";
 import { uploadDocument } from "../src/services/documents/upload.ts";
-import { readingJob, retryReading } from "../src/services/reading/job.ts";
+import {
+  READING_STALLS_AFTER_MINUTES,
+  readingJob,
+  retryReading,
+} from "../src/services/reading/job.ts";
 import type {
   ReadingField,
   StoredReading,
@@ -86,6 +91,8 @@ const as = (userId: string): ModuleRequestContext => ({
     authenticated: true,
   }),
 });
+
+const ago = (minutes: number) => sql`now() - make_interval(mins => ${minutes})`;
 
 const run = (documentId: string) =>
   readingJob.handler(as(uploaderId), { documentId });
@@ -316,15 +323,45 @@ describe("the reading job", () => {
     expect(await documentRow(id)).toEqual(before);
   });
 
-  it("a run without a starter claims nothing", async () => {
+  it("a run without a starter reads nothing and ends Could not read", async () => {
     const id = await aDocument(NO_TEXT_PDF, "reading");
 
     await readingJob.handler({ tenant: t() }, { documentId: id });
 
     expect(await documentRow(id)).toMatchObject({
+      readingStatus: "could-not-read",
+      readingAttempts: 0,
+    });
+  });
+
+  it("a reading no run ended within the bound shows Could not read and takes Retry", async () => {
+    const stalled = await aDocument(BROKEN_PDF, "reading", 1);
+    const running = await aDocument(BROKEN_PDF, "reading", 1);
+    await t()
+      .db.update(sourceDocument)
+      .set({ updatedAt: ago(READING_STALLS_AFTER_MINUTES + 1) })
+      .where(eq(sourceDocument.id, stalled));
+    await t()
+      .db.update(sourceDocument)
+      .set({ updatedAt: ago(READING_STALLS_AFTER_MINUTES - 1) })
+      .where(eq(sourceDocument.id, running));
+
+    const { rows } = await loadDocumentInbox(as(retrierId));
+    const statusOf = (id: string) => rows.find((row) => row.id === id)?.status;
+    expect(statusOf(stalled)).toBe("could-not-read");
+    expect(statusOf(running)).toBe("reading");
+
+    await expect(retryReading(as(retrierId), running)).rejects.toMatchObject({
+      code: "invoices:document-not-retryable",
+    });
+    await expect(retryReading(as(retrierId), stalled)).resolves.toEqual({
+      documentId: stalled,
+    });
+    expect(await documentRow(stalled)).toMatchObject({
       readingStatus: "reading",
       readingAttempts: 0,
     });
+    expect(await jobsOf(stalled)).toHaveLength(1);
   });
 
   it("Retry reads a document that could not be read again, once", async () => {

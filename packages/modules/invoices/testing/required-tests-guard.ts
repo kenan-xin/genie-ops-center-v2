@@ -50,7 +50,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "an upload enqueues one reading job as the uploader with two retries and backoff",
       "a document that cannot be read fails twice, then shows Could not read",
       "a run for a read document changes nothing",
-      "a run without a starter claims nothing",
+      "a run without a starter reads nothing and ends Could not read",
+      "a reading no run ended within the bound shows Could not read and takes Retry",
       "Retry reads a document that could not be read again, once",
       "a failed enqueue leaves the uploaded document Could not read",
       ...["01", "02", "03", "05", "06", "07"].map(

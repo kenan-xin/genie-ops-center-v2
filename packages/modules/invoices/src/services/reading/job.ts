@@ -8,7 +8,7 @@ import {
   type TenantContext,
   withTransaction,
 } from "@genie/core";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { INVOICE_ERRORS } from "../../errors.ts";
@@ -34,6 +34,17 @@ export const READING_RETRY = {
 
 /** The runs of one reading: the first and its retries. The last failed one ends Could not read. */
 export const READING_ATTEMPTS = READING_RETRY.limit + 1;
+
+/**
+ * A reading unchanged this long has no run left that will end it (I-1). Each claim sets
+ * `updated_at`, so one gap is one run plus the wait before the next: a run is cut by pg-boss's
+ * default job expiry of 15 minutes (the job sets none; the model request alone stops at
+ * `MODEL_REQUEST_TIMEOUT_MS`, 120 s), and the longest backoff wait is 15 s x 4 = 60 s.
+ */
+export const READING_STALLS_AFTER_MINUTES = 20;
+
+/** A `reading` row that no run will end: the inbox shows it and Retry takes it as Could not read. */
+export const readingStalled = sql<boolean>`(${sourceDocument.readingStatus} = 'reading' and ${sourceDocument.updatedAt} < now() - make_interval(mins => ${READING_STALLS_AFTER_MINUTES}))`;
 
 const readingData = z.object({ documentId: z.uuid() });
 
@@ -116,8 +127,12 @@ export const readingJob: JobDeclaration<{ readonly documentId: string }> = {
   handler: async ({ tenant, caller }, data) => {
     const { documentId } = readingData.parse(data);
 
-    // A job without a starter is not the uploader's: it claims nothing (R-12).
-    if (caller === undefined) return;
+    // A job without a starter cannot read as the uploader (R-12), so the person gets Retry.
+    if (caller === undefined) {
+      await endReading(tenant, documentId, { readingStatus: "could-not-read" });
+
+      return;
+    }
 
     const [claimed] = await tenant.db
       .update(sourceDocument)
@@ -228,7 +243,8 @@ export async function enqueueReading(
 
 /**
  * Starts the reading of a Could not read document again, with its attempts back at 0. Only that
- * state is retried, so a second Retry while it reads is refused and enqueues nothing. Like the
+ * state, or a stalled reading, is retried, so a second Retry while it reads is refused and
+ * enqueues nothing. Like the
  * upload, it needs a tenant-wide `invoices:write` (decision 12).
  */
 export async function retryReading(
@@ -244,7 +260,12 @@ export async function retryReading(
       readingAttempts: 0,
       updatedAt: sql`now()`,
     })
-    .where(inState(documentId, "could-not-read"))
+    .where(
+      and(
+        eq(sourceDocument.id, documentId),
+        or(eq(sourceDocument.readingStatus, "could-not-read"), readingStalled)
+      )
+    )
     .returning({ id: sourceDocument.id });
 
   if (retried === undefined) {

@@ -16,6 +16,7 @@ import {
   sourceDocument,
 } from "../../schema.ts";
 import { assertCanReadEverywhere } from "../ledger/access.ts";
+import { readingStalled } from "../reading/job.ts";
 import { centsOf } from "../reading/quote-check.ts";
 import {
   type StoredReading,
@@ -90,7 +91,7 @@ export async function loadDocumentInbox(
         id: sourceDocument.id,
         label: documentLabel,
         kind: sourceDocument.kind,
-        readingStatus: sourceDocument.readingStatus,
+        readingStatus: sql<ReadingStatus>`case when ${readingStalled} then 'could-not-read' else ${sourceDocument.readingStatus} end`,
         readingOutcome: sourceDocument.readingOutcome,
         reading: sourceDocument.reading,
         hasRecord: sql<boolean>`(${invoice.id} is not null or ${payment.id} is not null)`,
