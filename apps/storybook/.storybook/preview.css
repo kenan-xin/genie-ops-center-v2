@@ -5,6 +5,7 @@
 @import "tailwindcss" source(none);
 @import "@genie/ui/fonts.css";
 @import "@genie/ui/tokens.css";
+@import "@genie/ui/typeset.css";
 
 /*
  * Tailwind writes a rule only for a class it finds in a scanned file, and

@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./tokens": "./src/theme/tokens.ts",
     "./tokens.css": "./src/theme/tokens.css",
+    "./typeset.css": "./src/theme/typeset.css",
     "./config-form-schema": "./src/parts/config-form-schema.ts",
     "./chart": "./src/parts/chart.tsx",
     "./fonts.css": "./src/fonts/fonts.css",

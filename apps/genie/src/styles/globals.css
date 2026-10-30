@@ -8,6 +8,7 @@
 @import "./module-sources.generated.css";
 @import "@genie/ui/fonts.css";
 @import "@genie/ui/tokens.css";
+@import "@genie/ui/typeset.css";
 
 @source "../../../../packages/ui/src";
 @source "../../../../packages/core/src";

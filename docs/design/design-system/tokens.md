@@ -180,7 +180,7 @@ Text that repeats something already on the screen is removed, not moved. Example
 
 ## Rendered prose (Typeset)
 
-Markdown that the product renders as reading text, for example the prose of an agent answer, is styled by the shadcn Typeset file (`typeset.css`, owned in the app stylesheet folder) with one preset, `typeset-chat`. The preset uses the body font, size and line height of this type scale, so prose and interface text match. Interface text (labels, tables, forms, page headers) never uses Typeset. A component placed inside prose, for example a chart or a records table, carries `not-typeset` and keeps its own design.
+Markdown that the product renders as reading text, for example the prose of an agent answer, is styled by the shadcn Typeset file (`packages/ui/src/theme/typeset.css`, imported as `@genie/ui/typeset.css` by the app stylesheet) with one preset, `typeset-chat`. The preset uses the body font, size and line height of this type scale, so prose and interface text match. Interface text (labels, tables, forms, page headers) never uses Typeset. A component placed inside prose, for example a chart or a records table, carries `not-typeset` and keeps its own design.
 
 ## Filter disclosure
 

@@ -97,7 +97,8 @@ function AnswerText(props: {
       hasUnreadableChart(result));
 
   return (
-    <div>
+    // oxlint-disable-next-line shadcn/no-unknown-classes -- Typeset's preset class arrives with typeset.css
+    <div className="typeset typeset-chat">
       <Renderer
         response={props.text}
         library={ANSWER_LIBRARY}

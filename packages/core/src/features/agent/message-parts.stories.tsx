@@ -247,6 +247,20 @@ export const HeadingsListsTableChart: Story = {
   name: "Headings, lists, a table and a chart",
   args: { message: answer(RICH_ANSWER) },
   decorators: [withChartCheck(checkRich)],
+  play: async ({ canvas }) => {
+    // Typeset styles the prose of an answer, and a chart in it opts out (tokens.md, Rendered prose).
+    const heading = await canvas.findByRole("heading", {
+      name: "Example overview",
+      level: 2,
+    });
+
+    const figure = await canvas.findByRole("figure", { name: "Records" });
+
+    await expect(getComputedStyle(heading).fontWeight).toBe("600");
+    await expect(getComputedStyle(heading).marginBlockStart).not.toBe("0px");
+    // Typeset would give a figure in prose a flow margin; the chart keeps its own layout.
+    await expect(getComputedStyle(figure).marginBlockStart).toBe("0px");
+  },
 };
 
 export const ToolCalls: Story = {
