@@ -1,6 +1,12 @@
 import type { Module } from "@genie/core";
 
 import { invoicesContract } from "./contract.ts";
+import {
+  allocationsDataset,
+  customersDataset,
+  invoicesDataset,
+  paymentsDataset,
+} from "./datasets.ts";
 import { invoicesRecordTypes } from "./record-types.ts";
 import { invoicesRouter } from "./router.ts";
 import {
@@ -91,6 +97,13 @@ export const invoicesModule = {
   contentSecurityPolicy: {
     frameOrigins: async () => [],
   },
+
+  datasets: [
+    invoicesDataset,
+    paymentsDataset,
+    customersDataset,
+    allocationsDataset,
+  ],
 
   tests: { presets: ["unit", "integration", "e2e"] },
 } satisfies Module;

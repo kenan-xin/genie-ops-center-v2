@@ -82,7 +82,18 @@ No save takes a purchase-order document, so a purchase order changes no figure.
 
 ## Datasets
 
-`invoices`, `payments`, `customers`, with the measures of the specification, R-36.
+Four datasets, each under `invoices:read` and filtered by `scopesFor()`. A grant on a customer covers its invoices, payments and links. Every dataset reads as of the reporting date (R-9): it leaves out an invoice or a payment dated after it, and counts an allocation only when its payment is dated on or before it. The measures are those of R-36.
+
+| Dataset | Rows | Time field | Record key |
+| --- | --- | --- | --- |
+| `invoices.invoices` | Invoices dated on or before the reporting date, with total (invoiced sales), allocated, outstanding, overdue, days overdue, settled on and paid late | `invoiceDate` | the invoice |
+| `invoices.payments` | Payments dated on or before the reporting date, with amount (collections), allocated and unallocated | `paymentDate` | the payment |
+| `invoices.customers` | Every customer, with the first invoice date and the late-payment counts | `firstInvoiceDate` | the customer |
+| `invoices.allocations` | One row per link whose payment and invoice are both dated on or before the reporting date, under the scope of the invoice | `paymentDate` | the invoice |
+
+Overdue is a positive outstanding with a known due date strictly before the reporting date, so due on the day is not overdue and an unspecified due date never is. Paid late holds only for a fully settled invoice with a known due date, so a part-paid invoice is not in the late-payment rate.
+
+The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
 
 ## Demo pack
 

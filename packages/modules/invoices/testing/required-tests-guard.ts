@@ -133,4 +133,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a reduction raising the link of 200,000 to 250,000 is refused with reduction-invalid",
     ].map((row) => `receipts and corrections ${row}`),
   },
+  {
+    file: "testing/datasets.integration.test.ts",
+    reason:
+      "Spec 7 R-9, R-11, R-29, R-35 and R-36: the measures at the reporting date, the read scope and the record route",
+    cases: [
+      "at 2026-10-27, due the day before is overdue by one day, due on the day is not, and no due date is never overdue but stays outstanding",
+      "a payment and an invoice dated after the reporting date change nothing",
+      "settledOn is the last payment date, paidLate holds only for a settled invoice with a due date, and the customer counts 2 settled and 1 late",
+      "a payment answers its unallocated amount and each link is one allocation row",
+      "a link to an invoice dated after the reporting date leaves its payment unallocated and has no allocation row",
+      "a person reading one customer sees only its rows in all four datasets",
+      "recordRoute opens an invoice only for a person with invoices:use",
+    ].map((row) => `invoice datasets ${row}`),
+  },
 ];
