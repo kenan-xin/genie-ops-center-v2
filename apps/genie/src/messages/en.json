@@ -40,6 +40,9 @@
     }
   },
   "pages": {
+    "ask": {
+      "title": "Ask"
+    },
     "account": {
       "title": "Account"
     },

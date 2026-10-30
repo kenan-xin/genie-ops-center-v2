@@ -67,6 +67,11 @@ const DEVTOOLS_PROBES = [
   // and dropped: core's environment validation carries that literal and ships
   // in production for its own reasons, so the probe failed on a clean build.
   "deploymentDiagnostics",
+  // OpenUI's Inspect widget. `@openuidev/react-lang` appends a `div` with this
+  // attribute from a block guarded by `process.env.NODE_ENV === "development"`;
+  // the production bundler folds that guard away, so only the folded guard can
+  // remove the literal from the build. The installed bundle carries it once.
+  "data-openui-devtools-auto-mount",
 ];
 
 /**

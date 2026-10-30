@@ -53,6 +53,7 @@ const config: StorybookConfig = {
       // the browser mid-run and fail its stories. The chart stories add Recharts.
       optimizeDeps: {
         include: [
+          "@ai-sdk/react",
           "@orpc/contract",
           "@tanstack/react-query",
           "@openuidev/react-lang",
