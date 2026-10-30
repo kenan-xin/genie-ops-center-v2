@@ -263,6 +263,30 @@ export const HeadingsListsTableChart: Story = {
   },
 };
 
+export const StreamingToolCall: Story = {
+  name: "Streaming tool call",
+  args: {
+    message: {
+      id: "streaming-tool",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-query-dataset",
+          toolCallId: "call-streaming",
+          state: "input-streaming",
+          input: undefined,
+        },
+      ],
+    },
+    streaming: true,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    // A live model streams a tool's input after its name, so the call first shows without input.
+    await expect(await canvas.findByText("Queried a dataset")).toBeVisible();
+  },
+};
+
 export const ToolCalls: Story = {
   name: "Tool calls",
   args: {

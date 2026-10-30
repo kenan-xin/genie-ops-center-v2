@@ -28,8 +28,10 @@ function toolNameOf(part: MessagePart): string | null {
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the tool input is untyped UI data; this reads a display label only
 function datasetOf(input: unknown): string | undefined {
-  // SAFETY: the query-dataset tool's input is `{ dataset: string }`; this reads a label only.
-  const dataset = (input as { readonly dataset?: unknown }).dataset;
+  // SAFETY: the query-dataset tool's input is `{ dataset: string }`, or undefined while it
+  // streams; this reads a label only.
+  const dataset = (input as { readonly dataset?: unknown } | undefined)
+    ?.dataset;
 
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a display label, not a parse
   return typeof dataset === "string" ? dataset : undefined;
