@@ -11,6 +11,7 @@ import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import {
   type DisposableDeployment,
   insertPersonWith,
+  insertUser,
   markSetupDone,
   startDisposableDeployment,
 } from "./index.ts";
@@ -69,5 +70,30 @@ describe("the agent area", () => {
     expect(
       (await holder.agent.sessions()).map((session) => session.id)
     ).toEqual([id]);
+  });
+
+  it("refuses the break-glass account, which bypasses the key check (P7)", async () => {
+    const tenant = deployment.context;
+
+    const userId = await insertUser(tenant, {
+      isBreakGlass: true,
+      twoFactorEnabled: true,
+    });
+
+    const agent = callProcedure(createAgentRouter(), {
+      tenant,
+      caller: principalFor({
+        tenant,
+        modules: [],
+        userId,
+        authenticated: true,
+      }),
+      requestId: "req-agent-area",
+    });
+
+    await expect(agent.sessions()).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      agent.chart({ config: { kind: "not-a-chart" } })
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 });
