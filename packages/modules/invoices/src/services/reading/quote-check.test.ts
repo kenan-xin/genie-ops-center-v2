@@ -145,6 +145,11 @@ describe("the quote check", () => {
     ["5000.00", "TOTAL (SGD) 15,000.00"],
     // Neighbouring numbers must not join into one token: 1 and 500.00 are two.
     ["1500.00", "Qty 1 500.00"],
+    // A credit keeps its sign: 5000.00 here would link a refund as a payment.
+    ["5000.00", "Credit note for INV-2026-09-03: -5,000.00"],
+    // A part of a date is not an amount.
+    ["26.00", "Payment date 2026-10-26"],
+    ["2026.00", "Payment date 2026-10-26"],
   ])("drops the amount %s that its quote %s does not hold", (value, quote) => {
     const checked = checkReading(
       reading({ amount: { value, quote, page: 1 } }),
@@ -158,17 +163,19 @@ describe("the quote check", () => {
     });
   });
 
-  it.each(["TOTAL (SGD) 5,000.00", "2026-10-26 5,000.00"])(
-    "keeps the amount 5000.00 that its quote %s holds",
-    (quote) => {
-      const real = checkReading(
-        reading({ amount: { value: "5000.00", quote, page: 1 } }),
-        [quote]
-      );
+  it.each([
+    "TOTAL (SGD) 5,000.00",
+    "2026-10-26 5,000.00",
+    // A currency written without a space before the amount.
+    "TOTAL SGD5,000.00",
+  ])("keeps the amount 5000.00 that its quote %s holds", (quote) => {
+    const real = checkReading(
+      reading({ amount: { value: "5000.00", quote, page: 1 } }),
+      [quote]
+    );
 
-      expect(real.fields.amount).toEqual({ value: "5000.00", quote, page: 1 });
-    }
-  );
+    expect(real.fields.amount).toEqual({ value: "5000.00", quote, page: 1 });
+  });
 
   it.each<
     [string, Partial<ModelReading>, string, StoredReading["dropped"][number]]

@@ -64,8 +64,27 @@ const WHOLE_TOKEN_FIELDS = new Set<ReadingField | "invoiceNumbers">([
   "dueDate",
 ]);
 
-/** `token` occurs in `text` with no letter or digit directly before or after it. */
-function holdsWholeToken(text: string, token: string): boolean {
+/** What joins an identifier or a date to a longer token: a letter or a digit. */
+const WORD_BOUNDS = {
+  before: /[\p{L}\p{N}]$/u,
+  after: /^[\p{L}\p{N}]/u,
+};
+
+/**
+ * What makes a number token part of another figure: a digit or decimal point, a sign or a slash
+ * before it, a dash or a slash after it. A letter does not, because "SGD5,000.00" is real (I-2).
+ */
+const AMOUNT_BOUNDS = {
+  before: /(?:\d\.?|[-−/])$/u,
+  after: /^(?:\.?\d|[-/])/u,
+};
+
+/** `token` occurs in `text` with nothing that `bounds` names directly before or after it. */
+function holdsWholeToken(
+  text: string,
+  token: string,
+  bounds = WORD_BOUNDS
+): boolean {
   if (token === "") return false;
 
   for (
@@ -76,7 +95,7 @@ function holdsWholeToken(text: string, token: string): boolean {
     const before = text.slice(0, at);
     const after = text.slice(at + token.length);
 
-    if (!/[\p{L}\p{N}]$/u.test(before) && !/^[\p{L}\p{N}]/u.test(after)) {
+    if (!bounds.before.test(before) && !bounds.after.test(after)) {
       return true;
     }
   }
@@ -86,7 +105,8 @@ function holdsWholeToken(text: string, token: string): boolean {
 
 /**
  * An amount stands in its quote by an equal cents token, read with whitespace kept so that
- * neighbouring numbers never join. An identifier or a date stands as a whole token. Any other
+ * neighbouring numbers never join, and never signed or part of a date. An identifier or a date
+ * stands as a whole token. Any other
  * value is a normalised substring.
  */
 function standsInQuote(
@@ -96,9 +116,12 @@ function standsInQuote(
 ): boolean {
   if (field === "amount") {
     const valueCents = centsOf(value);
+    const spacedQuote = spacedForQuote(quote);
 
-    return (spacedForQuote(quote).match(/\d+(?:\.\d+)?/g) ?? []).some(
-      (token) => centsOf(token) === valueCents
+    return (spacedQuote.match(/\d+(?:\.\d+)?/g) ?? []).some(
+      (token) =>
+        centsOf(token) === valueCents &&
+        holdsWholeToken(spacedQuote, token, AMOUNT_BOUNDS)
     );
   }
 
