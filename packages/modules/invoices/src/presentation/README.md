@@ -1,7 +1,8 @@
 # src/presentation
 
-What the module renders: the Invoices list, its status badge, the page components core feeds,
-and the view types they take.
+What the module renders: the Invoices list and the invoice record, the status badge, the
+allocation and history tables both record pages share, the page components core feeds, and the
+view types they take.
 
 ## What belongs here
 

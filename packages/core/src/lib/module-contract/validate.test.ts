@@ -1066,6 +1066,19 @@ describe("validateModule", () => {
       'Page "/fixture/:id" names record type "nope", which is not one of the module\'s record types.',
     ],
     [
+      "a record read key the module does not declare",
+      {
+        workspace: [
+          recordPage({
+            type: "fixture_record",
+            param: "id",
+            read: "other:read",
+          }),
+        ],
+      },
+      'Page "/fixture/:id" reads its record with "other:read", which the module does not declare.',
+    ],
+    [
       "a record parameter its path lacks",
       { workspace: [recordPage({ type: "fixture_record", param: "key" })] },
       'Page "/fixture/:id" names record parameter "key", which its path does not hold.',
@@ -1320,10 +1333,7 @@ function page(
 }
 
 /** One `/fixture/:id` page whose check runs on the given record. */
-function recordPage(record: {
-  readonly type: string;
-  readonly param: string;
-}): ModulePage {
+function recordPage(record: NonNullable<ModulePage["record"]>): ModulePage {
   return definePage({
     path: "/fixture/:id",
     permission: "fixture:use",

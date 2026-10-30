@@ -102,7 +102,7 @@ The workspace entry Invoices opens the list at `/m/invoices/invoices`. Every pag
 | Page | Path | Reads |
 | --- | --- | --- |
 | Invoices list | `/m/invoices/invoices` | `invoices.invoices`, ordered by invoice date and number, at most 1,000 rows; a cut read says how many it shows (P4; paging is deferred to `czjw.28`) |
-| Invoice record | `/m/invoices/invoices/<id>` | The invoice's balance, its allocations, its history and a link to its source PDF |
+| Invoice record | `/m/invoices/invoices/<id>` | `invoices.invoices` and `invoices.allocations` filtered by the invoice, its link history from `allocation_event` oldest first (the time in the tenant's time zone, the change, the payment, the amount before and after, Automatic or By a person; no actor name, P10), and a 5-minute link to its source PDF under `invoices:read` on the invoice (P11). The page declares `invoices:read` as its record's read key, so core refuses a person without it before the title or the trail shows the invoice number (R-1a). An invoice dated after the reporting date shows a note with its number, not 404 (P7) |
 | Payments list | `/m/invoices/payments` | `invoices.payments` |
 | Payment record | `/m/invoices/payments/<id>` | The payment's amount, its links and its unallocated amount |
 

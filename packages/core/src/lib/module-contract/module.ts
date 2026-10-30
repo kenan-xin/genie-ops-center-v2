@@ -114,8 +114,16 @@ export type ModulePageRoute = {
   readonly path: string;
   /** One of the module's own keys. `can()` checks it before anything loads (R-1). */
   readonly permission: PermissionKey;
-  /** The record a parameter names: the check runs on it, and the trail shows its label. */
-  readonly record?: { readonly type: string; readonly param: string };
+  /**
+   * The record a parameter names: the check runs on it, and the trail shows its label. `read` is a
+   * second key of the module's own that the person needs on the record before core reads its label
+   * or loads the page, so a person the loader would refuse gets no title or trail either (R-1a).
+   */
+  readonly record?: {
+    readonly type: string;
+    readonly param: string;
+    readonly read?: PermissionKey;
+  };
   /** The path of one of the module's navigation entries of the same surface: the trail's parent (R-1a). */
   readonly parent?: string;
 };

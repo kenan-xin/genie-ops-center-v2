@@ -782,6 +782,12 @@ function pageProblems(module: Module): string[] {
         );
       }
 
+      if (record?.read !== undefined && !declared.has(record.read)) {
+        problems.push(
+          `Page "${path}" reads its record with "${record.read}", which the module does not declare.`
+        );
+      }
+
       if (record !== undefined && !recordTypes.has(record.type)) {
         problems.push(
           `Page "${path}" names record type "${record.type}", which is not one of the module's record types.`

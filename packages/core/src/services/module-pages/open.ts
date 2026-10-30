@@ -67,6 +67,12 @@ export async function modulePageAccess(
   if (!(await can(ctx.caller, page.permission, ref)))
     return { kind: "refused" };
 
+  // Before the label: a person the loader would refuse reads no title and no trail (R-1a).
+  const { read } = page.record;
+
+  if (read !== undefined && !(await can(ctx.caller, read, ref)))
+    return { kind: "refused" };
+
   const found = await ctx.caller.recordOf(ref);
 
   return found === undefined

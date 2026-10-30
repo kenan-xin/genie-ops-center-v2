@@ -10,10 +10,24 @@ export {
   type InvoiceStatusBadgeProps,
 } from "./invoice-status-badge.tsx";
 
-export { InvoiceListPage } from "./module-pages.tsx";
+export {
+  AllocationTable,
+  type AllocationTableProps,
+  HistoryTable,
+  type HistoryTableProps,
+  type LinkedRecord,
+} from "./allocations.tsx";
+
+export { InvoiceRecord, type InvoiceRecordProps } from "./invoice-record.tsx";
+
+export { InvoiceListPage, InvoiceRecordPage } from "./module-pages.tsx";
 
 export type {
+  AllocationRow,
+  HistoryRow,
+  InvoiceDetail,
   InvoiceListRow,
+  InvoiceRecordView,
   InvoiceStatus,
   InvoiceListView,
 } from "./views.ts";

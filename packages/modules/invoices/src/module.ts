@@ -7,8 +7,11 @@ import {
   invoicesDataset,
   paymentsDataset,
 } from "./datasets.ts";
-import { InvoiceListPage } from "./presentation/module-pages.tsx";
-import { invoicesRecordTypes } from "./record-types.ts";
+import {
+  InvoiceListPage,
+  InvoiceRecordPage,
+} from "./presentation/module-pages.tsx";
+import { invoicesRecordTypes, RECORD_TYPES } from "./record-types.ts";
 import { invoicesRouter } from "./router.ts";
 import {
   allocation,
@@ -22,6 +25,7 @@ import {
   sourceDocument,
 } from "./schema.ts";
 import { loadInvoiceList } from "./services/pages/lists.ts";
+import { loadInvoiceRecord } from "./services/pages/records.ts";
 
 /** The Invoices workspace entry and the page of its path (DEC-50). */
 const INVOICES_ENTRY = {
@@ -96,6 +100,18 @@ export const invoicesModule = {
         permission: "invoices:use",
         load: loadInvoiceList,
         component: InvoiceListPage,
+      }),
+      definePage({
+        path: "/m/invoices/invoices/:id",
+        permission: "invoices:use",
+        record: {
+          type: RECORD_TYPES.invoice,
+          param: "id",
+          read: "invoices:read",
+        },
+        parent: INVOICES_ENTRY.path,
+        load: (ctx, params) => loadInvoiceRecord(ctx, params.id ?? ""),
+        component: InvoiceRecordPage,
       }),
     ],
     admin: [],

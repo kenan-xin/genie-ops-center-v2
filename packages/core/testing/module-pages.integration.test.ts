@@ -91,6 +91,24 @@ const pagesFixture = {
         component: RecordView,
       }),
       definePage({
+        path: "/pages-fixture/:id/notes",
+        permission: "pages-fixture:use",
+        record: {
+          type: "pages-fixture-record",
+          param: "id",
+          read: "pages-fixture:read",
+        },
+        parent: "/pages-fixture",
+        load: async (ctx, params) => {
+          const id = params["id"] ?? "";
+
+          loaded.push(`notes ${id}`);
+
+          return { id, by: ctx.caller.userId };
+        },
+        component: RecordView,
+      }),
+      definePage({
         path: "/pages-fixture/barred",
         permission: "pages-fixture:use",
         load: async () => {
@@ -240,6 +258,28 @@ describe("module pages", () => {
     });
     expect(await modulePageAccess(refusedCtx, record("r-1"))).toEqual({
       kind: "refused",
+    });
+  });
+
+  it("refuses a record page's read key before its label and its loader", async () => {
+    const useOnly = await personWith(["pages-fixture:use"]);
+
+    const reader = await personWith([
+      "pages-fixture:use",
+      "pages-fixture:read",
+    ]);
+
+    const notes = matched(["pages-fixture", "r-1", "notes"]);
+
+    expect(await modulePageAccess(useOnly, notes)).toEqual({ kind: "refused" });
+
+    expect(await openModulePage(useOnly, notes)).toEqual({ kind: "refused" });
+
+    expect(loaded).toEqual([]);
+
+    expect(await modulePageAccess(reader, notes)).toMatchObject({
+      kind: "allowed",
+      title: "Record r-1",
     });
   });
 });

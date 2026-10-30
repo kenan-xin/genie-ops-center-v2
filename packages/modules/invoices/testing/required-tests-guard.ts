@@ -153,10 +153,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/pages.integration.test.ts",
     reason:
-      "Spec 7 R-59 and DEC-39: a page reads through the scoped dataset, so a scoped person sees only their customer's records",
+      "Spec 7 R-59, R-9, R-1a and DEC-39: a page reads through the scoped dataset, a record page shows its link history and a later invoice's note, and a person without invoices:read gets neither the record nor its label",
     cases: [
-      "invoice pages the list answers only the customer a scoped reader may read",
-    ],
+      "the list answers only the customer a scoped reader may read",
+      "the record answers link, change and unlink as three history rows in order, with no allocation left",
+      "an invoice dated after the reporting date answers the note with its number",
+      "a person with only invoices:use is refused the record page, its label and its loader",
+    ].map((row) => `invoice pages ${row}`),
   },
   {
     file: "testing/live-scenarios.integration.test.ts",

@@ -7,8 +7,8 @@ import type {
 } from "../../presentation/views.ts";
 import { invoiceStatusOf } from "./status.ts";
 
-/** The fields the list reads from one dataset row, as the dataset answers them. */
-const listRow = z.object({
+/** The fields a list row reads from one `invoices.invoices` row, as the dataset answers them. */
+export const listRow = z.object({
   id: z.string(),
   invoiceNumber: z.string(),
   customerName: z.string(),
@@ -20,6 +20,15 @@ const listRow = z.object({
   overdue: z.boolean(),
   daysOverdue: z.number().int().nullable(),
 });
+
+export const LIST_ROW_FIELDS = Object.keys(listRow.shape);
+
+/** One list row, its two overdue fields read into its status. */
+export function invoiceListRowOf(row: z.infer<typeof listRow>): InvoiceListRow {
+  const { overdue: _overdue, daysOverdue: _days, ...value } = row;
+
+  return { ...value, status: invoiceStatusOf(row) };
+}
 
 /**
  * The Invoices list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
@@ -33,18 +42,7 @@ export async function loadInvoiceList(
   const result = await queryDataset(ctx, {
     dataset: "invoices.invoices",
     query: {
-      select: [
-        "id",
-        "invoiceNumber",
-        "customerName",
-        "invoiceDate",
-        "dueDate",
-        "currency",
-        "totalCents",
-        "outstandingCents",
-        "overdue",
-        "daysOverdue",
-      ],
+      select: LIST_ROW_FIELDS,
       orderBy: [
         { column: "invoiceDate", direction: "desc" },
         { column: "invoiceNumber", direction: "desc" },
@@ -52,21 +50,9 @@ export async function loadInvoiceList(
     },
   });
 
-  const rows: InvoiceListRow[] = result.rows.map((row) => {
-    const value = listRow.parse(row);
-
-    return {
-      id: value.id,
-      invoiceNumber: value.invoiceNumber,
-      customerName: value.customerName,
-      invoiceDate: value.invoiceDate,
-      dueDate: value.dueDate,
-      currency: value.currency,
-      totalCents: value.totalCents,
-      outstandingCents: value.outstandingCents,
-      status: invoiceStatusOf(value),
-    };
-  });
-
-  return { asOf: result.asOf, rows, truncated: result.truncated };
+  return {
+    asOf: result.asOf,
+    rows: result.rows.map((row) => invoiceListRowOf(listRow.parse(row))),
+    truncated: result.truncated,
+  };
 }
