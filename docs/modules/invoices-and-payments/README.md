@@ -110,6 +110,25 @@ The workspace entries Invoices opens the list at `/m/invoices/invoices` and Paym
 
 `demo-pack/` holds the fictional demo data: 6 customers, 36 invoices, 30 payments, the history PDFs, seven live-upload PDFs and the expected answers at reporting date 2026-10-27. The SQL and SQLite copies of the same history are left out, so `SHA256SUMS.txt` lists two files that are not here. `04_Demo_Guide/live_expected_entities_DO_NOT_PRELOAD.json` is test data only: no seed reads it.
 
+## Demo seed
+
+`apps/genie/testing/seed-demo.ts` (target `@genie/app:seed-demo`) loads the demo pack history and the demo account's access into one deployment (R-59). It reads the module list from `customers/genie-demo/deploy/modules.txt`.
+
+Command, from `apps/genie`: `DEMO_ACCOUNT_EMAIL='<demo account address>' node --env-file=<env file> testing/seed-demo.ts [--dry-run]`. It reads `DATABASE_URL` and `DEMO_ACCOUNT_EMAIL` from the environment only and loads no env file itself, so the operator names the file. It prints the target as host, port and database, never the user, the password or the demo account's address. A missing variable or an unknown flag prints the usage and exits 2.
+
+Write list, one numbered line each in its output, with the count to write and the count already present:
+
+1. Role assignments: every role of the listed modules, granted tenant-wide and directly to the demo account (`role_assignment`).
+2. Reporting date: the pack's `metadata.as_of_date`, 2026-10-27 (`tenant_settings.reporting_date`).
+3. History PDFs through `FileStorage` (`file`, `file_blob` and `document` rows).
+4. Demo pack history through the module procedures as the demo account (`customer`, `invoice`, `payment`, `allocation`, `allocation_event` and `audit_event` rows).
+
+The access writes go straight to the tables, so they add no audit row, notification or email (P13). Each PDF's SHA-256 keys its record, so a second run writes nothing and ends `Already seeded: nothing to write.`, and a stopped run resumes. `--dry-run` prints the same lines and writes nothing.
+
+It refuses, writes nothing, prints `Refused: <reason>` and exits 1 when the module tables do not exist (start the app on the database once), when the module is switched off, when the module has no roles (switch it on in Admin > Modules, which creates them), or when no person has the address (the demo account signs in once).
+
+Revert: take `pg_dump -Fc` before the run, and restore it with `pg_restore --clean --if-exists --single-transaction` with the app stopped. A restore also reverts every other change made after the dump. There is no revert mode, because a revert deletes append-only allocation events and audit rows (P15).
+
 ## Expected answers
 
 `expected-answers.json`, beside the demo pack, holds the nine answers to the pack's read prompts at reporting date 2026-10-27, in integer cents: `overdue-invoices`, `repeated-late-payers`, `overdue-balances`, `monthly-invoiced-and-collected`, `top-customers-by-sales`, `top-customers-overdue`, `invoices-without-due-date`, `manual-due-dates` and `partial-payments`. Each holds its prompt, the R-36 measures it uses, its rows and, where one is meaningful, a total. The values come from the pack's own expected files and its history records, never from this module's code, and `testing/demo-history.integration.test.ts` proves the datasets answer every one of them. S7-11 asks the questions through the datasets, and S7-14 runs them as the answer track of the evaluation suite; both read this file.

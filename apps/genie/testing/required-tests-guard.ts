@@ -225,6 +225,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/seed-demo.integration.test.ts",
+    reason:
+      "S7-07 R-59 and the owner's seed pre-authorization require the seed to write only the four allowed kinds, nothing on a second run or a dry run, and nothing on a database that is not ready",
+    cases: [
+      "the demo seed command answers the four numbered lines on a fresh deployment in a dry run and writes nothing",
+      "the demo seed command writes only the owner's list on the first run and grants the demo person tenant-wide",
+      "the demo seed command changes no row and no setting on a second run",
+      "the demo seed command on a database that is not ready refuses the module switched off and writes nothing",
+      "the demo seed command on a database that is not ready refuses no person with the address and writes nothing",
+      "the demo seed command on a database that is not ready refuses no role of the module and writes nothing",
+      "the demo seed command on a database that is not ready refuses no module tables and writes nothing",
+    ],
+  },
+  {
     file: "testing/generated-stack-wait.integration.test.ts",
     cases: [
       "the generated-stack readiness wait fails at once, with state and logs, once the container has exited",

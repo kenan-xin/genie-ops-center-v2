@@ -37,6 +37,7 @@ export default defineConfig({
       "testing/e2e-ports.test.ts",
       "testing/standin-network.test.ts",
       "testing/image-process.test.ts",
+      "testing/seed-demo.test.ts",
     ],
     passWithNoTests: false,
     testTimeout: 240000,

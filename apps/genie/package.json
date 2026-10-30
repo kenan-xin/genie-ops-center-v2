@@ -9,6 +9,7 @@
     "build-fixture-image": "node tools/build-fixture-image.ts",
     "dev": "docker compose -f ../../deploy/stack/compose.dev.yaml up -d --wait && next dev --port 3000",
     "dev-session": "node testing/dev-session.ts",
+    "seed-demo": "node testing/seed-demo.ts",
     "generate-registry": "node tools/generate-registry.ts",
     "generate-openapi": "node tools/generate-openapi.ts",
     "check-openapi": "node tools/generate-openapi.ts --check",
@@ -88,6 +89,9 @@
         ]
       },
       "dev-session": {
+        "cache": false
+      },
+      "seed-demo": {
         "cache": false
       },
       "generate-openapi": {

@@ -53,7 +53,12 @@ export { hashPassword } from "better-auth/crypto";
 
 export { markSetupDone } from "./mark-setup-done.ts";
 
-export { DemoSeedRefused } from "./demo-seed.ts";
+export {
+  type DemoAccessPlan,
+  DemoSeedRefused,
+  planDemoAccess,
+  seedDemoAccess,
+} from "./demo-seed.ts";
 
 export { startDisposablePostgres } from "./postgres.ts";
 

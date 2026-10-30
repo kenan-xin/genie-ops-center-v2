@@ -33,6 +33,8 @@ export default defineConfig({
       "testing/standin-network.test.ts",
       // The public-corpus migration SQL scanner's controls run on a fixed corpus.
       "testing/image-process.test.ts",
+      // The demo seed's target label must never carry the database password.
+      "testing/seed-demo.test.ts",
       // The Section 3 permission-import check reads source files only (AC-19a, R-95).
       "testing/section-3-imports.test.ts",
       // The Entra secret parser is pure; it must never echo the secret it refuses.
