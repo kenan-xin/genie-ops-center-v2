@@ -5,7 +5,12 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import { createTenantContext, seedRoles, SETUP_STEPS } from "@genie/core";
+import {
+  createTenantContext,
+  runWorker,
+  seedRoles,
+  SETUP_STEPS,
+} from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import {
   assignRole,
@@ -14,6 +19,7 @@ import {
   insertUser,
   writeModelConnection,
 } from "@genie/core/testing";
+import { INVOICES_READING_RECORDINGS } from "@genie/module-invoices/testing";
 import {
   insertAgentRecords,
   PLACEHOLDER_AGENT_RECORDINGS,
@@ -22,6 +28,7 @@ import {
 import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { BASE_PORTS } from "../../testing/e2e-ports.ts";
+import { replayModelRequests } from "../../testing/model-replay.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
 const run = promisify(execFile);
@@ -72,6 +79,9 @@ export const DEV_PORT = Number(
 
 /** The demo account the seeded pages are read as (R-59). */
 export const DEMO_ACCOUNT_EMAIL = "e2e.demo@example.invalid";
+
+/** The text-only model the six hand-written reading recordings answer for (decision 14). */
+const DOCUMENT_MODEL = "deepseek/deepseek-v4.1-flash-1017";
 
 /** The people the agent specs sign in as (Spec 7 R-40, AC-8); each holds one role. */
 export const ASK_PEOPLE = {
@@ -205,9 +215,13 @@ async function seedAgent(): Promise<void> {
 
   try {
     await writeModelConnection(context, {
-      allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      allowed: [
+        "openai/gpt-6.1-terra",
+        "anthropic/claude-opus-5.5",
+        DOCUMENT_MODEL,
+      ],
       chat: "openai/gpt-6.1-terra",
-      document: "anthropic/claude-opus-5.5",
+      document: DOCUMENT_MODEL,
     });
 
     // The agent's records are placeholder rows, and only a run with placeholder has its table.
@@ -223,6 +237,76 @@ async function seedAgent(): Promise<void> {
   } finally {
     await context.db.$client.end();
   }
+}
+
+/** The worker this run started beside `next dev`, so an upload's reading job runs (decision 14). */
+type ReadingWorker = {
+  readonly signal: AbortController;
+  readonly run: Promise<number>;
+  readonly lines: readonly string[];
+};
+
+let readingWorker: ReadingWorker | undefined;
+
+/**
+ * Starts the module job worker in this process. `next dev` starts none, so without it every
+ * upload stays Reading. The worker asks the document model from this process, so
+ * `replayModelRequests` answers those requests here from the reading recordings. Returns once
+ * the worker says it started; one that ends first throws with its own output lines.
+ */
+async function startReadingWorker(): Promise<void> {
+  replayModelRequests(INVOICES_READING_RECORDINGS);
+
+  const signal = new AbortController();
+  const started = Promise.withResolvers<void>();
+  const lines: string[] = [];
+
+  const workerRun = runWorker({
+    source: { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },
+    modules: selectedModules,
+    histories: [],
+    output: (line) => {
+      lines.push(line);
+
+      if (line.includes("worker started")) started.resolve();
+    },
+    errorOutput: (line) => lines.push(line),
+    signal: signal.signal,
+    shutdownTimeoutMs: 1000,
+  });
+
+  // A run that ends before the line resolves the wait, so setup reports it rather than hanging.
+  void workerRun.then(
+    () => started.resolve(),
+    () => started.resolve()
+  );
+
+  readingWorker = { signal, run: workerRun, lines };
+
+  const outcome = await Promise.race([
+    started.promise.then(() => "started" as const),
+    workerRun.then(
+      () => "ended" as const,
+      () => "ended" as const
+    ),
+  ]);
+
+  if (outcome === "ended") {
+    throw new Error(
+      `The reading worker stopped before it started.\n${lines.join("\n")}`
+    );
+  }
+}
+
+/** Stops the worker this run started before the database it reads is removed. */
+export async function stopReadingWorker(): Promise<void> {
+  if (readingWorker === undefined) return;
+
+  readingWorker.signal.abort();
+
+  await readingWorker.run.catch(() => undefined);
+
+  readingWorker = undefined;
 }
 
 async function isReady(url: string): Promise<boolean> {
@@ -369,6 +453,9 @@ export default async function globalSetup(): Promise<void> {
   await seedTestSetup();
   await seedDemo();
   await seedAgent();
+
+  // The app starts no worker, so an upload's reading job needs one beside it (decision 14).
+  if (DEV_MODULES.has("invoices")) await startReadingWorker();
 }
 
 /**
