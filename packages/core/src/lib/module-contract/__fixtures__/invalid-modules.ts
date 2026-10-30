@@ -33,13 +33,14 @@ function renamePage(
   };
 }
 
-/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix, every page and navigation path, and the ledger to a new module id. */
+/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix, every page and navigation path, the ledger and the DEC-50 user role to a new module id. Other role names stay, so two renamed copies can share one. */
 export function renameModule(module: Module, id: string): Module {
   const oldId = module.identity.id;
+  const oldUserRole = `${module.identity.displayName} user`;
 
   return {
     ...module,
-    identity: { ...module.identity, id },
+    identity: { ...module.identity, id, displayName: id },
     schema: { ...module.schema, migrationsTable: moduleLedgerTable(id) },
     ...fixtureApi(id),
     permissions: module.permissions.map((entry) => ({
@@ -63,6 +64,7 @@ export function renameModule(module: Module, id: string): Module {
     },
     defaultRoles: module.defaultRoles.map((role) => ({
       ...role,
+      name: role.name === oldUserRole ? `${id} user` : role.name,
       permissions: role.permissions.map((key) =>
         permissionKeyFor(id, actionOf(key, oldId))
       ),

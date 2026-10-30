@@ -942,6 +942,24 @@ export function validateRegistry(
     }
   }
 
+  // `seedRoles` inserts default roles by name and skips a name that exists, so a second module's
+  // role of the same name would never be seeded and its keys would reach nobody (R-33a).
+  const roleOwners = new Map<string, string>();
+
+  for (const module of modules) {
+    for (const { name } of module.defaultRoles) {
+      const owner = roleOwners.get(name);
+
+      if (owner !== undefined && owner !== module.identity.id) {
+        problems.push(
+          `Default role "${name}" is declared by modules "${owner}" and "${module.identity.id}". Seeding keeps one role per name.`
+        );
+      }
+
+      roleOwners.set(name, owner ?? module.identity.id);
+    }
+  }
+
   const landing = modules.flatMap((module) =>
     module.navigation.entries.filter((entry) => entry.landing === true)
   );

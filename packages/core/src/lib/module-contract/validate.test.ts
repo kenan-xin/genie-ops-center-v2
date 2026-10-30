@@ -1391,6 +1391,19 @@ describe("validateRegistry", () => {
     ]);
   });
 
+  it("rejects one default role name from two modules, naming both and the role", () => {
+    const viewer = { name: "Viewer", permissions: ["fixture:use" as const] };
+
+    const first = {
+      ...validModule,
+      defaultRoles: [...validModule.defaultRoles, viewer],
+    };
+
+    expect(validateRegistry([first, renameModule(first, "second")])).toEqual([
+      'Default role "Viewer" is declared by modules "fixture" and "second". Seeding keeps one role per name.',
+    ]);
+  });
+
   it("rejects two modules with the same id", () => {
     expect(validateRegistry([validModule, validModule]).join(" ")).toContain(
       "fixture"
