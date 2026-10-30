@@ -9,12 +9,13 @@ import {
   withTransaction,
 } from "@genie/core";
 import { DemoSeedRefused } from "@genie/core/testing";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { INVOICES_PERMISSIONS } from "../src/permissions.ts";
 import { invoicesRecordTypes } from "../src/record-types.ts";
 import { invoicesRouter } from "../src/router.ts";
 import {
+  allocationEvent,
   type DocumentKind,
   invoice,
   payment,
@@ -64,7 +65,7 @@ type SeedAllocation = {
 };
 
 type Seed = {
-  readonly metadata: { readonly as_of_date: string };
+  readonly metadata: { readonly as_of_date: string; readonly timezone: string };
   readonly customers: readonly SeedCustomer[];
   readonly invoices: readonly SeedInvoice[];
   readonly payments: readonly SeedPayment[];
@@ -385,6 +386,25 @@ export async function seedDemoHistory(
     customers.set(record.customer_id, result.customerId);
     payments.set(record.payment_id, result.paymentId);
   }
+
+  // The save stamps each link event with the run time, but the pack's links happened on the
+  // payment date, so the seed dates them at noon in the pack's time zone. `audit_event` is
+  // append-only (decision log: audit events are never edited), so its rows keep the run time.
+  const linkedAt = sql`(${payment.paymentDate} + time '12:00') at time zone ${seed.metadata.timezone}`;
+
+  await withTransaction(tenant, (tx) =>
+    tx
+      .update(allocationEvent)
+      .set({ occurredAt: linkedAt })
+      .from(payment)
+      .where(
+        and(
+          eq(payment.id, allocationEvent.paymentId),
+          inArray(payment.id, [...payments.values()]),
+          sql`${allocationEvent.occurredAt} is distinct from ${linkedAt}`
+        )
+      )
+  );
 
   return { plan, ids: { customers, invoices, payments } };
 }

@@ -184,6 +184,15 @@ describe("the demo seed command", () => {
       "select reporting_date::text from tenant_settings"
     );
     expect(date).toEqual([{ reporting_date: "2026-10-27" }]);
+
+    // History reads as the pack's past: each link event at noon, Singapore time, of its payment date.
+    const { rows: events } = await client.query<{ off: number; late: number }>(
+      `select count(*) filter (where e.occurred_at is distinct from
+                (p.payment_date + time '12:00') at time zone 'Asia/Singapore')::int as off,
+              count(*) filter (where e.occurred_at >= timestamptz '2026-10-28 00:00+08')::int as late
+       from allocation_event e join payment p on p.id = e.payment_id`
+    );
+    expect(events).toEqual([{ off: 0, late: 0 }]);
   }, 180000);
 
   it("changes no row and no setting on a second run", async () => {
