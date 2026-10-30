@@ -14,7 +14,8 @@ const PORT = Number(
  * That one runs the built image, where the devtools are excluded on purpose, so
  * the development panels cannot be seen there at all. This configuration starts
  * `next dev` against a disposable database and is the only place the
- * development branch of the mount is exercised in a browser.
+ * development branch of the mount is exercised in a browser. It also holds
+ * the pages of the modules that the main run's image does not compile.
  *
  * `webServer` is not used, for the same reason the ordinary configuration gives:
  * Playwright resolves its environment before global setup runs, so a database

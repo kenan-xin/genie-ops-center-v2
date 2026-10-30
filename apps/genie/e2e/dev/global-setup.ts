@@ -4,8 +4,11 @@ import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { SETUP_STEPS } from "@genie/core";
+import { createTenantContext, seedRoles, SETUP_STEPS } from "@genie/core";
+import { silentLogger } from "@genie/core/logging";
+import { enableModules, insertUser } from "@genie/core/testing";
 
+import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
@@ -31,6 +34,9 @@ const COMPOSE_FILE = resolve(
   "../../../../deploy/stack/compose.dev-e2e.yaml"
 );
 
+/** `apps/genie`, where the seed command and `next dev` run from. */
+const APP_ROOT = resolve(import.meta.dirname, "../..");
+
 export const COMPOSE = [
   "compose",
   "-p",
@@ -52,6 +58,14 @@ export const DEV_DB_PORT = Number(
 export const DEV_PORT = Number(
   process.env.GENIE_DEV_PORT ?? scopedPort(BASE_PORTS.devApp)
 );
+
+/** The demo account the seeded pages are read as (R-59). */
+export const DEMO_ACCOUNT_EMAIL = "e2e.demo@example.invalid";
+
+const databaseUrl = () =>
+  `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`;
+
+const publicUrl = () => `http://127.0.0.1:${DEV_PORT}`;
 
 /** Where the server's process id is left, so teardown can stop it. */
 export const PID_FILE = resolve(import.meta.dirname, ".dev-server.pid");
@@ -75,6 +89,68 @@ async function seedTestSetup(): Promise<void> {
     // (R-51a), so the two rows `markSetupDone` writes must exist too.
     `insert into setup_step (step, state) values ${steps} on conflict (step) do update set state = 'done', detail = null, updated_at = now(); insert into tenant_settings default values on conflict do nothing; insert into tenant_branding (company_name, product_name, default_locale, default_time_zone) values ('E2E', 'Genie', 'en', 'UTC') on conflict do nothing`,
   ]);
+}
+
+/**
+ * The setup stand-in's `seed` and `roles` steps, then the seed command twice on this disposable
+ * database (P17). The command refuses unless the module is on and its roles exist, so the module
+ * is enabled first and its default roles seeded after it, as `genie-ops setup` orders them. A
+ * second run must write nothing, which is the command's idempotency proof.
+ */
+async function seedDemo(): Promise<void> {
+  const context = createTenantContext(
+    { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },
+    silentLogger(),
+    selectedModuleIds,
+    undefined,
+    "core"
+  );
+
+  try {
+    await enableModules(context, selectedModuleIds);
+    await seedRoles(context, selectedModules);
+    await insertUser(context, {
+      email: DEMO_ACCOUNT_EMAIL,
+      name: "E2E Demo",
+      emailVerified: true,
+    });
+  } finally {
+    await context.db.$client.end();
+  }
+
+  // Only what the command documents, beside PATH so `node` resolves: never the test's other env.
+  // `NODE_ENV` is the one value Next's global types make required; the command never reads it.
+  const env = {
+    DATABASE_URL: databaseUrl(),
+    DEMO_ACCOUNT_EMAIL,
+    NODE_ENV: process.env.NODE_ENV ?? "development",
+    PATH: process.env.PATH ?? "",
+  };
+
+  const runSeed = async (): Promise<string> => {
+    const { stdout } = await run("node", ["testing/seed-demo.ts"], {
+      cwd: APP_ROOT,
+      env,
+    });
+
+    return stdout.trimEnd();
+  };
+
+  const first = await runSeed();
+
+  console.log(`Demo seed run 1\n${first}`);
+
+  if (!first.endsWith("Written.")) {
+    throw new Error(`The first demo seed run did not write.\n${first}`);
+  }
+
+  const second = await runSeed();
+
+  console.log(`Demo seed run 2\n${second}`);
+
+  if (!second.endsWith("Already seeded: nothing to write.")) {
+    throw new Error(`The second demo seed run wrote again.\n${second}`);
+  }
 }
 
 async function isReady(url: string): Promise<boolean> {
@@ -157,8 +233,6 @@ export default async function globalSetup(): Promise<void> {
     env: { ...process.env, GENIE_DEV_DB_PORT: String(DEV_DB_PORT) },
   });
 
-  const appRoot = resolve(import.meta.dirname, "../..");
-
   // `--hostname 127.0.0.1` is load-bearing, not tidiness. Next blocks its
   // development-only resources, `/_next/hmr` included, unless the request's
   // origin is one it considers its own, and its allowlist carries `localhost`
@@ -173,15 +247,15 @@ export default async function globalSetup(): Promise<void> {
   // the mount is the whole subject of these specs. NODE_ENV is set by `next
   // dev` itself; setting it here would be the test arranging its own result.
   const child = spawn(
-    resolve(appRoot, "node_modules/.bin/next"),
+    resolve(APP_ROOT, "node_modules/.bin/next"),
     ["dev", "--hostname", "127.0.0.1", "--port", String(DEV_PORT)],
     {
-      cwd: appRoot,
+      cwd: APP_ROOT,
       env: {
         ...process.env,
         ...TEST_AUTH_ENV,
-        DATABASE_URL: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
-        PUBLIC_URL: `http://127.0.0.1:${DEV_PORT}`,
+        DATABASE_URL: databaseUrl(),
+        PUBLIC_URL: publicUrl(),
       },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
@@ -212,6 +286,7 @@ export default async function globalSetup(): Promise<void> {
   }
 
   await seedTestSetup();
+  await seedDemo();
 }
 
 /**
