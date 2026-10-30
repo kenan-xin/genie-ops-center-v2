@@ -5,6 +5,7 @@ import {
   handleAgentChat,
   type ModuleRequestContext,
   principalFor,
+  readAuditPage,
   readOwnSession,
   registerModuleRuntime,
 } from "@genie/core";
@@ -43,6 +44,26 @@ const WHAT_CAN_YOU_DO = [
   'records = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "records"}]}, value: "records"}]})',
 ].join("\n");
 
+const RECORDS = "placeholder.records";
+
+/** S1: a tenant-wide reader asks for the count (recordings `s1-*`). */
+const S1_QUESTION = "How many placeholder records are there?";
+
+const S1_ANSWER = [
+  "root = Answer([intro, records])",
+  'intro = Paragraph("There are 3 placeholder records as of 2026-10-27.")',
+  'records = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "records"}]}, value: "records"}]})',
+].join("\n");
+
+/** S3: a person with `core:ask:use` only names the dataset (recordings `s3-*`). */
+const S3_QUESTION =
+  "How many placeholder records are there? Read placeholder.records.";
+
+const S3_ANSWER = [
+  "root = Answer([refusal])",
+  'refusal = Paragraph("I cannot answer this: you cannot read the placeholder records.")',
+].join("\n");
+
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
   await markSetupDone(deployment.context);
@@ -63,11 +84,10 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-async function reader(): Promise<ModuleRequestContext> {
-  const { userId } = await insertPersonWith(deployment.context, [
-    "core:ask:use",
-    "placeholder:read",
-  ]);
+async function reader(
+  permissions: readonly string[] = ["core:ask:use", "placeholder:read"]
+): Promise<ModuleRequestContext> {
+  const { userId } = await insertPersonWith(deployment.context, permissions);
 
   const tenant = deployment.context;
 
@@ -94,6 +114,46 @@ async function ask(ctx: ModuleRequestContext, payload: JsonValue) {
   return readAgentReply(
     await handleAgentChat(ctx, agentRequest(payload), hooks)
   );
+}
+
+/** The stored answer's tool and text parts in order, without the step boundaries. */
+async function storedAnswer(ctx: ModuleRequestContext, sessionId: string) {
+  const { messages } = await readOwnSession(ctx, sessionId);
+
+  return messages.at(-1)?.parts.filter(({ type }) => type !== "step-start");
+}
+
+/** The person's agent tool rows, newest first, read by an auditor through the audit reader. */
+async function toolRows(actorId: string) {
+  const { userId } = await insertPersonWith(deployment.context, [
+    "core:audit:read",
+  ]);
+
+  const page = await readAuditPage({
+    tenant: deployment.context,
+    caller: principalFor({
+      tenant: deployment.context,
+      modules: [placeholderModule],
+      userId,
+      authenticated: true,
+    }),
+    modules: [placeholderModule],
+    filters: {
+      query: "",
+      actorId,
+      action: "core:agent_tool_called",
+      targetType: "all",
+      range: "custom",
+      from: null,
+      to: null,
+      operatorOnly: false,
+    },
+    cursor: null,
+    limit: 50,
+    includeFacets: false,
+  });
+
+  return page.events;
 }
 
 function textOf(stored: AgentMessage): string {
@@ -151,5 +211,75 @@ describe("the agent route on the placeholder", () => {
       model: "anthropic/claude-opus-5.5",
     });
     expect(errors).toEqual([]);
+  });
+
+  it("answers a reader's count through list-datasets and query-dataset, stores both results, and audits both calls as the reader", async () => {
+    const ctx = await reader();
+
+    const sessionId = randomUUID();
+
+    await ask(ctx, { sessionId, message: message(S1_QUESTION) });
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await storedAnswer(ctx, sessionId)).toMatchObject([
+      {
+        type: "tool-list-datasets",
+        state: "output-available",
+        output: {
+          datasets: expect.arrayContaining([
+            expect.objectContaining({ name: RECORDS }),
+          ]),
+        },
+      },
+      {
+        type: "tool-query-dataset",
+        state: "output-available",
+        output: { dataset: RECORDS, rows: [{ records: 3 }] },
+      },
+      { type: "text", text: S1_ANSWER },
+    ]);
+    expect(await toolRows(ctx.caller.userId)).toMatchObject([
+      {
+        actor: { id: ctx.caller.userId },
+        metadata: { sessionId, tool: "query-dataset", outcome: "answered" },
+      },
+      {
+        actor: { id: ctx.caller.userId },
+        metadata: { sessionId, tool: "list-datasets", outcome: "answered" },
+      },
+    ]);
+  });
+
+  it("refuses query-dataset inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden", async () => {
+    const ctx = await reader(["core:ask:use"]);
+
+    const { userId } = ctx.caller;
+
+    const sessionId = randomUUID();
+
+    await ask(ctx, { sessionId, message: message(S3_QUESTION) });
+
+    expect(errors).toEqual([]);
+    expect(await storedAnswer(ctx, sessionId)).toMatchObject([
+      {
+        type: "tool-query-dataset",
+        state: "output-error",
+        errorText: "You may not do that.",
+      },
+      { type: "text", text: S3_ANSWER },
+    ]);
+    expect(await toolRows(userId)).toMatchObject([
+      {
+        actor: { id: userId },
+        metadata: {
+          sessionId,
+          tool: "query-dataset",
+          dataset: RECORDS,
+          rowCount: 0,
+          outcome: "forbidden",
+        },
+      },
+    ]);
   });
 });
