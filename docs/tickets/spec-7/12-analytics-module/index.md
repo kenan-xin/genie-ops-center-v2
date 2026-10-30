@@ -17,6 +17,7 @@ Depends on: [S7-04](../04-chart-gate-and-component/index.md) to start, and [S7-1
 - The Dashboards list and dashboard page, editing by hand, dashboard filters, the 10-second refresh, Undo, the chart gate on every save.
 - The chat panel and the dashboard tools through the `agent-tools` interface.
 - The Receivables overview starter as a step of the S7-07 seed script, with its test.
+- Add `analytics` to the include lists of `customers/genie-demo/deploy/` and `customers/genie-dev/deploy/` (`modules.txt` and `tenant.yaml`). S7-07 added `invoices` only, because the module did not exist yet.
 
 ## Acceptance
 

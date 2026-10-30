@@ -1,7 +1,8 @@
 # yaml-language-server: $schema=../../../deploy/schemas/tenant.schema.json
 # Every field here is read by the generator or by `genie-ops setup`. Branding
 # lives in branding.seed.json, and the hosting mode lives in the runbook (DEC-35).
-modules: []
+modules:
+  - "invoices"
 onboarding_mode: "invite"
 local_accounts: false
 genie_studio_url: "https://dev-genie.001.gs"
