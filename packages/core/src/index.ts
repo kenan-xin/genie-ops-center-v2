@@ -499,6 +499,9 @@ export {
   agentContract,
   type AgentRouter,
   createAgentRouter,
+  agentInstructions,
+  AGENT_LIMITS,
+  handleAgentChat,
 } from "./services/agent/index.ts";
 
 export type {

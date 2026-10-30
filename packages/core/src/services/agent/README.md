@@ -18,6 +18,14 @@ run under both. A new deployment's `Tenant administrator` holds the key; an exis
 broadened, so an administrator grants it through a role. The inbox links are the enabled
 `document-inbox` providers whose key the person holds.
 
+The route checks a request in this order and throws the catalogue error before the stream starts
+and before any write: not signed in (`unauthenticated`); no `core:ask:use` or the break-glass
+account (`forbidden`); AI not on (`ai-off`); a body over 64 KB (`request-too-large`); a body that
+is not one text part of 1 to 4,000 characters (`invalid-input`); another person's session id
+(`not-found`); a model the settings do not allow, the picked one for a new session or the stored
+one for an existing session (`model-not-allowed`). Only then does it create the session, store
+the message and stream the answer, which it stores when the stream ends.
+
 ## What must not go here
 
 Screens: the Ask page, the chat bubble and the answer renderer live in `features/agent/`. A

@@ -113,4 +113,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "agentAccess on the placeholder links the placeholder's inbox only for a holder of placeholder:use while the module is on",
     ],
   },
+  {
+    file: "testing/agent-route.integration.test.ts",
+    reason:
+      "Spec 7 R-40, R-41 and R-18: the agent route streams UI message parts from the recorded model, stores the exchange, and keeps a session's model",
+    cases: [
+      "the agent route on the placeholder streams the recorded answer as UI message chunks and stores the exchange under the question",
+      "the agent route on the placeholder sends a later message without a model id to the model the session started with",
+    ],
+  },
 ];

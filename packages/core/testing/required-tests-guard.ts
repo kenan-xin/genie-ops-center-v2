@@ -610,4 +610,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "agentAccess permits only a key holder who is not the break-glass account, and says whether AI is on",
     ],
   },
+  {
+    file: "testing/agent-route.integration.test.ts",
+    reason:
+      "Spec 7 R-40, R-41, R-42 and R-18: the agent route refuses a missing gate, an upload, an unbounded body, another person's session and a model the administrator did not allow, before it stores or sends anything",
+    cases: [
+      "the agent route refuses each bad request before the stream starts, and stores and sends nothing",
+    ],
+  },
 ];
