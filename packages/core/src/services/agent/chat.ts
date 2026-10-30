@@ -167,11 +167,19 @@ export async function handleAgentChat(
     instructions: agentInstructions({
       reportingDate: await reportingDate(ctx.tenant),
     }),
-    messages: await convertToModelMessages(history, { tools }),
+    // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
+    messages: await convertToModelMessages(history, {
+      tools,
+      ignoreIncompleteToolCalls: true,
+    }),
     tools,
     stopWhen: isStepCount(AGENT_LIMITS.steps),
     maxRetries: 0,
-    abortSignal: AbortSignal.timeout(AGENT_LIMITS.turnMs),
+    // A client disconnect stops the model call too; `onEnd` still stores what streamed.
+    abortSignal: AbortSignal.any([
+      request.signal,
+      AbortSignal.timeout(AGENT_LIMITS.turnMs),
+    ]),
   });
 
   return createUIMessageStreamResponse({

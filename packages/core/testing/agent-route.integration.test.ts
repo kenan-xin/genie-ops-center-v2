@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppError } from "../src/lib/errors/index.ts";
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import {
+  appendMessage,
   createOwnSession,
   handleAgentChat,
 } from "../src/services/agent/index.ts";
@@ -17,12 +15,14 @@ import {
   storeIntegrationKey,
 } from "../src/services/integrations/keys.ts";
 import {
+  CORE_MODEL_RECORDINGS,
   type DisposableDeployment,
   type JsonValue,
   agentRequest,
   insertPersonWith,
   insertUser,
   markSetupDone,
+  readAgentReply,
   startDisposableDeployment,
   useRecordedModel,
   writeModelConnection,
@@ -45,11 +45,8 @@ beforeAll(async () => {
     document: "anthropic/claude-opus-5.5",
     reportingDate: "2026-10-27",
   });
-  // An empty folder: any model request fails, and `sent` still records it.
-  recorded = useRecordedModel(
-    deployment.context,
-    mkdtempSync(join(tmpdir(), "agent-route-"))
-  );
+  // No recording answers a refused request, and `sent` still records it.
+  recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
 }, 120000);
 
 afterAll(async () => {
@@ -256,5 +253,52 @@ describe("the agent route", () => {
 
     expect(messages.rowCount).toBe(0);
     expect(recorded.sent).toEqual([]);
+  });
+
+  it("answers the next message after a turn stored a tool call with no result", async () => {
+    const ctx = await asker();
+
+    const sessionId = randomUUID();
+
+    await createOwnSession(ctx, {
+      id: sessionId,
+      title: "Records",
+      modelId: "openai/gpt-6.1-terra",
+    });
+    await appendMessage(ctx, sessionId, {
+      role: "user",
+      parts: [{ type: "text", text: "Which datasets can I read?" }],
+    });
+    // What a turn cancelled while its tool ran stores: the call, never its result. The recording
+    // `agent-after-cancelled-tool` answers only a history without that call.
+    await appendMessage(ctx, sessionId, {
+      id: randomUUID(),
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-list-datasets",
+          toolCallId: "call-cancelled",
+          state: "input-available",
+          input: {},
+        },
+      ],
+    });
+
+    const errors: unknown[] = [];
+
+    const { message } = await readAgentReply(
+      await handleAgentChat(
+        ctx,
+        agentRequest(
+          body({ sessionId }, [{ type: "text", text: "Say hello." }])
+        ),
+        { logError: (cause) => errors.push(cause) }
+      )
+    );
+
+    expect(errors).toEqual([]);
+    expect(message?.parts).toContainEqual(
+      expect.objectContaining({ type: "text", text: "Hello!" })
+    );
   });
 });
