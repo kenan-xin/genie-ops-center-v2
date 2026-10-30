@@ -202,9 +202,9 @@ describe("the model factory against a real database", () => {
       [{ task: "chat" }, "Hello!"],
       [
         { task: "chat", modelId: DOCUMENT_DEFAULT },
-        "Hello from the other model.",
+        "Hello! How can I help you today?",
       ],
-      [{ task: "document-reading" }, "Hello from the other model."],
+      [{ task: "document-reading" }, "Hello! How can I help you today?"],
     ] as const;
 
     const texts = await Promise.all(

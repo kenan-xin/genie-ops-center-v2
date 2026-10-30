@@ -5,31 +5,63 @@
     "url": "https://openrouter.ai/api/v1/chat/completions",
     "body": {
       "model": "anthropic/claude-opus-5.5",
-      "messages": [{ "role": "user", "content": "Say hello." }],
-      "provider": { "data_collection": "deny" }
+      "messages": [
+        {
+          "role": "user",
+          "content": "Say hello."
+        }
+      ],
+      "provider": {
+        "data_collection": "deny"
+      }
     }
   },
   "response": {
     "status": 200,
     "body": {
-      "id": "gen-recorded-other-model",
+      "id": "gen-1793369879-RXaIi3B3gk19i0xedRGY",
       "object": "chat.completion",
-      "created": 1761696000,
+      "created": 1793369879,
       "model": "anthropic/claude-opus-5.5",
+      "provider": "Claude Platform on AWS",
+      "system_fingerprint": null,
+      "service_tier": "default",
       "choices": [
         {
           "index": 0,
+          "logprobs": null,
           "finish_reason": "stop",
+          "native_finish_reason": "end_turn",
           "message": {
             "role": "assistant",
-            "content": "Hello from the other model."
+            "content": "Hello! How can I help you today?",
+            "refusal": null,
+            "reasoning": null
           }
         }
       ],
       "usage": {
-        "prompt_tokens": 10,
-        "completion_tokens": 6,
-        "total_tokens": 16
+        "prompt_tokens": 13,
+        "completion_tokens": 13,
+        "total_tokens": 26,
+        "cost": 0.000312,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.000312,
+          "upstream_inference_prompt_cost": 0.000052,
+          "upstream_inference_completions_cost": 0.00026
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
       }
     }
   }

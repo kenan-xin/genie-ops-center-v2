@@ -24,9 +24,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1793277871-vGInxcg5XZGZYPMy3xwa",
+        "id": "gen-1793369877-9JDsFsVaYDcIVt5bgyA1",
         "object": "chat.completion.chunk",
-        "created": 1793277871,
+        "created": 1793369877,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -42,9 +42,9 @@
         ]
       },
       {
-        "id": "gen-1793277871-vGInxcg5XZGZYPMy3xwa",
+        "id": "gen-1793369877-9JDsFsVaYDcIVt5bgyA1",
         "object": "chat.completion.chunk",
-        "created": 1793277871,
+        "created": 1793369877,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -60,9 +60,9 @@
         ]
       },
       {
-        "id": "gen-1793277871-vGInxcg5XZGZYPMy3xwa",
+        "id": "gen-1793369877-9JDsFsVaYDcIVt5bgyA1",
         "object": "chat.completion.chunk",
-        "created": 1793277871,
+        "created": 1793369877,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -78,9 +78,9 @@
         ]
       },
       {
-        "id": "gen-1793277871-vGInxcg5XZGZYPMy3xwa",
+        "id": "gen-1793369877-9JDsFsVaYDcIVt5bgyA1",
         "object": "chat.completion.chunk",
-        "created": 1793277871,
+        "created": 1793369877,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
