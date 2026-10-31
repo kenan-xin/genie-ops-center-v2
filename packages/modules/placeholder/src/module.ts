@@ -246,7 +246,16 @@ export const placeholderModule = {
       path: home.path,
       permission: home.requiredPermission,
     }),
-    capability("agent-tools", { tools: [countRecordsTool] }),
+    // The rule proves the agent-instructions seam under a key that no recorded person holds.
+    capability("agent-tools", {
+      tools: [countRecordsTool],
+      instructions: {
+        permission: "placeholder:admin",
+        lines: [
+          "Placeholder records are fictional test data. Say so when an answer uses them.",
+        ],
+      },
+    }),
   ],
 
   // The module's three subscriptions to its own event: fast, durable and serialized (R-61).

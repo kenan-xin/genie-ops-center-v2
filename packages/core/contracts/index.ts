@@ -99,7 +99,20 @@ export function defineAgentTool<TInput>(tool: AgentTool<TInput>): AnyAgentTool {
   return tool;
 }
 
-export type AgentToolsProvider = { readonly tools: readonly AnyAgentTool[] };
+/**
+ * A module's rules about its own records for the agent (R-44, R-46), one rule per line. Core adds
+ * them to the system prompt, after its own rules, for a person who holds `permission` while the
+ * module is on, so a person who cannot read the records never gets rules about them.
+ */
+export type AgentInstructions = {
+  readonly permission: PermissionKey;
+  readonly lines: readonly string[];
+};
+
+export type AgentToolsProvider = {
+  readonly tools: readonly AnyAgentTool[];
+  readonly instructions?: AgentInstructions;
+};
 
 /** Where a module takes documents; Ask and the bubble link to it for a holder of the key (R-42). */
 export type DocumentInbox = {

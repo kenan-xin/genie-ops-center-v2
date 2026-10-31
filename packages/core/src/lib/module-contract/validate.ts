@@ -718,8 +718,8 @@ function transformationProblems(
 
 /**
  * The capability rules. One bad tool name makes the model provider refuse every chat request, and
- * a module tool must not shadow a core tool (R-43). An inbox link checks one of the module's own
- * keys and stays inside the application (R-42).
+ * a module tool must not shadow a core tool (R-43). Agent instructions and an inbox link check one
+ * of the module's own keys, and an inbox link stays inside the application (R-42).
  */
 function capabilityProblems(module: Module): string[] {
   const id = module.identity.id;
@@ -745,6 +745,29 @@ function capabilityProblems(module: Module): string[] {
       }
 
       continue;
+    }
+
+    const { instructions } = provision.implementation;
+
+    if (instructions !== undefined) {
+      if (!declared.has(instructions.permission)) {
+        problems.push(
+          `Agent instructions name permission "${instructions.permission}", which the module does not declare.`
+        );
+      }
+
+      if (instructions.lines.length === 0) {
+        problems.push("Agent instructions hold no line.");
+      }
+
+      // One rule per prompt line: a blank or broken line would merge into the catalog's blank line.
+      instructions.lines.forEach((line, index) => {
+        if (line.trim() === "" || /[\r\n]/.test(line)) {
+          problems.push(
+            `Agent instructions line ${index + 1} is blank or holds a line break.`
+          );
+        }
+      });
     }
 
     for (const { name, description } of provision.implementation.tools) {

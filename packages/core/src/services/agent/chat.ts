@@ -19,6 +19,7 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
 import { agentAccess } from "./access.ts";
+import { moduleInstructionLines } from "./instructions.ts";
 import { agentInstructions } from "./prompt.ts";
 import {
   appendMessage,
@@ -166,6 +167,7 @@ export async function handleAgentChat(
     model,
     instructions: agentInstructions({
       reportingDate: await reportingDate(ctx.tenant),
+      moduleLines: await moduleInstructionLines(ctx),
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
     messages: await convertToModelMessages(history, {

@@ -502,6 +502,7 @@ export {
   type AgentRouter,
   createAgentRouter,
   agentInstructions,
+  moduleInstructionLines,
   AGENT_LIMITS,
   handleAgentChat,
 } from "./services/agent/index.ts";

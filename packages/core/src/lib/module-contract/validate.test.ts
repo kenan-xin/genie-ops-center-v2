@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  type AgentInstructions,
   capability,
   defineAgentTool,
   type DocumentInbox,
@@ -1270,12 +1271,14 @@ describe("validateModule", () => {
     }
   });
 
-  it("refuses an agent tool or an inbox the platform cannot use", () => {
+  it("refuses an agent tool, agent instructions or an inbox the platform cannot use", () => {
     const longest = `fixture-${"a".repeat(56)}`;
 
     expect(
       validateModule(withTools(["fixture-count-records", longest]))
     ).toEqual([]);
+
+    expect(validateModule(withInstructions({}))).toEqual([]);
 
     expect(validateModule(withInbox({ permission: "fixture:use" }))).toEqual(
       []
@@ -1305,6 +1308,19 @@ describe("validateModule", () => {
       [
         withTools(["fixture-count"], " "),
         'Agent tool "fixture-count" has no description.',
+      ],
+      [
+        withInstructions({ permission: "other:read" }),
+        'Agent instructions name permission "other:read", which the module does not declare.',
+      ],
+      [withInstructions({ lines: [] }), "Agent instructions hold no line."],
+      [
+        withInstructions({ lines: ["Rule one.", " "] }),
+        "Agent instructions line 2 is blank or holds a line break.",
+      ],
+      [
+        withInstructions({ lines: ["Rule one.\nRule two."] }),
+        "Agent instructions line 1 is blank or holds a line break.",
       ],
       [
         withInbox({ permission: "other:read" }),
@@ -1455,6 +1471,20 @@ function withTools(names: readonly string[], description = "Counts records.") {
   return {
     ...validModule,
     capabilities: [capability("agent-tools", { tools })],
+  };
+}
+
+/** The valid fixture providing no tool and agent instructions, with the given changes. */
+function withInstructions(change: Partial<AgentInstructions>) {
+  const instructions: AgentInstructions = {
+    permission: "fixture:read",
+    lines: ["Fixture records are test data."],
+    ...change,
+  };
+
+  return {
+    ...validModule,
+    capabilities: [capability("agent-tools", { tools: [], instructions })],
   };
 }
 

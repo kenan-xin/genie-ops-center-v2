@@ -95,11 +95,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-tools.integration.test.ts",
     reason:
-      "Spec 7 R-43, R-47 and AC-8 lines 2 and 3: the agent tools read as the asker, and each call writes one audit row without the returned values",
+      "Spec 7 R-43, R-47 and AC-8 lines 2 and 3: the agent tools read as the asker, and each call writes one audit row without the returned values. S7-11: a module's agent rules reach only a holder of its key while it is on",
     cases: [
       "the agent tools on the placeholder answers only the rows inside the asker's scope, from a core and a module tool",
       "the agent tools on the placeholder refuses a person without placeholder:read on every tool",
       "the agent tools on the placeholder offers the placeholder's tool and dataset only while the module is on",
+      "the agent tools on the placeholder gives the placeholder's agent rule only to a holder of placeholder:admin while the module is on",
       "the agent tools on the placeholder writes one audit row per call with the query and row count, and no returned value",
       "the agent tools on the placeholder writes a refused call's row with outcome forbidden and row count 0",
       "the agent tools on the placeholder answers an unknown field with the dataset's fix hint and records dataset-query-invalid",

@@ -1,6 +1,7 @@
 import {
   agentToolSet,
   createTenantContext,
+  moduleInstructionLines,
   principalFor,
   readAuditPage,
   registerModuleRuntime,
@@ -254,6 +255,35 @@ describe("the agent tools on the placeholder", () => {
 
       expect(off.tools).not.toContain("placeholder-count-records");
       expect(off.datasets).not.toContain(RECORDS);
+    } finally {
+      await tenant.db.$client.end();
+      await enableModules(deployment.context, ["placeholder"]);
+    }
+  });
+
+  it("gives the placeholder's agent rule only to a holder of placeholder:admin while the module is on", async () => {
+    const { userId: holder } = await insertPersonWith(deployment.context, [
+      "core:ask:use",
+      "placeholder:admin",
+    ]);
+
+    expect(await moduleInstructionLines(contextFor(holder))).toEqual([
+      "Placeholder records are fictional test data. Say so when an answer uses them.",
+    ]);
+    expect(await moduleInstructionLines(contextFor(await reader()))).toEqual(
+      []
+    );
+
+    const tenant = freshTenant();
+
+    try {
+      await tenant.db.$client.query(
+        "update tenant_module set enabled = false where module_id = 'placeholder'"
+      );
+
+      expect(await moduleInstructionLines(contextFor(holder, tenant))).toEqual(
+        []
+      );
     } finally {
       await tenant.db.$client.end();
       await enableModules(deployment.context, ["placeholder"]);
