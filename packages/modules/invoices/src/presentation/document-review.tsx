@@ -131,6 +131,9 @@ export function DocumentReview(props: {
 
   const discard = useMutation({
     mutationFn: () => invoices.discardDocument({ id }),
+    // Exact: the list only, so the deleted document's own review is not fetched again.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY, exact: true }),
   });
 
   const title = titleOf(kind);
