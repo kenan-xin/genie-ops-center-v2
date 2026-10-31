@@ -3,4 +3,4 @@
  * none of them pulls the router, the schema or their server dependencies into a browser.
  */
 
-export { DashboardListPage } from "./module-pages.tsx";
+export { DashboardListPage, DashboardPage } from "./module-pages.tsx";
