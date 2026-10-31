@@ -45,7 +45,7 @@ The module provides the `agent-tools` capability. Each tool runs as the person w
 | `analytics-create-dashboard` | `analytics:write` | Creates an empty dashboard with a name unique among the person's dashboards. |
 | `analytics-change-dashboard` | `analytics:write` | Saves one change of add-panel, change-panel, remove-panel, move-panel, rename or set-filters steps. |
 
-The two write tools are marked `writes: true`. A change goes through the same store path as a hand save: every added or changed panel passes the chart gate, a refused step saves nothing, and the save adds an Undo entry that Undo on the dashboard restores (Spec 7 R-46, R-49). No tool output holds a clock value or data rows, because a recorded follow-up request holds the output.
+The two write tools are marked `writes: true`. A change goes through the same store path as a hand save: every added or changed panel passes the chart gate, a refused step saves nothing, and the save adds an Undo entry that Undo on the dashboard restores (Spec 7 R-46, R-49). A create has no earlier version to restore, so it adds no Undo entry: Delete on the Dashboards list is the inverse of a chat create, and it removes the new dashboard for good (R-46). No tool output holds a clock value or data rows, because a recorded follow-up request holds the output.
 
 The module's four agent rules reach a holder of `analytics:write` only. They say that the tools touch only the person's own dashboards, that a change runs only on the person's own request and has Undo, that a panel takes the config of a Chart in an answer and passes the chart check, and that the dashboard filters apply to every panel and are not repeated in a panel query.
 
