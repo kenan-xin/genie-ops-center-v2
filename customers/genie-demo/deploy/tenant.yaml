@@ -4,6 +4,7 @@
 modules:
   - "invoices"
   - "analytics"
+  - "slides"
 onboarding_mode: "invite"
 local_accounts: false
 first_administrators:

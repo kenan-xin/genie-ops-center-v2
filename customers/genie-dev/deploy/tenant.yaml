@@ -4,6 +4,7 @@
 modules:
   - "invoices"
   - "analytics"
+  - "slides"
 onboarding_mode: "invite"
 local_accounts: false
 genie_studio_url: "https://dev-genie.001.gs"

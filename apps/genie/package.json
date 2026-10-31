@@ -30,6 +30,7 @@
     "@genie/module-analytics": "workspace:*",
     "@genie/module-invoices": "workspace:*",
     "@genie/module-placeholder": "workspace:*",
+    "@genie/module-slides": "workspace:*",
     "@genie/ui": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
