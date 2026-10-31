@@ -241,6 +241,8 @@ describe("the analytics dashboard procedures", () => {
     ["undoDashboard", ["analytics:use", "analytics:read"]],
     ["deleteDashboard", ["analytics:use", "analytics:read"]],
     ["readDashboard", ["analytics:use", "analytics:write"]],
+    ["panelData", ["analytics:use", "analytics:write"]],
+    ["filterValues", ["analytics:use", "analytics:write"]],
   ] as const)(
     "refuse %s to a person without its key",
     async (procedure, keys) => {

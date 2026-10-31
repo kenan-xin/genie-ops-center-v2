@@ -59,6 +59,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
           "undoDashboard",
           "deleteDashboard",
           "readDashboard",
+          "panelData",
+          "filterValues",
         ].map((procedure) => `refuse ${procedure} to a person without its key`),
         "refuse a change on an older version and write nothing",
         "refuse a panel on a dataset this deployment lacks and write nothing",
