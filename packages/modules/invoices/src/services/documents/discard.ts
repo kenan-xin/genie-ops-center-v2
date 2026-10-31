@@ -17,7 +17,7 @@ const audit = moduleAudit("invoices");
 /**
  * Deletes a document with no saved record, its field origins and its file, in one transaction
  * (R-33, decision 7), so the same file uploads again as new. A document still being read is
- * refused, because its job would write to it. It needs a tenant-wide `invoices:write`.
+ * refused, because its job would write to it, unless its reading stalled. It needs a tenant-wide `invoices:write`.
  */
 export async function discardDocument(
   ctx: ModuleRequestContext,
@@ -28,7 +28,8 @@ export async function discardDocument(
   return withTransaction(ctx.tenant, async (tx) => {
     const document = await lockDocument(tx, id);
 
-    if (document.readingStatus === "reading") {
+    // A stalled reading shows as Could not read, the same as `retryReading` treats it.
+    if (document.readingStatus === "reading" && !document.readingStalled) {
       throw new AppError(INVOICE_ERRORS["document-not-read"]);
     }
 

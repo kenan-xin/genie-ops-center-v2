@@ -402,6 +402,47 @@ describe("review saves", () => {
     ).resolves.toMatchObject({ outcome: "uploaded" });
   });
 
+  it("a discard deletes a stalled reading, which the page shows as Could not read", async () => {
+    const { id: fileId } = await withTransaction(t(), (tx) =>
+      t().fileStorage.store(
+        {
+          fileName: "stalled.pdf",
+          mimeType: "application/pdf",
+          bytes: Buffer.from(`%PDF-1.7 ${randomUUID()}`),
+          uploadedByUserId: finance,
+        },
+        tx
+      )
+    );
+    const { id } = await insertDocument(t(), {
+      kind: null,
+      fileId,
+      fileName: "stalled.pdf",
+      readingStatus: "reading",
+      readingAttempts: 1,
+    });
+    await t().db.$client.query(
+      "update document set updated_at = now() - interval '1 day' where id = $1",
+      [id]
+    );
+
+    await expect(api().discardDocument({ id })).resolves.toEqual({
+      documentId: id,
+    });
+
+    const { rows } = await t().db.$client.query(
+      "select (select count(*)::int from document where id = $1) as documents, (select count(*)::int from file where id = $2) as files",
+      [id, fileId]
+    );
+    expect(rows[0]).toEqual({ documents: 0, files: 0 });
+    expect(await auditsOf(id)).toEqual([
+      {
+        action: "invoices:document-discarded",
+        metadata: { fileName: "stalled.pdf" },
+      },
+    ]);
+  });
+
   it.each([
     [
       "a type change waits for a save that holds the document and is refused",

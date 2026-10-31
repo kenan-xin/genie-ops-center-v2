@@ -14,6 +14,7 @@ import {
   payment,
   sourceDocument,
 } from "../../schema.ts";
+import { readingStalled } from "../reading/job.ts";
 
 /**
  * The fields of a document that must have passed the quote check before a payment links by
@@ -38,6 +39,7 @@ export async function lockDocument(tx: TenantTransaction, documentId: string) {
       readingOutcome: sourceDocument.readingOutcome,
       fileId: sourceDocument.fileId,
       fileName: sourceDocument.fileName,
+      readingStalled,
     })
     .from(sourceDocument)
     .where(eq(sourceDocument.id, documentId))

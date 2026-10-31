@@ -126,6 +126,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
           `refuses a type change or a discard of a saved document, or of one still being read: ${row}`
       ),
       "a discard removes the document, its origins and its file, is audited, and the same file uploads again as new",
+      "a discard deletes a stalled reading, which the page shows as Could not read",
       ...[
         "a type change waits for a save that holds the document and is refused",
         "a save waits for a type change to purchase-order and is refused",
