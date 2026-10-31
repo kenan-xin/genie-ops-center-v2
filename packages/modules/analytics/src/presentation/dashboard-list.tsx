@@ -35,11 +35,18 @@ const hrefOf = (id: string) => `/m/analytics/dashboards/${id}`;
 
 export type DashboardListProps = {
   readonly view: DashboardListView;
+  /**
+   * Opens a dashboard after Create. Core gives a module no client router, so the default loads
+   * the page as a document, like the settings screen's link to Modules.
+   */
+  readonly open?: (href: string) => void;
 };
+
+const openDocument = (href: string) => window.location.assign(href);
 
 /** The Dashboards list: the owner's own dashboards, with create and delete (R-48). */
 export function DashboardList(props: DashboardListProps) {
-  const { view } = props;
+  const { view, open = openDocument } = props;
   const analytics = useModuleClient(analyticsContract);
   const queryClient = useQueryClient();
   const nameId = useId();
@@ -60,10 +67,12 @@ export function DashboardList(props: DashboardListProps) {
   const create = useMutation({
     mutationFn: (dashboardName: string) =>
       analytics.createDashboard({ name: dashboardName }),
-    onSuccess: async () => {
+    // The next step is to add panels by chat beside the new dashboard, so open it.
+    onSuccess: (created) => {
       setCreating(false);
       setName("");
-      await queryClient.invalidateQueries({ queryKey: LIST_QUERY });
+      void queryClient.invalidateQueries({ queryKey: LIST_QUERY });
+      open(hrefOf(created.id));
     },
   });
 

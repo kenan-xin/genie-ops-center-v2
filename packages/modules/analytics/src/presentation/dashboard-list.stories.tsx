@@ -166,6 +166,45 @@ export const NameTaken: Story = {
   },
 };
 
+// The next step after Create is to add panels by chat beside the new dashboard, so it opens.
+export const CreateOpens: Story = {
+  name: "Create opens the dashboard",
+  args: { open: fn() },
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardList);
+    createDashboard.mockResolvedValue({
+      id: "dashboard-9",
+      name: "Cash in",
+      version: 1,
+      canUndo: false,
+      filters: { dateRange: { preset: "all" }, field: null },
+      panels: [],
+    });
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "New dashboard" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New dashboard" })
+    );
+
+    await userEvent.type(
+      dialog.getByRole("textbox", { name: "Name" }),
+      "Cash in"
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Create" }));
+
+    await waitFor(() =>
+      expect(args.open).toHaveBeenCalledWith(
+        "/m/analytics/dashboards/dashboard-9"
+      )
+    );
+  },
+};
+
 // B4.2: Delete asks first, Cancel keeps the row, and Delete removes it.
 export const Delete: Story = {
   globals: desktop,
