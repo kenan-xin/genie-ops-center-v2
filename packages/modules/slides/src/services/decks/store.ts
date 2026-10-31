@@ -564,6 +564,57 @@ export async function addDeckImage(
   });
 }
 
+const PPTX_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+/**
+ * Stores a built export of the caller's own deck through `FileStorage`, uploaded by the caller,
+ * names it on the deck and removes the previous export, in one transaction under the row lock, so
+ * a deck holds one export file and two exports never leave an orphan (D7, `DEC-29`).
+ */
+export async function saveDeckExport(
+  ctx: ModuleRequestContext,
+  input: {
+    readonly id: string;
+    readonly fileName: string;
+    readonly bytes: Buffer;
+    readonly slides: number;
+  }
+): Promise<{ readonly fileId: string }> {
+  return withTransaction(ctx.tenant, async (tx) => {
+    const row = await lockOwnDeck(tx, ctx, input.id);
+
+    const { id: fileId } = await ctx.tenant.fileStorage.store(
+      {
+        fileName: input.fileName,
+        mimeType: PPTX_TYPE,
+        bytes: input.bytes,
+        uploadedByUserId: ctx.caller.userId,
+      },
+      tx
+    );
+
+    await tx
+      .update(deck)
+      .set({ exportFileId: fileId })
+      .where(eq(deck.id, row.id));
+
+    if (row.exportFileId !== null) {
+      await ctx.tenant.fileStorage.remove([row.exportFileId], tx);
+    }
+
+    await audit(
+      { tenant: ctx.tenant, caller: ctx.caller, tx },
+      "slides:deck-exported",
+      targetOf(row.id),
+      "Exported a deck to PowerPoint.",
+      { slides: input.slides }
+    );
+
+    return { fileId };
+  });
+}
+
 /** Deletes the caller's own deck with its image and export files, in one transaction (D6, D7). */
 export async function deleteDeck(
   ctx: ModuleRequestContext,

@@ -23,6 +23,9 @@ const refreshDeck = fn();
 
 const uploadDeckImage = fn();
 
+// The stub answers for the server's export, so the story never loads the builder (D8).
+const exportDeck = fn();
+
 /** The fixture deck's content hash, which every write names (R-53). */
 const HASH = "0".repeat(64);
 
@@ -49,6 +52,7 @@ function withQuery(Story: () => ReactNode) {
             undoDeck,
             refreshDeck,
             uploadDeckImage,
+            exportDeck,
           },
         }}
       >
@@ -103,6 +107,7 @@ function serve(page: DeckPageView) {
     .mockReset()
     .mockResolvedValue({ deck: page.deck, changedSlides: [] });
   uploadDeckImage.mockReset().mockResolvedValue({ fileId: "image-2" });
+  exportDeck.mockReset();
 }
 
 /** B6.7: the control at the centre of the viewport's hit test is the control itself. */
@@ -839,4 +844,51 @@ export const VanishedSlide: Story = {
     ).toBeVisible();
     await expect(title).toBeVisible();
   },
+};
+
+const EXPORT_FAILED = "The file could not be saved.";
+
+// B7.7: Export is off and reads "Exporting…" while it runs, with every other write off too, and a
+// refusal is one alert line. The success path navigates away, so B9.1 proves it end to end.
+const exportPlay: Story["play"] = async ({ canvas }) => {
+  const pending = Promise.withResolvers<never>();
+
+  exportDeck.mockReturnValue(pending.promise);
+
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Export to PowerPoint" })
+  );
+
+  await waitFor(() =>
+    expect(canvas.getByRole("button", { name: "Exporting…" })).toBeDisabled()
+  );
+  await expect(
+    canvas.getByRole("button", { name: "Add slide" })
+  ).toBeDisabled();
+  await expect(exportDeck).toHaveBeenCalledWith({ id: "deck-1" });
+
+  pending.reject(new Error(EXPORT_FAILED));
+
+  await expect(await canvas.findByRole("alert")).toHaveTextContent(
+    `The deck was not exported. ${EXPORT_FAILED}`
+  );
+  await expect(
+    canvas.getByRole("button", { name: "Export to PowerPoint" })
+  ).toBeEnabled();
+};
+
+export const ExportRefused: Story = {
+  name: "Export refused",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: exportPlay,
+};
+
+export const ExportRefusedOnPhone: Story = {
+  name: "Export refused on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: exportPlay,
 };

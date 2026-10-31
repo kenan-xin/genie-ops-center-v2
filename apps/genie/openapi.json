@@ -6901,6 +6901,46 @@
           }
         }
       }
+    },
+    "/slides/decks/{id}/export": {
+      "post": {
+        "operationId": "slides.exportDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "fileName"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

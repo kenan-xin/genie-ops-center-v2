@@ -135,6 +135,21 @@ export function useRefreshDeck(
   });
 }
 
+/** Writes the deck to PowerPoint on the server and answers its short-lived download link (D7). */
+export function useExportDeck(
+  deck: DeckView
+): UseMutationResult<
+  { readonly url: string; readonly fileName: string },
+  Error,
+  void
+> {
+  const slides = useModuleClient(slidesContract);
+
+  return useMutation({
+    mutationFn: () => slides.exportDeck({ id: deck.id }),
+  });
+}
+
 /** One PNG or JPEG for the deck's image elements, answered as the file id a slide names (D6). */
 export function useUploadDeckImage(
   deck: DeckView

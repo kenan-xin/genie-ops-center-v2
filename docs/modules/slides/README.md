@@ -45,6 +45,10 @@ Refresh data reads every figure, chart and table of the deck again through the c
 
 A deck draws with the tenant branding on each read, never a copy: the company name in the footer, the primary color for the title rule (`#2563eb` when the tenant set none), the font key mapped to its face name (Arial for a key outside the four the branding accepts), and the light logo. With no logo, the footer shows the company name only. The deck page links each image it shows under `slides:read` on the deck.
 
+## PowerPoint export
+
+Export to PowerPoint needs `slides:read`: a person who can open a deck can present and export it. The server builds the file with pptxgenjs from the same slide layout the screen uses, so each slide places the same boxes. A bar, line, area or donut chart becomes a native, editable PowerPoint chart; a figure is its value and title as text; a table is a PowerPoint table. Each data element keeps its source caption, and each data slide shows its figures date. A data element whose dataset the person can no longer read is the refusal line, with no figure. The file is saved through `FileStorage` with the person as uploader, named on `export_file_id`, and the previous export is removed in the same transaction. The answer is a short-lived download link under `slides:read` on the deck. Only a PNG or JPEG logo is placed in the footer; with an SVG logo the footer shows the company name only, because pptxgenjs cannot draw an SVG fallback on the server.
+
 ## Not built
 
 Shared decks, Word documents, freely positioned objects, edits by chat.

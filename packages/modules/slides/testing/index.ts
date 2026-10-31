@@ -6,6 +6,8 @@
 
 export { chartDataFixture, frozenElement, insertDeck } from "./factories.ts";
 
+export { readPptx } from "./pptx-reader.ts";
+
 // The store's create with slides, which only the chat tool (Task 8) calls, so the app's real-data
 // cases can reach it before that tool exists.
 export { createDeck } from "../src/services/decks/store.ts";

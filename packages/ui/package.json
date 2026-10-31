@@ -15,6 +15,7 @@
     "./typeset.css": "./src/theme/typeset.css",
     "./config-form-schema": "./src/parts/config-form-schema.ts",
     "./chart": "./src/parts/chart.tsx",
+    "./chart-data": "./src/parts/chart-data.ts",
     "./fonts.css": "./src/fonts/fonts.css",
     "./fonts/*": "./src/fonts/*"
   },

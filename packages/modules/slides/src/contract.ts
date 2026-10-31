@@ -229,6 +229,11 @@ export const slidesContract = {
     .route({ method: "POST", path: "/slides/decks/{id}/images" })
     .input(z.object({ id: deckId, file: z.file() }))
     .output(z.object({ fileId: z.string() })),
+  /** Writes the deck to PowerPoint with native charts through `FileStorage` (R-55, D7). */
+  exportDeck: oc
+    .route({ method: "POST", path: "/slides/decks/{id}/export" })
+    .input(z.object({ id: deckId }))
+    .output(z.object({ url: z.string(), fileName: z.string() })),
 };
 
 export type SlidesContract = typeof slidesContract;

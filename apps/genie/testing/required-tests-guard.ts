@@ -312,6 +312,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/slides-export.integration.test.ts",
+    reason:
+      "Spec 7 R-55 and D7: the PowerPoint export writes native chart parts with the frozen figures, their date and source, and the tenant branding, saves one export file per deck owned by the caller through FileStorage, refuses another person's deck, and writes the refusal line for a dataset the person can no longer read (D15)",
+    cases: [
+      "writes a three-slide deck with one native bar chart, the KPI and table as text, and the date and source",
+      "replaces the previous export, owned by the caller, with one audit row per export",
+      "answers not-found for another person's deck and stores no file, and refuses a person without slides:read",
+      "writes the refusal line in place of a KPI whose dataset the person can no longer read",
+      "uses the tenant color, logo and company name, and writes no media part without a logo",
+    ].map((name) => `the slides PowerPoint export ${name}`),
+  },
+  {
     file: "testing/analytics-chat.integration.test.ts",
     reason:
       "Spec 7 R-46, R-47 and R-49: a chat change beside a dashboard saves through the store with one Undo entry and one agent audit row, Undo restores the dashboard, and the replayed follow-up request proves the tool output holds no clock value",

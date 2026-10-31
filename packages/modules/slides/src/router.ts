@@ -13,6 +13,7 @@ import {
   refreshDeck,
   undoDeck,
 } from "./services/decks/store.ts";
+import { exportDeck } from "./services/export/export-deck.ts";
 
 const os = implementModule("slides", slidesContract);
 
@@ -74,6 +75,13 @@ export const slidesRouter = os.router({
     await assertCanWrite(context.caller);
 
     return addDeckImage(context, input);
+  }),
+
+  // A person who can open a deck can present and export it (D7).
+  exportDeck: os.exportDeck.handler(async ({ context, input }) => {
+    await assertCanRead(context.caller);
+
+    return exportDeck(context, input.id);
   }),
 });
 

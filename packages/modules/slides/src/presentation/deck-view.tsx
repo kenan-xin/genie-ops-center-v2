@@ -54,6 +54,7 @@ import { figuresDate } from "./slide-layout.ts";
 import {
   useDeck,
   useDeckChange,
+  useExportDeck,
   useRefreshDeck,
   useUndoDeck,
   useUploadDeckImage,
@@ -391,6 +392,7 @@ export function DeckView(props: DeckViewProps) {
   const undo = useUndoDeck(deck);
   const refresh = useRefreshDeck(deck);
   const upload = useUploadDeckImage(deck);
+  const exporting = useExportDeck(deck);
   const [shown, setShown] = useState(0);
   const [presenting, setPresenting] = useState(false);
   const [editing, setEditing] = useState<EditTarget | null>(null);
@@ -408,7 +410,11 @@ export function DeckView(props: DeckViewProps) {
   >(null);
 
   // One write runs at a time: a second control must not send a hash the first one moved.
-  const busy = change.isPending || undo.isPending || refresh.isPending;
+  const busy =
+    change.isPending ||
+    undo.isPending ||
+    refresh.isPending ||
+    exporting.isPending;
 
   // A refetch may remove slides, so the shown index never points past the last one.
   const index = Math.min(shown, Math.max(deck.slides.length - 1, 0));
@@ -556,6 +562,14 @@ export function DeckView(props: DeckViewProps) {
     });
   }
 
+  function exportToPowerPoint(): void {
+    setFailure(null);
+    exporting.mutate(undefined, {
+      onSuccess: ({ url }) => window.location.assign(url),
+      onError: (error) => setFailure({ kind: "export", error }),
+    });
+  }
+
   function openRename(): void {
     setFailure(null);
     setRenaming({ title: deck.title, expectedHash: deck.contentHash });
@@ -679,6 +693,13 @@ export function DeckView(props: DeckViewProps) {
           onClick={() => setPresenting(true)}
         >
           Present
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={current === undefined || busy}
+          onClick={exportToPowerPoint}
+        >
+          {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
         </Button>
       </div>
       {pageRefusal}
