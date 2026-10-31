@@ -107,7 +107,11 @@ export function ReviewSaved(props: {
         </div>
       )}
       {feedback === null ? null : <p role="status">{feedback}</p>}
-      {failure === null ? null : <p role="alert">{failure}</p>}
+      {failure === null ? null : (
+        <p role="alert" className="text-sm text-destructive">
+          {failure}
+        </p>
+      )}
     </div>
   );
 }
