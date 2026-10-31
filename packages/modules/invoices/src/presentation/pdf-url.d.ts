@@ -1,5 +1,5 @@
-/** A PDF a story imports with `?url`, which the bundler serves and answers with its URL. */
-declare module "*.pdf?url" {
+/** A PDF a story imports with `?no-inline`, which the bundler serves as a file, as its URL. */
+declare module "*.pdf?no-inline" {
   const url: string;
   export default url;
 }
