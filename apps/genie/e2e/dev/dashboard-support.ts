@@ -7,22 +7,9 @@ import { ANALYTICS_CHAT_DASHBOARD } from "../../testing/analytics-chat.ts";
 import { ANALYTICS_PEOPLE, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
 /**
- * What the dashboard spec shares: the ledger lock, money in SGD, and the demo database's own rows.
+ * What the dashboard spec shares: the demo database's own rows.
  * The chat dashboard gets a fixed id so that the recorded model requests match on every run (D12).
  */
-
-/** The same lock and wait as S7-09's `dev-support.ts`; the payment changes the shared ledger. */
-export const LEDGER_LOCK = "invoices-ledger";
-
-export const LOCK_WAIT = 600_000;
-
-const MONEY = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "SGD",
-});
-
-/** SGD as a chart shows it: `SGD 195,200.00`. */
-export const sgd = (dollars: number) => MONEY.format(dollars);
 
 let tenantContext: TenantContext | undefined;
 

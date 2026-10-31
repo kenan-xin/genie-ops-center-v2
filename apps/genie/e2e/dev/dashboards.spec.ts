@@ -15,12 +15,10 @@ import {
 import {
   closeDashboardDatabase,
   customerIdOf,
-  LEDGER_LOCK,
-  LOCK_WAIT,
   removeTestPayments,
   resetChatDashboard,
-  sgd,
 } from "./dashboard-support.ts";
+import { LEDGER_LOCK, LOCK_WAIT, sgd } from "./dev-support.ts";
 import {
   ANALYTICS_PEOPLE,
   DEMO_ACCOUNT_EMAIL,
