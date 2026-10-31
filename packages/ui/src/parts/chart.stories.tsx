@@ -37,7 +37,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, "Chart series colors"), a Chart and a Table view, and a caption that names the dataset and the read time. No rows show the compact empty state. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.',
+          "The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, \"Chart series colors\"), a Chart and a Table view, and a caption that names the dataset and the read time. No rows show the compact empty state. A table whose `recordPaths` names a row's page links that row's first cell, and on a phone its card title, through `linkComponent`; a row without a page stays plain text. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.",
       },
     },
   },
@@ -371,6 +371,43 @@ export const TableDark: Story = {
   args: records,
   globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
   play: tablePlay,
+};
+
+// Row B has no page for this person, so it stays plain text and never a dead link. The label is
+// `x`, because the meta's `x` reaches every story and would take the first column.
+const linked = {
+  ...records,
+  x: { key: "label", label: "Label", type: "text" },
+  columns: records.columns.slice(1),
+  recordPaths: ["/placeholder/a", null],
+} as const satisfies ChartProps;
+
+export const TableRecordLinks: Story = {
+  args: linked,
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    const table = canvas.getByRole("table");
+
+    await expect(
+      within(table).getByRole("link", { name: "A" })
+    ).toHaveAttribute("href", "/placeholder/a");
+    await expect(within(table).queryByRole("link", { name: "B" })).toBeNull();
+    await expect(within(table).getByRole("cell", { name: "B" })).toBeVisible();
+  },
+};
+
+export const TableRecordLinksPhone: Story = {
+  args: linked,
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Records" });
+
+    await expect(within(list).getByRole("link", { name: "A" })).toHaveAttribute(
+      "href",
+      "/placeholder/a"
+    );
+    await expect(within(list).queryByRole("link", { name: "B" })).toBeNull();
+  },
 };
 
 const tableViewPlay: Story["play"] = async ({ canvas }) => {

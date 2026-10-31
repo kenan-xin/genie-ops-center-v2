@@ -15,6 +15,10 @@ the tool, the dataset, the input and the row count, never the returned values.
 The system prompt is core's rules, then the `instructions` lines of each enabled `agent-tools`
 provider whose key the person holds, then a blank line and the answer catalog.
 
+The `chart` procedure draws an answer's chart through the chart gate as the viewer. A table whose
+query selects its dataset's record key field opens each row's record through the record route,
+and the key column is not drawn.
+
 Ask, the bubble and the `agent` area are for a signed-in person who holds `core:ask:use` and is
 not the break-glass account: that account bypasses `can()` and `scopesFor()`, and the agent must
 run under both. A new deployment's `Tenant administrator` holds the key; an existing role is never

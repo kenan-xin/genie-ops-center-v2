@@ -107,6 +107,14 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/agent-chart.integration.test.ts",
+    reason:
+      "Spec 7 R-44 and S7-11 D3: a records table of an answer opens each row's record through the record route, for a person who may open it",
+    cases: [
+      "the agent chart on placeholder.records the agent's chart of a records table opens each row for a person who may open it",
+    ],
+  },
+  {
     file: "testing/agent-access.integration.test.ts",
     reason:
       "Spec 7 R-42: Ask links to an enabled module's document inbox only for a person who may open it",

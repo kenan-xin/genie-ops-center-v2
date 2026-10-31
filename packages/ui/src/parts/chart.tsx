@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ComponentType, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -48,7 +48,30 @@ export type {
   ChartValue,
 } from "./chart-data.ts";
 
-export type ChartProps = ChartData & { readonly timeZone: string };
+/** The host's link, so a record row opens through the host's router. */
+export type ChartLinkComponent = ComponentType<{
+  readonly href: string;
+  readonly className?: string;
+  readonly children?: ReactNode;
+}>;
+
+export type ChartProps = ChartData & {
+  readonly timeZone: string;
+  /** Draws each link of `recordPaths`; a plain `a` when the host passes none. */
+  readonly linkComponent?: ChartLinkComponent;
+};
+
+function PlainLink(props: {
+  readonly href: string;
+  readonly className?: string;
+  readonly children?: ReactNode;
+}) {
+  return (
+    <a href={props.href} className={props.className}>
+      {props.children}
+    </a>
+  );
+}
 
 /** Slot `index + 1` of tokens.md, "Chart series colors". */
 function slot(index: number): string {
@@ -80,22 +103,46 @@ function ChartTable(props: {
   readonly label: string;
   readonly columns: readonly ChartColumn[];
   readonly rows: readonly ChartRow[];
+  readonly recordPaths: readonly (string | null)[] | undefined;
+  readonly linkComponent: ChartLinkComponent;
 }) {
-  const columns = props.columns.map(tableColumn);
-  const [first, ...rest] = columns;
-  const keys = new Map(props.rows.map((row, index) => [row, String(index)]));
+  const [first, ...rest] = props.columns.map(tableColumn);
+  const Link = props.linkComponent;
+
+  const indexes = new Map(props.rows.map((row, index) => [row, index]));
+
+  const pathOf = (row: ChartRow) =>
+    props.recordPaths?.[indexes.get(row) ?? -1] ?? null;
 
   const titleOf = (row: ChartRow) => String(first?.cell(row) ?? "");
+
+  // A row with a page links its first cell; a row without one keeps plain text (R-44).
+  const linked = (row: ChartRow, className?: string) => {
+    const path = pathOf(row);
+
+    if (path === null) return titleOf(row);
+
+    return className === undefined ? (
+      <Link href={path}>{titleOf(row)}</Link>
+    ) : (
+      <Link href={path} className={className}>
+        {titleOf(row)}
+      </Link>
+    );
+  };
+
+  const columns =
+    first === undefined ? rest : [{ ...first, cell: linked }, ...rest];
 
   return (
     <DataTable
       label={props.label}
       rows={props.rows}
-      rowKey={(row) => keys.get(row) ?? ""}
+      rowKey={(row) => String(indexes.get(row) ?? "")}
       rowLabel={titleOf}
       columns={columns}
       card={{
-        title: titleOf,
+        title: (row) => linked(row, "after:absolute after:inset-0"),
         content: (row) => (
           <dl className="grid gap-1">
             {rest.map((column) => (
@@ -292,6 +339,8 @@ export function Chart(props: ChartProps) {
         props.x === undefined ? props.columns : [props.x, ...props.columns]
       }
       rows={props.rows}
+      recordPaths={props.recordPaths}
+      linkComponent={props.linkComponent ?? PlainLink}
     />
   );
 

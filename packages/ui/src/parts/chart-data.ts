@@ -32,6 +32,8 @@ export type ChartData = {
   /** The series, the KPI or donut value, or every table column. */
   readonly columns: readonly ChartColumn[];
   readonly rows: readonly ChartRow[];
+  /** Table only: the page each row opens, by row index, or null. */
+  readonly recordPaths?: readonly (string | null)[];
   readonly datasets: readonly string[];
   /** The ISO instant of the read. */
   readonly readAt: string;

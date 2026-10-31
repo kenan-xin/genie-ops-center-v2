@@ -12,6 +12,7 @@ import { Fragment } from "react";
 import { AppError, type AppErrorIssue } from "../../lib/errors/index.ts";
 import { appErrorData } from "../../lib/rpc/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
+import { PageLink } from "../shell/page-link.tsx";
 import type { AnswerViews } from "./catalog.ts";
 import { useChartCheck } from "./chart-check.tsx";
 
@@ -163,7 +164,11 @@ function ChartView({ props }: ViewProps) {
   return (
     // oxlint-disable-next-line shadcn/no-unknown-classes -- Typeset's opt-out class arrives with typeset.css (Task 10)
     <div className="not-typeset">
-      <Chart {...query.data.data} timeZone={timeZone} />
+      <Chart
+        {...query.data.data}
+        timeZone={timeZone}
+        linkComponent={PageLink}
+      />
     </div>
   );
 }
