@@ -27,6 +27,13 @@ import {
   DEV_MODULES,
 } from "./global-setup.ts";
 
+declare global {
+  interface Window {
+    /** Written before the chat change and read after the refresh, so a document reload cannot pass. */
+    __genieMarker?: number;
+  }
+}
+
 test.skip(
   !(
     DEV_MODULES.has("analytics") &&
