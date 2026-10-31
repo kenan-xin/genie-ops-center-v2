@@ -530,11 +530,11 @@ export const CurrentSize: Story = {
     await expect(
       await screen.findByRole("menuitem", { name: "1 column" })
     ).toHaveAttribute("data-disabled");
-    await expect(
-      screen.getByRole("menuitem", { name: "2 columns" })
-    ).not.toHaveAttribute("data-disabled");
 
-    await userEvent.keyboard("{Escape}");
+    // Another width still saves, and choosing it closes the menu.
+    await userEvent.click(screen.getByRole("menuitem", { name: "2 columns" }));
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+
     await userEvent.click(
       canvas.getByRole("button", { name: "Actions for Invoiced sales" })
     );
