@@ -479,7 +479,7 @@ export const VersionConflict: Story = {
   },
 };
 
-// B5.5: Undo is off while the dashboard has nothing to undo.
+// B5.5: no Undo while the dashboard has nothing to undo.
 export const UndoUnavailable: Story = {
   name: "Undo unavailable",
   globals: desktop,
@@ -489,7 +489,7 @@ export const UndoUnavailable: Story = {
       canvas.getByRole("button", { name: "Edit dashboard" })
     );
 
-    await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await expect(canvas.queryByRole("button", { name: "Undo" })).toBeNull();
   },
 };
 
@@ -516,7 +516,8 @@ const restoredPage: DashboardPageView = {
   },
 };
 
-// B5.5: Undo sends the current version and draws the restored config.
+// B5.5: Undo shows outside edit mode, because a chat answer points at it (R-49); it sends the
+// current version and draws the restored config.
 export const Undo: Story = {
   args: { view: undoablePage },
   globals: desktop,
@@ -525,9 +526,6 @@ export const Undo: Story = {
     undoDashboard.mockResolvedValue(restoredPage.dashboard);
   },
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Edit dashboard" })
-    );
     await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
 
     await waitFor(() =>
@@ -541,6 +539,17 @@ export const Undo: Story = {
     ).toBeVisible();
     await expect(canvas.getByLabelText("From")).toHaveValue("2026-09-01");
     await expect(canvas.getByLabelText("To")).toHaveValue("2026-09-30");
+  },
+};
+
+// DEC-25: the header with Undo at the phone viewport.
+export const UndoOnPhone: Story = {
+  name: "Undo on a phone",
+  args: { view: undoablePage },
+  globals: phone,
+  beforeEach: () => serve(undoablePage),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeVisible();
   },
 };
 

@@ -207,7 +207,6 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
         await expectNoAxeViolations(page, "dashboard after the chat change");
         await screenshot(page, testInfo, `chat-${testInfo.project.name}`);
 
-        await page.getByRole("button", { name: "Edit dashboard" }).click();
         await page.getByRole("button", { name: "Undo" }).click();
 
         await expect(

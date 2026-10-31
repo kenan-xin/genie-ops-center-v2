@@ -221,24 +221,24 @@ export function DashboardView(props: DashboardViewProps) {
                 Edit dashboard
               </Button>
               {editing ? (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      openRename({ kind: "dashboard", value: dashboard.name })
-                    }
-                  >
-                    Rename dashboard
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={!dashboard.canUndo}
-                    loading={undo.isPending}
-                    onClick={undoLast}
-                  >
-                    Undo
-                  </Button>
-                </>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    openRename({ kind: "dashboard", value: dashboard.name })
+                  }
+                >
+                  Rename dashboard
+                </Button>
+              ) : null}
+              {/* Outside edit mode too: a chat answer tells the person to use Undo (R-49). */}
+              {dashboard.canUndo ? (
+                <Button
+                  variant="secondary"
+                  loading={undo.isPending}
+                  onClick={undoLast}
+                >
+                  Undo
+                </Button>
               ) : null}
             </>
           ) : undefined
