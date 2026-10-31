@@ -201,6 +201,8 @@ export function DashboardView(props: DashboardViewProps) {
       <ChangeRefusal failure={failure} onReload={reload} />
     );
 
+  const chatOn = view.chat.kind === "on";
+
   return (
     <main>
       <PageHeader
@@ -264,7 +266,10 @@ export function DashboardView(props: DashboardViewProps) {
               }
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-4">
+            <div
+              className={`grid gap-4 md:grid-cols-4 ${chatOn ? "lg:grid-cols-1 xl:grid-cols-2" : ""}`}
+            >
+              {/* Beside the chat column the grid has fewer columns, so a panel keeps useful width. */}
               {dashboard.panels.map((panel, index) => (
                 <PanelCard
                   key={panel.id}
@@ -274,6 +279,7 @@ export function DashboardView(props: DashboardViewProps) {
                   count={dashboard.panels.length}
                   timeZone={view.timeZone}
                   editing={editing}
+                  narrow={chatOn}
                   onChange={(target, changes) =>
                     send(changes, { panelTitle: target.config.title })
                   }
@@ -289,10 +295,11 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
           )}
         </div>
-        {view.chat.kind === "on" ? (
+        {chatOn ? (
           <aside
             aria-label="Chat about this dashboard"
-            className="min-w-0 lg:w-88 lg:shrink-0"
+            // The bottom space lets the composer scroll clear of the fixed phone bar and the bubble.
+            className="min-w-0 max-lg:pb-20 lg:w-88 lg:shrink-0 lg:pb-0"
           >
             {/* A new key per dashboard, so a move to another dashboard starts a new chat. */}
             <AgentPanel

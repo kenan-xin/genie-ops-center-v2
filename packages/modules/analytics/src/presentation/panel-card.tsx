@@ -29,6 +29,14 @@ const COLUMN_SPAN = {
   4: "md:col-span-4",
 } as const;
 
+/** Beside the chat the grid has one column at lg and two at xl, so a span never exceeds it. */
+const COLUMN_SPAN_NARROW = {
+  1: "md:col-span-1 lg:col-span-1 xl:col-span-1",
+  2: "md:col-span-2 lg:col-span-1 xl:col-span-2",
+  3: "md:col-span-3 lg:col-span-1 xl:col-span-2",
+  4: "md:col-span-4 lg:col-span-1 xl:col-span-2",
+} as const;
+
 const ROW_HEIGHT = {
   1: "min-h-40",
   2: "min-h-80",
@@ -51,8 +59,10 @@ const HEIGHTS = [
 ] as const;
 
 // SAFETY: `panelLayout` limits columns to 1 to 4 and rows to 1 or 2.
-const spanOf = (columns: number) =>
-  COLUMN_SPAN[columns as keyof typeof COLUMN_SPAN];
+const spanOf = (columns: number, narrow: boolean) =>
+  (narrow ? COLUMN_SPAN_NARROW : COLUMN_SPAN)[
+    columns as keyof typeof COLUMN_SPAN
+  ];
 
 // SAFETY: `panelLayout` limits rows to 1 or 2.
 const heightOf = (rows: number) => ROW_HEIGHT[rows as keyof typeof ROW_HEIGHT];
@@ -190,6 +200,8 @@ export type PanelCardProps = {
   readonly count: number;
   readonly timeZone: string;
   readonly editing: boolean;
+  /** True when the chat column shares the row, so the grid is narrower. */
+  readonly narrow: boolean;
   readonly onChange: (
     panel: PanelView,
     changes: readonly DashboardChange[]
@@ -206,6 +218,7 @@ export function PanelCard(props: PanelCardProps) {
     count,
     timeZone,
     editing,
+    narrow,
     onChange,
     onRename,
   } = props;
@@ -214,7 +227,7 @@ export function PanelCard(props: PanelCardProps) {
 
   return (
     <div
-      className={`grid ${spanOf(panel.layout.columns)} ${heightOf(panel.layout.rows)}`}
+      className={`grid ${spanOf(panel.layout.columns, narrow)} ${heightOf(panel.layout.rows)}`}
     >
       <Card>
         <CardContent>
