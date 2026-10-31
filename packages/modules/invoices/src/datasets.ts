@@ -90,7 +90,7 @@ export const invoicesDataset: DatasetDeclaration = {
     invoiceDate: date("The invoice date, by which invoiced sales are counted."),
     dueDate: date("The due date, null when the invoice states none."),
     dueDateSource: text(
-      "Where the due date came from: document, person or unspecified."
+      "Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none)."
     ),
     paymentTerms: text("The payment terms, null when blank."),
     description: text("The invoice description, null when blank."),
@@ -99,7 +99,7 @@ export const invoicesDataset: DatasetDeclaration = {
       "The invoice total in cents, which summed by invoice date is invoiced sales."
     ),
     allocatedCents: money(
-      "The cents of payments dated on or before the reporting date linked to this invoice."
+      "The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment."
     ),
     outstandingCents: money(
       "The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it."

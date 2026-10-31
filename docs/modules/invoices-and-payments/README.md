@@ -128,6 +128,10 @@ Overdue is a positive outstanding with a known due date strictly before the repo
 
 The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
 
+## Agent rules
+
+The module gives the agent no tool. Through the `instructions` of its `agent-tools` capability, it gives five rules under `invoices:read`: the agent never creates, changes or links an invoice or a payment (R-46); it uses only the R-36 measures; it uses the two definitions under "Expected answers"; it states the reporting date and how each figure was calculated (R-44); and it lists the records in a table that opens each record. A person without `invoices:read` gets none of these rules. The text is in `src/agent-instructions.ts`, and the recorded answers hold it verbatim.
+
 ## Pages
 
 The workspace entries Invoices opens the list at `/m/invoices/invoices` and Payments opens `/m/invoices/payments`, and Documents opens the inbox at `/m/invoices/documents`. Every page requires `invoices:use`, and every loader reads under `invoices:read`, so a person with only the Invoices and Payments user role gets the denied page (P5). The Documents inbox needs a tenant-wide `invoices:read`, because a document has no customer before a save (S7-08 decision 12). Every page reads through the datasets above as of the reporting date (R-9), so no page adds a balance of its own and the pages and the agent agree (P3).

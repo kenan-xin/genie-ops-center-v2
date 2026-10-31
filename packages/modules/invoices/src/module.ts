@@ -1,6 +1,7 @@
 import { definePage, type Module } from "@genie/core";
 import { capability } from "@genie/core/contracts";
 
+import { INVOICES_AGENT_INSTRUCTIONS } from "./agent-instructions.ts";
 import { invoicesContract } from "./contract.ts";
 import {
   allocationsDataset,
@@ -173,6 +174,11 @@ export const invoicesModule = {
       label: "Documents",
       path: "/m/invoices/documents",
       permission: "invoices:write",
+    }),
+    // The module gives the agent rules and no tool: the agent never writes invoices (R-46).
+    capability("agent-tools", {
+      tools: [],
+      instructions: INVOICES_AGENT_INSTRUCTIONS,
     }),
   ],
 
