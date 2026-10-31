@@ -373,13 +373,15 @@ export const TableDark: Story = {
   play: tablePlay,
 };
 
-// Row B has no page for this person, so it stays plain text and never a dead link. The label is
-// `x`, because the meta's `x` reaches every story and would take the first column.
+// Row B has no page for this person, so it stays plain text and never a dead link. Row C has a
+// page but no label, so it stays plain text and never a link without a name. The label is `x`,
+// because the meta's `x` reaches every story and would take the first column.
 const linked = {
   ...records,
   x: { key: "label", label: "Label", type: "text" },
   columns: records.columns.slice(1),
-  recordPaths: ["/placeholder/a", null],
+  rows: [...records.rows, { label: null, amountCents: 300, currency: "EUR" }],
+  recordPaths: ["/placeholder/a", null, "/placeholder/c"],
 } as const satisfies ChartProps;
 
 export const TableRecordLinks: Story = {
@@ -387,12 +389,14 @@ export const TableRecordLinks: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: async ({ canvas }) => {
     const table = canvas.getByRole("table");
+    const link = within(table).getByRole("link", { name: "A" });
 
-    await expect(
-      within(table).getByRole("link", { name: "A" })
-    ).toHaveAttribute("href", "/placeholder/a");
+    await expect(link).toHaveAttribute("href", "/placeholder/a");
+    // A linked row reads different from a plain row (R-44).
+    await expect(link).toHaveStyle({ textDecorationLine: "underline" });
     await expect(within(table).queryByRole("link", { name: "B" })).toBeNull();
     await expect(within(table).getByRole("cell", { name: "B" })).toBeVisible();
+    await expect(within(table).getAllByRole("link")).toHaveLength(1);
   },
 };
 
@@ -407,6 +411,7 @@ export const TableRecordLinksPhone: Story = {
       "/placeholder/a"
     );
     await expect(within(list).queryByRole("link", { name: "B" })).toBeNull();
+    await expect(within(list).getAllByRole("link")).toHaveLength(1);
   },
 };
 

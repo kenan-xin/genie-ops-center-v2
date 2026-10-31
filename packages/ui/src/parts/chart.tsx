@@ -29,6 +29,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/tabs.tsx";
+import { focusRing } from "../theme/tokens.ts";
 import {
   chartCaption,
   formatChartValue,
@@ -73,6 +74,9 @@ function PlainLink(props: {
   );
 }
 
+// The chart opts out of typeset, so a record link carries its own underline and the one ring (R-8).
+const RECORD_LINK = `rounded-sm font-medium underline underline-offset-4 hover:text-primary ${focusRing}`;
+
 /** Slot `index + 1` of tokens.md, "Chart series colors". */
 function slot(index: number): string {
   return `var(--chart-${index + 1})`;
@@ -116,23 +120,25 @@ function ChartTable(props: {
 
   const titleOf = (row: ChartRow) => String(first?.cell(row) ?? "");
 
-  // A row with a page links its first cell; a row without one keeps plain text (R-44).
-  const linked = (row: ChartRow, className?: string) => {
+  // A row with a page links its first cell; a row without one, or without a name for the link,
+  // keeps plain text (R-44).
+  const linked = (row: ChartRow, className = RECORD_LINK) => {
     const path = pathOf(row);
+    const title = titleOf(row);
 
-    if (path === null) return titleOf(row);
+    if (path === null || title === "") return title;
 
-    return className === undefined ? (
-      <Link href={path}>{titleOf(row)}</Link>
-    ) : (
+    return (
       <Link href={path} className={className}>
-        {titleOf(row)}
+        {title}
       </Link>
     );
   };
 
   const columns =
-    first === undefined ? rest : [{ ...first, cell: linked }, ...rest];
+    first === undefined
+      ? rest
+      : [{ ...first, cell: (row: ChartRow) => linked(row) }, ...rest];
 
   return (
     <DataTable
@@ -142,7 +148,8 @@ function ChartTable(props: {
       rowLabel={titleOf}
       columns={columns}
       card={{
-        title: (row) => linked(row, "after:absolute after:inset-0"),
+        title: (row) =>
+          linked(row, `${RECORD_LINK} after:absolute after:inset-0`),
         content: (row) => (
           <dl className="grid gap-1">
             {rest.map((column) => (
