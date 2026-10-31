@@ -260,7 +260,8 @@ export function DashboardView(props: DashboardViewProps) {
               variant="framed"
               title="No panels yet"
               description={
-                view.chat.kind === "on"
+                // Only a person who may write gets the chat's write tools.
+                chatOn && view.canWrite
                   ? "Ask in the chat beside the dashboard to add a panel."
                   : "This dashboard has no panels."
               }

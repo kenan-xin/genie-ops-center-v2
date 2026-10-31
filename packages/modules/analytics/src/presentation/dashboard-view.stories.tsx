@@ -189,6 +189,24 @@ export const EmptyWithoutChat: Story = {
   },
 };
 
+const emptyReadOnlyPage: DashboardPageView = {
+  ...emptyDashboardPage,
+  canWrite: false,
+};
+
+// With chat but without analytics:write the chat has no write tool, so it does not offer one.
+export const EmptyReadOnly: Story = {
+  name: "Empty, read only",
+  args: { view: emptyReadOnlyPage },
+  globals: desktop,
+  beforeEach: () => serve(emptyReadOnlyPage),
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByText("This dashboard has no panels.")
+    ).toBeVisible();
+  },
+};
+
 // Without analytics:write there are no filter controls.
 export const ReadOnly: Story = {
   name: "Read only",
