@@ -7,6 +7,8 @@ import {
 } from "@orpc/contract";
 import { createContext, type ReactNode, use } from "react";
 
+import { appErrorData } from "./index.ts";
+
 /* oxlint-disable anti-slop/no-unsafe-dictionary-type -- the app's client is one object of module routers, and this browser-safe entry cannot name their types. */
 /** The app's one RPC client, as the provider gets it: each module's router sits under its id. */
 export type ModuleClientRoot = Readonly<Record<string, unknown>>;
@@ -71,4 +73,39 @@ export function moduleClientOf<TContract extends AnyContractRouter>(
   // SAFETY: ADR 0011 decision 7 and module validation make every path of a module contract start
   // with "/<moduleId>", and the app keys each module's router under that id, so `root[key]` is it.
   return root[key] as ContractRouterClient<TContract>;
+}
+
+export type AppIssue = {
+  readonly path: string;
+  readonly message: string;
+};
+
+/** The payload of a transport refusal, or undefined for another failure. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
+function appDataOf(error: unknown):
+  | {
+      readonly appCode: string;
+      readonly issues?: readonly AppIssue[] | undefined;
+    }
+  | undefined {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- an RPC refusal is untyped here; a primitive carries no payload
+  if (typeof error !== "object" || error === null || !("data" in error)) {
+    return undefined;
+  }
+
+  const parsed = appErrorData.safeParse(error.data);
+
+  return parsed.success ? parsed.data : undefined;
+}
+
+/** The catalogue code of a transport refusal, or undefined for another failure. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
+export function appCodeOf(error: unknown): string | undefined {
+  return appDataOf(error)?.appCode;
+}
+
+/** The field issues of a refused write, or none for another failure. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
+export function appIssuesOf(error: unknown): readonly AppIssue[] {
+  return appDataOf(error)?.issues ?? [];
 }

@@ -294,15 +294,22 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/slides-decks.integration.test.ts",
     reason:
-      "Spec 7 R-15 and R-54 on real data: a deck freezes the gated data of each figure, a data change waits for Refresh data after the reporting date moved, a hand edit keeps the frozen figure, a create with slides gates each element or saves nothing, and a person who lost the dataset sees the element hidden (D15)",
+      "Spec 7 R-15 and R-54 on real data: a deck freezes the gated data of each figure, a data change waits for Refresh data after the reporting date moved, a hand edit keeps the frozen figure, a create with slides gates each element or saves nothing, a person who lost the dataset sees the element hidden (D15), and Refresh data moves the figures and the date, names only the changed slides, has Undo, and refuses a stale hash or a refused element whole (R-46)",
     cases: [
-      "freeze the checked data of an added KPI and keep the freeze date",
-      "refuse a KPI on a deck frozen before the reporting date, and save a text change",
-      "hide a KPI from a person who cannot read its dataset, and keep it stored",
-      "create a deck with slides, each data element gated and frozen on the reporting date",
-      "refuse a deck with one refused chart and create no deck",
-      "keep a frozen KPI byte for byte when only the slide title changes",
-    ].map((name) => `the slides decks on real data ${name}`),
+      ...[
+        "freeze the checked data of an added KPI and keep the freeze date",
+        "refuse a KPI on a deck frozen before the reporting date, and save a text change",
+        "hide a KPI from a person who cannot read its dataset, and keep it stored",
+        "create a deck with slides, each data element gated and frozen on the reporting date",
+        "refuse a deck with one refused chart and create no deck",
+        "keep a frozen KPI byte for byte when only the slide title changes",
+      ].map((name) => `the slides decks on real data ${name}`),
+      ...[
+        "move the KPI to the new total and the date to the reporting date, name only that slide, and undo both",
+        "refuse a stale hash with deck-changed and change nothing",
+        "refuse chart-invalid at the KPI's path to a person who lost placeholder:read and change nothing",
+      ].map((name) => `the slides Refresh data ${name}`),
+    ],
   },
   {
     file: "testing/analytics-chat.integration.test.ts",

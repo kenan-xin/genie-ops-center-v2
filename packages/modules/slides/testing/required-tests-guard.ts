@@ -27,7 +27,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/decks.integration.test.ts",
     reason:
-      "Spec 7 R-52, R-53 and R-46: only the owner reads or writes a deck, behind slides:read and slides:write; a change on an older hash, a broken chart or a foreign image writes nothing; Undo restores saves in reverse order; every write leaves one audit row, and delete removes the deck's files",
+      "Spec 7 R-52, R-53, R-54 and R-46: only the owner reads or writes a deck, behind slides:read and slides:write; a change on an older hash, a broken chart or a foreign image writes nothing; a change keeps a figures date that moved meanwhile; Undo restores saves in reverse order; every write leaves one audit row, and delete removes the deck's files; an image upload stores only a PNG or JPEG on the caller's own deck; the deck page is owner-only, offers no chat to a person who cannot ask, and links only the images the deck shows",
     cases: [
       ...[
         "lists only the caller's own decks, the last changed first",
@@ -50,12 +50,25 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
           "readDeck",
         ].map((procedure) => `refuse ${procedure} to a person without its key`),
         "refuse a change on an older hash and write nothing",
+        "keep a figures date that moved while a text change waited for the row lock",
         "refuse a chart on a dataset this deployment lacks and write nothing",
         "undo two renames in reverse order with their hashes, then answer nothing-to-undo",
         "refuse an image whose file is not one of the deck's images",
         "write one audit row for each create, change, Undo and delete",
         "delete the deck's image and export files with the deck",
       ].map((name) => `the slides deck procedures ${name}`),
+      ...[
+        "store a PNG with the caller as uploader, append its id, keep the hash and write one audit row",
+        "refuse a PDF with image-invalid and store no file",
+        "refuse a PDF body declared as image/png with image-invalid, store no file and keep the deck's images",
+        "refuse an image over the deployment's upload limit with image-too-large and store no file",
+        "answer not-found on another person's deck and store no file",
+      ].map((name) => `the slides deck images ${name}`),
+      ...[
+        "answer not-found to the deck page of another person's deck",
+        "answer chat none on the Slides list to a person without core:ask:use",
+        "issue image links only for the images the deck shows",
+      ].map((name) => `the slides page loaders ${name}`),
     ],
   },
 ];

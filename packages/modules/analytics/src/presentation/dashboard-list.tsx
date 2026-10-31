@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader, PageLink } from "@genie/core/features/shell";
-import { useModuleClient } from "@genie/core/rpc/client";
+import { appCodeOf, useModuleClient } from "@genie/core/rpc/client";
 import {
   Button,
   ConfirmDialog,
@@ -23,7 +23,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 
 import { analyticsContract, type DashboardSummary } from "../contract.ts";
-import { appCodeOf } from "./use-dashboard.ts";
 import type { DashboardListView } from "./views.ts";
 
 const LIST_QUERY = ["analytics", "dashboards"] as const;

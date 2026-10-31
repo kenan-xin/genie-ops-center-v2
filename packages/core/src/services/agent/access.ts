@@ -16,6 +16,18 @@ export type AgentAccess =
       readonly inbox: readonly InboxLink[];
     };
 
+/** Whether a chat beside a module page can run: `none` for a person who cannot ask. */
+export type ChatAvailability =
+  | {
+      readonly kind: "on";
+      readonly models: {
+        readonly allowed: readonly string[];
+        readonly chatDefault: string | null;
+      };
+    }
+  | { readonly kind: "off" }
+  | { readonly kind: "none" };
+
 /**
  * Permitted: a signed-in person who holds `core:ask:use` and is not the break-glass account (P7),
  * because the agent must run under `can()` and `scopesFor()` and that account bypasses both. The
@@ -54,5 +66,21 @@ export async function agentAccess(
     inbox: inboxes
       .filter((_, index) => allowed[index])
       .map(({ label, path }) => ({ label, href: path })),
+  };
+}
+
+/** The chat beside a module page: only for a person who may ask, and off while models are off. */
+export async function chatAvailability(
+  ctx: ModuleRequestContext
+): Promise<ChatAvailability> {
+  const access = await agentAccess(ctx);
+
+  if (!access.permitted) return { kind: "none" };
+
+  if (access.ai !== "on") return { kind: "off" };
+
+  return {
+    kind: "on",
+    models: { allowed: access.allowedModels, chatDefault: access.chatModel },
   };
 }

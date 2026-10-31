@@ -219,6 +219,16 @@ export const slidesContract = {
     .route({ method: "DELETE", path: "/slides/decks/{id}" })
     .input(z.object({ id: deckId }))
     .output(z.object({ id: z.string() })),
+  /** Reads every figure, chart and table again on the reporting date (R-54, D3, D4). */
+  refreshDeck: oc
+    .route({ method: "POST", path: "/slides/decks/{id}/refresh" })
+    .input(z.object({ id: deckId, expectedHash: contentHash }))
+    .output(z.object({ deck: deckView, changedSlides: z.array(z.string()) })),
+  /** Stores one PNG or JPEG through `FileStorage` for the deck's image elements (D6). */
+  uploadDeckImage: oc
+    .route({ method: "POST", path: "/slides/decks/{id}/images" })
+    .input(z.object({ id: deckId, file: z.file() }))
+    .output(z.object({ fileId: z.string() })),
 };
 
 export type SlidesContract = typeof slidesContract;

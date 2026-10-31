@@ -497,6 +497,8 @@ export {
   offersWriteTool,
   type AgentAccess,
   agentAccess,
+  type ChatAvailability,
+  chatAvailability,
   type InboxLink,
   type AgentContract,
   agentContract,

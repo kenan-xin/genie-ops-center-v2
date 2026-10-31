@@ -10,6 +10,7 @@ import {
   withTransaction,
 } from "@genie/core";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { isEqual } from "es-toolkit";
 
 import {
   type DeckContent,
@@ -358,16 +359,22 @@ export async function changeDeck(
   });
 
   return withTransaction(ctx.tenant, async (tx) => {
-    await lockOwnDeck(tx, ctx, row.id, row.contentHash);
+    const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);
+
+    // The hash leaves out `frozen_on`, so the date and the Undo list come from the locked row:
+    // a save never undoes a Refresh that ran meanwhile, and new figures never get another date.
+    if (applied.checks.size > 0 && locked.frozenOn !== row.frozenOn) {
+      throw new AppError(SLIDES_ERRORS["deck-changed"]);
+    }
 
     const saved = await save(
       tx,
       row.id,
-      { title: applied.title, content, frozenOn: row.frozenOn },
-      pushUndo(row.undo, {
-        title: row.title,
-        content: row.content,
-        frozenOn: row.frozenOn,
+      { title: applied.title, content, frozenOn: locked.frozenOn },
+      pushUndo(locked.undo, {
+        title: locked.title,
+        content: locked.content,
+        frozenOn: locked.frozenOn,
       })
     );
 
@@ -409,6 +416,151 @@ export async function undoDeck(
     );
 
     return saved;
+  });
+}
+
+/**
+ * Reads every figure, chart and table of the deck again through the gate, so one refused element
+ * refreshes nothing, and freezes them on the reporting date (R-54, D3). Titles stay as written; the
+ * answer names each slide whose rows changed, so the person can check its claim (D4). It adds an
+ * Undo entry and takes the hash, as a change does.
+ */
+export async function refreshDeck(
+  ctx: ModuleRequestContext,
+  input: { readonly id: string; readonly expectedHash: string }
+): Promise<{
+  readonly record: DeckRecord;
+  readonly changedSlides: readonly string[];
+}> {
+  const row = await readOwnDeck(ctx, input.id);
+
+  if (input.expectedHash !== row.contentHash) {
+    throw new AppError(SLIDES_ERRORS["deck-changed"]);
+  }
+
+  const frozenOn = await reportingDate(ctx.tenant);
+  const changedSlides: string[] = [];
+  const slides = [];
+
+  for (const [i, slide] of row.content.slides.entries()) {
+    const elements = [];
+
+    for (const [j, element] of slide.elements.entries()) {
+      if (!("chart" in element)) {
+        elements.push(element);
+        continue;
+      }
+
+      // One at a time, so a refusal always names the same element.
+      // oxlint-disable-next-line no-await-in-loop
+      const frozen = await gate(
+        ctx,
+        element.chart,
+        `slides.${i}.elements.${j}.chart.`
+      );
+
+      // Rows only: `readAt` moves on every read.
+      if (
+        !isEqual(frozen.data.rows, element.data.rows) &&
+        !changedSlides.includes(slide.id)
+      ) {
+        changedSlides.push(slide.id);
+      }
+
+      elements.push({ kind: element.kind, ...frozen });
+    }
+
+    slides.push({ id: slide.id, elements });
+  }
+
+  const content = parseContent({ slides });
+
+  return withTransaction(ctx.tenant, async (tx) => {
+    const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);
+
+    const record = await save(
+      tx,
+      row.id,
+      { title: locked.title, content, frozenOn },
+      pushUndo(locked.undo, {
+        title: locked.title,
+        content: locked.content,
+        frozenOn: locked.frozenOn,
+      })
+    );
+
+    await audit(
+      { tenant: ctx.tenant, caller: ctx.caller, tx },
+      "slides:deck-refreshed",
+      targetOf(row.id),
+      "Refreshed the data of a deck.",
+      { changedSlides }
+    );
+
+    return { record, changedSlides };
+  });
+}
+
+/** The first bytes of each image type a deck takes. */
+const IMAGE_SIGNATURES = [
+  ["image/png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+  ["image/jpeg", Buffer.from([0xff, 0xd8, 0xff])],
+] as const;
+
+const imageTypeOf = (bytes: Buffer) =>
+  IMAGE_SIGNATURES.find(([, signature]) =>
+    bytes.subarray(0, signature.length).equals(signature)
+  )?.[0];
+
+/**
+ * Stores one PNG or JPEG for the caller's own deck and appends its id to the files the deck's
+ * image elements may name (D6). The content and its hash stay the same: an image shows only once
+ * a change adds an element that names it. As the invoices upload does, the size is checked before
+ * the read, and the first bytes decide the type, never the declared one.
+ */
+export async function addDeckImage(
+  ctx: ModuleRequestContext,
+  input: { readonly id: string; readonly file: File }
+): Promise<{ readonly fileId: string }> {
+  // Before the read, and before the file store, whose own size error answers 500.
+  if (input.file.size > ctx.tenant.env.fileMaxBytes) {
+    throw new AppError(SLIDES_ERRORS["image-too-large"]);
+  }
+
+  const bytes = Buffer.from(await input.file.arrayBuffer());
+  const mimeType = imageTypeOf(bytes);
+
+  if (mimeType === undefined) {
+    throw new AppError(SLIDES_ERRORS["image-invalid"]);
+  }
+
+  return withTransaction(ctx.tenant, async (tx) => {
+    const row = await lockOwnDeck(tx, ctx, input.id);
+
+    const { id: fileId } = await ctx.tenant.fileStorage.store(
+      {
+        fileName: input.file.name.trim() || "image",
+        mimeType,
+        bytes,
+        uploadedByUserId: ctx.caller.userId,
+      },
+      tx
+    );
+
+    await tx
+      .update(deck)
+      .set({ imageFileIds: [...row.imageFileIds, fileId] })
+      .where(eq(deck.id, row.id));
+
+    await audit(
+      { tenant: ctx.tenant, caller: ctx.caller, tx },
+      "slides:deck-image-added",
+      targetOf(row.id),
+      "Added an image to a deck.",
+      { fileId }
+    );
+
+    return { fileId };
   });
 }
 

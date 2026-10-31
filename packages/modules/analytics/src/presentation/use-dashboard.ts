@@ -1,7 +1,6 @@
 "use client";
 
 import type { PanelConfig } from "@genie/core";
-import { appErrorData } from "@genie/core/rpc";
 import { useModuleClient } from "@genie/core/rpc/client";
 import type { ChartData } from "@genie/ui";
 import {
@@ -114,29 +113,6 @@ export function useDashboardChange(
   });
 }
 
-export type AppIssue = {
-  readonly path: string;
-  readonly message: string;
-};
-
-/** The payload of a transport refusal, or undefined for another failure. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
-function appDataOf(error: unknown):
-  | {
-      readonly appCode: string;
-      readonly issues?: readonly AppIssue[] | undefined;
-    }
-  | undefined {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- an RPC refusal is untyped here; a primitive carries no payload
-  if (typeof error !== "object" || error === null || !("data" in error)) {
-    return undefined;
-  }
-
-  const parsed = appErrorData.safeParse(error.data);
-
-  return parsed.success ? parsed.data : undefined;
-}
-
 /** Undo the last save, at the version the page read (R-49). */
 export function useUndoDashboard(
   dashboard: DashboardView
@@ -156,16 +132,4 @@ export function useUndoDashboard(
       queryClient.setQueryData(dashboardQueryKey(view.id), view);
     },
   });
-}
-
-/** The catalogue code of a transport refusal, or undefined for another failure. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
-export function appCodeOf(error: unknown): string | undefined {
-  return appDataOf(error)?.appCode;
-}
-
-/** The field issues of a refused write, or none for another failure. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught failure is untyped; the schema below parses its data
-export function appIssuesOf(error: unknown): readonly AppIssue[] {
-  return appDataOf(error)?.issues ?? [];
 }

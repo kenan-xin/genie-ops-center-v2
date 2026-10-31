@@ -7,8 +7,10 @@ import {
   changeDeck,
   createDeck,
   deleteDeck,
+  addDeckImage,
   listOwnDecks,
   readOwnDeck,
+  refreshDeck,
   undoDeck,
 } from "./services/decks/store.ts";
 
@@ -55,6 +57,23 @@ export const slidesRouter = os.router({
     await deleteDeck(context, input.id);
 
     return { id: input.id };
+  }),
+
+  refreshDeck: os.refreshDeck.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+
+    const { record, changedSlides } = await refreshDeck(context, input);
+
+    return {
+      deck: await deckViewFor(context, record),
+      changedSlides: [...changedSlides],
+    };
+  }),
+
+  uploadDeckImage: os.uploadDeckImage.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+
+    return addDeckImage(context, input);
   }),
 });
 

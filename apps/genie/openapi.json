@@ -6716,6 +6716,191 @@
           }
         }
       }
+    },
+    "/slides/decks/{id}/refresh": {
+      "post": {
+        "operationId": "slides.refreshDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedHash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "expectedHash"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deck": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "contentHash": {
+                          "type": "string"
+                        },
+                        "figuresAsOf": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "canUndo": {
+                          "type": "boolean"
+                        },
+                        "slides": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "elements": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {},
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "readOnly": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "elements"
+                            ]
+                          },
+                          "readOnly": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "contentHash",
+                        "figuresAsOf",
+                        "canUndo",
+                        "slides"
+                      ]
+                    },
+                    "changedSlides": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deck",
+                    "changedSlides"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slides/decks/{id}/images": {
+      "post": {
+        "operationId": "slides.uploadDeckImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "contentMediaType": "*/*"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "contentMediaType": "*/*"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fileId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fileId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

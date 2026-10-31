@@ -10,7 +10,9 @@ The browser-safe `@genie/core/rpc` entry (`index.ts`): `oc` to declare a contrac
 `appErrorData` schema a client parses refusals with. The browser-safe `@genie/core/rpc/client`
 entry (`module-client.tsx`): `ModuleClientProvider` and `useModuleClient(contract)`, which hand a
 module the sub-client of the app's one RPC client under the key that its contract's paths start
-with, so neither core nor the module names the id. Beside the root entry, the server half that
+with, so neither core nor the module names the id; and `appCodeOf` and `appIssuesOf`, which read
+the catalogue code and the field issues of a refusal through `appErrorData`, so no module copies
+that parse. Beside the root entry, the server half that
 the core root exports: `implementModule`, which attaches the entitlement gate and the session
 check before input validation, the conformance check module validation runs (the router serves exactly the
 contract's procedures, each starts with both gates, and no lazy router or root `.use()` is

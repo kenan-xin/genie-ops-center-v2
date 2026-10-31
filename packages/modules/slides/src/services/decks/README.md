@@ -6,7 +6,8 @@ The module's reads and writes of its own `deck` table.
 
 The permission checks of a deck procedure, which call `can()` with no resource, the content hash
 expression, and the owner-only reads and writes: every query filters on the caller's own user id,
-so another person's deck answers as missing (R-52). The pure helpers that change a stored deck.
+so another person's deck answers as missing (R-52). The pure helpers that change a stored deck,
+and the pure mapping of the tenant branding to a deck theme (R-55).
 
 ## What must not go here
 

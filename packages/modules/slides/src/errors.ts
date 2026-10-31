@@ -23,4 +23,13 @@ export const SLIDES_ERRORS = defineModuleErrors("slides", {
       "The figures of this deck are from an earlier reporting date. Refresh data first, then add or change a figure, chart or table.",
     status: 409,
   },
+  "image-invalid": {
+    message: "Upload a PNG or JPEG image.",
+    status: 400,
+  },
+  "image-too-large": {
+    message:
+      "That image is over the upload limit of this deployment. Upload a smaller image.",
+    status: 413,
+  },
 });

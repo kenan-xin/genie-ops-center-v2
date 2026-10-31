@@ -288,3 +288,137 @@ describe("the slides decks on real data", () => {
     );
   });
 });
+
+/** A KPI of Alpha's amount only, so a new record leaves its rows the same. */
+const ALPHA = {
+  ...KPI,
+  title: "Alpha",
+  series: [
+    {
+      ...KPI.series[0],
+      name: "Alpha",
+      query: {
+        ...KPI.series[0].query,
+        filters: [{ field: "label", op: "eq", value: "Alpha" }],
+      },
+    },
+  ],
+} as const;
+
+// After the cases above: they read the totals before and after Delta (260000 cents in all).
+describe("the slides Refresh data", () => {
+  it("move the KPI to the new total and the date to the reporting date, name only that slide, and undo both", async () => {
+    const made = await createDeck(owner, {
+      title: "Refresh me",
+      slides: [
+        { elements: [title("Alpha"), { kind: "figure", chart: ALPHA }] },
+        { elements: [title("Amount"), { kind: "figure", chart: KPI }] },
+      ],
+    });
+
+    // A deck frozen on an earlier reporting date.
+    await deployment.context.db.$client.query(
+      "update deck set frozen_on = '2026-10-01' where id = $1",
+      [made.id]
+    );
+
+    await insertPlaceholderRecord(deployment.context, {
+      label: "Echo",
+      recordedOn: "2026-05-01",
+      amountCents: 5000,
+      currency: "SGD",
+    });
+
+    const refreshed = await caller().refreshDeck({
+      id: made.id,
+      expectedHash: made.contentHash,
+    });
+
+    const amounts = async () => {
+      const row = await rowOf(made.id);
+
+      return {
+        frozenOn: row.frozen_on,
+        alpha: row.content.slides[0].elements[1].data.rows[0].Alpha,
+        amount: row.content.slides[1].elements[1].data.rows[0].Amount,
+      };
+    };
+
+    expect(refreshed.changedSlides).toEqual(["s2"]);
+    expect(await amounts()).toEqual({
+      frozenOn: "2026-10-27",
+      alpha: 120000,
+      amount: 265000,
+    });
+
+    await caller().undoDeck({
+      id: made.id,
+      expectedHash: refreshed.deck.contentHash,
+    });
+
+    expect(await amounts()).toEqual({
+      frozenOn: "2026-10-01",
+      alpha: 120000,
+      amount: 260000,
+    });
+  });
+
+  it("refuse a stale hash with deck-changed and change nothing", async () => {
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          { id: "s1", elements: [title("Records"), frozenElement("figure")] },
+        ],
+      },
+      frozenOn: "2026-10-01",
+    });
+
+    const before = await rowOf(id);
+
+    await caller().changeDeck({
+      id,
+      expectedHash: before.content_hash,
+      changes: [{ op: "rename", title: "Renamed meanwhile" }],
+    });
+
+    const renamed = await rowOf(id);
+
+    await expect(
+      caller().refreshDeck({ id, expectedHash: before.content_hash })
+    ).rejects.toMatchObject({ code: "slides:deck-changed" });
+    expect(await rowOf(id)).toEqual(renamed);
+  });
+
+  it("refuse chart-invalid at the KPI's path to a person who lost placeholder:read and change nothing", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "slides:use",
+      "slides:read",
+      "slides:write",
+    ]);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: userId,
+      content: {
+        slides: [
+          { id: "s1", elements: [title("Claim")] },
+          { id: "s2", elements: [title("Records"), frozenElement("figure")] },
+        ],
+      },
+      frozenOn: "2026-10-01",
+    });
+
+    const before = await rowOf(id);
+
+    await expect(
+      callProcedure(slidesRouter, contextOf(userId)).refreshDeck({
+        id,
+        expectedHash: before.content_hash,
+      })
+    ).rejects.toMatchObject({
+      code: "chart-invalid",
+      issues: [{ path: "slides.1.elements.1.chart.series.0.dataset" }],
+    });
+    expect(await rowOf(id)).toEqual(before);
+  });
+});

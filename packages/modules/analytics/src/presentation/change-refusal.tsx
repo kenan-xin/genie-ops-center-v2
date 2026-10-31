@@ -1,8 +1,7 @@
 "use client";
 
+import { type AppIssue, appCodeOf, appIssuesOf } from "@genie/core/rpc/client";
 import { Button } from "@genie/ui";
-
-import { type AppIssue, appCodeOf, appIssuesOf } from "./use-dashboard.ts";
 
 export type ChangeFailure = {
   readonly kind: "change" | "undo";

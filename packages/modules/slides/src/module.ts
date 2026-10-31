@@ -2,9 +2,10 @@ import { definePage, type Module } from "@genie/core";
 
 import { slidesContract } from "./contract.ts";
 import { SLIDES_PERMISSIONS } from "./permissions.ts";
-import { DeckListPage } from "./presentation/module-pages.tsx";
+import { DeckListPage, DeckPage } from "./presentation/module-pages.tsx";
 import { slidesRouter } from "./router.ts";
 import { deck, MIGRATIONS, MIGRATIONS_TABLE } from "./schema.ts";
+import { loadDeckList, loadDeckPage } from "./services/pages/loaders.ts";
 
 /** The Slides workspace entry and the page of its path (DEC-50). */
 const SLIDES_ENTRY = {
@@ -67,7 +68,15 @@ export const slidesModule = {
       definePage({
         path: SLIDES_ENTRY.path,
         permission: SLIDES_ENTRY.requiredPermission,
+        load: loadDeckList,
         component: DeckListPage,
+      }),
+      definePage({
+        path: `${SLIDES_ENTRY.path}/:id`,
+        permission: SLIDES_ENTRY.requiredPermission,
+        parent: SLIDES_ENTRY.path,
+        load: (ctx, params) => loadDeckPage(ctx, params.id ?? ""),
+        component: DeckPage,
       }),
     ],
     admin: [],

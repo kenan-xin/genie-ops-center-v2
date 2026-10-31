@@ -1,4 +1,4 @@
-import type { PanelConfig } from "@genie/core";
+import type { ChatAvailability, PanelConfig } from "@genie/core";
 
 import type {
   DashboardFilters,
@@ -22,18 +22,6 @@ export type DashboardView = {
   filters: DashboardFilters;
   panels: readonly PanelView[];
 };
-
-/** Whether the chat beside a dashboard can run: `none` for a person who cannot ask. */
-export type ChatAvailability =
-  | {
-      readonly kind: "on";
-      readonly models: {
-        readonly allowed: readonly string[];
-        readonly chatDefault: string | null;
-      };
-    }
-  | { readonly kind: "off" }
-  | { readonly kind: "none" };
 
 /** What the Dashboards list page loads. */
 export type DashboardListView = {

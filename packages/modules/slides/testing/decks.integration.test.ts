@@ -20,6 +20,7 @@ import type { DeckContent } from "../src/content.ts";
 import { slidesModule } from "../src/module.ts";
 import { slidesRouter } from "../src/router.ts";
 import { deckHashSql } from "../src/services/decks/hash.ts";
+import { loadDeckList, loadDeckPage } from "../src/services/pages/loaders.ts";
 import { insertDeck } from "./factories.ts";
 
 /**
@@ -48,8 +49,8 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-function callerAs(userId: string) {
-  const context = {
+function contextOf(userId: string): ModuleRequestContext {
+  return {
     tenant: deployment.context,
     caller: principalFor({
       tenant: deployment.context,
@@ -57,10 +58,11 @@ function callerAs(userId: string) {
       userId,
       authenticated: true,
     }),
-  } satisfies ModuleRequestContext;
-
-  return callProcedure(slidesRouter, context);
+  };
 }
+
+const callerAs = (userId: string) =>
+  callProcedure(slidesRouter, contextOf(userId));
 
 const oneSlide: DeckContent = {
   slides: [{ id: "s1", elements: [{ kind: "title", text: "A claim" }] }],
@@ -191,6 +193,23 @@ async function ownedDeck(ownerUserId: string) {
 const hashOfRow = async (id: string): Promise<string> =>
   (await rowOf(id)).content_hash;
 
+/** Resolves once some session of this database waits on a row lock. */
+async function waitForLockWait(): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- polling, one look at a time
+    const { rows } = await deployment.context.db.$client.query(
+      "select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'"
+    );
+
+    if (rows[0].n > 0) return;
+
+    // oxlint-disable-next-line no-await-in-loop -- polling, one look at a time
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error("no session waited on the row lock");
+}
+
 type Call = (
   caller: ReturnType<typeof callerAs>,
   id: string,
@@ -290,6 +309,47 @@ describe("the slides deck procedures", () => {
     ).rejects.toMatchObject({ code: "slides:deck-changed" });
 
     expect(await rowOf(id)).toEqual(before);
+  });
+
+  it("keep a figures date that moved while a text change waited for the row lock", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: oneSlide,
+      frozenOn: "2026-10-01",
+    });
+
+    const expectedHash = await hashOfRow(id);
+    const holder = await deployment.context.db.$client.connect();
+
+    try {
+      // Another writer (Refresh data) moves only the date and holds the row lock.
+      await holder.query("begin");
+      await holder.query(
+        "update deck set frozen_on = '2026-10-27' where id = $1",
+        [id]
+      );
+
+      const change = callerAs(owner).changeDeck({
+        id,
+        expectedHash,
+        changes: [{ op: "rename", title: "Renamed" }],
+      });
+
+      await waitForLockWait();
+      await holder.query("commit");
+      await change;
+    } finally {
+      holder.release();
+    }
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select title, frozen_on::text from deck where id = $1",
+      [id]
+    );
+
+    expect(rows[0]).toEqual({ title: "Renamed", frozen_on: "2026-10-27" });
   });
 
   it("refuse a chart on a dataset this deployment lacks and write nothing", async () => {
@@ -475,5 +535,186 @@ describe("the slides deck procedures", () => {
     );
 
     expect(rows).toEqual([]);
+  });
+});
+
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64"
+);
+
+const png = () => new File([PNG], "dot.png", { type: "image/png" });
+
+const pdf = () =>
+  new File(["%PDF-1.7"], "notes.pdf", { type: "application/pdf" });
+
+async function filesOf(userId: string) {
+  const { rows } = await deployment.context.db.$client.query(
+    "select id, mime_type from file where uploaded_by_user_id = $1",
+    [userId]
+  );
+
+  return rows;
+}
+
+async function imagesOf(id: string) {
+  const { rows } = await deployment.context.db.$client.query(
+    "select image_file_ids from deck where id = $1",
+    [id]
+  );
+
+  return rows[0].image_file_ids;
+}
+
+/** Stores image files for a deck directly, as an upload would, and answers their ids. */
+async function storedImages(userId: string, count: number) {
+  return withTransaction(deployment.context, async (tx) =>
+    Promise.all(
+      Array.from(
+        { length: count },
+        async () =>
+          (
+            await deployment.context.fileStorage.store(
+              {
+                fileName: "dot.png",
+                mimeType: "image/png",
+                bytes: PNG,
+                uploadedByUserId: userId,
+              },
+              tx
+            )
+          ).id
+      )
+    )
+  );
+}
+
+describe("the slides deck images", () => {
+  it("store a PNG with the caller as uploader, append its id, keep the hash and write one audit row", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+    const before = await rowOf(id);
+
+    const { fileId } = await callerAs(owner).uploadDeckImage({
+      id,
+      file: png(),
+    });
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select image_file_ids from deck where id = $1",
+      [id]
+    );
+
+    expect(await filesOf(owner)).toEqual([
+      { id: fileId, mime_type: "image/png" },
+    ]);
+    expect(rows[0].image_file_ids).toEqual([fileId]);
+    expect(await rowOf(id)).toEqual(before);
+    expect(await auditOf(id)).toEqual([
+      {
+        action: "slides:deck-image-added",
+        actor_user_id: owner,
+        target_type: "slides-deck",
+        metadata: { fileId },
+      },
+    ]);
+  });
+
+  it("refuse a PDF with image-invalid and store no file", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+
+    await expect(
+      callerAs(owner).uploadDeckImage({ id, file: pdf() })
+    ).rejects.toMatchObject({ code: "slides:image-invalid" });
+    expect(await filesOf(owner)).toEqual([]);
+  });
+
+  it("refuse a PDF body declared as image/png with image-invalid, store no file and keep the deck's images", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+
+    await expect(
+      callerAs(owner).uploadDeckImage({
+        id,
+        file: new File(["%PDF-1.7"], "dot.png", { type: "image/png" }),
+      })
+    ).rejects.toMatchObject({ code: "slides:image-invalid" });
+    expect(await filesOf(owner)).toEqual([]);
+    expect(await imagesOf(id)).toEqual([]);
+  });
+
+  it("refuse an image over the deployment's upload limit with image-too-large and store no file", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+
+    // A PNG one byte over the limit: `withTransaction` refuses a copied context, so the
+    // deployment's own limit is the one to cross.
+    const bytes = Buffer.alloc(deployment.context.env.fileMaxBytes + 1);
+    PNG.copy(bytes);
+
+    await expect(
+      callerAs(owner).uploadDeckImage({
+        id,
+        file: new File([bytes], "big.png", { type: "image/png" }),
+      })
+    ).rejects.toMatchObject({ code: "slides:image-too-large" });
+    expect(await filesOf(owner)).toEqual([]);
+    expect(await imagesOf(id)).toEqual([]);
+  });
+
+  it("answer not-found on another person's deck and store no file", async () => {
+    const id = await ownedDeck(await editor());
+    const other = await editor();
+
+    await expect(
+      callerAs(other).uploadDeckImage({ id, file: png() })
+    ).rejects.toMatchObject({ code: "not-found" });
+    expect(await filesOf(other)).toEqual([]);
+  });
+});
+
+describe("the slides page loaders", () => {
+  it("answer not-found to the deck page of another person's deck", async () => {
+    const id = await ownedDeck(await editor());
+
+    await expect(
+      loadDeckPage(contextOf(await editor()), id)
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("answer chat none on the Slides list to a person without core:ask:use", async () => {
+    expect(await loadDeckList(contextOf(await editor()))).toMatchObject({
+      chat: { kind: "none" },
+    });
+  });
+
+  it("issue image links only for the images the deck shows", async () => {
+    const owner = await editor();
+    const [shown, dropped] = await storedImages(owner, 2);
+
+    if (shown === undefined || dropped === undefined) {
+      throw new Error("the files were not stored");
+    }
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              title("Picture"),
+              { kind: "image", fileId: shown, alt: "A dot" },
+            ],
+          },
+        ],
+      },
+      imageFileIds: [shown, dropped],
+    });
+
+    const page = await loadDeckPage(contextOf(owner), id);
+
+    expect(Object.keys(page.imageUrls)).toEqual([shown]);
   });
 });

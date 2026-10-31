@@ -26,7 +26,9 @@ Ask, the bubble and the `agent` area are for a signed-in person who holds `core:
 not the break-glass account: that account bypasses `can()` and `scopesFor()`, and the agent must
 run under both. A new deployment's `Tenant administrator` holds the key; an existing role is never
 broadened, so an administrator grants it through a role. The inbox links are the enabled
-`document-inbox` providers whose key the person holds.
+`document-inbox` providers whose key the person holds. `chatAvailability` maps that access to the
+`on`, `off` or `none` that a module page loader answers for the chat beside it, so no module
+copies the mapping.
 
 The route checks a request in this order and throws the catalogue error before the stream starts
 and before any write: not signed in (`unauthenticated`); no `core:ask:use` or the break-glass

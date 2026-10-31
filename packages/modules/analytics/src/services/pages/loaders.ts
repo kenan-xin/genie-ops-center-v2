@@ -1,12 +1,11 @@
 import {
-  agentAccess,
   can,
+  chatAvailability,
   type ModuleRequestContext,
   reportingDate,
 } from "@genie/core";
 
 import type {
-  ChatAvailability,
   DashboardListView,
   DashboardPageView,
 } from "../../presentation/views.ts";
@@ -31,20 +30,6 @@ export async function loadDashboardList(
   return { dashboards, canWrite };
 }
 
-/** The chat beside a dashboard: only for a person who may ask, and off while models are off. */
-async function chatOf(ctx: ModuleRequestContext): Promise<ChatAvailability> {
-  const access = await agentAccess(ctx);
-
-  if (!access.permitted) return { kind: "none" };
-
-  if (access.ai !== "on") return { kind: "off" };
-
-  return {
-    kind: "on",
-    models: { allowed: access.allowedModels, chatDefault: access.chatModel },
-  };
-}
-
 /**
  * One dashboard page. Another person's dashboard id throws `not-found`, which `openModulePage`
  * answers as missing (R-48).
@@ -61,7 +46,7 @@ export async function loadDashboardPage(
     can(ctx.caller, "analytics:write"),
     reportingDate(ctx.tenant),
     ctx.tenant.branding.get(),
-    chatOf(ctx),
+    chatAvailability(ctx),
   ]);
 
   return {
