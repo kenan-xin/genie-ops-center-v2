@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@genie/ui";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
 
 import {
@@ -71,9 +71,11 @@ export function FiltersBar(props: FiltersBarProps) {
   const field = dashboard.filters.field;
 
   const values = useQuery({
-    queryKey: ["analytics", "filter-values", dashboard.id],
+    // A save may change the field or add a dataset, so each version asks again.
+    queryKey: ["analytics", "filter-values", dashboard.id, dashboard.version],
     queryFn: () => analytics.filterValues({ id: dashboard.id }),
     enabled: field !== null,
+    placeholderData: keepPreviousData,
   });
 
   function save(filters: {
