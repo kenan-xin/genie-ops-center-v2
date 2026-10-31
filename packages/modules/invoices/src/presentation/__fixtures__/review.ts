@@ -6,6 +6,7 @@
  */
 import type { StoredReading } from "../../contract.ts";
 import type { DocumentReviewView } from "../views.ts";
+import { DEMO_PDF } from "./demo-pdfs.ts";
 
 const ABC_TRADING = {
   id: "20000000-0000-4000-8000-000000000001",
@@ -62,7 +63,7 @@ export const invoiceReview: DocumentReviewView = {
     kind: "invoice",
     status: "needs-input",
     reason: null,
-    fileUrl: "/demo-pack/01_Invoice_Missing_Due_Date.pdf",
+    fileUrl: DEMO_PDF.invoice01,
   },
   reading: INVOICE_READING,
   canWrite: true,
@@ -80,7 +81,7 @@ export const readingReview: DocumentReviewView = {
     kind: null,
     status: "reading",
     reason: null,
-    fileUrl: "/demo-pack/01_Invoice_Missing_Due_Date.pdf?v=1",
+    fileUrl: `${DEMO_PDF.invoice01}?v=1`,
   },
   reading: null,
   canWrite: true,
@@ -96,7 +97,7 @@ export const couldNotReadReview: DocumentReviewView = {
   document: {
     ...readingReview.document,
     status: "could-not-read",
-    fileUrl: "/demo-pack/01_Invoice_Missing_Due_Date.pdf",
+    fileUrl: DEMO_PDF.invoice01,
   },
 };
 
@@ -108,7 +109,7 @@ export const purchaseOrderReview: DocumentReviewView = {
     kind: "purchase-order",
     status: "kept-as-reference",
     reason: null,
-    fileUrl: "/demo-pack/07_Purchase_Order_Not_Proof_of_Payment.pdf",
+    fileUrl: DEMO_PDF.order07,
   },
   reading: {
     fields: {
@@ -140,7 +141,7 @@ export const aiOffReview: DocumentReviewView = {
     kind: null,
     status: "needs-input",
     reason: "ai-off",
-    fileUrl: "/demo-pack/01_Invoice_Missing_Due_Date.pdf",
+    fileUrl: DEMO_PDF.invoice01,
   },
   reading: null,
   canWrite: true,
@@ -199,7 +200,7 @@ export const receiptReview: DocumentReviewView = {
     kind: "paid-receipt",
     status: "needs-input",
     reason: null,
-    fileUrl: "/demo-pack/06_Paid_Sales_Receipt.pdf",
+    fileUrl: DEMO_PDF.receipt06,
   },
   reading: {
     fields: {
@@ -270,7 +271,7 @@ export const linkedAutomaticallyReview: DocumentReviewView = {
     kind: "payment",
     status: "linked-automatically",
     reason: null,
-    fileUrl: "/demo-pack/02_Payment_Partial_Existing_Invoice.pdf",
+    fileUrl: DEMO_PDF.payment02,
   },
   reading: {
     fields: {
@@ -432,7 +433,7 @@ export const splitPaymentReview: DocumentReviewView = {
     kind: "payment",
     status: "confirm-split",
     reason: null,
-    fileUrl: "/demo-pack/03_Payment_Covers_Two_Invoices.pdf",
+    fileUrl: DEMO_PDF.payment03,
   },
   reading: SPLIT_READING,
   canWrite: true,
@@ -499,7 +500,7 @@ export const noMatchPaymentReview: DocumentReviewView = {
     kind: "payment",
     status: "no-match",
     reason: null,
-    fileUrl: "/demo-pack/05_Payment_Unmatched.pdf",
+    fileUrl: DEMO_PDF.payment05,
   },
   reading: {
     fields: {

@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, waitFor } from "storybook/test";
 
+import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import { DocumentViewer } from "./document-viewer.tsx";
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-const INVOICE = "/demo-pack/01_Invoice_Missing_Due_Date.pdf";
+const INVOICE = DEMO_PDF.invoice01;
 
 const meta = {
   title: "Modules/Invoices/Document viewer",

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
   aiOffReview,
   couldNotReadReview,
@@ -77,7 +78,7 @@ const invoiceAfterReading: DocumentReviewView = {
   ...invoiceReview,
   document: {
     ...invoiceReview.document,
-    fileUrl: "/demo-pack/01_Invoice_Missing_Due_Date.pdf?v=2",
+    fileUrl: `${DEMO_PDF.invoice01}?v=2`,
   },
 };
 
@@ -218,7 +219,7 @@ export const Reading: Story = {
       return found;
     });
 
-    const firstLink = "/demo-pack/01_Invoice_Missing_Due_Date.pdf?v=1";
+    const firstLink = `${DEMO_PDF.invoice01}?v=1`;
 
     await expect(viewer).toHaveAttribute("data-document-url", firstLink);
 

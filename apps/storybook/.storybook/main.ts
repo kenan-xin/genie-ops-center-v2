@@ -42,14 +42,7 @@ const config: StorybookConfig = {
   ],
   addons: [...shared.addons],
   // The shell's Ops Center defaults are static files of the app's public folder (DR-03).
-  // The demo PDFs are served so the document viewer story draws a real invoice.
-  staticDirs: [
-    { from: "../../genie/public/brand", to: "/brand" },
-    {
-      from: "../../../docs/modules/invoices-and-payments/demo-pack/03_Live_Upload_Documents",
-      to: "/demo-pack",
-    },
-  ],
+  staticDirs: [{ from: "../../genie/public/brand", to: "/brand" }],
   features: { ...shared.features },
   // Storybook does not read the application's PostCSS setup, so the preview
   // compiles the product stylesheet with Tailwind's own Vite plugin.
