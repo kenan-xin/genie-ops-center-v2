@@ -170,9 +170,11 @@ export const InvoiceReadOnPhone: Story = {
 };
 
 // B4.2: an extracted field, a dropped field and a field the document does not state.
+// The read-only rows show them, because a writer sees the save form.
 export const Tags: Story = {
+  args: { view: readOnlyReview },
   globals: desktop,
-  beforeEach: () => serve(invoiceReview),
+  beforeEach: () => serve(readOnlyReview),
   play: async ({ canvasElement }) => {
     await expect(
       fieldRow(canvasElement, "customer").getByText("Extracted")

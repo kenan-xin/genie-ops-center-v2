@@ -5,6 +5,10 @@ import type { ReactNode } from "react";
 
 import type { ReadingField, StoredReading } from "../contract.ts";
 import { centsOf } from "../services/reading/quote-check.ts";
+import {
+  reviewedOrigins,
+  type ReviewedFields,
+} from "../services/reading/reviewed-origins.ts";
 import type { DocumentKind } from "./document-kind.ts";
 import type { ViewerHighlight } from "./document-viewer.tsx";
 import { formatDay, formatMoney } from "./format.ts";
@@ -79,6 +83,47 @@ export function readOriginOf(
   }
 
   return reading.fields[field] === undefined ? "not-on-document" : "extracted";
+}
+
+/** A value that is one text, rather than a list of invoice numbers. */
+function isText(
+  value: string | readonly string[] | null
+): value is string | null {
+  return value === null || !Array.isArray(value);
+}
+
+/**
+ * The tag a field shows now: its stored origin, or the origin that the save will store (czjw.27,
+ * decision 8). `corrected` and `entered` win; otherwise the stored origin applies.
+ */
+export function liveTagOf(
+  reading: StoredReading | null,
+  field: ReviewFieldKey,
+  value: string | readonly string[] | null
+): OriginTagKind {
+  const filled = isText(value)
+    ? value !== null && value.trim() !== ""
+    : value.length > 0;
+
+  if (reading === null) return filled ? "entered" : "not-on-document";
+
+  if (field === "invoiceNumbers") {
+    const invoiceNumbers = Array.isArray(value) ? value : [];
+
+    return (
+      reviewedOrigins(reading, { invoiceNumbers }).get(field) ??
+      readOriginOf(reading, field)
+    );
+  }
+
+  const reviewed: ReviewedFields = {
+    [field]: Array.isArray(value) ? null : value,
+  };
+
+  return (
+    reviewedOrigins(reading, reviewed).get(field) ??
+    readOriginOf(reading, field)
+  );
 }
 
 /** Where a field's value was read: its quote and page, else nothing. */
@@ -207,7 +252,7 @@ export function ReviewFieldRow(props: ReviewFieldRowProps): ReactNode {
         <span className="w-32 shrink-0 text-sm text-muted-foreground">
           {label}
         </span>
-        <span className="min-w-0 flex-1 text-sm font-medium">{children}</span>
+        <div className="min-w-0 flex-1 text-sm font-medium">{children}</div>
         <span className="flex shrink-0 items-center gap-2">
           <OriginTag tag={tag} />
           <Button

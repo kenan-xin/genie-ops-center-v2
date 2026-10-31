@@ -27,11 +27,13 @@ import {
 
 import { invoicesContract } from "../contract.ts";
 import { type DocumentKind, kindText } from "./document-kind.ts";
+import { InvoiceReviewForm } from "./invoice-review-form.tsx";
 import {
   ReviewFieldList,
   type ReviewFieldKey,
   sourcesOf,
 } from "./review-fields.tsx";
+import { ReviewSaved } from "./review-saved.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
@@ -98,6 +100,7 @@ export function DocumentReview(props: {
   // The first link lasts the page's life, so a refetch never loads the PDF again.
   const [firstFileUrl] = useState(view.document.fileUrl);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const browser = useSyncExternalStore(subscribeToNothing, inBrowser, onServer);
 
   const review = useQuery({
@@ -178,6 +181,8 @@ export function DocumentReview(props: {
         Choose the type of this document to fill in its fields.
       </p>
     );
+  } else if (data.saved !== null) {
+    body = <ReviewSaved view={data} message={savedMessage} />;
   } else if (kind === "purchase-order") {
     body = (
       <div className="flex flex-col gap-3 py-3">
@@ -193,6 +198,17 @@ export function DocumentReview(props: {
           onSelect={setSelected}
         />
       </div>
+    );
+  } else if (data.canWrite && (kind === "invoice" || kind === "paid-receipt")) {
+    body = (
+      <InvoiceReviewForm
+        view={data}
+        kind={kind}
+        selected={selected}
+        onSelect={setSelected}
+        onSaved={setSavedMessage}
+        onDiscard={() => setDiscardOpen(true)}
+      />
     );
   } else {
     body = (

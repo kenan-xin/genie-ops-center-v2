@@ -81,6 +81,8 @@ For a payment document with no saved record, the review also answers the matched
 
 A document has no customer before a save, so the review needs `invoices:read` on the whole deployment; a reader scoped to one customer is refused. `listOpenInvoices` at `GET /invoices/customers/{customerId}/open-invoices` answers a customer's invoices in one currency whose total exceeds their links, oldest first, at most 1,000 rows with `truncated` set past them, to a reader of that customer.
 
+A writer of an unsaved invoice saves it with `saveInvoice`, and a writer of a paid receipt saves it with `savePaidReceipt`. Each form sends the reading's texts, the chosen due date and its source, and the customer. A read due date kept sends source `document`, a typed one sends `person`, and Mark as unspecified sends no date with `unspecified`. A name the reading holds that matches no stored customer is offered as a new customer, and the save waits until the person confirms it; an existing customer is sent by id. A Possible duplicate answer shows the stored invoice with `Open it` and `Keep and save`, which sends the save again with `keepPossibleDuplicate`, or Discard. A saved document shows its records in place of the form. Each automatic link shows Undo, which calls `unlinkAllocation` and returns the amount to the payment as Unallocated.
+
 ## Reviewing a document
 
 Every save from a document, a type change and a discard lock the document row first, so two people on one document act one after another, and the second sees what the first did.
